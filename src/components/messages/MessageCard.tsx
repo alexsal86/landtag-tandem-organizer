@@ -4,19 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-interface Message {
-  id: string;
-  title: string;
-  content: string;
-  author_id: string;
-  is_for_all_users: boolean;
-  status: 'active' | 'archived';
-  created_at: string;
-  has_read?: boolean;
-  author?: { display_name: string; avatar_url?: string };
-  recipients?: Array<{ recipient_id: string; has_read: boolean; read_at?: string; profile?: { display_name: string; avatar_url?: string } }>;
-  confirmations?: Array<{ user_id: string; confirmed_at: string; profiles?: { display_name?: string; avatar_url?: string } }>;
-}
+import type { MessageItem } from './dto';
 
 const formatDate = (dateString: string) =>
   new Date(dateString).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -25,7 +13,7 @@ const formatShortDate = (dateString: string) =>
   new Date(dateString).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
 export const ReceivedMessageCard: React.FC<{
-  message: Message;
+  message: MessageItem;
   isRead: boolean;
   onMarkRead: (id: string, isForAll: boolean) => void;
 }> = React.memo(({ message, isRead, onMarkRead }) => (
@@ -34,19 +22,19 @@ export const ReceivedMessageCard: React.FC<{
       <div className="flex-1">
         <div className="flex items-center gap-2 mb-1">
           <Avatar className="h-6 w-6">
-            <AvatarImage src={message.author?.avatar_url} />
-            <AvatarFallback>{message.author?.display_name?.charAt(0) || 'U'}</AvatarFallback>
+            <AvatarImage src={message.author?.avatarUrl ?? undefined} />
+            <AvatarFallback>{message.author?.displayName?.charAt(0) || 'U'}</AvatarFallback>
           </Avatar>
-          <span className="text-sm font-medium">{message.author?.display_name || 'Unbekannt'}</span>
-          {message.is_for_all_users && <Badge variant="secondary" className="text-xs">An alle</Badge>}
+          <span className="text-sm font-medium">{message.author?.displayName || 'Unbekannt'}</span>
+          {message.isForAllUsers && <Badge variant="secondary" className="text-xs">An alle</Badge>}
           {!isRead && <Badge variant="default" className="text-xs">Neu</Badge>}
         </div>
         <h4 className="font-medium text-sm mb-1">{message.title}</h4>
         <p className="text-xs text-muted-foreground mb-2">{message.content}</p>
-        <p className="text-xs text-muted-foreground">{formatDate(message.created_at)}</p>
+        <p className="text-xs text-muted-foreground">{formatDate(message.createdAt)}</p>
       </div>
       {!isRead && (
-        <Button size="sm" variant="outline" onClick={() => onMarkRead(message.id, message.is_for_all_users)} className="ml-2">
+        <Button size="sm" variant="outline" onClick={() => onMarkRead(message.id, message.isForAllUsers)} className="ml-2">
           <Check className="h-4 w-4" />
         </Button>
       )}
@@ -56,11 +44,11 @@ export const ReceivedMessageCard: React.FC<{
 
 ReceivedMessageCard.displayName = 'ReceivedMessageCard';
 
-export const SentMessageCard: React.FC<{ message: Message; userId?: string }> = React.memo(({ message, userId }) => {
+export const SentMessageCard: React.FC<{ message: MessageItem; userId?: string }> = React.memo(({ message, userId }) => {
   const getStatus = () => {
-    if (message.is_for_all_users) return { total: 0, read: message.confirmations?.length || 0 };
-    const total = message.recipients?.length || 0;
-    const read = message.recipients?.filter(r => r.has_read).length || 0;
+    if (message.isForAllUsers) return { total: 0, read: message.confirmations.length };
+    const total = message.recipients.length;
+    const read = message.recipients.filter((r) => r.hasRead).length;
     return { total, read };
   };
   const status = getStatus();
@@ -71,23 +59,23 @@ export const SentMessageCard: React.FC<{ message: Message; userId?: string }> = 
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <h4 className="font-medium text-sm">{message.title}</h4>
-            {message.is_for_all_users && <Badge variant="secondary" className="text-xs">An alle</Badge>}
+            {message.isForAllUsers && <Badge variant="secondary" className="text-xs">An alle</Badge>}
           </div>
           <p className="text-xs text-muted-foreground mb-2">{message.content}</p>
-          <p className="text-xs text-muted-foreground">{formatDate(message.created_at)}</p>
+          <p className="text-xs text-muted-foreground">{formatDate(message.createdAt)}</p>
         </div>
       </div>
 
-      {!message.is_for_all_users && message.recipients && message.recipients.length > 0 && (
+      {!message.isForAllUsers && message.recipients.length > 0 && (
         <div className="space-y-2 mt-2">
           <div className="text-xs font-medium text-muted-foreground">Empfänger:</div>
           <div className="flex flex-wrap gap-2">
             {message.recipients.map((r) => (
-              <div key={r.recipient_id} className="flex items-center gap-1 text-xs bg-muted/50 rounded px-2 py-1">
-                <Avatar className="h-4 w-4"><AvatarImage src={r.profile?.avatar_url} /><AvatarFallback className="text-xs">{r.profile?.display_name?.charAt(0) || 'U'}</AvatarFallback></Avatar>
-                <span>{r.profile?.display_name || 'Unbekannt'}</span>
-                {r.has_read ? (
-                  <div className="flex items-center gap-1 text-green-600"><Check className="h-3 w-3" /><span className="text-xs">{r.read_at && formatShortDate(r.read_at)}</span></div>
+              <div key={r.recipientId} className="flex items-center gap-1 text-xs bg-muted/50 rounded px-2 py-1">
+                <Avatar className="h-4 w-4"><AvatarImage src={r.profile?.avatarUrl ?? undefined} /><AvatarFallback className="text-xs">{r.profile?.displayName?.charAt(0) || 'U'}</AvatarFallback></Avatar>
+                <span>{r.profile?.displayName || 'Unbekannt'}</span>
+                {r.hasRead ? (
+                  <div className="flex items-center gap-1 text-green-600"><Check className="h-3 w-3" /><span className="text-xs">{r.readAt && formatShortDate(r.readAt)}</span></div>
                 ) : <span className="text-xs text-muted-foreground">Nicht gelesen</span>}
               </div>
             ))}
@@ -95,15 +83,15 @@ export const SentMessageCard: React.FC<{ message: Message; userId?: string }> = 
         </div>
       )}
 
-      {message.is_for_all_users && message.confirmations && message.confirmations.length > 0 && (
+      {message.isForAllUsers && message.confirmations.length > 0 && (
         <div className="space-y-2 mt-2">
           <div className="text-xs font-medium text-muted-foreground">Bestätigt von:</div>
           <div className="flex flex-wrap gap-2">
-            {message.confirmations.map((c: any) => (
-              <div key={c.user_id} className="flex items-center gap-1 text-xs bg-muted/50 rounded px-2 py-1">
-                <Avatar className="h-4 w-4"><AvatarImage src={c.profiles?.avatar_url} /><AvatarFallback className="text-xs">{c.profiles?.display_name?.charAt(0) || 'U'}</AvatarFallback></Avatar>
-                <span>{c.profiles?.display_name || 'Unbekannt'}</span>
-                <div className="flex items-center gap-1 text-green-600"><Check className="h-3 w-3" /><span className="text-xs">{formatShortDate(c.confirmed_at)}</span></div>
+            {message.confirmations.map((c) => (
+              <div key={c.userId} className="flex items-center gap-1 text-xs bg-muted/50 rounded px-2 py-1">
+                <Avatar className="h-4 w-4"><AvatarImage src={c.profile?.avatarUrl ?? undefined} /><AvatarFallback className="text-xs">{c.profile?.displayName?.charAt(0) || 'U'}</AvatarFallback></Avatar>
+                <span>{c.profile?.displayName || 'Unbekannt'}</span>
+                <div className="flex items-center gap-1 text-green-600"><Check className="h-3 w-3" /><span className="text-xs">{formatShortDate(c.confirmedAt)}</span></div>
               </div>
             ))}
           </div>
@@ -111,7 +99,7 @@ export const SentMessageCard: React.FC<{ message: Message; userId?: string }> = 
       )}
 
       <div className="mt-2 text-xs text-muted-foreground">
-        {message.is_for_all_users ? `${status.read} Benutzer haben bestätigt` : `${status.read}/${status.total} gelesen`}
+        {message.isForAllUsers ? `${status.read} Benutzer haben bestätigt` : `${status.read}/${status.total} gelesen`}
       </div>
     </div>
   );
@@ -119,44 +107,44 @@ export const SentMessageCard: React.FC<{ message: Message; userId?: string }> = 
 
 SentMessageCard.displayName = 'SentMessageCard';
 
-export const ArchivedMessageCard: React.FC<{ message: Message; userId?: string }> = React.memo(({ message, userId }) => (
+export const ArchivedMessageCard: React.FC<{ message: MessageItem; userId?: string }> = React.memo(({ message, userId }) => (
   <div className="p-3 border rounded-lg bg-muted/30">
     <div className="flex items-start justify-between">
       <div className="flex-1">
         <div className="flex items-center gap-2 mb-1">
           <Archive className="h-4 w-4 text-muted-foreground" />
-          {message.author?.display_name && <span className="text-sm font-medium">Von: {message.author.display_name}</span>}
-          {message.author_id === userId && <span className="text-sm font-medium text-primary">Gesendet</span>}
-          {message.is_for_all_users && <Badge variant="secondary" className="text-xs">An alle</Badge>}
+          {message.author?.displayName && <span className="text-sm font-medium">Von: {message.author.displayName}</span>}
+          {message.authorId === userId && <span className="text-sm font-medium text-primary">Gesendet</span>}
+          {message.isForAllUsers && <Badge variant="secondary" className="text-xs">An alle</Badge>}
         </div>
         <h4 className="font-medium text-sm mb-1">{message.title}</h4>
         <p className="text-xs text-muted-foreground mb-2">{message.content}</p>
-        <p className="text-xs text-muted-foreground">Gesendet: {formatDate(message.created_at)}</p>
+        <p className="text-xs text-muted-foreground">Gesendet: {formatDate(message.createdAt)}</p>
 
-        {message.author_id !== userId && (
+        {message.authorId !== userId && (
           <div className="mt-2"><div className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded inline-block">✓ Als gelesen bestätigt</div></div>
         )}
 
-        {message.author_id === userId && message.is_for_all_users && message.confirmations && message.confirmations.length > 0 && (
+        {message.authorId === userId && message.isForAllUsers && message.confirmations.length > 0 && (
           <div className="mt-2">
             <div className="text-xs font-medium text-muted-foreground mb-1">Bestätigt von:</div>
             <div className="flex flex-wrap gap-1">
-              {message.confirmations.map((c: any) => (
-                <div key={c.user_id} className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                  {c.profiles?.display_name || 'Unbekannt'} - {formatShortDate(c.confirmed_at)}
+              {message.confirmations.map((c) => (
+                <div key={c.userId} className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                  {c.profile?.displayName || 'Unbekannt'} - {formatShortDate(c.confirmedAt)}
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {message.author_id === userId && !message.is_for_all_users && message.recipients && message.recipients.length > 0 && (
+        {message.authorId === userId && !message.isForAllUsers && message.recipients.length > 0 && (
           <div className="mt-2">
             <div className="text-xs font-medium text-muted-foreground mb-1">Gelesen von:</div>
             <div className="flex flex-wrap gap-1">
-              {message.recipients.filter(r => r.has_read).map((r) => (
-                <div key={r.recipient_id} className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                  {r.profile?.display_name || 'Unbekannt'} - {r.read_at && formatShortDate(r.read_at)}
+              {message.recipients.filter(r => r.hasRead).map((r) => (
+                <div key={r.recipientId} className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                  {r.profile?.displayName || 'Unbekannt'} - {r.readAt && formatShortDate(r.readAt)}
                 </div>
               ))}
             </div>

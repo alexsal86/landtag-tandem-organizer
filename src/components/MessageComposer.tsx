@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, type ChangeEvent, type FormEvent } from "react";
 import { debugConsole } from '@/utils/debugConsole';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,7 +64,7 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
     }
   }, [user]);
 
-  const handleRecipientToggle = (userId: string) => {
+  const handleRecipientToggle = (userId: string): void => {
     setSelectedRecipients(prev => 
       prev.includes(userId) 
         ? prev.filter(id => id !== userId)
@@ -72,7 +72,8 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
     );
   };
 
-  const handleSend = async () => {
+  const handleSend = async (event?: FormEvent<HTMLFormElement>): Promise<void> => {
+    event?.preventDefault();
     if (!user || !content.trim()) {
       toast({
         title: "Fehler",
@@ -133,13 +134,14 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
           <X className="h-4 w-4" />
         </Button>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent>
+      <form className="space-y-4" onSubmit={(event: FormEvent<HTMLFormElement>) => { void handleSend(event); }}>
         <div className="space-y-2">
           <Label htmlFor="title">Betreff (optional)</Label>
           <Input
             id="title"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
             placeholder="Betreff eingeben (optional)..."
           />
         </div>
@@ -149,7 +151,7 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
           <Textarea
             id="content"
             value={content}
-            onChange={(e) => setContent(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setContent(e.target.value)}
             placeholder="Nachrichteninhalt eingeben..."
             rows={4}
           />
@@ -159,7 +161,7 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
           <Checkbox 
             id="all-users"
             checked={isForAllUsers}
-            onCheckedChange={(checked) => setIsForAllUsers(checked as boolean)}
+            onCheckedChange={(checked: boolean | "indeterminate") => setIsForAllUsers(checked === true)}
           />
           <Label htmlFor="all-users">An alle Benutzer senden</Label>
         </div>
@@ -208,7 +210,7 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
           <Button variant="outline" onClick={onClose}>
             Abbrechen
           </Button>
-          <Button onClick={handleSend} disabled={loading}>
+          <Button type="submit" disabled={loading}>
             {loading ? (
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
             ) : (
@@ -219,6 +221,7 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
             )}
           </Button>
         </div>
+            </form>
       </CardContent>
     </Card>
   );
