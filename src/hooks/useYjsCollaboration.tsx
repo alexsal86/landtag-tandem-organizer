@@ -23,7 +23,7 @@ interface UseYjsCollaborationProps {
   onSelectionChange?: (selection: any) => void;
 }
 
-interface UseYjsCollaborationReturn {
+export interface UseYjsCollaborationReturn {
   connectionState: 'disconnected' | 'connecting' | 'connected';
   isConnected: boolean;
   isConnecting: boolean;
@@ -43,6 +43,22 @@ interface UseYjsCollaborationReturn {
   sendCursorUpdate: (cursor: any) => void;
   sendSelectionUpdate: (selection: any) => void;
   sendContentUpdate: (content: string) => void;
+}
+
+type YjsBroadcastEvent =
+  | { event: 'yjs-update'; payload: { userId: string; update: number[] } }
+  | {
+      event: 'awareness-update';
+      payload: {
+        user_id: string;
+        user_color: string;
+        cursor_position: unknown;
+        selection_state: unknown;
+      };
+    };
+
+interface SupabaseBroadcastEnvelope<TPayload> {
+  payload: TPayload;
 }
 
 // Generate consistent color for user based on their ID
@@ -183,14 +199,14 @@ export const useYjsCollaboration = ({
 
       // Listen for Yjs updates via Supabase
       supabaseChannel.current
-        .on('broadcast', { event: 'yjs-update' }, (payload: any) => {
+        .on('broadcast', { event: 'yjs-update' }, ({ payload }: SupabaseBroadcastEnvelope<Extract<YjsBroadcastEvent, { event: 'yjs-update' }>['payload']>) => {
           if (payload.userId !== currentUser.id && ydoc.current) {
             // Apply remote Yjs update
             const update = new Uint8Array(payload.update);
             Y.applyUpdate(ydoc.current, update);
           }
         })
-        .on('broadcast', { event: 'awareness-update' }, (payload: any) => {
+        .on('broadcast', { event: 'awareness-update' }, ({ payload }: SupabaseBroadcastEnvelope<Extract<YjsBroadcastEvent, { event: 'awareness-update' }>['payload']>) => {
           if (payload.user_id !== currentUser.id) {
             // Update collaborators list
             setCollaborators(prev => {
@@ -227,8 +243,8 @@ export const useYjsCollaboration = ({
       setConnectionState('connected');
       
 
-    } catch (error) {
-      debugConsole.error('[Yjs] Connection failed:', error);
+    } catch (error: unknown) {
+      debugConsole.error('[Yjs] Connection failed:', error instanceof Error ? error.message : error);
       setConnectionState('disconnected');
     }
   }, [connectionState, documentId, currentUser, userProfiles, loadUserProfiles]);
