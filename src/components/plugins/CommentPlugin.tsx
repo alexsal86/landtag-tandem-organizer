@@ -604,15 +604,16 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
             
             if (findTextNode(root) && targetNode) {
               // Set selection on the found text
-              selection.anchor.set(targetNode.getKey(), startOffset, 'text');
-              selection.focus.set(targetNode.getKey(), endOffset, 'text');
+              const tKey = (targetNode as LexicalNode).getKey();
+              selection.anchor.set(tKey, startOffset, 'text');
+              selection.focus.set(tKey, endOffset, 'text');
               
               // Apply the selection
               root.select();
               const currentSelection = $getSelection();
               if ($isRangeSelection(currentSelection)) {
-                currentSelection.anchor.set(targetNode.getKey(), startOffset, 'text');
-                currentSelection.focus.set(targetNode.getKey(), endOffset, 'text');
+                currentSelection.anchor.set(tKey, startOffset, 'text');
+                currentSelection.focus.set(tKey, endOffset, 'text');
                 
                 // Apply comment mark using proper Lexical approach  
                 const commentMark = $createCommentMarkNode(data.id);

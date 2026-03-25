@@ -76,8 +76,8 @@ export function TrackChangesToolbar({ isReviewMode, showAcceptReject }: TrackCha
     editor.update(() => {
       const root = $getRoot();
       const processNode = (node: LexicalNode) => {
-        if (typeof (node as { getChildren?: () => LexicalNode[] }).getChildren === 'function') {
-          [...(node as { getChildren: () => LexicalNode[] }).getChildren()].forEach(processNode);
+        if ('getChildren' in node && typeof (node as unknown as { getChildren: () => LexicalNode[] }).getChildren === 'function') {
+          [...(node as unknown as { getChildren: () => LexicalNode[] }).getChildren()].forEach(processNode);
         }
 
         if ($isTrackInsertNode(node)) {
