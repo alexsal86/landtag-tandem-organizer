@@ -1,31 +1,113 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor, act } from "@testing-library/react";
 
-const { mockSupabase, mockToast, mockUser, mockTenant } = vi.hoisted(() => {
-  const chainable = () => {
-    const chain: any = {};
-    const methods = ['select', 'eq', 'neq', 'order', 'in', 'not', 'is', 'gt', 'limit', 'single', 'maybeSingle'];
-    methods.forEach(m => { chain[m] = vi.fn(() => chain); });
-    // Terminal: resolve with data
-    chain._resolve = { data: [], error: null };
-    chain.then = (fn: any) => Promise.resolve(chain._resolve).then(fn);
-    chain.select = vi.fn((_sel?: string, opts?: any) => {
-      if (opts?.count === 'exact' && opts?.head) {
-        // count query
-        return Promise.resolve({ count: 0 });
-      }
-      return chain;
-    });
-    return chain;
-  };
+type DbError = { message: string };
+type SelectOptions = { count?: "exact"; head?: boolean };
+type CountResponse = { count: number };
+type QueryResponse<TData> = { data: TData; error: DbError | null };
 
-  const mockSupabase = {
-    from: vi.fn(() => chainable()),
+type ChainMethods =
+  | "eq"
+  | "neq"
+  | "order"
+  | "in"
+  | "not"
+  | "is"
+  | "gt"
+  | "limit"
+  | "single"
+  | "maybeSingle";
+
+interface MockQueryChain<TData> extends PromiseLike<QueryResponse<TData>> {
+  select: (selection?: string, options?: SelectOptions) => MockQueryChain<TData> | Promise<CountResponse>;
+  range: (from: number, to: number) => Promise<QueryResponse<TData>>;
+  eq: (column: string, value: unknown) => MockQueryChain<TData>;
+  neq: (column: string, value: unknown) => MockQueryChain<TData>;
+  order: (column: string, options?: { ascending?: boolean }) => MockQueryChain<TData>;
+  in: (column: string, values: unknown[]) => MockQueryChain<TData>;
+  not: (column: string, operator: string, value: unknown) => MockQueryChain<TData>;
+  is: (column: string, value: unknown) => MockQueryChain<TData>;
+  gt: (column: string, value: unknown) => MockQueryChain<TData>;
+  limit: (value: number) => MockQueryChain<TData>;
+  single: () => MockQueryChain<TData>;
+  maybeSingle: () => MockQueryChain<TData>;
+}
+
+type DocumentFixture = {
+  id: string;
+  title: string;
+  tenant_id: string;
+  created_at: string;
+  archived_attachments: unknown[] | null;
+};
+
+type FolderFixture = {
+  id: string;
+  name: string;
+  tenant_id: string;
+  order_index: number;
+};
+
+type LetterFixture = {
+  id: string;
+  subject: string;
+  tenant_id: string;
+  created_at: string;
+};
+
+const buildDocumentFixture = (overrides: Partial<DocumentFixture> = {}): DocumentFixture => ({
+  id: "doc-1",
+  title: "Dokument",
+  tenant_id: "tenant-1",
+  created_at: "2024-01-01",
+  archived_attachments: [],
+  ...overrides,
+});
+
+const buildFolderFixture = (overrides: Partial<FolderFixture> = {}): FolderFixture => ({
+  id: "folder-1",
+  name: "Folder",
+  tenant_id: "tenant-1",
+  order_index: 0,
+  ...overrides,
+});
+
+const buildLetterFixture = (overrides: Partial<LetterFixture> = {}): LetterFixture => ({
+  id: "letter-1",
+  subject: "Letter",
+  tenant_id: "tenant-1",
+  created_at: "2024-01-01",
+  ...overrides,
+});
+
+const createChain = <TData>(resolved: QueryResponse<TData>): MockQueryChain<TData> => {
+  const chain = {} as MockQueryChain<TData>;
+
+  const methods: ChainMethods[] = ["eq", "neq", "order", "in", "not", "is", "gt", "limit", "single", "maybeSingle"];
+  methods.forEach((method) => {
+    chain[method] = vi.fn(() => chain);
+  });
+
+  chain.select = vi.fn(() => chain);
+  chain.range = vi.fn(() => Promise.resolve(resolved));
+  chain.then = (onFulfilled) => Promise.resolve(resolved).then(onFulfilled);
+
+  return chain;
+};
+
+const { mockSupabase, mockToast, mockUser, mockTenant } = vi.hoisted(() => {
+  const defaultChain = createChain<unknown[]>(
+    { data: [], error: null },
+  );
+
+  return {
+    mockSupabase: {
+      from: vi.fn(() => defaultChain),
+    },
+    mockToast: vi.fn(),
+    mockUser: { id: "user-1", email: "test@example.com" },
+    mockTenant: { id: "tenant-1", name: "Test Tenant" },
   };
-  const mockToast = vi.fn();
-  const mockUser = { id: "user-1", email: "test@example.com" };
-  const mockTenant = { id: "tenant-1", name: "Test Tenant" };
-  return { mockSupabase, mockToast, mockUser, mockTenant };
 });
 
 vi.mock("@/integrations/supabase/client", () => ({ supabase: mockSupabase }));
@@ -44,35 +126,34 @@ describe("useDocumentsData", () => {
   });
 
   it("fetches documents when activeTab is 'documents'", async () => {
-    const docsData = [
-      { id: "d1", title: "Doc 1", tenant_id: "tenant-1", created_at: "2024-01-01", archived_attachments: [] },
-    ];
-    const foldersData = [{ id: "f1", name: "Folder 1", tenant_id: "tenant-1", order_index: 0 }];
+    const docsData: DocumentFixture[] = [buildDocumentFixture({ id: "d1", title: "Doc 1" })];
+    const foldersData: FolderFixture[] = [buildFolderFixture({ id: "f1", name: "Folder 1" })];
 
-    // documents query
-    let callCount = 0;
+    let documentsCallCount = 0;
     mockSupabase.from.mockImplementation((table: string) => {
-      const chain: any = {};
-      const methods = ['select', 'eq', 'neq', 'order', 'in', 'not', 'is', 'gt', 'limit', 'single', 'maybeSingle'];
-      methods.forEach(m => { chain[m] = vi.fn(() => chain); });
+      if (table === "documents") {
+        documentsCallCount += 1;
 
-      if (table === 'documents') {
-        callCount++;
-        if (callCount <= 1) {
-          // main documents fetch
-          chain.then = (fn: any) => Promise.resolve({ data: docsData, error: null }).then(fn);
-          chain.select = vi.fn((_sel?: string, opts?: any) => {
-            if (opts?.count === 'exact') return Promise.resolve({ count: 2 });
-            return chain;
-          });
-        } else {
-          // count query for folders
-          chain.select = vi.fn(() => Promise.resolve({ count: 2 }));
+        const documentChain = createChain<DocumentFixture[]>({ data: docsData, error: null });
+        documentChain.select = vi.fn((_selection?: string, options?: SelectOptions) => {
+          if (options?.count === "exact" && options.head) {
+            return Promise.resolve({ count: 2 });
+          }
+          return documentChain;
+        });
+
+        if (documentsCallCount > 1) {
+          documentChain.select = vi.fn(() => Promise.resolve({ count: 2 }));
         }
-      } else if (table === 'document_folders') {
-        chain.then = (fn: any) => Promise.resolve({ data: foldersData, error: null }).then(fn);
+
+        return documentChain;
       }
-      return chain;
+
+      if (table === "document_folders") {
+        return createChain<FolderFixture[]>({ data: foldersData, error: null });
+      }
+
+      return createChain<unknown[]>({ data: [], error: null });
     });
 
     const { result } = renderHook(() => useDocumentsData("documents"));
@@ -86,16 +167,13 @@ describe("useDocumentsData", () => {
   });
 
   it("fetches letters when activeTab is 'letters'", async () => {
-    const lettersData = [{ id: "l1", subject: "Letter 1", tenant_id: "tenant-1", created_at: "2024-01-01" }];
+    const lettersData: LetterFixture[] = [buildLetterFixture({ id: "l1", subject: "Letter 1" })];
 
     mockSupabase.from.mockImplementation((table: string) => {
-      const chain: any = {};
-      const methods = ['select', 'eq', 'neq', 'order', 'in', 'not', 'is', 'gt', 'limit', 'single', 'maybeSingle'];
-      methods.forEach(m => { chain[m] = vi.fn(() => chain); });
-      if (table === 'letters') {
-        chain.then = (fn: any) => Promise.resolve({ data: lettersData, error: null }).then(fn);
+      if (table === "letters") {
+        return createChain<LetterFixture[]>({ data: lettersData, error: null });
       }
-      return chain;
+      return createChain<unknown[]>({ data: [], error: null });
     });
 
     const { result } = renderHook(() => useDocumentsData("letters"));
@@ -108,57 +186,55 @@ describe("useDocumentsData", () => {
   });
 
   it("shows error toast on fetch failure", async () => {
-    mockSupabase.from.mockImplementation(() => {
-      const chain: any = {};
-      const methods = ['select', 'eq', 'neq', 'order', 'in', 'not', 'is', 'gt', 'limit', 'single', 'maybeSingle'];
-      methods.forEach(m => { chain[m] = vi.fn(() => chain); });
-      chain.then = (fn: any) => Promise.resolve({ data: null, error: { message: "DB error" } }).then(fn);
-      return chain;
-    });
+    mockSupabase.from.mockImplementation(() => createChain<null>({ data: null, error: { message: "DB error" } }));
 
     renderHook(() => useDocumentsData("documents"));
 
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: "destructive" })
+        expect.objectContaining({ variant: "destructive" }),
       );
     });
   });
 
   it("appends next page documents on loadMoreDocuments", async () => {
-    const page1 = Array.from({ length: 50 }, (_, index) => ({
-      id: `doc-${index + 1}`,
-      title: `Dokument ${index + 1}`,
-      tenant_id: "tenant-1",
-      created_at: "2024-01-01",
-      archived_attachments: null,
-    }));
-    const page2 = [
-      { id: "doc-51", title: "Dokument 51", tenant_id: "tenant-1", created_at: "2024-01-01", archived_attachments: [] },
+    const page1: DocumentFixture[] = Array.from({ length: 50 }, (_, index) =>
+      buildDocumentFixture({
+        id: `doc-${index + 1}`,
+        title: `Dokument ${index + 1}`,
+        archived_attachments: null,
+      }),
+    );
+
+    const page2: DocumentFixture[] = [
+      buildDocumentFixture({
+        id: "doc-51",
+        title: "Dokument 51",
+        archived_attachments: [],
+      }),
     ];
 
-    let docFetchCount = 0;
+    let documentFetchCount = 0;
     mockSupabase.from.mockImplementation((table: string) => {
-      const chain: any = {};
-      const methods = ['select', 'eq', 'neq', 'order', 'in', 'not', 'is', 'gt', 'limit', 'single', 'maybeSingle', 'range'];
-      methods.forEach(m => { chain[m] = vi.fn(() => chain); });
-
       if (table === "documents") {
-        chain.select = vi.fn((_sel?: string, opts?: any) => {
-          if (opts?.count === 'exact') return Promise.resolve({ count: 51 });
-          return chain;
+        const documentChain = createChain<DocumentFixture[]>({ data: page1, error: null });
+        documentChain.select = vi.fn((_selection?: string, options?: SelectOptions) => {
+          if (options?.count === "exact") return Promise.resolve({ count: 51 });
+          return documentChain;
         });
-        chain.range = vi.fn(() => {
-          docFetchCount += 1;
-          return Promise.resolve({ data: docFetchCount === 1 ? page1 : page2, error: null });
+        documentChain.range = vi.fn(() => {
+          documentFetchCount += 1;
+          return Promise.resolve({ data: documentFetchCount === 1 ? page1 : page2, error: null });
         });
+
+        return documentChain;
       }
 
       if (table === "document_folders") {
-        chain.then = (fn: any) => Promise.resolve({ data: [], error: null }).then(fn);
+        return createChain<FolderFixture[]>({ data: [], error: null });
       }
 
-      return chain;
+      return createChain<unknown[]>({ data: [], error: null });
     });
 
     const { result } = renderHook(() => useDocumentsData("documents"));
@@ -184,30 +260,31 @@ describe("useDocumentsData", () => {
     let attempt = 0;
 
     mockSupabase.from.mockImplementation((table: string) => {
-      const chain: any = {};
-      const methods = ['select', 'eq', 'neq', 'order', 'in', 'not', 'is', 'gt', 'limit', 'single', 'maybeSingle', 'range'];
-      methods.forEach(m => { chain[m] = vi.fn(() => chain); });
-
       if (table === "documents") {
-        chain.select = vi.fn((_sel?: string, opts?: any) => {
-          if (opts?.count === 'exact') return Promise.resolve({ count: 1 });
-          return chain;
+        const documentChain = createChain<DocumentFixture[] | null>({ data: null, error: null });
+        documentChain.select = vi.fn((_selection?: string, options?: SelectOptions) => {
+          if (options?.count === "exact") return Promise.resolve({ count: 1 });
+          return documentChain;
         });
-        chain.range = vi.fn(() => {
+        documentChain.range = vi.fn(() => {
           attempt += 1;
-          if (attempt === 1) return Promise.resolve({ data: null, error: { message: "temporary db error" } });
+          if (attempt === 1) {
+            return Promise.resolve({ data: null, error: { message: "temporary db error" } });
+          }
           return Promise.resolve({
-            data: [{ id: "doc-ok", title: "Recovered", tenant_id: "tenant-1", created_at: "2024-01-01", archived_attachments: [] }],
+            data: [buildDocumentFixture({ id: "doc-ok", title: "Recovered" })],
             error: null,
           });
         });
+
+        return documentChain;
       }
 
       if (table === "document_folders") {
-        chain.then = (fn: any) => Promise.resolve({ data: [], error: null }).then(fn);
+        return createChain<FolderFixture[]>({ data: [], error: null });
       }
 
-      return chain;
+      return createChain<unknown[]>({ data: [], error: null });
     });
 
     const { result } = renderHook(() => useDocumentsData("documents"));
