@@ -1,6 +1,5 @@
 import React, { useState, useEffect, createContext, useContext } from "react";
 import type {
-  AuthChangeEvent,
   Session,
   User,
 } from "@supabase/supabase-js";
@@ -18,7 +17,7 @@ interface AuthContextType {
 
 type UserSessionRow = Pick<Database["public"]["Tables"]["user_sessions"]["Row"], "id">;
 
-type OnAuthStateChangeCallback = (event: AuthChangeEvent, session: Session | null) => void;
+type OnAuthStateChangeCallback = (event: string, session: Session | null) => void;
 type GetSessionResult = { data: { session: Session | null }; error: unknown | null };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);

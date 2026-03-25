@@ -109,7 +109,7 @@ async function uploadOneFile(
   // Always fetch the real user ID from the session to avoid Tenant-ID being passed as userId
   const userResponse = await supabase.auth.getUser();
   const userResult = normalizeSupabaseResult(userResponse);
-  const authPayload = requireSupabaseData(userResult, 'Benutzer konnte nicht geladen werden.');
+  const authPayload = requireSupabaseData(userResult, 'Benutzer konnte nicht geladen werden.') as { user: { id: string } | null };
   const user = authPayload.user;
   if (!user) throw new Error('Nicht angemeldet');
 
@@ -117,7 +117,7 @@ async function uploadOneFile(
   const sanitizedFileName = sanitizeFileNameForStorage(file.name);
   const filePath = `${user.id}/decisions/${decisionId}/${uniqueSuffix}-${sanitizedFileName}`;
 
-  const { uploadData } = await uploadToStorageWithCandidates(filePath, file);
+  const { uploadData } = await uploadToStorageWithCandidates(filePath, file) as { uploadData: { path: string }; candidateErrors: string[] };
 
   const cachedMetadata = metadataByIdentity?.[getFileIdentity(file)] ?? null;
 
@@ -225,10 +225,10 @@ export function useDecisionAttachmentUpload() {
         .from('task_decision_attachments')
         .select('file_name, file_size')
         .eq('decision_id', decisionId);
-      const existingFiles = requireSupabaseData(existingFilesResponse, 'Bestehende Anhänge konnten nicht geladen werden.');
+      const existingFiles = requireSupabaseData(existingFilesResponse, 'Bestehende Anhänge konnten nicht geladen werden.') as { file_name: string; file_size: number }[] | null;
 
       const existingSet = new Set(
-        (existingFiles ?? []).map(f => `${f.file_name}::${f.file_size}`)
+        (existingFiles ?? []).map((f: { file_name: string; file_size: number }) => `${f.file_name}::${f.file_size}`)
       );
 
       const failed: UploadFailure[] = [];

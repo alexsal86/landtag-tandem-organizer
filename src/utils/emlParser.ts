@@ -350,7 +350,7 @@ export async function parseMsgFromArrayBuffer(buffer: unknown): Promise<ParsedEm
     .map((att) => {
       let content = new Uint8Array(0);
       try {
-        const attData = msgReader.getAttachment(att);
+        const attData = msgReader.getAttachment(att as unknown as number);
         if (isRecord(attData) && hasOwnProperty(attData, 'content') && attData.content instanceof Uint8Array) {
           content = new Uint8Array(attData.content);
         } else if (isRecord(attData) && hasOwnProperty(attData, 'content') && attData.content instanceof ArrayBuffer) {

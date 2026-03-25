@@ -33,7 +33,7 @@ export function findPotentialDuplicates(
   const duplicates: DuplicateMatch[] = [];
   
   // Normalize strings for comparison
-  const normalize = (str?: string) => str?.toLowerCase().trim() || '';
+  const normalize = (str?: string | null) => str?.toLowerCase().trim() || '';
   
   const newContactNormalized = {
     name: normalize(newContact.name),

@@ -75,7 +75,7 @@ const parseStoredLayout = (value: string | null): DashboardLayout | null => {
 };
 
 const parseLayoutData = (value: Json): DashboardWidget[] =>
-  Array.isArray(value) ? value.filter(isDashboardWidget) : [];
+  Array.isArray(value) ? (value as unknown[]).filter(isDashboardWidget) : [];
 
 export function useDashboardLayout() {
   const [layouts, setLayouts] = useState<DashboardLayout[]>([]);
