@@ -85,6 +85,21 @@ Verwende bevorzugt die zentralen Helfer aus `src/utils/typeSafety.ts`:
 6. Erst danach feinere Domänen- und UI-Typen nachziehen.
 
 
+
+## Verbindliche Interop-`any`-Governance (ab 2026-03-25)
+
+1. **Klassifizierung aller verbleibenden `any`**
+   - Jede Stelle wird als `entfernbar` oder `echte Interop-Grenze` geführt (siehe `report:any-usage:classify`).
+2. **Interop-`any` nur in Adapterdateien**
+   - Erlaubte Boundary-Scope: `**/adapters/**`, `**/interop/**` oder dedizierte Adapter-Dateien.
+   - In UI/Hooks (`src/components/**`, `src/pages/**`, `src/hooks/**`) sind explizite `any` grundsätzlich unzulässig.
+3. **Ausnahmeformat ist verpflichtend**
+   - Kommentar im lokalen Kontext: `any-exception <TICKET-ID>: <Kurzbegründung> due:YYYY-MM-DD wrapper:<typedWrapperFn>`.
+4. **Typed Wrapper Pflicht pro Ausnahme**
+   - Zu jeder Interop-Ausnahme gehört eine benannte Wrapper-Funktion, die die unscharfe Boundary in ein stabiles Domänen-Interface übersetzt.
+5. **Ablösetermin pro Ausnahme**
+   - Jede Ausnahme trägt einen konkreten Zieltermin (`due:YYYY-MM-DD`) und wird bei Erreichen aktiv aus dem Backlog entfernt oder neu geplant.
+
 ## Übergangsregel für `no-explicit-any`
 
 - Global bleibt `@typescript-eslint/no-explicit-any` auf **`warn`**, damit nicht bereinigte Altbereiche inkrementell migriert werden können.
