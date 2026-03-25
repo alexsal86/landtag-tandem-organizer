@@ -60,11 +60,27 @@ export function useUpdateDossier() {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: { id: string; title?: string; summary?: string; status?: string; priority?: string }) => {
+    mutationFn: async (input: {
+      id: string;
+      title?: string;
+      summary?: string;
+      status?: string;
+      priority?: string;
+      open_questions?: string;
+      positions?: string;
+      risks_opportunities?: string;
+      review_interval_days?: number | null;
+      next_review_at?: string | null;
+    }) => {
       const { id, ...updates } = input;
+      const payload: Record<string, unknown> = { ...updates, updated_at: new Date().toISOString() };
+      // Remove undefined keys so we don't overwrite with null
+      for (const key of Object.keys(payload)) {
+        if (payload[key] === undefined) delete payload[key];
+      }
       const { error } = await supabase
         .from("dossiers")
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .update(payload as never)
         .eq("id", id);
       if (error) throw error;
     },

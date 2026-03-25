@@ -10,6 +10,11 @@ export interface Dossier {
   created_by: string;
   created_at: string;
   updated_at: string;
+  open_questions: string | null;
+  positions: string | null;
+  risks_opportunities: string | null;
+  review_interval_days: number | null;
+  next_review_at: string | null;
 }
 
 export interface DossierEntry {
