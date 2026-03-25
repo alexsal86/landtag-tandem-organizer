@@ -98,6 +98,21 @@ ${colorConfig
   )
 }
 
+type RechartsPayloadItem = {
+  dataKey?: string | number
+  name?: string | number
+  value?: number | string
+  color?: string
+  payload?: Record<string, unknown>
+}
+
+type RechartsLegendPayloadItem = {
+  dataKey?: string | number
+  value?: string | number
+  color?: string
+  payload?: Record<string, unknown>
+}
+
 const ChartTooltip = RechartsPrimitive.Tooltip
 
 const ChartTooltipContent = React.forwardRef<
@@ -109,8 +124,8 @@ const ChartTooltipContent = React.forwardRef<
       indicator?: "line" | "dot" | "dashed"
       nameKey?: string
       labelKey?: string
-      payload?: any[]
-      label?: any
+      payload?: RechartsPayloadItem[]
+      label?: unknown
     }
 >(
   (
@@ -188,7 +203,8 @@ const ChartTooltipContent = React.forwardRef<
           {payload.map((item, index) => {
             const key = `${nameKey || item.name || item.dataKey || "value"}`
             const itemConfig = getPayloadConfigFromPayload(config, item, key)
-            const indicatorColor = color || item.payload.fill || item.color
+            const payloadFill = typeof item.payload?.fill === "string" ? item.payload.fill : undefined
+            const indicatorColor = color || payloadFill || item.color
 
             return (
               <div
@@ -264,7 +280,7 @@ const ChartLegendContent = React.forwardRef<
     Pick<RechartsPrimitive.LegendProps, "verticalAlign"> & {
       hideIcon?: boolean
       nameKey?: string
-      payload?: any[]
+      payload?: RechartsLegendPayloadItem[]
     }
 >(
   (

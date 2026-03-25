@@ -16,6 +16,19 @@ import { PieChart as RechartsPieChart, Cell, ResponsiveContainer, Tooltip, Legen
 import { supabase } from "@/integrations/supabase/client";
 import { useExpenseData } from "./expenses/hooks/useExpenseData";
 
+interface PieLabelProps {
+  name?: string;
+  percent?: number;
+}
+
+const renderCategoryPieLabel = (input: unknown): string => {
+  if (!input || typeof input !== 'object') return '';
+  const candidate = input as PieLabelProps;
+  const name = typeof candidate.name === 'string' ? candidate.name : '';
+  const percent = typeof candidate.percent === 'number' ? candidate.percent : undefined;
+  return name && typeof percent === 'number' ? `${name} ${(percent * 100).toFixed(0)}%` : name;
+};
+
 const getRecurringIcon = (recurringType: string) => {
   if (recurringType === 'none') return null;
   const labels: Record<string, string> = { monthly: 'Monatlich', quarterly: 'Vierteljährlich', 'semi-annually': 'Halbjährlich', yearly: 'Jährlich' };
@@ -153,7 +166,7 @@ export const ExpenseManagement = () => {
             <Card><CardContent className="p-6">
               {data.getCategoryExpenses().length > 0 ? (
                 <div className="h-80"><ResponsiveContainer width="100%" height="100%"><RechartsPieChart>
-                  <Pie data={data.getCategoryExpenses().map(({ name, total, color }) => ({ name, value: total, fill: color }))} cx="50%" cy="50%" labelLine={false} label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`} outerRadius={80} fill="#8884d8" dataKey="value">
+                  <Pie data={data.getCategoryExpenses().map(({ name, total, color }) => ({ name, value: total, fill: color }))} cx="50%" cy="50%" labelLine={false} label={renderCategoryPieLabel} outerRadius={80} fill="#8884d8" dataKey="value">
                     {data.getCategoryExpenses().map(({ color }, i) => <Cell key={`cell-${i}`} fill={color} />)}
                   </Pie>
                   <Tooltip formatter={(value: number) => [`${value.toFixed(2)} €`, 'Betrag']} /><Legend />

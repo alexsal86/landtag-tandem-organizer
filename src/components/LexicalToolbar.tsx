@@ -128,16 +128,16 @@ export default function LexicalToolbar({ showFloatingToolbar = false }: LexicalT
       if (type.startsWith('heading-')) {
         const headingTag = type.replace('heading-', '') as HeadingTagType;
         const headingNode = $createHeadingNode(headingTag);
-        (element as any).replace(headingNode);
-        (headingNode as any).selectEnd();
+        element.replace(headingNode);
+        headingNode.selectEnd();
       } else if (type === 'quote') {
         const quoteNode = $createQuoteNode();
-        (element as any).replace(quoteNode);
-        (quoteNode as any).selectEnd();
+        element.replace(quoteNode);
+        quoteNode.selectEnd();
       } else if (type === 'code') {
         const codeNode = $createCodeNode();
-        (element as any).replace(codeNode);
-        (codeNode as any).selectEnd();
+        element.replace(codeNode);
+        codeNode.selectEnd();
       }
     });
   }, [editor]);
