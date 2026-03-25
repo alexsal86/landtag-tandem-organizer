@@ -382,8 +382,8 @@ export function MeetingTemplateManager() {
                   <div className="border-t pt-4">
                     <MeetingTemplateParticipantsEditor
                       templateId={selectedTemplate.id}
-                      defaultParticipants={selectedTemplate.default_participants || []}
-                      defaultRecurrence={selectedTemplate.default_recurrence || null}
+                      defaultParticipants={selectedTemplate.default_participants as any || []}
+                      defaultRecurrence={selectedTemplate.default_recurrence as any || null}
                       autoCreateCount={selectedTemplate.auto_create_count || 3}
                       compact
                       onSave={async (participants, recurrence, autoCreateCount, visibility) => {
