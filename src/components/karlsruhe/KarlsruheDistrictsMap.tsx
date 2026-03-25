@@ -11,10 +11,9 @@ import { lucideIconToSvg, isLucideIcon } from '@/utils/lucideIconToSvg';
 import { debugConsole } from '@/utils/debugConsole';
 import { Feature, LayerConfig, hasProperties, isFeatureCollection } from '@/types/geoDomain';
 import 'leaflet.heat';
-// @ts-ignore
 import 'leaflet-routing-machine';
 
-const LRouting = (L as any).Routing;
+const LRouting = L.Routing;
 
 /**
  * Helper function to get icon display for Leaflet markers
@@ -561,7 +560,6 @@ export const KarlsruheDistrictsMap = ({
 
     const map = mapInstanceRef.current;
 
-    // @ts-ignore - leaflet.heat types
     const heat = L.heatLayer(heatmapPoints, {
       radius: 25,
       blur: 15,

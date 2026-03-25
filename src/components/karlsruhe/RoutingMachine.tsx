@@ -4,11 +4,10 @@ import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 import { Waypoint } from './RoutePlannerPanel';
 
 // Import leaflet-routing-machine after L is available
-// @ts-ignore
 import 'leaflet-routing-machine';
 
 // Access Routing from the global L object after import
-const LRouting = (L as any).Routing;
+const LRouting = L.Routing;
 
 interface RoutingMachineProps {
   map: L.Map | null;
@@ -17,7 +16,7 @@ interface RoutingMachineProps {
 }
 
 export const RoutingMachine = ({ map, waypoints, onRouteFound }: RoutingMachineProps) => {
-  const routingControlRef = useRef<any>(null);
+  const routingControlRef = useRef<L.RoutingControl | null>(null);
 
   useEffect(() => {
     if (!map) return;
@@ -59,8 +58,8 @@ export const RoutingMachine = ({ map, waypoints, onRouteFound }: RoutingMachineP
       createMarker: () => null, // Don't create default markers
     });
 
-    routingControl.on('routesfound', (e: any) => {
-      const routes = e.routes;
+    routingControl.on('routesfound', (event) => {
+      const routes = event.routes;
       if (routes && routes.length > 0 && onRouteFound) {
         const route = routes[0];
         onRouteFound({

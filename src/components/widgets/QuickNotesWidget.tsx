@@ -16,6 +16,7 @@ import { useTenant } from '@/hooks/useTenant';
 import { TaskDetailSidebar } from '@/components/TaskDetailSidebar';
 import { QuickNotesList } from '@/components/shared/QuickNotesList';
 import SimpleRichTextEditor from '@/components/ui/SimpleRichTextEditor';
+import type { Task } from '@/components/task-detail/types';
 
 interface QuickNotesWidgetProps {
   className?: string;
@@ -25,6 +26,44 @@ interface QuickNotesWidgetProps {
     theme?: string;
   };
 }
+
+type TaskPriority = Task['priority'];
+type TaskStatus = Task['status'];
+type TaskCategory = Task['category'];
+type WidgetTask = {
+  id: string;
+  title: string;
+  priority: TaskPriority;
+  status: TaskStatus;
+  due_date?: string;
+  description?: string;
+  category: TaskCategory;
+  assigned_to?: string;
+  progress?: number;
+};
+
+type WidgetSubtask = {
+  id: string;
+  task_id: string;
+  title?: string;
+  description?: string;
+  is_completed: boolean;
+  due_date?: string;
+};
+
+const toTaskPriority = (value: string | null): TaskPriority => (
+  value === 'high' || value === 'medium' || value === 'low' ? value : 'medium'
+);
+
+const toTaskStatus = (value: string | null): TaskStatus => (
+  value === 'todo' || value === 'in-progress' || value === 'completed' ? value : 'todo'
+);
+
+const toTaskCategory = (value: string | null): TaskCategory => (
+  value === 'legislation' || value === 'constituency' || value === 'committee' || value === 'personal' || value === 'call_followup' || value === 'call_follow_up'
+    ? value
+    : 'personal'
+);
 
 export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({ 
   className, 
@@ -41,28 +80,9 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
   const [titleEditorKey, setTitleEditorKey] = useState(0);
   
   // Tasks state
-  const [tasks, setTasks] = useState<Array<{
-    id: string;
-    title: string;
-    priority: string;
-    status: string;
-    due_date?: string;
-  }>>([]);
-  const [subtasks, setSubtasks] = useState<{[taskId: string]: Array<{
-    id: string;
-    task_id: string;
-    title?: string;
-    description?: string;
-    is_completed: boolean;
-    due_date?: string;
-  }>}>({});
-  const [selectedTask, setSelectedTask] = useState<{
-    id: string;
-    title: string;
-    priority: string;
-    status: string;
-    due_date?: string;
-  } | null>(null);
+  const [tasks, setTasks] = useState<WidgetTask[]>([]);
+  const [subtasks, setSubtasks] = useState<Record<string, WidgetSubtask[]>>({});
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [taskSidebarOpen, setTaskSidebarOpen] = useState(false);
   const [showTasks, setShowTasks] = useState(() => {
     if (typeof window === 'undefined' || !user) return true;
@@ -136,7 +156,17 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
         .limit(10);
 
       if (tasksError) throw tasksError;
-      setTasks((tasksData || []).map(t => ({ ...t, due_date: t.due_date ?? undefined })));
+      setTasks((tasksData || []).map((task) => ({
+        id: task.id,
+        title: task.title,
+        priority: toTaskPriority(task.priority),
+        status: toTaskStatus(task.status),
+        due_date: task.due_date ?? undefined,
+        description: task.description ?? undefined,
+        category: toTaskCategory(task.category),
+        assigned_to: task.assigned_to ?? undefined,
+        progress: task.progress ?? undefined,
+      })));
 
       if (tasksData && tasksData.length > 0) {
         const taskIds = tasksData.map(t => t.id);
@@ -151,7 +181,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
 
         if (childTasksError) throw childTasksError;
 
-        const groupedSubtasks: {[taskId: string]: any[]} = {};
+        const groupedSubtasks: Record<string, WidgetSubtask[]> = {};
         (childTasksData || []).forEach(subtask => {
           if (!subtask.parent_task_id) return;
           if (!groupedSubtasks[subtask.parent_task_id]) {
@@ -236,7 +266,17 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
                   <div 
                     className="flex items-center gap-2 text-xs py-1 px-2 rounded hover:bg-accent/50 cursor-pointer"
                     onClick={() => {
-                      setSelectedTask(task as any);
+                      setSelectedTask({
+                        id: task.id,
+                        title: task.title,
+                        description: task.description || '',
+                        priority: task.priority,
+                        status: task.status,
+                        dueDate: task.due_date ?? null,
+                        category: task.category,
+                        assignedTo: task.assigned_to,
+                        progress: task.progress,
+                      });
                       setTaskSidebarOpen(true);
                     }}
                   >
@@ -391,7 +431,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
 
       {/* Task Detail Sidebar */}
       <TaskDetailSidebar
-        task={selectedTask as any}
+        task={selectedTask}
         isOpen={taskSidebarOpen}
         onClose={() => {
           setTaskSidebarOpen(false);

@@ -22,6 +22,15 @@ import type { CalendarSource } from "./calendar/CalendarSidebarSources";
 export type { CalendarEvent } from "./calendar/types";
 
 type CalendarViewType = "day" | "week" | "month" | "agenda" | "polls";
+type HighlightEventRow = {
+  id: string;
+  title: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  location: string | null;
+  all_day?: boolean | null;
+  is_all_day?: boolean | null;
+};
 
 const viewLabels: Record<string, string> = {
   day: "Tag",
@@ -82,22 +91,24 @@ export function CalendarView() {
     (async () => {
       const isExt = highlightId.startsWith("external-");
       const id = isExt ? highlightId.replace(/^external-/, "") : highlightId;
-      let data: any = null;
-      let error: any = null;
+      let data: HighlightEventRow | null = null;
+      let error: unknown = null;
 
       if (isExt) {
         const res = await supabase.from("external_events").select("id, title, start_time, end_time, location, all_day").eq("id", id).maybeSingle();
-        data = res.data; error = res.error;
+        data = res.data as HighlightEventRow | null;
+        error = res.error;
       } else {
         const res = await supabase.from("appointments").select("id, title, start_time, end_time, location, is_all_day").eq("id", id).maybeSingle();
-        data = res.data; error = res.error;
+        data = res.data as HighlightEventRow | null;
+        error = res.error;
       }
 
       if (!active || error || !data) { handledHighlightRef.current = highlightId; return; }
 
       const startDate = new Date(data.start_time);
       const endDate = data.end_time ? new Date(data.end_time) : startDate;
-      const allDay = (data as any).all_day || (data as any).is_all_day || false;
+      const allDay = data.all_day || data.is_all_day || false;
 
       handledHighlightRef.current = highlightId;
       setCurrentDate(startDate);

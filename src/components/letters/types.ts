@@ -3,6 +3,11 @@ import type { Database } from '@/integrations/supabase/types';
 import type { LetterLayoutSettings, LetterTemplateDataModel } from '@/types/letterLayout';
 
 export type LetterContentNodes = string | Database['public']['Tables']['letters']['Row']['content_nodes'] | null;
+type LexicalNodeLike = {
+  style?: string;
+  children?: LexicalNodeLike[];
+  root?: LexicalNodeLike;
+};
 
 export interface Letter {
   id: string;
@@ -36,7 +41,7 @@ export interface Letter {
   sent_at?: string;
   sent_by?: string;
   workflow_locked?: boolean;
-  // Extended fields used in editor (cast via `as any` in original)
+  // Extended fields used in editor
   salutation_override?: string;
   closing_formula?: string;
   closing_name?: string;
@@ -113,7 +118,12 @@ export const getNextStatus = (currentStatus: string) => STATUS_FLOW[currentStatu
 export const canTransitionStatus = (fromStatus: string, toStatus: string) =>
   ALLOWED_TRANSITIONS[fromStatus]?.includes(toStatus) || false;
 
-export const findFontFamilyInLexicalNode = (node: any): string | null => {
+const isLexicalNodeLike = (value: unknown): value is LexicalNodeLike => (
+  typeof value === 'object' && value !== null
+);
+
+export const findFontFamilyInLexicalNode = (node: unknown): string | null => {
+  if (!isLexicalNodeLike(node)) return null;
   if (!node || typeof node !== 'object') return null;
   if (typeof node.style === 'string') {
     const match = node.style.match(/font-family\s*:\s*([^;]+)/i);
@@ -130,11 +140,12 @@ export const findFontFamilyInLexicalNode = (node: any): string | null => {
 
 export const extractFontFamilyFromContentNodes = (contentNodes?: unknown): string | null => {
   if (!contentNodes) return null;
-  let parsed: any = contentNodes;
+  let parsed: unknown = contentNodes;
   if (typeof contentNodes === 'string') {
     try { parsed = JSON.parse(contentNodes); } catch { return null; }
   }
-  return findFontFamilyInLexicalNode(parsed?.root || parsed);
+  if (!isLexicalNodeLike(parsed)) return null;
+  return findFontFamilyInLexicalNode(parsed.root || parsed);
 };
 
 export const formatContactAddress = (contact: Contact, useBusinessAddress = false) => {
