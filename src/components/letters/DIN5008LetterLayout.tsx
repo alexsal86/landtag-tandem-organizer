@@ -105,13 +105,14 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   } as const;
 
   // Load layout settings from prop, template, or use defaults
-  const DEFAULT_LAYOUT = {
+  const DEFAULT_LAYOUT: LetterLayoutSettings = {
     pageWidth: 210,
     pageHeight: 297,
     margins: { left: 25, right: 20, top: 45, bottom: 25 },
     header: { height: 45, marginBottom: 8.46 },
     addressField: { top: 46, left: 25, width: 85, height: 40, returnAddressFontSize: 8, recipientFontSize: 10 },
     infoBlock: { top: 50, left: 125, width: 75, height: 40 },
+    returnAddress: { top: 46, left: 25, width: 85, height: 17.7 },
     subject: { top: 98.46, marginBottom: 8, fontSize: 13 },
     content: { top: 98.46, maxHeight: 165, lineHeight: 4.5, fontSize: 11 },
     footer: { top: 272, height: 18 },
