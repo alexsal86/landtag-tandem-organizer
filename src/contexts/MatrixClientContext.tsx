@@ -1490,7 +1490,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
 
       const latestEventId = latestEvent.getId();
       if (latestEventId) {
-        const readMarkersClient = mc as MatrixReadMarkersClient;
+        const readMarkersClient = mc as unknown as MatrixReadMarkersClient;
         if (typeof readMarkersClient.setRoomReadMarkers === 'function') {
           await readMarkersClient.setRoomReadMarkers(roomId, latestEventId, latestEventId);
         }
