@@ -1001,7 +1001,7 @@ export function MyWorkCasesWorkspace() {
       priority: editableCaseItem.priority as TablesUpdate<"case_items">["priority"],
       owner_user_id: editableCaseItem.assigneeIds[0] || null,
       visible_to_all: editableCaseItem.visibleToAll,
-      intake_payload: intakePayload as unknown as Json,
+      intake_payload: intakePayload as unknown as TablesUpdate<"case_items">["intake_payload"],
       contact_id: editableCaseItem.selectedContactId || null,
       reporter_name: parsedName,
       reporter_contact: editableCaseItem.contactEmail.trim() || editableCaseItem.contactPhone.trim() || parsedDetail,

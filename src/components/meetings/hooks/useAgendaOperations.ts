@@ -76,7 +76,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
           if (parentError) throw parentError;
           parentId = parentData.id;
           const updatedItems = [...agendaItems];
-          updatedItems[parentIndex] = { ...parentItem, id: parentId, localKey: parentId };
+          updatedItems[parentIndex] = { ...parentItem, id: parentId, localKey: parentId } as typeof parentItem;
           setAgendaItems(updatedItems);
         }
       }

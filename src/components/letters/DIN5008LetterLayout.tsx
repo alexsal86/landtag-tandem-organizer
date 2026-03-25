@@ -282,7 +282,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           <div className="space-y-1">
             <div className="font-medium">{info.label}</div>
             <div>
-              {bd.reference_prefix && `${String(bd.reference_prefix)} `}
+              {bd.reference_prefix ? `${String(bd.reference_prefix)} ` : null}
               {referenceNumber || String(bd.reference_pattern || '')}
             </div>
           </div>

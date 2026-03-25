@@ -342,7 +342,7 @@ export function useTaskOperations({
         .eq("phone", phone)
         .eq("contact_type", "archive")
         .eq("user_id", user.id)
-        .single<ContactRecord>();
+        .single();
       archiveContact = data;
     }
 
