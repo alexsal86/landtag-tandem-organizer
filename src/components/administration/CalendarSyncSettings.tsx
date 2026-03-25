@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import type { ChangeEvent } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,18 @@ export function CalendarSyncSettings() {
     sync_time: '06:00:00',
     is_enabled: true
   });
+
+  const handleEnabledChange = (checked: boolean) => {
+    setSettings((prev) => ({ ...prev, is_enabled: checked }));
+  };
+
+  const handleIntervalChange = (value: string) => {
+    setSettings((prev) => ({ ...prev, sync_interval_hours: Number.parseInt(value, 10) }));
+  };
+
+  const handleTimeChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setSettings((prev) => ({ ...prev, sync_time: event.target.value }));
+  };
 
   useEffect(() => {
     loadSettings();
@@ -109,7 +122,7 @@ export function CalendarSyncSettings() {
           <Switch
             id="is_enabled"
             checked={settings.is_enabled}
-            onCheckedChange={(checked) => setSettings(prev => ({ ...prev, is_enabled: checked }))}
+            onCheckedChange={handleEnabledChange}
           />
         </div>
 
@@ -119,7 +132,7 @@ export function CalendarSyncSettings() {
               <Label htmlFor="sync_interval">Synchronisations-Intervall</Label>
               <Select
                 value={settings.sync_interval_hours.toString()}
-                onValueChange={(value) => setSettings(prev => ({ ...prev, sync_interval_hours: parseInt(value) }))}
+                onValueChange={handleIntervalChange}
               >
                 <SelectTrigger id="sync_interval">
                   <SelectValue />
@@ -144,7 +157,7 @@ export function CalendarSyncSettings() {
                 id="sync_time"
                 type="time"
                 value={settings.sync_time}
-                onChange={(e) => setSettings(prev => ({ ...prev, sync_time: e.target.value }))}
+                onChange={handleTimeChange}
               />
               <p className="text-xs text-muted-foreground">
                 Uhrzeit für die erste tägliche Synchronisation (weitere Syncs folgen im konfigurierten Intervall)

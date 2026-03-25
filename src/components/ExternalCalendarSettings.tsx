@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import { Plus, Trash2, RefreshCw, Calendar, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,37 @@ interface ExternalCalendar {
   } | null;
 }
 
+type CalendarType = 'google' | 'outlook' | 'generic';
+
+interface ExternalCalendarFormData {
+  name: string;
+  ics_url: string;
+  calendar_type: CalendarType;
+  color: string;
+  sync_interval: number;
+}
+
+interface SyncSuccessResponse {
+  status: 'success';
+  message?: string;
+  synced_count?: number;
+}
+
+interface SyncPartialResponse {
+  status: 'partial';
+  message?: string;
+  synced_count?: number;
+  warnings?: string[];
+}
+
+interface SyncErrorResponse {
+  status: 'error';
+  message: string;
+  code?: string;
+}
+
+type ExternalCalendarSyncResponse = SyncSuccessResponse | SyncPartialResponse | SyncErrorResponse;
+
 const CALENDAR_COLORS = [
   '#3b82f6', // blue
   '#ef4444', // red
@@ -49,7 +81,7 @@ export function ExternalCalendarSettings() {
   const [syncingCalendars, setSyncingCalendars] = useState<Set<string>>(new Set());
   
   // Form state
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ExternalCalendarFormData>({
     name: '',
     ics_url: '',
     calendar_type: 'google',
@@ -70,7 +102,7 @@ export function ExternalCalendarSettings() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setCalendars((data as unknown) as ExternalCalendar[] || []);
+      setCalendars((data as ExternalCalendar[] | null) ?? []);
     } catch (error) {
       debugConsole.error('Error fetching calendars:', error);
       toast.error('Fehler beim Laden der externen Kalender');
@@ -83,7 +115,7 @@ export function ExternalCalendarSettings() {
     fetchCalendars();
   }, [user, currentTenant]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!user || !currentTenant) return;
 
@@ -128,13 +160,19 @@ export function ExternalCalendarSettings() {
     setSyncingCalendars(prev => new Set(prev).add(calendarId));
     
     try {
-      const { error } = await supabase.functions.invoke('sync-external-calendar', {
+      const { data, error } = await supabase.functions.invoke<ExternalCalendarSyncResponse>('sync-external-calendar', {
         body: { calendar_id: calendarId }
       });
 
       if (error) throw error;
-      
-      toast.success('Kalender erfolgreich synchronisiert');
+
+      if (!data || data.status === 'error') {
+        toast.error(data?.message ?? 'Fehler bei der Synchronisation');
+        return;
+      }
+
+      const method = data.status === 'partial' ? toast.warning : toast.success;
+      method(data.message ?? 'Kalender erfolgreich synchronisiert');
       fetchCalendars(); // Refresh to update last_sync time
     } catch (error) {
       debugConsole.error('Error syncing calendar:', error);
@@ -197,6 +235,18 @@ export function ExternalCalendarSettings() {
     });
   };
 
+  const handleNameChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({ ...prev, name: event.target.value }));
+  };
+
+  const handleIcsUrlChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({ ...prev, ics_url: event.target.value }));
+  };
+
+  const handleCalendarTypeChange = (value: CalendarType) => {
+    setFormData((prev) => ({ ...prev, calendar_type: value }));
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -227,7 +277,7 @@ export function ExternalCalendarSettings() {
                   <Input
                     id="name"
                     value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={handleNameChange}
                     placeholder="z.B. Mein Google Kalender"
                     required
                   />
@@ -238,7 +288,7 @@ export function ExternalCalendarSettings() {
                     id="ics_url"
                     type="url"
                     value={formData.ics_url}
-                    onChange={(e) => setFormData(prev => ({ ...prev, ics_url: e.target.value }))}
+                    onChange={handleIcsUrlChange}
                     placeholder="https://calendar.google.com/calendar/ical/..."
                     required
                   />
@@ -246,7 +296,7 @@ export function ExternalCalendarSettings() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="calendar_type">Typ</Label>
-                    <Select value={formData.calendar_type} onValueChange={(value) => setFormData(prev => ({ ...prev, calendar_type: value }))}>
+                    <Select value={formData.calendar_type} onValueChange={handleCalendarTypeChange}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
