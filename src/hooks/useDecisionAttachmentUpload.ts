@@ -109,7 +109,7 @@ async function uploadOneFile(
   // Always fetch the real user ID from the session to avoid Tenant-ID being passed as userId
   const userResponse = await supabase.auth.getUser();
   const userResult = normalizeSupabaseResult(userResponse);
-  const authPayload = requireSupabaseData(userResult, 'Benutzer konnte nicht geladen werden.');
+  const authPayload = requireSupabaseData(userResult, 'Benutzer konnte nicht geladen werden.') as { user: { id: string } | null };
   const user = authPayload.user;
   if (!user) throw new Error('Nicht angemeldet');
 
