@@ -28,6 +28,18 @@ import { compressImageForAvatar } from "@/utils/imageCompression";
 type ConversationPartner = AppointmentConversationPartner;
 type Companion = NonNullable<AppointmentPreparation['preparation_data']['companions']>[number];
 type ProgramRow = NonNullable<AppointmentPreparation['preparation_data']['program']>[number];
+type ContactOption = {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  role: string | null;
+  position: string | null;
+  organization: string | null;
+  company: string | null;
+  notes: string | null;
+  avatar_url: string | null;
+};
 
 interface ExtendedAppointmentPreparation extends AppointmentPreparation {
   contact_name?: string;
@@ -122,8 +134,9 @@ export function AppointmentPreparationDataTab({
     preparationDataWithDefaults.visit_reason ?? ''
   );
 
-  const [contacts, setContacts] = useState<any[]>([]);
+  const [contacts, setContacts] = useState<ContactOption[]>([]);
   const [selectedContactId, setSelectedContactId] = useState("");
+  const [selectedPartnerContactId, setSelectedPartnerContactId] = useState<string>("");
   const [showCustomContact, setShowCustomContact] = useState(false);
   const { currentTenant } = useTenant();
   const { user } = useAuth();
@@ -133,16 +146,14 @@ export function AppointmentPreparationDataTab({
   );
 
   useEffect(() => {
-    if (preparation.appointment_id) {
-      fetchContacts();
+    void fetchContacts();
 
-      if (extendedPreparation.contact_name && extendedPreparation.contact_info) {
-        setShowCustomContact(true);
-      } else if (extendedPreparation.contact_id) {
-        setSelectedContactId(extendedPreparation.contact_id);
-      }
+    if (extendedPreparation.contact_name && extendedPreparation.contact_info) {
+      setShowCustomContact(true);
+    } else if (extendedPreparation.contact_id) {
+      setSelectedContactId(extendedPreparation.contact_id);
     }
-  }, [preparation.appointment_id, currentTenant]);
+  }, [preparation.appointment_id, currentTenant, extendedPreparation.contact_id, extendedPreparation.contact_info, extendedPreparation.contact_name]);
 
   // Only sync from props on initial load or when the preparation ID changes
   // (not after our own optimistic saves)
@@ -177,7 +188,7 @@ export function AppointmentPreparationDataTab({
     try {
       const { data, error } = await supabase
         .from('contacts')
-        .select('id, name, email, phone, organization, role')
+        .select('id, name, email, phone, role, position, organization, company, notes, avatar_url')
         .eq('tenant_id', currentTenant.id)
         .order('name');
 
@@ -345,6 +356,30 @@ export function AppointmentPreparationDataTab({
     };
     const updated = [...conversationPartners, newPartner];
     setConversationPartners(updated);
+    debouncedSave(buildPreparationData(editData, {
+      conversation_partners: updated,
+      contact_person: undefined
+    }));
+  };
+
+  const addConversationPartnerFromContact = () => {
+    if (!selectedPartnerContactId) return;
+
+    const selectedContact = contactsById.get(selectedPartnerContactId);
+    if (!selectedContact) return;
+
+    const newPartner: ConversationPartner = {
+      id: crypto.randomUUID(),
+      name: selectedContact.name,
+      avatar_url: selectedContact.avatar_url || '',
+      role: selectedContact.role || selectedContact.position || '',
+      organization: selectedContact.organization || selectedContact.company || '',
+      note: selectedContact.notes || ''
+    };
+
+    const updated = [...conversationPartners, newPartner];
+    setConversationPartners(updated);
+    setSelectedPartnerContactId('');
     debouncedSave(buildPreparationData(editData, {
       conversation_partners: updated,
       contact_person: undefined
@@ -816,6 +851,44 @@ export function AppointmentPreparationDataTab({
               {conversationPartners.length === 0 && (
                 <p className="text-sm text-muted-foreground px-1">Noch keine Gesprächspartner hinzugefügt.</p>
               )}
+              <div className="rounded-lg border bg-muted/20 p-3">
+                <label className="mb-2 block text-sm font-medium">Aus Kontakten hinzufügen</label>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Select
+                    value={selectedPartnerContactId}
+                    onValueChange={setSelectedPartnerContactId}
+                  >
+                    <SelectTrigger className="sm:flex-1">
+                      <SelectValue placeholder="Kontakt auswählen..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {contacts.map((contact) => (
+                        <SelectItem key={contact.id} value={contact.id}>
+                          <div>
+                            <div className="font-medium">{contact.name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {(contact.organization || contact.company) && `${contact.organization || contact.company} • `}
+                              {contact.role || contact.position}
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={addConversationPartnerFromContact}
+                    disabled={!selectedPartnerContactId}
+                  >
+                    <PlusIcon className="mr-2 h-4 w-4" />
+                    Übernehmen
+                  </Button>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Rolle, Organisation, Hinweis und Foto werden aus dem Kontakt übernommen und können danach angepasst werden.
+                </p>
+              </div>
               {conversationPartners.map((partner, idx) => (
                 <div key={partner.id} className="grid grid-cols-1 gap-3 items-start rounded-lg border bg-muted/20 p-3 md:grid-cols-[auto_1.2fr_1fr_1fr_1fr_auto]">
                   <div className="space-y-2">
