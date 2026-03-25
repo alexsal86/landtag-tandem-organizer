@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Check, Plus, X, Tag } from "lucide-react";
+import { Check, Plus, X, Tag, type LucideIcon } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -16,7 +16,8 @@ interface TopicSelectorProps {
 }
 
 const getIconComponent = (iconName: string, className?: string) => {
-  const Icon = (LucideIcons as any)[iconName];
+  const iconMap = LucideIcons as Record<string, LucideIcon>;
+  const Icon = iconMap[iconName];
   return Icon ? <Icon className={className || "h-3 w-3"} /> : <Tag className={className || "h-3 w-3"} />;
 };
 
