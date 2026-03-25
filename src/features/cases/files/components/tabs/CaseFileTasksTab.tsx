@@ -27,10 +27,18 @@ interface CaseFileTasksTabProps {
   onRemove: (id: string) => Promise<boolean>;
 }
 
+type AvailableTask = {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+  due_date: string | null;
+};
+
 export function CaseFileTasksTab({ tasks, onAdd, onRemove }: CaseFileTasksTabProps) {
   const { currentTenant } = useTenant();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [availableTasks, setAvailableTasks] = useState<any[]>([]);
+  const [availableTasks, setAvailableTasks] = useState<AvailableTask[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,7 +58,7 @@ export function CaseFileTasksTab({ tasks, onAdd, onRemove }: CaseFileTasksTabPro
       .eq('tenant_id', currentTenant.id)
       .order('created_at', { ascending: false })
       .limit(100);
-    setAvailableTasks(data || []);
+    setAvailableTasks((data as AvailableTask[] | null) || []);
   };
 
   const handleAdd = async () => {

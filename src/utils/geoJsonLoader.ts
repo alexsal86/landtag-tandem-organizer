@@ -8,7 +8,7 @@ export interface GeoJsonFeature {
   properties: {
     WKR_NR?: number;
     WKR_NAME?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   geometry: {
     type: 'Polygon' | 'MultiPolygon';

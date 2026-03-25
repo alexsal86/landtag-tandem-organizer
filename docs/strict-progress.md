@@ -160,15 +160,15 @@ Stand: **2026-03-25**, basierend auf `npm run report:any-usage` plus Bereichs-Sp
 
 | Datei | Anzahl verbleibender `any` | Begründung | Owner | Zieltermin |
 | --- | ---: | --- | --- | --- |
-| `src/contexts/MatrixClientContext.tsx` | 59 | Matrix-SDK-Interop, Event-/State-Inhalte und Legacy-Context-API noch nicht vollständig typisiert. | Kommunikation / Inbox | 2026-04-22 |
+| `src/contexts/MatrixClientContext.tsx` | 20 | Matrix-SDK-Interop (E2EE/UIA/Event-Emitter) mit noch unvollständigen Upstream-Typen; verbleibende Stellen sind als `INTEROP-ANY` markiert. | Kommunikation / Inbox | 2026-04-22 |
 
 #### Services / Features (`src/services`, `src/features`)
 
 | Datei | Anzahl verbleibender `any` | Begründung | Owner | Zieltermin |
 | --- | ---: | --- | --- | --- |
-| `src/features/cases/files/components/CaseFileCard.tsx` | 8 | Komplexe UI-Props aus mehreren Domains; Typvereinheitlichung läuft in Batch2/3. | Plattform / Integrationen | 2026-04-15 |
-| `src/features/cases/files/components/CaseFileDetailHeader.tsx` | 7 | Derzeit lose typisierte Aggregation von Timeline-/Statusdaten. | Plattform / Integrationen | 2026-04-15 |
-| `src/services/headerRenderer.ts` | 3 | Rendering-Schnittstelle unterstützt mehrere Payload-Formate und braucht discriminated unions. | Plattform / Integrationen | 2026-04-22 |
+| `src/features/redaktion/components/Kalenderansicht.tsx` | 1 | DnD-Interop von `react-big-calendar` liefert weiterhin unscharfen `start`-Payload. | Plattform / Integrationen | 2026-04-29 |
+| `src/features/redaktion/hooks/useTopicBacklog.ts` | 1 | Join-Payload `social_content_item_channels` bleibt bis zur View-Typisierung dynamisch. | Plattform / Integrationen | 2026-04-22 |
+| `src/features/cases/files/**` + `src/features/cases/items/hooks/useCaseItems.tsx` | 11 | Verbleibende Interop-`any` sind mit `INTEROP-ANY` + Ticket markiert (JSONB/Join-/RPC-Grenzen) und werden im nächsten Cases-Teilbatch über Adapter-Typen abgebaut. | Plattform / Integrationen | 2026-04-22 |
 
 #### Komponenten (`src/components`)
 
@@ -182,9 +182,7 @@ Stand: **2026-03-25**, basierend auf `npm run report:any-usage` plus Bereichs-Sp
 
 | Datei | Anzahl verbleibender `any` | Begründung | Owner | Zieltermin |
 | --- | ---: | --- | --- | --- |
-| `src/pages/DecisionResponse.tsx` | 4 | Externe Response-Payloads mit optionalen Feldern noch nicht vollständig eingegrenzt. | Frontend Plattform / App Shell | 2026-04-08 |
-| `src/pages/CreateContact.tsx` | 4 | Form-Payload-Mapping zu Kontaktdaten noch mit generischen Zwischenstrukturen. | Frontend Plattform / App Shell | 2026-04-15 |
-| `src/pages/Auth.tsx` | 2 | Auth-Provider-Interop und Redirect-State noch nicht vollständig typisiert. | Frontend Plattform / App Shell | 2026-04-15 |
+| `src/pages/**` | 0 | Bereich aktuell `any`-frei nach Batch-Bereinigung; neue Ausnahmen nur noch als dokumentierte Interop-Fälle zulässig. | Frontend Plattform / App Shell | 2026-04-15 (halten) |
 
 ## Metrik: Any-Delta pro Batch
 
@@ -206,6 +204,7 @@ Pflegehinweis pro Batch:
 | --- | --- | ---: | ---: | ---: |
 | Paket A | `src/components/MessageSystem.tsx`, `src/components/AppointmentPreparationSidebar.tsx` | 16 | 0 | -16 |
 | Paket B | `src/hooks/useYjsCollaboration.tsx` | 15 | 0 | -15 |
+| Paket C | `src/contexts`, `src/pages`, `src/features`, `src/services`, `src/utils` (fokussierte Restbereinigung) | 66 | 33 | -33 |
 
 ## Any-Restschulden
 
@@ -214,6 +213,7 @@ Zentrale Liste für bewusst verbleibende `any`-/`as any`-Stellen in den aktiven 
 | Datum | Batch-Scope | Datei | Entscheidung | Begründung / Abbauplan |
 | --- | --- | --- | --- | --- |
 | 2026-03-25 | `tsconfig.components-batch2-strict.json` | `src/components/calendar/ProperReactBigCalendar.tsx` | Temporär belassen (begründete Ausnahme) | `react-big-calendar` + DnD-Addon liefert aktuell keine ausreichend präzisen generischen Typen für `view`, `onEventDrop`, `onEventResize` und `eventPropGetter`; Ersetzung durch `unknown` erfordert vorgelagerte Wrapper-Typen. Geplanter Abbau: eigene typed Adapter-Props im nächsten Kalender-Strict-Teilbatch einführen. |
+| 2026-03-25 | `tsconfig.contexts-strict.json`, `tsconfig.services-features-batch2-strict.json` | `src/contexts/MatrixClientContext.tsx`, `src/features/redaktion/components/Kalenderansicht.tsx`, `src/features/redaktion/hooks/useTopicBacklog.ts`, `src/features/cases/**` (markierte Einzelstellen) | Temporär belassen (begründete Ausnahme) | Alle verbliebenen Stellen sind als `INTEROP-ANY(TS-4821..TS-4829)` markiert; Gründe: Matrix-SDK-Emitter/UIA, `react-big-calendar` DnD-Payloads, heterogene Supabase-Join/JSONB-Payloads. Nächste verbindliche Frist: **2026-04-22** (Kalender-Interop bis 2026-04-29). |
 
 ## Verbindliche Sprint-Abbauquote (`any`)
 

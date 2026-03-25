@@ -256,6 +256,7 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateA
     }
   }, [onUpdateSchedule]);
 
+  // INTEROP-ANY(TS-4822, Redaktion-Kalender, 2026-04-29): react-big-calendar drag payload is untyped for `start`.
   const handleEventMove = useCallback(async ({ event, start }: { event: CalendarEvent; start: any }) => {
     await persistSchedule(event.id, start);
   }, [persistSchedule]);

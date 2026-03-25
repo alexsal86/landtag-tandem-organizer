@@ -6,6 +6,17 @@ import { icons, LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Archive, ArchiveRestore, Trash2, ArrowLeft, Pencil } from "lucide-react";
+import type { CaseFileProcessingStatus } from "@/hooks/useCaseFileProcessingStatuses";
+
+const toProcessingStatusNames = (caseFile: CaseFile): string[] => {
+  if (Array.isArray(caseFile.processing_statuses)) {
+    return caseFile.processing_statuses.filter((entry): entry is string => typeof entry === "string");
+  }
+  if (typeof caseFile.processing_status === "string" && caseFile.processing_status.length > 0) {
+    return [caseFile.processing_status];
+  }
+  return [];
+};
 
 interface CaseFileDetailHeaderProps {
   caseFile: CaseFile;
@@ -31,9 +42,9 @@ export function CaseFileDetailHeader({
     return Icon || null;
   };
 
-  const activeProcessingStatuses = ((caseFile as any).processing_statuses || 
-    ((caseFile as any).processing_status ? [(caseFile as any).processing_status] : [])
-  ).map((name: string) => processingStatuses.find(s => s.name === name)).filter(Boolean);
+  const activeProcessingStatuses: CaseFileProcessingStatus[] = toProcessingStatusNames(caseFile)
+    .map((name) => processingStatuses.find((status) => status.name === name))
+    .filter((status): status is CaseFileProcessingStatus => Boolean(status));
 
   return (
     <div className="bg-card border rounded-lg p-4 space-y-3">
@@ -58,7 +69,7 @@ export function CaseFileDetailHeader({
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {/* Processing Status Badges */}
-          {activeProcessingStatuses.map((ps: any) => {
+          {activeProcessingStatuses.map((ps) => {
             const PIcon = getIconComponent(ps?.icon);
             return (
               <Badge key={ps.name} style={{ backgroundColor: ps.color || undefined, color: '#fff' }}>

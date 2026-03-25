@@ -803,6 +803,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
         if (uiaPassword) {
           try {
             const localpart = creds.userId.split(':')[0].substring(1);
+            // INTEROP-ANY(TS-4821, Matrix-Flow, 2026-04-22): matrix-js-sdk UIA callbacks/listeners are currently weakly typed.
             await crypto.bootstrapCrossSigning({
               authUploadDeviceSigningKeys: async (makeRequest: any) => {
                 await (makeRequest as any)({
@@ -1024,6 +1025,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
 
       // Attach all listeners
       matrixClient.on(sdk.ClientEvent.Sync, onSync);
+      // INTEROP-ANY(TS-4821, Matrix-Flow, 2026-04-22): SDK event emitter signatures are not strongly typed for these events.
       matrixClient.on(sdk.RoomEvent.Timeline, onTimeline as any);
       matrixClient.on(sdk.RoomMemberEvent.Typing, onTyping as any);
       matrixClient.on(sdk.MatrixEventEvent.Decrypted, onDecrypted);
@@ -1378,6 +1380,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
       }
     }
 
+    // INTEROP-ANY(TS-4821, Matrix-Flow, 2026-04-22): Matrix message content union requires incremental adapter hardening.
     await mc.sendMessage(roomId, content as any);
   }, []);
 

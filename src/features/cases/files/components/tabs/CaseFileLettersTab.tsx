@@ -27,10 +27,18 @@ interface CaseFileLettersTabProps {
   onRemove: (id: string) => Promise<boolean>;
 }
 
+type AvailableLetter = {
+  id: string;
+  title: string | null;
+  subject: string | null;
+  status: string;
+  created_at: string;
+};
+
 export function CaseFileLettersTab({ letters, onAdd, onRemove }: CaseFileLettersTabProps) {
   const { currentTenant } = useTenant();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [availableLetters, setAvailableLetters] = useState<any[]>([]);
+  const [availableLetters, setAvailableLetters] = useState<AvailableLetter[]>([]);
   const [selectedLetterId, setSelectedLetterId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,7 +58,7 @@ export function CaseFileLettersTab({ letters, onAdd, onRemove }: CaseFileLetters
       .eq('tenant_id', currentTenant.id)
       .order('created_at', { ascending: false })
       .limit(100);
-    setAvailableLetters(data || []);
+    setAvailableLetters((data as AvailableLetter[] | null) || []);
   };
 
   const handleAdd = async () => {

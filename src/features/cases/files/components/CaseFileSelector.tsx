@@ -80,6 +80,7 @@ export function CaseFileSelector({
       if (!user) throw new Error('No user');
       
       // Insert the link based on item type
+      // INTEROP-ANY(TS-4825, Cases-Files, 2026-04-22): mixed RPC/link-response error payloads are still loosely typed.
       let linkError: any = null;
       
       switch (itemType) {
@@ -175,6 +176,7 @@ export function CaseFileSelector({
       onSelect(caseFileId);
       onOpenChange(false);
     },
+    // INTEROP-ANY(TS-4825, Cases-Files, 2026-04-22): query library onError receives unknown external error shapes.
     onError: (error: any) => {
       if (error.message === 'already_linked') {
         toast({ title: "Bereits mit dieser Fallakte verknüpft", variant: "destructive" });

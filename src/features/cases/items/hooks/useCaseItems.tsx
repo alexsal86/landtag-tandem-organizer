@@ -256,6 +256,7 @@ export const useCaseItems = () => {
       // Fetch existing item to detect changes
       const existing = caseItems.find(ci => ci.id === id);
 
+      // INTEROP-ANY(TS-4824, Cases-Items, 2026-04-22): update payload needs schema-aligned discriminated union across item kinds.
       const updateData: any = { ...data, intake_payload: data.intake_payload ?? null };
       const { error } = await supabase.from("case_items").update(updateData).eq("id", id);
 
