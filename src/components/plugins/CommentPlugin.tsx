@@ -435,7 +435,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
     
     // Since we can't reliably map old text positions, we'll register a node transform
     // to handle existing comment marks when they're encountered in the editor
-    editor.registerNodeTransform(CommentMarkNode, (node) => {
+    editor.registerNodeTransform(CommentMarkNode as unknown as Parameters<typeof editor.registerNodeTransform>[0], (node: CommentMarkNode) => {
       const commentId = node.getCommentId();
       if (commentId && commentsList.some(comment => comment.id === commentId)) {
         // Ensure the node has the correct styling
