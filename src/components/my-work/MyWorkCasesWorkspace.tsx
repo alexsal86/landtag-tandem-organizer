@@ -998,7 +998,7 @@ export function MyWorkCasesWorkspace() {
       completed_at: editableCaseItem.completedAt ? new Date(`${editableCaseItem.completedAt}T12:00:00`).toISOString() : null,
       source_received_at: editableCaseItem.sourceReceivedAt ? new Date(`${editableCaseItem.sourceReceivedAt}T12:00:00`).toISOString() : null,
       due_at: editableCaseItem.dueAt ? new Date(`${editableCaseItem.dueAt}T12:00:00`).toISOString() : null,
-      priority: editableCaseItem.priority,
+      priority: editableCaseItem.priority as TablesUpdate<"case_items">["priority"],
       owner_user_id: editableCaseItem.assigneeIds[0] || null,
       visible_to_all: editableCaseItem.visibleToAll,
       intake_payload: intakePayload,
