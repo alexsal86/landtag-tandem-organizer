@@ -23,6 +23,7 @@
   - Wenn **ja**: betroffene Datei(en), Begründung, Owner und Zieltermin angeben.
   - Wenn **ja**: jede neue Ausnahme als `INTEROP-ANY: Grund + Ticket + Sunset-Termin` inline markieren.
   - Wenn **nein**: kurz bestätigen, dass keine neuen unkommentierten `any` enthalten sind.
+- [ ] Reviewer-Startfrage wurde zuerst beantwortet: **„Wurden neue `any` eingeführt?“**
 
 ## Dokumentations-Update
 
