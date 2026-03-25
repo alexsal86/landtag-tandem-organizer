@@ -14,35 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { MeetingTemplateParticipantsEditor } from "@/components/meetings/MeetingTemplateParticipantsEditor";
 import { Plus, Save, X, Check, GripVertical, Minus, Edit, Trash2, CalendarDays, StickyNote, ListTodo, Cake, Scale, MoveVertical, ArrowUp, ArrowDown, CornerUpLeft } from "lucide-react";
-
-type MeetingTemplateChildItem = {
-  title: string;
-  order_index: number;
-  type?: string;
-  is_available?: boolean;
-  is_optional?: boolean;
-  system_type?: string;
-};
-
-type MeetingTemplateItem = {
-  title: string;
-  order_index: number;
-  type?: string;
-  system_type?: string;
-  children?: MeetingTemplateChildItem[];
-};
-
-type MeetingTemplateRecord = {
-  id: string;
-  name: string;
-  description: string | null;
-  template_items: MeetingTemplateItem[] | null;
-  is_default?: boolean;
-  default_participants?: any[];
-  default_recurrence?: any;
-  auto_create_count?: number;
-  default_visibility?: string;
-};
+import type { MeetingTemplateChildItem, MeetingTemplateItem, MeetingTemplateRecord } from "@/types/meetingTemplate";
 
 export function MeetingTemplateManager() {
   const { user } = useAuth();
@@ -416,13 +388,15 @@ export function MeetingTemplateManager() {
                       compact
                       onSave={async (participants, recurrence, autoCreateCount, visibility) => {
                         try {
+                          const normalizedParticipants = participants as Record<string, unknown>[];
+                          const normalizedRecurrence = recurrence as Record<string, unknown> | null;
                           await supabase.from('meeting_templates').update({
-                            default_participants: participants as any,
-                            default_recurrence: recurrence as any,
+                            default_participants: normalizedParticipants,
+                            default_recurrence: normalizedRecurrence,
                             auto_create_count: autoCreateCount || 3,
                             default_visibility: visibility || 'private'
                           }).eq('id', selectedTemplate.id);
-                          setSelectedTemplate({ ...selectedTemplate, default_participants: participants, default_recurrence: recurrence, auto_create_count: autoCreateCount, default_visibility: visibility });
+                          setSelectedTemplate({ ...selectedTemplate, default_participants: normalizedParticipants, default_recurrence: normalizedRecurrence, auto_create_count: autoCreateCount, default_visibility: visibility });
                         } catch { toast({ title: "Fehler", description: "Speichern fehlgeschlagen.", variant: "destructive" }); }
                       }}
                     />
@@ -501,13 +475,13 @@ export function MeetingTemplateManager() {
                                               </div>
                                             </div>
                                             {(() => {
-                                              const availableChildren = item.children?.filter((c: any) => c.is_available === true) || [];
+                                              const availableChildren = item.children?.filter((c) => c.is_available === true) || [];
                                               if (availableChildren.length === 0) return null;
                                               return (
                                                 <div className="border-t pt-2">
                                                   <p className="text-xs text-muted-foreground mb-2">Verfügbare Unterpunkte:</p>
                                                   <div className="space-y-1 max-h-32 overflow-y-auto">
-                                                    {item.children?.map((child: any, childIdx: number) => {
+                                                    {item.children?.map((child, childIdx: number) => {
                                                       if (!child.is_available) return null;
                                                       return (
                                                         <Button key={childIdx} variant="ghost" size="sm" className="w-full justify-between text-sm h-8 px-2" onClick={() => activateChild(index, childIdx)}>
@@ -553,12 +527,12 @@ export function MeetingTemplateManager() {
                                   </div>
 
                                   {/* Children */}
-                                  {item.children && item.children.filter((c: any) => c.is_available !== true).length > 0 && (
+                                  {item.children && item.children.filter((c) => c.is_available !== true).length > 0 && (
                                     <div className="ml-8 mt-1 space-y-1">
-                                      {item.children.map((child: any, childIndex: number) => {
+                                      {item.children.map((child, childIndex: number) => {
                                         if (child.is_available === true) return null;
-                                        const activeChildren = item.children.filter((c: any) => c.is_available !== true);
-                                        const activeDisplayIndex = activeChildren.findIndex((c: any) => c === child);
+                                        const activeChildren = item.children.filter((c) => c.is_available !== true);
+                                        const activeDisplayIndex = activeChildren.findIndex((c) => c === child);
                                         return (
                                           <div key={childIndex} className={`flex items-center gap-2 p-2 rounded-md border ${child.system_type ? getChildSystemClass(child.system_type) : 'bg-muted/30 border-border'}`}>
                                             <div className="flex flex-col gap-0.5">

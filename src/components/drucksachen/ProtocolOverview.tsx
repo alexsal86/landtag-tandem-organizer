@@ -3,14 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Calendar, Clock, MapPin, FileText, MessageSquare, Users, BarChart3 } from 'lucide-react';
+import type { ProtocolAgendaItem, ProtocolLayoutMeta, ProtocolSessionMeta, ProtocolSittingMeta, ProtocolSpeechOverviewItem, ProtocolStats } from '@/types/protocol';
 
 interface ProtocolOverviewProps {
-  sessionData: any;
-  sittingData: any;
-  stats: any;
-  layoutData: any;
-  tocAgenda: any[];
-  allSpeeches: any[];
+  sessionData: ProtocolSessionMeta;
+  sittingData: ProtocolSittingMeta;
+  stats: ProtocolStats;
+  layoutData: ProtocolLayoutMeta | null;
+  tocAgenda: ProtocolAgendaItem[];
+  allSpeeches: ProtocolSpeechOverviewItem[];
   parties: string[];
 }
 
@@ -137,7 +138,7 @@ export function ProtocolOverview({
                 <Users className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <div className="text-2xl font-bold">
-                    {new Set(allSpeeches.map((s: any) => s.speaker)).size}
+                    {new Set(allSpeeches.map((s) => s.speaker)).size}
                   </div>
                   <div className="text-sm text-muted-foreground">Redner</div>
                 </div>
@@ -194,7 +195,7 @@ export function ProtocolOverview({
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {sittingData.breaks.map((breakItem: any, idx: number) => (
+              {sittingData.breaks.map((breakItem, idx: number) => (
                 <div key={idx} className="text-sm">
                   <Badge variant="outline">{breakItem.type}</Badge>
                   {breakItem.time && <span className="ml-2">{breakItem.time}</span>}

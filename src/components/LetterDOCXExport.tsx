@@ -4,27 +4,10 @@ import { Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateLetterDOCX } from "@/utils/letterDOCXGenerator";
 import { debugConsole } from '@/utils/debugConsole';
-
-interface Letter {
-  id: string;
-  title: string;
-  content: string;
-  content_html?: string;
-  recipient_name?: string;
-  recipient_address?: string;
-  template_id?: string;
-  subject?: string;
-  reference_number?: string;
-  sender_info_id?: string;
-  information_block_ids?: string[];
-  letter_date?: string;
-  status: string;
-  sent_date?: string;
-  created_at: string;
-}
+import type { LetterRecord } from './letter-pdf/types';
 
 interface LetterDOCXExportProps {
-  letter: Letter;
+  letter: LetterRecord;
   variant?: "default" | "outline" | "ghost";
   size?: "default" | "sm" | "lg" | "icon";
   className?: string;
@@ -43,7 +26,7 @@ export default function LetterDOCXExport({
     setIsExporting(true);
     
     try {
-      const result = await generateLetterDOCX(letter as any);
+      const result = await generateLetterDOCX(letter);
       
       if (!result) {
         throw new Error('DOCX-Generierung fehlgeschlagen');
