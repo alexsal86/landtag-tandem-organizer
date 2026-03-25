@@ -27,6 +27,8 @@ import { getContactDetail, getContactName, parseContactPerson, parseInteractionD
 import { normalizeRichTextValue, richTextToPlain } from "@/components/my-work/cases/workspace/utils/richText";
 import { parseTimelineEvents, sanitizeTimelineNote, toTimeSafe } from "@/components/my-work/cases/workspace/utils/timeline";
 import { CaseItemDetailPanel } from "@/components/my-work/CaseItemDetailPanel";
+import type { TablesUpdate } from "@/integrations/supabase/types";
+import type { CaseWorkspaceFilters, CaseWorkspaceSort } from "@/components/my-work/types";
 type TimelineEntry = {
   id: string;
   timestamp: string;
@@ -99,8 +101,7 @@ export function MyWorkCasesWorkspace() {
     loadingMoreItems,
     loadingMoreFiles,
   } = useCaseWorkspaceData({ tenantId, userId: user?.id });
-  const [itemFilterQuery, setItemFilterQuery] = useState("");
-  const [fileFilterQuery, setFileFilterQuery] = useState("");
+  const [filters, setFilters] = useState<CaseWorkspaceFilters>({ itemQuery: "", fileQuery: "" });
 
   const categoryOptions = useMemo(() => {
     const configured = (configuredCaseItemCategories ?? [])
@@ -117,10 +118,7 @@ export function MyWorkCasesWorkspace() {
   const [detailItemId, setDetailItemId] = useState<string | null>(null);
   const [detailFileId, setDetailFileId] = useState<string | null>(null);
   const { editableCaseItem, setEditableCaseItem, updateEdit, appendTimelineEvent, deleteTimelineEvent } = useCaseItemEdit();
-  const [itemSort, setItemSort] = useState<{
-    primary: { key: CaseItemSortKey; direction: SortDirection };
-    secondary: { enabled: boolean; direction: SortDirection };
-  }>({
+  const [itemSort, setItemSort] = useState<CaseWorkspaceSort>({
     primary: { key: "received", direction: "desc" },
     secondary: { enabled: false, direction: "asc" },
   });
@@ -203,7 +201,7 @@ export function MyWorkCasesWorkspace() {
     const ok = await applyItemOptimisticUpdate(
       item.id,
       (row) => ({ ...row, status: nextStatus }),
-      () => supabase.from("case_items").update({ status: nextStatus } as any).eq("id", item.id),
+      () => supabase.from("case_items").update({ status: nextStatus }).eq("id", item.id),
       "Vorgang konnte nicht archiviert werden.",
     );
     if (!ok) return;
@@ -333,7 +331,7 @@ export function MyWorkCasesWorkspace() {
   const archivedCaseItems = useMemo(() => caseItems.filter((item) => item.status === "archiviert"), [caseItems]);
 
   const filteredCaseItems = useMemo(() => {
-    const query = itemFilterQuery.trim().toLowerCase();
+    const query = filters.itemQuery.trim().toLowerCase();
     if (!query) return activeCaseItems;
     return activeCaseItems.filter((item) => {
       const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
@@ -343,7 +341,7 @@ export function MyWorkCasesWorkspace() {
         .filter(Boolean)
         .some((v) => v!.toLowerCase().includes(query));
     });
-  }, [activeCaseItems, caseFilesById, getCategory, itemFilterQuery]);
+  }, [activeCaseItems, caseFilesById, filters.itemQuery, getCategory]);
 
   const sortedCaseItems = useMemo(() => {
     const priorityRank: Record<string, number> = { low: 1, medium: 2, high: 3, urgent: 4 };
@@ -438,14 +436,14 @@ export function MyWorkCasesWorkspace() {
   const archivedCaseFiles = useMemo(() => allCaseFiles.filter((cf) => cf.status === "archived"), [allCaseFiles]);
 
   const filteredCaseFiles = useMemo(() => {
-    const query = fileFilterQuery.trim().toLowerCase();
+    const query = filters.fileQuery.trim().toLowerCase();
     if (!query) return activeCaseFiles;
     return activeCaseFiles.filter((cf) =>
       [cf.title, cf.reference_number, cf.status, cf.current_status_note, cf.case_type]
         .filter(Boolean)
         .some((v) => v!.toLowerCase().includes(query)),
     );
-  }, [activeCaseFiles, fileFilterQuery]);
+  }, [activeCaseFiles, filters.fileQuery]);
 
   const { recentCaseFiles, groupedCaseFiles } = useMemo(() => {
     const sorted = [...filteredCaseFiles].sort((a, b) =>
@@ -494,7 +492,7 @@ export function MyWorkCasesWorkspace() {
     await applyItemOptimisticUpdate(
       item.id,
       (row) => ({ ...row, owner_user_id: ownerUserId, intake_payload: payload }),
-      () => supabase.from("case_items").update({ owner_user_id: ownerUserId, intake_payload: payload as any }).eq("id", item.id),
+      () => supabase.from("case_items").update({ owner_user_id: ownerUserId, intake_payload: payload }).eq("id", item.id),
       "Zuweisung konnte nicht gespeichert werden.",
     );
   };
@@ -511,7 +509,7 @@ export function MyWorkCasesWorkspace() {
     const ok = await applyItemOptimisticUpdate(
       item.id,
       (row) => ({ ...row, status: newStatus as CaseItem["status"] }),
-      () => supabase.from("case_items").update({ status: newStatus } as any).eq("id", item.id),
+      () => supabase.from("case_items").update({ status: newStatus }).eq("id", item.id),
       "Status konnte nicht geändert werden.",
     );
     if (ok) toast.success(`Status auf "${statusOptions.find((s) => s.value === newStatus)?.label || newStatus}" gesetzt.`);
@@ -521,7 +519,7 @@ export function MyWorkCasesWorkspace() {
     const ok = await applyItemOptimisticUpdate(
       item.id,
       (row) => ({ ...row, priority: newPriority as CaseItem["priority"] }),
-      () => supabase.from("case_items").update({ priority: newPriority } as any).eq("id", item.id),
+      () => supabase.from("case_items").update({ priority: newPriority }).eq("id", item.id),
       "Priorität konnte nicht geändert werden.",
     );
     if (ok) toast.success(`Priorität auf "${priorityOptions.find((p) => p.value === newPriority)?.label || newPriority}" gesetzt.`);
@@ -532,7 +530,7 @@ export function MyWorkCasesWorkspace() {
     const ok = await applyItemOptimisticUpdate(
       item.id,
       (row) => ({ ...row, visible_to_all: nextPublic }),
-      () => supabase.from("case_items").update({ visible_to_all: nextPublic } as any).eq("id", item.id),
+      () => supabase.from("case_items").update({ visible_to_all: nextPublic }).eq("id", item.id),
       "Sichtbarkeit konnte nicht geändert werden.",
     );
     if (ok) toast.success(nextPublic ? "Vorgang ist jetzt öffentlich." : "Vorgang ist jetzt nicht öffentlich.");
@@ -542,7 +540,7 @@ export function MyWorkCasesWorkspace() {
     const ok = await applyItemOptimisticUpdate(
       item.id,
       (row) => ({ ...row, case_file_id: caseFileId }),
-      () => supabase.from("case_items").update({ case_file_id: caseFileId } as any).eq("id", item.id),
+      () => supabase.from("case_items").update({ case_file_id: caseFileId }).eq("id", item.id),
       "Verknüpfung konnte nicht erstellt werden.",
     );
     if (!ok) return;
@@ -554,7 +552,7 @@ export function MyWorkCasesWorkspace() {
     const ok = await applyItemOptimisticUpdate(
       item.id,
       (row) => ({ ...row, case_file_id: null }),
-      () => supabase.from("case_items").update({ case_file_id: null } as any).eq("id", item.id),
+      () => supabase.from("case_items").update({ case_file_id: null }).eq("id", item.id),
       "Verknüpfung konnte nicht gelöst werden.",
     );
     if (ok) toast.success("Verknüpfung zur Akte gelöst.");
@@ -991,19 +989,19 @@ export function MyWorkCasesWorkspace() {
       matched_contact_id: editableCaseItem.selectedContactId,
     };
 
-    const patch = {
+    const patch: TablesUpdate<"case_items"> = {
       subject: editableCaseItem.subject.trim() || null,
       summary: normalizeRichTextValue(editableCaseItem.summary),
       resolution_summary: normalizeRichTextValue(editableCaseItem.summary),
-      status: editableCaseItem.status as any,
+      status: editableCaseItem.status,
       completion_note: editableCaseItem.completionNote.trim() || null,
       completed_at: editableCaseItem.completedAt ? new Date(`${editableCaseItem.completedAt}T12:00:00`).toISOString() : null,
       source_received_at: editableCaseItem.sourceReceivedAt ? new Date(`${editableCaseItem.sourceReceivedAt}T12:00:00`).toISOString() : null,
       due_at: editableCaseItem.dueAt ? new Date(`${editableCaseItem.dueAt}T12:00:00`).toISOString() : null,
-      priority: editableCaseItem.priority as any,
+      priority: editableCaseItem.priority,
       owner_user_id: editableCaseItem.assigneeIds[0] || null,
       visible_to_all: editableCaseItem.visibleToAll,
-      intake_payload: intakePayload as any,
+      intake_payload: intakePayload,
       contact_id: editableCaseItem.selectedContactId || null,
       reporter_name: parsedName,
       reporter_contact: editableCaseItem.contactEmail.trim() || editableCaseItem.contactPhone.trim() || parsedDetail,
@@ -1081,8 +1079,8 @@ export function MyWorkCasesWorkspace() {
             onDragEnd={handleDragEnd}
             left={
               <CaseItemList
-                itemFilterQuery={itemFilterQuery}
-                onItemFilterQueryChange={setItemFilterQuery}
+                itemFilterQuery={filters.itemQuery}
+                onItemFilterQueryChange={(itemQuery) => setFilters((prev) => ({ ...prev, itemQuery }))}
                 onCreateCaseItem={handleCreateCaseItem}
                 onOpenArchive={() => setIsItemArchiveOpen(true)}
                 helperText="Vorgänge per Drag & Drop auf eine Fallakte ziehen zum Verknüpfen"
@@ -1133,8 +1131,8 @@ export function MyWorkCasesWorkspace() {
             }
             right={
               <CaseFileList
-                fileFilterQuery={fileFilterQuery}
-                onFileFilterQueryChange={setFileFilterQuery}
+                fileFilterQuery={filters.fileQuery}
+                onFileFilterQueryChange={(fileQuery) => setFilters((prev) => ({ ...prev, fileQuery }))}
                 onCreateCaseFile={() => handleCreateCaseFile()}
                 onOpenArchive={() => setIsFileArchiveOpen(true)}
                 filteredCaseFiles={filteredCaseFiles}
