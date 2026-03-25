@@ -11,6 +11,9 @@ import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import { buildReactionMap, sortReactionEntries, type ReactionRow } from "./commentReactions";
 import { shouldHandleReactionEvent } from "./reactionEventVisibility";
+import type { ParticipantProfile, ReactionProfile } from "@/types/taskDecisions";
+
+type DecisionCommentProfile = ParticipantProfile;
 
 const DELETED_COMMENT_TEXT = "Dieser Kommentar wurde gelöscht.";
 const REACTION_TOGGLE_DEBOUNCE_MS = 250;
@@ -64,8 +67,8 @@ export function DecisionComments({
 
     if (reactionProfilesError) throw reactionProfilesError;
 
-    const reactionProfileMap = new Map<string, any>(
-      (reactionProfiles || []).map((profile: any) => [profile.user_id, profile]),
+    const reactionProfileMap = new Map<string, ReactionProfile>(
+      (reactionProfiles || []).map((profile) => [profile.user_id, { ...profile, display_name: profile.display_name ?? null }]),
     );
 
     return (reactionRows || []).map((row) => ({
@@ -110,7 +113,9 @@ export function DecisionComments({
         .select('user_id, display_name, badge_color, avatar_url')
         .in('user_id', userIds);
 
-      const profileMap = new Map<string, any>(profiles?.map((p: any) => [p.user_id, p]) || []);
+      const profileMap = new Map<string, DecisionCommentProfile>(
+        (profiles ?? []).map((profile) => [profile.user_id, profile]),
+      );
 
       const reactionsByCommentId = buildReactionMap(reactionRows || [], user?.id);
 

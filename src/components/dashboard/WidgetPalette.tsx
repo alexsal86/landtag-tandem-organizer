@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
+import {
   BarChart3,
   CheckSquare,
   Calendar,
@@ -28,11 +28,12 @@ import {
   Network
 } from 'lucide-react';
 import { DashboardWidget } from '@/hooks/useDashboardLayout';
+import type { DashboardWidgetSuggestion } from '@/types/dashboard';
 
 interface WidgetPaletteProps {
   onAddWidget: (type: DashboardWidget['type'], position?: { x: number; y: number }) => void;
   onClose: () => void;
-  suggestions: any[];
+  suggestions: DashboardWidgetSuggestion[];
 }
 
 const WIDGET_TYPES = [

@@ -5,6 +5,25 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { getResponseSummary } from "../utils/decisionOverview";
 import type { DecisionRequest } from "../utils/decisionOverview";
+import type { DecisionResponseNotificationLookup } from "@/types/taskDecisions";
+
+type NotificationResponseRow = Pick<DecisionResponseNotificationLookup, "task_decision_participants" | "task_decisions"> & {
+  decision_id: string;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const hasOwnProperty = <TKey extends PropertyKey>(
+  value: object,
+  key: TKey,
+): value is Record<TKey, unknown> => Object.prototype.hasOwnProperty.call(value, key);
+
+const isNotificationResponseRow = (value: unknown): value is NotificationResponseRow => {
+  if (!isRecord(value)) return false;
+  if (!hasOwnProperty(value, "decision_id") || typeof value.decision_id !== "string") return false;
+  return true;
+};
 
 interface UseDecisionActionsOptions {
   user: User | null;
@@ -93,9 +112,9 @@ export function useDecisionActions({
           .eq("id", responseId)
           .maybeSingle();
 
-        if (responseData) {
-          const participantUserId = (responseData as any).task_decision_participants?.user_id;
-          const decisionTitle = (responseData as any).task_decisions?.title;
+        if (isNotificationResponseRow(responseData)) {
+          const participantUserId = responseData.task_decision_participants?.user_id;
+          const decisionTitle = responseData.task_decisions?.title;
 
           if (participantUserId && participantUserId !== user?.id) {
             await supabase.rpc("create_notification", {

@@ -4,9 +4,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { WidgetConfigDialog } from './WidgetConfigDialog';
 import { Settings, Palette, Eye, EyeOff, Trash2, Copy, X } from 'lucide-react';
+import type { DashboardWidget } from '@/hooks/useDashboardLayout';
 
 interface WidgetOverlayMenuProps {
-  widget: any;
+  widget: DashboardWidget;
   isVisible: boolean;
   onClose: () => void;
   onResize: (widgetId: string, newSize: string) => void;

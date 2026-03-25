@@ -2,6 +2,9 @@ import { useCallback, useState } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
 import { supabase } from '@/integrations/supabase/client';
 import { DecisionRequest, getResponseSummary } from '../utils/decisionOverview';
+import type { ParticipantProfile } from '@/types/taskDecisions';
+
+type DecisionCreatorProfile = ParticipantProfile;
 
 const sortDecisions = (decisions: DecisionRequest[]) => {
   decisions.sort((a, b) => {
@@ -191,7 +194,7 @@ export const useDecisionOverviewData = () => {
           };
         }) || [];
 
-      const decisionsMap = new Map<string, any>();
+      const decisionsMap = new Map<string, DecisionRequest>();
       formattedAllData.forEach((decision) => decisionsMap.set(decision.id, decision));
       formattedParticipantData.forEach((participantDecision) => {
         const existing = decisionsMap.get(participantDecision.id);
@@ -250,7 +253,7 @@ export const useDecisionOverviewData = () => {
           .select('user_id, display_name, badge_color, avatar_url')
           .in('user_id', allUserIds);
 
-        const profileMap = new Map<string, any>(profiles?.map((p: any) => [p.user_id, p]) || []);
+        const profileMap = new Map<string, DecisionCreatorProfile>((profiles ?? []).map((profile) => [profile.user_id, profile]));
         const participantsByDecision = new Map<string, DecisionRequest['participants']>();
 
         participantsData?.forEach((participant) => {
