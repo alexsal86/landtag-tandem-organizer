@@ -32,10 +32,16 @@ import { classifyCaseScale, type CaseScale } from "@/features/cases/shared/utils
 
 type ViewStyle = "flat" | "grouped";
 
-export function CaseFilesView() {
+interface CaseFilesViewProps {
+  mode?: "casefiles" | "dossiers";
+}
+
+const DOSSIER_TYPE_NAME = "dossier";
+
+export function CaseFilesView({ mode = "casefiles" }: CaseFilesViewProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const { caseFiles, loading } = useCaseFiles();
-  const { caseFileTypes, loading: typesLoading } = useCaseFileTypes();
+  const { caseFileTypes, loading: typesLoading, createCaseFileType } = useCaseFileTypes();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -46,31 +52,61 @@ export function CaseFilesView() {
   const [selectedCaseFile, setSelectedCaseFile] = useState<CaseFile | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const hasInitializedGroups = useRef(false);
+  const isDossierMode = mode === "dossiers";
+  const [isCreatingDossierType, setIsCreatingDossierType] = useState(false);
+
+  const dossierTypeNames = useMemo(() => {
+    return caseFileTypes
+      .filter((type) => type.name === DOSSIER_TYPE_NAME)
+      .map((type) => type.name);
+  }, [caseFileTypes]);
+
+  const ensureDossierType = async () => {
+    setIsCreatingDossierType(true);
+    try {
+      await createCaseFileType({
+        label: "Dossier",
+        icon: "BookOpen",
+        color: "#0ea5e9",
+      });
+    } finally {
+      setIsCreatingDossierType(false);
+    }
+  };
+
+  const visibleCaseFiles = useMemo(() => {
+    if (!isDossierMode) return caseFiles;
+    if (dossierTypeNames.length === 0) return [];
+
+    const dossierTypeSet = new Set(dossierTypeNames);
+    return caseFiles.filter((cf) => cf.case_type && dossierTypeSet.has(cf.case_type));
+  }, [caseFiles, dossierTypeNames, isDossierMode]);
 
   // Handle URL action parameter for QuickActions
   useEffect(() => {
     const action = searchParams.get('action');
-    if (action === 'create-casefile') {
+    const createAction = isDossierMode ? "create-dossier" : "create-casefile";
+    if (action === createAction) {
       setCreateDialogOpen(true);
       searchParams.delete('action');
       setSearchParams(searchParams, { replace: true });
     }
-  }, [searchParams, setSearchParams]);
+  }, [isDossierMode, searchParams, setSearchParams]);
 
   useEffect(() => {
     const caseFileId = searchParams.get('caseFileId');
-    if (!caseFileId || selectedCaseFile || caseFiles.length === 0) return;
+    if (!caseFileId || selectedCaseFile || visibleCaseFiles.length === 0) return;
 
-    const matched = caseFiles.find((caseFile) => caseFile.id === caseFileId);
+    const matched = visibleCaseFiles.find((caseFile) => caseFile.id === caseFileId);
     if (!matched) return;
 
     setSelectedCaseFile(matched);
 
     searchParams.delete('caseFileId');
     setSearchParams(searchParams, { replace: true });
-  }, [searchParams, setSearchParams, caseFiles, selectedCaseFile]);
+  }, [searchParams, setSearchParams, visibleCaseFiles, selectedCaseFile]);
 
-  const baseFilteredCaseFiles = caseFiles.filter((cf) => {
+  const baseFilteredCaseFiles = visibleCaseFiles.filter((cf) => {
     const matchesSearch = 
       cf.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       cf.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -178,17 +214,17 @@ classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === 
   };
 
   const statusCounts = {
-    all: caseFiles.length,
-    active: caseFiles.filter(cf => cf.status === 'active').length,
-    pending: caseFiles.filter(cf => cf.status === 'pending').length,
-    closed: caseFiles.filter(cf => cf.status === 'closed').length,
-    archived: caseFiles.filter(cf => cf.status === 'archived').length,
+    all: visibleCaseFiles.length,
+    active: visibleCaseFiles.filter(cf => cf.status === 'active').length,
+    pending: visibleCaseFiles.filter(cf => cf.status === 'pending').length,
+    closed: visibleCaseFiles.filter(cf => cf.status === 'closed').length,
+    archived: visibleCaseFiles.filter(cf => cf.status === 'archived').length,
   };
 
   const scopeCounts = {
-    all: caseFiles.length,
-    small: caseFiles.filter((cf) => classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === "small").length,
-    large: caseFiles.filter((cf) => classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === "large").length,
+    all: visibleCaseFiles.length,
+    small: visibleCaseFiles.filter((cf) => classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === "small").length,
+    large: visibleCaseFiles.filter((cf) => classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === "large").length,
   };
 
   if (selectedCaseFile) {
@@ -211,17 +247,32 @@ classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === 
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Briefcase className="h-8 w-8" />
-            Fallakten
+            {isDossierMode ? "Dossiers" : "Fallakten"}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Zentrale Verwaltung von Sachverhalten mit verknüpften Dokumenten, Kontakten und Aufgaben
+            {isDossierMode
+              ? "Themenbezogene Sammelräume für Wissen, Dokumente, Kontakte und Aufgaben"
+              : "Zentrale Verwaltung von Sachverhalten mit verknüpften Dokumenten, Kontakten und Aufgaben"}
           </p>
         </div>
-        <Button onClick={() => setCreateDialogOpen(true)}>
+        <Button onClick={() => setCreateDialogOpen(true)} disabled={isDossierMode && dossierTypeNames.length === 0}>
           <Plus className="mr-2 h-4 w-4" />
-          Neue Fallakte
+          {isDossierMode ? "Neues Dossier" : "Neue Fallakte"}
         </Button>
       </div>
+
+      {isDossierMode && !typesLoading && dossierTypeNames.length === 0 && (
+        <Card className="border-dashed">
+          <CardContent className="p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <p className="text-sm text-muted-foreground">
+              Kein Dossier-Typ konfiguriert. Legen Sie zuerst den Typ „dossier“ an.
+            </p>
+            <Button type="button" variant="outline" size="sm" onClick={ensureDossierType} disabled={isCreatingDossierType}>
+              {isCreatingDossierType ? "Lege Dossier-Typ an…" : "Dossier-Typ anlegen"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-5">
@@ -378,17 +429,19 @@ classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === 
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Briefcase className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold">Keine Fallakten gefunden</h3>
+            <h3 className="text-lg font-semibold">{isDossierMode ? "Keine Dossiers gefunden" : "Keine Fallakten gefunden"}</h3>
             <p className="text-muted-foreground text-center mt-2">
               {searchTerm || statusFilter !== "all" || typeFilter !== "all"
                 || scopeFilter !== "all"
                 ? "Versuchen Sie andere Filterkriterien."
-                : "Erstellen Sie Ihre erste Fallakte, um Sachverhalte zentral zu verwalten."}
+                : isDossierMode
+                  ? "Erstellen Sie Ihr erstes Dossier, um Themenwissen zentral zu sammeln."
+                  : "Erstellen Sie Ihre erste Fallakte, um Sachverhalte zentral zu verwalten."}
             </p>
             {!searchTerm && statusFilter === "all" && typeFilter === "all" && scopeFilter === "all" && (
-              <Button className="mt-4" onClick={() => setCreateDialogOpen(true)}>
+              <Button className="mt-4" onClick={() => setCreateDialogOpen(true)} disabled={isDossierMode && dossierTypeNames.length === 0}>
                 <Plus className="mr-2 h-4 w-4" />
-                Erste Fallakte erstellen
+                {isDossierMode ? "Erstes Dossier erstellen" : "Erste Fallakte erstellen"}
               </Button>
             )}
           </CardContent>
@@ -480,6 +533,8 @@ classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === 
         open={createDialogOpen} 
         onOpenChange={setCreateDialogOpen}
         onSuccess={(cf) => setSelectedCaseFile(cf)}
+        defaultCaseType={isDossierMode ? dossierTypeNames[0] : undefined}
+        entityLabel={isDossierMode ? "Dossier" : "Fallakte"}
       />
     </div>
   );

@@ -2,6 +2,12 @@
 
 Diese Struktur bündelt alle Vorgangs-/Akte-Funktionalitäten unter einem Feature-Ordner.
 
+## Dossier-Konzept
+
+Ein erster Umsetzungsplan für themenzentrierte Dossiers liegt unter:
+
+- `docs/dossier-umsetzungsplan.md`
+
 ## Struktur
 
 - `items/`
