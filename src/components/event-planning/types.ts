@@ -81,6 +81,36 @@ export interface ChecklistItem {
   }>;
 }
 
+export type EventPayloadStatus = 'draft' | 'in_progress' | 'planned' | 'active' | 'completed' | 'cancelled';
+
+export interface RSVPEvent {
+  type: 'rsvp_event';
+  status: EventPayloadStatus;
+  id: string;
+  event_planning_id: string;
+  title: string;
+  description?: string | null;
+  confirmed_date?: string | null;
+}
+
+export interface PlanningTask {
+  type: 'planning_task';
+  status: EventPayloadStatus;
+  id: string;
+  event_planning_id: string;
+  title: string;
+  due_date?: string | null;
+  checklist_item_id?: string | null;
+}
+
+export interface AppointmentPreparationSection {
+  type: 'appointment_preparation_section';
+  status: EventPayloadStatus;
+  id: string;
+  title: string;
+  content?: string | null;
+}
+
 export interface PlanningSubtask {
   id: string;
   planning_item_id: string;
@@ -146,20 +176,52 @@ export interface Profile {
   user_id: string;
   display_name?: string | null;
   avatar_url?: string | null;
+  badge_color?: string | null;
 }
 
 export interface AppointmentPreparation {
   id: string;
   title: string;
-  appointment_id?: string;
-  status: string;
+  appointment_id?: string | null;
+  status: EventPayloadStatus;
   notes?: string | null;
   created_at: string;
   updated_at: string;
   is_archived: boolean;
   archived_at?: string | null;
-  checklist_items?: any;
-  preparation_data?: any;
+  checklist_items?: ReadonlyArray<{
+    id: string;
+    label: string;
+    completed: boolean;
+  }>;
+  preparation_data?: {
+    social_media_planned?: boolean;
+    press_planned?: boolean;
+    visit_reason?: 'einladung' | 'eigeninitiative' | 'fraktionsarbeit' | 'pressetermin';
+    conversation_partners?: ReadonlyArray<{
+      id: string;
+      name: string;
+      avatar_url?: string;
+      role?: string;
+      organization?: string;
+      note?: string;
+    }>;
+    companions?: ReadonlyArray<{
+      id: string;
+      name: string;
+      type: 'mitarbeiter' | 'fraktion' | 'partei' | 'presse' | 'sonstige';
+      note?: string;
+    }>;
+    has_parking?: boolean;
+    program?: ReadonlyArray<{
+      id: string;
+      time: string;
+      item: string;
+      notes: string;
+    }>;
+    sections?: ReadonlyArray<AppointmentPreparationSection>;
+    [key: string]: unknown;
+  };
   template_id?: string | null;
   tenant_id?: string;
   created_by?: string;

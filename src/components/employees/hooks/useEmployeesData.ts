@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from '@/utils/debugConsole';
+import { getErrorMessage } from '@/utils/errorHandler';
 import { startOfYear, endOfYear } from "date-fns";
 import {
   Employee,

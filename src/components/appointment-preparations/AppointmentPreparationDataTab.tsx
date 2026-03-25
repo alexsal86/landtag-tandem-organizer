@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useAuth } from "@/hooks/useAuth";
 import { compressImageForAvatar } from "@/utils/imageCompression";
+import type { EventPayloadStatus } from "@/components/event-planning/types";
 
 type ConversationPartner = AppointmentConversationPartner;
 type Companion = NonNullable<AppointmentPreparation['preparation_data']['companions']>[number];
@@ -269,7 +270,7 @@ export function AppointmentPreparationDataTab({
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: EventPayloadStatus | string) => {
     if (status === "draft") {
       return null;
     }

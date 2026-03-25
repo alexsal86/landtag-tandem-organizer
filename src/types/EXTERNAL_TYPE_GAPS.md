@@ -29,3 +29,9 @@ The local Lexical augmentation now narrows broad `any` APIs to Lexical primitive
 - `append(...nodes: LexicalNode[]): this`
 
 This keeps the compatibility shim focused on the exact cross-package gaps while preserving strong typing in consuming editor components.
+
+## Remaining interop exceptions (tracked)
+
+- **TS-4821 (Matrix event + message unions)**  
+  Current fallback uses `unknown` casts in `MatrixClientContext` for SDK emitter/message interop until upstream typings are narrowed in our adapter layer.  
+  **Deadline:** 2026-04-22.

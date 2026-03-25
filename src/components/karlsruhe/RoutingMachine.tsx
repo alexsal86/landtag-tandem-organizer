@@ -2,13 +2,13 @@ import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 import { Waypoint } from './RoutePlannerPanel';
+import type { GeoPoint } from '@/hooks/geoContracts';
 
 // Import leaflet-routing-machine after L is available
-// @ts-ignore
 import 'leaflet-routing-machine';
 
 // Access Routing from the global L object after import
-const LRouting = (L as any).Routing;
+const LRouting = L.Routing;
 
 interface RoutingMachineProps {
   map: L.Map | null;
@@ -17,7 +17,7 @@ interface RoutingMachineProps {
 }
 
 export const RoutingMachine = ({ map, waypoints, onRouteFound }: RoutingMachineProps) => {
-  const routingControlRef = useRef<any>(null);
+  const routingControlRef = useRef<L.RoutingControl | null>(null);
 
   useEffect(() => {
     if (!map) return;
@@ -35,9 +35,14 @@ export const RoutingMachine = ({ map, waypoints, onRouteFound }: RoutingMachineP
     // Need at least 2 waypoints for routing
     if (waypoints.length < 2) return;
 
-    const latLngs = waypoints.map(wp => L.latLng(wp.lat, wp.lng));
+    const routingFactory = getRoutingFactory();
+    if (!routingFactory) {
+      return;
+    }
 
-    const routingControl = LRouting.control({
+    const latLngs = waypoints.map((wp: GeoPoint) => L.latLng(wp.lat, wp.lng));
+
+    const routingControl = routingFactory.control({
       waypoints: latLngs,
       routeWhileDragging: false,
       showAlternatives: false,
@@ -52,15 +57,15 @@ export const RoutingMachine = ({ map, waypoints, onRouteFound }: RoutingMachineP
         extendToWaypoints: true,
         missingRouteTolerance: 0,
       },
-      router: LRouting.osrmv1({
+      router: routingFactory.osrmv1({
         serviceUrl: 'https://router.project-osrm.org/route/v1',
         profile: 'driving',
       }),
       createMarker: () => null, // Don't create default markers
     });
 
-    routingControl.on('routesfound', (e: any) => {
-      const routes = e.routes;
+    routingControl.on('routesfound', (event) => {
+      const routes = event.routes;
       if (routes && routes.length > 0 && onRouteFound) {
         const route = routes[0];
         onRouteFound({

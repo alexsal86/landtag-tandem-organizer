@@ -25,6 +25,28 @@ import type {
   AppointmentPreparation,
 } from "./types";
 
+interface PlanningTemplateDto {
+  id: string;
+  name: string;
+  [key: string]: unknown;
+}
+
+interface ContactOptionDto {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  role: string | null;
+  organization: string | null;
+}
+
+interface ItemActionDto {
+  id: string;
+  checklist_item_id: string;
+  action_type: 'email' | 'social_planner' | 'rsvp';
+  [key: string]: unknown;
+}
+
 export function useEventPlanningData() {
   debugConsole.log('=== EventPlanningView component loaded ===');
   const { user } = useAuth();
@@ -64,21 +86,21 @@ export function useEventPlanningData() {
   const [newPlanningTitle, setNewPlanningTitle] = useState("");
   const [newPlanningIsPrivate, setNewPlanningIsPrivate] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("none");
-  const [planningTemplates, setPlanningTemplates] = useState<any[]>([]);
+  const [planningTemplates, setPlanningTemplates] = useState<ReadonlyArray<PlanningTemplateDto>>([]);
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState("10:00");
   const [newContact, setNewContact] = useState({ name: "", email: "", phone: "" });
   const [newSpeaker, setNewSpeaker] = useState({ name: "", email: "", phone: "", bio: "", topic: "" });
   const [editingContact, setEditingContact] = useState<EventPlanningContact | null>(null);
   const [editingSpeaker, setEditingSpeaker] = useState<EventPlanningSpeaker | null>(null);
-  const [availableContacts, setAvailableContacts] = useState<any[]>([]);
+  const [availableContacts, setAvailableContacts] = useState<ReadonlyArray<ContactOptionDto>>([]);
   const [digitalEvent, setDigitalEvent] = useState({ platform: "", link: "", access_info: "" });
   const [editingTitle, setEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState("");
 
   // ── Email actions ──
-  const [itemEmailActions, setItemEmailActions] = useState<Record<string, any>>({});
-  const [itemSocialPlannerActions, setItemSocialPlannerActions] = useState<Record<string, any>>({});
+  const [itemEmailActions, setItemEmailActions] = useState<Record<string, ItemActionDto>>({});
+  const [itemSocialPlannerActions, setItemSocialPlannerActions] = useState<Record<string, ItemActionDto>>({});
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [selectedEmailItemId, setSelectedEmailItemId] = useState<string | null>(null);
 
@@ -260,7 +282,7 @@ export function useEventPlanningData() {
     if (!user) return;
     const { data, error } = await supabase.from("planning_templates").select("*").order("name");
     if (error) { debugConsole.error("Error fetching planning templates:", error); return; }
-    setPlanningTemplates(data || []);
+    setPlanningTemplates((data ?? []) as ReadonlyArray<PlanningTemplateDto>);
   };
 
   const fetchPlannings = async () => {
@@ -278,7 +300,7 @@ export function useEventPlanningData() {
         toast({ title: "Fehler", description: `Planungen konnten nicht geladen werden: ${error.message}`, variant: "destructive" });
         return;
       }
-      const sortedData = (data || []).sort((a: any, b: any) => {
+      const sortedData = [...((data ?? []) as ReadonlyArray<EventPlanning>)].sort((a, b) => {
         if ((a.is_completed || false) !== (b.is_completed || false)) return a.is_completed ? 1 : -1;
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
@@ -297,7 +319,7 @@ export function useEventPlanningData() {
     try {
       const { data, error } = await supabase.from("event_plannings").select("*").eq("tenant_id", currentTenant.id).eq("is_archived", true).order("archived_at", { ascending: false });
       if (error) throw error;
-      setArchivedPlannings(data || []);
+      setArchivedPlannings((data ?? []) as ReadonlyArray<EventPlanning>);
     } catch (error) { handleAppError(error, { context: 'fetchArchivedPlannings' }); }
   };
 
@@ -331,7 +353,7 @@ export function useEventPlanningData() {
     if (!user) return;
     const { data, error } = await supabase.from("contacts").select("id, name, email, phone, role, organization").eq("user_id", user.id).order("name");
     if (error) { debugConsole.error("Error fetching contacts:", error); return; }
-    setAvailableContacts(data || []);
+    setAvailableContacts((data ?? []) as ReadonlyArray<ContactOptionDto>);
   };
 
   const fetchAppointmentPreparations = async () => {
@@ -351,9 +373,9 @@ export function useEventPlanningData() {
     if (!items) return;
     const itemIds = items.map((i) => i.id);
     const { data: actions } = await supabase.from("event_planning_item_actions").select("*").in("checklist_item_id", itemIds).in("action_type", ["email", "social_planner", "rsvp"]);
-    const emailActionsMap: Record<string, any> = {};
-    const socialPlannerActionsMap: Record<string, any> = {};
-    (actions || []).forEach((action) => {
+    const emailActionsMap: Record<string, ItemActionDto> = {};
+    const socialPlannerActionsMap: Record<string, ItemActionDto> = {};
+    ((actions ?? []) as ReadonlyArray<ItemActionDto>).forEach((action) => {
       if (action.action_type === "email") {
         emailActionsMap[action.checklist_item_id] = action;
       }
@@ -511,7 +533,7 @@ export function useEventPlanningData() {
     if (error) { toast({ title: "Fehler", description: "Planung konnte nicht erstellt werden.", variant: "destructive" }); return; }
 
     const templateParam: string | null = selectedTemplateId === "none" ? null : selectedTemplateId;
-    await supabase.rpc("create_default_checklist_items", { planning_id: data.id, template_id_param: templateParam } as any);
+    await supabase.rpc("create_default_checklist_items", { planning_id: data.id, template_id_param: templateParam });
 
     try {
       const { data: prefs } = await supabase.from("user_planning_preferences").select("default_collaborators").eq("user_id", user.id).eq("tenant_id", currentTenant.id).maybeSingle();
