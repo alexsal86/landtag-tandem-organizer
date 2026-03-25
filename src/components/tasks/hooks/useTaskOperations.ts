@@ -323,7 +323,7 @@ export function useTaskOperations({
       await createArchiveContact(callLog, resultText);
     }
 
-    const { data: appointment } = await supabase.from("appointments").select("title").eq("call_log_id", callLogId).single<{ title: string }>();
+    const { data: appointment } = await supabase.from("appointments").select("title").eq("call_log_id", callLogId).single();
     if (appointment && !appointment.title.startsWith("Erledigt:")) {
       await supabase.from("appointments").update({ title: `Erledigt: ${appointment.title}`, status: "completed" }).eq("call_log_id", callLogId);
     }
