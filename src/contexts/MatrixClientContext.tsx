@@ -1453,7 +1453,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
       }
     }
 
-    // INTEROP-UNKNOWN(TS-4821, Matrix-Flow, 2026-04-22): Matrix message content union requires incremental adapter hardening.
+    // @ts-expect-error matrix-js-sdk RoomMessageEventContent union type mismatch
     await mc.sendMessage(roomId, content as unknown as Record<string, unknown>);
   }, []);
 
