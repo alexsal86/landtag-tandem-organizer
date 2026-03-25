@@ -1,11 +1,7 @@
 {
   "extends": "./tsconfig.app.json",
   "compilerOptions": {
-    "strict": false,
-    "strictNullChecks": true,
-    "noImplicitAny": true,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false
+    "noImplicitAny": true
   },
   "include": [
     "src/hooks/useKnowledgeDocumentTopics.tsx",

@@ -280,7 +280,7 @@ export function analyzeProtocolStructure(text: unknown): {
       if (sessionMatches.length > 0) {
         const sessionMatch = sessionMatches[0];
         const eventType = sessionMatch[1].toLowerCase();
-        let sessionType = 'start';
+        let sessionType: SessionEvent['session_type'] = 'start';
         
         if (eventType.includes('ende') || eventType.includes('schluss')) {
           sessionType = 'end';
@@ -328,7 +328,7 @@ export function analyzeProtocolStructure(text: unknown): {
     const interjectionMatch = line.match(patterns.interjection);
     if (interjectionMatch) {
       const content = interjectionMatch[1];
-      let speechType = 'interjection';
+      let speechType: ParsedSpeech['speech_type'] = 'interjection';
       
       if (patterns.applause.test(content)) speechType = 'applause';
       else if (patterns.objection.test(content)) speechType = 'interruption';

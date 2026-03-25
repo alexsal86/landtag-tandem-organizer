@@ -36,7 +36,16 @@ import { SpeechCommandsDialog } from '@/components/SpeechCommandsDialog';
 import { SpeechSessionStats } from '@/components/SpeechSessionStats';
 
 interface SimpleRichTextEditorProps {
+  /**
+   * Initial HTML loaded into the editor.
+   * This value is only re-applied when the computed rehydrate key changes.
+   */
   initialContent?: string;
+  /**
+   * Optional explicit version key for rehydration.
+   * Rehydration happens when this value changes. If omitted, a hash of `initialContent` is used.
+   */
+  contentVersion?: string | number;
   onChange: (html: string) => void;
   placeholder?: string;
   disabled?: boolean;
@@ -48,6 +57,14 @@ interface SimpleRichTextEditorProps {
   showToolbar?: boolean;
   autoFocus?: boolean;
 }
+
+const hashContent = (content: string): string => {
+  let hash = 5381;
+  for (let i = 0; i < content.length; i += 1) {
+    hash = (hash * 33) ^ content.charCodeAt(i);
+  }
+  return `h${hash >>> 0}`;
+};
 
 // AutoFocus Plugin
 const AutoFocusPlugin = () => {
@@ -315,29 +332,47 @@ const Toolbar = () => {
 };
 
 // Plugin to load initial HTML content
-const InitialContentPlugin = ({ initialContent }: { initialContent?: string }) => {
+const InitialContentPlugin = ({
+  initialContent = '',
+  rehydrateKey,
+}: {
+  initialContent?: string;
+  rehydrateKey: string;
+}) => {
   const [editor] = useLexicalComposerContext();
-  const [isInitialized, setIsInitialized] = React.useState(false);
+  const lastAppliedRehydrateKey = React.useRef<string | null>(null);
 
   React.useEffect(() => {
-    if (initialContent && !isInitialized) {
-      editor.update(() => {
-        const parser = new DOMParser();
-        const dom = parser.parseFromString(initialContent, 'text/html');
-        const nodes = $generateNodesFromDOM(editor, dom);
-        const root = $getRoot();
-        root.clear();
-        root.append(...nodes);
-      });
-      setIsInitialized(true);
+    if (lastAppliedRehydrateKey.current === rehydrateKey) return;
+
+    let currentHtml = '';
+    editor.getEditorState().read(() => {
+      currentHtml = $generateHtmlFromNodes(editor, null);
+    });
+
+    if (currentHtml === initialContent) {
+      lastAppliedRehydrateKey.current = rehydrateKey;
+      return;
     }
-  }, [editor, initialContent, isInitialized]);
+
+    editor.update(() => {
+      const parser = new DOMParser();
+      const dom = parser.parseFromString(initialContent, 'text/html');
+      const nodes = $generateNodesFromDOM(editor, dom);
+      const root = $getRoot();
+      root.clear();
+      root.append(...nodes);
+    });
+
+    lastAppliedRehydrateKey.current = rehydrateKey;
+  }, [editor, initialContent, rehydrateKey]);
 
   return null;
 };
 
 const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
   initialContent = "",
+  contentVersion,
   onChange,
   placeholder = "Text eingeben...",
   disabled = false,
@@ -349,6 +384,11 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
   showToolbar = true,
   autoFocus = false,
 }) => {
+  const rehydrateKey = React.useMemo(
+    () => String(contentVersion ?? hashContent(initialContent)),
+    [contentVersion, initialContent],
+  );
+
   const initialConfig = {
     namespace: 'SimpleRichTextEditor',
     editable: !disabled,
@@ -418,7 +458,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
         <OnChangePlugin onChange={handleChange} />
         <ListPlugin />
         <MentionsPlugin onMentionInsert={onMentionInsert} />
-        <InitialContentPlugin initialContent={initialContent} />
+        <InitialContentPlugin initialContent={initialContent} rehydrateKey={rehydrateKey} />
         {autoFocus && <AutoFocusPlugin />}
       </LexicalComposer>
     </div>

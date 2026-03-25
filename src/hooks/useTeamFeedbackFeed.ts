@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from './useTenant';
 import { useAuth } from './useAuth';
 import { createFeedbackContext, type FeedbackContext } from '@/types/feedbackContext';
+import { normalizeSupabaseResult } from '@/utils/typeSafety';
 
 export type FeedbackFeedScope = 'team' | 'mine' | 'team-plus-relevant';
 
@@ -35,6 +36,49 @@ export interface TeamFeedbackEntry {
   is_relevant_to_me: boolean;
   linked_task_id: string | null;
   feedback_context: FeedbackContext;
+}
+
+interface AppointmentSummary {
+  id: string;
+  title: string | null;
+  start_time: string | null;
+  user_id: string;
+  meeting_id: string | null;
+}
+
+interface ExternalCalendarRef {
+  user_id?: string;
+}
+
+interface ExternalEventSummary {
+  id: string;
+  title: string | null;
+  start_time: string | null;
+  external_calendar_id: string | null;
+  external_calendars?: ExternalCalendarRef | null;
+}
+
+interface ProfileSummary {
+  user_id: string;
+  display_name: string | null;
+}
+
+interface DecisionParticipant {
+  meeting_id: string;
+  user_id: string;
+}
+
+interface FeedbackRow {
+  id: string;
+  notes: string | null;
+  completed_at: string | null;
+  has_documents: boolean | null;
+  has_tasks: boolean | null;
+  feedback_status: string;
+  event_type: string;
+  appointment_id: string | null;
+  external_event_id: string | null;
+  user_id: string;
 }
 
 const DEFAULT_FILTERS: Required<TeamFeedbackFeedFilters> = {
@@ -124,8 +168,9 @@ export const useTeamFeedbackFeed = (filters?: TeamFeedbackFeedFilters) => {
       if (resolvedFilters.onlyWithTasks) feedbackQuery.eq('has_tasks', true);
       if (resolvedFilters.scope === 'mine') feedbackQuery.eq('user_id', user.id);
 
-      const { data: feedbackData, error } = await feedbackQuery;
-      if (error) throw error;
+      const feedbackResult = normalizeSupabaseResult(await feedbackQuery);
+      if (feedbackResult.error) throw feedbackResult.error;
+      const feedbackData = feedbackResult.data as FeedbackRow[] | null;
       if (!feedbackData || feedbackData.length === 0) return [];
 
       const appointmentIds = feedbackData.flatMap(f => (f.appointment_id ? [f.appointment_id] : []));
@@ -160,7 +205,7 @@ export const useTeamFeedbackFeed = (filters?: TeamFeedbackFeedFilters) => {
             .eq('user_id', user.id)
         : { data: [] };
 
-      const participantMeetingIds = new Set((participantRows || []).map((row) => row.meeting_id));
+      const participantMeetingIds = new Set((participantRows as DecisionParticipant[] | null || []).map((row) => row.meeting_id));
       const { data: taskLinks } = feedbackIds.length
         ? await supabase
             .from('tasks')
@@ -177,9 +222,9 @@ export const useTeamFeedbackFeed = (filters?: TeamFeedbackFeedFilters) => {
         }
       });
 
-      const appointmentMap = new Map<string, any>((appointmentsResult.data || []).map((a: any) => [a.id, a]));
-      const externalEventMap = new Map<string, any>((externalEventsResult.data || []).map((e: any) => [e.id, e]));
-      const profileMap = new Map<string, any>((profilesResult.data || []).map((p: any) => [p.user_id, p.display_name]));
+      const appointmentMap = new Map<string, AppointmentSummary>((appointmentsResult.data as AppointmentSummary[] || []).map((a) => [a.id, a]));
+      const externalEventMap = new Map<string, ExternalEventSummary>((externalEventsResult.data as ExternalEventSummary[] || []).map((e) => [e.id, e]));
+      const profileMap = new Map<string, ProfileSummary>((profilesResult.data as ProfileSummary[] || []).map((p) => [p.user_id, p]));
 
       const mappedEntries = feedbackData.map(f => {
         const appointment = f.appointment_id ? appointmentMap.get(f.appointment_id) : null;
@@ -192,7 +237,7 @@ export const useTeamFeedbackFeed = (filters?: TeamFeedbackFeedFilters) => {
             (appointment.meeting_id && participantMeetingIds.has(appointment.meeting_id))
           ),
         );
-        const externalOwnerId = (externalEvent as { external_calendars?: { user_id?: string } | null } | null)?.external_calendars?.user_id;
+        const externalOwnerId = externalEvent?.external_calendars?.user_id;
         const isExternalEventRelevant = Boolean(externalEvent && externalOwnerId === user.id);
 
         return {
@@ -210,7 +255,7 @@ export const useTeamFeedbackFeed = (filters?: TeamFeedbackFeedFilters) => {
           appointment_title: source?.title || null,
           appointment_start_time: source?.start_time || null,
           author_id: f.user_id,
-          author_name: profileMap.get(f.user_id) || null,
+          author_name: profileMap.get(f.user_id)?.display_name || null,
           is_relevant_to_me: f.user_id === user.id || isAppointmentRelevant || isExternalEventRelevant,
           linked_task_id: taskLinkMap.get(f.id) || null,
           feedback_context: createFeedbackContext(

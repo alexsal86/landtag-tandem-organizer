@@ -1,12 +1,5 @@
 {
-  "extends": "./tsconfig.app.json",
-  "compilerOptions": {
-    "strict": false,
-    "strictNullChecks": true,
-    "noImplicitAny": false,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false
-  },
+  "extends": "./tsconfig.legacy-relaxed.json",
   "include": [
     "src/components/*.ts",
     "src/components/*.tsx"

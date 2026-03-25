@@ -22,7 +22,7 @@ Seit dem Update vom 2026-03-18 wird die Migration **fachlich flow-first** gesteu
 4. `typecheck:flow-notifications`
 5. `typecheck:flow-edge-auth-role-tenant`
 
-sind die verbindliche primäre Reihenfolge. Die vorhandenen Ordner-/Batch-Configs bleiben als nachgelagerte technische Schutznetze bestehen. `npm run typecheck:strict-all` führt deshalb zuerst die Flow-Typechecks und danach die bestehenden Batch-Checks aus.
+sind die verbindliche primäre Reihenfolge. Die vorhandenen Ordner-/Batch-Configs bleiben als nachgelagerte technische Schutznetze bestehen. `npm run typecheck:strict-all` führt jetzt zuerst die globale Baseline (`typecheck:baseline-global`), danach die batch-gesteuerten Verschärfungen (`typecheck:batch-governed`) und zuletzt die Legacy-Ausnahme-Batches (`typecheck:legacy-exceptions`) aus.
 
 Jede vorhandene `tsconfig.*-strict.json` Datei bildet weiterhin einen operativen Migrationsbatch. Ein Batch gilt erst dann als abgeschlossen, wenn
 
@@ -38,6 +38,25 @@ Die Flag-Priorität für die **aktuelle Migrationsphase** folgt den priorisierte
 2. `noImplicitAny`
 
 `noUnusedLocals` und `noUnusedParameters` sind **bewusst nicht Teil des aktuellen Programms** und werden erst in einer späteren Phase batchweise eingeplant.
+
+## Governance-Status (Stand: 2026-03-25)
+
+Die Konfiguration ist ab dieser Migrationsstufe in **globale Baseline** und **Legacy-Ausnahme-Batches** getrennt:
+
+- **Global aktiv (Baseline via `tsconfig.app.json`):**
+  - `strictNullChecks: true`
+- **Flow-/batch-gesteuert (nur in ausgewählten `tsconfig.*-strict.json`):**
+  - `noImplicitAny: true`
+- **Legacy-Ausnahmen (zentral via `tsconfig.legacy-relaxed.json`):**
+  - `noImplicitAny: false`
+  - `noUnusedLocals: false`
+  - `noUnusedParameters: false`
+
+Für CI und lokale Steuerung gelten damit drei Ebenen:
+
+1. `npm run typecheck:baseline-global` (globale Mindestanforderung)
+2. `npm run typecheck:batch-governed` (Migrationsbatches mit zusätzlichen Flags, insbesondere `noImplicitAny`)
+3. `npm run typecheck:legacy-exceptions` (explizite Ausnahme-Batches auf Basis der Legacy-Relaxed-Config)
 
 ## Steuerungsregeln
 
@@ -123,6 +142,20 @@ Nicht Bestandteil dieser Phase sind Arbeiten zu `noUnusedLocals` und `noUnusedPa
 | Services / Features (`src/services`, `src/features`)   | Plattform / Integrationen      |                                       42 |                                                                      42 (100.0%) |                                                                         3 (7.1%) | `typecheck:services-features-batch2` und danach `typecheck:services-features-batch3` abschließen; Edge-Auth/Role/Tenant-Grenzen als Kernflow berücksichtigen | `strictNullChecks` im Verzeichnis real erreicht; Folge-Batches offen                                        | API-Typgrenzen, Rendering-/Widget-Schnittstellen                                                    | 2026-03-18     |
 | Komponenten (`src/components`)                         | Frontend Produktteams          | n. a. (nach Batch-Zuschnitten gesteuert) |                                            5 Batch-Slices + Top-Level in Planung |                                             0 dedizierte `noImplicitAny`-Batches | Zuerst `typecheck:components-batch2` für Kalender-nahe Flows und `typecheck:components-batch3` für Letters sichtbar steuern                       | Noch kein Komponenten-Batch als real abgeschlossen dokumentiert                                             | Großer Scope, unterschiedliche Domänen, teils fehlende feingranulare Fortschrittsmessung            | 2026-03-18     |
 | Pages (`src/pages`)                                    | Frontend Plattform / App Shell |                                       22 |                                                                      22 (100.0%) |                                                                        3 (13.6%) | `typecheck:pages-batch2` abschließen, insbesondere `NotificationsPage.tsx` entlang des Kernflows Benachrichtigungen                             | `strictNullChecks` im Verzeichnis real erreicht; Folge-Batches offen                                        | Seitenspezifische Abhängigkeiten zu Hooks, Contexts und Router-Daten                                | 2026-03-18     |
+
+## Metrik: Any-Delta pro Batch
+
+Zur operativen Steuerung von `noImplicitAny` wird zusätzlich eine Delta-Metrik geführt, die pro Migrations-Batch die Veränderung der `any`-/`as any`-Vorkommen ausweist.
+
+| Metrik | Definition | Zielwert | CI-Gate |
+| --- | --- | --- | --- |
+| **Any-Delta pro Batch** | `Any-Total(Head)` minus `Any-Total(Base)` auf PR-Ebene (ermittelt durch `scripts/report-any-usage.mjs`) | `<= 0` | PRs mit positivem Delta schlagen fehl |
+
+Pflegehinweis pro Batch:
+
+1. Vor dem Merge den aktuellen Report mit `npm run report:any-usage` erzeugen und die betroffenen Verzeichnisse im Batch-Doc festhalten.
+2. Im PR-Summary den Delta-Wert aus dem CI-Job „Any-Delta PR-Gate (nicht steigend)“ dokumentieren.
+3. Bei Delta `0` ist Stagnation akzeptabel; bei negativem Delta ist die Reduktion als Fortschritt im Batch-Abschnitt zu notieren.
 
 ## Spätere Anschlussphase: Unused-Bereinigung
 

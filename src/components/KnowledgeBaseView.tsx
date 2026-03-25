@@ -67,7 +67,11 @@ const KnowledgeBaseView = () => {
       if (doc) {
         if (!data.selectedDocument || data.selectedDocument.id !== doc.id) {
           data.setSelectedDocument(doc);
-          data.setEditorContent(doc.content || '');
+          data.setEditorContent({
+            plainText: doc.plain_text || '',
+            nodesJson: doc.content_nodes || undefined,
+            html: doc.content_html || undefined,
+          });
           data.setIsEditorOpen(true);
           data.setIsSidebarCollapsed(false);
           data.setHasUnsavedChanges(false);
@@ -82,7 +86,7 @@ const KnowledgeBaseView = () => {
   }, [documentId, data.documents, navigate, data.loading]);
 
   const filteredDocuments = data.documents.filter(doc => {
-    const matchesSearch = doc.title.toLowerCase().includes(searchTerm.toLowerCase()) || (doc.content || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = doc.title.toLowerCase().includes(searchTerm.toLowerCase()) || (doc.plain_text || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesTopic = !selectedTopicFilter || (data.documentTopicsMap[doc.id]?.includes(selectedTopicFilter));
     return matchesSearch && matchesTopic;
   });
@@ -217,7 +221,7 @@ const KnowledgeBaseView = () => {
                               {doc.is_published && <Badge variant="outline" className="text-xs">Öffentlich</Badge>}
                             </div>
                             {data.documentTopicsMap[doc.id]?.length > 0 && <div className="mb-2"><TopicDisplay topicIds={data.documentTopicsMap[doc.id]} maxDisplay={3} /></div>}
-                            <p className="text-sm text-muted-foreground line-clamp-4 mb-3">{getPreviewText(doc.content || '', 300)}</p>
+                            <p className="text-sm text-muted-foreground line-clamp-4 mb-3">{getPreviewText(doc.plain_text || '', 300)}</p>
                             <div className="flex items-center gap-4 text-xs text-muted-foreground"><div className="flex items-center gap-1"><User className="h-3 w-3" />{doc.creator_name}</div><div>{formatDate(doc.updated_at)}</div></div>
                           </div>
                           {doc.created_by === user?.id && <div onClick={(e) => e.stopPropagation()}><Button variant="ghost" size="sm" onClick={() => data.handleDeleteDocument(doc.id)}><Trash2 className="h-4 w-4" /></Button></div>}
@@ -247,16 +251,23 @@ const KnowledgeBaseView = () => {
               </div>
               <div className="flex items-center gap-2">
                 <div className="hidden md:block"><TopicSelector selectedTopicIds={selectedDocTopics} onTopicsChange={(ids) => { setSelectedDocTopics(ids); data.setHasUnsavedChanges(true); }} placeholder="Themen..." compact /></div>
-                <KnowledgeVersionHistory documentId={data.selectedDocument.id} currentContent={data.editorContent} currentTitle={data.selectedDocument.title} tenantId={data.selectedDocument.tenant_id || ''} />
+                <KnowledgeVersionHistory documentId={data.selectedDocument.id} currentContent={data.editorContent.plainText} currentTitle={data.selectedDocument.title} tenantId={data.selectedDocument.tenant_id || ''} />
                 {canEdit && <Button variant="outline" size="sm" onClick={() => setShowUploadDialog(true)}><Upload className="h-4 w-4 mr-1" />Upload</Button>}
                 {data.selectedDocument.created_by === user?.id && <Button variant="outline" size="sm" onClick={data.handleToggleLock} title={data.selectedDocument.is_locked ? "Entsperren" : "Sperren"}>{data.selectedDocument.is_locked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}</Button>}
-                {canEdit && <Button variant="default" size="sm" onClick={async () => { await createVersion({ id: data.selectedDocument!.id, title: data.selectedDocument!.title, content: data.selectedDocument!.content, tenant_id: data.selectedDocument!.tenant_id }); data.handleSaveDocument(selectedDocTopics, setSelectedDocTopics); }} disabled={!data.hasUnsavedChanges}><Save className="h-4 w-4 mr-1" />Speichern</Button>}
+                {canEdit && <Button variant="default" size="sm" onClick={async () => { await createVersion({ id: data.selectedDocument!.id, title: data.selectedDocument!.title, content: data.editorContent.plainText, content_html: data.editorContent.html || data.selectedDocument!.content_html, tenant_id: data.selectedDocument!.tenant_id }); data.handleSaveDocument(selectedDocTopics, setSelectedDocTopics); }} disabled={!data.hasUnsavedChanges}><Save className="h-4 w-4 mr-1" />Speichern</Button>}
                 <Button variant="outline" size="sm" onClick={() => { if (data.hasUnsavedChanges && !confirm('Sie haben ungespeicherte Änderungen. Trotzdem schließen?')) return; navigate('/knowledge', { replace: true }); }}>Schließen</Button>
               </div>
             </div>
           </div>
           <div className="flex-1 overflow-hidden">
-            <EnhancedLexicalEditor key={data.selectedDocument.id} content={data.selectedDocument.content || ''} onChange={(c) => { data.setEditorContent(c); if (c !== data.selectedDocument!.content) data.setHasUnsavedChanges(true); }} placeholder={canEdit ? "Beginnen Sie mit der Bearbeitung..." : "Dieses Dokument ist schreibgeschützt."} documentId={data.selectedDocument.id} enableCollaboration={false} showToolbar={!!canEdit} editable={!!canEdit} />
+            <EnhancedLexicalEditor key={data.selectedDocument.id} content={data.selectedDocument.plain_text || ''} contentNodes={data.selectedDocument.content_nodes || undefined} onChange={(nextContent) => {
+              data.setEditorContent(nextContent);
+              const hasChanged =
+                (nextContent.plainText || '') !== (data.selectedDocument?.plain_text || '') ||
+                (nextContent.nodesJson || '') !== (data.selectedDocument?.content_nodes || '') ||
+                (nextContent.html || '') !== (data.selectedDocument?.content_html || '');
+              data.setHasUnsavedChanges(hasChanged);
+            }} placeholder={canEdit ? "Beginnen Sie mit der Bearbeitung..." : "Dieses Dokument ist schreibgeschützt."} documentId={data.selectedDocument.id} enableCollaboration={false} showToolbar={!!canEdit} editable={!!canEdit} />
           </div>
 
           <Dialog open={showUploadDialog} onOpenChange={(open) => { setShowUploadDialog(open); if (!open) resetUploadState(); }}>

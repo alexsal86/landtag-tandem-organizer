@@ -41,12 +41,7 @@ interface JSONProtocolStructure {
       number: number;
       title: string;
       kind?: string;
-      speakers?: Array<{
-        name: string;
-        role?: string;
-        party?: string;
-        pages?: number[];
-      }>;
+      speakers?: ProtocolSpeakerRef[];
     }>;
   };
   stats?: {
@@ -173,7 +168,7 @@ export function parseJSONProtocol(jsonData: unknown): ParsedJSONProtocol {
       parties_represented: jsonData.statistics?.parties_represented || Array.from(new Set(
         jsonData.speeches
           .map(s => s.party)
-          .filter(Boolean)
+          .filter((party): party is string => Boolean(party))
       )),
       session_duration: jsonData.statistics?.session_duration
     } : undefined
@@ -202,7 +197,7 @@ export function parseJSONProtocol(jsonData: unknown): ParsedJSONProtocol {
   const speeches = jsonData.speeches.map(speech => {
     const speakerObj = typeof speech.speaker === 'object' ? speech.speaker : null;
     return {
-      speaker_name: speakerObj ? speakerObj.name : speech.speaker as string,
+      speaker_name: speakerObj ? speakerObj.name : (speech.speaker as string),
       speaker_party: speech.party || speakerObj?.party,
       speaker_role: speech.role || speakerObj?.role,
       speech_content: speech.text,
@@ -216,7 +211,6 @@ export function parseJSONProtocol(jsonData: unknown): ParsedJSONProtocol {
     };
   });
 
-  // Generate basic session events from speeches timestamps and agenda
   const sessions: Array<{
     session_type: string;
     timestamp: string;
@@ -224,14 +218,12 @@ export function parseJSONProtocol(jsonData: unknown): ParsedJSONProtocol {
     notes?: string;
   }> = [];
 
-  // Add session start
   sessions.push({
     session_type: 'session_start',
     timestamp: jsonData.session.extracted_at,
     notes: `Sitzung ${metadata.session_number} der ${metadata.legislature_period}. Wahlperiode`
   });
 
-  // Add agenda-based sessions if available
   if (jsonData.agenda && jsonData.agenda.length > 0) {
     jsonData.agenda.forEach(item => {
       sessions.push({
@@ -243,7 +235,6 @@ export function parseJSONProtocol(jsonData: unknown): ParsedJSONProtocol {
     });
   }
 
-  // Add session end
   sessions.push({
     session_type: 'session_end',
     timestamp: jsonData.session.extracted_at,
@@ -278,9 +269,9 @@ export function getJSONProtocolPreview(jsonData: unknown): {
   ));
 
   const sessionInfo = `Sitzung ${jsonData.session.number || 'unbekannt'} (${jsonData.session.legislative_period || '17'}. Wahlperiode)`;
-  const dateInfo = jsonData.session.date ? 
-    new Date(jsonData.session.date).toLocaleDateString('de-DE') : 
-    'Datum unbekannt';
+  const dateInfo = jsonData.session.date
+    ? new Date(jsonData.session.date).toLocaleDateString('de-DE')
+    : 'Datum unbekannt';
 
   return {
     sessionInfo,
