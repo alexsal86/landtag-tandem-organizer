@@ -864,9 +864,9 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
         if (uiaPassword) {
           try {
             const localpart = creds.userId.split(':')[0].substring(1);
-            // INTEROP-ANY(TS-4821, Matrix-Flow, 2026-04-22): matrix-js-sdk UIA callbacks/listeners are currently weakly typed.
+            // @ts-expect-error matrix-js-sdk UIA authUploadDeviceSigningKeys callback type
             await crypto.bootstrapCrossSigning({
-              authUploadDeviceSigningKeys: async (makeRequest: UploadAuthRequest) => {
+              authUploadDeviceSigningKeys: async (makeRequest: (auth: Record<string, unknown>) => Promise<void>) => {
                 await makeRequest({
                   type: 'm.login.password',
                   identifier: { type: 'm.id.user', user: localpart },
