@@ -8,7 +8,7 @@ export interface DashboardWidgetSuggestion {
   title: string;
   description: string;
   action: string;
-  icon: ComponentType;
+  icon: ComponentType<{ className?: string }>;
   reason: string;
   timeContext?: string;
   widgetType?: DashboardWidget['type'];

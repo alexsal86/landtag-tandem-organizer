@@ -73,6 +73,8 @@ interface BarProps extends BaseRechartsProps {
 interface LineProps extends BaseRechartsProps {
   dataKey?: string | ((entry: RechartsDataPoint) => unknown);
   stroke?: string;
+  type?: string;
+  name?: string;
 }
 
 interface ChartWrapperProps extends BaseRechartsProps {

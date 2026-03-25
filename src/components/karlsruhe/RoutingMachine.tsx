@@ -35,7 +35,7 @@ export const RoutingMachine = ({ map, waypoints, onRouteFound }: RoutingMachineP
     // Need at least 2 waypoints for routing
     if (waypoints.length < 2) return;
 
-    const routingFactory = getRoutingFactory();
+    const routingFactory = LRouting;
     if (!routingFactory) {
       return;
     }
