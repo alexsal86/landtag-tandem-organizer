@@ -11,6 +11,11 @@ type NotificationResponseRow = Pick<DecisionResponseNotificationLookup, "task_de
   decision_id: string;
 };
 
+type FollowupSourceResponseRow = {
+  decision_id: string;
+  participant_id: string;
+};
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
@@ -22,7 +27,23 @@ const hasOwnProperty = <TKey extends PropertyKey>(
 const isNotificationResponseRow = (value: unknown): value is NotificationResponseRow => {
   if (!isRecord(value)) return false;
   if (!hasOwnProperty(value, "decision_id") || typeof value.decision_id !== "string") return false;
+
+  const participant = value.task_decision_participants;
+  if (participant !== null && (!isRecord(participant) || typeof participant.user_id !== "string")) {
+    return false;
+  }
+
+  const decision = value.task_decisions;
+  if (decision !== null && (!isRecord(decision) || typeof decision.title !== "string")) {
+    return false;
+  }
+
   return true;
+};
+
+const isFollowupSourceResponseRow = (value: unknown): value is FollowupSourceResponseRow => {
+  if (!isRecord(value)) return false;
+  return typeof value.decision_id === "string" && typeof value.participant_id === "string";
 };
 
 interface UseDecisionActionsOptions {
@@ -71,7 +92,9 @@ export function useDecisionActions({
               .maybeSingle()
               .then(async ({ data, error }) => {
                 if (error) return error;
-                if (!data) return new Error("Ausgangsnachricht nicht gefunden.");
+                if (!isFollowupSourceResponseRow(data)) {
+                  return new Error("Ausgangsnachricht nicht gefunden.");
+                }
 
                 const { error: insertError } = await supabase
                   .from("task_decision_responses")

@@ -10,11 +10,45 @@ import {
   ResponseOption,
   getTemplateById,
 } from "@/lib/decisionTemplates";
+import type { DecisionParticipantProfile } from "../types/domain";
 
-interface Profile {
-  user_id: string;
-  display_name: string | null;
+type Profile = Pick<DecisionParticipantProfile, "user_id" | "display_name">;
+
+
+
+interface MatrixInvokeResult {
+  sent: number;
+  total_participants: number;
 }
+
+interface EmailResultItem {
+  success: boolean;
+}
+
+interface EmailInvokeResult {
+  results: EmailResultItem[];
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const isMatrixInvokeResult = (value: unknown): value is MatrixInvokeResult => {
+  if (!isRecord(value)) return false;
+  const sent = value.sent;
+  const totalParticipants = value.total_participants;
+  return typeof sent === "number" && typeof totalParticipants === "number";
+};
+
+const isEmailInvokeResult = (value: unknown): value is EmailInvokeResult => {
+  if (!isRecord(value)) return false;
+  if (!Array.isArray(value.results)) return false;
+  return value.results.every((result) => isRecord(result) && typeof result.success === "boolean");
+};
+
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) return error.message;
+  return String(error);
+};
 
 interface UseDecisionCreatorParams {
   taskId?: string;
@@ -381,8 +415,8 @@ export const useDecisionCreator = ({
               description: `Matrix-Nachrichten konnten nicht versendet werden: ${matrixError.message}`,
               variant: "destructive",
             });
-          } else if (matrixResult) {
-            const successCount = matrixResult.sent || 0;
+          } else if (isMatrixInvokeResult(matrixResult)) {
+            const successCount = matrixResult.sent;
             const totalCount = matrixResult.total_participants || validSelectedUsers.length;
 
             if (successCount > 0) {
@@ -397,12 +431,18 @@ export const useDecisionCreator = ({
                 variant: "destructive",
               });
             }
+          } else {
+            toast({
+              title: "Matrix-Warnung",
+              description: "Matrix-Rückgabe hatte ein unerwartetes Format.",
+              variant: "destructive",
+            });
           }
-        } catch (matrixError: any) {
+        } catch (matrixError: unknown) {
           debugConsole.error("Error sending Matrix decisions:", matrixError);
           toast({
             title: "Matrix-Fehler",
-            description: `Unerwarteter Fehler beim Matrix-Versand: ${matrixError.message}`,
+            description: `Unerwarteter Fehler beim Matrix-Versand: ${getErrorMessage(matrixError)}`,
             variant: "destructive",
           });
         }
@@ -433,9 +473,9 @@ export const useDecisionCreator = ({
               description: `E-Mails konnten nicht versendet werden: ${emailError.message}`,
               variant: "destructive",
             });
-          } else if (emailResult) {
-            const successCount = emailResult.results?.filter((result: any) => result.success).length || 0;
-            const totalCount = emailResult.results?.length || validSelectedUsers.length;
+          } else if (isEmailInvokeResult(emailResult)) {
+            const successCount = emailResult.results.filter((result) => result.success).length;
+            const totalCount = emailResult.results.length || validSelectedUsers.length;
 
             if (successCount > 0) {
               toast({
@@ -449,12 +489,18 @@ export const useDecisionCreator = ({
                 variant: "destructive",
               });
             }
+          } else {
+            toast({
+              title: "E-Mail-Warnung",
+              description: "E-Mail-Rückgabe hatte ein unerwartetes Format.",
+              variant: "destructive",
+            });
           }
-        } catch (emailError: any) {
+        } catch (emailError: unknown) {
           debugConsole.error("Error sending decision emails:", emailError);
           toast({
             title: "E-Mail-Fehler",
-            description: `Unerwarteter Fehler beim E-Mail-Versand: ${emailError.message}`,
+            description: `Unerwarteter Fehler beim E-Mail-Versand: ${getErrorMessage(emailError)}`,
             variant: "destructive",
           });
         }
