@@ -125,7 +125,11 @@ const LetterDetail = () => {
 
           <div className="h-[calc(100vh-12rem)] min-h-[600px]">
             <LetterEditor
-              letter={letter}
+              letter={{
+                ...letter,
+                recipient_name: letter.recipient_name ?? undefined,
+                recipient_address: letter.recipient_address ?? undefined,
+              } as import('@/components/letters/types').Letter}
               isOpen
               onClose={handleBackToLetters}
               onSave={fetchLetter}

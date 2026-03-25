@@ -225,10 +225,10 @@ export function useDecisionAttachmentUpload() {
         .from('task_decision_attachments')
         .select('file_name, file_size')
         .eq('decision_id', decisionId);
-      const existingFiles = requireSupabaseData(existingFilesResponse, 'Bestehende Anhänge konnten nicht geladen werden.');
+      const existingFiles = requireSupabaseData(existingFilesResponse, 'Bestehende Anhänge konnten nicht geladen werden.') as { file_name: string; file_size: number }[] | null;
 
       const existingSet = new Set(
-        (existingFiles ?? []).map(f => `${f.file_name}::${f.file_size}`)
+        (existingFiles ?? []).map((f: { file_name: string; file_size: number }) => `${f.file_name}::${f.file_size}`)
       );
 
       const failed: UploadFailure[] = [];

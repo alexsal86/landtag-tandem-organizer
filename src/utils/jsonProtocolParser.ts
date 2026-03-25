@@ -164,7 +164,7 @@ export function parseJSONProtocol(jsonData: unknown): ParsedJSONProtocol {
   const speeches = jsonData.speeches.map((speech) => {
     const speakerObj = typeof speech.speaker === 'object' ? speech.speaker : null;
     return {
-      speaker_name: speakerObj ? speakerObj.name : speech.speaker,
+      speaker_name: (speakerObj ? speakerObj.name : speech.speaker) as string,
       speaker_party: speech.party || speakerObj?.party,
       speaker_role: speech.role || speakerObj?.role,
       speech_content: speech.text,
