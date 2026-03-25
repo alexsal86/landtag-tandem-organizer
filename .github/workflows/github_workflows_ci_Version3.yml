@@ -133,7 +133,7 @@ jobs:
       - name: Mandatory security hygiene checks
         run: npm run check:security-hygiene
 
-      - name: "Any-Delta PR-Gate (nicht steigend)"
+      - name: "Any-Delta PR-Gate (blockiert positive Deltas)"
         if: github.event_name == 'pull_request'
         run: |
           set -euo pipefail

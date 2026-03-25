@@ -87,9 +87,10 @@ Verwende bevorzugt die zentralen Helfer aus `src/utils/typeSafety.ts`:
 
 ## Übergangsregel für `no-explicit-any`
 
-- Global ist `@typescript-eslint/no-explicit-any` aktuell auf **`warn`** gesetzt, damit die Migration inkrementell erfolgen kann.
-- Für spätere Verschärfung sind Datei-Scopes für `error` bereits im Lint-Setup vorbereitet, aber standardmäßig deaktiviert.
-- Aktivierung erfolgt erst, wenn Any-Delta, CI-Stabilität und Team-Kapazität für den jeweiligen Scope dokumentiert sind.
+- Global bleibt `@typescript-eslint/no-explicit-any` auf **`warn`**, damit nicht bereinigte Altbereiche inkrementell migriert werden können.
+- In bereinigten Bereichen ist `@typescript-eslint/no-explicit-any` verbindlich auf **`error`** gesetzt (Hooks, Utils, Services/Features sowie zusätzlich gehärtete Kern-Dateien).
+- Positive `Any-Delta` sind in der CI blockierend; neue `any` sind nur als begründete Interop-Ausnahme zulässig.
+- `@ts-ignore` und `@ts-expect-error` sind nur mit Begründung erlaubt (`allow-with-description`, Mindestlänge 12 Zeichen); `@ts-nocheck` ist blockiert.
 
 ## Abschlusskriterium für `any`
 
@@ -97,3 +98,10 @@ Verwende bevorzugt die zentralen Helfer aus `src/utils/typeSafety.ts`:
 - Zulässig sind ausschließlich dokumentierte Interop-Ausnahmen mit Inline-Marker `INTEROP-ANY: <Grund> | <Ticket> | <Sunset-Termin>`.
 - Jeder PR muss ein Pflichtfeld **„Any-Delta vorher/nachher“** ausfüllen (Base, Head, Delta).
 - Nach jedem Merge wird die Baseline neu gemessen (`report:any-usage:total`, `report:any-usage:clusters`, `report:any-usage:files`) und in `docs/strict-progress.md` nachgeführt.
+
+## Definition of Done (DoD) für Type-Safety
+
+- **0 unbegründete `any`** in allen geänderten Dateien.
+- Jede neue Interop-Ausnahme ist inline begründet und mit Ticket/Sunset-Term versehen.
+- Kein neues `@ts-ignore`/`@ts-expect-error` ohne nachvollziehbare Begründung.
+- CI-Gates (`Any-Delta`, `Type-Safety-Delta`, Lint/Typecheck) laufen grün.

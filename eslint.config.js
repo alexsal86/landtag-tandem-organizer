@@ -35,15 +35,11 @@ const strictFlowRules = {
   '@typescript-eslint/no-unsafe-call': 'warn',
 };
 
-// Vorbereitung für späteres Hochziehen auf error (Datei-Scopes erst aktivieren,
-// sobald Team und CI-Metrik das zulassen).
-const preparedExplicitAnyErrorScopes = {
+const cleanedExplicitAnyErrorScopes = {
   coreHooks: ['src/hooks/**/*.{ts,tsx}'],
   coreUtils: ['src/utils/**/*.{ts,tsx}'],
   servicesAndFeatures: ['src/services/**/*.{ts,tsx}', 'src/features/**/*.{ts,tsx}'],
 };
-
-const enablePreparedExplicitAnyErrorScopes = true;
 
 const hardenedExplicitAnyErrorFiles = [
   'src/services/headerRenderer.ts',
@@ -66,9 +62,10 @@ const hardenedExplicitAnyErrorFiles = [
   'src/features/cases/files/components/tabs/CaseFileTasksTab.tsx',
 ];
 
-const explicitAnyErrorPaths = enablePreparedExplicitAnyErrorScopes
-  ? [...Object.values(preparedExplicitAnyErrorScopes).flat(), ...hardenedExplicitAnyErrorFiles]
-  : hardenedExplicitAnyErrorFiles;
+const explicitAnyErrorPaths = [
+  ...Object.values(cleanedExplicitAnyErrorScopes).flat(),
+  ...hardenedExplicitAnyErrorFiles,
+];
 
 export default [
   { ignores: ['dist'] },
@@ -97,6 +94,7 @@ export default [
         {
           'ts-ignore': 'allow-with-description',
           'ts-expect-error': 'allow-with-description',
+          'ts-nocheck': true,
           minimumDescriptionLength: 12,
         },
       ],
