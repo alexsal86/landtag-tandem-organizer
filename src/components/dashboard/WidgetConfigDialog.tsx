@@ -297,8 +297,8 @@ export function WidgetConfigDialog({ widget, open, onOpenChange, onSave }: Widge
                   <div className="space-y-2">
                     <Label>Standard-Notizfarbe</Label>
                     <Select
-                      value={config.defaultNoteColor || 'yellow'}
-                      onValueChange={(value) => updateConfig('defaultNoteColor', value)}
+                      value={(config as any).defaultNoteColor || 'yellow'}
+                      onValueChange={(value) => updateConfig('defaultNoteColor' as any, value)}
                     >
                       <SelectTrigger>
                         <SelectValue />
