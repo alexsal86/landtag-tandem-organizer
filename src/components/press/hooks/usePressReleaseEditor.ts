@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { debugConsole } from '@/utils/debugConsole';
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -56,6 +57,7 @@ interface UsePressReleaseEditorProps {
 export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: UsePressReleaseEditorProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isAdminClaim: isAdmin } = useResolvedUserRole();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
 
@@ -63,7 +65,6 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hasUnsyncedChanges, setHasUnsyncedChanges] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
 
   // Form
   const [title, setTitle] = useState("");
@@ -86,12 +87,6 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
   const [showGhostDialog, setShowGhostDialog] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const pendingMentionsRef = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (user) {
-      supabase.rpc("is_admin", { _user_id: user.id }).then(({ data }) => setIsAdmin(!!data));
-    }
-  }, [user]);
 
   useEffect(() => {
     if (pressReleaseId) loadPressRelease(pressReleaseId);

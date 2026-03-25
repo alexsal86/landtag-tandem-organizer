@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -10,9 +11,12 @@ export type ResolvedUserRole = Database["public"]["Enums"]["app_role"] | null;
 export interface ResolvedUserRoleResult {
   role: ResolvedUserRole;
   isAdmin: boolean;
+  isAdminClaim: boolean;
+  hasAdminAccess: boolean;
   isEmployee: boolean;
   isAbgeordneter: boolean;
   isBueroleitung: boolean;
+  isBueroleitungClaim: boolean;
   loading: boolean;
 }
 
@@ -26,88 +30,112 @@ const getRoleFlags = (role: ResolvedUserRole) => ({
   isBueroleitung: role === "bueroleitung",
 });
 
-const EMPTY_ROLE_FLAGS: Omit<ResolvedUserRoleResult, "loading"> = getRoleFlags(null);
+const EMPTY_ROLE_FLAGS: Omit<ResolvedUserRoleResult, "loading"> = {
+  ...getRoleFlags(null),
+  isAdminClaim: false,
+  hasAdminAccess: false,
+  isBueroleitungClaim: false,
+};
+
+interface ResolvedUserSessionProfile {
+  role: ResolvedUserRole;
+  isAdminClaim: boolean;
+  isBueroleitungClaim: boolean;
+}
+
+export const resolvedUserRoleQueryKey = (userId?: string, tenantId?: string) =>
+  ["resolved-user-role", userId ?? null, tenantId ?? null] as const;
+
+const fetchResolvedUserSessionProfile = async (
+  userId: string,
+  tenantId?: string,
+): Promise<ResolvedUserSessionProfile> => {
+  let resolvedRole: ResolvedUserRole = null;
+
+  if (tenantId) {
+    const { data: membershipData, error: membershipError } = await supabase
+      .from("user_tenant_memberships")
+      .select("role")
+      .eq("tenant_id", tenantId)
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (membershipError) {
+      debugConsole.error("Error loading active tenant membership role:", membershipError);
+    }
+
+    resolvedRole = (membershipData?.role ?? null) as ResolvedUserRole;
+  }
+
+  if (!resolvedRole) {
+    const { data: fallbackRoleData, error: fallbackRoleError } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (fallbackRoleError) {
+      debugConsole.error("Error loading fallback user role:", fallbackRoleError);
+    }
+
+    resolvedRole = (fallbackRoleData?.role ?? null) as ResolvedUserRole;
+  }
+
+  const [{ data: isAdminClaim }, { data: isBueroleitungClaim }] = await Promise.all([
+    supabase.rpc("is_admin", { _user_id: userId }),
+    supabase.rpc("has_role", { _user_id: userId, _role: "bueroleitung" }),
+  ]);
+
+  return {
+    role: resolvedRole,
+    isAdminClaim: Boolean(isAdminClaim),
+    isBueroleitungClaim: Boolean(isBueroleitungClaim),
+  };
+};
 
 export function useResolvedUserRole(): ResolvedUserRoleResult {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const [role, setRole] = useState<ResolvedUserRole>(null);
-  const [loading, setLoading] = useState(true);
+  const userId = user?.id;
+  const tenantId = currentTenant?.id;
 
-  useEffect(() => {
-    const userId = user?.id;
+  const query = useQuery({
+    queryKey: resolvedUserRoleQueryKey(userId, tenantId),
+    enabled: Boolean(userId),
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    queryFn: async () => {
+      if (!userId) {
+        return {
+          role: null as ResolvedUserRole,
+          isAdminClaim: false,
+          isBueroleitungClaim: false,
+        };
+      }
 
-    if (!userId) {
-      setRole(null);
-      setLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-    setLoading(true);
-
-    const loadRole = async () => {
       try {
-        let resolvedRole: ResolvedUserRole = null;
-
-        if (currentTenant?.id) {
-          const { data: membershipData, error: membershipError } = await supabase
-            .from("user_tenant_memberships")
-            .select("role")
-            .eq("tenant_id", currentTenant.id)
-            .eq("user_id", userId)
-            .eq("is_active", true)
-            .maybeSingle();
-
-          if (membershipError) {
-            debugConsole.error("Error loading active tenant membership role:", membershipError);
-          }
-
-          resolvedRole = (membershipData?.role ?? null) as ResolvedUserRole;
-        }
-
-        if (!resolvedRole) {
-          const { data: fallbackRoleData, error: fallbackRoleError } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", userId)
-            .maybeSingle();
-
-          if (fallbackRoleError) {
-            debugConsole.error("Error loading fallback user role:", fallbackRoleError);
-          }
-
-          resolvedRole = (fallbackRoleData?.role ?? null) as ResolvedUserRole;
-        }
-
-        if (!cancelled) {
-          setRole(resolvedRole);
-        }
+        return await fetchResolvedUserSessionProfile(userId, tenantId);
       } catch (error) {
         debugConsole.error("Error resolving user role:", error);
-        if (!cancelled) {
-          setRole(null);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        return {
+          role: null as ResolvedUserRole,
+          isAdminClaim: false,
+          isBueroleitungClaim: false,
+        };
       }
-    };
-
-    void loadRole();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [currentTenant?.id, user?.id]);
+    },
+  });
 
   return useMemo(
     () => ({
       ...EMPTY_ROLE_FLAGS,
-      ...getRoleFlags(role),
-      loading,
+      ...getRoleFlags(query.data?.role ?? null),
+      isAdminClaim: Boolean(query.data?.isAdminClaim),
+      hasAdminAccess: Boolean(query.data?.isAdminClaim || query.data?.isBueroleitungClaim),
+      isBueroleitungClaim: Boolean(query.data?.isBueroleitungClaim),
+      loading: Boolean(userId) ? query.isLoading : false,
     }),
-    [loading, role],
+    [query.data?.isAdminClaim, query.data?.isBueroleitungClaim, query.data?.role, query.isLoading, userId],
   );
 }
