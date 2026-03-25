@@ -343,9 +343,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
               <div className="flex-1 overflow-auto bg-muted/50 p-6">
                 <div style={{ transform: `scale(${previewZoom})`, transformOrigin: 'top center', marginBottom: `${(previewZoom - 1) * 297}mm` }}>
                   <div className="mx-auto" style={{ width: '210mm', boxShadow: '0 4px 24px rgba(0,0,0,0.12)' }}>
-                    <DIN5008LetterLayout template={currentTemplate} senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}
-                      informationBlock={informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id))}
-                      recipientAddress={editedLetter.recipient_address ? { name: editedLetter.recipient_name, address: editedLetter.recipient_address } : null}
+                    <DIN5008LetterLayout template={currentTemplate ?? undefined} senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}
+                      informationBlock={informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id)) ? [informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id))!] : undefined}
+                      recipientAddress={editedLetter.recipient_address ? { name: editedLetter.recipient_name, address: editedLetter.recipient_address } as any : undefined}
                       subject={editedLetter.subject} letterDate={editedLetter.letter_date} referenceNumber={editedLetter.reference_number}
                       content={editedLetter.content_html || editedLetter.content || ''} attachments={attachments} showPagination={showPagination} debugMode={showLayoutDebug}
                       salutation={editedLetter.salutation_override || computedSalutation} layoutSettings={getLayoutSettings()}
