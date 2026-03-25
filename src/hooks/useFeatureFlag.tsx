@@ -1,75 +1,89 @@
-import { useState, useEffect } from 'react';
-import { debugConsole } from '@/utils/debugConsole';
+import React, { useState, useEffect } from "react";
+import { debugConsole } from "@/utils/debugConsole";
 
 export type FeatureFlags = {
   useReactBigCalendar: boolean;
   // Add more feature flags as needed
 };
 
+export type FeatureFlagName = keyof FeatureFlags;
+export type ToggleFeatureFlag = (flagName: FeatureFlagName) => void;
+export type SetFeatureFlag = (flagName: FeatureFlagName, value: boolean) => void;
+export type IsFeatureFlagEnabled = (flagName: FeatureFlagName) => boolean;
+
+export interface UseFeatureFlagResult {
+  flags: FeatureFlags;
+  toggleFlag: ToggleFeatureFlag;
+  setFlag: SetFeatureFlag;
+  isEnabled: IsFeatureFlagEnabled;
+}
+
 const DEFAULT_FLAGS: FeatureFlags = {
   useReactBigCalendar: true,
 };
 
 const isFeatureFlags = (value: unknown): value is Partial<FeatureFlags> => {
-  if (!value || typeof value !== 'object') return false;
+  if (!value || typeof value !== "object") return false;
   const candidate = value as Record<string, unknown>;
-  return Object.entries(candidate).every(([key, entryValue]) => key in DEFAULT_FLAGS && typeof entryValue === 'boolean');
+  return Object.entries(candidate).every(([key, entryValue]) => key in DEFAULT_FLAGS && typeof entryValue === "boolean");
 };
 
 /**
  * Hook for managing feature flags
  * In production, this could be connected to a feature flag service
  */
-export function useFeatureFlag() {
+export function useFeatureFlag(): UseFeatureFlagResult {
   const [flags, setFlags] = useState<FeatureFlags>(DEFAULT_FLAGS);
 
   useEffect(() => {
     // Load feature flags from localStorage for development
-    const savedFlags = localStorage.getItem('featureFlags');
+    const savedFlags = localStorage.getItem("featureFlags");
     if (savedFlags) {
       try {
         const parsedFlags: unknown = JSON.parse(savedFlags);
         if (isFeatureFlags(parsedFlags)) {
-          setFlags(prevFlags => ({ ...prevFlags, ...parsedFlags }));
+          setFlags((prevFlags: FeatureFlags) => ({ ...prevFlags, ...parsedFlags }));
         } else {
-          debugConsole.warn('Invalid feature flags in localStorage:', parsedFlags);
+          debugConsole.warn("Invalid feature flags in localStorage:", parsedFlags);
         }
-      } catch (error) {
-        debugConsole.warn('Failed to parse feature flags from localStorage:', error);
+      } catch (error: unknown) {
+        debugConsole.warn("Failed to parse feature flags from localStorage:", error);
       }
     }
   }, []);
 
-  const toggleFlag = (flagName: keyof FeatureFlags) => {
+  const toggleFlag: ToggleFeatureFlag = (flagName) => {
     const newFlags = {
       ...flags,
-      [flagName]: !flags[flagName]
+      [flagName]: !flags[flagName],
     };
     setFlags(newFlags);
-    localStorage.setItem('featureFlags', JSON.stringify(newFlags));
+    localStorage.setItem("featureFlags", JSON.stringify(newFlags));
   };
 
-  const setFlag = (flagName: keyof FeatureFlags, value: boolean) => {
+  const setFlag: SetFeatureFlag = (flagName, value) => {
     const newFlags = {
       ...flags,
-      [flagName]: value
+      [flagName]: value,
     };
     setFlags(newFlags);
-    localStorage.setItem('featureFlags', JSON.stringify(newFlags));
+    localStorage.setItem("featureFlags", JSON.stringify(newFlags));
   };
+
+  const isEnabled: IsFeatureFlagEnabled = (flagName) => flags[flagName];
 
   return {
     flags,
     toggleFlag,
     setFlag,
-    isEnabled: (flagName: keyof FeatureFlags) => flags[flagName]
+    isEnabled,
   };
 }
 
 /**
  * Development component to toggle feature flags
  */
-export function FeatureFlagToggle() {
+export function FeatureFlagToggle(): React.JSX.Element {
   const { flags, toggleFlag } = useFeatureFlag();
 
   // Show in all environments for now to allow testing
@@ -86,12 +100,12 @@ export function FeatureFlagToggle() {
           <input
             type="checkbox"
             checked={flags.useReactBigCalendar}
-            onChange={() => toggleFlag('useReactBigCalendar')}
+            onChange={() => toggleFlag("useReactBigCalendar")}
             className="rounded border-border focus:ring-primary focus:ring-2"
           />
         </label>
         <div className="text-xs text-muted-foreground">
-          {flags.useReactBigCalendar ? '✅ React Big Calendar aktiv' : '⚪ Fallback Kalender aktiv'}
+          {flags.useReactBigCalendar ? "✅ React Big Calendar aktiv" : "⚪ Fallback Kalender aktiv"}
         </div>
       </div>
     </div>

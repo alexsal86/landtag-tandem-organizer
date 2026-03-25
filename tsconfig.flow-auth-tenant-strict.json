@@ -11,6 +11,7 @@
     "src/components/account/ActiveSessionsCard.tsx",
     "src/components/administration/SuperadminTenantManagement.tsx",
     "src/pages/Administration.tsx",
-    "src/pages/Index.tsx"
+    "src/pages/Index.tsx",
+    "src/hooks/useFeatureFlag.tsx"
   ]
 }

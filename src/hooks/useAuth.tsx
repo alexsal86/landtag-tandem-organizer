@@ -1,13 +1,9 @@
 import React, { useState, useEffect, createContext, useContext } from "react";
 import type {
+  AuthChangeEvent,
   Session,
   User,
 } from "@supabase/supabase-js";
-
-type AuthChangeEvent = string;
-type AuthResponse = any;
-type AuthTokenResponsePassword = any;
-type Subscription = { unsubscribe: () => void };
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { logAuditEvent, AuditActions } from "@/hooks/useAuditLog";
@@ -21,9 +17,36 @@ interface AuthContextType {
 }
 
 type UserSessionRow = Pick<Database["public"]["Tables"]["user_sessions"]["Row"], "id">;
-type SessionResult = AuthResponse;
+
+type OnAuthStateChangeCallback = (event: AuthChangeEvent, session: Session | null) => void;
+type GetSessionResult = { data: { session: Session | null }; error: unknown | null };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const isUserSessionRow = (value: unknown): value is UserSessionRow => {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as Partial<UserSessionRow>;
+  return typeof candidate.id === "string";
+};
+
+const normalizeSessionRows = (value: unknown): UserSessionRow[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter(isUserSessionRow);
+};
+
+const normalizeLatestSession = (rows: UserSessionRow[]): UserSessionRow | null => {
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return rows[0] ?? null;
+};
 
 const trackSession = async (userId: string): Promise<void> => {
   try {
@@ -39,7 +62,7 @@ const trackSession = async (userId: string): Promise<void> => {
       throw clearExistingError;
     }
 
-    const { data: existing, error: existingError } = await supabase
+    const { data: existingRows, error: existingError } = await supabase
       .from("user_sessions")
       .select("id")
       .eq("user_id", userId)
@@ -52,13 +75,14 @@ const trackSession = async (userId: string): Promise<void> => {
       throw existingError;
     }
 
-    const latestSessionId = existing?.[0]?.id;
+    const sessionRows = normalizeSessionRows(existingRows);
+    const latestSession = normalizeLatestSession(sessionRows);
 
-    if (latestSessionId) {
+    if (latestSession) {
       const { error: updateError } = await supabase
         .from("user_sessions")
         .update({ last_active_at: new Date().toISOString(), is_current: true })
-        .eq("id", latestSessionId);
+        .eq("id", latestSession.id);
 
       if (updateError) {
         throw updateError;
@@ -90,7 +114,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }): React
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect((): (() => void) => {
-    const handleAuthStateChange = (event: AuthChangeEvent, nextSession: Session | null): void => {
+    const handleAuthStateChange: OnAuthStateChangeCallback = (event, nextSession) => {
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       setLoading(false);
@@ -107,9 +131,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }): React
 
     const {
       data: { subscription },
-    }: { data: { subscription: Subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
+    } = supabase.auth.onAuthStateChange(handleAuthStateChange);
 
-    void supabase.auth.getSession().then(({ data, error }: SessionResult): void => {
+    void supabase.auth.getSession().then((result: GetSessionResult): void => {
+      const { data, error } = result;
       if (error) {
         debugConsole.error("Error loading initial session:", error);
         setSession(null);
@@ -167,7 +192,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }): React
       }
     }
 
-    const { error: signOutError }: { error: AuthTokenResponsePassword["error"] } = await supabase.auth.signOut({ scope: "local" });
+    const { error: signOutError } = await supabase.auth.signOut({ scope: "local" });
     if (signOutError) {
       throw signOutError;
     }

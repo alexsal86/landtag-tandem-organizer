@@ -13,6 +13,10 @@ export type UserTenantMembership = UserTenantMembershipRow & {
   tenant?: Tenant | null;
 };
 
+type MembershipWithTenantQueryRow = UserTenantMembershipRow & {
+  tenant: Database["public"]["Tables"]["tenants"]["Row"] | null;
+};
+
 interface TenantContextType {
   tenants: Tenant[];
   currentTenant: Tenant | null;
@@ -23,6 +27,31 @@ interface TenantContextType {
 }
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
+
+const isMembershipWithTenant = (value: unknown): value is MembershipWithTenantQueryRow => {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as Partial<MembershipWithTenantQueryRow>;
+  return typeof candidate.id === "string" && "tenant" in candidate;
+};
+
+const normalizeMembershipData = (value: unknown): UserTenantMembership[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter(isMembershipWithTenant).map((membership) => ({
+    ...membership,
+    tenant: membership.tenant
+      ? {
+          ...membership.tenant,
+          settings: membership.tenant.settings ?? {},
+        }
+      : null,
+  }));
+};
 
 const isTenant = (tenant: UserTenantMembership["tenant"]): tenant is Tenant => {
   return tenant !== null && tenant !== undefined;
@@ -74,26 +103,22 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
         return;
       }
 
-      const membershipsWithTenants = membershipData ?? [];
+      const membershipsWithTenants = normalizeMembershipData(membershipData);
       debugConsole.log("🏢 Tenant memberships:", membershipsWithTenants);
 
       const tenantsData = membershipsWithTenants
-        .map((membership: UserTenantMembership) => membership.tenant)
-        .filter(isTenant)
-        .map((tenant: Tenant) => ({
-          ...tenant,
-          settings: tenant.settings ?? {},
-        }));
+        .map((membership) => membership.tenant)
+        .filter(isTenant);
 
       setMemberships(membershipsWithTenants);
       setTenants(tenantsData);
-      debugConsole.log("🏢 Available tenants for user:", tenantsData.map((tenant: Tenant) => tenant.name));
+      debugConsole.log("🏢 Available tenants for user:", tenantsData.map((tenant) => tenant.name));
 
       const savedTenantId = localStorage.getItem(tenantStorageKey);
       let currentTenantToSet: Tenant | null = null;
 
       if (savedTenantId) {
-        currentTenantToSet = tenantsData.find((tenant: Tenant) => tenant.id === savedTenantId) ?? null;
+        currentTenantToSet = tenantsData.find((tenant) => tenant.id === savedTenantId) ?? null;
 
         if (currentTenantToSet) {
           debugConsole.log("🏢 Restored tenant from localStorage:", currentTenantToSet.name);
