@@ -1308,6 +1308,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
     visibleOrNewEvents.forEach(event => {
       if (event.isEncrypted()) {
         try {
+          // @ts-expect-error matrix-js-sdk CryptoApi vs CryptoBackend mismatch
           event.attemptDecryption(mc.getCrypto()).catch(() => {});
         } catch {}
       }
