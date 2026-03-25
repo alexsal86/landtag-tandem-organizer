@@ -22,7 +22,7 @@ import { ThemeProvider } from "next-themes";
 import { Navigation } from "@/components/Navigation";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { ImageCropper } from "@/components/ui/ImageCropper";
-import type { EditableContact } from "@/types/contact";
+import type { ContactCategory, ContactPriority, EditableContact } from "@/types/contact";
 
 const createEmptyContact = (): EditableContact => ({
   id: "",
@@ -467,8 +467,8 @@ export default function EditContact() {
                           <Label htmlFor="category">Kategorie</Label>
                           <Select
                             value={contact.category ?? undefined}
-                            onValueChange={(value: any) =>
-                              setContact({ ...contact, category: value })
+                            onValueChange={(value) =>
+                              setContact({ ...contact, category: value as ContactCategory })
                             }
                           >
                             <SelectTrigger>
@@ -489,8 +489,8 @@ export default function EditContact() {
                           <Label htmlFor="priority">Priorität</Label>
                           <Select
                             value={contact.priority ?? undefined}
-                            onValueChange={(value: any) =>
-                              setContact({ ...contact, priority: value })
+                            onValueChange={(value) =>
+                              setContact({ ...contact, priority: value as ContactPriority })
                             }
                           >
                             <SelectTrigger>

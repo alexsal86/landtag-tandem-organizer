@@ -36,7 +36,14 @@ export default function DecisionResponse() {
   const [error, setError] = useState<string | null>(null);
   const [comment, setComment] = useState("");
   const [selectedOption, setSelectedOption] = useState<ResponseOption | null>(null);
-  const [result, setResult] = useState<any>(null);
+  type DecisionResponseResult = {
+    selectedOption: ResponseOption;
+    participantName?: string;
+    decisionTitle?: string;
+    responseType?: string;
+    commentAdded?: boolean;
+  };
+  const [result, setResult] = useState<DecisionResponseResult | null>(null);
   const [responseOptions, setResponseOptions] = useState<ResponseOption[]>(getDefaultOptions());
 
   useEffect(() => {
@@ -118,9 +125,9 @@ export default function DecisionResponse() {
 
       setResult({ ...data, selectedOption: option });
       setIsSubmitted(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       debugConsole.error('Error submitting response:', err);
-      setError(err.message || "Fehler beim Speichern der Antwort");
+      setError(err instanceof Error ? err.message : "Fehler beim Speichern der Antwort");
     } finally {
       setIsLoading(false);
     }
@@ -144,9 +151,9 @@ export default function DecisionResponse() {
 
       setResult({ ...result, commentAdded: true });
       setComment("");
-    } catch (err: any) {
+    } catch (err: unknown) {
       debugConsole.error('Error adding comment:', err);
-      setError(err.message || "Fehler beim Speichern des Kommentars");
+      setError(err instanceof Error ? err.message : "Fehler beim Speichern des Kommentars");
     } finally {
       setIsLoading(false);
     }

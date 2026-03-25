@@ -41,6 +41,7 @@ interface UnifiedTimelineItem {
   title: string;
   description: string | null;
   source_type?: string | null;
+  // INTEROP-ANY(TS-4826, Cases-Timeline, 2026-04-22): metadata is sourced from heterogeneous legacy timeline emitters.
   meta?: Record<string, any>;
   created_by_name?: string | null;
 }
@@ -115,6 +116,7 @@ export function CaseFileUnifiedTimeline({
         category: "task" as const,
         event_date: t.created_at,
         title: `Aufgabe: ${t.task?.title || "Aufgabe"}`,
+        // INTEROP-ANY(TS-4826, Cases-Timeline, 2026-04-22): task projection lacks stable description typing in joined payload.
         description: (t.task as any)?.description || null,
         meta: { status: t.task?.status, priority: t.task?.priority },
       })),

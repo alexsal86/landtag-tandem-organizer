@@ -4,8 +4,24 @@ import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { buildFooterBlocksFromStored, resolveBlockWidthMm } from '@/components/letters/footerBlockUtils';
 import { debugConsole } from '@/utils/debugConsole';
+import type { FooterLineBlock } from '@/components/letters/footerBlockUtils';
+import type { BlockLine } from '@/components/letters/BlockLineEditor';
 import type { DbInformationBlock, DbLetterAttachment, DbSenderInformation, HeaderImagePosition, InformationBlockData, LetterPdfGenerationResult, LetterRecord, LetterTemplate } from '@/components/letter-pdf/types';
 import { DEFAULT_DIN5008_LAYOUT, isLetterLayoutSettings, type LetterLayoutSettings } from '@/types/letterLayout';
+
+type HeaderTextElement = {
+  type: 'text';
+  content: string;
+  fontSize?: number;
+  fontWeight?: string;
+  color?: string;
+  x?: number;
+  y?: number;
+};
+
+const isHeaderTextElement = (value: unknown): value is HeaderTextElement => (
+  typeof value === 'object' && value !== null && (value as { type?: unknown }).type === 'text'
+);
 
 export const generateLetterPDF = async (letter: LetterRecord): Promise<LetterPdfGenerationResult | null> => {
   try {
@@ -330,7 +346,7 @@ export const generateLetterPDF = async (letter: LetterRecord): Promise<LetterPdf
 
       const sortedBlocks = buildFooterBlocksFromStored(template.footer_blocks);
 
-      sortedBlocks.forEach((block: any) => {
+      sortedBlocks.forEach((block: FooterLineBlock) => {
         const blockWidth = resolveBlockWidthMm(block.widthUnit || 'percent', Number(block.widthValue) || 25, availableWidth);
         let blockY = footerY;
 
@@ -347,7 +363,7 @@ export const generateLetterPDF = async (letter: LetterRecord): Promise<LetterPdf
           blockY += 0.8;
         }
 
-        (block.lines || []).forEach((line: any) => {
+        (block.lines || []).forEach((line: BlockLine) => {
           if (line.type === 'spacer') {
             blockY += Math.max(0.8, Number(line.spacerHeight) || 1.2);
             return;
@@ -394,8 +410,8 @@ export const generateLetterPDF = async (letter: LetterRecord): Promise<LetterPdf
     if (template?.header_layout_type === 'structured' && template?.header_text_elements) {
       // Render text elements
       const textElements = Array.isArray(template.header_text_elements) ? template.header_text_elements : [];
-      textElements.forEach((element: any) => {
-        if (element.type === 'text' && element.content) {
+      textElements.filter(isHeaderTextElement).forEach((element) => {
+        if (element.content) {
           pdf.setFontSize(element.fontSize || 12);
           pdf.setFont('helvetica', element.fontWeight === 'bold' ? 'bold' : 'normal');
           

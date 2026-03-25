@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
-type AuthError = any;
-type MFAFactor = any;
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -16,6 +14,9 @@ import { useToast } from "@/components/ui/use-toast";
 import { useLoginCustomization } from "@/hooks/useLoginCustomization";
 import { logAuditEvent, AuditActions } from "@/hooks/useAuditLog";
 import { useFavicon } from "@/hooks/useFavicon";
+
+type AuthError = { message: string };
+type MFAFactor = { id?: string; status?: string };
 
 type VerifiedMfaFactor = MFAFactor & { status: "verified" };
 

@@ -50,6 +50,8 @@ export function CaseFileEditDialog({ caseFile, open, onOpenChange }: CaseFileEdi
   const [participantRoles, setParticipantRoles] = useState<Record<string, 'viewer' | 'editor'>>({});
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [profilesLoaded, setProfilesLoaded] = useState(false);
+  const toVisibility = (value: string): 'private' | 'shared' | 'public' =>
+    value === 'shared' || value === 'public' ? value : 'private';
 
   const getIconComponent = (iconName?: string | null): LucideIcon | null => {
     if (!iconName) return null;
@@ -72,7 +74,7 @@ export function CaseFileEditDialog({ caseFile, open, onOpenChange }: CaseFileEdi
       });
       
       // Determine visibility from the case file data
-      const vis = (caseFile as any).visibility || (caseFile.is_private ? 'private' : 'public');
+      const vis = toVisibility(caseFile.visibility || (caseFile.is_private ? 'private' : 'public'));
       setVisibility(vis);
       
       // Load existing participants
@@ -290,7 +292,7 @@ export function CaseFileEditDialog({ caseFile, open, onOpenChange }: CaseFileEdi
             {/* Visibility */}
             <div className="grid gap-3">
               <Label>Sichtbarkeit</Label>
-              <RadioGroup value={visibility} onValueChange={(v) => setVisibility(v as any)} className="gap-3">
+              <RadioGroup value={visibility} onValueChange={(v) => setVisibility(toVisibility(v))} className="gap-3">
                 <div className="flex items-center space-x-3">
                   <RadioGroupItem value="private" id="edit-vis-private" />
                   <Label htmlFor="edit-vis-private" className="flex items-center gap-2 cursor-pointer font-normal">

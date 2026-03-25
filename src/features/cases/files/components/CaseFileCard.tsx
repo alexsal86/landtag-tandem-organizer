@@ -10,6 +10,17 @@ import { icons, LucideIcon } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import type { CaseFileProcessingStatus } from "@/hooks/useCaseFileProcessingStatuses";
+
+const toProcessingStatusNames = (caseFile: CaseFile): string[] => {
+  if (Array.isArray(caseFile.processing_statuses)) {
+    return caseFile.processing_statuses.filter((entry): entry is string => typeof entry === "string");
+  }
+  if (typeof caseFile.processing_status === "string" && caseFile.processing_status.length > 0) {
+    return [caseFile.processing_status];
+  }
+  return [];
+};
 
 interface CaseFileCardProps {
   caseFile: CaseFile;
@@ -32,9 +43,9 @@ export function CaseFileCard({ caseFile, viewMode, onClick, caseFileTypes = [] }
 
   const TypeIcon = getIconComponent(typeConfig?.icon);
 
-  const activeProcessingStatuses = ((caseFile as any).processing_statuses || 
-    ((caseFile as any).processing_status ? [(caseFile as any).processing_status] : [])
-  ).map((name: string) => processingStatuses.find(s => s.name === name)).filter(Boolean);
+  const activeProcessingStatuses: CaseFileProcessingStatus[] = toProcessingStatusNames(caseFile)
+    .map((name) => processingStatuses.find((status) => status.name === name))
+    .filter((status): status is CaseFileProcessingStatus => Boolean(status));
 
   const priorityColors: Record<string, string> = {
     low: "text-gray-500",
@@ -87,7 +98,7 @@ export function CaseFileCard({ caseFile, viewMode, onClick, caseFileTypes = [] }
                   <span className="text-xs text-muted-foreground">{assignedUser.display_name}</span>
                 </div>
               )}
-              {activeProcessingStatuses.map((ps: any) => {
+              {activeProcessingStatuses.map((ps) => {
                 const PIcon = getIconComponent(ps?.icon);
                 return (
                   <Badge key={ps.name} style={{ backgroundColor: ps.color || undefined, color: '#fff' }}>
@@ -138,7 +149,7 @@ export function CaseFileCard({ caseFile, viewMode, onClick, caseFileTypes = [] }
         )}
 
         <div className="flex items-center gap-2 flex-wrap">
-          {activeProcessingStatuses.map((ps: any) => {
+          {activeProcessingStatuses.map((ps) => {
             const PIcon = getIconComponent(ps?.icon);
             return (
               <Badge key={ps.name} style={{ backgroundColor: ps.color || undefined, color: '#fff' }} className="text-xs">

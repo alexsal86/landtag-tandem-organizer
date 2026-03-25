@@ -55,6 +55,8 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess, defaultCas
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [profilesLoaded, setProfilesLoaded] = useState(false);
   const lockCaseType = entityLabel === "Dossier" && !!defaultCaseType;
+  const toVisibility = (value: string): 'private' | 'shared' | 'public' =>
+    value === 'shared' || value === 'public' ? value : 'private';
 
   useEffect(() => {
     if (!defaultCaseType) return;
@@ -268,7 +270,7 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess, defaultCas
             {/* Visibility */}
             <div className="grid gap-3">
               <Label>Sichtbarkeit</Label>
-              <RadioGroup value={visibility} onValueChange={(v) => setVisibility(v as any)} className="gap-3">
+              <RadioGroup value={visibility} onValueChange={(v) => setVisibility(toVisibility(v))} className="gap-3">
                 <div className="flex items-center space-x-3">
                   <RadioGroupItem value="private" id="vis-private" />
                   <Label htmlFor="vis-private" className="flex items-center gap-2 cursor-pointer font-normal">

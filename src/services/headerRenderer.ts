@@ -31,13 +31,20 @@ interface HeaderTemplate {
   name?: string;
 }
 
+interface LayoutSettings {
+  pageWidth: number;
+  pageHeight: number;
+  margins: { left: number; right: number; top: number; bottom: number };
+  header: { height: number; marginBottom: number };
+}
+
 export class HeaderRenderer {
   private pdf: jsPDF;
   private leftMargin: number;
-  private layoutSettings: any;
+  private layoutSettings: LayoutSettings;
   private debugMode: boolean;
 
-  constructor(pdf: jsPDF, leftMargin: number = 25, layoutSettings?: any, debugMode: boolean = false) {
+  constructor(pdf: jsPDF, leftMargin: number = 25, layoutSettings?: LayoutSettings, debugMode: boolean = false) {
     this.pdf = pdf;
     this.leftMargin = leftMargin;
     this.debugMode = debugMode;
@@ -84,7 +91,7 @@ export class HeaderRenderer {
   private async renderStructuredHeader(template: HeaderTemplate, pxToMm: number): Promise<void> {
     debugConsole.log('=== RENDERING STRUCTURED HEADER ===');
     
-    let headerElements: any[] = [];
+    let headerElements: HeaderElement[] = [];
     if (template.header_text_elements) {
       if (typeof template.header_text_elements === 'string') {
         try {

@@ -26,10 +26,19 @@ interface CaseFileAppointmentsTabProps {
   onRemove: (id: string) => Promise<boolean>;
 }
 
+type AvailableAppointment = {
+  id: string;
+  title: string;
+  start_time: string;
+  end_time: string;
+  location: string | null;
+  status: string | null;
+};
+
 export function CaseFileAppointmentsTab({ appointments, onAdd, onRemove }: CaseFileAppointmentsTabProps) {
   const { currentTenant } = useTenant();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [availableAppointments, setAvailableAppointments] = useState<any[]>([]);
+  const [availableAppointments, setAvailableAppointments] = useState<AvailableAppointment[]>([]);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,7 +58,7 @@ export function CaseFileAppointmentsTab({ appointments, onAdd, onRemove }: CaseF
       .eq('tenant_id', currentTenant.id)
       .order('start_time', { ascending: false })
       .limit(100);
-    setAvailableAppointments(data || []);
+    setAvailableAppointments((data as AvailableAppointment[] | null) || []);
   };
 
   const handleAdd = async () => {

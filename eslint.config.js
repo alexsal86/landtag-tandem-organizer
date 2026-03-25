@@ -45,9 +45,30 @@ const preparedExplicitAnyErrorScopes = {
 
 const enablePreparedExplicitAnyErrorScopes = false;
 
+const hardenedExplicitAnyErrorFiles = [
+  'src/services/headerRenderer.ts',
+  'src/utils/letterPDFGenerator.ts',
+  'src/utils/geoJsonLoader.ts',
+  'src/pages/Auth.tsx',
+  'src/pages/DecisionResponse.tsx',
+  'src/pages/LetterDetail.tsx',
+  'src/pages/ContactDetail.tsx',
+  'src/pages/CreateContact.tsx',
+  'src/pages/EditContact.tsx',
+  'src/features/cases/files/components/CaseFileCard.tsx',
+  'src/features/cases/files/components/CaseFileDetailHeader.tsx',
+  'src/features/cases/files/components/CaseFileRisksOpportunities.tsx',
+  'src/features/cases/files/components/CaseFileCreateDialog.tsx',
+  'src/features/cases/files/components/CaseFileEditDialog.tsx',
+  'src/features/cases/files/components/tabs/CaseFileLettersTab.tsx',
+  'src/features/cases/files/components/tabs/CaseFileDocumentsTab.tsx',
+  'src/features/cases/files/components/tabs/CaseFileAppointmentsTab.tsx',
+  'src/features/cases/files/components/tabs/CaseFileTasksTab.tsx',
+];
+
 const explicitAnyErrorPaths = enablePreparedExplicitAnyErrorScopes
-  ? Object.values(preparedExplicitAnyErrorScopes).flat()
-  : [];
+  ? [...Object.values(preparedExplicitAnyErrorScopes).flat(), ...hardenedExplicitAnyErrorFiles]
+  : hardenedExplicitAnyErrorFiles;
 
 export default [
   { ignores: ['dist'] },

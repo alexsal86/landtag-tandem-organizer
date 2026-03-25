@@ -27,10 +27,18 @@ interface CaseFileDocumentsTabProps {
   onRemove: (id: string) => Promise<boolean>;
 }
 
+type AvailableDocument = {
+  id: string;
+  title: string;
+  file_name: string;
+  file_type: string | null;
+  created_at: string;
+};
+
 export function CaseFileDocumentsTab({ documents, onAdd, onRemove }: CaseFileDocumentsTabProps) {
   const { currentTenant } = useTenant();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [availableDocuments, setAvailableDocuments] = useState<any[]>([]);
+  const [availableDocuments, setAvailableDocuments] = useState<AvailableDocument[]>([]);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
   const [relevance, setRelevance] = useState("supporting");
   const [notes, setNotes] = useState("");
@@ -51,7 +59,7 @@ export function CaseFileDocumentsTab({ documents, onAdd, onRemove }: CaseFileDoc
       .eq('tenant_id', currentTenant.id)
       .order('created_at', { ascending: false })
       .limit(100);
-    setAvailableDocuments(data || []);
+    setAvailableDocuments((data as AvailableDocument[] | null) || []);
   };
 
   const handleAdd = async () => {

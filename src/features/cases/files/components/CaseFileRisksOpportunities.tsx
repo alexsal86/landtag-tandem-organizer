@@ -10,7 +10,7 @@ interface CaseFileRisksOpportunitiesProps {
   onUpdate: (data: { risks: string[]; opportunities: string[] }) => Promise<boolean>;
 }
 
-function parseRisksOpportunities(data: any): { risks: string[]; opportunities: string[] } {
+function parseRisksOpportunities(data: unknown): { risks: string[]; opportunities: string[] } {
   if (!data) return { risks: [], opportunities: [] };
   if (typeof data === "string") {
     try {
@@ -19,9 +19,13 @@ function parseRisksOpportunities(data: any): { risks: string[]; opportunities: s
       return { risks: [], opportunities: [] };
     }
   }
+  if (typeof data !== "object" || data === null) {
+    return { risks: [], opportunities: [] };
+  }
+  const candidate = data as { risks?: unknown; opportunities?: unknown };
   return {
-    risks: Array.isArray(data.risks) ? data.risks : [],
-    opportunities: Array.isArray(data.opportunities) ? data.opportunities : [],
+    risks: Array.isArray(candidate.risks) ? candidate.risks.filter((item): item is string => typeof item === "string") : [],
+    opportunities: Array.isArray(candidate.opportunities) ? candidate.opportunities.filter((item): item is string => typeof item === "string") : [],
   };
 }
 

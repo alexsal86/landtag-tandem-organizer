@@ -107,6 +107,7 @@ export function CaseFileNextSteps({
 
     // Find the dedicated parent task for this case file title
     const parentLink = (existingLinks || []).find(
+      // INTEROP-ANY(TS-4827, Cases-NextSteps, 2026-04-22): joined link rows still come from partially typed query payload.
       (link: any) =>
         link.task &&
         !link.task.parent_task_id &&
@@ -246,6 +247,7 @@ export function CaseFileNextSteps({
                 <p className="text-sm leading-tight truncate">
                   {item.task?.title}
                 </p>
+                {/* INTEROP-ANY(TS-4827, Cases-NextSteps, 2026-04-22): task join is still partially typed. */}
                 {(item.task as any)?.description && (
                   <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
                     {(item.task as any).description}

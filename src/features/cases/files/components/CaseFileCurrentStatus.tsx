@@ -36,6 +36,7 @@ export function CaseFileCurrentStatus({ caseFile, onUpdate, onUpdateProcessingSt
   const [history, setHistory] = useState<StatusHistoryEntry[]>([]);
   const { statuses: processingStatuses } = useCaseFileProcessingStatuses();
 
+  // INTEROP-ANY(TS-4828, Cases-CurrentStatus, 2026-04-22): status JSONB shape is not fully normalized yet.
   const currentProcessingStatuses: string[] = (caseFile as any).processing_statuses || 
     ((caseFile as any).processing_status ? [(caseFile as any).processing_status] : []);
 

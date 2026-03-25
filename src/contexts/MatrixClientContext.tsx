@@ -863,11 +863,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
         if (uiaPassword) {
           try {
             const localpart = creds.userId.split(':')[0].substring(1);
-            type UploadAuthRequest = (authData: {
-              type: 'm.login.password';
-              identifier: { type: 'm.id.user'; user: string };
-              password: string;
-            }) => Promise<unknown>;
+            // INTEROP-ANY(TS-4821, Matrix-Flow, 2026-04-22): matrix-js-sdk UIA callbacks/listeners are currently weakly typed.
             await crypto.bootstrapCrossSigning({
               authUploadDeviceSigningKeys: async (makeRequest: UploadAuthRequest) => {
                 await makeRequest({
@@ -1095,8 +1091,9 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
 
       // Attach all listeners
       matrixClient.on(sdk.ClientEvent.Sync, onSync);
-      matrixClient.on(sdk.RoomEvent.Timeline, onTimeline as (...args: unknown[]) => void);
-      matrixClient.on(sdk.RoomMemberEvent.Typing, onTyping as (...args: unknown[]) => void);
+      // INTEROP-ANY(TS-4821, Matrix-Flow, 2026-04-22): SDK event emitter signatures are not strongly typed for these events.
+      matrixClient.on(sdk.RoomEvent.Timeline, onTimeline as any);
+      matrixClient.on(sdk.RoomMemberEvent.Typing, onTyping as any);
       matrixClient.on(sdk.MatrixEventEvent.Decrypted, onDecrypted);
       matrixClient.on(CryptoEvent.VerificationRequestReceived, onVerificationRequestReceived);
 
@@ -1449,7 +1446,8 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
       }
     }
 
-    await mc.sendMessage(roomId, content);
+    // INTEROP-ANY(TS-4821, Matrix-Flow, 2026-04-22): Matrix message content union requires incremental adapter hardening.
+    await mc.sendMessage(roomId, content as any);
   }, []);
 
   // ─── sendTypingNotification ──────────────────────────────────────────────

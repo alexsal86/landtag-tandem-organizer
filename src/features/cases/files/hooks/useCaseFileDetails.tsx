@@ -728,6 +728,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     if (!user) return false;
     const { error } = await supabase
       .from("case_item_interactions")
+      // INTEROP-ANY(TS-4829, Cases-DetailsHook, 2026-04-22): insert payload spans polymorphic interaction source variants.
       .insert([{ ...interaction, created_by: user.id }] as any);
 
     if (error) {
