@@ -176,7 +176,7 @@ const toPdfTextBlock = (block: FooterLineBlock, availableWidthMm: number, startX
   const typography = toFooterBlockTypographyContract(block);
   const titleFontSizeRaw = typography.titleFontSize;
   const titleWeightRaw: PdfFontWeight = typography.titleFontWeight;
-  const titleColorRaw = typography.titleColor ? parseHexColor(typography.titleColor, [16, 112, 48]) : [16, 112, 48];
+  const titleColorRaw: [number, number, number] = typography.titleColor ? parseHexColor(typography.titleColor, [16, 112, 48]) : [16, 112, 48];
 
   return {
     id: block.id,
@@ -185,7 +185,7 @@ const toPdfTextBlock = (block: FooterLineBlock, availableWidthMm: number, startX
     titleFont: {
       size: Math.max(8, Math.min(20, titleFontSizeRaw)),
       weight: titleWeightRaw,
-      color: titleColorRaw,
+      color: titleColorRaw as [number, number, number],
     },
     origin: { x: startX, y: startY },
     widthMm: blockWidth,
