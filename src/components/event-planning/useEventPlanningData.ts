@@ -43,7 +43,7 @@ interface ContactOptionDto {
 interface ItemActionDto {
   id: string;
   checklist_item_id: string;
-  action_type: 'email' | 'social_planner' | 'rsvp';
+  action_type: 'email' | 'social_planner' | 'rsvp' | 'social_media';
   [key: string]: unknown;
 }
 
