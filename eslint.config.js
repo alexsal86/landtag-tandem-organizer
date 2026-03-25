@@ -35,6 +35,13 @@ const strictFlowRules = {
   '@typescript-eslint/no-unsafe-call': 'warn',
 };
 
+const explicitAnyErrorPaths = [
+  'src/hooks/**/*.{ts,tsx}',
+  'src/utils/**/*.{ts,tsx}',
+  'src/services/**/*.{ts,tsx}',
+  'src/features/**/*.{ts,tsx}',
+];
+
 export default [
   { ignores: ['dist'] },
   {
@@ -77,5 +84,11 @@ export default [
       },
     },
     rules: strictFlowRules,
+  },
+  {
+    files: explicitAnyErrorPaths,
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'error',
+    },
   },
 ];

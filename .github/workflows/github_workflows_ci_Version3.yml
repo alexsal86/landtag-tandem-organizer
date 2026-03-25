@@ -135,6 +135,8 @@ jobs:
 
       - name: "Any-Delta PR-Gate (nicht steigend)"
         if: github.event_name == 'pull_request'
+        env:
+          ANY_INCREASE_EXCEPTION_REASON: ${{ github.event.pull_request.body }}
         run: |
           set -euo pipefail
           git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
@@ -142,16 +144,34 @@ jobs:
           BASE_TOTAL=$(node scripts/report-any-usage.mjs --ref="origin/${{ github.base_ref }}" --total-only)
           HEAD_TOTAL=$(node scripts/report-any-usage.mjs --total-only)
           DELTA=$((HEAD_TOTAL - BASE_TOTAL))
+          HAS_EXCEPTION=0
+
+          if echo "${ANY_INCREASE_EXCEPTION_REASON}" | rg -qi 'any-increase-exception:\\s*.+|any increase exception:\\s*.+'; then
+            HAS_EXCEPTION=1
+          fi
 
           {
             echo "### Any-Delta pro PR"
             echo "- Base (origin/${{ github.base_ref }}): ${BASE_TOTAL}"
             echo "- Head (aktueller PR): ${HEAD_TOTAL}"
             echo "- Delta: ${DELTA}"
+            if [ "$HAS_EXCEPTION" -eq 1 ]; then
+              echo "- Ausnahmebegründung: ✅ vorhanden (PR-Body Marker: \`ANY-INCREASE-EXCEPTION:\`)"
+            else
+              echo "- Ausnahmebegründung: ❌ nicht vorhanden"
+            fi
+            echo ""
+            echo "### Any-Cluster (Head)"
+            node scripts/report-any-usage.mjs --cluster-summary | sed '1d'
           } >> "$GITHUB_STEP_SUMMARY"
 
           if [ "$DELTA" -gt 0 ]; then
+            if [ "$HAS_EXCEPTION" -eq 1 ]; then
+              echo "Warnung: Any-Zähler ist um ${DELTA} gestiegen, aber eine Ausnahmebegründung wurde angegeben."
+              exit 0
+            fi
             echo "Fehler: Der Any-Zähler ist um ${DELTA} gestiegen."
+            echo "Bitte im PR-Body eine Begründung mit 'ANY-INCREASE-EXCEPTION: <Begründung>' ergänzen."
             exit 1
           fi
 
