@@ -8,7 +8,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { buildVariableMap, substituteBlockLines, substituteVariables, isLineMode } from '@/lib/letterVariables';
 import type { BlockLine } from '@/components/letters/BlockLineEditor';
 import { getLetterAssetPublicUrl } from '@/components/letters/letterAssetUrls';
+import { DEFAULT_DIN5008_LAYOUT, isLetterLayoutSettings, type LetterLayoutSettings } from '@/types/letterLayout';
+import { isRecord } from '@/utils/typeSafety';
 import type { Letter, LetterTemplate, DbContact } from './types';
+import type { FooterLineBlock } from '@/components/letters/footerBlockUtils';
 
 // DIN 5008 measurements in mm
 const PAGE_WIDTH = 210;
@@ -26,6 +29,67 @@ const INFO_BLOCK_WIDTH = 75;
 const CONTENT_TOP = 98.46;
 const FOOTER_TOP = 272;
 const PAGINATION_GAP = 4.23;
+
+type PdfFontWeight = 'normal' | 'bold';
+
+interface Coordinates {
+  x: number;
+  y: number;
+}
+
+interface FontSettings {
+  size: number;
+  weight: PdfFontWeight;
+  color: [number, number, number];
+}
+
+interface SpacingSettings {
+  lineHeight: number;
+}
+
+interface TextBlock {
+  id: string;
+  title?: string;
+  titleHighlight?: boolean;
+  titleFont?: FontSettings;
+  origin: Coordinates;
+  widthMm: number;
+  lines: string[];
+  font: FontSettings;
+  spacing: SpacingSettings;
+}
+
+interface PageMetrics {
+  widthMm: number;
+  heightMm: number;
+  margins: {
+    leftMm: number;
+    rightMm: number;
+  };
+  footerTopMm: number;
+  contentTopMm: number;
+  paginationGapMm: number;
+}
+
+interface FoldHoleMarks {
+  enabled: boolean;
+  left: number;
+  strokeWidthPt: number;
+  foldMarkWidth: number;
+  holeMarkWidth: number;
+  topMarkY: number;
+  holeMarkY: number;
+  bottomMarkY: number;
+}
+
+const DEFAULT_PAGE_METRICS: PageMetrics = {
+  widthMm: PAGE_WIDTH,
+  heightMm: PAGE_HEIGHT,
+  margins: { leftMm: LEFT_MARGIN, rightMm: RIGHT_MARGIN },
+  footerTopMm: FOOTER_TOP,
+  contentTopMm: CONTENT_TOP,
+  paginationGapMm: PAGINATION_GAP,
+};
 
 export function convertHtmlToText(html: string): string {
   const temp = document.createElement('div');
@@ -55,6 +119,98 @@ export function convertHtmlToText(html: string): string {
   
   return processElement(temp).replace(/\n{3,}/g, '\n\n').trim();
 }
+
+const parseHexColor = (hexColor: string, fallback: [number, number, number] = [0, 0, 0]): [number, number, number] => {
+  if (!hexColor.startsWith('#')) return fallback;
+  const hex = hexColor.slice(1);
+  if (hex.length !== 6) return fallback;
+
+  const r = Number.parseInt(hex.slice(0, 2), 16);
+  const g = Number.parseInt(hex.slice(2, 4), 16);
+  const b = Number.parseInt(hex.slice(4, 6), 16);
+  if ([r, g, b].some((channel) => Number.isNaN(channel))) return fallback;
+  return [r, g, b];
+};
+
+const toLayoutSettings = (rawLayout: unknown): LetterLayoutSettings => (
+  isLetterLayoutSettings(rawLayout) ? rawLayout : DEFAULT_DIN5008_LAYOUT
+);
+
+const toFoldHoleMarks = (value: unknown): FoldHoleMarks | null => {
+  if (!isRecord(value) || value.enabled !== true) return null;
+  const marks = value as Partial<FoldHoleMarks>;
+  if (typeof marks.left !== 'number' || typeof marks.strokeWidthPt !== 'number') return null;
+  if (typeof marks.foldMarkWidth !== 'number' || typeof marks.holeMarkWidth !== 'number') return null;
+  if (typeof marks.topMarkY !== 'number' || typeof marks.holeMarkY !== 'number' || typeof marks.bottomMarkY !== 'number') return null;
+  return {
+    enabled: true,
+    left: marks.left,
+    strokeWidthPt: marks.strokeWidthPt,
+    foldMarkWidth: marks.foldMarkWidth,
+    holeMarkWidth: marks.holeMarkWidth,
+    topMarkY: marks.topMarkY,
+    holeMarkY: marks.holeMarkY,
+    bottomMarkY: marks.bottomMarkY,
+  };
+};
+
+const toPdfTextBlock = (block: FooterLineBlock, availableWidthMm: number, startX: number, startY: number): TextBlock | null => {
+  const blockRecord = block as FooterLineBlock & Record<string, unknown>;
+  const lines = block.lines
+    .map((line) => line.type === 'spacer'
+      ? ''
+      : line.type === 'label-value'
+        ? `${line.label || ''} ${line.value || ''}`.trim()
+        : (line.value || '')
+    );
+
+  const hasText = lines.some((line) => line.trim().length > 0);
+  if (!hasText) return null;
+
+  const titleLine = block.lines.find((line) => line.type === 'block-start')?.label || block.title;
+  const baseFontSize = Math.max(6, Math.min(14, block.lines.find((line) => typeof line.fontSize === 'number')?.fontSize || 8));
+  const lineHeight = baseFontSize * 0.4;
+  const blockWidth = resolveBlockWidthMm(block.widthUnit || 'percent', Number(block.widthValue) || 25, availableWidthMm);
+  const baseColor = parseHexColor(block.lines.find((line) => typeof line.color === 'string')?.color || '#000000');
+  const baseWeight: PdfFontWeight = block.lines.some((line) => line.valueBold === true) ? 'bold' : 'normal';
+
+  const titleFontSizeRaw = typeof blockRecord.titleFontSize === 'number' ? blockRecord.titleFontSize : 13;
+  const titleWeightRaw: PdfFontWeight = blockRecord.titleFontWeight === 'normal' ? 'normal' : 'bold';
+  const titleColorRaw = typeof blockRecord.titleColor === 'string' ? parseHexColor(blockRecord.titleColor, [16, 112, 48]) : [16, 112, 48];
+
+  return {
+    id: block.id,
+    title: titleLine || undefined,
+    titleHighlight: blockRecord.titleHighlight === true,
+    titleFont: {
+      size: Math.max(8, Math.min(20, titleFontSizeRaw)),
+      weight: titleWeightRaw,
+      color: titleColorRaw,
+    },
+    origin: { x: startX, y: startY },
+    widthMm: blockWidth,
+    lines,
+    font: {
+      size: baseFontSize,
+      weight: baseWeight,
+      color: baseColor,
+    },
+    spacing: {
+      lineHeight,
+    },
+  };
+};
+
+const getStringValue = (record: Record<string, unknown> | null | undefined, key: string): string | undefined => {
+  if (!record) return undefined;
+  const value = record[key];
+  return typeof value === 'string' ? value : undefined;
+};
+
+const getBooleanValue = (record: Record<string, unknown> | null | undefined, key: string): boolean => {
+  if (!record) return false;
+  return record[key] === true;
+};
 
 function drawDebugGuides(pdf: jsPDF, pageNum: number) {
   pdf.setLineWidth(0.2);
@@ -147,62 +303,29 @@ function renderFooterBlocks(pdf: jsPDF, template: LetterTemplate | null) {
   let currentX = LEFT_MARGIN;
   
   const sortedBlocks = buildFooterBlocksFromStored(template.footer_blocks);
-  
-  sortedBlocks.forEach((block: any) => {
-    const blockContent = Array.isArray(block.lines)
-      ? block.lines.map((line: any) => line.type === 'spacer' ? '' : (line.type === 'label-value' ? `${line.label || ''} ${line.value || ''}`.trim() : (line.value || ''))).join('\n')
-      : (block.content || '');
-    if (!blockContent) return;
-    
-    const blockWidth = resolveBlockWidthMm(block.widthUnit || 'percent', Number(block.widthValue) || 25, availableWidth);
-    const fontSize = Math.max(6, Math.min(14, block.fontSize || 8));
-    const lineHeightMultiplier = block.lineHeight || 0.8;
-    const lineHeight = lineHeightMultiplier <= 0.8 ? fontSize * 0.4 : fontSize * lineHeightMultiplier * 0.5;
+
+  sortedBlocks.forEach((block) => {
+    const textBlock = toPdfTextBlock(block, availableWidth, currentX, footerY);
+    if (!textBlock) return;
+
+    const blockWidth = textBlock.widthMm;
+    const fontSize = textBlock.font.size;
+    const lineHeight = textBlock.spacing.lineHeight;
     pdf.setFontSize(fontSize);
-    
-    const fontWeight = block.fontWeight === 'bold' ? 'bold' : 'normal';
-    pdf.setFont('helvetica', fontWeight);
-    
-    if (block.color && block.color.startsWith('#')) {
-      try {
-        const hex = block.color.substring(1);
-        const r = parseInt(hex.substr(0, 2), 16);
-        const g = parseInt(hex.substr(2, 2), 16);
-        const b = parseInt(hex.substr(4, 2), 16);
-        pdf.setTextColor(r, g, b);
-      } catch (e) {
-        pdf.setTextColor(0, 0, 0);
-      }
-    } else {
-      pdf.setTextColor(0, 0, 0);
-    }
-    
-    let blockY = footerY;
-    
-    if (block.title) {
-      if (block.titleHighlight) {
-        const titleFontSize = Math.max(8, Math.min(20, block.titleFontSize || 13));
-        const titleFontWeight = block.titleFontWeight || 'bold';
-        const titleColor = block.titleColor || '#107030';
-        
+    pdf.setFont('helvetica', textBlock.font.weight);
+    pdf.setTextColor(...textBlock.font.color);
+
+    let blockY = textBlock.origin.y;
+
+    if (textBlock.title) {
+      if (textBlock.titleHighlight) {
+        const titleFontSize = Math.max(8, Math.min(20, textBlock.titleFont?.size || 13));
+        const titleFontWeight = textBlock.titleFont?.weight || 'bold';
+        const titleColor = textBlock.titleFont?.color || [16, 112, 48];
         pdf.setFont('helvetica', titleFontWeight);
         pdf.setFontSize(titleFontSize);
-        
-        if (titleColor.startsWith('#')) {
-          try {
-            const hex = titleColor.substring(1);
-            const r = parseInt(hex.substr(0, 2), 16);
-            const g = parseInt(hex.substr(2, 2), 16);
-            const b = parseInt(hex.substr(4, 2), 16);
-            pdf.setTextColor(r, g, b);
-          } catch (e) {
-            pdf.setTextColor(16, 112, 48);
-          }
-        } else {
-          pdf.setTextColor(16, 112, 48);
-        }
-        
-        const wrappedTitle = pdf.splitTextToSize(block.title, blockWidth - 2);
+        pdf.setTextColor(...titleColor);
+        const wrappedTitle = pdf.splitTextToSize(textBlock.title, blockWidth - 2);
         const titleLineHeight = titleFontSize * 0.4;
         wrappedTitle.forEach((titleLine: string) => {
           if (blockY <= 290) {
@@ -215,7 +338,7 @@ function renderFooterBlocks(pdf: jsPDF, template: LetterTemplate | null) {
         pdf.setTextColor(0, 0, 0);
       } else {
         pdf.setFont('helvetica', 'bold');
-        const wrappedTitle = pdf.splitTextToSize(block.title, blockWidth - 2);
+        const wrappedTitle = pdf.splitTextToSize(textBlock.title, blockWidth - 2);
         wrappedTitle.forEach((titleLine: string) => {
           if (blockY <= 290) {
             pdf.text(titleLine, currentX + 1, blockY);
@@ -224,11 +347,10 @@ function renderFooterBlocks(pdf: jsPDF, template: LetterTemplate | null) {
         });
         blockY += 1;
       }
-      pdf.setFont('helvetica', fontWeight);
+      pdf.setFont('helvetica', textBlock.font.weight);
     }
-    
-    const lines = blockContent.split('\n');
-    lines.forEach((line: string) => {
+
+    textBlock.lines.forEach((line) => {
       if (blockY > 290) return;
       let formattedLine = line;
       if (formattedLine.startsWith('Tel: ')) formattedLine = formattedLine.replace('Tel: ', '');
@@ -260,37 +382,19 @@ function renderFooterBlocksSimple(pdf: jsPDF, template: LetterTemplate | null) {
   let currentX = LEFT_MARGIN;
   
   const sortedBlocks = buildFooterBlocksFromStored(template.footer_blocks);
-  
-  sortedBlocks.forEach((block: any) => {
-    const blockContent = Array.isArray(block.lines)
-      ? block.lines.map((line: any) => line.type === 'spacer' ? '' : (line.type === 'label-value' ? `${line.label || ''} ${line.value || ''}`.trim() : (line.value || ''))).join('\n')
-      : (block.content || '');
-    if (!blockContent) return;
-    
-    const blockWidth = resolveBlockWidthMm(block.widthUnit || 'percent', Number(block.widthValue) || 25, availableWidth);
-    const fontSize = Math.max(6, Math.min(14, block.fontSize || 8));
+
+  sortedBlocks.forEach((block) => {
+    const textBlock = toPdfTextBlock(block, availableWidth, currentX, footerY);
+    if (!textBlock) return;
+
+    const blockWidth = textBlock.widthMm;
+    const fontSize = textBlock.font.size;
     pdf.setFontSize(fontSize);
-    const fontWeight = block.fontWeight === 'bold' ? 'bold' : 'normal';
-    pdf.setFont('helvetica', fontWeight);
-    
-    if (block.color && block.color.startsWith('#')) {
-      try {
-        const hex = block.color.substring(1);
-        const r = parseInt(hex.substr(0, 2), 16);
-        const g = parseInt(hex.substr(2, 2), 16);
-        const b = parseInt(hex.substr(4, 2), 16);
-        pdf.setTextColor(r, g, b);
-      } catch (e) {
-        pdf.setTextColor(0, 0, 0);
-      }
-    } else {
-      pdf.setTextColor(0, 0, 0);
-    }
-    
-    const lines = blockContent.split('\n');
-    let blockY = footerY;
-    
-    lines.forEach((line: string) => {
+    pdf.setFont('helvetica', textBlock.font.weight);
+    pdf.setTextColor(...textBlock.font.color);
+    let blockY = textBlock.origin.y;
+
+    textBlock.lines.forEach((line) => {
       if (blockY > 290) return;
       const textWidth = pdf.getTextWidth(line);
       if (textWidth <= blockWidth - 2) {
@@ -328,9 +432,40 @@ function renderFooterBlocksSimple(pdf: jsPDF, template: LetterTemplate | null) {
 interface GeneratePDFOptions {
   letter: Letter;
   template: LetterTemplate | null;
-  senderInfo: any;
-  informationBlock: any;
-  attachments: any[];
+  senderInfo: {
+    name?: string | null;
+    organization?: string | null;
+    street?: string | null;
+    house_number?: string | null;
+    postal_code?: string | null;
+    city?: string | null;
+    wahlkreis_street?: string | null;
+    wahlkreis_house_number?: string | null;
+    wahlkreis_postal_code?: string | null;
+    wahlkreis_city?: string | null;
+    landtag_street?: string | null;
+    landtag_house_number?: string | null;
+    landtag_postal_code?: string | null;
+    landtag_city?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    wahlkreis_email?: string | null;
+    landtag_email?: string | null;
+    return_address_line?: string | null;
+    website?: string | null;
+  } | null;
+  informationBlock: {
+    label?: string | null;
+    block_type?: 'contact' | 'date' | 'reference' | 'custom' | string;
+    block_data?: Record<string, unknown> | null;
+  } | null;
+  attachments: Array<{
+    file_path: string;
+    title?: string | null;
+    file_name?: string | null;
+    file_type?: string | null;
+    file_size?: number | null;
+  }>;
   showPagination: boolean;
   returnBlob?: boolean;
   debugMode?: boolean;
@@ -375,7 +510,7 @@ function renderBlockLinesToPdf(pdf: jsPDF, lines: BlockLine[], x: number, startY
   }
   pdf.setFont('helvetica', 'normal');
 }
-function renderFoldHoleMarks(pdf: jsPDF, marks: any): void {
+function renderFoldHoleMarks(pdf: jsPDF, marks: FoldHoleMarks): void {
   pdf.setDrawColor(200, 200, 200);
   pdf.setLineWidth(marks.strokeWidthPt ? marks.strokeWidthPt * 0.3528 : 0.3);
   const left = marks.left || 3;
@@ -393,16 +528,17 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
   
   const pdf = new jsPDF('p', 'mm', 'a4');
   
-  // Get layout settings from template - use 'any' to allow flexible access
-  const layout: any = template?.layout_settings || {
-    pageWidth: 210, pageHeight: 297,
-    margins: { left: 25, right: 20, top: 45, bottom: 25 },
-    header: { height: 45, marginBottom: 8.46 },
-    addressField: { top: 46, left: 25, width: 85, height: 40, returnAddressFontSize: 8, recipientFontSize: 10 },
-    infoBlock: { top: 50, left: 125, width: 75, height: 40 },
-    subject: { top: 98.46, marginBottom: 8, fontSize: 13 },
-    content: { top: 98.46, maxHeight: 165, lineHeight: 4.5, fontSize: 11 },
-    footer: { top: 272, height: 18 },
+  const layout = toLayoutSettings(template?.layout_settings);
+  const pageMetrics: PageMetrics = {
+    widthMm: layout.pageWidth,
+    heightMm: layout.pageHeight,
+    margins: {
+      leftMm: layout.margins.left,
+      rightMm: layout.margins.right,
+    },
+    footerTopMm: layout.footer.top,
+    contentTopMm: layout.content.top,
+    paginationGapMm: DEFAULT_PAGE_METRICS.paginationGapMm,
   };
   
   // ── Build FULL variable map identical to LetterEditor ──
@@ -438,8 +574,8 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
   } : null;
 
   const infoBlockVarData = informationBlock ? {
-    reference: (informationBlock.block_data as any)?.reference_pattern,
-    handler: (informationBlock.block_data as any)?.contact_name,
+    reference: isRecord(informationBlock.block_data) && typeof informationBlock.block_data.reference_pattern === 'string' ? informationBlock.block_data.reference_pattern : undefined,
+    handler: isRecord(informationBlock.block_data) && typeof informationBlock.block_data.contact_name === 'string' ? informationBlock.block_data.contact_name : undefined,
     our_reference: '',
   } : null;
 
@@ -449,11 +585,11 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
   );
 
   // ── Substitute ALL blockContent areas from template ──
-  const blockContent = (layout as any).blockContent || {};
+  const blockContent = layout.blockContent || {};
   const substitutedLineBlocks: Record<string, BlockLine[]> = {};
   for (const [key, data] of Object.entries(blockContent)) {
     if (isLineMode(data)) {
-      substitutedLineBlocks[key] = substituteBlockLines((data as any).lines, varMap);
+      substitutedLineBlocks[key] = substituteBlockLines(data.lines, varMap);
     }
   }
 
@@ -464,8 +600,8 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
   renderFooterBlocks(pdf, template);
   
   // ── Fold & hole marks ──
-  const foldMarks = layout.foldHoleMarks;
-  if (foldMarks?.enabled) {
+  const foldMarks = toFoldHoleMarks(layout.foldHoleMarks);
+  if (foldMarks) {
     renderFoldHoleMarks(pdf, foldMarks);
   }
 
@@ -475,7 +611,7 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
   // Template header
   if (template) {
     const headerRenderer = new HeaderRenderer(pdf, LEFT_MARGIN, undefined, debugMode);
-    await headerRenderer.renderHeader(template as any);
+    await headerRenderer.renderHeader(template);
   }
   
   // ── Return address ──
@@ -530,6 +666,7 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
     renderBlockLinesToPdf(pdf, substitutedLineBlocks['infoBlock'], INFO_BLOCK_LEFT, infoYPos, INFO_BLOCK_WIDTH);
   } else if (informationBlock) {
     // Fallback to legacy info block rendering
+    const infoData = isRecord(informationBlock.block_data) ? informationBlock.block_data : null;
     pdf.setFontSize(8);
     pdf.setFont('helvetica', 'bold');
     pdf.text(informationBlock.label || 'Information', INFO_BLOCK_LEFT, infoYPos);
@@ -538,9 +675,14 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
     
     switch (informationBlock.block_type) {
       case 'contact':
-        if (informationBlock.block_data?.contact_name) { pdf.text(informationBlock.block_data.contact_name, INFO_BLOCK_LEFT, infoYPos); infoYPos += 4; }
-        if (informationBlock.block_data?.contact_phone) { pdf.text(`Tel: ${informationBlock.block_data.contact_phone}`, INFO_BLOCK_LEFT, infoYPos); infoYPos += 4; }
-        if (informationBlock.block_data?.contact_email) { pdf.text(informationBlock.block_data.contact_email, INFO_BLOCK_LEFT, infoYPos); infoYPos += 4; }
+        {
+          const contactName = getStringValue(infoData, 'contact_name');
+          const contactPhone = getStringValue(infoData, 'contact_phone');
+          const contactEmail = getStringValue(infoData, 'contact_email');
+          if (contactName) { pdf.text(contactName, INFO_BLOCK_LEFT, infoYPos); infoYPos += 4; }
+          if (contactPhone) { pdf.text(`Tel: ${contactPhone}`, INFO_BLOCK_LEFT, infoYPos); infoYPos += 4; }
+          if (contactEmail) { pdf.text(contactEmail, INFO_BLOCK_LEFT, infoYPos); infoYPos += 4; }
+        }
         break;
       case 'date': {
         const date = new Date();
@@ -552,25 +694,25 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
             default: return format(d, 'd. MMMM yyyy', { locale: de });
           }
         };
-        pdf.text(formatDate(date, informationBlock.block_data?.date_format || 'dd.mm.yyyy'), INFO_BLOCK_LEFT, infoYPos);
+        pdf.text(formatDate(date, getStringValue(infoData, 'date_format') || 'dd.mm.yyyy'), INFO_BLOCK_LEFT, infoYPos);
         infoYPos += 4;
-        if (informationBlock.block_data?.show_time) {
+        if (getBooleanValue(infoData, 'show_time')) {
           pdf.text(`${date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`, INFO_BLOCK_LEFT, infoYPos);
           infoYPos += 4;
         }
         break;
       }
       case 'reference': {
-        const refText = `${informationBlock.block_data?.reference_prefix || ''}${letter.reference_number || informationBlock.block_data?.reference_pattern || ''}`;
+        const refText = `${getStringValue(infoData, 'reference_prefix') || ''}${letter.reference_number || getStringValue(infoData, 'reference_pattern') || ''}`;
         pdf.text(refText, INFO_BLOCK_LEFT, infoYPos);
         infoYPos += 4;
         break;
       }
       case 'custom':
-        if (informationBlock.block_data?.custom_content || informationBlock.block_data?.custom_lines) {
-          const customLines = Array.isArray(informationBlock.block_data?.custom_lines)
-            ? informationBlock.block_data.custom_lines
-            : String(informationBlock.block_data?.custom_content || '').split('\n');
+        if (getStringValue(infoData, 'custom_content') || (Array.isArray(infoData?.custom_lines))) {
+          const customLines = Array.isArray(infoData?.custom_lines)
+            ? infoData.custom_lines
+            : String(getStringValue(infoData, 'custom_content') || '').split('\n');
           customLines.map((line: string) => line.trim()).filter((line: string) => line.length > 0).forEach((line: string) => {
             if (infoYPos < ADDRESS_FIELD_TOP + ADDRESS_FIELD_HEIGHT - 5) {
               pdf.text(line, INFO_BLOCK_LEFT, infoYPos);
@@ -640,14 +782,14 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
     const paragraphs = text.split('\n\n').filter(p => p.trim());
     
     paragraphs.forEach((paragraph, paragIndex) => {
-      const currentMaxWidth = PAGE_WIDTH - LEFT_MARGIN - RIGHT_MARGIN;
+      const currentMaxWidth = pageMetrics.widthMm - pageMetrics.margins.leftMm - pageMetrics.margins.rightMm;
       const lines = pdf.splitTextToSize(paragraph.trim(), currentMaxWidth);
       
       lines.forEach((line: string) => {
         const paginationTop = 263.77;
         const contentBottom = shouldShowPagination
-          ? paginationTop - PAGINATION_GAP
-          : Math.min(CONTENT_TOP + 165, FOOTER_TOP - PAGINATION_GAP);
+          ? paginationTop - pageMetrics.paginationGapMm
+          : Math.min(pageMetrics.contentTopMm + 165, pageMetrics.footerTopMm - pageMetrics.paginationGapMm);
         
         if (currentY + lineHeight > contentBottom) {
           pdf.addPage();
@@ -660,7 +802,7 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
           pdf.setFont('helvetica', 'normal');
         }
         
-        pdf.text(line, LEFT_MARGIN, currentY);
+        pdf.text(line, pageMetrics.margins.leftMm, currentY);
         currentY += lineHeight;
       });
       
