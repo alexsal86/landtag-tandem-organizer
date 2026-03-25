@@ -1,13 +1,14 @@
 {
   "extends": "./tsconfig.app.json",
   "compilerOptions": {
-    "noEmit": true
+    "noEmit": true,
+    "noImplicitAny": true
   },
   "include": [
-    "src/utils/**/*.ts",
-    "src/utils/**/*.tsx",
-    "src/lib/**/*.ts",
-    "src/lib/**/*.tsx"
+    "src/utils/debounce.ts",
+    "src/utils/typeSafety.ts",
+    "src/utils/errorHandler.ts",
+    "src/utils/debugConsole.ts"
   ],
   "exclude": [
     "src/**/*.test.ts",

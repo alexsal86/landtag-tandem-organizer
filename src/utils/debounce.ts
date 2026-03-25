@@ -1,27 +1,57 @@
 // Simple debounce utility without external dependencies
-export function debounce<T extends (...args: any[]) => void>(fn: T, delay = 300) {
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  const debounced = (...args: Parameters<T>) => {
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), delay);
-  };
-  debounced.cancel = () => {
-    if (timer) clearTimeout(timer);
-    timer = null;
-  };
-  return debounced as T & { cancel: () => void };
+
+type DebounceArgs = readonly unknown[];
+type DebouncedCallback<TArgs extends DebounceArgs> = (...args: TArgs) => void;
+
+export interface DebouncedFunction<TArgs extends DebounceArgs> {
+  (...args: TArgs): void;
+  cancel: () => void;
 }
 
-export function leadingEdgeDebounce<T extends (...args: any[]) => void>(fn: T, delay = 300) {
+export function debounce<TArgs extends DebounceArgs>(
+  fn: DebouncedCallback<TArgs>,
+  delay = 300,
+): DebouncedFunction<TArgs> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  const debounced: DebouncedFunction<TArgs> = (...args) => {
+    if (timer) {
+      clearTimeout(timer);
+    }
+
+    timer = setTimeout(() => {
+      fn(...args);
+    }, delay);
+  };
+
+  debounced.cancel = (): void => {
+    if (timer) {
+      clearTimeout(timer);
+    }
+    timer = null;
+  };
+
+  return debounced;
+}
+
+export function leadingEdgeDebounce<TArgs extends DebounceArgs>(
+  fn: DebouncedCallback<TArgs>,
+  delay = 300,
+): DebouncedCallback<TArgs> {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let invoked = false;
-  return (...args: Parameters<T>) => {
+
+  return (...args: TArgs): void => {
     if (!invoked) {
       fn(...args);
       invoked = true;
     }
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(() => {
+
+    if (timer) {
+      clearTimeout(timer);
+    }
+
+    timer = setTimeout((): void => {
       invoked = false;
     }, delay);
   };

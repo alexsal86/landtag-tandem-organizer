@@ -10,6 +10,7 @@ import { useNewItemIndicators } from "@/hooks/useNewItemIndicators";
 import { usePlanningPreferences } from "@/hooks/usePlanningPreferences";
 import { debugConsole } from '@/utils/debugConsole';
 import { handleAppError } from '@/utils/errorHandler';
+import { debounce } from '@/utils/debounce';
 import { useChecklistOperations } from "./hooks/useChecklistOperations";
 import { useItemDetails } from "./hooks/useItemDetails";
 import type {
@@ -370,20 +371,15 @@ export function useEventPlanningData() {
   };
 
   // ── Mutations ──
-  function debounce<T extends (...args: any[]) => any>(func: T, wait: number): T {
-    let timeout: NodeJS.Timeout;
-    return ((...args: any[]) => { clearTimeout(timeout); timeout = setTimeout(() => func(...args), wait); }) as T;
-  }
-
   const debouncedUpdate = useCallback(
-    debounce(async (field: string, value: any, planningId: string) => {
+    debounce(async (field: string, value: unknown, planningId: string): Promise<void> => {
       const { error } = await supabase.from("event_plannings").update({ [field]: value }).eq("id", planningId);
       if (error) toast({ title: "Fehler", description: "Änderung konnte nicht gespeichert werden.", variant: "destructive" });
     }, 500),
     []
   );
 
-  const updatePlanningField = async (field: string, value: any) => {
+  const updatePlanningField = async (field: string, value: unknown): Promise<void> => {
     if (!selectedPlanning) return;
     const currentPlanningId = selectedPlanning.id;
 
