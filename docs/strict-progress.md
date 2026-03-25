@@ -22,7 +22,7 @@ Seit dem Update vom 2026-03-18 wird die Migration **fachlich flow-first** gesteu
 4. `typecheck:flow-notifications`
 5. `typecheck:flow-edge-auth-role-tenant`
 
-sind die verbindliche primäre Reihenfolge. Die vorhandenen Ordner-/Batch-Configs bleiben als nachgelagerte technische Schutznetze bestehen. `npm run typecheck:strict-all` führt deshalb zuerst die Flow-Typechecks und danach die bestehenden Batch-Checks aus.
+sind die verbindliche primäre Reihenfolge. Die vorhandenen Ordner-/Batch-Configs bleiben als nachgelagerte technische Schutznetze bestehen. `npm run typecheck:strict-all` führt jetzt zuerst die globale Baseline (`typecheck:baseline-global`), danach die batch-gesteuerten Verschärfungen (`typecheck:batch-governed`) und zuletzt die Legacy-Ausnahme-Batches (`typecheck:legacy-exceptions`) aus.
 
 Jede vorhandene `tsconfig.*-strict.json` Datei bildet weiterhin einen operativen Migrationsbatch. Ein Batch gilt erst dann als abgeschlossen, wenn
 
@@ -38,6 +38,25 @@ Die Flag-Priorität für die **aktuelle Migrationsphase** folgt den priorisierte
 2. `noImplicitAny`
 
 `noUnusedLocals` und `noUnusedParameters` sind **bewusst nicht Teil des aktuellen Programms** und werden erst in einer späteren Phase batchweise eingeplant.
+
+## Governance-Status (Stand: 2026-03-25)
+
+Die Konfiguration ist ab dieser Migrationsstufe in **globale Baseline** und **Legacy-Ausnahme-Batches** getrennt:
+
+- **Global aktiv (Baseline via `tsconfig.app.json`):**
+  - `strictNullChecks: true`
+- **Flow-/batch-gesteuert (nur in ausgewählten `tsconfig.*-strict.json`):**
+  - `noImplicitAny: true`
+- **Legacy-Ausnahmen (zentral via `tsconfig.legacy-relaxed.json`):**
+  - `noImplicitAny: false`
+  - `noUnusedLocals: false`
+  - `noUnusedParameters: false`
+
+Für CI und lokale Steuerung gelten damit drei Ebenen:
+
+1. `npm run typecheck:baseline-global` (globale Mindestanforderung)
+2. `npm run typecheck:batch-governed` (Migrationsbatches mit zusätzlichen Flags, insbesondere `noImplicitAny`)
+3. `npm run typecheck:legacy-exceptions` (explizite Ausnahme-Batches auf Basis der Legacy-Relaxed-Config)
 
 ## Steuerungsregeln
 

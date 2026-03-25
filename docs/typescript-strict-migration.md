@@ -21,6 +21,19 @@ Erst danach beginnt der nächste große Flow. Ordnerbasierte Batch-Configs bleib
 
 Diese Reihenfolge ist fachlich priorisiert und orientiert sich an den Kernflows in `docs/ci-quality-gates.md`.
 
+
+## Verbindliches Mini-Ziel pro Flow
+
+Für jeden Kernflow wird zu Beginn des Flow-PRs ein Mini-Ziel als Metrik festgelegt:
+
+- **"0 neue `any`, X bestehende `any` entfernt"**
+
+Dabei gilt:
+
+- **0 neue `any`** ist ein harter Gate-Wert (keine Regression).
+- **X entfernte `any`** wird pro PR konkret benannt (Startwert/Endwert) und muss im PR nachvollziehbar sein.
+- Optional kann je Flow ein Vorher-/Nachher-Lauf über `npm run any-report:flow-…` dokumentiert werden (siehe Tooling-Abschnitt).
+
 ## Paket-Regel pro Flow
 
 Für jeden Flow gilt dieselbe Paketstruktur:
@@ -203,6 +216,17 @@ Für jeden Flow gilt dieselbe Paketstruktur:
 - Guard-UI, Rollen-/Tenant-Annahmen und Edge-nahe Frontend-Typen sind gemeinsam strict-clean
 - dokumentierte Contract-Negativpfade bleiben referenzierbar
 
+## Flow-Done-Gate (verpflichtend)
+
+Ein Kernflow darf nur dann als **done** markiert werden, wenn alle folgenden Bedingungen erfüllt sind:
+
+1. Mini-Ziel erreicht (`0 neue any`, geplanter Abbauwert erreicht),
+2. Flow-PR-Dokumentation vollständig (entfernte/verbleibende `any` + nächster Abbau-Schritt),
+3. `strictNullChecks` im Flow-Typecheck grün,
+4. `noImplicitAny` im Flow-Typecheck grün.
+
+Fehlt eine dieser Bedingungen, bleibt der Flow im Status **in progress**.
+
 ## Technische Umsetzung in den Tooling-Artefakten
 
 Die fachliche Führung wird zusätzlich technisch sichtbar gemacht durch eigene Flow-Typechecks:
@@ -215,6 +239,16 @@ Die fachliche Führung wird zusätzlich technisch sichtbar gemacht durch eigene 
 
 `npm run typecheck:strict-all` startet mit genau diesen fünf Flow-Checks und führt danach die bestehenden Ordner-/Batch-Checks weiter aus. Dadurch bleiben bestehende Schutznetze erhalten, während die operative Reihenfolge fachlich geführt wird.
 
+Optional stehen je Flow Any-Reports für Vorher-/Nachher-Vergleiche zur Verfügung:
+
+- `npm run any-report:flow-auth-tenant`
+- `npm run any-report:flow-calendar-sync`
+- `npm run any-report:flow-letter-workflow`
+- `npm run any-report:flow-notifications`
+- `npm run any-report:flow-edge-auth-role-tenant`
+
+Diese Reports liefern eine reproduzierbare Basis für die PR-Aussage "0 neue any, X entfernt".
+
 ## Review-Regel für alle kommenden Strict-Migrations-PRs
 
 Jeder PR, der die Strict-Migration erweitert, dokumentiert explizit:
@@ -222,6 +256,9 @@ Jeder PR, der die Strict-Migration erweitert, dokumentiert explizit:
 - **welcher Kernflow** bearbeitet wurde,
 - **welches Flow-Paket** abgeschlossen oder weitergeführt wurde,
 - **welche Hooks, Services, Features, Components und Pages** Teil des Pakets sind,
+- **welche `any`-Stellen entfernt wurden** (Datei + Kontext),
+- **welche `any` verbleiben und warum** (begründete Ausnahme),
+- **welcher nächste konkrete Abbau-Schritt** für die verbleibenden `any` geplant ist,
 - **ob `strictNullChecks` und `noImplicitAny` im gesamten Paket grün sind**,
 - und **welcher Kernflow als Nächstes** freigegeben ist.
 
