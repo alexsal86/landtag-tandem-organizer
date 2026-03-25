@@ -30,6 +30,10 @@ interface PdfTextItem {
   str: string;
 }
 
+function isFileInput(value: unknown): value is File {
+  return value instanceof File;
+}
+
 export interface ProtocolAnalysisAgendaItem {
   agenda_number: string;
   title: string;
@@ -55,8 +59,11 @@ function isPdfTextItem(item: unknown): item is PdfTextItem {
   return typeof item === 'object' && item !== null && 'str' in item && typeof (item as { str?: unknown }).str === 'string';
 }
 
-export async function parsePDFFile(file: File): Promise<ParsedProtocol> {
+export async function parsePDFFile(file: unknown): Promise<ParsedProtocol> {
   try {
+    if (!isFileInput(file)) {
+      throw new Error('Ungültige PDF-Datei.');
+    }
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     

@@ -52,6 +52,50 @@ interface MsgPayload {
   attachments?: ReadonlyArray<MsgAttachment>;
 }
 
+interface ParsedMailAddress {
+  address?: string;
+  name?: string;
+}
+
+interface ParsedMailAttachment {
+  filename?: string;
+  mimeType?: string;
+  content?: string | ArrayBuffer | Uint8Array;
+}
+
+interface ParsedMail {
+  from?: ParsedMailAddress;
+  to?: ReadonlyArray<ParsedMailAddress>;
+  subject?: string;
+  date?: string;
+  html?: string;
+  text?: string;
+  attachments?: ReadonlyArray<ParsedMailAttachment>;
+}
+
+export function isParsedMail(value: unknown): value is ParsedMail {
+  if (!isRecord(value)) return false;
+
+  if (hasOwnProperty(value, 'subject') && value.subject !== undefined && typeof value.subject !== 'string') return false;
+  if (hasOwnProperty(value, 'date') && value.date !== undefined && typeof value.date !== 'string') return false;
+  if (hasOwnProperty(value, 'html') && value.html !== undefined && typeof value.html !== 'string') return false;
+  if (hasOwnProperty(value, 'text') && value.text !== undefined && typeof value.text !== 'string') return false;
+
+  if (hasOwnProperty(value, 'from') && value.from !== undefined && value.from !== null) {
+    if (!isRecord(value.from)) return false;
+  }
+
+  if (hasOwnProperty(value, 'to') && value.to !== undefined && value.to !== null) {
+    if (!Array.isArray(value.to)) return false;
+  }
+
+  if (hasOwnProperty(value, 'attachments') && value.attachments !== undefined && value.attachments !== null) {
+    if (!Array.isArray(value.attachments)) return false;
+  }
+
+  return true;
+}
+
 export function isAttachment(value: unknown): value is MsgAttachment {
   if (!isRecord(value)) return false;
   return Boolean(
@@ -140,7 +184,11 @@ export async function parseEmlFromArrayBuffer(buffer: unknown): Promise<ParsedEm
     throw new Error('Ungültiger EML-Buffer.');
   }
   const parser = new PostalMime();
-  const email = await parser.parse(buffer);
+  const rawEmail: unknown = await parser.parse(buffer);
+  if (!isParsedMail(rawEmail)) {
+    throw new Error('Ungültiges EML-Format.');
+  }
+  const email = rawEmail;
 
   const fromAddress = email.from?.address || email.from?.name || 'Unbekannt';
   const toAddresses = (email.to || []).map(t => t.address || t.name || '');
@@ -304,7 +352,7 @@ export async function parseMsgFromArrayBuffer(buffer: unknown): Promise<ParsedEm
       try {
         const attData = msgReader.getAttachment(att);
         if (isRecord(attData) && hasOwnProperty(attData, 'content') && attData.content instanceof Uint8Array) {
-          content = attData.content;
+          content = new Uint8Array(attData.content);
         } else if (isRecord(attData) && hasOwnProperty(attData, 'content') && attData.content instanceof ArrayBuffer) {
           content = new Uint8Array(attData.content);
         }

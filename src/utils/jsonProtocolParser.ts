@@ -56,6 +56,35 @@ interface JSONProtocolStructure {
   };
 }
 
+export function isJsonProtocol(value: unknown): value is JSONProtocolStructure {
+  if (!isRecord(value)) return false;
+  if (!hasOwnProperty(value, 'session') || !isRecord(value.session)) return false;
+  if (!hasOwnProperty(value, 'speeches') || !Array.isArray(value.speeches)) return false;
+
+  if (!hasOwnProperty(value.session, 'date') || !hasOwnProperty(value.session, 'extracted_at')) return false;
+  if (value.session.date !== null && typeof value.session.date !== 'string') return false;
+  if (typeof value.session.extracted_at !== 'string') return false;
+
+  for (const speech of value.speeches) {
+    if (!isRecord(speech)) return false;
+    if (!hasOwnProperty(speech, 'text') || typeof speech.text !== 'string') return false;
+    if (!hasOwnProperty(speech, 'index') || typeof speech.index !== 'number') return false;
+    if (!hasOwnProperty(speech, 'speaker')) return false;
+    if (isRecord(speech.speaker) && (!hasOwnProperty(speech.speaker, 'name') || typeof speech.speaker.name !== 'string')) {
+      return false;
+    }
+    if (typeof speech.speaker !== 'string' && !isRecord(speech.speaker)) return false;
+  }
+
+  if (hasOwnProperty(value, 'agenda') && value.agenda !== undefined && value.agenda !== null) {
+    if (!Array.isArray(value.agenda) || !value.agenda.every(isProtocolAgendaItem)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 export interface ParsedJSONProtocol {
   metadata: {
     session_number: string;
@@ -114,38 +143,9 @@ export function isProtocolAgendaItem(value: unknown): value is ProtocolAgendaIte
   return typeof numberValue === 'string' || typeof numberValue === 'number';
 }
 
-function isJSONProtocolStructure(value: unknown): value is JSONProtocolStructure {
-  if (!isRecord(value)) return false;
-  if (!hasOwnProperty(value, 'session') || !isRecord(value.session)) return false;
-  if (!hasOwnProperty(value, 'speeches') || !Array.isArray(value.speeches)) return false;
-
-  if (!hasOwnProperty(value.session, 'date') || !hasOwnProperty(value.session, 'extracted_at')) return false;
-  if (value.session.date !== null && typeof value.session.date !== 'string') return false;
-  if (typeof value.session.extracted_at !== 'string') return false;
-
-  for (const speech of value.speeches) {
-    if (!isRecord(speech)) return false;
-    if (!hasOwnProperty(speech, 'text') || typeof speech.text !== 'string') return false;
-    if (!hasOwnProperty(speech, 'index') || typeof speech.index !== 'number') return false;
-    if (!hasOwnProperty(speech, 'speaker')) return false;
-    if (isRecord(speech.speaker) && (!hasOwnProperty(speech.speaker, 'name') || typeof speech.speaker.name !== 'string')) {
-      return false;
-    }
-    if (typeof speech.speaker !== 'string' && !isRecord(speech.speaker)) return false;
-  }
-
-  if (hasOwnProperty(value, 'agenda') && value.agenda !== undefined && value.agenda !== null) {
-    if (!Array.isArray(value.agenda) || !value.agenda.every(isProtocolAgendaItem)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 export function validateJSONProtocol(data: unknown): boolean {
   try {
-    return isJSONProtocolStructure(data);
+    return isJsonProtocol(data);
   } catch (error) {
     // JSON validation error - silently return false
     return false;
@@ -153,7 +153,7 @@ export function validateJSONProtocol(data: unknown): boolean {
 }
 
 export function parseJSONProtocol(jsonData: unknown): ParsedJSONProtocol {
-  if (!isJSONProtocolStructure(jsonData)) {
+  if (!isJsonProtocol(jsonData)) {
     throw new Error('Ungültiges JSON-Protokollformat.');
   }
   // Extract metadata
@@ -258,7 +258,7 @@ export function getJSONProtocolPreview(jsonData: unknown): {
   parties: string[];
   dateInfo: string;
 } {
-  if (!isJSONProtocolStructure(jsonData)) {
+  if (!isJsonProtocol(jsonData)) {
     throw new Error('Ungültiges JSON-Protokollformat.');
   }
 
