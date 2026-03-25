@@ -2,11 +2,26 @@
  * Patched version of @radix-ui/react-slot to fix React 19 infinite loop.
  * See: https://github.com/radix-ui/primitives/issues/3799
  * See: https://github.com/radix-ui/primitives/pull/3804
- * 
+ *
  * The fix: SlotClone uses useComposedRefs (memoized) instead of raw composeRefs.
  */
 import * as React from "react";
-import { jsx, Fragment } from "react/jsx-runtime";
+import { Fragment, jsx } from "react/jsx-runtime";
+
+type InteropRecord = Record<string, unknown>;
+
+type SlotLikeProps = InteropRecord & {
+  children?: React.ReactNode;
+  ref?: React.Ref<unknown>;
+};
+
+type RadixTaggedComponent = {
+  __radixId?: symbol;
+};
+
+const toRecord = (value: unknown): InteropRecord | null => {
+  return value && typeof value === "object" ? (value as InteropRecord) : null;
+};
 
 // Inline compose-refs to avoid circular alias issues
 function setRef<T>(ref: React.Ref<T> | undefined, value: T): void {
@@ -15,12 +30,6 @@ function setRef<T>(ref: React.Ref<T> | undefined, value: T): void {
   } else if (ref !== null && ref !== undefined) {
     (ref as React.MutableRefObject<T>).current = value;
   }
-}
-
-function composeRefs<T>(...refs: (React.Ref<T> | undefined)[]): React.RefCallback<T> {
-  return (node: T) => {
-    refs.forEach((ref) => setRef(ref, node));
-  };
 }
 
 function useComposedRefs<T>(...refs: (React.Ref<T> | undefined)[]): React.RefCallback<T> {
@@ -36,95 +45,115 @@ function useComposedRefs<T>(...refs: (React.Ref<T> | undefined)[]): React.RefCal
 
 const SLOTTABLE_IDENTIFIER = Symbol("radix.slottable");
 
-function isSlottable(child: React.ReactNode): child is React.ReactElement {
-  return (
-    React.isValidElement(child) &&
-    typeof child.type === "function" &&
-    "__radixId" in child.type &&
-    (child.type as any).__radixId === SLOTTABLE_IDENTIFIER
-  );
+function isSlottable(child: React.ReactNode): child is React.ReactElement<SlotLikeProps> {
+  if (!React.isValidElement(child)) return false;
+
+  const childType = child.type;
+  if (typeof childType !== "function") return false;
+
+  const taggedType = childType as RadixTaggedComponent;
+  return taggedType.__radixId === SLOTTABLE_IDENTIFIER;
 }
 
-function mergeProps(slotProps: Record<string, any>, childProps: Record<string, any>) {
-  const overrideProps = { ...childProps };
+function mergeProps(slotProps: InteropRecord, childProps: InteropRecord): InteropRecord {
+  const overrideProps: InteropRecord = { ...childProps };
+
   for (const propName in childProps) {
     const slotPropValue = slotProps[propName];
     const childPropValue = childProps[propName];
     const isHandler = /^on[A-Z]/.test(propName);
+
     if (isHandler) {
-      if (slotPropValue && childPropValue) {
-        overrideProps[propName] = (...args: any[]) => {
-          const result = childPropValue(...args);
-          slotPropValue(...args);
-          return result;
+      if (typeof slotPropValue === "function" && typeof childPropValue === "function") {
+        overrideProps[propName] = (...args: unknown[]) => {
+          const childResult = (childPropValue as (...handlerArgs: unknown[]) => unknown)(...args);
+          (slotPropValue as (...handlerArgs: unknown[]) => unknown)(...args);
+          return childResult;
         };
-      } else if (slotPropValue) {
+      } else if (slotPropValue !== undefined) {
         overrideProps[propName] = slotPropValue;
       }
     } else if (propName === "style") {
-      overrideProps[propName] = { ...slotPropValue, ...childPropValue };
+      const slotStyle = toRecord(slotPropValue) ?? {};
+      const childStyle = toRecord(childPropValue) ?? {};
+      overrideProps[propName] = { ...slotStyle, ...childStyle };
     } else if (propName === "className") {
-      overrideProps[propName] = [slotPropValue, childPropValue].filter(Boolean).join(" ");
+      const classes = [slotPropValue, childPropValue].filter(
+        (value): value is string => typeof value === "string" && value.length > 0,
+      );
+      overrideProps[propName] = classes.join(" ");
     }
   }
+
   return { ...slotProps, ...overrideProps };
 }
 
-function getElementRef(element: React.ReactElement): any {
-  let getter = Object.getOwnPropertyDescriptor(element.props, "ref")?.get;
-  let mayWarn = getter && "isReactWarning" in getter && (getter as any).isReactWarning;
-  if (mayWarn) {
-    return (element as any).ref;
+function getElementRef(element: React.ReactElement<SlotLikeProps>): React.Ref<unknown> | undefined {
+  const elementRecord = toRecord(element);
+  const elementPropsRecord = toRecord(element.props);
+
+  const propsRefGetter = Object.getOwnPropertyDescriptor(element.props, "ref")?.get;
+  if (propsRefGetter && "isReactWarning" in propsRefGetter) {
+    return elementRecord?.ref as React.Ref<unknown> | undefined;
   }
-  getter = Object.getOwnPropertyDescriptor(element, "ref")?.get;
-  mayWarn = getter && "isReactWarning" in getter && (getter as any).isReactWarning;
-  if (mayWarn) {
-    return (element as any).props.ref;
+
+  const elementRefGetter = Object.getOwnPropertyDescriptor(element, "ref")?.get;
+  if (elementRefGetter && "isReactWarning" in elementRefGetter) {
+    return elementPropsRecord?.ref as React.Ref<unknown> | undefined;
   }
-  return (element as any).props.ref || (element as any).ref;
+
+  return (elementPropsRecord?.ref as React.Ref<unknown> | undefined) ??
+    (elementRecord?.ref as React.Ref<unknown> | undefined);
 }
 
 // SlotClone - THE FIX: uses useComposedRefs instead of raw composeRefs
-const SlotClone = React.forwardRef<any, any>((props, forwardedRef) => {
+const SlotClone = React.forwardRef<unknown, SlotLikeProps>((props, forwardedRef) => {
   const { children, ...slotProps } = props;
-  if (React.isValidElement(children)) {
+
+  if (React.isValidElement<SlotLikeProps>(children)) {
     const childrenRef = getElementRef(children);
     // FIX: Use memoized useComposedRefs instead of raw composeRefs
     const composedRef = useComposedRefs(forwardedRef, childrenRef);
-    const mergedProps = mergeProps(slotProps, children.props as Record<string, any>);
+    const mergedProps = mergeProps(slotProps, children.props);
+
     if (children.type !== React.Fragment) {
       mergedProps.ref = forwardedRef ? composedRef : childrenRef;
     }
+
     return React.cloneElement(children, mergedProps);
   }
+
   return React.Children.count(children) > 1 ? React.Children.only(null) : null;
 });
 SlotClone.displayName = "SlotClone";
 
 // Slot
-const Slot = React.forwardRef<any, any>((props, forwardedRef) => {
+const Slot = React.forwardRef<unknown, SlotLikeProps>((props, forwardedRef) => {
   const { children, ...slotProps } = props;
   const childrenArray = React.Children.toArray(children);
   const slottable = childrenArray.find(isSlottable);
-  if (slottable && React.isValidElement(slottable)) {
-    const slottableProps = slottable.props as any;
-    const newElement = slottableProps.children;
+
+  if (slottable && React.isValidElement<SlotLikeProps>(slottable)) {
+    const newElement = slottable.props.children;
     const newChildren = childrenArray.map((child) => {
       if (child === slottable) {
         if (React.Children.count(newElement) > 1) return React.Children.only(null);
-        return React.isValidElement(newElement) ? (newElement.props as any).children : null;
-      } else {
-        return child;
+        if (!React.isValidElement<SlotLikeProps>(newElement)) return null;
+        return newElement.props.children ?? null;
       }
+
+      return child;
     });
+
     return jsx(SlotClone, {
       ...slotProps,
       ref: forwardedRef,
-      children: React.isValidElement(newElement)
+      children: React.isValidElement<SlotLikeProps>(newElement)
         ? React.cloneElement(newElement, undefined, newChildren)
         : null,
     });
   }
+
   return jsx(SlotClone, { ...slotProps, ref: forwardedRef, children });
 });
 Slot.displayName = "Slot";
@@ -133,11 +162,11 @@ Slot.displayName = "Slot";
 const Slottable = ({ children }: { children: React.ReactNode }) => {
   return jsx(Fragment, { children });
 };
-(Slottable as any).__radixId = SLOTTABLE_IDENTIFIER;
+(Slottable as RadixTaggedComponent).__radixId = SLOTTABLE_IDENTIFIER;
 Slottable.displayName = "Slottable";
 
 function createSlot(ownerName: string) {
-  const S = React.forwardRef<any, any>((props, ref) => {
+  const S = React.forwardRef<unknown, SlotLikeProps>((props, ref) => {
     return jsx(Slot, { ...props, ref });
   });
   S.displayName = `${ownerName}.Slot`;
@@ -149,7 +178,7 @@ function createSlottable(ownerName: string) {
     return jsx(Fragment, { children });
   };
   S.displayName = `${ownerName}.Slottable`;
-  (S as any).__radixId = SLOTTABLE_IDENTIFIER;
+  (S as RadixTaggedComponent).__radixId = SLOTTABLE_IDENTIFIER;
   return S;
 }
 
