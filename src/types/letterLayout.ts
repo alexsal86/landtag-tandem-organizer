@@ -94,6 +94,7 @@ export interface LetterCanvasElement {
   isVariable?: boolean;
   variablePreviewText?: string;
   shapeType?: 'line' | 'circle' | 'rectangle' | 'sunflower' | 'lion' | 'wappen';
+  rotation?: number;
   fillColor?: string;
   strokeColor?: string;
   strokeWidth?: number;
@@ -208,8 +209,8 @@ export interface LetterLayoutSettings {
     fontSize?: number;
   };
   blockContent?: Record<string, LetterCanvasElement[] | LineModeBlockData>;
-  disabledBlocks?: Array<'header' | 'addressField' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments'>;
-  lockedBlocks?: Array<'header' | 'addressField' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments'>;
+  disabledBlocks?: LayoutBlockKey[];
+  lockedBlocks?: LayoutBlockKey[];
 }
 
 export interface LetterTemplateDataModel extends Omit<LetterTemplateRecord, 'layout_settings' | 'default_info_blocks'> {
