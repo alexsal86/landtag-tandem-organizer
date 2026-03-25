@@ -65,7 +65,7 @@ const MATCHERS = [
 interface EnhancedLexicalEditorProps {
   content: string;
   contentNodes?: string;
-  onChange: (content: string, contentNodes?: string, contentHtml?: string) => void;
+  onChange: (content: { plainText: string; nodesJson?: string; html?: string }) => void;
   placeholder?: string;
   documentId?: string;
   showToolbar?: boolean;
@@ -244,7 +244,7 @@ export default function EnhancedLexicalEditor({
       } catch {
         htmlContent = undefined;
       }
-      onChange(plainText, jsonContent, htmlContent);
+      onChange({ plainText, nodesJson: jsonContent, html: htmlContent });
     });
   }, [onChange]);
 

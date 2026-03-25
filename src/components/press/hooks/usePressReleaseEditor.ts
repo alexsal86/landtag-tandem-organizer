@@ -150,10 +150,10 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
     }
   };
 
-  const handleContentChange = useCallback((newContent: string, newContentNodes?: string, newContentHtml?: string) => {
-    setContent(newContent);
-    setContentNodes(newContentNodes);
-    if (newContentHtml) setContentHtml(newContentHtml);
+  const handleContentChange = useCallback(({ plainText, nodesJson, html }: { plainText: string; nodesJson?: string; html?: string }) => {
+    setContent(plainText);
+    setContentNodes(nodesJson);
+    if (html) setContentHtml(html);
   }, []);
 
   const handleTitleChange = (newTitle: string) => {

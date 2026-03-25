@@ -9,6 +9,8 @@ export interface KnowledgeDocument {
   id: string;
   title: string;
   content: string | null;
+  plain_text: string;
+  content_nodes: string | null;
   category: string | null;
   created_by: string;
   created_at: string;
@@ -28,7 +30,7 @@ export interface KnowledgeDocument {
 interface KnowledgeDocumentRow {
   id: string;
   title: string;
-  content: string;
+  content: string | null;
   category: string;
   created_by: string;
   created_at: string;
@@ -36,6 +38,61 @@ interface KnowledgeDocumentRow {
   is_published: boolean;
   is_locked: boolean | null;
 }
+
+export interface LexicalChangePayload {
+  plainText: string;
+  nodesJson?: string;
+  html?: string;
+}
+
+interface PersistedKnowledgeContentV1 {
+  format: 'lexical-v1';
+  plain_text: string;
+  content_nodes: Record<string, unknown> | null;
+  content_html: string | null;
+}
+
+const KNOWLEDGE_FORMAT = 'lexical-v1';
+
+export const serializeKnowledgeContent = (payload: LexicalChangePayload): string => {
+  let contentNodes: Record<string, unknown> | null = null;
+  if (payload.nodesJson && payload.nodesJson.trim()) {
+    try {
+      contentNodes = JSON.parse(payload.nodesJson) as Record<string, unknown>;
+    } catch {
+      contentNodes = null;
+    }
+  }
+  const next: PersistedKnowledgeContentV1 = {
+    format: KNOWLEDGE_FORMAT,
+    plain_text: payload.plainText ?? '',
+    content_nodes: contentNodes,
+    content_html: payload.html?.trim() ? payload.html : null,
+  };
+  return JSON.stringify(next);
+};
+
+export const parseKnowledgeContent = (raw: string | null | undefined): LexicalChangePayload & { storageContent: string | null } => {
+  if (!raw?.trim()) {
+    return { plainText: '', nodesJson: undefined, html: undefined, storageContent: raw ?? null };
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<PersistedKnowledgeContentV1>;
+    if (parsed?.format === KNOWLEDGE_FORMAT) {
+      return {
+        plainText: parsed.plain_text ?? '',
+        nodesJson: parsed.content_nodes ? JSON.stringify(parsed.content_nodes) : undefined,
+        html: parsed.content_html ?? undefined,
+        storageContent: raw,
+      };
+    }
+  } catch {
+    // Legacy plain text format.
+  }
+
+  return { plainText: raw, nodesJson: undefined, html: undefined, storageContent: raw };
+};
 
 export function useKnowledgeData() {
   const { user } = useAuth();
@@ -47,7 +104,7 @@ export function useKnowledgeData() {
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [documentTopicsMap, setDocumentTopicsMap] = useState<Record<string, string[]>>({});
   const [selectedDocument, setSelectedDocument] = useState<KnowledgeDocument | null>(null);
-  const [editorContent, setEditorContent] = useState('');
+  const [editorContent, setEditorContent] = useState<LexicalChangePayload>({ plainText: '' });
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -62,7 +119,17 @@ export function useKnowledgeData() {
 
   const hydrateDocuments = useCallback(async (rows: KnowledgeDocumentRow[]) => {
     const names = await fetchCreatorNames(rows);
-    return rows.map(r => ({ ...r, is_locked: r.is_locked || false, creator_name: names[r.created_by] || 'Unbekannt' }));
+    return rows.map(r => {
+      const parsed = parseKnowledgeContent(r.content);
+      return {
+        ...r,
+        is_locked: r.is_locked || false,
+        creator_name: names[r.created_by] || 'Unbekannt',
+        plain_text: parsed.plainText,
+        content_nodes: parsed.nodesJson ?? null,
+        content_html: parsed.html ?? null,
+      };
+    });
   }, [fetchCreatorNames]);
 
   const fetchAllDocumentTopics = useCallback(async (docIds: string[]) => {
@@ -131,15 +198,24 @@ export function useKnowledgeData() {
   const handleCreateDocument = async (newDoc: { title: string; content: string; is_published: boolean; selectedTopics: string[] }) => {
     if (!user || !newDoc.title.trim() || !tenantId) return;
     try {
-      const { data, error } = await supabase.from('knowledge_documents').insert([{ title: newDoc.title, content: newDoc.content, category: 'general', created_by: user.id, tenant_id: tenantId, is_published: newDoc.is_published, is_locked: false }]).select().single();
+      const initialContent = serializeKnowledgeContent({ plainText: newDoc.content || '' });
+      const { data, error } = await supabase.from('knowledge_documents').insert([{ title: newDoc.title, content: initialContent, category: 'general', created_by: user.id, tenant_id: tenantId, is_published: newDoc.is_published, is_locked: false }]).select().single();
       if (error) throw error;
       if (newDoc.selectedTopics.length > 0) {
         await supabase.from('knowledge_document_topics').insert(newDoc.selectedTopics.map(t => ({ document_id: data.id, topic_id: t })));
       }
       toast({ title: "Dokument erstellt", description: "Das neue Dokument wurde erfolgreich erstellt." });
-      const doc = { ...data, is_locked: false, creator_name: user.user_metadata?.display_name || user.email || 'Unknown' };
+      const parsed = parseKnowledgeContent(data.content);
+      const doc = {
+        ...data,
+        is_locked: false,
+        creator_name: user.user_metadata?.display_name || user.email || 'Unknown',
+        plain_text: parsed.plainText,
+        content_nodes: parsed.nodesJson ?? null,
+        content_html: parsed.html ?? null,
+      };
       setSelectedDocument(doc);
-      setEditorContent(data.content || '');
+      setEditorContent(parseKnowledgeContent(data.content));
       setIsEditorOpen(true);
       setIsSidebarCollapsed(false);
       navigate(`/knowledge/${data.id}`, { replace: true });
@@ -152,12 +228,19 @@ export function useKnowledgeData() {
   const handleSaveDocument = async (topicIds: string[], setTopicsFn: (ids: string[]) => Promise<any>) => {
     if (!selectedDocument || !user) return;
     try {
-      const { error } = await supabase.from('knowledge_documents').update({ content: editorContent, updated_at: new Date().toISOString() }).eq('id', selectedDocument.id);
+      const persistedContent = serializeKnowledgeContent(editorContent);
+      const { error } = await supabase.from('knowledge_documents').update({ content: persistedContent, updated_at: new Date().toISOString() }).eq('id', selectedDocument.id);
       if (error) throw error;
       await setTopicsFn(topicIds);
       setHasUnsavedChanges(false);
       toast({ title: "Gespeichert", description: "Das Dokument wurde gespeichert." });
-      setSelectedDocument(prev => prev ? { ...prev, content: editorContent } : null);
+      setSelectedDocument(prev => prev ? {
+        ...prev,
+        content: persistedContent,
+        plain_text: editorContent.plainText,
+        content_nodes: editorContent.nodesJson ?? null,
+        content_html: editorContent.html ?? null,
+      } : null);
     } catch (error) {
       debugConsole.error('Error saving document:', error);
       toast({ title: "Fehler beim Speichern", description: "Das Dokument konnte nicht gespeichert werden.", variant: "destructive" });
