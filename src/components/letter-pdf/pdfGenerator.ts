@@ -129,7 +129,7 @@ const parseHexColor = (hexColor: string, fallback: [number, number, number] = [0
   const g = Number.parseInt(hex.slice(2, 4), 16);
   const b = Number.parseInt(hex.slice(4, 6), 16);
   if ([r, g, b].some((channel) => Number.isNaN(channel))) return fallback;
-  return [r, g, b];
+  return [r, g, b] as [number, number, number];
 };
 
 const toLayoutSettings = (rawLayout: unknown): LetterLayoutSettings => (
