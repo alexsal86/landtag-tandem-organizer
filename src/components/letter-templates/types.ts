@@ -6,6 +6,7 @@ import {
   type SenderInformation,
   type InformationBlock,
   type LetterBlockContentMap,
+  type LetterCanvasElement,
   isLetterCanvasElementArray,
   isLineModeBlockData,
 } from '@/types/letterLayout';

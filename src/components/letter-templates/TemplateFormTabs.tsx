@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { StructuredHeaderEditor } from '@/components/letters/StructuredHeaderEditor';
+import type { HeaderElement } from '@/components/canvas-engine/types';
 import { LayoutSettingsEditor } from '@/components/letters/LayoutSettingsEditor';
 import { LetterLayoutCanvasDesigner } from '@/components/letters/LetterLayoutCanvasDesigner';
 import { SenderInformationManager } from '@/components/administration/SenderInformationManager';
