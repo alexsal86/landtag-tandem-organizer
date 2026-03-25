@@ -55,3 +55,23 @@ export function useCreateDossier() {
     onError: (err) => toast.error(`Fehler: ${err.message}`),
   });
 }
+
+export function useUpdateDossier() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: { id: string; title?: string; summary?: string; status?: string; priority?: string }) => {
+      const { id, ...updates } = input;
+      const { error } = await supabase
+        .from("dossiers")
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["dossiers"] });
+      toast.success("Dossier aktualisiert");
+    },
+    onError: (err) => toast.error(`Fehler: ${err.message}`),
+  });
+}
