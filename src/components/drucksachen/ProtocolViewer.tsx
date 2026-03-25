@@ -100,7 +100,7 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
   }, [protocol.structured_data]);
 
   const stats = useMemo(() => {
-    return protocol.structured_data?.stats || {};
+    return (protocol.structured_data as any)?.stats || {};
   }, [protocol.structured_data]);
 
   const sessionData = protocol.structured_data?.session || {};
