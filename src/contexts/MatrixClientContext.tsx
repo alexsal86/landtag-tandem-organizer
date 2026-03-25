@@ -323,8 +323,8 @@ const mapMatrixEventToMessage = (room: sdk.Room, event: sdk.MatrixEvent): Matrix
       msgtype: content.msgtype || 'm.file',
       body: content.body || '',
       url: content.url,
-      info: content.info as MatrixMediaContent['info'],
-    } : undefined,
+      info: content.info as import('@/types/matrix').MatrixMessageMediaInfo | undefined,
+    } as import('@/types/matrix').MatrixMediaContent : undefined,
   };
 };
 
