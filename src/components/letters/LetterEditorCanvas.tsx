@@ -421,7 +421,11 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
     );
   };
 
-  const editableAttachmentList: EditableAttachment[] = (attachments ?? []).filter(isEditableAttachment);
+  const editableAttachmentList: EditableAttachment[] = (attachments ?? []).map(a => ({
+    id: a.id,
+    file_name: a.file_name,
+    display_name: a.display_name ?? undefined,
+  })).filter(isEditableAttachment);
 
   // ── The complete content flow (used for both measurement and rendering) ──
   const renderContentFlow = () => (
