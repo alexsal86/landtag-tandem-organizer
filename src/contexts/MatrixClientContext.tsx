@@ -1637,7 +1637,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
     }
 
     // Use the shared helper — no duplicated listener code
-    const cleanupVerifierListeners = setupVerifierListeners(verifier, verificationRequest, setActiveSasVerification, setLastVerificationError, describeError);
+    const cleanupVerifierListeners = setupVerifierListeners(verifier, verificationRequest as unknown as MatrixVerificationRequest, setActiveSasVerification, setLastVerificationError, describeError);
 
     void verifier.verify()
       .then(() => {
