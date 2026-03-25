@@ -5,7 +5,16 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ZoomIn, ZoomOut, Trash2, Eye, EyeOff, Lock, Unlock } from 'lucide-react';
-import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayout';
+import {
+  DEFAULT_DIN5008_LAYOUT,
+  isLineModeBlockData,
+  type LayoutBlockKey,
+  type LayoutEditorTab,
+  type LetterBlockLine,
+  type LetterCanvasElement,
+  type LetterLayoutBlockConfig,
+  type LetterLayoutSettings,
+} from '@/types/letterLayout';
 import { CSS_PX_PER_MM } from '@/lib/units';
 import { SunflowerSVG, LionSVG, WappenSVG } from '@/components/letters/elements/shapeSVGs';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,9 +26,6 @@ const getBlockLineFontStack = (fontFamily?: string): string => (
     : 'Calibri, Carlito, "Segoe UI", Arial, sans-serif'
 );
 
-type BlockKey = 'header' | 'addressField' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments' | 'pagination';
-type EditorTab = 'header-designer' | 'footer-designer' | 'layout-settings' | 'general' | 'block-address' | 'block-info' | 'block-subject' | 'block-content' | 'block-attachments';
-
 interface Rect {
   x: number;
   y: number;
@@ -27,50 +33,15 @@ interface Rect {
   h: number;
 }
 
-interface CanvasElement {
-  id: string;
-  type: 'text' | 'image' | 'shape' | 'block';
-  x: number;
-  y: number;
-  width?: number;
-  height?: number;
-  content?: string;
-  blockContent?: string;
-  imageUrl?: string;
-  blobUrl?: string;
-  fontSize?: number;
-  fontFamily?: string;
-  fontWeight?: string;
-  fontStyle?: string;
-  textDecoration?: string;
-  color?: string;
-  textLineHeight?: number;
-  shapeType?: 'line' | 'circle' | 'rectangle' | 'sunflower' | 'lion' | 'wappen';
-  fillColor?: string;
-  strokeColor?: string;
-  strokeWidth?: number;
-  borderRadius?: number;
-}
-
-interface BlockConfig {
-  key: BlockKey;
-  label: string;
-  color: string;
-  canMoveX?: boolean;
-  canResize?: boolean;
-  jumpTo: EditorTab;
-  isCustom?: boolean;
-}
-
 interface Props {
   layoutSettings: LetterLayoutSettings;
   onLayoutChange: (settings: LetterLayoutSettings) => void;
-  onJumpToTab?: (tab: EditorTab) => void;
-  headerElements?: CanvasElement[];
+  onJumpToTab?: (tab: LayoutEditorTab) => void;
+  headerElements?: LetterCanvasElement[];
   actionButtons?: React.ReactNode;
 }
 
-const DEFAULT_BLOCKS: BlockConfig[] = [
+const DEFAULT_BLOCKS: LetterLayoutBlockConfig[] = [
   { key: 'header', label: 'Header', color: 'bg-cyan-500/20 border-cyan-600 text-cyan-900', jumpTo: 'header-designer' },
   { key: 'addressField', label: 'Adressfeld', color: 'bg-blue-500/20 border-blue-600 text-blue-900', canMoveX: true, canResize: true, jumpTo: 'block-address' },
   { key: 'infoBlock', label: 'Info-Block', color: 'bg-purple-500/20 border-purple-600 text-purple-900', canMoveX: true, canResize: true, jumpTo: 'block-info' },
@@ -98,7 +69,7 @@ const PAGINATION_PREVIEW_WIDTH_MM = 18;
 const snapMm = (val: number) => Math.round(val);
 const clamp = (val: number, min: number, max: number) => Math.min(max, Math.max(min, val));
 
-const renderCanvasElementPreview = (element: CanvasElement, left: number, top: number, scale: number, plainPreview = false) => {
+const renderCanvasElementPreview = (element: LetterCanvasElement, left: number, top: number, scale: number, plainPreview = false) => {
   const width = (element.width || (element.type === 'image' ? 30 : 50)) * scale;
   const height = (element.height || (element.type === 'text' ? 8 : element.type === 'block' ? 18 : 10)) * scale;
   const style: React.CSSProperties = {
@@ -189,9 +160,9 @@ const renderCanvasElementPreview = (element: CanvasElement, left: number, top: n
     );
   }
 
-  const isVariable = (element as any).isVariable === true;
-  const displayText = isVariable && (element as any).variablePreviewText
-    ? (element as any).variablePreviewText
+  const isVariable = element.isVariable === true;
+  const displayText = isVariable && element.variablePreviewText
+    ? element.variablePreviewText
     : element.content;
 
   return (
@@ -206,7 +177,7 @@ const renderCanvasElementPreview = (element: CanvasElement, left: number, top: n
         textDecoration: element.textDecoration || 'none',
         color: plainPreview ? (element.color || '#111827') : (isVariable ? '#b45309' : (element.color || '#111827')),
         lineHeight: `${element.textLineHeight || 1.2}`,
-        textAlign: (element as any).textAlign || 'left',
+        textAlign: element.textAlign || 'left',
         whiteSpace: 'pre-wrap',
         backgroundColor: !plainPreview && isVariable ? 'rgba(251, 191, 36, 0.15)' : undefined,
         borderRadius: !plainPreview && isVariable ? '4px' : undefined,
@@ -240,14 +211,14 @@ const cloneLayout = (layout: LetterLayoutSettings): LetterLayoutSettings => ({
   lockedBlocks: [...(layout.lockedBlocks || [])],
 });
 
-const getDisabled = (layout: LetterLayoutSettings): BlockKey[] => (layout.disabledBlocks || []) as BlockKey[];
-const getLocked = (layout: LetterLayoutSettings): BlockKey[] => (layout.lockedBlocks || []) as BlockKey[];
+const getDisabled = (layout: LetterLayoutSettings): LayoutBlockKey[] => (layout.disabledBlocks || []) as LayoutBlockKey[];
+const getLocked = (layout: LetterLayoutSettings): LayoutBlockKey[] => (layout.lockedBlocks || []) as LayoutBlockKey[];
 
 export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJumpToTab, headerElements = [], actionButtons }: Props) {
   const { currentTenant } = useTenant();
-  const [blocks, setBlocks] = useState<BlockConfig[]>(() => [...DEFAULT_BLOCKS]);
-  const [selected, setSelected] = useState<BlockKey>('addressField');
-  const [dragging, setDragging] = useState<{ key: BlockKey; startX: number; startY: number; orig: Rect; mode: 'move' | 'resize' } | null>(null);
+  const [blocks, setBlocks] = useState<LetterLayoutBlockConfig[]>(() => [...DEFAULT_BLOCKS]);
+  const [selected, setSelected] = useState<LayoutBlockKey>('addressField');
+  const [dragging, setDragging] = useState<{ key: LayoutBlockKey; startX: number; startY: number; orig: Rect; mode: 'move' | 'resize' } | null>(null);
   const [localLayout, setLocalLayout] = useState<LetterLayoutSettings>(() => cloneLayout(layoutSettings));
   const [templateDefaults, setTemplateDefaults] = useState<Record<string, string>>({});
   const [showRuler, setShowRuler] = useState(false);
@@ -350,7 +321,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
     return Math.max(20, Math.min(localLayout.content.maxHeight, contentBottom - localLayout.content.top));
   };
 
-  const getRect = (key: BlockKey): Rect => {
+  const getRect = (key: LayoutBlockKey): Rect => {
     const pag = localLayout.pagination || { enabled: true, top: 263.77, align: 'right', fontSize: 8 };
     switch (key) {
       case 'header':
@@ -377,7 +348,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
     }
   };
 
-  const updateByRect = (key: BlockKey, rect: Rect) => {
+  const updateByRect = (key: LayoutBlockKey, rect: Rect) => {
     setLocalLayout((prev) => {
       const next = cloneLayout(prev);
       if (key === 'header') next.header.height = clamp(snapMm(rect.h), 20, 70);
@@ -398,7 +369,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
     });
   };
 
-  const startDrag = (event: React.MouseEvent, key: BlockKey, mode: 'move' | 'resize') => {
+  const startDrag = (event: React.MouseEvent, key: LayoutBlockKey, mode: 'move' | 'resize') => {
     if (plainPreview || disabledBlocks.has(key) || lockedBlocks.has(key)) return;
     event.preventDefault();
     event.stopPropagation();
@@ -431,7 +402,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
     commitToParent();
   };
 
-  const toggleBlock = (key: BlockKey, enabled: boolean) => {
+  const toggleBlock = (key: LayoutBlockKey, enabled: boolean) => {
     setLocalLayout((prev) => {
       const disabled = new Set(getDisabled(prev));
       if (enabled) disabled.delete(key);
@@ -442,7 +413,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
     });
   };
 
-  const toggleLock = (key: BlockKey) => {
+  const toggleLock = (key: LayoutBlockKey) => {
     setLocalLayout((prev) => {
       const locked = new Set(getLocked(prev));
       if (locked.has(key)) locked.delete(key);
@@ -682,19 +653,19 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               const isPaginationVisible = block.key !== 'pagination' || (localLayout.pagination?.enabled ?? true);
               if (!isPaginationVisible) return null;
               const rawContent = blockContent[block.key];
-              const isLineModeBlock = rawContent && typeof rawContent === 'object' && !Array.isArray(rawContent) && (rawContent as any).mode === 'lines';
-              const lineData = isLineModeBlock ? ((rawContent as any).lines || []) as { id: string; type: string; label?: string; value?: string; isVariable?: boolean; labelBold?: boolean; valueBold?: boolean; fontSize?: number; spacerHeight?: number }[] : [];
+              const isLineModeBlock = isLineModeBlockData(rawContent);
+              const lineData: LetterBlockLine[] = isLineModeBlock ? rawContent.lines : [];
               
               // For addressField, also get returnAddress line data
               const returnAddressRaw = block.key === 'addressField' ? blockContent['returnAddress'] : null;
-              const isReturnLineMode = returnAddressRaw && typeof returnAddressRaw === 'object' && !Array.isArray(returnAddressRaw) && (returnAddressRaw as any).mode === 'lines';
-              const returnLineData = isReturnLineMode ? ((returnAddressRaw as any).lines || []) as typeof lineData : [];
+              const isReturnLineMode = isLineModeBlockData(returnAddressRaw);
+              const returnLineData: LetterBlockLine[] = isReturnLineMode ? returnAddressRaw.lines : [];
               const hasReturnData = returnLineData.length > 0;
               const hasAddressData = isLineModeBlock && lineData.length > 0;
               
               const blockElements = block.key === 'header'
                 ? headerElements
-                : (Array.isArray(rawContent) ? rawContent : []) as CanvasElement[];
+                : (Array.isArray(rawContent) ? rawContent : []) as LetterCanvasElement[];
               const previewText =
                 block.key === 'header'
                   ? ''
@@ -709,14 +680,14 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               };
               const subjectTemplate = (() => {
                 const sl = localLayout.blockContent?.subjectLine;
-                if (sl && typeof sl === 'object' && !Array.isArray(sl) && (sl as any).mode === 'lines') {
-                  const firstTextLine = ((sl as any).lines || []).find((line: any) => line.type === 'text-only' || line.type === 'label-value');
+                if (isLineModeBlockData(sl)) {
+                  const firstTextLine = sl.lines.find((line) => line.type === 'text-only' || line.type === 'label-value');
                   if (firstTextLine?.value) {
-                    return firstTextLine.value as string;
+                    return firstTextLine.value;
                   }
                 }
-                if (sl && Array.isArray(sl) && sl.length > 0 && (sl[0] as any).content) {
-                  return (sl[0] as any).content as string;
+                if (Array.isArray(sl) && sl.length > 0 && typeof sl[0]?.content === 'string') {
+                  return sl[0].content;
                 }
                 return '{{betreff}}';
               })();
@@ -742,7 +713,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                   const isVar = hasVariablePlaceholder(line.value || '');
                   const underlineThisLine = index === lastContentIndex;
                   return (
-                    <div key={line.id} style={{ fontSize: fontSizePx, fontFamily: getBlockLineFontStack((line as any).fontFamily), lineHeight: '1.3' }}>
+                    <div key={line.id} style={{ fontSize: fontSizePx, fontFamily: getBlockLineFontStack(line.fontFamily), lineHeight: '1.3' }}>
                       <span className="inline-flex items-center gap-0.5" style={underlineThisLine ? { borderBottom: '1px solid #000' } : undefined}>
                         {line.label && <span className={line.labelBold !== false ? 'font-semibold' : ''}>{line.label}</span>}
                         <span className={line.valueBold ? 'font-semibold' : ''}>{resolvedValue}</span>
@@ -856,7 +827,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                       lineData.forEach((line) => {
                         if (line.type === 'block-start') {
                           if (cur) columns.push(cur);
-                          cur = { label: (line as any).label || '', widthValue: (line as any).widthValue || 25, widthUnit: (line as any).widthUnit || 'percent', items: [] };
+                          cur = { label: line.label || '', widthValue: line.widthValue || 25, widthUnit: line.widthUnit || 'percent', items: [] };
                         } else if (line.type === 'block-end') {
                           if (cur) { columns.push(cur); cur = null; }
                         } else if (cur) {
@@ -874,7 +845,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                                 if (line.type === 'spacer') return <div key={line.id} style={{ height: (line.spacerHeight || 2) * SCALE }} />;
                                 const rv = resolveLineValue(line.value);
                                 return (
-                                  <div key={line.id} className="truncate" style={{ fontSize: fPx, fontFamily: getBlockLineFontStack((line as any).fontFamily), lineHeight: '1.3', fontWeight: line.valueBold ? 'bold' : 'normal', color: (line as any).color || undefined }}>
+                                  <div key={line.id} className="truncate" style={{ fontSize: fPx, fontFamily: getBlockLineFontStack(line.fontFamily), lineHeight: '1.3', fontWeight: line.valueBold ? 'bold' : 'normal', color: line.color || undefined }}>
                                     {line.type === 'label-value' ? `${line.label || ''} ${rv}`.trim() : (rv || '\u00A0')}
                                   </div>
                                 );

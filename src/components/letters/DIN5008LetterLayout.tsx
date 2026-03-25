@@ -8,21 +8,46 @@ import { LetterAttachmentList, LetterClosingBlock, getLetterAttachmentNames } fr
 import { FoldHoleMarks, PaginationFooter, TemplateFooterBlocks } from './DIN5008LayoutChrome';
 import { DIN5008AddressInfoSection } from './DIN5008AddressInfoSection';
 import { getLetterAssetPublicUrl } from './letterAssetUrls';
+import type {
+  InformationBlockRecord,
+  LetterAttachmentRecord,
+  LetterCanvasElement,
+  LetterLayoutSettings,
+  SenderInformationRecord,
+} from '@/types/letterLayout';
+
+type RecipientAddress = {
+  name?: string;
+  address?: string;
+  recipient_name?: string;
+  recipient_address?: string;
+  company?: string;
+  street?: string;
+  postal_code?: string;
+  city?: string;
+  country?: string;
+};
+
+type TemplateLike = {
+  layout_settings?: LetterLayoutSettings;
+  header_layout_type?: string | null;
+  header_text_elements?: LetterCanvasElement[];
+};
 
 interface DIN5008LetterLayoutProps {
-  template?: any;
-  senderInfo?: any;
-  informationBlock?: any;
-  recipientAddress?: any;
+  template?: TemplateLike;
+  senderInfo?: SenderInformationRecord | null;
+  informationBlock?: InformationBlockRecord[] | null;
+  recipientAddress?: RecipientAddress | string;
   content: string;
   subject?: string;
   letterDate?: string;
   referenceNumber?: string;
-  attachments?: any[];
+  attachments?: LetterAttachmentRecord[];
   className?: string;
   debugMode?: boolean;
   showPagination?: boolean;
-  layoutSettings?: any;
+  layoutSettings?: LetterLayoutSettings;
   salutation?: string;
   hideClosing?: boolean;
   // Canvas-based block elements (substituted)
@@ -146,7 +171,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
     20,
     Math.min(configuredContentMaxHeightMm, contentBottomLimitMm - contentTopMm),
   );
-  const formatAddress = (address: any) => {
+  const formatAddress = (address?: RecipientAddress | string) => {
     if (!address) return '';
     
     // Handle different address formats
@@ -198,7 +223,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
     return parts.join('\n');
   };
 
-  const formatSenderAddress = (sender: any) => {
+  const formatSenderAddress = (sender?: SenderInformationRecord | null) => {
     if (!sender) return '';
     const parts: string[] = [];
     if (sender.organization) parts.push(sender.organization);
@@ -212,7 +237,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
     return parts.join('\n');
   };
 
-  const renderInformationBlock = (info: any) => {
+  const renderInformationBlock = (info: InformationBlockRecord) => {
     if (!info) return null;
 
     switch (info.block_type) {
@@ -309,11 +334,11 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
             </div>
           );
         }
-        if (element.type === 'image' && (element as any).imageUrl) {
+        if (element.type === 'image' && element.imageUrl) {
           return (
             <img
               key={element.id || index}
-              src={(element as any).imageUrl}
+              src={element.imageUrl}
               alt=""
               className="absolute"
               style={{
@@ -453,7 +478,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
                 position: 'relative'
               }}
             >
-              {template.header_text_elements.map((element: any, index: number) => (
+              {template.header_text_elements.map((element, index: number) => (
                 <div key={index}>
                   {element.type === 'text' && (
                     <div

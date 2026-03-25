@@ -13,28 +13,53 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { StructuredHeaderEditor } from '@/components/letters/StructuredHeaderEditor';
 import { LayoutSettingsEditor } from '@/components/letters/LayoutSettingsEditor';
 import { LetterLayoutCanvasDesigner } from '@/components/letters/LetterLayoutCanvasDesigner';
-import { LetterLayoutSettings } from '@/types/letterLayout';
 import { SenderInformationManager } from '@/components/administration/SenderInformationManager';
 import { BlockLineEditor, type BlockLine } from '@/components/letters/BlockLineEditor';
 import { parseFooterLinesForEditor, toFooterLineData } from '@/components/letters/footerBlockUtils';
 import { getLetterAssetPublicUrl } from '@/components/letters/letterAssetUrls';
-import { MarginKey, TabRect, SenderInformation, InformationBlock, DEFAULT_ATTACHMENT_PREVIEW_LINES } from './types';
+import {
+  isLineModeBlockData,
+  type LayoutEditorTab,
+  type LetterCanvasElement,
+  type LetterLayoutSettings,
+} from '@/types/letterLayout';
+import { MarginKey, TabRect, SenderInformation, InformationBlock } from './types';
+
+interface TemplateFormData {
+  name: string;
+  response_time_days: number;
+  default_sender_id?: string;
+  default_info_blocks: string[];
+  letterhead_html: string;
+  letterhead_css: string;
+  layout_settings: LetterLayoutSettings;
+  header_elements: LetterCanvasElement[];
+  footer_blocks?: unknown;
+}
+
+interface TenantLike {
+  id: string;
+}
+
+interface ToastLike {
+  (payload: { title: string; description?: string; variant?: 'default' | 'destructive' }): void;
+}
 
 interface TemplateFormTabsProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  formData: any;
-  setFormData: React.Dispatch<React.SetStateAction<any>>;
-  editingTemplate: any;
+  formData: TemplateFormData;
+  setFormData: React.Dispatch<React.SetStateAction<TemplateFormData>>;
+  editingTemplate: unknown;
   senderInfos: SenderInformation[];
   infoBlocks: InformationBlock[];
   handleCreateTemplate: () => void;
   resetForm: () => void;
   setShowCreateDialog: (v: boolean) => void;
-  getBlockItems: (key: any) => any[];
-  setBlockItems: (key: any, items: any[]) => void;
-  currentTenant: any;
-  toast: any;
+  getBlockItems: (key: string) => unknown;
+  setBlockItems: (key: string, items: unknown) => void;
+  currentTenant: TenantLike | null;
+  toast: ToastLike;
 }
 
 export const useTemplateFormTabs = ({
@@ -103,10 +128,18 @@ export const useTemplateFormTabs = ({
 
   const activeTabDefinition = tabDefinitions.find((tab) => tab.value === activeTab);
 
+  const extractBlockLines = (raw: unknown): BlockLine[] => {
+    if (isLineModeBlockData(raw)) return raw.lines as BlockLine[];
+    if (Array.isArray(raw) && raw.length > 0 && (raw[0]?.type === 'label-value' || raw[0]?.type === 'spacer' || raw[0]?.type === 'text-only')) {
+      return raw as BlockLine[];
+    }
+    return [];
+  };
+
   const renderSharedElementsEditor = (blockKey: string, canvasWidthMm: number, canvasHeightMm: number) => (
     <StructuredHeaderEditor
-      initialElements={getBlockItems(blockKey) as any}
-      onElementsChange={(elements) => setBlockItems(blockKey, elements as any[])}
+      initialElements={Array.isArray(getBlockItems(blockKey)) ? (getBlockItems(blockKey) as LetterCanvasElement[]) : []}
+      onElementsChange={(elements) => setBlockItems(blockKey, elements)}
       layoutSettings={formData.layout_settings}
       canvasWidthMm={canvasWidthMm}
       canvasHeightMm={Math.max(8, canvasHeightMm)}
@@ -140,8 +173,8 @@ export const useTemplateFormTabs = ({
       <TabsContent value="canvas-designer" className="space-y-4">
         <LetterLayoutCanvasDesigner
           layoutSettings={formData.layout_settings}
-          onLayoutChange={(settings) => setFormData((prev: any) => ({ ...prev, layout_settings: settings }))}
-          onJumpToTab={setActiveTab as any}
+          onLayoutChange={(settings) => setFormData((prev) => ({ ...prev, layout_settings: settings }))}
+          onJumpToTab={setActiveTab as (tab: LayoutEditorTab) => void}
           headerElements={formData.header_elements}
           actionButtons={editingTemplate ? undefined : (
             <>
@@ -155,7 +188,7 @@ export const useTemplateFormTabs = ({
       <TabsContent value="header-designer" className="space-y-4 min-w-0">
         <StructuredHeaderEditor
           initialElements={formData.header_elements}
-          onElementsChange={(elements) => setFormData((prev: any) => ({ ...prev, header_elements: elements }))}
+          onElementsChange={(elements) => setFormData((prev) => ({ ...prev, header_elements: elements as LetterCanvasElement[] }))}
           layoutSettings={formData.layout_settings}
           actionButtons={editingTemplate ? undefined : (
             <div className="flex flex-col gap-2">
@@ -172,9 +205,9 @@ export const useTemplateFormTabs = ({
           lines={parseFooterLinesForEditor(formData.footer_blocks)}
           onChange={(newLines) => {
             const footerData = toFooterLineData(newLines);
-            setFormData((prev: any) => ({
-              ...prev, footer_blocks: footerData as any,
-              layout_settings: { ...prev.layout_settings, blockContent: { ...((prev.layout_settings as any).blockContent || {}), footer: footerData } } as LetterLayoutSettings,
+            setFormData((prev) => ({
+              ...prev, footer_blocks: footerData,
+              layout_settings: { ...prev.layout_settings, blockContent: { ...(prev.layout_settings.blockContent || {}), footer: footerData } },
             }));
           }}
         />
@@ -183,22 +216,22 @@ export const useTemplateFormTabs = ({
       <TabsContent value="layout-settings" className="space-y-4">
         <LayoutSettingsEditor
           layoutSettings={formData.layout_settings}
-          onLayoutChange={(settings) => setFormData((prev: any) => ({ ...prev, layout_settings: settings }))}
+          onLayoutChange={(settings) => setFormData((prev) => ({ ...prev, layout_settings: settings }))}
           letterheadHtml={formData.letterhead_html}
           letterheadCss={formData.letterhead_css}
-          onLetterheadHtmlChange={(v) => setFormData((prev: any) => ({ ...prev, letterhead_html: v }))}
-          onLetterheadCssChange={(v) => setFormData((prev: any) => ({ ...prev, letterhead_css: v }))}
+          onLetterheadHtmlChange={(v) => setFormData((prev) => ({ ...prev, letterhead_html: v }))}
+          onLetterheadCssChange={(v) => setFormData((prev) => ({ ...prev, letterhead_css: v }))}
         />
         <div className="border-t pt-4 space-y-4">
           <h3 className="text-lg font-semibold">Erweiterte HTML/CSS Bearbeitung</h3>
           <p className="text-sm text-muted-foreground">Für erfahrene Benutzer: Bearbeiten Sie den Briefkopf direkt mit HTML und CSS.</p>
           <div>
             <Label>Briefkopf HTML</Label>
-            <Textarea value={formData.letterhead_html} onChange={(e) => setFormData((prev: any) => ({ ...prev, letterhead_html: e.target.value }))} placeholder="HTML für den Briefkopf..." rows={8} />
+            <Textarea value={formData.letterhead_html} onChange={(e) => setFormData((prev) => ({ ...prev, letterhead_html: e.target.value }))} placeholder="HTML für den Briefkopf..." rows={8} />
           </div>
           <div>
             <Label>Briefkopf CSS</Label>
-            <Textarea value={formData.letterhead_css} onChange={(e) => setFormData((prev: any) => ({ ...prev, letterhead_css: e.target.value }))} placeholder="CSS-Stile für den Briefkopf..." rows={8} />
+            <Textarea value={formData.letterhead_css} onChange={(e) => setFormData((prev) => ({ ...prev, letterhead_css: e.target.value }))} placeholder="CSS-Stile für den Briefkopf..." rows={8} />
           </div>
         </div>
       </TabsContent>
@@ -206,15 +239,15 @@ export const useTemplateFormTabs = ({
       <TabsContent value="general" className="space-y-4">
         <div>
           <Label>Name</Label>
-          <Input value={formData.name} onChange={(e) => setFormData((prev: any) => ({ ...prev, name: e.target.value }))} placeholder="Template-Name eingeben..." />
+          <Input value={formData.name} onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))} placeholder="Template-Name eingeben..." />
         </div>
         <div>
           <Label>Antwortzeit (Tage)</Label>
-          <Input type="number" value={formData.response_time_days} onChange={(e) => setFormData((prev: any) => ({ ...prev, response_time_days: parseInt(e.target.value) || 21 }))} min="1" max="365" />
+          <Input type="number" value={formData.response_time_days} onChange={(e) => setFormData((prev) => ({ ...prev, response_time_days: parseInt(e.target.value) || 21 }))} min="1" max="365" />
         </div>
         <div>
           <Label>Standard-Absenderinformation</Label>
-          <Select value={formData.default_sender_id || "none"} onValueChange={(value) => setFormData((prev: any) => ({ ...prev, default_sender_id: value === "none" ? "" : value }))}>
+          <Select value={formData.default_sender_id || "none"} onValueChange={(value) => setFormData((prev) => ({ ...prev, default_sender_id: value === "none" ? "" : value }))}>
             <SelectTrigger><SelectValue placeholder="Absenderinformation auswählen..." /></SelectTrigger>
             <SelectContent>
               <SelectItem value="none">Keine Auswahl</SelectItem>
@@ -231,8 +264,8 @@ export const useTemplateFormTabs = ({
             {infoBlocks.map((block: InformationBlock) => (
               <div key={block.id} className="flex items-center space-x-2">
                 <Checkbox id={`block-${block.id}`} checked={formData.default_info_blocks.includes(block.id)} onCheckedChange={(checked) => {
-                  if (checked) { setFormData((prev: any) => ({ ...prev, default_info_blocks: [...prev.default_info_blocks, block.id] })); }
-                  else { setFormData((prev: any) => ({ ...prev, default_info_blocks: prev.default_info_blocks.filter((id: string) => id !== block.id) })); }
+                  if (checked) { setFormData((prev) => ({ ...prev, default_info_blocks: [...prev.default_info_blocks, block.id] })); }
+                  else { setFormData((prev) => ({ ...prev, default_info_blocks: prev.default_info_blocks.filter((id: string) => id !== block.id) })); }
                 }} />
                 <Label htmlFor={`block-${block.id}`} className="text-sm">{block.label} {block.is_default && "(Standard)"}</Label>
               </div>
@@ -246,12 +279,8 @@ export const useTemplateFormTabs = ({
           <h4 className="text-sm font-semibold mb-2">Rücksendezeile (Zusatz- und Vermerkzone – {formData.layout_settings.addressField.returnAddressHeight || 17.7}mm)</h4>
           <BlockLineEditor
             blockType="returnAddress"
-            lines={(() => {
-              const raw = getBlockItems('returnAddress');
-              if (raw && typeof raw === 'object' && (raw as any).mode === 'lines') return (raw as any).lines || [];
-              return Array.isArray(raw) && raw.length > 0 && (raw[0]?.type === 'label-value' || raw[0]?.type === 'spacer' || raw[0]?.type === 'text-only') ? raw as BlockLine[] : [];
-            })()}
-            onChange={(newLines) => setBlockItems('returnAddress', { mode: 'lines', lines: newLines } as any)}
+            lines={extractBlockLines(getBlockItems('returnAddress'))}
+            onChange={(newLines) => setBlockItems('returnAddress', { mode: 'lines', lines: newLines })}
           />
         </div>
         <div className="border-t" />
@@ -259,12 +288,8 @@ export const useTemplateFormTabs = ({
           <h4 className="text-sm font-semibold mb-2">Empfängeranschrift (Anschriftzone – {formData.layout_settings.addressField.addressZoneHeight || 27.3}mm)</h4>
           <BlockLineEditor
             blockType="addressField"
-            lines={(() => {
-              const raw = getBlockItems('addressField');
-              if (raw && typeof raw === 'object' && (raw as any).mode === 'lines') return (raw as any).lines || [];
-              return Array.isArray(raw) && raw.length > 0 && raw[0]?.type === 'label-value' || raw[0]?.type === 'spacer' || raw[0]?.type === 'text-only' ? raw as BlockLine[] : [];
-            })()}
-            onChange={(newLines) => setBlockItems('addressField', { mode: 'lines', lines: newLines } as any)}
+            lines={extractBlockLines(getBlockItems('addressField'))}
+            onChange={(newLines) => setBlockItems('addressField', { mode: 'lines', lines: newLines })}
           />
         </div>
       </TabsContent>
@@ -272,12 +297,8 @@ export const useTemplateFormTabs = ({
       <TabsContent value="block-info">
         <BlockLineEditor
           blockType="infoBlock"
-          lines={(() => {
-            const raw = getBlockItems('infoBlock');
-            if (raw && typeof raw === 'object' && (raw as any).mode === 'lines') return (raw as any).lines || [];
-            return Array.isArray(raw) && raw.length > 0 && (raw[0]?.type === 'label-value' || raw[0]?.type === 'spacer' || raw[0]?.type === 'text-only') ? raw as BlockLine[] : [];
-          })()}
-          onChange={(newLines) => setBlockItems('infoBlock', { mode: 'lines', lines: newLines } as any)}
+          lines={extractBlockLines(getBlockItems('infoBlock'))}
+          onChange={(newLines) => setBlockItems('infoBlock', { mode: 'lines', lines: newLines })}
         />
       </TabsContent>
 
@@ -290,7 +311,7 @@ export const useTemplateFormTabs = ({
                 <Checkbox
                   checked={formData.layout_settings.subject?.integrated !== false}
                   onCheckedChange={(checked) => {
-                    setFormData((prev: any) => ({ ...prev, layout_settings: { ...prev.layout_settings, subject: { ...prev.layout_settings.subject, integrated: !!checked } } }));
+                    setFormData((prev) => ({ ...prev, layout_settings: { ...prev.layout_settings, subject: { ...prev.layout_settings.subject, integrated: !!checked } } }));
                   }}
                 />
                 Betreff in Inhaltsbereich integrieren (DIN 5008)
@@ -302,19 +323,19 @@ export const useTemplateFormTabs = ({
               <BlockLineEditor
                 blockType="subject"
                 lines={(() => {
-                  const subjectLine = (formData.layout_settings as any)?.blockContent?.subjectLine;
-                  const configuredShape = (formData.layout_settings as any)?.subject?.prefixShape || 'none';
-                  if (subjectLine && typeof subjectLine === 'object' && (subjectLine as any).mode === 'lines') {
-                    return ((subjectLine as any).lines || []).map((line: any) => ({ ...line, prefixShape: line.prefixShape || configuredShape })) as BlockLine[];
+                  const subjectLine = formData.layout_settings.blockContent?.subjectLine;
+                  const configuredShape = formData.layout_settings.subject?.prefixShape || 'none';
+                  if (isLineModeBlockData(subjectLine)) {
+                    return (subjectLine.lines || []).map((line) => ({ ...line, prefixShape: line.prefixShape || configuredShape })) as BlockLine[];
                   }
                   if (Array.isArray(subjectLine) && subjectLine.length > 0) {
-                    return [{ id: 'subject-1', type: 'text-only', value: (subjectLine[0] as any)?.content || '{{betreff}}', isVariable: true, prefixShape: configuredShape } as BlockLine];
+                    return [{ id: 'subject-1', type: 'text-only', value: subjectLine[0]?.content || '{{betreff}}', isVariable: true, prefixShape: configuredShape } as BlockLine];
                   }
                   return [{ id: 'subject-1', type: 'text-only', value: '{{betreff}}', isVariable: true, prefixShape: configuredShape } as BlockLine];
                 })()}
                 onChange={(newLines) => {
                   const firstShape = newLines.find((line) => line.type === 'text-only')?.prefixShape || 'none';
-                  setFormData((prev: any) => ({
+                  setFormData((prev) => ({
                     ...prev,
                     layout_settings: {
                       ...prev.layout_settings,
@@ -334,7 +355,7 @@ export const useTemplateFormTabs = ({
             <Select
               value={formData.layout_settings.salutation?.template || 'Sehr geehrte Damen und Herren,'}
               onValueChange={(value) => {
-                setFormData((prev: any) => ({ ...prev, layout_settings: { ...prev.layout_settings, salutation: { ...(prev.layout_settings.salutation || { fontSize: 11 }), template: value } } }));
+                setFormData((prev) => ({ ...prev, layout_settings: { ...prev.layout_settings, salutation: { ...(prev.layout_settings.salutation || { fontSize: 11 }), template: value } } }));
               }}
             >
               <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
@@ -354,15 +375,15 @@ export const useTemplateFormTabs = ({
             <div className="space-y-3">
               <div>
                 <Label>Abschlussformel</Label>
-                <Input value={formData.layout_settings.closing?.formula || ''} onChange={(e) => { setFormData((prev: any) => ({ ...prev, layout_settings: { ...prev.layout_settings, closing: { ...(prev.layout_settings.closing || { formula: '', signatureName: '' }), formula: e.target.value } } })); }} placeholder="z.B. Mit freundlichen Grüßen" />
+                <Input value={formData.layout_settings.closing?.formula || ''} onChange={(e) => { setFormData((prev) => ({ ...prev, layout_settings: { ...prev.layout_settings, closing: { ...(prev.layout_settings.closing || { formula: '', signatureName: '' }), formula: e.target.value } } })); }} placeholder="z.B. Mit freundlichen Grüßen" />
               </div>
               <div>
                 <Label>Unterschrift-Name</Label>
-                <Input value={formData.layout_settings.closing?.signatureName || ''} onChange={(e) => { setFormData((prev: any) => ({ ...prev, layout_settings: { ...prev.layout_settings, closing: { ...(prev.layout_settings.closing || { formula: '', signatureName: '' }), signatureName: e.target.value } } })); }} placeholder="z.B. Max Mustermann" />
+                <Input value={formData.layout_settings.closing?.signatureName || ''} onChange={(e) => { setFormData((prev) => ({ ...prev, layout_settings: { ...prev.layout_settings, closing: { ...(prev.layout_settings.closing || { formula: '', signatureName: '' }), signatureName: e.target.value } } })); }} placeholder="z.B. Max Mustermann" />
               </div>
               <div>
                 <Label>Unterschrift-Titel</Label>
-                <Input value={formData.layout_settings.closing?.signatureTitle || ''} onChange={(e) => { setFormData((prev: any) => ({ ...prev, layout_settings: { ...prev.layout_settings, closing: { ...(prev.layout_settings.closing || { formula: '', signatureName: '' }), signatureTitle: e.target.value } } })); }} placeholder="z.B. Referent" />
+                <Input value={formData.layout_settings.closing?.signatureTitle || ''} onChange={(e) => { setFormData((prev) => ({ ...prev, layout_settings: { ...prev.layout_settings, closing: { ...(prev.layout_settings.closing || { formula: '', signatureName: '' }), signatureTitle: e.target.value } } })); }} placeholder="z.B. Referent" />
               </div>
               <div>
                 <Label>Unterschriftsbild</Label>
@@ -381,14 +402,14 @@ export const useTemplateFormTabs = ({
                       const filePath = `signatures/${currentTenant.id}/${Date.now()}-${file.name}`;
                       const { error } = await supabase.storage.from('letter-assets').upload(filePath, file);
                       if (error) { toast({ title: 'Upload fehlgeschlagen', description: error.message, variant: 'destructive' }); return; }
-                      setFormData((prev: any) => ({ ...prev, layout_settings: { ...prev.layout_settings, closing: { ...(prev.layout_settings.closing || { formula: '', signatureName: '' }), signatureImagePath: filePath } } }));
+                      setFormData((prev) => ({ ...prev, layout_settings: { ...prev.layout_settings, closing: { ...(prev.layout_settings.closing || { formula: '', signatureName: '' }), signatureImagePath: filePath } } }));
                       toast({ title: 'Unterschriftsbild hochgeladen' });
                     };
                     input.click();
                   }}>Bild hochladen</Button>
                   {formData.layout_settings.closing?.signatureImagePath && (
                     <Button type="button" variant="ghost" size="sm" onClick={() => {
-                      setFormData((prev: any) => ({ ...prev, layout_settings: { ...prev.layout_settings, closing: { ...(prev.layout_settings.closing || { formula: '', signatureName: '' }), signatureImagePath: '' } } }));
+                      setFormData((prev) => ({ ...prev, layout_settings: { ...prev.layout_settings, closing: { ...(prev.layout_settings.closing || { formula: '', signatureName: '' }), signatureImagePath: '' } } }));
                     }}>Entfernen</Button>
                   )}
                 </div>
