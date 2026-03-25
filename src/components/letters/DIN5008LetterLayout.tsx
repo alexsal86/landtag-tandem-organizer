@@ -230,56 +230,60 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
 
   const renderInformationBlock = (info: InformationBlockRecord) => {
     if (!info) return null;
+    const bd = (info.block_data && typeof info.block_data === 'object' && !Array.isArray(info.block_data))
+      ? info.block_data as Record<string, unknown>
+      : {} as Record<string, unknown>;
 
     switch (info.block_type) {
       case 'contact':
         return (
           <div className="space-y-1">
             <div className="font-medium">{info.label}</div>
-            {info.block_data.contact_name && (
-              <div>{info.block_data.contact_name}</div>
+            {bd.contact_name && (
+              <div>{String(bd.contact_name)}</div>
             )}
-            {info.block_data.contact_title && (
-              <div className="text-sm text-muted-foreground">{info.block_data.contact_title}</div>
+            {bd.contact_title && (
+              <div className="text-sm text-muted-foreground">{String(bd.contact_title)}</div>
             )}
-            {info.block_data.contact_phone && (
-              <div className="text-sm">Tel: {info.block_data.contact_phone}</div>
+            {bd.contact_phone && (
+              <div className="text-sm">Tel: {String(bd.contact_phone)}</div>
             )}
-            {info.block_data.contact_email && (
-              <div className="text-sm">{info.block_data.contact_email}</div>
+            {bd.contact_email && (
+              <div className="text-sm">{String(bd.contact_email)}</div>
             )}
           </div>
         );
-      case 'date':
+      case 'date': {
         const date = new Date();
-        const formatDate = (date: Date, format: string) => {
-          switch (format) {
+        const formatDate = (d: Date, fmt: string) => {
+          switch (fmt) {
             case 'dd.mm.yyyy':
-              return date.toLocaleDateString('de-DE');
+              return d.toLocaleDateString('de-DE');
             case 'dd.mm.yy':
-              return date.toLocaleDateString('de-DE', { year: '2-digit', month: '2-digit', day: '2-digit' });
+              return d.toLocaleDateString('de-DE', { year: '2-digit', month: '2-digit', day: '2-digit' });
             case 'yyyy-mm-dd':
-              return date.toISOString().split('T')[0];
+              return d.toISOString().split('T')[0];
             default:
-              return date.toLocaleDateString('de-DE');
+              return d.toLocaleDateString('de-DE');
           }
         };
         return (
           <div className="space-y-1">
             <div className="font-medium">{info.label}</div>
-            <div>{formatDate(date, info.block_data.date_format || 'dd.mm.yyyy')}</div>
-            {info.block_data.show_time && (
+            <div>{formatDate(date, String(bd.date_format || 'dd.mm.yyyy'))}</div>
+            {bd.show_time && (
               <div className="text-sm">{date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr</div>
             )}
           </div>
         );
+      }
       case 'reference':
         return (
           <div className="space-y-1">
             <div className="font-medium">{info.label}</div>
             <div>
-              {info.block_data.reference_prefix && `${info.block_data.reference_prefix} `}
-              {referenceNumber || info.block_data.reference_pattern}
+              {bd.reference_prefix && `${String(bd.reference_prefix)} `}
+              {referenceNumber || String(bd.reference_pattern || '')}
             </div>
           </div>
         );
@@ -287,7 +291,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         return (
           <div className="space-y-1">
             <div className="font-medium">{info.label}</div>
-            <div style={{ whiteSpace: 'pre-line' }}>{info.block_data.custom_content}</div>
+            <div style={{ whiteSpace: 'pre-line' }}>{String(bd.custom_content || '')}</div>
           </div>
         );
       default:
