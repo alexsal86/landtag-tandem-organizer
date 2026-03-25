@@ -9,9 +9,22 @@ import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 import { CalendarEventAdapter, type RBCEvent } from './CalendarEventAdapter';
 import type { CalendarEvent } from './types';
 
+interface CalendarEventViewModel extends RBCEvent {
+  resource: CalendarEvent;
+}
+
+const toCalendarEventViewModel = (event: RBCEvent): CalendarEventViewModel | null => {
+  const resource = event.resource;
+  if (!resource || typeof resource !== 'object') {
+    return null;
+  }
+
+  return event as CalendarEventViewModel;
+};
+
 /* ── Compact month event component ── */
-const MonthEvent = ({ event }: { event: object }) => {
-  const rbcEvent = event as RBCEvent;
+const MonthEvent = ({ event }: { event: RBCEvent }) => {
+  const rbcEvent = event;
   const timeStr = rbcEvent.allDay ? '' : format(rbcEvent.start, 'HH:mm', { locale: de });
 
   return (
@@ -187,9 +200,10 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
 
   // Event prop getter for custom styling with Grünen-CI colors
   const eventPropGetter = useCallback((event: RBCEvent) => {
-    const originalEvent = event.resource as CalendarEvent;
+    const viewModel = toCalendarEventViewModel(event);
+    const originalEvent = viewModel?.resource;
     let className = '';
-    const style: Record<string, any> = {
+    const style: React.CSSProperties = {
       transition: 'all 0.2s ease',
     };
 
@@ -244,7 +258,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
 
   // Handle event selection
   const handleSelectEvent = useCallback((rbcEvent: RBCEvent) => {
-    const originalEvent = rbcEvent.resource as CalendarEvent;
+    const originalEvent = toCalendarEventViewModel(rbcEvent)?.resource;
     if (originalEvent && onEventSelect) {
       onEventSelect(originalEvent);
     }
@@ -259,7 +273,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
 
   // Handle event drop (drag and drop)
   const handleEventDrop = useCallback(({ event, start, end }: { event: RBCEvent; start: Date; end: Date }) => {
-    const originalEvent = event.resource as CalendarEvent;
+    const originalEvent = toCalendarEventViewModel(event)?.resource;
     if (originalEvent && onEventDrop) {
       onEventDrop(originalEvent, start, end);
     }
@@ -267,7 +281,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
 
   // Handle event resize
   const handleEventResize = useCallback(({ event, start, end }: { event: RBCEvent; start: Date; end: Date }) => {
-    const originalEvent = event.resource as CalendarEvent;
+    const originalEvent = toCalendarEventViewModel(event)?.resource;
     if (originalEvent && onEventResize) {
       onEventResize(originalEvent, start, end);
     }
@@ -355,16 +369,16 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
       <DnDCalendar
         localizer={localizer}
         events={rbcEvents}
-        startAccessor={(event: object) => (event as RBCEvent).start}
-        endAccessor={(event: object) => (event as RBCEvent).end}
-        titleAccessor={(event: object) => (event as RBCEvent).title}
-        allDayAccessor={(event: object) => (event as RBCEvent).allDay || false}
-        resourceAccessor={(event: object) => (event as RBCEvent).resource}
+        startAccessor={(event: RBCEvent) => event.start}
+        endAccessor={(event: RBCEvent) => event.end}
+        titleAccessor={(event: RBCEvent) => event.title}
+        allDayAccessor={(event: RBCEvent) => event.allDay || false}
+        resourceAccessor={(event: RBCEvent) => event.resource}
         view={view as any}
         date={date}
         onNavigate={onNavigate}
         onView={onView}
-        onSelectEvent={(event: object) => handleSelectEvent(event as RBCEvent)}
+        onSelectEvent={(event: RBCEvent) => handleSelectEvent(event)}
         onSelectSlot={handleSelectSlot}
         onEventDrop={(args: any) => handleEventDrop(args)}
         onEventResize={(args: any) => handleEventResize(args)}
