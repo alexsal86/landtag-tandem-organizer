@@ -96,7 +96,7 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
   }, [protocol.structured_data]);
 
   const allSpeeches: Speech[] = useMemo(() => {
-    return protocol.structured_data?.speeches || [];
+    return (protocol.structured_data as any)?.speeches || [];
   }, [protocol.structured_data]);
 
   const stats = useMemo(() => {
