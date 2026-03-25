@@ -98,7 +98,7 @@ export function useContactImport() {
             if (vcard.fn) d["Name"] = String(vcard.fn.valueOf());
             if (vcard.n) { const n = vcard.n.valueOf(); if (Array.isArray(n)) { if (n[0]) d["Nachname"] = n[0]; if (n[1]) d["Vorname"] = n[1]; } }
             if (vcard.org) { const o = vcard.org.valueOf(); d["Firma"] = Array.isArray(o) ? o[0] : o; }
-            if (vcard.title) d["Position"] = vcard.title.valueOf();
+            if (vcard.title) d["Position"] = String(vcard.title.valueOf());
             if (vcard.email) { const emails = Array.isArray(vcard.email) ? vcard.email : [vcard.email]; emails.forEach((em, i: number) => { const v = typeof em === "object" ? em.valueOf() : em; if (i === 0) d["E-Mail 1"] = toStringValue(v); else if (i === 1) d["E-Mail 2"] = toStringValue(v); else if (i === 2) d["E-Mail 3"] = toStringValue(v); }); }
             if (vcard.tel) {
               const phones = Array.isArray(vcard.tel) ? vcard.tel : [vcard.tel];
