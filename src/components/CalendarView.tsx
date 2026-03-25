@@ -106,8 +106,8 @@ export function CalendarView() {
 
       if (!active || error || !data) { handledHighlightRef.current = highlightId; return; }
 
-      const startDate = new Date(data.start_time);
-      const endDate = data.end_time ? new Date(data.end_time) : startDate;
+      const startDate = new Date(data.start_time as string);
+      const endDate = data.end_time ? new Date(data.end_time as string) : startDate;
       const allDay = data.all_day || data.is_all_day || false;
 
       handledHighlightRef.current = highlightId;
