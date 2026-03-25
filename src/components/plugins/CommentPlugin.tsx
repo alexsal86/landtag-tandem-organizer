@@ -593,8 +593,8 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
                   return true;
                 }
                 currentOffset = nodeEnd;
-              } else if (typeof (node as { getChildren?: () => LexicalNode[] }).getChildren === 'function') {
-                const children = (node as { getChildren: () => LexicalNode[] }).getChildren();
+              } else if ('getChildren' in node && typeof (node as unknown as { getChildren: () => LexicalNode[] }).getChildren === 'function') {
+                const children = (node as unknown as { getChildren: () => LexicalNode[] }).getChildren();
                 for (const child of children) {
                   if (findTextNode(child)) return true;
                 }
