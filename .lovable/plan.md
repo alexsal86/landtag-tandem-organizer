@@ -1,78 +1,42 @@
 
 
-## Briefing Live-Ansicht für Tablet
+## Plan: Heutige Fristen automatisch in den Tageszettel injizieren + bei Erledigung entfernen
 
-### Konzept
+### Kontext
+Der Tageszettel nutzt bereits ein Injektionsmuster: Recurring Items und Wochenplan-Einträge werden per `useEffect` einmalig pro Tag eingefügt (mit Flags wie `recurringInjected`, `weekPlanInjected`). Dasselbe Muster wird für heutige Fristen angewandt.
 
-Eine neue, eigenständige Fullscreen-Seite `/briefing-live/:preparationId` — optimiert für Tablet-Nutzung während eines Termins. Sie zeigt das vollständige Briefing (read-only) und darunter direkt editierbare Bereiche für Notizen und Aufgaben. Kein Dialog, kein Overlay — alles auf einer Seite, scrollbar.
+Zusätzlich gibt es einen Build-Fehler in `RealTimeSync.tsx` (TypeScript-Generics in TSX-Datei), der zuerst behoben werden muss.
 
-### Aufbau
+### Änderungen
 
-```text
-┌─────────────────────────────────────────────┐
-│ ← Zurück          LIVE BRIEFING    [PDF] ↗ │
-│ Termintitel · 14:00–15:30 · Rathaus        │
-├─────────────────────────────────────────────┤
-│                                             │
-│  ┌─ Briefing (vollständig, read-only) ───┐ │
-│  │  Gesprächspartner · Themen · Ablauf   │ │
-│  │  Anlass · Notizen · Checkliste        │ │
-│  └───────────────────────────────────────┘ │
-│                                             │
-│  ┌─ Meine Notizen (inline editierbar) ──┐ │
-│  │  [SimpleRichTextEditor]               │ │
-│  │  [Speichern]                          │ │
-│  └───────────────────────────────────────┘ │
-│                                             │
-│  ┌─ Aufgabe erstellen (inline) ─────────┐ │
-│  │  Titel:    [_______________]          │ │
-│  │  Priorität: [Medium ▾]  Fällig: [__] │ │
-│  │  [Aufgabe erstellen]                  │ │
-│  │  ── Erstellte Aufgaben ──             │ │
-│  │  ✓ Aufgabe 1 · hoch · 01.04.         │ │
-│  └───────────────────────────────────────┘ │
-│                                             │
-│  [✓ Termin als erledigt markieren]         │
-│                                             │
-└─────────────────────────────────────────────┘
-```
+**1. Build-Fehler in `RealTimeSync.tsx` beheben**
+- Die generische Funktion `isBroadcastPayloadEnvelope<TPayload>` wird vom TSX-Parser als JSX-Tag interpretiert. Lösung: Die Funktion ohne Inline-Generics umschreiben (Type Assertion statt generischem Parameter) oder in eine `.ts`-Datei auslagern.
 
-### Zugang
+**2. `DaySlipDayData` um Flag erweitern** (`dayslipTypes.ts`)
+- Neues optionales Feld `deadlinesInjected?: boolean` hinzufügen, analog zu `recurringInjected` und `weekPlanInjected`.
 
-Von überall, wo ein Briefing-Icon erscheint, wird ein Link/Button hinzugefügt:
-- **Dashboard** (`DashboardAppointmentList`): Neuer Button "Live-Briefing öffnen" neben dem bestehenden 📋-Toggle
-- **Rückmeldungen** (`AppointmentFeedbackWidget`): Link "Briefing öffnen" bei Terminen mit Preparation
-- **Terminvorbereitung** (`AppointmentPreparationDetail`): Button im Briefing-Tab
+**3. Deadline-Injection in `useDaySlipStore.ts`**
+- Neuer `useEffect` (analog zum Recurring/Week-Plan-Pattern):
+  - Prüft `todayData.deadlinesInjected` – wenn `true`, nichts tun.
+  - Lädt heutige Fristen via Supabase (Tasks mit `due_date = today` + `status != completed`, Quick Notes mit `follow_up_date = today`, Case Items mit `due_at = today` + `status != erledigt`, Decisions mit `response_deadline = today` + `status != resolved`, Planning-Assignments mit `due_date = today`).
+  - Formatiert sie als Textzeilen (z.B. `📋 Aufgabentitel` / `📝 Notiztitel` / `📁 Vorgangsbetreff` / `⚖️ Entscheidungstitel` / `📅 Planungstitel`).
+  - Ruft `appendLinesToToday(lines)` auf und setzt `deadlinesInjected: true`.
 
-### Umsetzung
+**4. Auto-Entfernung erledigter Elemente**
+- Realtime-Subscription im `useDaySlipStore` auf relevante Tabellen (`tasks`, `case_items`, `task_decisions`) für Status-Änderungen.
+- Wenn ein Element als erledigt markiert wird (`status = completed/erledigt/resolved`), wird die zugehörige Zeile im Tageszettel per `toggleStrike` durchgestrichen (oder per `deleteLine` entfernt).
+- Matching erfolgt über den Zeilentext (Titel-Vergleich) oder über ein neues optionales Feld `sourceId` in den `lineTimestamps`, das bei der Injection gespeichert wird.
 
-**1. Neue Seite: `BriefingLivePage.tsx`**
-- Route: `briefing-live` als neuer section-Case in `Index.tsx`
-- URL-Parameter: `preparationId` (und optional `appointmentId`)
-- Lädt Preparation via `useAppointmentPreparation` und Appointment-Info via Query
-- Rendert `AppointmentBriefingView` (volle Variante, nicht compact)
-- Darunter: Inline-Notizfeld mit `SimpleRichTextEditor` + Speichern-Button
-- Darunter: Inline-Aufgabenformular (Titel, Beschreibung, Priorität, Fälligkeitsdatum) + Button
-- Liste bereits erstellter Aufgaben aus dieser Session
-- "Termin erledigt"-Button → erstellt/aktualisiert `appointment_feedback` mit Status `completed`
-- Tablet-optimiert: große Touch-Targets, `max-w-3xl mx-auto`, großzügige Abstände
+### Technische Details
 
-**2. Einstiegspunkte verknüpfen**
-- `DashboardAppointmentList.tsx`: Bei Terminen mit Preparation einen "Live öffnen"-Button hinzufügen → navigiert zu `/?section=briefing-live&preparationId=X&appointmentId=Y`
-- `AppointmentFeedbackWidget.tsx`: "Briefing öffnen"-Link bei Terminen mit Preparation
-- `AppointmentPreparationDetail.tsx`: Button im Briefing-Tab-Header
-
-**3. Feedback-Logik**
-- `ensureFeedbackCompleted`-Logik wird in die neue Seite übernommen (upsert auf `appointment_feedback`)
-- Beim Speichern einer Notiz oder Aufgabe wird automatisch der Feedback-Status auf `completed` gesetzt
+- **Injection-Mapping**: Beim Injizieren wird eine Map `{sourceType}:{sourceId} → lineId` in `lineTimestamps` oder einem neuen Feld `deadlineLineMap` auf `DaySlipDayData` gespeichert, damit erledigte Elemente sicher der richtigen Zeile zugeordnet werden können.
+- **Realtime-Listener**: Drei Subscriptions (tasks, case_items, task_decisions) mit `postgres_changes` auf UPDATE-Events, gefiltert auf den aktuellen User/Tenant. Bei Statuswechsel zu "erledigt" wird `deleteLine` für die gemappte `lineId` aufgerufen.
+- **Idempotenz**: Das `deadlinesInjected`-Flag verhindert doppeltes Einfügen. Bei neuen Fristen, die nach dem ersten Laden hinzukommen, werden diese nicht automatisch nachinjiziert (konsistent mit dem bestehenden Verhalten bei Recurring Items).
 
 ### Dateien
-
 | Datei | Änderung |
 |---|---|
-| `src/pages/BriefingLivePage.tsx` | **Neu**: Fullscreen-Briefing mit Inline-Notizen und Aufgaben |
-| `src/pages/Index.tsx` | Neuer Case `briefing-live` → `BriefingLivePage` |
-| `src/components/dashboard/DashboardAppointmentList.tsx` | "Live öffnen"-Button bei Terminen mit Preparation |
-| `src/components/dashboard/AppointmentFeedbackWidget.tsx` | "Briefing öffnen"-Link |
-| `src/pages/AppointmentPreparationDetail.tsx` | Button im Briefing-Tab |
+| `src/components/dashboard/RealTimeSync.tsx` | Generics-Syntax-Fix |
+| `src/components/dayslip/dayslipTypes.ts` | `deadlinesInjected` + `deadlineLineMap` Felder |
+| `src/components/dayslip/hooks/useDaySlipStore.ts` | Deadline-Injection-Effect + Realtime-Subscription für Auto-Entfernung |
 
