@@ -72,7 +72,7 @@ export function CalendarSyncDebug() {
   const forceResync = async () => {
     setSyncLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke<ForceResyncResponse>('force-resync-calendar', {
+      const { data, error } = await (supabase.functions as any).invoke('force-resync-calendar', {
         body: { 
           calendar_id: calendarId,
           clear_existing: true 

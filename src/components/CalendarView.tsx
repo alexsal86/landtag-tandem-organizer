@@ -114,7 +114,7 @@ export function CalendarView() {
       setCurrentDate(startDate);
       setSelectedAppointment({
         id: isExt ? `external-${data.id}` : data.id,
-        title: isExt ? `📅 ${data.title}` : data.title,
+        title: isExt ? `📅 ${data.title}` : (data.title as string),
         time: allDay ? "Ganztägig" : startDate.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
         duration: "",
         date: startDate,

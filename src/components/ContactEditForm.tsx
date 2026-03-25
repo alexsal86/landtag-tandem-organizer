@@ -492,7 +492,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
           {/* Avatar Upload */}
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
-              <AvatarImage src={formData.avatar_url} />
+              <AvatarImage src={formData.avatar_url ?? undefined} />
               <AvatarFallback className="bg-primary text-primary-foreground text-lg">
                 {getInitials(formData.name || "U")}
               </AvatarFallback>
