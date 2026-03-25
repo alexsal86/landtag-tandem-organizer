@@ -54,7 +54,7 @@ export function ProtocolOverview({
               <div className="text-sm text-muted-foreground mb-1">Datum</div>
               <div className="text-lg font-semibold flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                {formatDate(sessionData.date)}
+                {formatDate(sessionData.date!)}
               </div>
             </div>
             {sittingData.location && (

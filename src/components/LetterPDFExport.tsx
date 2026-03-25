@@ -25,8 +25,8 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         letter,
         template,
         senderInfo,
-        informationBlock,
-        attachments,
+        informationBlock: informationBlock as any,
+        attachments: attachments as any,
         showPagination,
         returnBlob: false,
         contact,
@@ -39,7 +39,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
 
       if (onPDFGenerated) {
         const blobResult = await generatePDF({
-          letter, template, senderInfo, informationBlock, attachments,
+          letter, template, senderInfo, informationBlock: informationBlock as any, attachments: attachments as any,
           showPagination, returnBlob: true, contact,
         });
         if (blobResult) onPDFGenerated(blobResult.blob, blobResult.filename);

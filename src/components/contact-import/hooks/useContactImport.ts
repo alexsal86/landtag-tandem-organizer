@@ -95,10 +95,10 @@ export function useContactImport() {
           const vcards = VCF.parse(e.target?.result as string) as ParsedVCard[];
           const parsed = vcards.map((vcard) => {
             const d: ImportData = {};
-            if (vcard.fn) d["Name"] = vcard.fn.valueOf();
+            if (vcard.fn) d["Name"] = String(vcard.fn.valueOf());
             if (vcard.n) { const n = vcard.n.valueOf(); if (Array.isArray(n)) { if (n[0]) d["Nachname"] = n[0]; if (n[1]) d["Vorname"] = n[1]; } }
             if (vcard.org) { const o = vcard.org.valueOf(); d["Firma"] = Array.isArray(o) ? o[0] : o; }
-            if (vcard.title) d["Position"] = vcard.title.valueOf();
+            if (vcard.title) d["Position"] = String(vcard.title.valueOf());
             if (vcard.email) { const emails = Array.isArray(vcard.email) ? vcard.email : [vcard.email]; emails.forEach((em, i: number) => { const v = typeof em === "object" ? em.valueOf() : em; if (i === 0) d["E-Mail 1"] = toStringValue(v); else if (i === 1) d["E-Mail 2"] = toStringValue(v); else if (i === 2) d["E-Mail 3"] = toStringValue(v); }); }
             if (vcard.tel) {
               const phones = Array.isArray(vcard.tel) ? vcard.tel : [vcard.tel];
@@ -128,8 +128,8 @@ export function useContactImport() {
                 }
               });
             }
-            if (vcard.url) d["Website"] = vcard.url.valueOf();
-            if (vcard.note) d["Notizen"] = vcard.note.valueOf();
+            if ((vcard as any).url) d["Website"] = String((vcard as any).url.valueOf());
+            if ((vcard as any).note) d["Notizen"] = String((vcard as any).note.valueOf());
             return d;
           });
           setData(parsed); autoMapFields(Object.keys(parsed[0] || {})); setStep("mapping");
@@ -258,7 +258,7 @@ export function useContactImport() {
       } else {
         await assignContactToDistributionLists(insertedContact.id, distributionListNames, rowIndex);
         setImportedCount((prev) => prev + 1);
-        setExistingContacts((prev) => [...prev, { id: insertedContact.id, name: contactData.name, email: contactData.email, phone: contactData.phone, organization: contactData.organization }]);
+        setExistingContacts((prev) => [...prev, { id: insertedContact.id, name: contactData.name || '', email: contactData.email, phone: contactData.phone, organization: contactData.organization } as any]);
       }
     } catch {
       setErrors((prev) => [...prev, `Zeile ${rowIndex + 1}: Unbekannter Fehler`]);

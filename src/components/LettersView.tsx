@@ -590,7 +590,7 @@ const LettersView: React.FC = () => {
 
       {/* Letter Editor */}
       <LetterEditor
-        letter={selectedLetter ?? undefined}
+        letter={selectedLetter as any ?? undefined}
         isOpen={isEditorOpen}
         onClose={() => {
           setIsEditorOpen(false);

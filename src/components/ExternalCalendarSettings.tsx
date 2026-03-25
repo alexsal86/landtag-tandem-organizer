@@ -160,7 +160,7 @@ export function ExternalCalendarSettings() {
     setSyncingCalendars(prev => new Set(prev).add(calendarId));
     
     try {
-      const { data, error } = await supabase.functions.invoke<ExternalCalendarSyncResponse>('sync-external-calendar', {
+      const { data, error } = await (supabase.functions as any).invoke('sync-external-calendar', {
         body: { calendar_id: calendarId }
       });
 

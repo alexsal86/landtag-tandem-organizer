@@ -661,7 +661,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string): UseDaySlipS
   return {
     store, setStore, resolveMode, setResolveMode,
     recurringItems, setRecurringItems, dayTemplates, setDayTemplates,
-    editorRef, editorReadyVersion, saveTimeoutRef,
+    editorRef, editorReadyVersion, saveTimeoutRef: saveTimeoutRef as any,
     todayKey, todayData, yesterdayKey, yesterdayCarryLines,
     allLineEntries, struckLineIds, resolvedItems, resolvedByLineId,
     openLines, unresolvedCount, triageEntries, archiveDays,

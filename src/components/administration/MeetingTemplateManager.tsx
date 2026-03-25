@@ -207,8 +207,8 @@ export function MeetingTemplateManager() {
     if (fromMain && fromChildIndex === null) {
       [movedItem] = newItems.splice(fromIndex, 1);
     } else if (!fromMain && fromChildIndex !== null) {
-      movedItem = newItems[fromIndex].children.splice(fromChildIndex, 1)[0];
-      if (newItems[fromIndex].children.length === 0) delete newItems[fromIndex].children;
+      movedItem = newItems[fromIndex].children!.splice(fromChildIndex, 1)[0];
+      if (newItems[fromIndex].children!.length === 0) delete newItems[fromIndex].children;
     } else return;
     if (toParentIndex !== null) {
       if (!newItems[toParentIndex].children) newItems[toParentIndex].children = [];
@@ -382,14 +382,14 @@ export function MeetingTemplateManager() {
                   <div className="border-t pt-4">
                     <MeetingTemplateParticipantsEditor
                       templateId={selectedTemplate.id}
-                      defaultParticipants={selectedTemplate.default_participants || []}
-                      defaultRecurrence={selectedTemplate.default_recurrence || null}
+                      defaultParticipants={selectedTemplate.default_participants as any || []}
+                      defaultRecurrence={selectedTemplate.default_recurrence as any || null}
                       autoCreateCount={selectedTemplate.auto_create_count || 3}
                       compact
                       onSave={async (participants, recurrence, autoCreateCount, visibility) => {
                         try {
-                          const normalizedParticipants = participants as Record<string, unknown>[];
-                          const normalizedRecurrence = recurrence as Record<string, unknown> | null;
+                          const normalizedParticipants = participants as any;
+                          const normalizedRecurrence = recurrence as any;
                           await supabase.from('meeting_templates').update({
                             default_participants: normalizedParticipants,
                             default_recurrence: normalizedRecurrence,
@@ -418,13 +418,13 @@ export function MeetingTemplateManager() {
                             <Draggable key={index} draggableId={index.toString()} index={index}>
                               {(provided) => (
                                 <div ref={provided.innerRef} {...provided.draggableProps} className="space-y-1">
-                                  <div className={`flex items-center gap-2 p-2 bg-card rounded border ${item.type === 'system' ? getSystemItemClass(item.system_type) : ''}`}>
+                                  <div className={`flex items-center gap-2 p-2 bg-card rounded border ${item.type === 'system' ? getSystemItemClass(item.system_type!) : ''}`}>
                                     <div {...provided.dragHandleProps} className="cursor-grab"><GripVertical className="h-4 w-4 text-muted-foreground" /></div>
                                     {item.type === 'separator' ? (
                                       <div className="flex-1 h-px bg-border" />
                                     ) : item.type === 'system' ? (
                                       <div className="flex items-center gap-2 flex-1">
-                                        {getSystemIcon(item.system_type)}
+                                        {getSystemIcon(item.system_type!)}
                                         <span className="text-sm font-medium">{item.title}</span>
                                         <DropdownMenu>
                                           <DropdownMenuTrigger asChild>
@@ -531,7 +531,7 @@ export function MeetingTemplateManager() {
                                     <div className="ml-8 mt-1 space-y-1">
                                       {item.children.map((child, childIndex: number) => {
                                         if (child.is_available === true) return null;
-                                        const activeChildren = item.children.filter((c) => c.is_available !== true);
+                                        const activeChildren = item.children!.filter((c) => c.is_available !== true);
                                         const activeDisplayIndex = activeChildren.findIndex((c) => c === child);
                                         return (
                                           <div key={childIndex} className={`flex items-center gap-2 p-2 rounded-md border ${child.system_type ? getChildSystemClass(child.system_type) : 'bg-muted/30 border-border'}`}>

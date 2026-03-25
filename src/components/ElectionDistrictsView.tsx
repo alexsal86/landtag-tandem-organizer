@@ -108,14 +108,14 @@ export const ElectionDistrictsView = () => {
             <LeafletMapFallback
               districts={displayedDistricts}
               onDistrictClick={handleDistrictClick}
-              selectedDistrict={selectedDistrict}
+               selectedDistrict={selectedDistrict ?? undefined}
             />
           ) : (
             <ErrorBoundary onError={handleMapError}>
               <SimpleLeafletMap
                 districts={displayedDistricts}
                 onDistrictClick={handleDistrictClick}
-                selectedDistrict={selectedDistrict}
+                selectedDistrict={selectedDistrict ?? undefined}
                 showPartyAssociations={showPartyAssociations}
               />
             </ErrorBoundary>

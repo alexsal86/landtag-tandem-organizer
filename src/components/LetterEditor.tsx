@@ -237,7 +237,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
   }, [currentTemplate, editedLetter, senderInfos, contacts, informationBlocks, attachments]);
 
   const templateDefaultFontFamily = useMemo(() => {
-    const layoutFontFamily = currentTemplate?.layout_settings?.content?.fontFamily;
+    const layoutFontFamily = (currentTemplate?.layout_settings?.content as any)?.fontFamily;
     if (typeof layoutFontFamily === 'string' && layoutFontFamily.trim() !== '') return layoutFontFamily.trim();
     const draftNodesFontFamily = extractFontFamilyFromContentNodes(draftContentNodes);
     if (draftNodesFontFamily) return draftNodesFontFamily;
@@ -343,9 +343,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
               <div className="flex-1 overflow-auto bg-muted/50 p-6">
                 <div style={{ transform: `scale(${previewZoom})`, transformOrigin: 'top center', marginBottom: `${(previewZoom - 1) * 297}mm` }}>
                   <div className="mx-auto" style={{ width: '210mm', boxShadow: '0 4px 24px rgba(0,0,0,0.12)' }}>
-                    <DIN5008LetterLayout template={currentTemplate} senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}
-                      informationBlock={informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id))}
-                      recipientAddress={editedLetter.recipient_address ? { name: editedLetter.recipient_name, address: editedLetter.recipient_address } : null}
+                    <DIN5008LetterLayout template={currentTemplate as any ?? undefined} senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}
+                      informationBlock={informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id)) ? [informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id))!] : undefined}
+                      recipientAddress={editedLetter.recipient_address ? { name: editedLetter.recipient_name, address: editedLetter.recipient_address } as any : undefined}
                       subject={editedLetter.subject} letterDate={editedLetter.letter_date} referenceNumber={editedLetter.reference_number}
                       content={editedLetter.content_html || editedLetter.content || ''} attachments={attachments} showPagination={showPagination} debugMode={showLayoutDebug}
                       salutation={editedLetter.salutation_override || computedSalutation} layoutSettings={getLayoutSettings()}
@@ -368,7 +368,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Live</Badge>
                     </div>
                     <Button size="sm" variant="default" className="h-7 px-2" disabled={!canEdit || saving}
-                      onClick={() => handleManualSave(latestContentRef.current.content, latestContentRef.current.contentNodes)}>
+                      onClick={() => handleManualSave(latestContentRef.current.content, latestContentRef.current.contentNodes as any)}>
                       <Save className="h-3.5 w-3.5 mr-1" />Speichern
                     </Button>
                     <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setShowTextSplitEditor(false)}><X className="h-3.5 w-3.5" /></Button>
@@ -389,12 +389,12 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
                     }}><Edit3 className="h-4 w-4 mr-2" />Editor öffnen</Button>
                   </div>
                 )}
-                <LetterEditorCanvas template={currentTemplate} subject={editedLetter.subject} salutation={editedLetter.salutation_override || computedSalutation}
-                  content={editedLetter.content_html || editedLetter.content || ''} contentNodes={editedLetter.content_nodes}
+                <LetterEditorCanvas template={currentTemplate as any ?? undefined} subject={editedLetter.subject} salutation={editedLetter.salutation_override || computedSalutation}
+                  content={editedLetter.content_html || editedLetter.content || ''} contentNodes={editedLetter.content_nodes as any}
                   recipientAddress={editedLetter.recipient_address ? { name: editedLetter.recipient_name, address: editedLetter.recipient_address } : undefined}
                   letterDate={editedLetter.letter_date} referenceNumber={editedLetter.reference_number} attachments={attachments}
                   showPagination={showPagination} senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}
-                  informationBlock={informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id))} layoutSettings={getLayoutSettings()}
+                  informationBlock={informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id)) ? [informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id))!] : undefined} layoutSettings={getLayoutSettings()}
                   displayContentHtml={editedLetter.content_html || editedLetter.content || ''}
                   addressFieldElements={substitutedBlocks.canvasBlocks.addressField} returnAddressElements={substitutedBlocks.canvasBlocks.returnAddress}
                   infoBlockElements={substitutedBlocks.canvasBlocks.infoBlock} subjectElements={substitutedBlocks.canvasBlocks.subject}
@@ -406,8 +406,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
                   onRecipientNameChange={(value) => setEditedLetter(prev => ({ ...prev, recipient_name: value }))}
                   onRecipientAddressChange={(value) => setEditedLetter(prev => ({ ...prev, recipient_address: value }))}
                   onRecipientContactSelect={(contact) => {
-                    const recipientAddress = ('formatted_address' in contact ? (contact as { formatted_address?: string }).formatted_address : undefined) || contact.address || '';
-                    setEditedLetter(prev => ({ ...prev, contact_id: contact.id, recipient_name: contact.name, recipient_address: recipientAddress }));
+                     const recipientAddress = ('formatted_address' in contact ? (contact as any).formatted_address : undefined) || (contact as any).address || '';
+                     setEditedLetter(prev => ({ ...prev, contact_id: contact.id, recipient_name: (contact as any).name, recipient_address: recipientAddress }));
                   }}
                   onSenderChange={(value) => setEditedLetter(prev => ({ ...prev, sender_info_id: value || undefined }))}
                   onInfoBlockChange={(newIds) => setEditedLetter(prev => ({ ...prev, information_block_ids: newIds }))}

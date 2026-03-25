@@ -108,7 +108,7 @@ export function useCreateAppointment(open: boolean, onOpenChange: (open: boolean
 
   const defaultStart = getDefaultStartTime();
   const form = useForm<AppointmentFormValues>({
-    resolver: zodResolver(appointmentSchema),
+    resolver: zodResolver(appointmentSchema) as any,
     mode: "onSubmit" as const,
     defaultValues: {
       title: "", description: "",

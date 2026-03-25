@@ -47,7 +47,7 @@ const toCoverageAreas = (value: unknown): string[] => {
 const toAssociationViewModel = (association: PartyAssociation): PartyAssociationViewModel | null => {
   if (!association.name?.trim()) return null;
   const dynamicCoordinates = hasOwnProperty(association as unknown, 'center_coordinates')
-    ? (association as Record<'center_coordinates', unknown>).center_coordinates
+    ? (association as unknown as Record<'center_coordinates', unknown>).center_coordinates
     : association.contact_info;
   const coordinates = dynamicCoordinates;
   const centerCoordinates =

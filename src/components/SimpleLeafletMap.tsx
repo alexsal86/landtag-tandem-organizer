@@ -322,10 +322,10 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
             } else if ('lat' in boundaryDistrict.center_coordinates && 'lng' in boundaryDistrict.center_coordinates) {
               lat = boundaryDistrict.center_coordinates.lat;
               lng = boundaryDistrict.center_coordinates.lng;
-            } else if ('latitude' in boundaryDistrict.center_coordinates && 'longitude' in boundaryDistrict.center_coordinates) {
-              lat = boundaryDistrict.center_coordinates.latitude;
-              lng = boundaryDistrict.center_coordinates.longitude;
-            } else if (Array.isArray(boundaryDistrict.center_coordinates) && boundaryDistrict.center_coordinates.length >= 2) {
+            } else if ('latitude' in (boundaryDistrict.center_coordinates as any) && 'longitude' in (boundaryDistrict.center_coordinates as any)) {
+              lat = (boundaryDistrict.center_coordinates as any).latitude;
+              lng = (boundaryDistrict.center_coordinates as any).longitude;
+            } else if (Array.isArray(boundaryDistrict.center_coordinates) && (boundaryDistrict.center_coordinates as any[]).length >= 2) {
               // Assume [lat, lng] format for plain arrays
               lat = boundaryDistrict.center_coordinates[0];
               lng = boundaryDistrict.center_coordinates[1];
