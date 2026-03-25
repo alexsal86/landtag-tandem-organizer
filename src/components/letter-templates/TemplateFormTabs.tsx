@@ -183,7 +183,7 @@ export const useTemplateFormTabs = ({
 
       <TabsContent value="header-designer" className="space-y-4 min-w-0">
         <StructuredHeaderEditor
-          initialElements={formData.header_elements}
+          initialElements={formData.header_elements as HeaderElement[]}
           onElementsChange={(elements) => setFormData((prev) => ({ ...prev, header_elements: elements as LetterCanvasElement[] }))}
           layoutSettings={formData.layout_settings}
           actionButtons={editingTemplate ? undefined : (

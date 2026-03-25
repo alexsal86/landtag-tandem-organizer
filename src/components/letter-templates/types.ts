@@ -91,9 +91,9 @@ export const normalizeLayoutBlockContentImages = (layoutSettings: LetterLayoutSe
 
 const DEFAULT_ATTACHMENT_PREVIEW_LINES = ['- Antrag_2026-02-15.pdf', '- Stellungnahme_Verkehrsausschuss.docx', '- Anlagenverzeichnis.xlsx'];
 
-export const createDefaultAttachmentElements = () => ([{
+export const createDefaultAttachmentElements = (): LetterCanvasElement[] => ([{
   id: `attachments-default-${Date.now()}`,
-  type: 'text',
+  type: 'text' as const,
   x: 0,
   y: 0,
   content: '{{anlagen_liste}}',

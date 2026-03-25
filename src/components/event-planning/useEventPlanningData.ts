@@ -319,7 +319,7 @@ export function useEventPlanningData() {
     try {
       const { data, error } = await supabase.from("event_plannings").select("*").eq("tenant_id", currentTenant.id).eq("is_archived", true).order("archived_at", { ascending: false });
       if (error) throw error;
-      setArchivedPlannings((data ?? []) as ReadonlyArray<EventPlanning>);
+      setArchivedPlannings([...(data ?? [])] as EventPlanning[]);
     } catch (error) { handleAppError(error, { context: 'fetchArchivedPlannings' }); }
   };
 

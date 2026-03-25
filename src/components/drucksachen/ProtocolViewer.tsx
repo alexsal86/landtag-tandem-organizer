@@ -265,7 +265,7 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
             sittingData={sittingData}
             stats={stats}
             layoutData={layoutData}
-            tocAgenda={tocAgenda}
+            tocAgenda={tocAgenda.map(item => ({ ...item, number: item.number ?? 0 }))}
             allSpeeches={allSpeeches}
             parties={parties}
           />

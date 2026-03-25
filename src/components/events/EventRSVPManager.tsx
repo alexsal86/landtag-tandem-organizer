@@ -674,7 +674,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
                           <Badge key={p.email} variant="secondary" className="flex items-center gap-1">
                             <Mail className="h-3 w-3" />
                             {p.name}
-                            <button onClick={() => removePending(p.email)} className="ml-1 hover:text-destructive">
+                            <button onClick={() => p.email && removePending(p.email)} className="ml-1 hover:text-destructive">
                               <X className="h-3 w-3" />
                             </button>
                           </Badge>
