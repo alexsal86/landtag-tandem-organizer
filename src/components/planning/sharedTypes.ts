@@ -12,7 +12,7 @@ export interface ChecklistAutomationActionConfig {
 
 export interface ChecklistAutomationAction {
   id: string;
-  action_type: "rsvp" | "social_media";
+  action_type: "rsvp" | "social_media" | "email" | "social_planner";
   is_enabled?: boolean;
   action_config?: ChecklistAutomationActionConfig;
 }

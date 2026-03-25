@@ -43,7 +43,7 @@ interface ContactOptionDto {
 interface ItemActionDto {
   id: string;
   checklist_item_id: string;
-  action_type: 'email' | 'social_planner' | 'rsvp';
+  action_type: 'email' | 'social_planner' | 'rsvp' | 'social_media';
   [key: string]: unknown;
 }
 
@@ -180,8 +180,8 @@ export function useEventPlanningData() {
     selectedPlanningConfirmedDate: selectedPlanning?.confirmed_date,
     toast,
     onRefreshDetails: fetchPlanningDetails,
-    onSocialPlannerActionCreated: (itemId, action) => {
-      setItemSocialPlannerActions((prev) => ({ ...prev, [itemId]: action }));
+    onSocialPlannerActionCreated: (itemId: string, action: ItemActionDto) => {
+      setItemSocialPlannerActions((prev) => ({ ...prev, [itemId]: action } as Record<string, ItemActionDto>));
     },
   });
 
@@ -319,7 +319,7 @@ export function useEventPlanningData() {
     try {
       const { data, error } = await supabase.from("event_plannings").select("*").eq("tenant_id", currentTenant.id).eq("is_archived", true).order("archived_at", { ascending: false });
       if (error) throw error;
-      setArchivedPlannings((data ?? []) as ReadonlyArray<EventPlanning>);
+      setArchivedPlannings([...(data ?? [])] as EventPlanning[]);
     } catch (error) { handleAppError(error, { context: 'fetchArchivedPlannings' }); }
   };
 

@@ -129,7 +129,7 @@ const parseHexColor = (hexColor: string, fallback: [number, number, number] = [0
   const g = Number.parseInt(hex.slice(2, 4), 16);
   const b = Number.parseInt(hex.slice(4, 6), 16);
   if ([r, g, b].some((channel) => Number.isNaN(channel))) return fallback;
-  return [r, g, b];
+  return [r, g, b] as [number, number, number];
 };
 
 const toLayoutSettings = (rawLayout: unknown): LetterLayoutSettings => (
@@ -176,7 +176,7 @@ const toPdfTextBlock = (block: FooterLineBlock, availableWidthMm: number, startX
   const typography = toFooterBlockTypographyContract(block);
   const titleFontSizeRaw = typography.titleFontSize;
   const titleWeightRaw: PdfFontWeight = typography.titleFontWeight;
-  const titleColorRaw = typography.titleColor ? parseHexColor(typography.titleColor, [16, 112, 48]) : [16, 112, 48];
+  const titleColorRaw: [number, number, number] = typography.titleColor ? parseHexColor(typography.titleColor, [16, 112, 48]) : [16, 112, 48];
 
   return {
     id: block.id,
@@ -185,7 +185,7 @@ const toPdfTextBlock = (block: FooterLineBlock, availableWidthMm: number, startX
     titleFont: {
       size: Math.max(8, Math.min(20, titleFontSizeRaw)),
       weight: titleWeightRaw,
-      color: titleColorRaw,
+      color: titleColorRaw as [number, number, number],
     },
     origin: { x: startX, y: startY },
     widthMm: blockWidth,
@@ -529,9 +529,9 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
   } : letter.recipient_name ? { name: letter.recipient_name, street: '', postal_code: '', city: '', country: '' } : null;
 
   const senderVarData = senderInfo ? {
-    name: senderInfo.name, organization: senderInfo.organization,
-    street: senderInfo.street, house_number: senderInfo.house_number,
-    postal_code: senderInfo.postal_code, city: senderInfo.city,
+    name: senderInfo.name ?? undefined, organization: senderInfo.organization ?? undefined,
+    street: senderInfo.street ?? undefined, house_number: senderInfo.house_number ?? undefined,
+    postal_code: senderInfo.postal_code ?? undefined, city: senderInfo.city ?? undefined,
     wahlkreis_street: senderInfo.wahlkreis_street ?? undefined,
     wahlkreis_house_number: senderInfo.wahlkreis_house_number ?? undefined,
     wahlkreis_postal_code: senderInfo.wahlkreis_postal_code ?? undefined,
@@ -541,7 +541,7 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
     landtag_postal_code: senderInfo.landtag_postal_code ?? undefined,
     landtag_city: senderInfo.landtag_city ?? undefined,
     phone: senderInfo.phone ?? undefined,
-    email: senderInfo.email,
+    email: senderInfo.email ?? undefined,
     wahlkreis_email: senderInfo.wahlkreis_email ?? undefined,
     landtag_email: senderInfo.landtag_email ?? undefined,
     return_address_line: senderInfo.return_address_line ?? undefined,
@@ -556,7 +556,7 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
 
   const varMap = buildVariableMap(
     { subject: letter.subject || '', letterDate: letter.letter_date || undefined, referenceNumber: letter.reference_number || undefined },
-    senderVarData, recipientVarData, infoBlockVarData, attachments
+    senderVarData, recipientVarData, infoBlockVarData, attachments.map(a => ({ ...a, file_name: a.file_name ?? undefined, title: a.title ?? undefined, file_type: a.file_type ?? undefined, file_size: a.file_size ?? undefined }))
   );
 
   // ── Substitute ALL blockContent areas from template ──
@@ -586,7 +586,7 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
   // Template header
   if (template) {
     const headerRenderer = new HeaderRenderer(pdf, LEFT_MARGIN, undefined, debugMode);
-    await headerRenderer.renderHeader(template);
+    await headerRenderer.renderHeader({ ...template, header_layout_type: template.header_layout_type ?? undefined, header_text_elements: undefined, header_image_url: template.header_image_url ?? undefined, header_image_position: (template.header_image_position && typeof template.header_image_position === 'object' && 'x' in template.header_image_position) ? template.header_image_position as { x: number; y: number; width: number; height: number } : undefined });
   }
   
   // ── Return address ──

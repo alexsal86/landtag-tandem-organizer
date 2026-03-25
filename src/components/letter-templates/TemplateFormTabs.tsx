@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { StructuredHeaderEditor } from '@/components/letters/StructuredHeaderEditor';
+import type { HeaderElement } from '@/components/canvas-engine/types';
 import { LayoutSettingsEditor } from '@/components/letters/LayoutSettingsEditor';
 import { LetterLayoutCanvasDesigner } from '@/components/letters/LetterLayoutCanvasDesigner';
 import { SenderInformationManager } from '@/components/administration/SenderInformationManager';
@@ -133,7 +134,7 @@ export const useTemplateFormTabs = ({
     const initialElements = getBlockItems(blockKey);
     return (
       <StructuredHeaderEditor
-        initialElements={Array.isArray(initialElements) ? (initialElements as LetterCanvasElement[]) : []}
+        initialElements={Array.isArray(initialElements) ? (initialElements as HeaderElement[]) : []}
         onElementsChange={(elements) => setBlockItems(blockKey, elements)}
         layoutSettings={formData.layout_settings}
         canvasWidthMm={canvasWidthMm}
@@ -183,7 +184,7 @@ export const useTemplateFormTabs = ({
 
       <TabsContent value="header-designer" className="space-y-4 min-w-0">
         <StructuredHeaderEditor
-          initialElements={formData.header_elements}
+          initialElements={formData.header_elements as HeaderElement[]}
           onElementsChange={(elements) => setFormData((prev) => ({ ...prev, header_elements: elements as LetterCanvasElement[] }))}
           layoutSettings={formData.layout_settings}
           actionButtons={editingTemplate ? undefined : (

@@ -9,6 +9,7 @@ type RechartsFormatterResult = ReactNode | [ReactNode, ReactNode];
 interface BaseRechartsProps {
   children?: ReactNode;
   className?: string;
+  strokeDasharray?: string;
 }
 
 interface ResponsiveContainerProps extends BaseRechartsProps {
@@ -72,6 +73,8 @@ interface BarProps extends BaseRechartsProps {
 interface LineProps extends BaseRechartsProps {
   dataKey?: string | ((entry: RechartsDataPoint) => unknown);
   stroke?: string;
+  type?: string;
+  name?: string;
 }
 
 interface ChartWrapperProps extends BaseRechartsProps {

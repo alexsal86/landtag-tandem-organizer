@@ -184,6 +184,7 @@ export const KarlsruheDistrictsMap = ({
 
       // Add stakeholder markers
       data.forEach((stakeholder) => {
+        if (!stakeholder.coordinates) return;
         const lat = stakeholder.coordinates.lat;
         const lng = stakeholder.coordinates.lng;
 
@@ -312,7 +313,7 @@ export const KarlsruheDistrictsMap = ({
       // Special styling for city boundary
       const isCityBoundary = district.is_city_boundary || district.name.includes('Stadtgrenze');
       
-      const layer = L.geoJSON({ type: 'FeatureCollection', features }, {
+      const layer = L.geoJSON({ type: 'FeatureCollection', features } as GeoJSON.GeoJsonObject, {
         style: isCityBoundary ? {
           color: '#000000',
           weight: 3,
