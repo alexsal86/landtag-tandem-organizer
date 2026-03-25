@@ -556,7 +556,7 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
 
   const varMap = buildVariableMap(
     { subject: letter.subject || '', letterDate: letter.letter_date || undefined, referenceNumber: letter.reference_number || undefined },
-    senderVarData, recipientVarData, infoBlockVarData, attachments
+    senderVarData, recipientVarData, infoBlockVarData, attachments.map(a => ({ ...a, file_name: a.file_name ?? undefined, title: a.title ?? undefined, file_type: a.file_type ?? undefined, file_size: a.file_size ?? undefined }))
   );
 
   // ── Substitute ALL blockContent areas from template ──
