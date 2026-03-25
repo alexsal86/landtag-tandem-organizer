@@ -11,8 +11,15 @@ import { MessageComposer } from "./MessageComposer";
 import { toast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import { ReceivedMessageCard, SentMessageCard, ArchivedMessageCard, PaginationControls } from "./messages/MessageCard";
-import type { MessageItem, ParticipantSummary, PreparationSection } from "./messages/dto";
-import type { ConfirmationRow, ProfileRow, RecipientRow, RpcMessageRow } from "@/types/messages";
+import type {
+  ConfirmationRow,
+  MessageItem,
+  MessageSection,
+  ParticipantSummary,
+  ProfileRow,
+  RecipientRow,
+  RpcMessageRow,
+} from "@/types/messages";
 
 const emptyParticipant = (userId: string): ParticipantSummary => ({
   userId,
@@ -36,6 +43,9 @@ const normalizeMessage = (row: RpcMessageRow): MessageItem => ({
   confirmations: [],
   threadMeta: { totalRecipients: 0, acknowledgedRecipients: 0, isBroadcast: row.is_for_all_users },
 });
+
+const normalizeMessageRows = (rows: ReadonlyArray<RpcMessageRow> | null | undefined): ReadonlyArray<MessageItem> =>
+  (rows ?? []).map(normalizeMessage);
 
 export function MessageSystem() {
   const { user } = useAuth();
@@ -69,9 +79,9 @@ export function MessageSystem() {
         return;
       }
 
-      const receivedMessages = ((receivedMessagesRaw ?? []) as ReadonlyArray<RpcMessageRow>)
-        .filter((msg: RpcMessageRow) => msg.author_id !== user.id)
-        .map(normalizeMessage);
+      const receivedMessages = normalizeMessageRows((receivedMessagesRaw ?? []) as ReadonlyArray<RpcMessageRow>).filter(
+        (msg: MessageItem) => msg.authorId !== user.id,
+      );
 
       setActiveMessages(receivedMessages.filter((msg: MessageItem) => !msg.hasRead));
       const readMessages = receivedMessages.filter((msg: MessageItem) => msg.hasRead);
@@ -221,7 +231,7 @@ export function MessageSystem() {
   const getPaginatedMessages = (messages: ReadonlyArray<MessageItem>, page: number): ReadonlyArray<MessageItem> =>
     messages.slice(page * messagesPerPage, (page + 1) * messagesPerPage);
 
-  const sections: ReadonlyArray<PreparationSection> = [
+  const sections: ReadonlyArray<MessageSection> = [
     { key: "received", title: "Empfangen", count: activeMessages.length },
     { key: "sent", title: "Gesendet", count: sentMessages.length },
     { key: "archived", title: "Archiv", count: archivedMessages.length },

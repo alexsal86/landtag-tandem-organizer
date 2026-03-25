@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import type { ChangeEvent } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/hooks/useTenant';
@@ -22,6 +23,7 @@ import type {
   AppointmentPreparation,
   AppointmentPreparationTemplate,
   ChecklistItem,
+  PreparationField,
   PreparationData,
   PreparationStatus,
   TemplateSection,
@@ -34,6 +36,28 @@ interface AppointmentPreparationSidebarProps {
   appointmentDate?: string;
   isOpen: boolean;
   onClose: () => void;
+}
+
+interface AppointmentPreparationRow {
+  id: string;
+  title: string;
+  status: PreparationStatus;
+  preparation_data: unknown;
+  checklist_items: unknown;
+  notes: string | null;
+  is_archived: boolean;
+  created_at: string;
+  template_id: string | null;
+}
+
+interface AppointmentPreparationTemplateRow {
+  id: string;
+  name: string;
+  description: string | null;
+  template_data: unknown;
+  is_default?: boolean;
+  is_active: boolean;
+  created_at: string;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -60,7 +84,7 @@ const parseTemplateSections = (raw: unknown): ReadonlyArray<TemplateSection> => 
       if (entry.type === 'section') {
         const fields = Array.isArray(entry.fields)
           ? entry.fields
-              .map((field) => {
+              .map((field): PreparationField | null => {
                 if (
                   isRecord(field) &&
                   typeof field.id === 'string' &&
@@ -104,6 +128,22 @@ const parseTemplateSections = (raw: unknown): ReadonlyArray<TemplateSection> => 
     .filter((section): section is TemplateSection => section !== null);
 };
 
+const normalizePreparationRow = (row: AppointmentPreparationRow): AppointmentPreparation => ({
+  ...row,
+  preparation_data: isRecord(row.preparation_data) ? (row.preparation_data as PreparationData) : {},
+  checklist_items: Array.isArray(row.checklist_items)
+    ? row.checklist_items.map(parseChecklistItem).filter((item): item is ChecklistItem => item !== null)
+    : [],
+});
+
+const normalizeTemplateRow = (row: AppointmentPreparationTemplateRow): AppointmentPreparationTemplate => ({
+  ...row,
+  template_data: parseTemplateSections(row.template_data),
+});
+
+const isPreparationStatus = (value: string): value is PreparationStatus =>
+  value === 'draft' || value === 'in_progress' || value === 'completed';
+
 export default function AppointmentPreparationSidebar({
   appointmentId,
   appointmentTitle,
@@ -117,6 +157,11 @@ export default function AppointmentPreparationSidebar({
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
   const { currentTenant } = useTenant();
+  const handleSheetOpenChange = (nextOpen: boolean): void => {
+    if (!nextOpen) {
+      onClose();
+    }
+  };
 
   useEffect(() => {
     if (isOpen && appointmentId && currentTenant) {
@@ -125,7 +170,7 @@ export default function AppointmentPreparationSidebar({
     }
   }, [isOpen, appointmentId, currentTenant]);
 
-  const fetchPreparation = async () => {
+  const fetchPreparation = async (): Promise<void> => {
     if (!appointmentId) return;
 
     setLoading(true);
@@ -140,13 +185,7 @@ export default function AppointmentPreparationSidebar({
       if (error && error.code !== 'PGRST116') throw error;
       
       if (data) {
-        setPreparation({
-          ...data,
-          preparation_data: isRecord(data.preparation_data) ? (data.preparation_data as PreparationData) : {},
-          checklist_items: Array.isArray(data.checklist_items)
-            ? data.checklist_items.map(parseChecklistItem).filter((item): item is ChecklistItem => item !== null)
-            : [],
-        });
+        setPreparation(normalizePreparationRow(data as AppointmentPreparationRow));
       }
     } catch (error) {
       debugConsole.error('Error fetching preparation:', error);
@@ -160,7 +199,7 @@ export default function AppointmentPreparationSidebar({
     }
   };
 
-  const fetchTemplates = async () => {
+  const fetchTemplates = async (): Promise<void> => {
     try {
       const { data, error } = await supabase
         .from('appointment_preparation_templates')
@@ -170,16 +209,13 @@ export default function AppointmentPreparationSidebar({
         .order('name');
 
       if (error) throw error;
-      setTemplates((data || []).map(template => ({
-        ...template,
-        template_data: parseTemplateSections(template.template_data),
-      })));
+      setTemplates(((data ?? []) as ReadonlyArray<AppointmentPreparationTemplateRow>).map(normalizeTemplateRow));
     } catch (error) {
       debugConsole.error('Error fetching templates:', error);
     }
   };
 
-  const createPreparation = async (templateId?: string) => {
+  const createPreparation = async (templateId?: string): Promise<void> => {
     if (!appointmentId || !currentTenant) return;
 
     try {
@@ -228,13 +264,7 @@ export default function AppointmentPreparationSidebar({
       if (error) throw error;
 
       if (data) {
-        setPreparation({
-          ...data,
-          preparation_data: isRecord(data.preparation_data) ? (data.preparation_data as PreparationData) : {},
-          checklist_items: Array.isArray(data.checklist_items)
-            ? data.checklist_items.map(parseChecklistItem).filter((item): item is ChecklistItem => item !== null)
-            : [],
-        });
+        setPreparation(normalizePreparationRow(data as AppointmentPreparationRow));
       }
       toast({
         title: 'Erfolg',
@@ -250,7 +280,7 @@ export default function AppointmentPreparationSidebar({
     }
   };
 
-  const savePreparation = async () => {
+  const savePreparation = async (): Promise<void> => {
     if (!preparation) return;
 
     setSaving(true);
@@ -283,7 +313,7 @@ export default function AppointmentPreparationSidebar({
     }
   };
 
-  const updatePreparationData = (fieldId: string, value: string) => {
+  const updatePreparationData = (fieldId: string, value: string): void => {
     if (!preparation) return;
 
     setPreparation({
@@ -295,7 +325,7 @@ export default function AppointmentPreparationSidebar({
     });
   };
 
-  const updateChecklistItem = (itemId: string, completed: boolean) => {
+  const updateChecklistItem = (itemId: string, completed: boolean): void => {
     if (!preparation) return;
 
     setPreparation({
@@ -306,7 +336,7 @@ export default function AppointmentPreparationSidebar({
     });
   };
 
-  const handleExportPDF = async () => {
+  const handleExportPDF = async (): Promise<void> => {
     if (!preparation) return;
 
     try {
@@ -410,7 +440,7 @@ export default function AppointmentPreparationSidebar({
 
   if (loading) {
     return (
-      <Sheet open={isOpen} onOpenChange={onClose}>
+      <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
         <SheetContent className="sm:max-w-2xl">
           <div className="flex justify-center items-center h-full">
             <div>Laden...</div>
@@ -421,7 +451,7 @@ export default function AppointmentPreparationSidebar({
   }
 
   return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
+    <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
       <SheetContent className="sm:max-w-2xl overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
@@ -512,14 +542,14 @@ export default function AppointmentPreparationSidebar({
                           <Input
                             id={field.id}
                             value={preparation.preparation_data[field.id] || ''}
-                            onChange={(e) => updatePreparationData(field.id, e.target.value)}
+                            onChange={(event: ChangeEvent<HTMLInputElement>) => updatePreparationData(field.id, event.target.value)}
                           />
                         )}
                         {field.type === 'textarea' && (
                           <Textarea
                             id={field.id}
                             value={preparation.preparation_data[field.id] || ''}
-                            onChange={(e) => updatePreparationData(field.id, e.target.value)}
+                            onChange={(event: ChangeEvent<HTMLTextAreaElement>) => updatePreparationData(field.id, event.target.value)}
                             rows={3}
                           />
                         )}
@@ -576,7 +606,7 @@ export default function AppointmentPreparationSidebar({
                 <CardContent>
                   <Textarea
                     value={preparation.notes || ''}
-                    onChange={(e) => setPreparation({ ...preparation, notes: e.target.value })}
+                    onChange={(event: ChangeEvent<HTMLTextAreaElement>) => setPreparation({ ...preparation, notes: event.target.value })}
                     placeholder="Zusätzliche Notizen..."
                     rows={4}
                   />
@@ -591,7 +621,11 @@ export default function AppointmentPreparationSidebar({
                 <CardContent>
                   <Select
                     value={preparation.status}
-                    onValueChange={(value: PreparationStatus) => setPreparation({ ...preparation, status: value })}
+                    onValueChange={(value: string) => {
+                      if (isPreparationStatus(value)) {
+                        setPreparation({ ...preparation, status: value });
+                      }
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue />

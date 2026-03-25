@@ -11,13 +11,14 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ContactSelector } from '@/components/ContactSelector';
 import { DIN5008LetterLayout } from './DIN5008LetterLayout';
 import { EditableCanvasOverlay } from './EditableCanvasOverlay';
-import type { HeaderElement } from '@/components/canvas-engine/types';
-import type { BlockLine } from '@/components/letters/BlockLineEditor';
 import { LetterAttachmentList, LetterClosingBlock } from './LetterContentBlocks';
 import type {
   InformationBlockRecord,
+  LetterBlockLine,
+  LetterCanvasElement,
   LetterAttachmentRecord,
   LetterLayoutSettings,
+  LetterLayoutTemplateLike,
   SenderInformationRecord,
 } from '@/types/letterLayout';
 
@@ -33,6 +34,18 @@ const MM_TO_PX = 3.7795;
 const mmToPx = (mm: number) => mm * MM_TO_PX;
 const pxToMm = (px: number) => px / MM_TO_PX;
 
+interface EditableAttachment {
+  id: string;
+  file_name?: string;
+  display_name?: string;
+}
+
+const isEditableAttachment = (value: unknown): value is EditableAttachment => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.id === 'string';
+};
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface LetterEditorCanvasProps {
   subject?: string;
@@ -44,19 +57,19 @@ interface LetterEditorCanvasProps {
   referenceNumber?: string;
   attachments?: LetterAttachmentRecord[];
   showPagination?: boolean;
-  template?: { layout_settings?: LetterLayoutSettings };
+  template?: LetterLayoutTemplateLike;
   layoutSettings?: LetterLayoutSettings;
   senderInfo?: SenderInformationRecord | null;
   informationBlock?: InformationBlockRecord[] | null;
-  addressFieldElements?: HeaderElement[];
-  returnAddressElements?: HeaderElement[];
-  infoBlockElements?: HeaderElement[];
-  subjectElements?: HeaderElement[];
-  attachmentElements?: HeaderElement[];
-  footerTextElements?: HeaderElement[];
-  addressFieldLines?: BlockLine[];
-  returnAddressLines?: BlockLine[];
-  infoBlockLines?: BlockLine[];
+  addressFieldElements?: LetterCanvasElement[];
+  returnAddressElements?: LetterCanvasElement[];
+  infoBlockElements?: LetterCanvasElement[];
+  subjectElements?: LetterCanvasElement[];
+  attachmentElements?: LetterCanvasElement[];
+  footerTextElements?: LetterCanvasElement[];
+  addressFieldLines?: LetterBlockLine[];
+  returnAddressLines?: LetterBlockLine[];
+  infoBlockLines?: LetterBlockLine[];
   canEdit?: boolean;
   documentId?: string;
   onContentChange: (content: string, contentNodes?: string, contentHtml?: string) => void;
@@ -162,7 +175,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
 
 
   // ── layout ──
-  const layout = layoutSettings || template?.layout_settings || {};
+  const layout: Partial<LetterLayoutSettings> = layoutSettings ?? template?.layout_settings ?? {};
   const contentFontSizePt = toFontSizePt(
     layout.content?.fontSize ?? layout.salutation?.fontSize, 11,
   );
@@ -408,9 +421,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
     );
   };
 
-  const editableAttachmentList = (attachments ?? []).filter((attachment) =>
-    typeof attachment === 'object' && attachment !== null && typeof attachment.id === 'string',
-  ) as Array<{ id: string; file_name?: string; display_name?: string }>;
+  const editableAttachmentList: EditableAttachment[] = (attachments ?? []).filter(isEditableAttachment);
 
   // ── The complete content flow (used for both measurement and rendering) ──
   const renderContentFlow = () => (

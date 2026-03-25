@@ -2,6 +2,7 @@ import { useState, useCallback, type Dispatch, type SetStateAction } from "react
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
 import type { DropResult } from "@hello-pangea/dnd";
+import type { AppUserRef, ChecklistSubItem } from "@/components/shared/featureDomainTypes";
 import type { ChecklistItem } from "../types";
 
 const SYSTEM_POINT_OPTIONS = {
@@ -13,18 +14,18 @@ const SYSTEM_POINT_OPTIONS = {
 type SystemPointKey = keyof typeof SYSTEM_POINT_OPTIONS;
 
 interface UseChecklistOperationsParams {
-  user: { id: string } | null;
+  user: AppUserRef | null;
   selectedPlanningId: string | undefined;
   collaborators: Array<{ event_planning_id: string; user_id: string; can_edit: boolean }>;
   selectedPlanningUserId: string | undefined;
-  itemEmailActions: Record<string, any>;
+  itemEmailActions: Record<string, { id: string; is_enabled?: boolean }>;
   currentTenantId?: string;
   currentProfileId?: string | null;
   selectedPlanningTitle?: string;
   selectedPlanningConfirmedDate?: string | null;
   toast: (opts: { title: string; description?: string; variant?: "default" | "destructive" }) => void;
   onRefreshDetails: (planningId: string) => Promise<void>;
-  onSocialPlannerActionCreated?: (itemId: string, action: any) => void;
+  onSocialPlannerActionCreated?: (itemId: string, action: { id: string }) => void;
 }
 
 export type ChecklistOperationEvent =
@@ -200,7 +201,7 @@ export function useChecklistOperations({
     }
 
     // Build a data object from the known values (no .select().single() needed)
-    const data = { id: itemId, event_planning_id: selectedPlanningId, title, order_index: maxOrder + 1, type: itemType, relative_due_days: null, is_completed: false, sub_items: [] as any[] };
+    const data = { id: itemId, event_planning_id: selectedPlanningId, title, order_index: maxOrder + 1, type: itemType, relative_due_days: null, is_completed: false, sub_items: [] as ChecklistSubItem[] };
 
     if (itemType === "system_social_media" || itemType === "system_rsvp") {
       if (!currentTenantId || !currentProfileId) {
@@ -225,7 +226,7 @@ export function useChecklistOperations({
             priority: 1,
             status: "idea",
             short_description: selectedPlanningTitle ? `Automatisch aus Veranstaltungsplanung "${selectedPlanningTitle}" angelegt.` : "Automatisch aus der Veranstaltungsplanung angelegt.",
-          } as any);
+          } as Record<string, unknown>);
           if (topicError) throw topicError;
 
           const { error: plannerError } = await supabase.from("social_content_items").insert({
@@ -238,7 +239,7 @@ export function useChecklistOperations({
             format: "Social Media",
             notes: selectedPlanningTitle ? `Automatisch aus Veranstaltungsplanung "${selectedPlanningTitle}" angelegt.` : "Automatisch aus der Veranstaltungsplanung angelegt.",
             scheduled_for: selectedPlanningConfirmedDate || null,
-          } as any);
+          } as Record<string, unknown>);
           if (plannerError) throw plannerError;
 
           const plannerUrl = `/mywork?tab=redaktion&highlight=${plannerItemId}`;
@@ -286,7 +287,7 @@ export function useChecklistOperations({
             .limit(100);
 
           const guestCount = rsvpGuests?.length || 0;
-          const sentCount = rsvpGuests?.filter((g: any) => g.invitation_sent)?.length || 0;
+          const sentCount = rsvpGuests?.filter((g) => g.invitation_sent)?.length || 0;
 
           const rsvpUrl = `/eventplanning/${selectedPlanningId}#rsvp-manager`;
           const { data: createdAction, error: actionError } = await supabase
@@ -313,8 +314,8 @@ export function useChecklistOperations({
           // If invitations were already sent, create a timeline assignment
           if (sentCount > 0) {
             const earliestSent = rsvpGuests
-              ?.filter((g: any) => g.invitation_sent && g.invited_at)
-              ?.sort((a: any, b: any) => new Date(a.invited_at).getTime() - new Date(b.invited_at).getTime())?.[0];
+              ?.filter((g) => g.invitation_sent && g.invited_at)
+              ?.sort((a, b) => new Date(a.invited_at).getTime() - new Date(b.invited_at).getTime())?.[0];
 
             if (earliestSent) {
               await supabase.from("event_planning_timeline_assignments").insert({
@@ -322,7 +323,7 @@ export function useChecklistOperations({
                 checklist_item_id: itemId,
                 due_date: earliestSent.invited_at.split("T")[0],
                 notes: `${sentCount} Einladung(en) versandt`,
-              } as any);
+              } as Record<string, unknown>);
             }
           }
 
@@ -342,7 +343,7 @@ export function useChecklistOperations({
       }
     }
 
-    const transformedData: ChecklistItem = { ...data, sub_items: Array.isArray(data.sub_items) ? data.sub_items as any : (data.sub_items ? JSON.parse(data.sub_items as string) : []) };
+    const transformedData: ChecklistItem = { ...data, sub_items: Array.isArray(data.sub_items) ? (data.sub_items as ChecklistSubItem[]) : (data.sub_items ? (JSON.parse(data.sub_items as string) as ChecklistSubItem[]) : []) };
     setChecklistItems((prev) => {
       const nextItems = [...prev.filter((item) => item.id !== transformedData.id), transformedData];
       return nextItems.sort((a, b) => a.order_index - b.order_index);
@@ -382,7 +383,7 @@ export function useChecklistOperations({
   const toggleSubItem = async (itemId: string, subItemIndex: number, isCompleted: boolean) => {
     const currentItem = checklistItems.find(item => item.id === itemId);
     if (!currentItem || !currentItem.sub_items) return;
-    const updatedSubItems = currentItem.sub_items.map((subItem: any, index: number) => index === subItemIndex ? { ...subItem, is_completed: !isCompleted } : subItem);
+    const updatedSubItems = currentItem.sub_items.map((subItem: ChecklistSubItem, index: number) => index === subItemIndex ? { ...subItem, is_completed: !isCompleted } : subItem);
     const { error } = await supabase.from("event_planning_checklist_items").update({ sub_items: updatedSubItems }).eq("id", itemId);
     if (error) { toast({ title: "Fehler", description: "Unterpunkt konnte nicht aktualisiert werden.", variant: "destructive" }); return; }
     setChecklistItems(items => items.map(item => item.id === itemId ? { ...item, sub_items: updatedSubItems } : item));
@@ -391,7 +392,7 @@ export function useChecklistOperations({
   const updateSubItemTitle = async (itemId: string, subItemIndex: number, title: string) => {
     const currentItem = checklistItems.find(item => item.id === itemId);
     if (!currentItem || !currentItem.sub_items) return;
-    const updatedSubItems = currentItem.sub_items.map((subItem: any, index: number) => index === subItemIndex ? { ...subItem, title } : subItem);
+    const updatedSubItems = currentItem.sub_items.map((subItem: ChecklistSubItem, index: number) => index === subItemIndex ? { ...subItem, title } : subItem);
     const { error } = await supabase.from("event_planning_checklist_items").update({ sub_items: updatedSubItems }).eq("id", itemId);
     if (error) { toast({ title: "Fehler", description: "Unterpunkt konnte nicht aktualisiert werden.", variant: "destructive" }); return; }
     setChecklistItems(items => items.map(item => item.id === itemId ? { ...item, sub_items: updatedSubItems } : item));
@@ -400,7 +401,7 @@ export function useChecklistOperations({
   const removeSubItem = async (itemId: string, subItemIndex: number) => {
     const currentItem = checklistItems.find(item => item.id === itemId);
     if (!currentItem || !currentItem.sub_items) return;
-    const updatedSubItems = currentItem.sub_items.filter((_: any, index: number) => index !== subItemIndex);
+    const updatedSubItems = currentItem.sub_items.filter((_: ChecklistSubItem, index: number) => index !== subItemIndex);
     const { error } = await supabase.from("event_planning_checklist_items").update({ sub_items: updatedSubItems }).eq("id", itemId);
     if (error) { toast({ title: "Fehler", description: "Unterpunkt konnte nicht entfernt werden.", variant: "destructive" }); return; }
     setChecklistItems(items => items.map(item => item.id === itemId ? { ...item, sub_items: updatedSubItems } : item));

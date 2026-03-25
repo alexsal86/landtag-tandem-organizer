@@ -1,4 +1,5 @@
 import type { BlockLine } from '@/components/letters/BlockLineEditor';
+import { isRecord } from '@/utils/typeSafety';
 
 export interface FooterLineBlock {
   id: string;
@@ -18,13 +19,31 @@ export interface FooterLineData {
   lines: BlockLine[];
 }
 
-const isFooterLineBlocksData = (value: any): value is FooterLineBlocksData => {
-  return !!value && typeof value === 'object' && value.mode === 'line-blocks' && Array.isArray(value.blocks);
+interface LegacyFooterBlock {
+  id?: string;
+  title?: string;
+  widthPercent?: number;
+  content?: string;
+}
+
+export interface FooterBlockTypographyContract {
+  titleHighlight: boolean;
+  titleFontSize: number;
+  titleFontWeight: 'normal' | 'bold';
+  titleColor?: string;
+}
+
+const DEFAULT_BLOCK_WIDTH_PERCENT = 25;
+
+const isFooterLineBlocksData = (value: unknown): value is FooterLineBlocksData => {
+  return isRecord(value) && value.mode === 'line-blocks' && Array.isArray(value.blocks);
 };
 
-const isFooterLineData = (value: any): value is FooterLineData => {
-  return !!value && typeof value === 'object' && value.mode === 'lines' && Array.isArray(value.lines);
+const isFooterLineData = (value: unknown): value is FooterLineData => {
+  return isRecord(value) && value.mode === 'lines' && Array.isArray(value.lines);
 };
+
+const isLegacyFooterBlock = (value: unknown): value is LegacyFooterBlock => isRecord(value);
 
 const toTextOnlyLine = (content: string, index: number): BlockLine => ({
   id: `legacy-${Date.now()}-${index}`,
@@ -34,15 +53,51 @@ const toTextOnlyLine = (content: string, index: number): BlockLine => ({
   fontSize: 8,
 });
 
+export const toFooterBlockTypographyContract = (value: unknown): FooterBlockTypographyContract => {
+  if (!isRecord(value)) {
+    return {
+      titleHighlight: false,
+      titleFontSize: 13,
+      titleFontWeight: 'bold',
+    };
+  }
+
+  return {
+    titleHighlight: value.titleHighlight === true,
+    titleFontSize: typeof value.titleFontSize === 'number' ? value.titleFontSize : 13,
+    titleFontWeight: value.titleFontWeight === 'normal' ? 'normal' : 'bold',
+    titleColor: typeof value.titleColor === 'string' ? value.titleColor : undefined,
+  };
+};
+
+const toLegacyFooterBlock = (value: unknown, index: number): FooterLineBlock => {
+  const legacyBlock: LegacyFooterBlock = isLegacyFooterBlock(value) ? value : {};
+  return {
+    id: typeof legacyBlock.id === 'string' ? legacyBlock.id : `legacy-block-${Date.now()}-${index}`,
+    title: typeof legacyBlock.title === 'string' ? legacyBlock.title : '',
+    widthUnit: 'percent',
+    widthValue: Number(legacyBlock.widthPercent) || DEFAULT_BLOCK_WIDTH_PERCENT,
+    lines: String(legacyBlock.content || '')
+      .split('\n')
+      .filter((line) => line.trim().length > 0)
+      .map((line, lineIndex) => toTextOnlyLine(line, lineIndex)),
+  };
+};
+
 const flattenBlocksToLines = (blocks: FooterLineBlock[]): BlockLine[] => {
   const lines: BlockLine[] = [];
   blocks.forEach((block, index) => {
+    const typography = toFooterBlockTypographyContract(block);
     lines.push({
       id: `fb-start-${Date.now()}-${index}`,
       type: 'block-start',
       label: block.title || '',
       widthUnit: block.widthUnit,
       widthValue: block.widthValue,
+      titleHighlight: typography.titleHighlight,
+      titleFontSize: typography.titleFontSize,
+      titleFontWeight: typography.titleFontWeight,
+      titleColor: typography.titleColor,
     } as BlockLine);
 
     block.lines.forEach((line, lineIndex) => {
@@ -54,7 +109,7 @@ const flattenBlocksToLines = (blocks: FooterLineBlock[]): BlockLine[] => {
   return lines;
 };
 
-export const parseFooterLinesForEditor = (raw: any): BlockLine[] => {
+export const parseFooterLinesForEditor = (raw: unknown): BlockLine[] => {
   if (isFooterLineData(raw)) return raw.lines;
 
   if (isFooterLineBlocksData(raw)) {
@@ -62,16 +117,7 @@ export const parseFooterLinesForEditor = (raw: any): BlockLine[] => {
   }
 
   if (Array.isArray(raw)) {
-    const blocks = raw.map((legacyBlock: any, index: number): FooterLineBlock => ({
-      id: legacyBlock?.id || `legacy-block-${Date.now()}-${index}`,
-      title: legacyBlock?.title || '',
-      widthUnit: 'percent',
-      widthValue: Number(legacyBlock?.widthPercent) || 25,
-      lines: String(legacyBlock?.content || '')
-        .split('\n')
-        .filter((line) => line.trim().length > 0)
-        .map((line, lineIndex) => toTextOnlyLine(line, lineIndex)),
-    }));
+    const blocks = raw.map((legacyBlock, index): FooterLineBlock => toLegacyFooterBlock(legacyBlock, index));
     return flattenBlocksToLines(blocks);
   }
 
@@ -88,20 +134,16 @@ export const resolveBlockWidthMm = (widthUnit: 'percent' | 'cm', widthValue: num
   return Math.max(1, (availableWidthMm * widthValue) / 100);
 };
 
-export const buildFooterBlocksFromStored = (raw: any): FooterLineBlock[] => {
+const toBlockStartWidth = (line: BlockLine): Pick<FooterLineBlock, 'widthUnit' | 'widthValue'> => ({
+  widthUnit: line.widthUnit === 'cm' ? 'cm' : 'percent',
+  widthValue: Number(line.widthValue) || DEFAULT_BLOCK_WIDTH_PERCENT,
+});
+
+export const buildFooterBlocksFromStored = (raw: unknown): FooterLineBlock[] => {
   if (isFooterLineBlocksData(raw)) return raw.blocks || [];
 
   if (Array.isArray(raw)) {
-    return raw.map((block: any, index: number) => ({
-      id: block?.id || `legacy-block-${Date.now()}-${index}`,
-      title: block?.title || '',
-      widthUnit: 'percent',
-      widthValue: Number(block?.widthPercent) || 25,
-      lines: String(block?.content || '')
-        .split('\n')
-        .filter((line) => line.trim().length > 0)
-        .map((line, lineIndex) => toTextOnlyLine(line, lineIndex)),
-    }));
+    return raw.map((block, index) => toLegacyFooterBlock(block, index));
   }
 
   if (!isFooterLineData(raw)) return [];
@@ -115,8 +157,7 @@ export const buildFooterBlocksFromStored = (raw: any): FooterLineBlock[] => {
       current = {
         id: line.id || `block-${Date.now()}-${idx}`,
         title: line.label || '',
-        widthUnit: ((line as any).widthUnit === 'cm' ? 'cm' : 'percent'),
-        widthValue: Number((line as any).widthValue) || 25,
+        ...toBlockStartWidth(line),
         lines: [],
       };
       return;
@@ -135,7 +176,7 @@ export const buildFooterBlocksFromStored = (raw: any): FooterLineBlock[] => {
         id: `auto-${Date.now()}-${idx}`,
         title: '',
         widthUnit: 'percent',
-        widthValue: 25,
+        widthValue: DEFAULT_BLOCK_WIDTH_PERCENT,
         lines: [],
       };
     }

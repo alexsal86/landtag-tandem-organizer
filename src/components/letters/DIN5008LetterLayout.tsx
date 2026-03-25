@@ -1,7 +1,6 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
-import type { HeaderElement, TextElement, ShapeElement } from '@/components/canvas-engine/types';
-import { type BlockLine, type BlockLineData, getBlockLineFontStack, isLineMode } from '@/components/letters/BlockLineEditor';
+import { getBlockLineFontStack } from '@/components/letters/BlockLineEditor';
 import { SunflowerSVG, LionSVG, WappenSVG } from '@/components/letters/elements/shapeSVGs';
 import { sanitizeRichHtml, sanitizeCss } from '@/utils/htmlSanitizer';
 import { LetterAttachmentList, LetterClosingBlock, getLetterAttachmentNames } from './LetterContentBlocks';
@@ -10,6 +9,8 @@ import { DIN5008AddressInfoSection } from './DIN5008AddressInfoSection';
 import { getLetterAssetPublicUrl } from './letterAssetUrls';
 import type {
   InformationBlockRecord,
+  LetterBlockLine,
+  LetterCanvasElement,
   LetterAttachmentRecord,
   LetterLayoutTemplateLike,
   LetterLayoutSettings,
@@ -34,16 +35,16 @@ interface DIN5008LetterLayoutProps {
   salutation?: string;
   hideClosing?: boolean;
   // Canvas-based block elements (substituted)
-  addressFieldElements?: HeaderElement[];
-  returnAddressElements?: HeaderElement[];
-  infoBlockElements?: HeaderElement[];
-  subjectElements?: HeaderElement[];
-  attachmentElements?: HeaderElement[];
-  footerTextElements?: HeaderElement[];
+  addressFieldElements?: LetterCanvasElement[];
+  returnAddressElements?: LetterCanvasElement[];
+  infoBlockElements?: LetterCanvasElement[];
+  subjectElements?: LetterCanvasElement[];
+  attachmentElements?: LetterCanvasElement[];
+  footerTextElements?: LetterCanvasElement[];
   // Line-mode block data (substituted)
-  addressFieldLines?: BlockLine[];
-  returnAddressLines?: BlockLine[];
-  infoBlockLines?: BlockLine[];
+  addressFieldLines?: LetterBlockLine[];
+  returnAddressLines?: LetterBlockLine[];
+  infoBlockLines?: LetterBlockLine[];
   // Multi-page support
   allowContentOverflow?: boolean;
   contentRef?: React.Ref<HTMLDivElement>;
@@ -288,11 +289,10 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   };
 
   /** Render canvas-based block elements positioned in mm coordinates */
-  const renderCanvasBlockElements = (elements: HeaderElement[]) => (
+  const renderCanvasBlockElements = (elements: LetterCanvasElement[]) => (
     <div className="relative w-full h-full">
       {elements.map((element, index) => {
         if (element.type === 'text') {
-          const textEl = element as TextElement;
           return (
             <div
               key={element.id || index}
@@ -301,19 +301,19 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
                 left: `${element.x || 0}mm`,
                 top: `${element.y || 0}mm`,
                 width: element.width ? `${element.width}mm` : 'auto',
-                fontSize: `${textEl.fontSize || 10}pt`,
-                fontFamily: textEl.fontFamily || 'Arial, sans-serif',
-                fontWeight: textEl.fontWeight || 'normal',
-                fontStyle: textEl.fontStyle || 'normal',
-                textDecoration: textEl.textDecoration || 'none',
-                color: textEl.color || '#000000',
-                lineHeight: `${textEl.textLineHeight || 1.2}`,
-                textAlign: textEl.textAlign || 'left',
+                fontSize: `${element.fontSize || 10}pt`,
+                fontFamily: element.fontFamily || 'Arial, sans-serif',
+                fontWeight: element.fontWeight || 'normal',
+                fontStyle: element.fontStyle || 'normal',
+                textDecoration: element.textDecoration || 'none',
+                color: element.color || '#000000',
+                lineHeight: `${element.textLineHeight || 1.2}`,
+                textAlign: element.textAlign || 'left',
                 whiteSpace: element.width ? 'pre-wrap' : 'nowrap',
                 pointerEvents: 'none',
               }}
             >
-              {textEl.content || ''}
+              {element.content || ''}
             </div>
           );
         }
@@ -335,32 +335,30 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           );
         }
         if (element.type === 'shape') {
-          const shapeEl = element as ShapeElement;
-          const w = shapeEl.width || 20;
-          const h = shapeEl.height || 10;
-          const rotation = shapeEl.rotation || 0;
-          const fillColor = shapeEl.fillColor ?? shapeEl.color ?? '#000000';
-          const strokeColor = shapeEl.strokeColor ?? shapeEl.color ?? '#000000';
-          const strokeWidth = shapeEl.strokeWidth ?? 1;
+          const w = element.width || 20;
+          const h = element.height || 10;
+          const fillColor = element.fillColor ?? element.color ?? '#000000';
+          const strokeColor = element.strokeColor ?? element.color ?? '#000000';
+          const strokeWidth = element.strokeWidth ?? 1;
 
           const wrapperStyle: React.CSSProperties = {
             position: 'absolute',
-            left: `${shapeEl.x || 0}mm`,
-            top: `${shapeEl.y || 0}mm`,
+            left: `${element.x || 0}mm`,
+            top: `${element.y || 0}mm`,
             width: `${w}mm`,
             height: `${h}mm`,
-            transform: rotation ? `rotate(${rotation}deg)` : undefined,
+            transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
             pointerEvents: 'none',
           };
 
-          if (shapeEl.shapeType === 'sunflower') {
-            return <div key={shapeEl.id || index} style={wrapperStyle}><SunflowerSVG width={w * 3.7795} height={h * 3.7795} /></div>;
+          if (element.shapeType === 'sunflower') {
+            return <div key={element.id || index} style={wrapperStyle}><SunflowerSVG width={w * 3.7795} height={h * 3.7795} /></div>;
           }
-          if (shapeEl.shapeType === 'lion') {
-            return <div key={shapeEl.id || index} style={wrapperStyle}><LionSVG width={w * 3.7795} height={h * 3.7795} /></div>;
+          if (element.shapeType === 'lion') {
+            return <div key={element.id || index} style={wrapperStyle}><LionSVG width={w * 3.7795} height={h * 3.7795} /></div>;
           }
-          if (shapeEl.shapeType === 'wappen') {
-            return <div key={shapeEl.id || index} style={wrapperStyle}><WappenSVG width={w * 3.7795} height={h * 3.7795} /></div>;
+          if (element.shapeType === 'wappen') {
+            return <div key={element.id || index} style={wrapperStyle}><WappenSVG width={w * 3.7795} height={h * 3.7795} /></div>;
           }
 
           // SVG shapes (line, circle, rectangle)
@@ -368,16 +366,16 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           const pxW = w * 3.7795;
           const pxH = h * 3.7795;
           return (
-            <div key={shapeEl.id || index} style={wrapperStyle}>
+            <div key={element.id || index} style={wrapperStyle}>
               <svg width="100%" height="100%" viewBox={`0 0 ${pxW} ${pxH}`} preserveAspectRatio="none">
-                {shapeEl.shapeType === 'line' && (
+                {element.shapeType === 'line' && (
                   <line x1="0" y1={pxH / 2} x2={pxW} y2={pxH / 2} stroke={strokeColor} strokeWidth={strokeWidth} />
                 )}
-                {shapeEl.shapeType === 'circle' && (
+                {element.shapeType === 'circle' && (
                   <ellipse cx={pxW / 2} cy={pxH / 2} rx={pxW / 2 - strokeWidth} ry={pxH / 2 - strokeWidth} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} />
                 )}
-                {shapeEl.shapeType === 'rectangle' && (
-                  <rect x={strokeWidth / 2} y={strokeWidth / 2} width={pxW - strokeWidth} height={pxH - strokeWidth} rx={shapeEl.borderRadius ?? 0} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} />
+                {element.shapeType === 'rectangle' && (
+                  <rect x={strokeWidth / 2} y={strokeWidth / 2} width={pxW - strokeWidth} height={pxH - strokeWidth} rx={element.borderRadius ?? 0} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} />
                 )}
               </svg>
             </div>
@@ -389,7 +387,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   );
 
   /** Render line-mode block lines sequentially */
-  const renderBlockLines = (lines: BlockLine[], options?: { underlineLastContentLine?: boolean }) => {
+  const renderBlockLines = (lines: LetterBlockLine[], options?: { underlineLastContentLine?: boolean }) => {
     const lastContentIndex = options?.underlineLastContentLine
       ? [...lines].map((line, index) => ({ line, index })).reverse().find((entry) => entry.line.type !== 'spacer')?.index ?? -1
       : -1;
@@ -477,7 +475,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
                         width: `${element.width || 100}mm`,
                         lineHeight: '1.2',
                         pointerEvents: 'none',
-                        textAlign: (element.textAlign as 'left' | 'center' | 'right') || 'left',
+                        textAlign: element.textAlign === 'center' || element.textAlign === 'right' ? element.textAlign : 'left',
                         fontStyle: element.fontStyle || 'normal',
                         whiteSpace: 'pre-wrap'
                       }}
@@ -500,29 +498,27 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
                     />
                   )}
                   {element.type === 'shape' && (() => {
-                    const shapeEl = element as ShapeElement;
-                    const w = shapeEl.width || 20;
-                    const h = shapeEl.height || 10;
-                    const rotation = shapeEl.rotation || 0;
-                    const fillColor = shapeEl.fillColor ?? shapeEl.color ?? '#000000';
-                    const strokeColor = shapeEl.strokeColor ?? shapeEl.color ?? '#000000';
-                    const strokeWidth = shapeEl.strokeWidth ?? 1;
+                    const w = element.width || 20;
+                    const h = element.height || 10;
+                    const fillColor = element.fillColor ?? element.color ?? '#000000';
+                    const strokeColor = element.strokeColor ?? element.color ?? '#000000';
+                    const strokeWidth = element.strokeWidth ?? 1;
                     const style: React.CSSProperties = {
                       position: 'absolute',
-                      left: `${shapeEl.x || 0}mm`,
-                      top: `${shapeEl.y || 0}mm`,
+                      left: `${element.x || 0}mm`,
+                      top: `${element.y || 0}mm`,
                       width: `${w}mm`,
                       height: `${h}mm`,
-                      transform: rotation ? `rotate(${rotation}deg)` : undefined,
+                      transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
                       pointerEvents: 'none',
                     };
-                    if (shapeEl.shapeType === 'sunflower') {
+                    if (element.shapeType === 'sunflower') {
                       return <div style={style}><SunflowerSVG width={w * 3.7795} height={h * 3.7795} /></div>;
                     }
-                    if (shapeEl.shapeType === 'lion') {
+                    if (element.shapeType === 'lion') {
                       return <div style={style}><LionSVG width={w * 3.7795} height={h * 3.7795} /></div>;
                     }
-                    if (shapeEl.shapeType === 'wappen') {
+                    if (element.shapeType === 'wappen') {
                       return <div style={style}><WappenSVG width={w * 3.7795} height={h * 3.7795} /></div>;
                     }
                     const pxW = w * 3.7795;
@@ -530,9 +526,9 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
                     return (
                       <div style={style}>
                         <svg width="100%" height="100%" viewBox={`0 0 ${pxW} ${pxH}`} preserveAspectRatio="none">
-                          {shapeEl.shapeType === 'line' && <line x1="0" y1={pxH / 2} x2={pxW} y2={pxH / 2} stroke={strokeColor} strokeWidth={strokeWidth} />}
-                          {shapeEl.shapeType === 'circle' && <ellipse cx={pxW / 2} cy={pxH / 2} rx={pxW / 2 - strokeWidth} ry={pxH / 2 - strokeWidth} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} />}
-                          {shapeEl.shapeType === 'rectangle' && <rect x={strokeWidth / 2} y={strokeWidth / 2} width={pxW - strokeWidth} height={pxH - strokeWidth} rx={shapeEl.borderRadius ?? 0} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} />}
+                          {element.shapeType === 'line' && <line x1="0" y1={pxH / 2} x2={pxW} y2={pxH / 2} stroke={strokeColor} strokeWidth={strokeWidth} />}
+                          {element.shapeType === 'circle' && <ellipse cx={pxW / 2} cy={pxH / 2} rx={pxW / 2 - strokeWidth} ry={pxH / 2 - strokeWidth} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} />}
+                          {element.shapeType === 'rectangle' && <rect x={strokeWidth / 2} y={strokeWidth / 2} width={pxW - strokeWidth} height={pxH - strokeWidth} rx={element.borderRadius ?? 0} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} />}
                         </svg>
                       </div>
                     );

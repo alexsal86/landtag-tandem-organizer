@@ -211,8 +211,23 @@ const cloneLayout = (layout: LetterLayoutSettings): LetterLayoutSettings => ({
   lockedBlocks: [...(layout.lockedBlocks || [])],
 });
 
-const getDisabled = (layout: LetterLayoutSettings): LayoutBlockKey[] => (layout.disabledBlocks || []) as LayoutBlockKey[];
-const getLocked = (layout: LetterLayoutSettings): LayoutBlockKey[] => (layout.lockedBlocks || []) as LayoutBlockKey[];
+const getDisabled = (layout: LetterLayoutSettings): LayoutBlockKey[] => layout.disabledBlocks || [];
+const getLocked = (layout: LetterLayoutSettings): LayoutBlockKey[] => layout.lockedBlocks || [];
+
+const isStringRecord = (value: unknown): value is Record<string, string> => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  return Object.values(value).every((entry) => typeof entry === 'string');
+};
+
+const asCanvasElements = (value: unknown): LetterCanvasElement[] => {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is LetterCanvasElement => (
+    Boolean(entry) &&
+    typeof entry === 'object' &&
+    typeof (entry as { id?: unknown }).id === 'string' &&
+    typeof (entry as { type?: unknown }).type === 'string'
+  ));
+};
 
 export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJumpToTab, headerElements = [], actionButtons }: Props) {
   const { currentTenant } = useTenant();
@@ -245,7 +260,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
         .eq('tenant_id', currentTenant.id)
         .maybeSingle();
 
-      setTemplateDefaults((data?.variable_defaults as Record<string, string>) || {});
+      setTemplateDefaults(isStringRecord(data?.variable_defaults) ? data.variable_defaults : {});
     };
 
     fetchTemplateDefaults();
@@ -407,7 +422,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
       const disabled = new Set(getDisabled(prev));
       if (enabled) disabled.delete(key);
       else disabled.add(key);
-      const next = { ...cloneLayout(prev), disabledBlocks: Array.from(disabled) } as LetterLayoutSettings;
+      const next: LetterLayoutSettings = { ...cloneLayout(prev), disabledBlocks: Array.from(disabled) };
       onLayoutChange(next);
       return next;
     });
@@ -418,7 +433,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
       const locked = new Set(getLocked(prev));
       if (locked.has(key)) locked.delete(key);
       else locked.add(key);
-      const next = { ...cloneLayout(prev), lockedBlocks: Array.from(locked) } as LetterLayoutSettings;
+      const next: LetterLayoutSettings = { ...cloneLayout(prev), lockedBlocks: Array.from(locked) };
       onLayoutChange(next);
       return next;
     });
@@ -665,11 +680,12 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               
               const blockElements = block.key === 'header'
                 ? headerElements
-                : (Array.isArray(rawContent) ? rawContent : []) as LetterCanvasElement[];
+                : asCanvasElements(rawContent);
+              const firstCanvasContent = asCanvasElements(blockContent[block.key])[0]?.content;
               const previewText =
                 block.key === 'header'
                   ? ''
-                  : (blockElements.length > 0 || isLineModeBlock || hasReturnData) ? '' : (blockContent[block.key] || [])[0]?.content;
+                  : (blockElements.length > 0 || isLineModeBlock || hasReturnData) ? '' : firstCanvasContent;
               const LINE_VARS: Record<string, string> = {
                 '{{bearbeiter}}': 'Max Mustermann', '{{telefon}}': '040 1234-5678', '{{email}}': 'max@beispiel.de',
                 '{{datum}}': '25. Februar 2026', '{{aktenzeichen}}': 'AZ-2026-001', '{{unser_zeichen}}': 'MM/abc',

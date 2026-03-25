@@ -261,6 +261,7 @@ Nicht kommentierte oder nicht freigegebene `any` zählen als Rückfall und block
 ## Review- und CI-Hinweis
 
 - Wenn ein Pull Request Strict-Migrationsdateien, `tsconfig.*-strict.json`, `package.json`-Typecheck-Skripte oder Batch-Scope-Dateien verändert, muss im Review geprüft werden, ob auch `docs/strict-progress.md` oder ein zugehöriges Batch-Dokument aktualisiert wurde.
+- Die konkrete Follow-up-Liste für die nächste Strictness-Stufe des Protokoll-Scopes wird in `docs/tech-debt/strictness-next-level-followups.md` gepflegt.
 - **Keine neuen unkommentierten `any` werden akzeptiert.** Jede neue `any`-Stelle muss als Interop-Randfall begründet und inline markiert werden (`INTEROP-ANY: ...`).
 - Die CI darf diesen Fall mindestens als Hinweis im Job Summary ausgeben; Ziel ist Sichtbarkeit, nicht stilles Vergessen.
 - Reviewer prüfen explizit, ob der dokumentierte Fortschritt den **real gemergten Stand** beschreibt und nicht nur den geplanten Zielzustand.

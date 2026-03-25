@@ -3,14 +3,14 @@ import { debugConsole } from '@/utils/debugConsole';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { HeaderRenderer } from '@/services/headerRenderer';
-import { buildFooterBlocksFromStored, resolveBlockWidthMm } from '@/components/letters/footerBlockUtils';
+import { buildFooterBlocksFromStored, resolveBlockWidthMm, toFooterBlockTypographyContract } from '@/components/letters/footerBlockUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { buildVariableMap, substituteBlockLines, substituteVariables, isLineMode } from '@/lib/letterVariables';
 import type { BlockLine } from '@/components/letters/BlockLineEditor';
 import { getLetterAssetPublicUrl } from '@/components/letters/letterAssetUrls';
 import { DEFAULT_DIN5008_LAYOUT, isLetterLayoutSettings, type LetterLayoutSettings } from '@/types/letterLayout';
 import { isRecord } from '@/utils/typeSafety';
-import type { Letter, LetterTemplate, DbContact } from './types';
+import type { Letter, LetterTemplate, DbContact, SenderInfoContract, InformationBlockContract, AttachmentContract } from './types';
 import type { FooterLineBlock } from '@/components/letters/footerBlockUtils';
 
 // DIN 5008 measurements in mm
@@ -155,7 +155,6 @@ const toFoldHoleMarks = (value: unknown): FoldHoleMarks | null => {
 };
 
 const toPdfTextBlock = (block: FooterLineBlock, availableWidthMm: number, startX: number, startY: number): TextBlock | null => {
-  const blockRecord = block as FooterLineBlock & Record<string, unknown>;
   const lines = block.lines
     .map((line) => line.type === 'spacer'
       ? ''
@@ -174,14 +173,15 @@ const toPdfTextBlock = (block: FooterLineBlock, availableWidthMm: number, startX
   const baseColor = parseHexColor(block.lines.find((line) => typeof line.color === 'string')?.color || '#000000');
   const baseWeight: PdfFontWeight = block.lines.some((line) => line.valueBold === true) ? 'bold' : 'normal';
 
-  const titleFontSizeRaw = typeof blockRecord.titleFontSize === 'number' ? blockRecord.titleFontSize : 13;
-  const titleWeightRaw: PdfFontWeight = blockRecord.titleFontWeight === 'normal' ? 'normal' : 'bold';
-  const titleColorRaw = typeof blockRecord.titleColor === 'string' ? parseHexColor(blockRecord.titleColor, [16, 112, 48]) : [16, 112, 48];
+  const typography = toFooterBlockTypographyContract(block);
+  const titleFontSizeRaw = typography.titleFontSize;
+  const titleWeightRaw: PdfFontWeight = typography.titleFontWeight;
+  const titleColorRaw = typography.titleColor ? parseHexColor(typography.titleColor, [16, 112, 48]) : [16, 112, 48];
 
   return {
     id: block.id,
     title: titleLine || undefined,
-    titleHighlight: blockRecord.titleHighlight === true,
+    titleHighlight: typography.titleHighlight,
     titleFont: {
       size: Math.max(8, Math.min(20, titleFontSizeRaw)),
       weight: titleWeightRaw,
@@ -210,6 +210,12 @@ const getStringValue = (record: Record<string, unknown> | null | undefined, key:
 const getBooleanValue = (record: Record<string, unknown> | null | undefined, key: string): boolean => {
   if (!record) return false;
   return record[key] === true;
+};
+
+
+const toStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is string => typeof entry === 'string');
 };
 
 function drawDebugGuides(pdf: jsPDF, pageNum: number) {
@@ -432,40 +438,9 @@ function renderFooterBlocksSimple(pdf: jsPDF, template: LetterTemplate | null) {
 interface GeneratePDFOptions {
   letter: Letter;
   template: LetterTemplate | null;
-  senderInfo: {
-    name?: string | null;
-    organization?: string | null;
-    street?: string | null;
-    house_number?: string | null;
-    postal_code?: string | null;
-    city?: string | null;
-    wahlkreis_street?: string | null;
-    wahlkreis_house_number?: string | null;
-    wahlkreis_postal_code?: string | null;
-    wahlkreis_city?: string | null;
-    landtag_street?: string | null;
-    landtag_house_number?: string | null;
-    landtag_postal_code?: string | null;
-    landtag_city?: string | null;
-    phone?: string | null;
-    email?: string | null;
-    wahlkreis_email?: string | null;
-    landtag_email?: string | null;
-    return_address_line?: string | null;
-    website?: string | null;
-  } | null;
-  informationBlock: {
-    label?: string | null;
-    block_type?: 'contact' | 'date' | 'reference' | 'custom' | string;
-    block_data?: Record<string, unknown> | null;
-  } | null;
-  attachments: Array<{
-    file_path: string;
-    title?: string | null;
-    file_name?: string | null;
-    file_type?: string | null;
-    file_size?: number | null;
-  }>;
+  senderInfo: SenderInfoContract | null;
+  informationBlock: InformationBlockContract | null;
+  attachments: AttachmentContract[];
   showPagination: boolean;
   returnBlob?: boolean;
   debugMode?: boolean;
@@ -710,10 +685,13 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
       }
       case 'custom':
         if (getStringValue(infoData, 'custom_content') || (Array.isArray(infoData?.custom_lines))) {
-          const customLines = Array.isArray(infoData?.custom_lines)
-            ? infoData.custom_lines
+          const customLines = toStringArray(infoData?.custom_lines).length > 0
+            ? toStringArray(infoData?.custom_lines)
             : String(getStringValue(infoData, 'custom_content') || '').split('\n');
-          customLines.map((line: string) => line.trim()).filter((line: string) => line.length > 0).forEach((line: string) => {
+          customLines
+            .map((line) => line.trim())
+            .filter((line) => line.length > 0)
+            .forEach((line) => {
             if (infoYPos < ADDRESS_FIELD_TOP + ADDRESS_FIELD_HEIGHT - 5) {
               pdf.text(line, INFO_BLOCK_LEFT, infoYPos);
               infoYPos += 4;
