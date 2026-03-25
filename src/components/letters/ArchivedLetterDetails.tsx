@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database, Json } from '@/integrations/supabase/types';
 import { debugConsole } from '@/utils/debugConsole';
 import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 import { useToast } from '@/hooks/use-toast';
@@ -14,44 +15,22 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 
 interface ArchivedLetterDetailsProps {
-  document: {
-    id: string;
-    title: string;
-    source_letter_id?: string;
-    archived_attachments?: any[];
-    created_at: string;
-  };
+  document: Database['public']['Tables']['documents']['Row'];
   isOpen: boolean;
   onClose: () => void;
 }
 
-interface WorkflowEntry {
-  id: string;
-  status_from: string;
-  status_to: string;
-  changed_by: string;
-  changed_at: string;
-  notes?: string | null;
-  additional_data?: any;
+type WorkflowEntry = Database['public']['Tables']['letter_workflow_history']['Row'] & {
   user_name?: string | null;
-  letter_id?: string;
-  created_at?: string;
-}
+};
+type LetterDetails = Database['public']['Tables']['letters']['Row'];
+type DocumentAttachment = Database['public']['Tables']['documents']['Row'];
 
-interface LetterDetails {
-  id: string;
-  title: string;
-  content: string;
-  recipient_name?: string | null;
-  recipient_address?: string | null;
-  status: string;
-  sent_date?: string | null;
-  sent_method?: string | null;
-  created_at: string;
-  sent_at?: string | null;
-  archived_at?: string | null;
-  [key: string]: any;
-}
+const getSentMethodFromAdditionalData = (value: Json | null): string | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const sentMethod = (value as Record<string, unknown>).sent_method;
+  return typeof sentMethod === 'string' ? sentMethod : null;
+};
 
 export const ArchivedLetterDetails: React.FC<ArchivedLetterDetailsProps> = ({
   document,
@@ -61,7 +40,7 @@ export const ArchivedLetterDetails: React.FC<ArchivedLetterDetailsProps> = ({
   const { toast } = useToast();
   const [workflow, setWorkflow] = useState<WorkflowEntry[]>([]);
   const [letterDetails, setLetterDetails] = useState<LetterDetails | null>(null);
-  const [attachments, setAttachments] = useState<any[]>([]);
+  const [attachments, setAttachments] = useState<DocumentAttachment[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -132,7 +111,7 @@ export const ArchivedLetterDetails: React.FC<ArchivedLetterDetailsProps> = ({
     }
   };
 
-  const handleDownloadAttachment = async (attachment: any) => {
+  const handleDownloadAttachment = async (attachment: DocumentAttachment) => {
     try {
       const { data, error } = await supabase.storage
         .from('documents')
@@ -296,9 +275,9 @@ export const ArchivedLetterDetails: React.FC<ArchivedLetterDetailsProps> = ({
                             {entry.notes && (
                               <p className="text-sm text-muted-foreground">{entry.notes}</p>
                             )}
-                            {entry.additional_data?.sent_method && (
+                            {getSentMethodFromAdditionalData(entry.additional_data) && (
                               <p className="text-sm">
-                                <strong>Versandart:</strong> {entry.additional_data.sent_method}
+                                <strong>Versandart:</strong> {getSentMethodFromAdditionalData(entry.additional_data)}
                               </p>
                             )}
                           </div>

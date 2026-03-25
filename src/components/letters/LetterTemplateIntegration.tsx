@@ -12,20 +12,19 @@ import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { useToast } from '@/hooks/use-toast';
+import type { Database, Json } from '@/integrations/supabase/types';
+import type { LetterTemplate } from '@/components/letters/types';
 
-interface LetterTemplate {
-  id: string;
+type LetterTemplateRow = Database['public']['Tables']['letter_templates']['Row'];
+type LetterTemplateUpdate = Database['public']['Tables']['letter_templates']['Update'];
+
+interface TemplateFormData {
   name: string;
   letterhead_html: string;
   letterhead_css: string;
   response_time_days: number;
   is_default: boolean;
   is_active: boolean;
-  created_at: string;
-  header_image_url?: string;
-  header_image_position?: any;
-  header_text_elements?: any[];
-  header_layout_type?: string;
 }
 
 interface LetterTemplateIntegrationProps {
@@ -49,7 +48,7 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
   const [showHeaderEditor, setShowHeaderEditor] = useState(false);
   const [showFooterEditor, setShowFooterEditor] = useState(false);
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<TemplateFormData>({
     name: '',
     letterhead_html: '',
     letterhead_css: '',
@@ -64,6 +63,17 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
     }
   }, [currentTenant]);
 
+  const toLetterTemplate = (template: LetterTemplateRow): LetterTemplate => {
+    const headerElements = Array.isArray(template.header_text_elements)
+      ? template.header_text_elements
+      : [];
+
+    return {
+      ...template,
+      header_text_elements: headerElements as Json[],
+    };
+  };
+
   const fetchTemplates = async () => {
     if (!currentTenant) return;
 
@@ -77,13 +87,7 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
         .order('name');
 
       if (error) throw error;
-      // Cast the data to ensure proper typing
-      const typedTemplates = (data || []).map(template => ({
-        ...template,
-        header_text_elements: Array.isArray(template.header_text_elements) 
-          ? template.header_text_elements 
-          : []
-      })) as LetterTemplate[];
+      const typedTemplates = (data || []).map(toLetterTemplate);
       setTemplates(typedTemplates);
     } catch (error) {
       debugConsole.error('Error fetching templates:', error);
@@ -137,7 +141,7 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
     setShowFooterEditor(true);
   };
 
-  const handleSaveHeader = async (headerData: any) => {
+  const handleSaveHeader = async (headerData: LetterTemplateUpdate) => {
     if (!editingTemplate || !currentTenant) return;
 
     try {
@@ -165,7 +169,7 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
     }
   };
 
-  const handleSaveFooter = async (footerData: any) => {
+  const handleSaveFooter = async (footerData: LetterTemplateUpdate) => {
     if (!editingTemplate || !currentTenant) return;
 
     try {
