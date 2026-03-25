@@ -1604,19 +1604,19 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
           const phase = verificationRequest.phase;
           if (phase === VerificationPhase.Ready || phase === VerificationPhase.Started) {
             clearTimeout(timeoutId);
-            verificationRequest.off?.('change', checkReady);
+            (verificationRequest as unknown as MatrixVerificationRequest).off?.('change', checkReady);
             resolve();
           } else if (phase === VerificationPhase.Cancelled || phase === VerificationPhase.Done) {
             clearTimeout(timeoutId);
-            verificationRequest.off?.('change', checkReady);
+            (verificationRequest as unknown as MatrixVerificationRequest).off?.('change', checkReady);
             reject(new Error('Verifizierung wurde vom anderen Gerät abgebrochen.'));
           }
         };
 
-        verificationRequest.on?.('change', checkReady);
+        (verificationRequest as unknown as MatrixVerificationRequest).on?.('change', checkReady);
         checkReady();
         timeoutId = setTimeout(() => {
-          verificationRequest.off?.('change', checkReady);
+          (verificationRequest as unknown as MatrixVerificationRequest).off?.('change', checkReady);
           reject(new Error('Verifizierungs-Timeout: Der andere Client hat nicht rechtzeitig geantwortet.'));
         }, 60000);
       });
