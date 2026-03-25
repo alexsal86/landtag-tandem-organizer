@@ -586,7 +586,7 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
   // Template header
   if (template) {
     const headerRenderer = new HeaderRenderer(pdf, LEFT_MARGIN, undefined, debugMode);
-    await headerRenderer.renderHeader({ ...template, header_layout_type: template.header_layout_type ?? undefined });
+    await headerRenderer.renderHeader({ ...template, header_layout_type: template.header_layout_type ?? undefined, header_text_elements: undefined, header_image_url: template.header_image_url ?? undefined });
   }
   
   // ── Return address ──
