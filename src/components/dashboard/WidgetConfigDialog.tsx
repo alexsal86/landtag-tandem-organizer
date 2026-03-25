@@ -330,8 +330,8 @@ export function WidgetConfigDialog({ widget, open, onOpenChange, onSave }: Widge
                       <Label>Pausenzeit (Minuten)</Label>
                       <Input
                         type="number"
-                        value={config.breakDuration || 5}
-                        onChange={(e) => updateConfig('breakDuration', Number(e.target.value))}
+                        value={(config as any).breakDuration || 5}
+                        onChange={(e) => updateConfig('breakDuration' as any, Number(e.target.value))}
                         min={1}
                         max={30}
                       />

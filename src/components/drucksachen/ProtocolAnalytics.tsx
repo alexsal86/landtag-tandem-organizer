@@ -355,8 +355,8 @@ export function ProtocolAnalytics({ protocolId, tenantId }: ProtocolAnalyticsPro
                 <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip />
-                <Line type="monotone" dataKey="speeches" stroke="#8884d8" name="Redebeiträge" />
-                <Line type="monotone" dataKey="speakers" stroke="#82ca9d" name="Redner" />
+                <Line type={"monotone" as any} dataKey="speeches" stroke="#8884d8" name="Redebeiträge" />
+                <Line type={"monotone" as any} dataKey="speakers" stroke="#82ca9d" name="Redner" />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>

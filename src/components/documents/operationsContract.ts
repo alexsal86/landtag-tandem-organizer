@@ -140,7 +140,7 @@ export const toArchivableLetterRecord = (letter: Letter): LetterRecord | null =>
   }
 
   return {
-    id: letter.id,
+    id: letter.id!,
     title: letter.title,
     content: letter.content,
     content_html: letter.content_html ?? null,

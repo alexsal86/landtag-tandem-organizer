@@ -103,10 +103,10 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
     return (protocol.structured_data as any)?.stats || {};
   }, [protocol.structured_data]);
 
-  const sessionData = protocol.structured_data?.session || {};
-  const sittingData = protocol.structured_data?.sitting || {};
-  const layoutData = protocol.structured_data?.layout || {};
-  const qaData = protocol.structured_data?._qa || {};
+  const sessionData = (protocol.structured_data as any)?.session || {};
+  const sittingData = (protocol.structured_data as any)?.sitting || {};
+  const layoutData = (protocol.structured_data as any)?.layout || {};
+  const qaData = (protocol.structured_data as any)?._qa || {};
 
   // Get unique parties
   const parties = useMemo(() => {

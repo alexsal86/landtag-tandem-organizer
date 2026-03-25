@@ -274,7 +274,7 @@ export function ProtocolPlenaryView({ protocol, structuredData }: ProtocolPlenar
                           {/* Speech content mit inline Events */}
                           <div className="speech-content ml-8">
                             {renderSpeechContent(
-                              speech.text || speech.speech_content, 
+                              speech.text || speech.speech_content!, 
                               speech.events_flat || []
                             )}
                           </div>

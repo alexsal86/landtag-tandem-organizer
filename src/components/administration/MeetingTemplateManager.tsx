@@ -424,7 +424,7 @@ export function MeetingTemplateManager() {
                                       <div className="flex-1 h-px bg-border" />
                                     ) : item.type === 'system' ? (
                                       <div className="flex items-center gap-2 flex-1">
-                                        {getSystemIcon(item.system_type)}
+                                        {getSystemIcon(item.system_type!)}
                                         <span className="text-sm font-medium">{item.title}</span>
                                         <DropdownMenu>
                                           <DropdownMenuTrigger asChild>
