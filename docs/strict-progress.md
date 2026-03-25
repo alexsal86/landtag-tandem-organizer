@@ -198,7 +198,34 @@ Pflegehinweis pro Batch:
 2. Im PR-Summary den Delta-Wert aus dem CI-Job „Any-Delta PR-Gate (nicht steigend)“ dokumentieren.
 3. Bei Delta `0` ist Stagnation akzeptabel; bei negativem Delta ist die Reduktion als Fortschritt im Batch-Abschnitt zu notieren.
 
-### Fortschritts-Update (2026-03-25): Paket A/B
+### Heute: Scope-Freeze (2026-03-25)
+
+Für die laufende Welle ist der Scope bis zum Abschluss der drei nächsten PRs eingefroren:
+
+- **Kein Parallel-Refactor außerhalb des Any-Abbaus** (keine Struktur-/Naming-/Feature-Änderungen ohne direkten Typisierungsbezug).
+- **PRs werden sequenziell abgearbeitet (A → B → C)**, damit das Any-Delta pro Merge eindeutig messbar bleibt.
+- **Neue `any` ohne Interop-Begründung (`INTEROP-ANY` + Ticket) sind blockierend**.
+
+### Nächste 3 PRs (sofort aufgesetzt)
+
+Baseline vor Start der Serie: **`Any-Total = 572`** (gemessen am 2026-03-25 via `npm run --silent report:any-usage:total`).
+
+| PR | Fokus | Primärer Scope | Start-Baseline (`any`) | Ziel-Gate |
+| --- | --- | --- | ---: | --- |
+| **PR A** | Größte Hotspot-Dateien | `src/components/documents/hooks/__tests__/useDocumentsData.test.ts` (17), `src/components/ContactSelector.tsx` (14), `src/components/administration/MeetingTemplateManager.tsx` (11), `src/components/my-work/MyWorkPlanningsTab.tsx` (11) | 53 | Any-Delta `< 0`, keine neuen unbegründeten `any` |
+| **PR B** | Context-/Hook-Hotspots | `src/contexts/MatrixClientContext.tsx` (20), `src/hooks/useYjsCollaboration.tsx` (17), `src/hooks/useDashboardDeadlines.ts` (10) | 47 | Any-Delta `< 0`, Interop-Randfälle nur mit Ticket |
+| **PR C** | Rest-Sweep + Regelverschärfung | verbleibende Top-Dateien aus `report:any-usage:files` + Governance/Regeln (`docs/type-migration-rules.md`, PR-Template, CI-Hinweise) | aus Merge-Stand nach PR B neu zu messen | Any-Delta `<= 0` (kein Rückschritt), Governance-Gates aktiv |
+
+### Merge-Rhythmus: Baseline nach jedem Merge neu messen
+
+Nach jedem Merge von PR A/B/C sind folgende Schritte verpflichtend und im PR/Doc zu dokumentieren:
+
+1. `npm run --silent report:any-usage:total` (neue globale Baseline erfassen).
+2. `npm run --silent report:any-usage:clusters` (Cluster-Verschiebung prüfen).
+3. `npm run --silent report:any-usage:files | head -n 40` (neue Top-Hotspots erfassen).
+4. Werte in diesem Abschnitt und im jeweiligen PR-Abschnitt mit **vorher/nachher/Delta** aktualisieren.
+
+### Fortschritts-Update (2026-03-25): Paket A/B/C (historisch)
 
 | Paket | Scope | `any` vorher | `any` nachher | Delta |
 | --- | --- | ---: | ---: | ---: |
