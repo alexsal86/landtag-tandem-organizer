@@ -10,7 +10,8 @@ import { ArrowLeft, Save, RotateCcw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { useToast } from '@/hooks/use-toast';
-import { DEFAULT_DIN5008_LAYOUT } from '@/types/letterLayout';
+import { DEFAULT_DIN5008_LAYOUT, isLetterLayoutSettings, type LetterLayoutSettings } from '@/types/letterLayout';
+import type { Database } from '@/integrations/supabase/types';
 
 interface LetterTemplateSettingsProps {
   onBack: () => void;
@@ -81,20 +82,42 @@ const DIN5008_FIELDS = [
   { path: ['attachments', 'top'], label: 'Anlagen von oben', section: 'Anlagen' },
 ];
 
-const getNestedValue = (obj: any, path: string[]): number => {
-  let current = obj;
+type Din5008FieldPath = typeof DIN5008_FIELDS[number]['path'];
+type LetterTemplateSettingsRow = Database['public']['Tables']['letter_template_settings']['Row'];
+type LetterTemplateSettingsJson = LetterTemplateSettingsRow['variable_defaults'] | LetterTemplateSettingsRow['din5008_defaults'];
+
+const asRecord = (value: LetterTemplateSettingsJson): Record<string, unknown> =>
+  value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+
+const parseVariableDefaults = (value: LetterTemplateSettingsRow['variable_defaults']): Record<string, string> =>
+  Object.entries(asRecord(value)).reduce<Record<string, string>>((acc, [key, entry]) => {
+    if (typeof entry === 'string') {
+      acc[key] = entry;
+    }
+    return acc;
+  }, {});
+
+const parseDin5008Defaults = (value: LetterTemplateSettingsRow['din5008_defaults']): LetterLayoutSettings =>
+  isLetterLayoutSettings(value) ? value : DEFAULT_DIN5008_LAYOUT;
+
+const getNestedValue = (obj: LetterLayoutSettings, path: Din5008FieldPath): number => {
+  let current: unknown = obj;
   for (const key of path) {
-    current = current?.[key];
+    current = current && typeof current === 'object' ? (current as Record<string, unknown>)[key] : undefined;
   }
   return typeof current === 'number' ? current : 0;
 };
 
-const setNestedValue = (obj: any, path: string[], value: number): any => {
-  const result = JSON.parse(JSON.stringify(obj));
-  let current = result;
+const setNestedValue = (obj: LetterLayoutSettings, path: Din5008FieldPath, value: number): LetterLayoutSettings => {
+  const result = structuredClone(obj);
+  let current: Record<string, unknown> = result as unknown as Record<string, unknown>;
   for (let i = 0; i < path.length - 1; i++) {
-    if (!current[path[i]]) current[path[i]] = {};
-    current = current[path[i]];
+    const key = path[i];
+    const next = current[key];
+    if (!next || typeof next !== 'object' || Array.isArray(next)) {
+      current[key] = {};
+    }
+    current = current[key] as Record<string, unknown>;
   }
   current[path[path.length - 1]] = value;
   return result;
@@ -104,7 +127,7 @@ export const LetterTemplateSettings: React.FC<LetterTemplateSettingsProps> = ({ 
   const { currentTenant } = useTenant();
   const { toast } = useToast();
   const [variableDefaults, setVariableDefaults] = useState<Record<string, string>>({});
-  const [din5008Defaults, setDin5008Defaults] = useState<Record<string, any>>(DEFAULT_DIN5008_LAYOUT as any);
+  const [din5008Defaults, setDin5008Defaults] = useState<LetterLayoutSettings>(DEFAULT_DIN5008_LAYOUT);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -124,11 +147,10 @@ export const LetterTemplateSettings: React.FC<LetterTemplateSettingsProps> = ({ 
 
       if (error) throw error;
       if (data) {
-        setVariableDefaults((data.variable_defaults as Record<string, string>) || {});
-        const din = data.din5008_defaults as Record<string, unknown> | null;
-        if (din && Object.keys(din).length > 0) {
-          setDin5008Defaults(din as any);
-        }
+        const parsedVariableDefaults = parseVariableDefaults(data.variable_defaults);
+        const parsedDinDefaults = parseDin5008Defaults(data.din5008_defaults);
+        setVariableDefaults(parsedVariableDefaults);
+        setDin5008Defaults(parsedDinDefaults);
       }
 
       // Load sender info defaults
@@ -198,7 +220,7 @@ export const LetterTemplateSettings: React.FC<LetterTemplateSettingsProps> = ({ 
   };
 
   const handleResetDIN = () => {
-    setDin5008Defaults(DEFAULT_DIN5008_LAYOUT as any);
+    setDin5008Defaults(DEFAULT_DIN5008_LAYOUT);
   };
 
   const sections = [...new Set(DIN5008_FIELDS.map(f => f.section))];
