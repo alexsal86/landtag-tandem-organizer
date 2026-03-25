@@ -1,12 +1,46 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type Dispatch, type SetStateAction } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import type { AppUserRef, ProfileSummary, TaskDocumentInfo, TenantRef } from "@/components/shared/featureDomainTypes";
 import type { Task, TaskComment, Subtask, TodoItem, SnoozeEntry } from "../types";
 
-export function useTasksData(options?: { enabled?: boolean }) {
+
+
+export interface UseTasksDataReturn {
+  tasks: Task[];
+  setTasks: Dispatch<SetStateAction<Task[]>>;
+  loading: boolean;
+  taskComments: Record<string, TaskComment[]>;
+  taskCategories: Array<{ name: string; label: string }>;
+  taskStatuses: Array<{ name: string; label: string }>;
+  users: ProfileSummary[];
+  taskDocuments: Record<string, number>;
+  taskDocumentDetails: Record<string, TaskDocumentInfo[]>;
+  subtaskCounts: Record<string, number>;
+  subtasks: Record<string, Subtask[]>;
+  assignedSubtasks: Array<Subtask & { task_title: string }>;
+  taskSnoozes: Record<string, string>;
+  subtaskSnoozes: Record<string, string>;
+  allSnoozes: SnoozeEntry[];
+  todos: TodoItem[];
+  resolveUserNames: (assignedToField: string | string[] | null) => string;
+  loadTasks: () => Promise<void>;
+  loadTaskComments: () => Promise<void>;
+  loadTaskDocuments: () => Promise<void>;
+  loadTaskDocumentCounts: () => Promise<void>;
+  loadSubtaskCounts: () => Promise<void>;
+  loadSubtasksForTask: (taskId: string) => Promise<void>;
+  loadTaskSnoozes: () => Promise<void>;
+  loadAllSnoozes: () => Promise<void>;
+  loadTodos: () => Promise<void>;
+  loadAssignedSubtasks: () => Promise<void>;
+  user: AppUserRef | null;
+  currentTenant: TenantRef | null;
+}
+export function useTasksData(options?: { enabled?: boolean }): UseTasksDataReturn {
   const enabled = options?.enabled !== false;
   const { user } = useAuth();
   const { currentTenant } = useTenant();
@@ -17,9 +51,9 @@ export function useTasksData(options?: { enabled?: boolean }) {
   const [taskComments, setTaskComments] = useState<{ [taskId: string]: TaskComment[] }>({});
   const [taskCategories, setTaskCategories] = useState<Array<{ name: string; label: string }>>([]);
   const [taskStatuses, setTaskStatuses] = useState<Array<{ name: string; label: string }>>([]);
-  const [users, setUsers] = useState<Array<{ user_id: string; display_name?: string }>>([]);
+  const [users, setUsers] = useState<ProfileSummary[]>([]);
   const [taskDocuments, setTaskDocuments] = useState<{ [taskId: string]: number }>({});
-  const [taskDocumentDetails, setTaskDocumentDetails] = useState<{ [taskId: string]: any[] }>({});
+  const [taskDocumentDetails, setTaskDocumentDetails] = useState<Record<string, TaskDocumentInfo[]>>({});
   const [subtaskCounts, setSubtaskCounts] = useState<{ [taskId: string]: number }>({});
   const [subtasks, setSubtasks] = useState<{ [taskId: string]: Subtask[] }>({});
   const [assignedSubtasks, setAssignedSubtasks] = useState<Array<Subtask & { task_title: string }>>([]);
@@ -190,7 +224,7 @@ export function useTasksData(options?: { enabled?: boolean }) {
         .select('id, task_id, file_name, file_path, file_size, file_type, created_at')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      const detailsMap: { [taskId: string]: any[] } = {};
+      const detailsMap: Record<string, TaskDocumentInfo[]> = {};
       (data || []).forEach(doc => {
         if (!detailsMap[doc.task_id]) detailsMap[doc.task_id] = [];
         detailsMap[doc.task_id].push(doc);

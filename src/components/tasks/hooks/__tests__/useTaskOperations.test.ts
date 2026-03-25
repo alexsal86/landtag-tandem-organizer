@@ -1,14 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 
 const { mockSupabase, mockToast } = vi.hoisted(() => {
-  const createChain = (resolveValue: any = { data: null, error: null }) => {
-    const chain: any = {};
+  type SupabaseResponse = { data: unknown; error: unknown };
+
+  const createChain = (resolveValue: SupabaseResponse = { data: null, error: null }) => {
+    const chain: Record<string, Mock> & { then?: (fn: (v: SupabaseResponse) => unknown) => Promise<unknown> } = {};
     const methods = ['select', 'eq', 'neq', 'order', 'in', 'not', 'is', 'gt', 'limit', 'single', 'maybeSingle', 'insert', 'update', 'delete'];
     methods.forEach(m => {
       chain[m] = vi.fn(() => chain);
     });
-    chain.then = (fn: any) => Promise.resolve(resolveValue).then(fn);
+    chain.then = (fn: (value: SupabaseResponse) => unknown) => Promise.resolve(resolveValue).then(fn);
     return chain;
   };
 
@@ -29,8 +31,8 @@ const mockUser = { id: "user-1", email: "test@example.com" };
 const mockTenant = { id: "tenant-1" };
 
 const createMockProps = (tasks: Task[]) => {
-  const setTasks = vi.fn((updater: any) => {
-    if (typeof updater === 'function') updater(tasks);
+  const setTasks = vi.fn((updater: ((value: Task[]) => Task[]) | Task[]) => {
+    if (typeof updater === "function") updater(tasks);
   });
   return {
     tasks,
@@ -70,7 +72,7 @@ describe("useTaskOperations", () => {
     props.loadTaskComments = loadTaskComments;
 
     mockSupabase.from.mockImplementation(() => {
-      const chain: any = {};
+      const chain: Record<string, Mock> = {};
       const methods = ['select', 'eq', 'insert', 'update', 'delete', 'single', 'maybeSingle'];
       methods.forEach(m => { chain[m] = vi.fn(() => chain); });
       chain.insert = vi.fn(() => Promise.resolve({ data: null, error: null }));
@@ -104,7 +106,7 @@ describe("useTaskOperations", () => {
     props.loadTodos = loadTodos;
 
     mockSupabase.from.mockImplementation(() => {
-      const chain: any = {};
+      const chain: Record<string, Mock> = {};
       const methods = ['select', 'eq', 'insert', 'update', 'delete', 'single', 'maybeSingle'];
       methods.forEach(m => { chain[m] = vi.fn(() => chain); });
       chain.update = vi.fn(() => ({ eq: vi.fn(() => Promise.resolve({ data: null, error: null })) }));
@@ -128,7 +130,7 @@ describe("useTaskOperations", () => {
     props.loadTaskSnoozes = loadTaskSnoozes;
 
     mockSupabase.from.mockImplementation(() => {
-      const chain: any = {};
+      const chain: Record<string, Mock> = {};
       const methods = ['select', 'eq', 'insert', 'update', 'delete', 'single', 'maybeSingle'];
       methods.forEach(m => { chain[m] = vi.fn(() => chain); });
       // select -> eq -> eq -> single returns no existing snooze
@@ -157,7 +159,7 @@ describe("useTaskOperations", () => {
       category: "inbox",
       dueDate: "2025-02-01",
       assignedTo: "user-1",
-    } as unknown as Task;
+    } satisfies Partial<Task> as Task;
     const props = createMockProps([task]);
 
     mockSupabase.from.mockImplementation((table: string) => {
@@ -165,16 +167,16 @@ describe("useTaskOperations", () => {
         return {
           update: vi.fn(() => ({ eq: vi.fn(() => Promise.resolve({ error: null })) })),
           delete: vi.fn(() => ({ eq: vi.fn(() => Promise.resolve({ error: null })) })),
-        } as any;
+        } as unknown;
       }
       if (table === "archived_tasks") {
         return {
           insert: vi.fn(() => Promise.resolve({ error: null })),
-        } as any;
+        } as unknown;
       }
       return {
         update: vi.fn(() => ({ eq: vi.fn(() => ({ eq: vi.fn(() => Promise.resolve({ error: null })) })) })),
-      } as any;
+      } as unknown;
     });
 
     const { result } = renderHook(() => useTaskOperations(props));
@@ -195,11 +197,11 @@ describe("useTaskOperations", () => {
 
     let attempt = 0;
     mockSupabase.from.mockImplementation((table: string) => {
-      if (table !== "task_comments") return {} as any;
+      if (table !== "task_comments") return {} as unknown;
       attempt += 1;
       return {
         insert: vi.fn(() => Promise.resolve({ data: null, error: attempt === 1 ? { message: "insert failed" } : null })),
-      } as any;
+      } as unknown;
     });
 
     const { result } = renderHook(() => useTaskOperations(props));

@@ -10,7 +10,7 @@ import { LabeledHorizontalRuleNode, $createLabeledHorizontalRuleNode } from "@/c
 import { getWeekPlanForDay } from "@/components/dayslip/WeekPlanningBanner";
 import {
   type DaySlipStore, type DaySlipDayData, type DaySlipLineEntry, type RecurringTemplate,
-  type ResolvedItem, type ResolveTarget, type DayTemplate,
+  type ResolvedItem, type ResolveTarget, type DayTemplate, type ResolveExportItem,
   STORAGE_KEY, RECURRING_STORAGE_KEY, DAY_TEMPLATE_STORAGE_KEY, RESOLVE_EXPORT_KEY,
   SAVE_DEBOUNCE_MS, WEEK_DAYS, DEFAULT_DAY_TEMPLATES,
   toDayKey, extractLinesFromHtml, normalizeLineText, isRuleLine, parseRuleLine,
@@ -140,7 +140,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string): UseDaySlipS
         if (data && data.length > 0) {
           // DB has data → merge into state (DB wins for existing keys)
           const dbStore: DaySlipStore = {};
-          data.forEach((row: any) => { dbStore[row.day_key] = row.data as DaySlipDayData; });
+          data.forEach((row: { day_key: string; data: DaySlipDayData }) => { dbStore[row.day_key] = row.data; });
           setStore(prev => {
             const merged = { ...prev, ...dbStore };
             try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch {}
@@ -160,10 +160,10 @@ export function useDaySlipStore(userId?: string, tenantId?: string): UseDaySlipS
                     user_id: userId,
                     tenant_id: tenantId || null,
                     day_key: dayKey,
-                    data: dayData as any,
+                    data: dayData,
                     updated_at: new Date().toISOString(),
                   }));
-                  await supabase.from("day_slips").upsert(batch as any, { onConflict: "user_id,day_key" });
+                  await supabase.from("day_slips").upsert(batch, { onConflict: "user_id,day_key" });
                 }
               }
             } catch (error: unknown) { logStoreEvent({ type: "local-storage-migration-failed", error }); }
@@ -183,7 +183,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string): UseDaySlipS
           .in("key", ["dayslip_recurring", "dayslip_day_templates"]);
 
         if (!cancelled && prefResult.data) {
-          prefResult.data.forEach((row: any) => {
+          prefResult.data.forEach((row: { key: string; value: unknown }) => {
             if (row.key === "dayslip_recurring" && Array.isArray(row.value)) {
               setRecurringItems(row.value as RecurringTemplate[]);
               try { localStorage.setItem(RECURRING_STORAGE_KEY, JSON.stringify(row.value)); } catch {}
@@ -229,12 +229,12 @@ export function useDaySlipStore(userId?: string, tenantId?: string): UseDaySlipS
         user_id: userId,
         tenant_id: tenantId || null,
         day_key: dk,
-        data: currentStore[dk] as any,
+        data: currentStore[dk],
         updated_at: new Date().toISOString(),
       }));
 
     if (rows.length > 0) {
-      supabase.from("day_slips").upsert(rows as any, { onConflict: "user_id,day_key" }).then();
+      supabase.from("day_slips").upsert(rows, { onConflict: "user_id,day_key" }).then();
     }
   }, [userId, tenantId]);
 
@@ -260,7 +260,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string): UseDaySlipS
     try { localStorage.setItem(RECURRING_STORAGE_KEY, JSON.stringify(recurringItems)); } catch {}
     if (userId) {
       supabase.from("user_preferences").upsert(
-        { user_id: userId, tenant_id: tenantId || null, key: "dayslip_recurring", value: recurringItems as any, updated_at: new Date().toISOString() } as any,
+        { user_id: userId, tenant_id: tenantId || null, key: "dayslip_recurring", value: recurringItems, updated_at: new Date().toISOString() },
         { onConflict: "user_id,tenant_id,key" }
       ).then();
     }
@@ -270,7 +270,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string): UseDaySlipS
     try { localStorage.setItem(DAY_TEMPLATE_STORAGE_KEY, JSON.stringify(dayTemplates)); } catch {}
     if (userId) {
       supabase.from("user_preferences").upsert(
-        { user_id: userId, tenant_id: tenantId || null, key: "dayslip_day_templates", value: dayTemplates as any, updated_at: new Date().toISOString() } as any,
+        { user_id: userId, tenant_id: tenantId || null, key: "dayslip_day_templates", value: dayTemplates, updated_at: new Date().toISOString() },
         { onConflict: "user_id,tenant_id,key" }
       ).then();
     }
@@ -374,7 +374,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string): UseDaySlipS
         const parsed = parseRuleLine(line);
         if (parsed.isRule) {
           const hrNode = parsed.label ? $createLabeledHorizontalRuleNode(parsed.label) : $createHorizontalRuleNode();
-          root.append(hrNode as any);
+          root.append(hrNode);
           return;
         }
         const paragraph = $createDaySlipLineNode();
@@ -389,7 +389,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string): UseDaySlipS
       editorRef.current.update(() => {
         const root = $getRoot();
         root.getChildren().forEach((node) => {
-          if ((node as any).__lineId === lineId) node.remove();
+          if ((node as { __lineId?: string }).__lineId === lineId) node.remove();
         });
       });
     }
@@ -408,13 +408,13 @@ export function useDaySlipStore(userId?: string, tenantId?: string): UseDaySlipS
     try {
       const raw = localStorage.getItem(RESOLVE_EXPORT_KEY);
       const existing = raw ? JSON.parse(raw) : [];
-      const filtered = existing.filter((item: any) => !(item.sourceDayKey === todayKey && item.lineId === lineId));
+      const filtered = (existing as ResolveExportItem[]).filter((item) => !(item.sourceDayKey === todayKey && item.lineId === lineId));
       const next = isUndo ? filtered : [...filtered, { sourceDayKey: todayKey, lineId, text, target, createdAt: new Date().toISOString() }];
       localStorage.setItem(RESOLVE_EXPORT_KEY, JSON.stringify(next));
       // Also sync to DB
       if (userId) {
         supabase.from("user_preferences").upsert(
-          { user_id: userId, tenant_id: tenantId || null, key: "dayslip_resolve_export", value: next as any, updated_at: new Date().toISOString() } as any,
+          { user_id: userId, tenant_id: tenantId || null, key: "dayslip_resolve_export", value: next, updated_at: new Date().toISOString() },
           { onConflict: "user_id,tenant_id,key" }
         ).then();
       }
@@ -568,7 +568,7 @@ async function migratePreference(userId: string, tenantId: string | undefined, d
 
     const parsed = JSON.parse(raw);
     const { error: upsertError } = await supabase.from("user_preferences").upsert(
-      { user_id: userId, tenant_id: tenantId || null, key: dbKey, value: parsed, updated_at: new Date().toISOString() } as any,
+      { user_id: userId, tenant_id: tenantId || null, key: dbKey, value: parsed, updated_at: new Date().toISOString() },
       { onConflict: "user_id,tenant_id,key" }
     );
 
