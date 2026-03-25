@@ -65,7 +65,8 @@
     "typecheck:batch-governed:parallel": "node scripts/run-typecheck-batches.mjs",
     "typecheck:strict-all:parallel": "npm run typecheck:baseline-global && npm run typecheck:batch-governed:parallel && npm run typecheck:legacy-exceptions",
     "check:type-safety-delta": "node scripts/check-type-safety-delta.mjs",
-    "ci:any-gate": "npm run report:any-usage:total && npm run check:type-safety-delta"
+    "ci:any-gate": "npm run report:any-usage:total && npm run check:type-safety-delta",
+    "report:any-usage:classify": "node scripts/classify-any-usage.mjs"
   },
   "dependencies": {
     "@eslint/js": "^10.0.1",
