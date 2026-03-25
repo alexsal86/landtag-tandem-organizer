@@ -96,6 +96,12 @@ type NotificationRow = {
 };
 
 type NotificationUpdateRow = Pick<NotificationRow, 'id' | 'is_read'>;
+type NotificationInsertPayload = RealtimePostgresChangesPayload<NotificationRow> & { eventType: 'INSERT' };
+type NotificationUpdatePayload = RealtimePostgresChangesPayload<NotificationRow> & { eventType: 'UPDATE' };
+
+type NotificationRealtimeEvent =
+  | { type: 'notification-insert'; payload: NotificationInsertPayload }
+  | { type: 'notification-update'; payload: NotificationUpdatePayload };
 
 type NotificationSyncEventDetail = {
   source: 'notifications' | 'navigation';
@@ -128,6 +134,21 @@ const mapNotificationRow = (row: NotificationRow): Notification => ({
   navigation_context: row.navigation_context,
   notification_types: row.notification_types,
 });
+
+const handleNotificationRealtimeEvent = (
+  event: NotificationRealtimeEvent,
+  onInsert: (payload: NotificationInsertPayload) => Promise<void>,
+  onUpdate: (payload: NotificationUpdatePayload) => void,
+): void => {
+  switch (event.type) {
+    case 'notification-insert':
+      void onInsert(event.payload);
+      return;
+    case 'notification-update':
+      onUpdate(event.payload);
+      return;
+  }
+};
 
 export const useNotifications = () => {
   const { user } = useAuth();
@@ -560,49 +581,59 @@ export const useNotifications = () => {
             table: 'notifications',
             filter: `user_id=eq.${user.id}`,
           },
-          async (payload: RealtimePostgresChangesPayload<NotificationRow>) => {
-            debugConsole.log('📥 New notification received via realtime:', payload);
-
-            const insertedId = payload.new.id;
-            if (!insertedId) {
+          (payload: RealtimePostgresChangesPayload<NotificationRow>) => {
+            if (payload.eventType !== 'INSERT') {
               return;
             }
+            const insertPayload = payload as NotificationInsertPayload;
+            handleNotificationRealtimeEvent(
+              { type: 'notification-insert', payload: insertPayload },
+              async (insertEventPayload: NotificationInsertPayload): Promise<void> => {
+                debugConsole.log('📥 New notification received via realtime:', insertEventPayload);
 
-            const { data: fullNotification } = await supabase
-              .from('notifications')
-              .select(`
-                id,
-                title,
-                message,
-                data,
-                is_read,
-                priority,
-                created_at,
-                navigation_context,
-                notification_types(name, label)
-              `)
-              .eq('id', insertedId)
-              .maybeSingle();
+                const insertedId = insertEventPayload.new.id;
+                if (!insertedId) {
+                  return;
+                }
 
-            const newNotification = fullNotification
-              ? mapNotificationRow(fullNotification as NotificationRow)
-              : mapNotificationRow(payload.new);
+                const { data: fullNotification } = await supabase
+                  .from('notifications')
+                  .select(`
+                    id,
+                    title,
+                    message,
+                    data,
+                    is_read,
+                    priority,
+                    created_at,
+                    navigation_context,
+                    notification_types(name, label)
+                  `)
+                  .eq('id', insertedId)
+                  .maybeSingle();
 
-            setNotifications((prev: Notification[]) => {
-              const exists = prev.some((notification: Notification) => notification.id === newNotification.id);
-              return exists ? prev : [newNotification, ...prev];
-            });
+                const newNotification = fullNotification
+                  ? mapNotificationRow(fullNotification as NotificationRow)
+                  : mapNotificationRow(insertEventPayload.new);
 
-            if (!newNotification.is_read) {
-              setUnreadCount((prev: number) => prev + 1);
-            }
+                setNotifications((prev: Notification[]) => {
+                  const exists = prev.some((notification: Notification) => notification.id === newNotification.id);
+                  return exists ? prev : [newNotification, ...prev];
+                });
 
-            emitNotificationsChanged({ source: 'notifications', notificationId: newNotification.id });
-            toast({
-              title: newNotification.title || 'Neue Benachrichtigung',
-              description: newNotification.message || 'Sie haben eine neue Benachrichtigung erhalten.',
-              duration: 4000,
-            });
+                if (!newNotification.is_read) {
+                  setUnreadCount((prev: number) => prev + 1);
+                }
+
+                emitNotificationsChanged({ source: 'notifications', notificationId: newNotification.id });
+                toast({
+                  title: newNotification.title || 'Neue Benachrichtigung',
+                  description: newNotification.message || 'Sie haben eine neue Benachrichtigung erhalten.',
+                  duration: 4000,
+                });
+              },
+              () => undefined,
+            );
           },
         )
         .on(
@@ -614,29 +645,41 @@ export const useNotifications = () => {
             filter: `user_id=eq.${user.id}`,
           },
           (payload: RealtimePostgresChangesPayload<NotificationRow>) => {
-            const updatedId = payload.new.id;
-            const oldNotification = payload.old.id ? mapNotificationRow(payload.old as NotificationRow) : null;
-
-            if (!updatedId) {
+            if (payload.eventType !== 'UPDATE') {
               return;
             }
+            const updatePayload = payload as NotificationUpdatePayload;
+            handleNotificationRealtimeEvent(
+              { type: 'notification-update', payload: updatePayload },
+              async () => undefined,
+              (updateEventPayload: NotificationUpdatePayload): void => {
+                const updatedId = updateEventPayload.new.id;
+                const oldNotification = updateEventPayload.old.id
+                  ? mapNotificationRow(updateEventPayload.old as NotificationRow)
+                  : null;
 
-            const updatedNotification = mapNotificationRow(payload.new);
-            setNotifications((prev: Notification[]) =>
-              prev.map((notification: Notification) =>
-                notification.id === updatedId ? { ...updatedNotification } : notification,
-              ),
+                if (!updatedId) {
+                  return;
+                }
+
+                const updatedNotification = mapNotificationRow(updateEventPayload.new);
+                setNotifications((prev: Notification[]) =>
+                  prev.map((notification: Notification) =>
+                    notification.id === updatedId ? { ...updatedNotification } : notification,
+                  ),
+                );
+
+                if (oldNotification && updatedNotification.is_read !== oldNotification.is_read) {
+                  if (updatedNotification.is_read && !oldNotification.is_read) {
+                    setUnreadCount((prev: number) => Math.max(0, prev - 1));
+                  } else if (!updatedNotification.is_read && oldNotification.is_read) {
+                    setUnreadCount((prev: number) => prev + 1);
+                  }
+                }
+
+                emitNotificationsChanged({ source: 'notifications', notificationId: updatedId });
+              },
             );
-
-            if (oldNotification && updatedNotification.is_read !== oldNotification.is_read) {
-              if (updatedNotification.is_read && !oldNotification.is_read) {
-                setUnreadCount((prev: number) => Math.max(0, prev - 1));
-              } else if (!updatedNotification.is_read && oldNotification.is_read) {
-                setUnreadCount((prev: number) => prev + 1);
-              }
-            }
-
-            emitNotificationsChanged({ source: 'notifications', notificationId: updatedId });
           },
         )
         .subscribe((status: string) => {
