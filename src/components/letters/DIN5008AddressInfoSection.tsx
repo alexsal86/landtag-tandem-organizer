@@ -1,7 +1,5 @@
 import React from 'react';
-import type { HeaderElement } from '@/components/canvas-engine/types';
-import type { BlockLine } from '@/components/letters/BlockLineEditor';
-import type { InformationBlockRecord, LetterLayoutSettings, RecipientAddress, SenderInformationRecord } from '@/types/letterLayout';
+import type { LetterBlockLine, LetterCanvasElement, InformationBlockRecord, LetterLayoutSettings, RecipientAddress, SenderInformationRecord } from '@/types/letterLayout';
 
 interface DIN5008AddressInfoSectionProps {
   layout: LetterLayoutSettings;
