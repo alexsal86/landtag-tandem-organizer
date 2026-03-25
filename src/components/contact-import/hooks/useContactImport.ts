@@ -95,7 +95,7 @@ export function useContactImport() {
           const vcards = VCF.parse(e.target?.result as string) as ParsedVCard[];
           const parsed = vcards.map((vcard) => {
             const d: ImportData = {};
-            if (vcard.fn) d["Name"] = vcard.fn.valueOf();
+            if (vcard.fn) d["Name"] = String(vcard.fn.valueOf());
             if (vcard.n) { const n = vcard.n.valueOf(); if (Array.isArray(n)) { if (n[0]) d["Nachname"] = n[0]; if (n[1]) d["Vorname"] = n[1]; } }
             if (vcard.org) { const o = vcard.org.valueOf(); d["Firma"] = Array.isArray(o) ? o[0] : o; }
             if (vcard.title) d["Position"] = vcard.title.valueOf();
