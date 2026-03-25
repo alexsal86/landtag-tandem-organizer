@@ -202,7 +202,7 @@ export function ProtocolSearch({ protocolId, onResultSelect }: ProtocolSearchPro
 
           {/* Filters */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Select value={searchType} onValueChange={(value: any) => setSearchType(value)}>
+            <Select value={searchType} onValueChange={(value: string) => setSearchType(value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Suchbereich" />
               </SelectTrigger>

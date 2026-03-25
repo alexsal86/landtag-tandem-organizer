@@ -32,9 +32,19 @@ interface EventRSVP {
   invitation_sent: boolean;
   reminder_sent_at?: string | null;
   reminder_count: number;
-  notes_sent: any[];
+  notes_sent: ReadonlyArray<Record<string, unknown>>;
   custom_message?: string | null;
   created_at?: string | null;
+}
+
+interface DistributionList {
+  id: string;
+  name: string;
+}
+
+interface RSVPParticipant {
+  name: string;
+  email: string | null;
 }
 
 interface PublicInvitationLink {
@@ -93,7 +103,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newEmail, setNewEmail] = useState('');
-  const [pendingInvites, setPendingInvites] = useState<{ name: string; email: string }[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<RSVPParticipant[]>([]);
   const [sending, setSending] = useState(false);
   const [actionRsvpId, setActionRsvpId] = useState<string | null>(null);
 
@@ -116,7 +126,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
   const [noteTarget, setNoteTarget] = useState<'accepted' | 'tentative' | 'accepted_tentative' | 'declined' | 'invited' | 'everyone'>('accepted');
   const [sendingNote, setSendingNote] = useState(false);
 
-  const [distributionLists, setDistributionLists] = useState<any[]>([]);
+  const [distributionLists, setDistributionLists] = useState<DistributionList[]>([]);
   const [selectedDistList, setSelectedDistList] = useState('');
   const [isRsvpListOpen, setIsRsvpListOpen] = useState(true);
   const [hasUserToggledRsvpList, setHasUserToggledRsvpList] = useState(false);
@@ -170,7 +180,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
         ...r,
         invitation_sent: r.invitation_sent ?? false,
         reminder_count: r.reminder_count ?? 0,
-        notes_sent: (r.notes_sent as any[]) ?? [],
+        notes_sent: (Array.isArray(r.notes_sent) ? r.notes_sent : []) as ReadonlyArray<Record<string, unknown>>,
       }));
 
       setRsvps(nextRsvps);
@@ -216,7 +226,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
     }
   };
 
-  const addFromContact = (contact: any) => {
+  const addFromContact = (contact: RSVPParticipant) => {
     if (!contact.email) {
       toast({ title: 'Keine E-Mail', description: 'Kontakt hat keine E-Mail-Adresse.', variant: 'destructive' });
       return;
@@ -897,7 +907,10 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
           <div className="space-y-4">
             <div>
               <Label className="text-sm">Empfänger</Label>
-              <Select value={noteTarget} onValueChange={(v: any) => setNoteTarget(v)}>
+              <Select
+                value={noteTarget}
+                onValueChange={(v: 'accepted' | 'tentative' | 'accepted_tentative' | 'declined' | 'invited' | 'everyone') => setNoteTarget(v)}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

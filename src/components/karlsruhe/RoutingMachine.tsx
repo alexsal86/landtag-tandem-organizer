@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 import { Waypoint } from './RoutePlannerPanel';
+import type { GeoPoint } from '@/hooks/geoContracts';
 
 // Import leaflet-routing-machine after L is available
 import 'leaflet-routing-machine';
@@ -34,9 +35,14 @@ export const RoutingMachine = ({ map, waypoints, onRouteFound }: RoutingMachineP
     // Need at least 2 waypoints for routing
     if (waypoints.length < 2) return;
 
-    const latLngs = waypoints.map(wp => L.latLng(wp.lat, wp.lng));
+    const routingFactory = getRoutingFactory();
+    if (!routingFactory) {
+      return;
+    }
 
-    const routingControl = LRouting.control({
+    const latLngs = waypoints.map((wp: GeoPoint) => L.latLng(wp.lat, wp.lng));
+
+    const routingControl = routingFactory.control({
       waypoints: latLngs,
       routeWhileDragging: false,
       showAlternatives: false,
@@ -51,7 +57,7 @@ export const RoutingMachine = ({ map, waypoints, onRouteFound }: RoutingMachineP
         extendToWaypoints: true,
         missingRouteTolerance: 0,
       },
-      router: LRouting.osrmv1({
+      router: routingFactory.osrmv1({
         serviceUrl: 'https://router.project-osrm.org/route/v1',
         profile: 'driving',
       }),
