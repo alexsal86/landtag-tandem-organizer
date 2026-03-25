@@ -388,8 +388,8 @@ export function MeetingTemplateManager() {
                       compact
                       onSave={async (participants, recurrence, autoCreateCount, visibility) => {
                         try {
-                          const normalizedParticipants = participants as Record<string, unknown>[];
-                          const normalizedRecurrence = recurrence as Record<string, unknown> | null;
+                          const normalizedParticipants = participants as any;
+                          const normalizedRecurrence = recurrence as any;
                           await supabase.from('meeting_templates').update({
                             default_participants: normalizedParticipants,
                             default_recurrence: normalizedRecurrence,
