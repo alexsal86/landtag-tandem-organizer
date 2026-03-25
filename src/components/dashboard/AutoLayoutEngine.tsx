@@ -12,7 +12,7 @@ import {
   Maximize2,
   Minimize2
 } from 'lucide-react';
-import { DashboardLayout, DashboardWidget } from '@/hooks/useDashboardLayout';
+import type { DashboardLayout, DashboardWidgetType, WidgetSize } from '@/types/dashboardWidgets';
 import { toast } from 'sonner';
 
 interface AutoLayoutEngineProps {
@@ -191,9 +191,9 @@ export function AutoLayoutEngine({ currentLayout, onLayoutOptimized }: AutoLayou
     return { ...layout, widgets: optimizedWidgets };
   };
 
-  const balanceSize = (currentSize: string, isLeft: boolean): any => {
+  const balanceSize = (currentSize: WidgetSize, isLeft: boolean): WidgetSize => {
     // Balance sizes for visual symmetry
-    const sizeMap: Record<string, string> = {
+    const sizeMap: Partial<Record<WidgetSize, WidgetSize>> = {
       '1x1': '1x1',
       '2x1': isLeft ? '2x1' : '2x1',
       '2x2': '2x2',
@@ -203,8 +203,8 @@ export function AutoLayoutEngine({ currentLayout, onLayoutOptimized }: AutoLayou
     return sizeMap[currentSize] || currentSize;
   };
 
-  const getResponsiveSize = (widgetType: string): any => {
-    const responsiveSizes: Record<string, string> = {
+  const getResponsiveSize = (widgetType: DashboardWidgetType): WidgetSize => {
+    const responsiveSizes: Partial<Record<DashboardWidgetType, WidgetSize>> = {
       'stats': '2x1',
       'tasks': '2x2',
       'quicknotes': '2x2',

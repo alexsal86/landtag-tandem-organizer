@@ -14,8 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DashboardWidget } from '@/hooks/useDashboardLayout';
-import { Palette, Clock, Bell, Eye, Zap } from 'lucide-react';
+import type { DashboardWidget } from '@/types/dashboardWidgets';
+import { Palette, Clock, Eye, Zap } from 'lucide-react';
 
 interface WidgetConfigDialogProps {
   widget: DashboardWidget;
@@ -44,13 +44,14 @@ const REFRESH_INTERVALS = [
 ];
 
 export function WidgetConfigDialog({ widget, open, onOpenChange, onSave }: WidgetConfigDialogProps) {
-  const [config, setConfig] = useState<Record<string, any>>(widget.configuration || {});
+  type WidgetConfig = NonNullable<DashboardWidget['configuration']>;
+  const [config, setConfig] = useState<WidgetConfig>(widget.configuration || {});
 
   const handleSave = () => {
     onSave(config);
   };
 
-  const updateConfig = (key: string, value: any) => {
+  const updateConfig = <TKey extends keyof WidgetConfig>(key: TKey, value: WidgetConfig[TKey]) => {
     setConfig(prev => ({
       ...prev,
       [key]: value

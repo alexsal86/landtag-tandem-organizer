@@ -13,7 +13,7 @@ import {
   TrendingDown,
   RefreshCw
 } from 'lucide-react';
-import { DashboardWidget } from '@/hooks/useDashboardLayout';
+import { DashboardWidget } from '@/types/dashboardWidgets';
 
 interface PerformanceAlert {
   id: string;

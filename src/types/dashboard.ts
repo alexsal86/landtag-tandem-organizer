@@ -1,4 +1,4 @@
-import type { DashboardLayout, DashboardWidget } from '@/hooks/useDashboardLayout';
+import type { DashboardLayout, DashboardWidget } from '@/types/dashboardWidgets';
 import type { ComponentType } from 'react';
 
 export interface DashboardWidgetSuggestion {
@@ -22,6 +22,8 @@ export interface DashboardPresenceUser {
   cursor_position?: { x: number; y: number };
 }
 
+export type DashboardPresenceState = Record<string, DashboardPresenceUser[]>;
+
 export interface LayoutUpdatePayload {
   layout: DashboardLayout;
   user_id?: string;
@@ -44,4 +46,8 @@ export interface DatabaseLayoutUpdatePayload {
     owner_id?: string;
     layout_data?: DashboardLayout;
   };
+}
+
+export interface BroadcastPayloadEnvelope<TPayload> {
+  payload: TPayload;
 }

@@ -27,7 +27,7 @@ import {
   ClipboardCheck,
   Network
 } from 'lucide-react';
-import { DashboardWidget } from '@/hooks/useDashboardLayout';
+import { DashboardWidget } from '@/types/dashboardWidgets';
 import type { DashboardWidgetSuggestion } from '@/types/dashboard';
 
 interface WidgetPaletteProps {

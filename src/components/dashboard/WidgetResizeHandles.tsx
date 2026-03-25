@@ -1,10 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import type { DashboardWidget, WidgetSize } from '@/hooks/useDashboardLayout';
+import type { DashboardWidget, WidgetSize } from '@/types/dashboardWidgets';
 
 interface WidgetResizeHandlesProps {
   widget: DashboardWidget;
-  onResize: (widgetId: string, newSize: string) => void;
+  onResize: (widgetId: string, newSize: WidgetSize) => void;
   isEditMode: boolean;
 }
 
@@ -18,7 +18,7 @@ const parseWidgetSizeObject = (value: unknown): WidgetSizeObject | null => {
   return value as WidgetSizeObject;
 };
 
-const WIDGET_SIZES = [
+const WIDGET_SIZES: WidgetSize[] = [
   '1x1', '2x1', '3x1', 
   '1x2', '2x2', '3x2',
   '1x3', '2x3', '3x3'
@@ -86,7 +86,7 @@ export const WidgetResizeHandles: React.FC<WidgetResizeHandlesProps> = ({
         newH = Math.max(1, Math.min(3, startSize.current.h + gridDeltaY));
       }
       
-      const newSize = `${newW}x${newH}`;
+      const newSize = `${newW}x${newH}` as WidgetSize;
       
       if (WIDGET_SIZES.includes(newSize)) {
         // Get current size string for comparison

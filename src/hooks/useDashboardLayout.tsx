@@ -6,52 +6,19 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Database, Json } from '@/integrations/supabase/types';
 import { getGridColumns, getGridRows, findAvailablePosition } from './useDashboardGrid';
 import { debugConsole } from '@/utils/debugConsole';
+import type {
+  DashboardLayout,
+  DashboardWidget,
+  DashboardWidgetType,
+  WidgetConfigMap,
+  WidgetSize,
+} from '@/types/dashboardWidgets';
+import { isDashboardWidgetType } from '@/types/dashboardWidgets';
 
-export type WidgetSize = 
-  | '1x1' | '2x1' | '1x2' | '2x2' | '3x1' | '1x3' | '3x2' | '2x3' | '3x3' 
-  | '4x1' | '1x4' | '4x2' | '2x4' | '4x3' | '3x4' | '4x4' | '5x1' | '5x2' 
-  | '6x1' | '6x2' | '7x1' | '7x2' | '8x1' | '8x2';
-
-export type DashboardWidgetType = 'stats' | 'tasks' | 'schedule' | 'actions' | 'messages' | 'blackboard' | 'combined-messages' | 'quicknotes' | 'pomodoro' | 'habits' | 'calllog' | 'teamchat' | 'quickactions' | 'news' | 'appointmentfeedback' | 'stakeholder-network';
-
-export interface DashboardWidgetConfiguration {
-  theme?: string;
-  refreshInterval?: number;
-  showHeader?: boolean;
-  compact?: boolean;
-  autoSave?: boolean;
-  notifications?: boolean;
-  showStreak?: boolean;
-  showFollowUps?: boolean;
-  showIcons?: boolean;
-  [key: string]: string | number | boolean | null | undefined;
-}
-
-export interface DashboardWidget {
-  id: string;
-  type: DashboardWidgetType;
-  title: string;
-  position: { x: number; y: number };
-  size: { width: number; height: number };
-  widgetSize: WidgetSize;
-  configuration?: DashboardWidgetConfiguration;
-  data?: Json;
-}
-
-export interface DashboardLayout {
-  id?: string;
-  name: string;
-  widgets: DashboardWidget[];
-  isActive: boolean;
-}
+export type { DashboardLayout, DashboardWidget, DashboardWidgetType, WidgetConfigMap, WidgetSize } from '@/types/dashboardWidgets';
 
 
 type DashboardLayoutRow = Pick<Database['public']['Tables']['team_dashboards']['Row'], 'id' | 'name' | 'layout_data'>;
-
-const DASHBOARD_WIDGET_TYPES = ['stats', 'tasks', 'schedule', 'actions', 'messages', 'blackboard', 'combined-messages', 'quicknotes', 'pomodoro', 'habits', 'calllog', 'teamchat', 'quickactions', 'news', 'appointmentfeedback', 'stakeholder-network'] as const;
-
-const isDashboardWidgetType = (value: string): value is DashboardWidgetType =>
-  DASHBOARD_WIDGET_TYPES.includes(value as DashboardWidgetType);
 
 const isDashboardPosition = (value: unknown): value is DashboardWidget['position'] => {
   if (!value || typeof value !== 'object') return false;
@@ -68,7 +35,7 @@ const isDashboardSize = (value: unknown): value is DashboardWidget['size'] => {
 const isWidgetSize = (value: unknown): value is WidgetSize =>
   typeof value === 'string' && /^[1-8]x[1-4]$/.test(value);
 
-const isDashboardWidgetConfiguration = (value: unknown): value is DashboardWidgetConfiguration =>
+const isDashboardWidgetConfiguration = (value: unknown): value is WidgetConfigMap[DashboardWidgetType] =>
   value == null || (typeof value === 'object' && !Array.isArray(value));
 
 const isDashboardWidget = (value: unknown): value is DashboardWidget => {
@@ -108,7 +75,7 @@ const parseStoredLayout = (value: string | null): DashboardLayout | null => {
 };
 
 const parseLayoutData = (value: Json): DashboardWidget[] =>
-  Array.isArray(value) ? (value as any[]).filter(isDashboardWidget) : [];
+  Array.isArray(value) ? value.filter(isDashboardWidget) : [];
 
 export function useDashboardLayout() {
   const [layouts, setLayouts] = useState<DashboardLayout[]>([]);

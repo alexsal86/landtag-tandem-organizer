@@ -4,21 +4,21 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { WidgetConfigDialog } from './WidgetConfigDialog';
 import { Settings, Palette, Eye, EyeOff, Trash2, Copy, X } from 'lucide-react';
-import type { DashboardWidget } from '@/hooks/useDashboardLayout';
+import type { DashboardWidget, WidgetSize } from '@/types/dashboardWidgets';
 
 interface WidgetOverlayMenuProps {
   widget: DashboardWidget;
   isVisible: boolean;
   onClose: () => void;
-  onResize: (widgetId: string, newSize: string) => void;
+  onResize: (widgetId: string, newSize: WidgetSize) => void;
   onMinimize: (widgetId: string) => void;
   onHide: (widgetId: string) => void;
   onDelete: (widgetId: string) => void;
   onConfigure: (widgetId: string) => void;
-  widgetSize?: string; // Neue Prop für die Widget-Größe
+  widgetSize?: WidgetSize; // Neue Prop für die Widget-Größe
 }
 
-const WIDGET_SIZES = [
+const WIDGET_SIZES: Array<{ label: WidgetSize; value: WidgetSize }> = [
   { label: '1x1', value: '1x1' },
   { label: '2x1', value: '2x1' },
   { label: '3x1', value: '3x1' },
@@ -48,7 +48,7 @@ export const WidgetOverlayMenu: React.FC<WidgetOverlayMenuProps> = ({
 
   // Bestimme die Menügröße basierend auf der Widget-Größe
   const getMenuSize = () => {
-    const currentSize = widgetSize || widget.widgetSize || widget.size || '2x2';
+    const currentSize: WidgetSize = widgetSize ?? widget.widgetSize ?? '2x2';
     const [w, h] = currentSize.split('x').map(Number);
     
     // Für sehr kleine Widgets
@@ -135,7 +135,7 @@ export const WidgetOverlayMenu: React.FC<WidgetOverlayMenuProps> = ({
               {WIDGET_SIZES.map((size) => (
                 <Button
                   key={size.value}
-                  variant={widget.size === size.value || widget.widgetSize === size.value ? "default" : "outline"}
+                  variant={widget.widgetSize === size.value ? 'default' : 'outline'}
                   size={menuSize.compact ? "sm" : "sm"}
                   onClick={(e) => {
                     e.stopPropagation();
