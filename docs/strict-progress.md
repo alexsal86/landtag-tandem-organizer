@@ -213,6 +213,7 @@ Die **verbindliche Trefferliste**, inklusive Clusterung A/B/C, Owner, ETA und Da
 ### Nächste 3 PRs (sofort aufgesetzt)
 
 Baseline vor Start der Serie: **`Any-Total = 572`** (gemessen am 2026-03-25 via `npm run --silent report:any-usage:total`).
+Aktueller Stand nach Paket D (2026-03-25): **`Any-Total = 562`** (`Delta = -10` gegenüber Serien-Baseline).
 
 | PR | Fokus | Primärer Scope | Start-Baseline (`any`) | Ziel-Gate |
 | --- | --- | --- | ---: | --- |
@@ -229,13 +230,14 @@ Nach jedem Merge von PR A/B/C sind folgende Schritte verpflichtend und im PR/Doc
 3. `npm run --silent report:any-usage:files | head -n 40` (neue Top-Hotspots erfassen).
 4. Werte in diesem Abschnitt und im jeweiligen PR-Abschnitt mit **vorher/nachher/Delta** aktualisieren.
 
-### Fortschritts-Update (2026-03-25): Paket A/B/C (historisch)
+### Fortschritts-Update (2026-03-25): Paket A/B/C/D (historisch)
 
 | Paket | Scope | `any` vorher | `any` nachher | Delta |
 | --- | --- | ---: | ---: | ---: |
 | Paket A | `src/components/MessageSystem.tsx`, `src/components/AppointmentPreparationSidebar.tsx` | 16 | 0 | -16 |
 | Paket B | `src/hooks/useYjsCollaboration.tsx` | 15 | 0 | -15 |
 | Paket C | `src/contexts`, `src/pages`, `src/features`, `src/services`, `src/utils` (fokussierte Restbereinigung) | 66 | 33 | -33 |
+| Paket D | `src/components/administration/CaseFileTypeSettings.tsx`, `src/components/TagAdminSettings.tsx`, `src/components/DocumentCategoryAdminSettings.tsx`, `src/components/administration/SenderInformationManager.tsx`, `src/components/administration/PlanningTemplateManager.tsx` | 12 | 0 | -12 |
 
 ## Any-Restschulden
 

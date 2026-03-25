@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Trash2, Edit, Plus, Save, X, GripVertical } from "lucide-react";
 import { icons, LucideIcon } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { TagIconPicker } from "@/components/contacts/TagIconPicker";
 import { useTenant } from "@/hooks/useTenant";
 
@@ -132,7 +132,7 @@ export function DocumentCategoryAdminSettings() {
     }
   };
 
-  const handleDragEnd = async (result: any) => {
+  const handleDragEnd = async (result: DropResult) => {
     if (!result.destination) return;
 
     const items = Array.from(categories);
