@@ -200,6 +200,13 @@ Pflegehinweis pro Batch:
 2. Im PR-Summary den Delta-Wert aus dem CI-Job „Any-Delta PR-Gate (nicht steigend)“ dokumentieren.
 3. Bei Delta `0` ist Stagnation akzeptabel; bei negativem Delta ist die Reduktion als Fortschritt im Batch-Abschnitt zu notieren.
 
+### Fortschritts-Update (2026-03-25): Paket A/B
+
+| Paket | Scope | `any` vorher | `any` nachher | Delta |
+| --- | --- | ---: | ---: | ---: |
+| Paket A | `src/components/MessageSystem.tsx`, `src/components/AppointmentPreparationSidebar.tsx` | 16 | 0 | -16 |
+| Paket B | `src/hooks/useYjsCollaboration.tsx` | 15 | 0 | -15 |
+
 ## Any-Restschulden
 
 Zentrale Liste für bewusst verbleibende `any`-/`as any`-Stellen in den aktiven Komponenten-Batches.
