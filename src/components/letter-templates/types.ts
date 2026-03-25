@@ -1,39 +1,16 @@
 import { supabase } from '@/integrations/supabase/client';
-import { LetterLayoutSettings, DEFAULT_DIN5008_LAYOUT } from '@/types/letterLayout';
+import {
+  LetterLayoutSettings,
+  DEFAULT_DIN5008_LAYOUT,
+  type LetterTemplate,
+  type SenderInformation,
+  type InformationBlock,
+  type LetterBlockContentMap,
+  isLetterCanvasElementArray,
+  isLineModeBlockData,
+} from '@/types/letterLayout';
 
-export interface LetterTemplate {
-  id: string;
-  name: string;
-  letterhead_html: string;
-  letterhead_css: string;
-  response_time_days: number;
-  is_default: boolean;
-  is_active: boolean;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-  tenant_id: string;
-  default_sender_id?: string | null;
-  default_info_blocks?: string[] | null;
-  header_layout_type?: string | null;
-  header_text_elements?: unknown;
-  footer_blocks?: unknown;
-  layout_settings?: LetterLayoutSettings | null;
-}
-
-export interface SenderInformation {
-  id: string;
-  name: string;
-  organization: string;
-  is_default: boolean | null;
-}
-
-export interface InformationBlock {
-  id: string;
-  name: string;
-  label: string;
-  is_default: boolean | null;
-}
+export type { LetterTemplate, SenderInformation, InformationBlock };
 
 export type { MarginKey, TabRect } from '@/types/letterLayout';
 
@@ -97,21 +74,24 @@ export const normalizeLayoutBlockContentImages = (layoutSettings: LetterLayoutSe
     },
   });
 
-  const blockContent = ((layoutSettings as unknown as Record<string, unknown>).blockContent || {}) as Record<string, unknown[]>;
+  const blockContent = (layoutSettings.blockContent || {}) as Record<string, unknown>;
   const normalizedContent = Object.fromEntries(
     Object.entries(blockContent).map(([key, items]) => {
-      if (!Array.isArray(items)) return [key, items];
-      return [key, items.map(normalizeImageItem)];
+      if (isLetterCanvasElementArray(items)) return [key, items.map(normalizeImageItem)];
+      if (isLineModeBlockData(items)) {
+        return [key, { ...items, lines: items.lines.map(normalizeImageItem) }];
+      }
+      return [key, items];
     })
   );
 
   const normalizedLayout = enforceDIN5008Metrics(layoutSettings);
-  return { ...normalizedLayout, blockContent: normalizedContent } as LetterLayoutSettings;
+  return { ...normalizedLayout, blockContent: normalizedContent as LetterBlockContentMap } as LetterLayoutSettings;
 };
 
 const DEFAULT_ATTACHMENT_PREVIEW_LINES = ['- Antrag_2026-02-15.pdf', '- Stellungnahme_Verkehrsausschuss.docx', '- Anlagenverzeichnis.xlsx'];
 
-export const createDefaultAttachmentElements = (): Record<string, unknown>[] => ([{
+export const createDefaultAttachmentElements = () => ([{
   id: `attachments-default-${Date.now()}`,
   type: 'text',
   x: 0,

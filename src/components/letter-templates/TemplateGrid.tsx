@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LetterTemplate, DEFAULT_ATTACHMENT_PREVIEW_LINES } from './types';
 import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
+import { type LetterCanvasElement, isLetterCanvasElementArray } from '@/types/letterLayout';
 
 interface TemplateGridProps {
   templates: LetterTemplate[];
@@ -23,13 +24,21 @@ export const TemplateGrid: React.FC<TemplateGridProps> = ({
 
   const renderPreview = (template: LetterTemplate) => {
     let previewHtml = '';
-    let headerElements: any[] = [];
+    let headerElements: LetterCanvasElement[] = [];
     if (template.header_text_elements) {
-      if (typeof template.header_text_elements === 'string') { try { headerElements = JSON.parse(template.header_text_elements); } catch { headerElements = []; } }
-      else if (Array.isArray(template.header_text_elements)) { headerElements = template.header_text_elements; }
+      if (typeof template.header_text_elements === 'string') {
+        try {
+          const parsed = JSON.parse(template.header_text_elements) as unknown;
+          headerElements = isLetterCanvasElementArray(parsed) ? parsed : [];
+        } catch {
+          headerElements = [];
+        }
+      } else if (isLetterCanvasElementArray(template.header_text_elements)) {
+        headerElements = template.header_text_elements;
+      }
     }
     if (template.header_layout_type === 'structured' && headerElements.length > 0) {
-      const structuredElements = headerElements.map((element: any) => {
+      const structuredElements = headerElements.map((element) => {
         if (element.type === 'text') {
           return `<div style="position: absolute; left: ${(element.x / 595) * 100}%; top: ${(element.y / 200) * 100}%; width: ${(element.width / 595) * 100}%; font-size: ${element.fontSize || 16}px; font-family: ${element.fontFamily || 'Arial'}, sans-serif; font-weight: ${element.fontWeight || 'normal'}; color: ${element.color || '#000000'}; line-height: 1.2;">${element.content || ''}</div>`;
         } else if (element.type === 'image' && element.imageUrl) {

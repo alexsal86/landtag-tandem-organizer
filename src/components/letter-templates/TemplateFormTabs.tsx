@@ -18,26 +18,17 @@ import { BlockLineEditor, type BlockLine } from '@/components/letters/BlockLineE
 import { parseFooterLinesForEditor, toFooterLineData } from '@/components/letters/footerBlockUtils';
 import { getLetterAssetPublicUrl } from '@/components/letters/letterAssetUrls';
 import {
+  type BlockEditorKey,
   isLineModeBlockData,
   type LayoutEditorTab,
   type LetterCanvasElement,
   type LetterLayoutSettings,
   type MarginKey,
+  type TemplateFormData,
   type TabRect,
+  type SenderInformation,
+  type InformationBlock,
 } from '@/types/letterLayout';
-import { SenderInformation, InformationBlock } from './types';
-
-interface TemplateFormData {
-  name: string;
-  response_time_days: number;
-  default_sender_id?: string;
-  default_info_blocks: string[];
-  letterhead_html: string;
-  letterhead_css: string;
-  layout_settings: LetterLayoutSettings;
-  header_elements: LetterCanvasElement[];
-  footer_blocks?: unknown;
-}
 
 interface TenantLike {
   id: string;
@@ -58,8 +49,8 @@ interface TemplateFormTabsProps {
   handleCreateTemplate: () => void;
   resetForm: () => void;
   setShowCreateDialog: (v: boolean) => void;
-  getBlockItems: (key: string) => unknown;
-  setBlockItems: (key: string, items: unknown) => void;
+  getBlockItems: (key: BlockEditorKey) => unknown;
+  setBlockItems: (key: BlockEditorKey, items: unknown) => void;
   currentTenant: TenantLike | null;
   toast: ToastLike;
 }
@@ -138,16 +129,19 @@ export const useTemplateFormTabs = ({
     return [];
   };
 
-  const renderSharedElementsEditor = (blockKey: string, canvasWidthMm: number, canvasHeightMm: number) => (
-    <StructuredHeaderEditor
-      initialElements={Array.isArray(getBlockItems(blockKey)) ? (getBlockItems(blockKey) as LetterCanvasElement[]) : []}
-      onElementsChange={(elements) => setBlockItems(blockKey, elements)}
-      layoutSettings={formData.layout_settings}
-      canvasWidthMm={canvasWidthMm}
-      canvasHeightMm={Math.max(8, canvasHeightMm)}
-      blockKey={blockKey}
-    />
-  );
+  const renderSharedElementsEditor = (blockKey: BlockEditorKey, canvasWidthMm: number, canvasHeightMm: number) => {
+    const initialElements = getBlockItems(blockKey);
+    return (
+      <StructuredHeaderEditor
+        initialElements={Array.isArray(initialElements) ? (initialElements as LetterCanvasElement[]) : []}
+        onElementsChange={(elements) => setBlockItems(blockKey, elements)}
+        layoutSettings={formData.layout_settings}
+        canvasWidthMm={canvasWidthMm}
+        canvasHeightMm={Math.max(8, canvasHeightMm)}
+        blockKey={blockKey}
+      />
+    );
+  };
 
   const renderTabsNavigation = () => (
     <>
@@ -253,7 +247,7 @@ export const useTemplateFormTabs = ({
             <SelectTrigger><SelectValue placeholder="Absenderinformation auswählen..." /></SelectTrigger>
             <SelectContent>
               <SelectItem value="none">Keine Auswahl</SelectItem>
-              {senderInfos.map((sender: SenderInformation) => (
+              {senderInfos.map((sender) => (
                 <SelectItem key={sender.id} value={sender.id}>{sender.name} - {sender.organization}{sender.is_default && " (Standard)"}</SelectItem>
               ))}
             </SelectContent>
@@ -263,7 +257,7 @@ export const useTemplateFormTabs = ({
         <div>
           <Label>Standard-Informationsblöcke</Label>
           <div className="space-y-2 max-h-40 overflow-y-auto">
-            {infoBlocks.map((block: InformationBlock) => (
+            {infoBlocks.map((block) => (
               <div key={block.id} className="flex items-center space-x-2">
                 <Checkbox id={`block-${block.id}`} checked={formData.default_info_blocks.includes(block.id)} onCheckedChange={(checked) => {
                   if (checked) { setFormData((prev) => ({ ...prev, default_info_blocks: [...prev.default_info_blocks, block.id] })); }

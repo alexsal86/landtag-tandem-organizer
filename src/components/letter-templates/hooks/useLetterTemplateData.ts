@@ -5,7 +5,16 @@ import { handleAppError } from '@/utils/errorHandler';
 import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayout';
+import {
+  DEFAULT_DIN5008_LAYOUT,
+  type BlockContentEntry,
+  type BlockEditorKey,
+  type LetterCanvasElement,
+  type LetterLayoutSettings,
+  type TemplateFormData,
+  isLetterCanvasElementArray,
+  isLineModeBlockData,
+} from '@/types/letterLayout';
 import { parseFooterLinesForEditor, toFooterLineData } from '@/components/letters/footerBlockUtils';
 import {
   LetterTemplate, SenderInformation, InformationBlock, GalleryImage,
@@ -33,16 +42,16 @@ export function useLetterTemplateData() {
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
   const [galleryLoading, setGalleryLoading] = useState(false);
   const galleryBlobUrlsRef = useRef<Map<string, string>>(new Map());
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<TemplateFormData>({
     name: '',
     letterhead_html: '',
     letterhead_css: '',
     response_time_days: 21,
     default_sender_id: '',
     default_info_blocks: [] as string[],
-    header_elements: [] as unknown[],
-    footer_blocks: [] as unknown[],
-    layout_settings: DEFAULT_DIN5008_LAYOUT as LetterLayoutSettings,
+    header_elements: [],
+    footer_blocks: [],
+    layout_settings: DEFAULT_DIN5008_LAYOUT,
   });
 
   useEffect(() => {
@@ -123,7 +132,7 @@ export function useLetterTemplateData() {
 
   const handleCreateTemplate = async () => {
     if (!currentTenant || !user || !formData.name.trim()) return;
-    const cleanedHeaderElements = stripBlobUrls(formData.header_elements) as unknown[];
+    const cleanedHeaderElements = stripBlobUrls(formData.header_elements) as LetterCanvasElement[];
     const cleanedFooterBlocks = stripBlobUrls(formData.footer_blocks);
     const cleanedLayoutSettings = stripBlobUrlsFromLayoutSettings(normalizeLayoutBlockContentImages(formData.layout_settings));
     try {
@@ -135,7 +144,7 @@ export function useLetterTemplateData() {
         default_info_blocks: formData.default_info_blocks.length > 0 ? formData.default_info_blocks : null,
         header_layout_type: Array.isArray(cleanedHeaderElements) && cleanedHeaderElements.length > 0 ? 'structured' : 'html',
         header_text_elements: Array.isArray(cleanedHeaderElements) && cleanedHeaderElements.length > 0 ? cleanedHeaderElements : null,
-        footer_blocks: Array.isArray(cleanedFooterBlocks) ? ((cleanedFooterBlocks as unknown[]).length > 0 ? cleanedFooterBlocks : null) : cleanedFooterBlocks,
+        footer_blocks: Array.isArray(cleanedFooterBlocks) ? (cleanedFooterBlocks.length > 0 ? cleanedFooterBlocks : null) : cleanedFooterBlocks,
         layout_settings: cleanedLayoutSettings,
       };
       const { error } = await supabase.from('letter_templates').insert(insertData as typeof insertData & { name: string; letterhead_html: string; letterhead_css: string; response_time_days: number; tenant_id: string; created_by: string });
@@ -152,7 +161,7 @@ export function useLetterTemplateData() {
 
   const handleUpdateTemplate = async () => {
     if (!editingTemplate) return;
-    const cleanedHeaderElements = stripBlobUrls(formData.header_elements) as unknown[];
+    const cleanedHeaderElements = stripBlobUrls(formData.header_elements) as LetterCanvasElement[];
     const cleanedFooterBlocks = stripBlobUrls(formData.footer_blocks);
     const cleanedLayoutSettings = stripBlobUrlsFromLayoutSettings(normalizeLayoutBlockContentImages(formData.layout_settings));
     try {
@@ -162,7 +171,7 @@ export function useLetterTemplateData() {
         default_info_blocks: formData.default_info_blocks.length > 0 ? formData.default_info_blocks : null,
         header_layout_type: cleanedHeaderElements.length > 0 ? 'structured' : 'html',
         header_text_elements: cleanedHeaderElements.length > 0 ? cleanedHeaderElements : null,
-        footer_blocks: Array.isArray(cleanedFooterBlocks) ? ((cleanedFooterBlocks as unknown[]).length > 0 ? cleanedFooterBlocks : null) : cleanedFooterBlocks,
+        footer_blocks: Array.isArray(cleanedFooterBlocks) ? (cleanedFooterBlocks.length > 0 ? cleanedFooterBlocks : null) : cleanedFooterBlocks,
         layout_settings: cleanedLayoutSettings, updated_at: new Date().toISOString(),
       };
       const { error } = await supabase.from('letter_templates').update(updateData as typeof updateData & { name: string }).eq('id', editingTemplate.id);
@@ -193,17 +202,25 @@ export function useLetterTemplateData() {
       layout_settings: {
         ...DEFAULT_DIN5008_LAYOUT,
         blockContent: { ...(DEFAULT_DIN5008_LAYOUT.blockContent || {}), attachments: createDefaultAttachmentElements() },
-      } as LetterLayoutSettings,
+      },
     });
   };
 
   const startEditing = (template: LetterTemplate) => {
     setEditingTemplate(template);
     setActiveTab('canvas-designer');
-    let headerElements: unknown[] = [];
+    let headerElements: LetterCanvasElement[] = [];
     if (template.header_text_elements) {
-      if (typeof template.header_text_elements === 'string') { try { headerElements = JSON.parse(template.header_text_elements); } catch { headerElements = []; } }
-      else if (Array.isArray(template.header_text_elements)) { headerElements = template.header_text_elements; }
+      if (typeof template.header_text_elements === 'string') {
+        try {
+          const parsed = JSON.parse(template.header_text_elements) as unknown;
+          headerElements = isLetterCanvasElementArray(parsed) ? parsed : [];
+        } catch {
+          headerElements = [];
+        }
+      } else if (isLetterCanvasElementArray(template.header_text_elements)) {
+        headerElements = template.header_text_elements;
+      }
     }
     let rawFooterBlocks: unknown = [];
     if (template.footer_blocks) {
@@ -212,9 +229,9 @@ export function useLetterTemplateData() {
     }
     const footerLines = parseFooterLinesForEditor(rawFooterBlocks);
     const normalizedLayoutSettings = normalizeLayoutBlockContentImages(template.layout_settings || DEFAULT_DIN5008_LAYOUT);
-    const bc = ((normalizedLayoutSettings as unknown as Record<string, unknown>).blockContent || {}) as Record<string, unknown[]>;
-    const legacyHeaderElements = (bc.header || []) as unknown[];
-    const headerSource = headerElements.length > 0 ? headerElements : (Array.isArray(legacyHeaderElements) ? legacyHeaderElements : []);
+    const bc = normalizedLayoutSettings.blockContent || {};
+    const legacyHeaderElements = bc.header;
+    const headerSource = headerElements.length > 0 ? headerElements : (isLetterCanvasElementArray(legacyHeaderElements) ? legacyHeaderElements : []);
     const normalizedHeader = headerSource.map(normalizeImageItem);
     const normalizedFooter = footerLines.map(normalizeImageItem);
     const cleanedBlockContent = { ...bc };
@@ -226,9 +243,10 @@ export function useLetterTemplateData() {
     setFormData({
       name: template.name, letterhead_html: template.letterhead_html, letterhead_css: template.letterhead_css,
       response_time_days: template.response_time_days, default_sender_id: template.default_sender_id || '',
-      default_info_blocks: template.default_info_blocks || [], header_elements: normalizedHeader as unknown[],
-      footer_blocks: footerData as unknown as unknown[],
-      layout_settings: { ...normalizedLayoutSettings, blockContent: { ...cleanedBlockContent, footer: footerData } } as LetterLayoutSettings,
+      default_info_blocks: template.default_info_blocks || [],
+      header_elements: normalizedHeader,
+      footer_blocks: footerData,
+      layout_settings: { ...normalizedLayoutSettings, blockContent: { ...cleanedBlockContent, footer: footerData } },
     });
   };
 
@@ -238,17 +256,21 @@ export function useLetterTemplateData() {
     setFormData((prev) => ({ ...prev, layout_settings: updater(prev.layout_settings) }));
   };
 
-  type BlockEditorKey = 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'attachments' | 'footer';
-
-  const getBlockItems = (blockKey: BlockEditorKey): unknown[] => {
-    const content = ((formData.layout_settings as unknown as Record<string, unknown>).blockContent || {}) as Record<string, unknown[]>;
+  const getBlockItems = (blockKey: BlockEditorKey): unknown => {
+    const content = formData.layout_settings.blockContent || {};
     return content[blockKey] || [];
   };
 
-  const setBlockItems = (blockKey: BlockEditorKey, items: unknown[]) => {
+  const setBlockItems = (blockKey: BlockEditorKey, items: unknown) => {
     updateLayoutSettings((layout) => {
-      const current = ((layout as unknown as Record<string, unknown>).blockContent || {}) as Record<string, unknown[]>;
-      return { ...layout, blockContent: { ...current, [blockKey]: items } } as LetterLayoutSettings;
+      const current = layout.blockContent || {};
+      const normalizedItems: BlockContentEntry =
+        isLineModeBlockData(items)
+          ? items
+          : isLetterCanvasElementArray(items)
+            ? items
+            : [];
+      return { ...layout, blockContent: { ...current, [blockKey]: normalizedItems } };
     });
   };
 

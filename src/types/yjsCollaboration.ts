@@ -35,6 +35,30 @@ export interface YjsUpdatePayload {
 
 export interface AwarenessUpdatePayload extends AwarenessState {}
 
+export type CollaborationBroadcastPayload = YjsUpdatePayload | AwarenessUpdatePayload;
+
+export type CollaborationBroadcastEvent =
+  | {
+      event: 'yjs-update';
+      payload: YjsUpdatePayload;
+    }
+  | {
+      event: 'awareness-update';
+      payload: AwarenessUpdatePayload;
+    };
+
+export type YjsDocumentUpdate =
+  | {
+      source: 'local';
+      update: Uint8Array;
+      userId: string;
+    }
+  | {
+      source: 'remote';
+      update: Uint8Array;
+      userId: string;
+    };
+
 export interface SupabaseBroadcastEnvelope<TPayload> {
   payload: TPayload;
 }

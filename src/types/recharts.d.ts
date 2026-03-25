@@ -1,7 +1,10 @@
-// React 19 + recharts class component JSX compatibility shim
+// React 19 + recharts JSX compatibility shim
 import type { ComponentType, ReactNode } from 'react';
 
 type RechartsDataPoint = Record<string, unknown>;
+type RechartsPrimitive = string | number;
+
+type RechartsFormatterResult = ReactNode | [ReactNode, ReactNode];
 
 interface BaseRechartsProps {
   children?: ReactNode;
@@ -16,6 +19,13 @@ interface ResponsiveContainerProps extends BaseRechartsProps {
   debounce?: number;
 }
 
+interface PieLabelInput {
+  percent?: number;
+  name?: RechartsPrimitive;
+  value?: RechartsPrimitive;
+  payload?: RechartsDataPoint;
+}
+
 interface PieProps extends BaseRechartsProps {
   data?: RechartsDataPoint[];
   dataKey?: string | ((entry: RechartsDataPoint) => unknown);
@@ -26,33 +36,28 @@ interface PieProps extends BaseRechartsProps {
   paddingAngle?: number;
   fill?: string;
   labelLine?: boolean;
-  label?: ReactNode | ((props: unknown) => ReactNode);
+  label?: ReactNode | ((props: PieLabelInput) => ReactNode);
+  animationBegin?: number;
+  animationDuration?: number;
 }
 
 interface CellProps extends BaseRechartsProps {
   fill?: string;
 }
 
-interface TooltipProps extends BaseRechartsProps {
-  formatter?: (
-    value: unknown,
-    name: unknown,
-    item: unknown,
-    index: number,
-    payload: unknown
-  ) => ReactNode;
-}
-
-interface LegendPayloadItem {
-  value?: string | number;
+interface TooltipPayloadItem {
+  name?: RechartsPrimitive;
+  value?: RechartsPrimitive;
   color?: string;
-  dataKey?: string | number;
+  dataKey?: RechartsPrimitive;
   payload?: RechartsDataPoint;
 }
 
-interface LegendProps extends BaseRechartsProps {
-  verticalAlign?: 'top' | 'middle' | 'bottom';
-  payload?: LegendPayloadItem[];
+interface LegendPayloadItem {
+  value?: RechartsPrimitive;
+  color?: string;
+  dataKey?: RechartsPrimitive;
+  payload?: RechartsDataPoint;
 }
 
 interface CartesianAxisProps extends BaseRechartsProps {
@@ -69,7 +74,30 @@ interface LineProps extends BaseRechartsProps {
   stroke?: string;
 }
 
+interface ChartWrapperProps extends BaseRechartsProps {
+  data?: RechartsDataPoint[];
+}
+
 declare module 'recharts' {
+  export interface TooltipProps extends import('react').Attributes {
+    children?: ReactNode;
+    className?: string;
+    formatter?: (
+      value: unknown,
+      name: unknown,
+      item: TooltipPayloadItem,
+      index: number,
+      payload: unknown
+    ) => RechartsFormatterResult;
+  }
+
+  export interface LegendProps extends import('react').Attributes {
+    children?: ReactNode;
+    className?: string;
+    verticalAlign?: 'top' | 'middle' | 'bottom';
+    payload?: LegendPayloadItem[];
+  }
+
   export const Legend: ComponentType<LegendProps>;
   export const XAxis: ComponentType<CartesianAxisProps>;
   export const YAxis: ComponentType<CartesianAxisProps>;
@@ -80,7 +108,7 @@ declare module 'recharts' {
   export const Pie: ComponentType<PieProps>;
   export const Cell: ComponentType<CellProps>;
   export const ResponsiveContainer: ComponentType<ResponsiveContainerProps>;
-  export const BarChart: ComponentType<BaseRechartsProps>;
-  export const LineChart: ComponentType<BaseRechartsProps>;
-  export const PieChart: ComponentType<BaseRechartsProps>;
+  export const BarChart: ComponentType<ChartWrapperProps>;
+  export const LineChart: ComponentType<ChartWrapperProps>;
+  export const PieChart: ComponentType<ChartWrapperProps>;
 }
