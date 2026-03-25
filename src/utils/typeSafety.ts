@@ -3,12 +3,16 @@ import { getErrorMessage } from '@/utils/errorHandler';
 export type UnknownRecord = Record<string, unknown>;
 export type Nullable<T> = T | null;
 export type Maybe<T> = T | null | undefined;
-export type OptionalCallback<TArgs extends readonly unknown[] = []> = ((...args: TArgs) => void) | undefined;
+export type VariadicArgs = readonly unknown[];
+export type VoidCallback<TArgs extends VariadicArgs = []> = (...args: TArgs) => void;
+export type OptionalCallback<TArgs extends VariadicArgs = []> = VoidCallback<TArgs> | undefined;
+
 export type HookResult<TData, TError = string> = {
   data: Nullable<TData>;
   isLoading: boolean;
   error: Nullable<TError>;
 };
+
 export type HookTuple<TData, TError = string> = readonly [
   data: Nullable<TData>,
   isLoading: boolean,
@@ -58,6 +62,8 @@ export function assertPresent<T>(value: Maybe<T>, message = 'Erwarteter Wert feh
   }
 }
 
+export function toArray<T>(value: Maybe<T>): T[];
+export function toArray<T>(value: Maybe<readonly T[]>): T[];
 export function toArray<T>(value: Maybe<T | readonly T[]>): T[] {
   if (!isPresent(value)) {
     return [];
@@ -70,7 +76,7 @@ export function toArray<T>(value: Maybe<T | readonly T[]>): T[] {
   return [value as T];
 }
 
-export function invokeCallback<TArgs extends readonly unknown[]>(
+export function invokeCallback<TArgs extends VariadicArgs>(
   callback: OptionalCallback<TArgs>,
   ...args: TArgs
 ): void {
