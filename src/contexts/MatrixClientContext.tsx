@@ -1323,6 +1323,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
         const id = event.getId();
         if (id && cachedFailedIds.has(id) && event.isEncrypted()) {
           try {
+            // @ts-expect-error matrix-js-sdk CryptoApi vs CryptoBackend mismatch
             event.attemptDecryption(mc.getCrypto()).catch(() => {});
           } catch {}
         }
