@@ -1,11 +1,22 @@
 import React, { useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
+import type { DashboardWidget, WidgetSize } from '@/hooks/useDashboardLayout';
 
 interface WidgetResizeHandlesProps {
-  widget: any;
+  widget: DashboardWidget;
   onResize: (widgetId: string, newSize: string) => void;
   isEditMode: boolean;
 }
+
+type WidgetSizeObject = { width?: number; height?: number; w?: number; h?: number };
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const parseWidgetSizeObject = (value: unknown): WidgetSizeObject | null => {
+  if (!isRecord(value)) return null;
+  return value as WidgetSizeObject;
+};
 
 const WIDGET_SIZES = [
   '1x1', '2x1', '3x1', 
@@ -31,14 +42,14 @@ export const WidgetResizeHandles: React.FC<WidgetResizeHandlesProps> = ({
     // Handle different possible formats for widget.size
     let sizeString = '2x2'; // Default fallback
     
-    if (typeof widget.size === 'string' && widget.size.includes('x')) {
-      sizeString = widget.size;
-    } else if (typeof widget.size === 'object' && widget.size) {
-      // Handle case where size might be an object like {width: 2, height: 2}
-      sizeString = `${widget.size.width || widget.size.w || 2}x${widget.size.height || widget.size.h || 2}`;
-    } else if (widget.widgetSize && typeof widget.widgetSize === 'string') {
-      // Check alternative property name
+    if (typeof widget.widgetSize === 'string' && widget.widgetSize.includes('x')) {
       sizeString = widget.widgetSize;
+    } else {
+      const parsedSize = parseWidgetSizeObject(widget.size);
+      if (parsedSize) {
+      // Handle case where size might be an object like {width: 2, height: 2}
+        sizeString = `${parsedSize.width || parsedSize.w || 2}x${parsedSize.height || parsedSize.h || 2}`;
+      }
     }
     
     const [w, h] = sizeString.split('x').map(Number);
@@ -79,8 +90,7 @@ export const WidgetResizeHandles: React.FC<WidgetResizeHandlesProps> = ({
       
       if (WIDGET_SIZES.includes(newSize)) {
         // Get current size string for comparison
-        const currentSizeString = typeof widget.size === 'string' ? widget.size : 
-                                 typeof widget.widgetSize === 'string' ? widget.widgetSize : '2x2';
+        const currentSizeString: WidgetSize = widget.widgetSize;
         if (newSize !== currentSizeString) {
           onResize(widget.id, newSize);
         }

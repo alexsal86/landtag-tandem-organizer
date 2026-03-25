@@ -23,6 +23,24 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { ResponseOption, getColorClasses, getDefaultOptions } from "@/lib/decisionTemplates";
+import type { ParticipantProfile } from "@/types/taskDecisions";
+
+type DecisionProfile = ParticipantProfile;
+
+interface DecisionDetailsState {
+  id: string;
+  title: string;
+  description: string | null;
+  response_options: ResponseOption[] | null;
+  response_deadline: string | null;
+  created_by: string;
+  created_at: string;
+  status: string;
+  meeting_id?: string | null;
+  pending_for_jour_fixe?: boolean | null;
+  tasks: { id: string; title: string } | null;
+  topicIds: string[];
+}
 
 interface ResponseThread {
   id: string;
@@ -71,7 +89,7 @@ interface TaskDecisionDetailsProps {
 }
 
 export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, highlightCommentId = null, highlightResponseId = null }: TaskDecisionDetailsProps) => {
-  const [decision, setDecision] = useState<any>(null);
+  const [decision, setDecision] = useState<DecisionDetailsState | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [creatorResponses, setCreatorResponses] = useState<{[key: string]: string}>({});
@@ -195,7 +213,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
 
       if (profilesError) throw profilesError;
 
-      const profileMap = new Map<string, any>(profiles?.map((p: any) => [p.user_id, p]) || []);
+      const profileMap = new Map<string, DecisionProfile>((profiles ?? []).map((profile) => [profile.user_id, profile]));
 
       const { data: commentsData, error: commentsError } = await supabase
         .from('task_decision_comments')
@@ -567,10 +585,10 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
     try {
       const { error } = await supabase
         .from('task_decisions')
-        .update({ meeting_id: meetingId, pending_for_jour_fixe: false } as any)
+        .update({ meeting_id: meetingId, pending_for_jour_fixe: false })
         .eq('id', decision.id);
       if (error) throw error;
-      setDecision((prev: any) => prev ? { ...prev, meeting_id: meetingId, pending_for_jour_fixe: false } : prev);
+      setDecision((prev) => prev ? { ...prev, meeting_id: meetingId, pending_for_jour_fixe: false } : prev);
       toast({ title: "Zugeordnet", description: "Entscheidung wurde dem Jour Fixe zugeordnet." });
     } catch (error) {
       debugConsole.error('Error assigning to meeting:', error);
@@ -584,10 +602,10 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
     try {
       const { error } = await supabase
         .from('task_decisions')
-        .update({ pending_for_jour_fixe: true, meeting_id: null } as any)
+        .update({ pending_for_jour_fixe: true, meeting_id: null })
         .eq('id', decision.id);
       if (error) throw error;
-      setDecision((prev: any) => prev ? { ...prev, meeting_id: null, pending_for_jour_fixe: true } : prev);
+      setDecision((prev) => prev ? { ...prev, meeting_id: null, pending_for_jour_fixe: true } : prev);
       toast({ title: "Vorgemerkt", description: "Entscheidung wurde für den nächsten Jour Fixe vorgemerkt." });
     } catch (error) {
       debugConsole.error('Error marking for jour fixe:', error);

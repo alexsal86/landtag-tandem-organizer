@@ -9,6 +9,7 @@ import { useDecisionAttachmentUpload } from '@/hooks/useDecisionAttachmentUpload
 import { EmailPreviewCard } from './EmailPreviewCard';
 import { EmailPreviewDialog } from './EmailPreviewDialog';
 import { debugConsole } from '@/utils/debugConsole';
+import type { ParticipantProfile } from '@/types/taskDecisions';
 
 interface UploadedFile {
   id?: string;
@@ -35,6 +36,8 @@ interface SelectedFileEntry {
   file: File;
   emailMetadata?: EmailMetadata | null;
 }
+
+type UploaderProfile = Pick<ParticipantProfile, 'user_id' | 'display_name'>;
 
 const getFileIdentity = (file: File) => `${file.name}::${file.size}::${file.lastModified}`;
 
@@ -106,7 +109,7 @@ export function DecisionFileUpload({
         .select('user_id, display_name')
         .in('user_id', uploaderIds);
 
-      const profileMap = new Map<string, any>(profiles?.map((p: any) => [p.user_id, p]) || []);
+      const profileMap = new Map<string, UploaderProfile>((profiles ?? []).map((profile) => [profile.user_id, profile]));
 
       const formattedFiles = data?.map(file => ({
         id: file.id,

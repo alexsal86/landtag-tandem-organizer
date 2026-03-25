@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
+import {
   Lightbulb, 
   Clock, 
   Calendar, 
@@ -13,21 +13,10 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { DashboardLayout, DashboardWidget } from '@/hooks/useDashboardLayout';
+import type { DashboardWidgetSuggestion } from '@/types/dashboard';
 import { toast } from 'sonner';
 
-interface Suggestion {
-  id: string;
-  type: 'widget' | 'layout' | 'optimization' | 'workflow';
-  priority: 'low' | 'medium' | 'high';
-  title: string;
-  description: string;
-  action: string;
-  icon: React.ComponentType<any>;
-  reason: string;
-  timeContext?: string;
-  widgetType?: DashboardWidget['type'];
-  confidence: number;
-}
+type Suggestion = DashboardWidgetSuggestion;
 
 interface ContextAwareSuggestionsProps {
   currentLayout: DashboardLayout;

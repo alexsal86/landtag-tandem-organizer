@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { ParticipantProfile } from "@/types/taskDecisions";
+
+type SidebarProfile = ParticipantProfile;
 
 interface DecisionParticipant {
   user_id: string;
@@ -78,7 +81,7 @@ export function useDecisionSidebarData(decisions: DecisionForSidebar[], currentU
         .select("user_id, display_name, badge_color, avatar_url")
         .in("user_id", userIds);
 
-      const profileMap = new Map<string, any>(profiles?.map((p: any) => [p.user_id, p]) || []);
+      const profileMap = new Map<string, SidebarProfile>((profiles ?? []).map((profile) => [profile.user_id, profile]));
 
       setRecentDiscussionActivities(
         comments.map((comment) => ({
