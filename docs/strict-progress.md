@@ -143,6 +143,49 @@ Nicht Bestandteil dieser Phase sind Arbeiten zu `noUnusedLocals` und `noUnusedPa
 | Komponenten (`src/components`)                         | Frontend Produktteams          | n. a. (nach Batch-Zuschnitten gesteuert) |                                            5 Batch-Slices + Top-Level in Planung |                                             0 dedizierte `noImplicitAny`-Batches | Zuerst `typecheck:components-batch2` für Kalender-nahe Flows und `typecheck:components-batch3` für Letters sichtbar steuern                       | Noch kein Komponenten-Batch als real abgeschlossen dokumentiert                                             | Großer Scope, unterschiedliche Domänen, teils fehlende feingranulare Fortschrittsmessung            | 2026-03-18     |
 | Pages (`src/pages`)                                    | Frontend Plattform / App Shell |                                       22 |                                                                      22 (100.0%) |                                                                        3 (13.6%) | `typecheck:pages-batch2` abschließen, insbesondere `NotificationsPage.tsx` entlang des Kernflows Benachrichtigungen                             | `strictNullChecks` im Verzeichnis real erreicht; Folge-Batches offen                                        | Seitenspezifische Abhängigkeiten zu Hooks, Contexts und Router-Daten                                | 2026-03-18     |
 
+
+### Verbindliche Any-Abbau-Tabellen je Bereich
+
+Stand: **2026-03-25**, basierend auf `npm run report:any-usage` plus Bereichs-Spotcheck in den jeweils führenden Dateien.
+
+#### Hooks (`src/hooks`)
+
+| Datei | Anzahl verbleibender `any` | Begründung | Owner | Zieltermin |
+| --- | ---: | --- | --- | --- |
+| `src/hooks/useYjsCollaboration.tsx` | 17 | Interop mit Yjs-/Awareness-Event-Payloads noch ohne stabile App-spezifische Typ-Adapter. | Frontend Plattform | 2026-04-08 |
+| `src/hooks/useDashboardDeadlines.ts` | 10 | Heterogene Dashboard-Datenquellen; Rückgabetypen noch nicht vollständig vereinheitlicht. | Frontend Plattform | 2026-04-08 |
+| `src/hooks/useUserPreference.ts` | 7 | Dynamische Preference-Keys und API-Mapping noch mit loser Typkopplung. | Frontend Plattform | 2026-04-15 |
+
+#### Contexts / Providers (`src/contexts`, `src/providers`)
+
+| Datei | Anzahl verbleibender `any` | Begründung | Owner | Zieltermin |
+| --- | ---: | --- | --- | --- |
+| `src/contexts/MatrixClientContext.tsx` | 59 | Matrix-SDK-Interop, Event-/State-Inhalte und Legacy-Context-API noch nicht vollständig typisiert. | Kommunikation / Inbox | 2026-04-22 |
+
+#### Services / Features (`src/services`, `src/features`)
+
+| Datei | Anzahl verbleibender `any` | Begründung | Owner | Zieltermin |
+| --- | ---: | --- | --- | --- |
+| `src/features/cases/files/components/CaseFileCard.tsx` | 8 | Komplexe UI-Props aus mehreren Domains; Typvereinheitlichung läuft in Batch2/3. | Plattform / Integrationen | 2026-04-15 |
+| `src/features/cases/files/components/CaseFileDetailHeader.tsx` | 7 | Derzeit lose typisierte Aggregation von Timeline-/Statusdaten. | Plattform / Integrationen | 2026-04-15 |
+| `src/services/headerRenderer.ts` | 3 | Rendering-Schnittstelle unterstützt mehrere Payload-Formate und braucht discriminated unions. | Plattform / Integrationen | 2026-04-22 |
+
+#### Komponenten (`src/components`)
+
+| Datei | Anzahl verbleibender `any` | Begründung | Owner | Zieltermin |
+| --- | ---: | --- | --- | --- |
+| `src/components/letter-templates/TemplateFormTabs.tsx` | 69 | Größter Letter-Template-Hotspot mit Legacy-Form-State und variablen Template-Blöcken. | Dokumente / Output | 2026-04-22 |
+| `src/components/letters/LetterLayoutCanvasDesigner.tsx` | 37 | Canvas-/Drag&Drop-Interop mit teils untypisierten Drittanbieter-Objekten. | Dokumente / Output | 2026-04-29 |
+| `src/components/dayslip/hooks/useDaySlipStore.ts` | 29 | Store-Slices historisch ohne strikte Actions/Selectors modelliert. | Frontend Produktteams | 2026-04-22 |
+
+#### Pages (`src/pages`)
+
+| Datei | Anzahl verbleibender `any` | Begründung | Owner | Zieltermin |
+| --- | ---: | --- | --- | --- |
+| `src/pages/DecisionResponse.tsx` | 4 | Externe Response-Payloads mit optionalen Feldern noch nicht vollständig eingegrenzt. | Frontend Plattform / App Shell | 2026-04-08 |
+| `src/pages/CreateContact.tsx` | 4 | Form-Payload-Mapping zu Kontaktdaten noch mit generischen Zwischenstrukturen. | Frontend Plattform / App Shell | 2026-04-15 |
+| `src/pages/Auth.tsx` | 2 | Auth-Provider-Interop und Redirect-State noch nicht vollständig typisiert. | Frontend Plattform / App Shell | 2026-04-15 |
+
 ## Metrik: Any-Delta pro Batch
 
 Zur operativen Steuerung von `noImplicitAny` wird zusätzlich eine Delta-Metrik geführt, die pro Migrations-Batch die Veränderung der `any`-/`as any`-Vorkommen ausweist.
@@ -156,6 +199,18 @@ Pflegehinweis pro Batch:
 1. Vor dem Merge den aktuellen Report mit `npm run report:any-usage` erzeugen und die betroffenen Verzeichnisse im Batch-Doc festhalten.
 2. Im PR-Summary den Delta-Wert aus dem CI-Job „Any-Delta PR-Gate (nicht steigend)“ dokumentieren.
 3. Bei Delta `0` ist Stagnation akzeptabel; bei negativem Delta ist die Reduktion als Fortschritt im Batch-Abschnitt zu notieren.
+
+
+## Verbindliche Sprint-Abbauquote (`any`)
+
+Ab sofort gilt für **jeden Sprint und jeden Bereich** aus „Fortschritt nach Bereich“ eine verbindliche Abbauquote von **mindestens 15% und Zielkorridor 20%** der zu Sprintstart verbleibenden `any`-Vorkommen.
+
+- Mindestziel je Sprint/Bereich: **>= 15% Reduktion**.
+- Zielkorridor je Sprint/Bereich: **15–20% Reduktion**.
+- Unter 15% ist eine dokumentierte Ausnahme mit Blocker, Gegenmaßnahme und neuem Termin im Bereichsabschnitt erforderlich.
+- Über 20% ist zulässig und als vorgezogener Fortschritt für den Folgesprint zu dokumentieren.
+
+Formel: `Sprint-Abbauquote = (Any_Beginn - Any_Ende) / Any_Beginn * 100`.
 
 ## Spätere Anschlussphase: Unused-Bereinigung
 
@@ -176,8 +231,23 @@ Nach jedem abgeschlossenen oder teilweise fortgeschrittenen Merge wird dieses Do
 5. Prüfen, ob eines der Kernmodule (Auth/Tenant, Notifications, Letters, Kalender) neu markiert oder eskaliert werden muss.
 6. Falls Folgearbeiten übrig bleiben, diese als nächste Batch-Kandidaten oder Datei-Follow-ups dokumentieren.
 
+## Abschlusskriterium der aktuellen `any`-Migrationsphase
+
+Die Phase gilt erst dann als abgeschlossen, wenn in den priorisierten Kernflows `any` nur noch in **freigegebenen Interop-Randfällen** vorkommt.
+
+Freigegebener Interop-Randfall bedeutet:
+
+1. der Typ stammt aus einer externen, nicht ausreichend typisierten Boundary (z. B. Drittanbieter-SDK, dynamische Runtime-Payload, Legacy-Bridge),
+2. die Stelle ist **inline kommentiert** (`INTEROP-ANY: Grund + Ticket/Owner + Sunset-Termin`),
+3. es existiert ein konkreter Abbaupfad (Adapter-/Guard-/Schema-Schritt),
+4. und der Fall ist in der jeweiligen Bereichstabelle in diesem Dokument nachgeführt.
+
+Nicht kommentierte oder nicht freigegebene `any` zählen als Rückfall und blockieren die Fertigmeldung des Batches.
+
 ## Review- und CI-Hinweis
 
 - Wenn ein Pull Request Strict-Migrationsdateien, `tsconfig.*-strict.json`, `package.json`-Typecheck-Skripte oder Batch-Scope-Dateien verändert, muss im Review geprüft werden, ob auch `docs/strict-progress.md` oder ein zugehöriges Batch-Dokument aktualisiert wurde.
+- **Keine neuen unkommentierten `any` werden akzeptiert.** Jede neue `any`-Stelle muss als Interop-Randfall begründet und inline markiert werden (`INTEROP-ANY: ...`).
 - Die CI darf diesen Fall mindestens als Hinweis im Job Summary ausgeben; Ziel ist Sichtbarkeit, nicht stilles Vergessen.
 - Reviewer prüfen explizit, ob der dokumentierte Fortschritt den **real gemergten Stand** beschreibt und nicht nur den geplanten Zielzustand.
+- Verbindliche Review-Pflichtfrage: **„Wurden neue `any` eingeführt?“** Falls ja, muss die Antwort die betroffenen Dateien, Begründungen und Zieltermine benennen.
