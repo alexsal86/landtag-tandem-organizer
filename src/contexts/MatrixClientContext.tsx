@@ -839,6 +839,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
           if (!isReady && recoveryKey) {
             try {
               await crypto.bootstrapSecretStorage({
+                // @ts-expect-error matrix-js-sdk GeneratedSecretStorageKey type mismatch with fallback branch
                 createSecretStorageKey: async () => {
                   try {
                     const privateKey = decodeRecoveryKey(recoveryKey.trim());
