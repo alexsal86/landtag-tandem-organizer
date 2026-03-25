@@ -1006,8 +1006,8 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
             msgtype: content.msgtype,
             body: content.body || '',
             url: content.url,
-            info: content.info,
-          } : undefined,
+            info: content.info as import('@/types/matrix').MatrixMessageMediaInfo | undefined,
+          } as import('@/types/matrix').MatrixMediaContent : undefined,
         };
 
         setMessages(prev => {
