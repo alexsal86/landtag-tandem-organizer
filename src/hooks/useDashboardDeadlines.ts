@@ -4,21 +4,18 @@ import { addDays, isAfter, isBefore, isToday, startOfDay } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
+import type {
+  ChecklistRelation,
+  DeadlineItem,
+  EventPlanningRelation,
+  GroupedDeadlineItems,
+  PlanningTimelineAssignment,
+} from '@/types/dashboardDeadlines';
 
-export interface DeadlineItem {
-  id: string;
-  title: string;
-  dueDate: string;
-  type: 'task' | 'note' | 'case' | 'decision' | 'eventPlanning';
-  planningId?: string;
-}
-
-export interface GroupedDeadlineItems {
-  overdue: DeadlineItem[];
-  today: DeadlineItem[];
-  thisWeek: DeadlineItem[];
-  later: DeadlineItem[];
-}
+const pickFirst = <T,>(value: T | T[] | null | undefined): T | null => {
+  if (!value) return null;
+  return Array.isArray(value) ? value[0] ?? null : value;
+};
 
 const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<DeadlineItem[]> => {
   const [tasksRes, notesRes, casesRes, decisionsRes, planningDeadlinesRes] = await Promise.all([
@@ -53,22 +50,22 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
   ]);
 
   const all: DeadlineItem[] = [
-    ...(tasksRes.data || []).filter((t: any) => t.due_date && t.title?.trim()).map((t: any) => ({
+    ...(tasksRes.data || []).filter((t) => t.due_date && t.title?.trim()).map((t) => ({
       id: t.id, title: t.title.trim(), dueDate: t.due_date, type: 'task' as const,
     })),
-    ...(notesRes.data || []).filter((n: any) => n.follow_up_date).map((n: any) => ({
+    ...(notesRes.data || []).filter((n) => n.follow_up_date).map((n) => ({
       id: n.id, title: (n.title || n.content || '').trim().substring(0, 80), dueDate: n.follow_up_date, type: 'note' as const,
     })),
-    ...(casesRes.data || []).filter((c: any) => c.due_at).map((c: any) => ({
+    ...(casesRes.data || []).filter((c) => c.due_at).map((c) => ({
       id: c.id, title: (c.subject || 'Vorgang').trim(), dueDate: c.due_at, type: 'case' as const,
     })),
-    ...(decisionsRes.data || []).filter((d: any) => d.response_deadline && d.title?.trim()).map((d: any) => ({
+    ...(decisionsRes.data || []).filter((d) => d.response_deadline && d.title?.trim()).map((d) => ({
       id: d.id, title: d.title.trim(), dueDate: d.response_deadline, type: 'decision' as const,
     })),
-    ...((planningDeadlinesRes.data || [])
-      .filter((assignment: any) => {
-        const planning = Array.isArray(assignment.event_plannings) ? assignment.event_plannings[0] : assignment.event_plannings;
-        const checklistItem = Array.isArray(assignment.event_planning_checklist_items) ? assignment.event_planning_checklist_items[0] : assignment.event_planning_checklist_items;
+    ...(((planningDeadlinesRes.data || []) as PlanningTimelineAssignment[])
+      .filter((assignment) => {
+        const planning = pickFirst<EventPlanningRelation>(assignment.event_plannings);
+        const checklistItem = pickFirst<ChecklistRelation>(assignment.event_planning_checklist_items);
         return Boolean(
           assignment.due_date &&
           planning?.id &&
@@ -78,9 +75,9 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
           !checklistItem.is_completed
         );
       })
-      .map((assignment: any) => {
-        const planning = Array.isArray(assignment.event_plannings) ? assignment.event_plannings[0] : assignment.event_plannings;
-        const checklistItem = Array.isArray(assignment.event_planning_checklist_items) ? assignment.event_planning_checklist_items[0] : assignment.event_planning_checklist_items;
+      .map((assignment) => {
+        const planning = pickFirst<EventPlanningRelation>(assignment.event_plannings);
+        const checklistItem = pickFirst<ChecklistRelation>(assignment.event_planning_checklist_items);
         const checklistTitle = checklistItem?.title?.trim();
         const planningTitle = planning?.title?.trim();
         return {

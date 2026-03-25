@@ -34,3 +34,37 @@ export interface ProtocolSessionEvent {
   timestamp: string;
   notes: string;
 }
+
+export interface ProtocolSessionMeta {
+  number?: string | number;
+  legislative_period?: string | number;
+  date?: string;
+  extracted_at?: string;
+  source_pdf_url?: string;
+  next_meeting?: { raw?: string } | null;
+}
+
+export interface ProtocolSittingBreak {
+  type?: string;
+  time?: string;
+}
+
+export interface ProtocolSittingMeta {
+  location?: string;
+  start_time?: string;
+  end_time?: string;
+  breaks?: ProtocolSittingBreak[];
+}
+
+export interface ProtocolLayoutMeta {
+  applied?: boolean;
+  reason?: string;
+}
+
+export interface ProtocolStats {
+  pages?: number;
+}
+
+export interface ProtocolSpeechOverviewItem {
+  speaker?: string;
+}

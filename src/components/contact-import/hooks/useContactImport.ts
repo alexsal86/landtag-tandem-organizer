@@ -11,6 +11,7 @@ import { isValidEmail } from "@/lib/utils";
 import { findPotentialDuplicates } from "@/utils/duplicateDetection";
 import type { ContactDuplicateCandidate } from "@/types/contact";
 import type { DuplicateMatch } from "@/utils/duplicateDetection";
+import type { ParsedVCard, SpreadsheetRow } from "@/types/contactImport";
 import { ImportData, FieldMapping, FIELD_MAPPINGS } from "../types";
 
 export function useContactImport() {
@@ -32,6 +33,14 @@ export function useContactImport() {
   const { toast } = useToast();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+
+  const toStringValue = (value: unknown): string => {
+    if (value === null || value === undefined) return "";
+    if (typeof value === "string") return value;
+    if (typeof value === "number" || typeof value === "boolean") return String(value);
+    if (value instanceof Date) return value.toISOString();
+    return "";
+  };
 
   useEffect(() => {
     if (user && currentTenant) fetchExistingContacts();
@@ -70,9 +79,9 @@ export function useContactImport() {
           const jsonData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
           if (jsonData.length < 2) { toast({ title: "Fehler", description: "Die Datei enthält keine gültigen Daten", variant: "destructive" }); return; }
           const headers = jsonData[0] as string[];
-          const parsed = (jsonData.slice(1) as any[][]).map((row) => {
+          const parsed = (jsonData.slice(1) as SpreadsheetRow[]).map((row) => {
             const obj: ImportData = {};
-            headers.forEach((h, i) => { obj[h] = row[i]?.toString() || ""; });
+            headers.forEach((h, i) => { obj[h] = toStringValue(row[i]); });
             return obj;
           });
           setData(parsed); autoMapFields(headers); setStep("mapping");
@@ -83,29 +92,29 @@ export function useContactImport() {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          const vcards = VCF.parse(e.target?.result as string);
-          const parsed = vcards.map((vcard: any) => {
+          const vcards = VCF.parse(e.target?.result as string) as ParsedVCard[];
+          const parsed = vcards.map((vcard) => {
             const d: ImportData = {};
             if (vcard.fn) d["Name"] = vcard.fn.valueOf();
             if (vcard.n) { const n = vcard.n.valueOf(); if (Array.isArray(n)) { if (n[0]) d["Nachname"] = n[0]; if (n[1]) d["Vorname"] = n[1]; } }
             if (vcard.org) { const o = vcard.org.valueOf(); d["Firma"] = Array.isArray(o) ? o[0] : o; }
             if (vcard.title) d["Position"] = vcard.title.valueOf();
-            if (vcard.email) { const emails = Array.isArray(vcard.email) ? vcard.email : [vcard.email]; emails.forEach((em: any, i: number) => { const v = typeof em === "object" ? em.valueOf() : em; if (i === 0) d["E-Mail 1"] = v; else if (i === 1) d["E-Mail 2"] = v; else if (i === 2) d["E-Mail 3"] = v; }); }
+            if (vcard.email) { const emails = Array.isArray(vcard.email) ? vcard.email : [vcard.email]; emails.forEach((em, i: number) => { const v = typeof em === "object" ? em.valueOf() : em; if (i === 0) d["E-Mail 1"] = toStringValue(v); else if (i === 1) d["E-Mail 2"] = toStringValue(v); else if (i === 2) d["E-Mail 3"] = toStringValue(v); }); }
             if (vcard.tel) {
               const phones = Array.isArray(vcard.tel) ? vcard.tel : [vcard.tel];
               let bc = 0, pc = 0;
-              phones.forEach((p: any) => {
+              phones.forEach((p) => {
                 const v = typeof p === "object" ? p.valueOf() : p;
                 const types = Array.isArray(p?.type) ? p.type : [p?.type || ''];
-                if (types.some((t: string) => t?.toLowerCase().includes("cell") || t?.toLowerCase().includes("mobile"))) d["Mobiltelefon"] = v;
-                else if (types.some((t: string) => t?.toLowerCase().includes("work"))) { if (bc === 0) { d["Telefon geschäftlich"] = v; bc++; } else d["Telefon geschäftlich 2"] = v; }
-                else if (types.some((t: string) => t?.toLowerCase().includes("home"))) { if (pc === 0) { d["Telefon (privat)"] = v; pc++; } else d["Telefon (privat 2)"] = v; }
-                else if (!d["Mobiltelefon"]) d["Mobiltelefon"] = v;
+                if (types.some((t: string) => t?.toLowerCase().includes("cell") || t?.toLowerCase().includes("mobile"))) d["Mobiltelefon"] = toStringValue(v);
+                else if (types.some((t: string) => t?.toLowerCase().includes("work"))) { if (bc === 0) { d["Telefon geschäftlich"] = toStringValue(v); bc++; } else d["Telefon geschäftlich 2"] = toStringValue(v); }
+                else if (types.some((t: string) => t?.toLowerCase().includes("home"))) { if (pc === 0) { d["Telefon (privat)"] = toStringValue(v); pc++; } else d["Telefon (privat 2)"] = toStringValue(v); }
+                else if (!d["Mobiltelefon"]) d["Mobiltelefon"] = toStringValue(v);
               });
             }
             if (vcard.adr) {
               const addrs = Array.isArray(vcard.adr) ? vcard.adr : [vcard.adr];
-              addrs.forEach((addr: any) => {
+              addrs.forEach((addr) => {
                 const a = addr.valueOf(); const types = Array.isArray(addr?.type) ? addr.type : [addr?.type || ''];
                 if (Array.isArray(a) && a.length >= 7) {
                   const [, , street, city, , postalCode, country] = a;
@@ -267,7 +276,8 @@ export function useContactImport() {
     const validMappings = fieldMappings.filter((m) => m.targetField);
     const contactData: ContactDuplicateCandidate = { id: "", name: "" };
     validMappings.forEach((m) => { const v = row[m.sourceField]; if (v && v.trim()) contactData[m.targetField] = v.trim(); });
-    if (((contactData as any).first_name || (contactData as any).last_name) && !contactData.name) contactData.name = `${(contactData as any).first_name || ""} ${(contactData as any).last_name || ""}`.trim();
+    const nameParts = contactData as { first_name?: string; last_name?: string };
+    if ((nameParts.first_name || nameParts.last_name) && !contactData.name) contactData.name = `${nameParts.first_name || ""} ${nameParts.last_name || ""}`.trim();
     if (!contactData.name?.trim()) { setErrors((prev) => [...prev, `Zeile ${rowIndex + 1}: Kein Name angegeben`]); continueImport(); return; }
     if (contactData.email && !isValidEmail(contactData.email)) { setErrors((prev) => [...prev, `Zeile ${rowIndex + 1}: Ungültige E-Mail-Adresse (${contactData.email})`]); continueImport(); return; }
     const currentContactData = { id: "", name: contactData.name, email: contactData.email, phone: contactData.phone, organization: contactData.organization };

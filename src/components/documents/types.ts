@@ -33,13 +33,17 @@ export interface Document {
 }
 
 export interface Letter {
-  id: string;
+  id?: string;
   title: string;
   content: string;
   content_html?: string;
+  template_id?: string;
+  sender_info_id?: string;
+  information_block_ids?: string[];
   recipient_name?: string;
   recipient_address?: string;
   contact_id?: string;
+  user_id?: string;
   status: 'draft' | 'review' | 'approved' | 'sent' | 'archived';
   sent_date?: string;
   sent_method?: 'post' | 'email' | 'both';

@@ -9,39 +9,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { debugConsole } from '@/utils/debugConsole';
 import { useTenant } from '@/hooks/useTenant';
 import { debounce } from '@/utils/debounce';
+import type { ContactListItem, ContactListItemWithAddress, ContactUsageStat } from '@/types/contactSelection';
 
-export interface Contact {
-  id: string;
-  user_id?: string;
-  tenant_id?: string;
-  name: string;
-  organization?: string;
-  email?: string;
-  phone?: string;
-  contact_type: 'person' | 'organization';
-  category?: string;
-  avatar_url?: string;
-  is_favorite?: boolean;
-  usage_count?: number;
-  last_used_at?: string;
-  business_street?: string;
-  business_house_number?: string;
-  business_postal_code?: string;
-  business_city?: string;
-  business_country?: string;
-  private_street?: string;
-  private_house_number?: string;
-  private_postal_code?: string;
-  private_city?: string;
-  private_country?: string;
-  address?: string;
-}
-
-export interface ContactWithAddress extends Contact {
-  formatted_address?: string;
-}
-
-export type ContactSelectorContact = ContactWithAddress;
+export type Contact = ContactListItem;
+export type ContactWithAddress = ContactListItemWithAddress;
+export type ContactSelectorContact = ContactListItemWithAddress;
 
 interface ContactSelectorProps {
   onSelect: (contact: ContactSelectorContact) => void;
@@ -81,7 +53,7 @@ const getCategoryColor = (category?: string) => {
   }
 };
 
-const mergeWithUsageStats = (contacts: any[], usageData: any[] | null): Contact[] => {
+const mergeWithUsageStats = (contacts: Contact[], usageData: ContactUsageStat[] | null): Contact[] => {
   return contacts.map(c => ({
     ...c,
     contact_type: c.contact_type as 'person' | 'organization',
@@ -188,7 +160,7 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
         const favIds = new Set(favContacts.map(c => c.id));
         const missingIds = topUsageIds.filter(id => !favIds.has(id));
 
-        let topContacts: any[] = [];
+        let topContacts: Contact[] = [];
         if (missingIds.length > 0) {
           const { data } = await supabase
             .from('contacts')
@@ -199,8 +171,8 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
         }
 
         // Also load a few alphabetical contacts to fill
-        const loadedIds = [...favContacts.map(c => c.id), ...topContacts.map((c: any) => c.id)];
-        let alphaContacts: any[] = [];
+        const loadedIds = [...favContacts.map(c => c.id), ...topContacts.map((c) => c.id)];
+        let alphaContacts: Contact[] = [];
         if (loadedIds.length < 20) {
           const { data } = await supabase
             .from('contacts')
@@ -209,14 +181,14 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
             .neq('contact_type', 'archive')
             .order('name')
             .limit(20 - loadedIds.length);
-          alphaContacts = (data || []).filter((c: any) => !loadedIds.includes(c.id));
+          alphaContacts = (data || []).filter((c) => !loadedIds.includes(c.id));
         }
 
         const allContacts = [...favContacts, ...topContacts, ...alphaContacts];
         const allIds = allContacts.map(c => c.id);
 
         // Fetch usage stats only for loaded contacts
-        let usageData: any[] | null = null;
+        let usageData: ContactUsageStat[] | null = null;
         if (allIds.length > 0) {
           const { data } = await supabase
             .from('contact_usage_stats')
@@ -249,7 +221,7 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
 
         if (error) throw error;
         const ids = (searchData || []).map(c => c.id);
-        let usageData: any[] | null = null;
+        let usageData: ContactUsageStat[] | null = null;
         if (ids.length > 0) {
           const { data } = await supabase
             .from('contact_usage_stats')
