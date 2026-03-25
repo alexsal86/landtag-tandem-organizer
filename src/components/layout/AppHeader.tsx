@@ -29,8 +29,10 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
+type OnOpenSearchCallback = () => void;
+
 interface AppHeaderProps {
-  onOpenSearch?: () => void;
+  onOpenSearch?: OnOpenSearchCallback;
 }
 
 // Map section IDs to readable labels and quick actions
