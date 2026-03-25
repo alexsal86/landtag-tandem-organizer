@@ -5,15 +5,16 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
+import type { ProtocolStructuredData } from './types';
 
 interface ProtocolRawDataProps {
-  structuredData: any;
+  structuredData: ProtocolStructuredData | null | undefined;
 }
 
 export function ProtocolRawData({ structuredData }: ProtocolRawDataProps) {
   const [copied, setCopied] = useState(false);
 
-  const formatJSON = (obj: any): string => {
+  const formatJSON = (obj: unknown): string => {
     return JSON.stringify(obj, null, 2);
   };
 
