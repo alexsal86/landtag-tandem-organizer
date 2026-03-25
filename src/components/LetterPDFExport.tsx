@@ -26,7 +26,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         template,
         senderInfo,
         informationBlock: informationBlock as any,
-        attachments,
+        attachments: attachments as any,
         showPagination,
         returnBlob: false,
         contact,
