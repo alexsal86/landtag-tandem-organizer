@@ -89,7 +89,7 @@ export function EmailPreviewDialog({ open, onOpenChange, filePath, fileName }: E
         ? await parseMsgFromArrayBuffer(buffer)
         : await parseEmlFromArrayBuffer(buffer);
       setEmail(parsed);
-    } catch (e: any) {
+    } catch (e: unknown) {
       debugConsole.error('Error parsing email:', e);
       setError('Die E-Mail konnte nicht geladen werden.');
     } finally {

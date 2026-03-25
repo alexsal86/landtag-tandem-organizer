@@ -244,9 +244,10 @@ export function DecisionAttachmentPreviewDialog({
         if (downloadError) throw downloadError;
         const blobUrl = URL.createObjectURL(blobData);
         setSignedUrl(blobUrl);
-      } catch (e: any) {
+      } catch (e: unknown) {
         debugConsole.error('Error loading preview:', e, 'path:', normalizedFilePath, 'raw:', filePath);
-        setError(`Vorschau konnte nicht geladen werden. (${e?.message || 'Unbekannter Fehler'})`);
+        const message = e instanceof Error ? e.message : 'Unbekannter Fehler';
+        setError(`Vorschau konnte nicht geladen werden. (${message})`);
       } finally {
         setLoading(false);
       }

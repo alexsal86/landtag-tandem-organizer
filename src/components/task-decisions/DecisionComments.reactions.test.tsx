@@ -5,6 +5,16 @@ import { DecisionComments } from "./DecisionComments";
 
 const mockToast = vi.fn();
 
+interface MockReactionComment {
+  id: string;
+  reactions?: Array<{
+    emoji: string;
+    count: number;
+    currentUserReacted: boolean;
+  }>;
+}
+
+
 interface MockConfig {
   initialReacted: boolean;
   initialCount: number;
@@ -70,7 +80,7 @@ vi.mock("@/components/ui/SimpleRichTextEditor", () => ({
 }));
 
 vi.mock("./CommentThread", () => ({
-  CommentThread: ({ comment, onToggleReaction }: { comment: any; onToggleReaction: (commentId: string, emoji: string, currentlyReacted: boolean) => Promise<void> }) => {
+  CommentThread: ({ comment, onToggleReaction }: { comment: MockReactionComment; onToggleReaction: (commentId: string, emoji: string, currentlyReacted: boolean) => Promise<void> }) => {
     const reaction = comment.reactions?.[0] ?? { emoji: "👍", count: 0, currentUserReacted: false };
     return (
       <button

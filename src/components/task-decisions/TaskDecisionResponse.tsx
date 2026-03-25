@@ -14,11 +14,26 @@ import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { ResponseOption, getColorClasses, getDefaultOptions } from "@/lib/decisionTemplates";
 import { LETTER_NOTIFICATION_TYPES } from '@/utils/letterNotificationTypes';
+import type { DecisionParticipantProfile } from './types/domain';
 
 interface ResponseSubmitMeta {
   responseType: string;
   color?: string;
 }
+
+type ParticipantProfileLookup = {
+  profiles: Pick<DecisionParticipantProfile, "display_name"> | null;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const isParticipantProfileLookup = (value: unknown): value is ParticipantProfileLookup => {
+  if (!isRecord(value) || !('profiles' in value)) return false;
+  const profilesValue = value.profiles;
+  if (profilesValue === null) return true;
+  return isRecord(profilesValue) && (profilesValue.display_name === null || typeof profilesValue.display_name === 'string');
+};
 
 interface TaskDecisionResponseProps {
   decisionId: string;
@@ -263,7 +278,9 @@ export const TaskDecisionResponse = ({
             .eq('id', participantId)
             .single();
 
-          const participantName = (participantProfile as any)?.profiles?.display_name || 'Ein Teilnehmer';
+          const participantName = isParticipantProfileLookup(participantProfile)
+            ? (participantProfile.profiles?.display_name || 'Ein Teilnehmer')
+            : 'Ein Teilnehmer';
 
           await supabase.rpc('create_notification', {
             user_id_param: decision.created_by,
