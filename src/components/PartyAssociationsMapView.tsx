@@ -5,13 +5,70 @@ import * as L from 'leaflet';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Users, Building, Phone, Mail, Globe, Loader2 } from "lucide-react";
-import { usePartyAssociations } from '@/hooks/usePartyAssociations';
+import { PartyAssociation, usePartyAssociations } from '@/hooks/usePartyAssociations';
+import { hasOwnProperty } from '@/utils/typeSafety';
 
 interface PartyAssociationMapProps {
-  associations: any[];
-  selectedAssociation?: any;
-  onAssociationClick?: (association: any) => void;
+  associations: PartyAssociationViewModel[];
+  selectedAssociation?: PartyAssociationViewModel | null;
+  onAssociationClick?: (association: PartyAssociationViewModel) => void;
 }
+
+interface PartyAssociationViewModel {
+  id: string;
+  name: string;
+  fullAddress: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  centerCoordinates: { lat: number; lng: number } | null;
+  coverageAreas: string[];
+}
+
+const toCoverageAreas = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0);
+  }
+
+  if (typeof value === 'string') {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0);
+      }
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
+};
+
+const toAssociationViewModel = (association: PartyAssociation): PartyAssociationViewModel | null => {
+  if (!association.name?.trim()) return null;
+  const dynamicCoordinates = hasOwnProperty(association as unknown, 'center_coordinates')
+    ? (association as Record<'center_coordinates', unknown>).center_coordinates
+    : association.contact_info;
+  const coordinates = dynamicCoordinates;
+  const centerCoordinates =
+    hasOwnProperty(coordinates, 'lat') &&
+    hasOwnProperty(coordinates, 'lng') &&
+    typeof coordinates.lat === 'number' &&
+    typeof coordinates.lng === 'number'
+      ? { lat: coordinates.lat, lng: coordinates.lng }
+      : null;
+
+  return {
+    id: association.id,
+    name: association.name,
+    fullAddress: association.full_address ?? null,
+    phone: association.phone ?? null,
+    email: association.email ?? null,
+    website: association.website ?? null,
+    centerCoordinates,
+    coverageAreas: toCoverageAreas(association.coverage_areas),
+  };
+};
 
 const PartyAssociationMap: React.FC<PartyAssociationMapProps> = ({ 
   associations, 
@@ -61,16 +118,16 @@ const PartyAssociationMap: React.FC<PartyAssociationMapProps> = ({
     let bounds = L.latLngBounds([]);
     let validMarkers = 0;
 
-    associations.forEach(association => {
+    associations.forEach((association) => {
       // Try to get coordinates from center_coordinates or parse from address
       let coords: { lat: number; lng: number } | null = null;
       
-      if (association.center_coordinates) {
-        coords = association.center_coordinates;
-      } else if (association.full_address) {
+      if (association.centerCoordinates) {
+        coords = association.centerCoordinates;
+      } else if (association.fullAddress) {
         // For now, we'll use a simple city-based coordinate lookup
         // In production, you'd use a geocoding service
-        coords = getCityCoordinates(association.full_address);
+        coords = getCityCoordinates(association.fullAddress);
       }
 
       if (coords && typeof coords.lat === 'number' && typeof coords.lng === 'number') {
@@ -92,13 +149,13 @@ const PartyAssociationMap: React.FC<PartyAssociationMapProps> = ({
               <p style="color: #16a34a; font-weight: bold; margin: 4px 0 0 0; font-size: 14px;">GRÜNE Kreisverband</p>
             </div>
             
-            ${association.full_address ? `
+            ${association.fullAddress ? `
               <div style="margin: 8px 0; padding: 8px; background: #f0f9ff; border-radius: 6px;">
                 <div style="display: flex; align-items: flex-start; gap: 8px;">
                   <span style="color: #16a34a; font-size: 16px;">📍</span>
                   <div>
                     <strong style="color: #374151;">Adresse:</strong><br>
-                    <span style="color: #6b7280; line-height: 1.4;">${association.full_address}</span>
+                    <span style="color: #6b7280; line-height: 1.4;">${association.fullAddress}</span>
                   </div>
                 </div>
               </div>
@@ -136,10 +193,10 @@ const PartyAssociationMap: React.FC<PartyAssociationMapProps> = ({
               ` : ''}
             </div>
             
-            ${association.coverage_areas && JSON.parse(association.coverage_areas || '[]').length > 0 ? `
+            ${association.coverageAreas.length > 0 ? `
               <div style="margin-top: 12px; padding: 8px; background: #f0fdf4; border-radius: 6px; border-left: 3px solid #16a34a;">
                 <strong style="color: #15803d; font-size: 12px;">🗺️ Zuständigkeitsgebiet:</strong><br>
-                <span style="color: #374151; font-size: 12px; line-height: 1.4;">${JSON.parse(association.coverage_areas).join(', ')}</span>
+                <span style="color: #374151; font-size: 12px; line-height: 1.4;">${association.coverageAreas.join(', ')}</span>
               </div>
             ` : ''}
           </div>
@@ -255,9 +312,9 @@ const getCityCoordinates = (address: string): { lat: number; lng: number } | nul
 
 export const PartyAssociationsMapView = () => {
   const { associations, loading } = usePartyAssociations();
-  const [selectedAssociation, setSelectedAssociation] = useState<any>(null);
+  const [selectedAssociation, setSelectedAssociation] = useState<PartyAssociationViewModel | null>(null);
 
-  const handleAssociationClick = (association: any) => {
+  const handleAssociationClick = (association: PartyAssociationViewModel) => {
     setSelectedAssociation(association);
   };
 
@@ -272,9 +329,11 @@ export const PartyAssociationsMapView = () => {
     );
   }
 
-  const activeAssociations = associations.filter(a => a.name && a.name.trim());
+  const activeAssociations = associations
+    .map(toAssociationViewModel)
+    .filter((association): association is PartyAssociationViewModel => association !== null);
   const associationsWithContact = activeAssociations.filter(a => a.phone || a.email || a.website);
-  const associationsWithAddress = activeAssociations.filter(a => a.full_address);
+  const associationsWithAddress = activeAssociations.filter(a => a.fullAddress);
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -362,14 +421,14 @@ export const PartyAssociationsMapView = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                {selectedAssociation.full_address && (
+                {selectedAssociation.fullAddress && (
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <MapPin className="h-4 w-4 text-green-600" />
                       <span className="text-sm font-medium">Adresse</span>
                     </div>
                     <p className="text-sm text-muted-foreground pl-6">
-                      {selectedAssociation.full_address}
+                      {selectedAssociation.fullAddress}
                     </p>
                   </div>
                 )}
