@@ -70,6 +70,7 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
 
     return {
       ...template,
+      layout_settings: template.layout_settings as unknown as LetterTemplate['layout_settings'],
       header_text_elements: headerElements as Json[],
     };
   };
