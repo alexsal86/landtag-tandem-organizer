@@ -3,8 +3,11 @@
   "compilerOptions": {
     "noImplicitAny": true
   },
-  "include": [
+  "include": [],
+  "exclude": [],
+  "files": [
     "src/hooks/useNotifications.tsx",
+    "src/hooks/useMessagesRealtime.tsx",
     "src/hooks/useNavigationNotifications.tsx",
     "src/components/NotificationBell.tsx",
     "src/components/NotificationCenter.tsx",

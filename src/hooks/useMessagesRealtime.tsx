@@ -1,9 +1,37 @@
-import { useEffect, useRef, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { useEffect, useRef, useCallback } from 'react';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 type Listener = () => void;
-type RealtimeSubscriber = (onEvent: Listener) => void;
+
+interface MessageRow {
+  id: string;
+  author_id: string | null;
+}
+
+interface MessageRecipientRow {
+  id: string;
+  message_id: string;
+  recipient_id: string;
+}
+
+interface MessageConfirmationRow {
+  id: string;
+  message_id: string;
+  user_id: string;
+}
+
+type MessageInsertPayload = RealtimePostgresChangesPayload<MessageRow> & { eventType: 'INSERT' };
+type MessageUpdatePayload = RealtimePostgresChangesPayload<MessageRow> & { eventType: 'UPDATE' };
+type MessageRecipientPayload = RealtimePostgresChangesPayload<MessageRecipientRow>;
+type MessageConfirmationPayload = RealtimePostgresChangesPayload<MessageConfirmationRow>;
+
+type MessagesRealtimeEvent =
+  | { type: 'messages-insert'; payload: MessageInsertPayload }
+  | { type: 'messages-update'; payload: MessageUpdatePayload }
+  | { type: 'message-recipients-change'; payload: MessageRecipientPayload }
+  | { type: 'message-confirmations-change'; payload: MessageConfirmationPayload };
 
 /**
  * Shared Realtime hook for messages, message_recipients, and message_confirmations.
@@ -24,6 +52,10 @@ function notifyListeners(): void {
   }, 1000);
 }
 
+function handleRealtimeEvent(_event: MessagesRealtimeEvent): void {
+  notifyListeners();
+}
+
 function ensureChannel(userId: string): void {
   if (channelRef && currentUserId === userId) return;
   
@@ -41,25 +73,39 @@ function ensureChannel(userId: string): void {
       schema: 'public',
       table: 'messages',
       filter: `author_id=eq.${userId}`,
-    }, notifyListeners)
+    }, (payload: RealtimePostgresChangesPayload<MessageRow>) => {
+      if (payload.eventType !== 'INSERT') {
+        return;
+      }
+      handleRealtimeEvent({ type: 'messages-insert', payload: payload as MessageInsertPayload });
+    })
     .on('postgres_changes', {
       event: 'UPDATE',
       schema: 'public',
       table: 'messages',
       filter: `author_id=eq.${userId}`,
-    }, notifyListeners)
+    }, (payload: RealtimePostgresChangesPayload<MessageRow>) => {
+      if (payload.eventType !== 'UPDATE') {
+        return;
+      }
+      handleRealtimeEvent({ type: 'messages-update', payload: payload as MessageUpdatePayload });
+    })
     .on('postgres_changes', {
       event: '*',
       schema: 'public',
       table: 'message_recipients',
       filter: `recipient_id=eq.${userId}`,
-    }, notifyListeners)
+    }, (payload: RealtimePostgresChangesPayload<MessageRecipientRow>) => {
+      handleRealtimeEvent({ type: 'message-recipients-change', payload });
+    })
     .on('postgres_changes', {
       event: '*',
       schema: 'public',
       table: 'message_confirmations',
       filter: `user_id=eq.${userId}`,
-    }, notifyListeners)
+    }, (payload: RealtimePostgresChangesPayload<MessageConfirmationRow>) => {
+      handleRealtimeEvent({ type: 'message-confirmations-change', payload });
+    })
     .subscribe();
 }
 

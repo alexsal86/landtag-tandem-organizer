@@ -21,11 +21,21 @@ interface NavigationVisitRow {
   last_visited_at: string | null;
 }
 
+type NavigationVisitRealtimePayload = RealtimePostgresChangesPayload<NavigationVisitRow>;
+type NavigationVisitRealtimeEvent =
+  | { type: 'navigation-visit-insert'; payload: NavigationVisitRealtimePayload & { eventType: 'INSERT' } }
+  | { type: 'navigation-visit-update'; payload: NavigationVisitRealtimePayload & { eventType: 'UPDATE' } }
+  | { type: 'navigation-visit-delete'; payload: NavigationVisitRealtimePayload & { eventType: 'DELETE' } };
+
 type NavigationSyncPayload = {
   context?: string;
   timestamp?: string;
   userId?: string;
 };
+
+type NavigationStorageEvent =
+  | { type: 'navigation-visit-sync'; payload: NavigationSyncPayload }
+  | { type: 'notifications-marked-read' };
 
 type NotificationsChangedDetail = {
   source: 'notifications' | 'navigation';
@@ -51,6 +61,38 @@ const parseNavigationSyncPayload = (value: string): NavigationSyncPayload | null
     debugConsole.error('Error parsing navigation sync payload:', error);
     return null;
   }
+};
+
+const parseNavigationStorageEvent = (event: StorageEvent): NavigationStorageEvent | null => {
+  if (!event.newValue) {
+    return null;
+  }
+
+  if (event.key === 'navigation_visit_sync') {
+    const payload = parseNavigationSyncPayload(event.newValue);
+    return payload ? { type: 'navigation-visit-sync', payload } : null;
+  }
+
+  if (event.key === 'notifications_marked_read') {
+    return { type: 'notifications-marked-read' };
+  }
+
+  return null;
+};
+
+const mapNavigationVisitRealtimeEvent = (
+  payload: NavigationVisitRealtimePayload,
+): NavigationVisitRealtimeEvent | null => {
+  if (payload.eventType === 'INSERT') {
+    return { type: 'navigation-visit-insert', payload: payload as NavigationVisitRealtimePayload & { eventType: 'INSERT' } };
+  }
+  if (payload.eventType === 'UPDATE') {
+    return { type: 'navigation-visit-update', payload: payload as NavigationVisitRealtimePayload & { eventType: 'UPDATE' } };
+  }
+  if (payload.eventType === 'DELETE') {
+    return { type: 'navigation-visit-delete', payload: payload as NavigationVisitRealtimePayload & { eventType: 'DELETE' } };
+  }
+  return null;
 };
 
 const QUERY_KEY = 'navigation-notification-counts';
@@ -213,7 +255,11 @@ export const useNavigationNotifications = (): NavigationNotifications => {
           table: 'user_navigation_visits',
           filter: `user_id=eq.${user.id}`,
         },
-        (_payload: RealtimePostgresChangesPayload<NavigationVisitRow>): void => {
+        (payload: NavigationVisitRealtimePayload): void => {
+          const visitEvent = mapNavigationVisitRealtimeEvent(payload);
+          if (!visitEvent) {
+            return;
+          }
           debouncedInvalidate();
         },
       )
@@ -231,11 +277,13 @@ export const useNavigationNotifications = (): NavigationNotifications => {
   // Cross-tab sync
   useEffect(() => {
     const handleStorageChange = (event: StorageEvent): void => {
-      if (!user || !event.newValue) return;
+      if (!user) return;
+      const storageEvent = parseNavigationStorageEvent(event);
+      if (!storageEvent) return;
 
-      if (event.key === 'navigation_visit_sync') {
-        const payload = parseNavigationSyncPayload(event.newValue);
-        if (!payload || payload.userId !== user.id || !payload.context || !payload.timestamp) return;
+      if (storageEvent.type === 'navigation-visit-sync') {
+        const payload = storageEvent.payload;
+        if (payload.userId !== user.id || !payload.context || !payload.timestamp) return;
 
         queryClient.setQueryData<NavigationCounts>(
           [QUERY_KEY, userId, tenantId],
@@ -244,7 +292,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
         return;
       }
 
-      if (event.key === 'notifications_marked_read') {
+      if (storageEvent.type === 'notifications-marked-read') {
         invalidateCounts();
       }
     };

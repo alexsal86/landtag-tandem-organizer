@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { debugConsole } from '@/utils/debugConsole';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 
-interface Profile {
+interface NotificationProfile {
   user_id: string;
   display_name: string | null;
   avatar_url: string | null;
@@ -30,9 +30,14 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
   const [content, setContent] = useState("");
   const [isForAllUsers, setIsForAllUsers] = useState(false);
   const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [profiles, setProfiles] = useState<NotificationProfile[]>([]);
   const [loading, setLoading] = useState(false);
-  const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState<NotificationProfile | null>(null);
+
+  const profilesByUserId = useMemo<Map<string, NotificationProfile>>(
+    () => new Map<string, NotificationProfile>(profiles.map((profile: NotificationProfile) => [profile.user_id, profile])),
+    [profiles],
+  );
 
   useEffect(() => {
     const fetchProfiles = async () => {
@@ -42,7 +47,7 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
         .select('user_id, display_name, avatar_url')
         .neq('user_id', user?.id ?? '');
       
-      setProfiles(data || []);
+      setProfiles((data as NotificationProfile[] | null) ?? []);
 
       // Fetch current user's profile
       const { data: currentProfile } = await supabase
@@ -51,7 +56,7 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
         .eq('user_id', user?.id ?? '')
         .single();
       
-      setCurrentUserProfile(currentProfile);
+      setCurrentUserProfile((currentProfile as NotificationProfile | null) ?? null);
     };
 
     if (user) {
@@ -89,14 +94,17 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
     setLoading(true);
 
     try {
-      await (supabase as any)
-        .rpc('send_message', {
-          author_id_param: user.id,
-          title_param: title.trim() || "Ohne Betreff",
-          content_param: content.trim(),
-          is_for_all_param: isForAllUsers,
-          recipient_ids_param: isForAllUsers ? [] : selectedRecipients
-        });
+      const { error } = await supabase.rpc('send_message', {
+        author_id_param: user.id,
+        title_param: title.trim() || "Ohne Betreff",
+        content_param: content.trim(),
+        is_for_all_param: isForAllUsers,
+        recipient_ids_param: isForAllUsers ? [] : selectedRecipients
+      });
+
+      if (error) {
+        throw error;
+      }
 
 
       toast({
@@ -166,7 +174,9 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {profiles.map((profile) => (
+                  {profiles.map((profile) => {
+                    const resolvedProfile = profilesByUserId.get(profile.user_id) ?? profile;
+                    return (
                     <div key={profile.user_id} className="flex items-center space-x-2">
                       <Checkbox
                         id={profile.user_id}
@@ -174,19 +184,20 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
                         onCheckedChange={() => handleRecipientToggle(profile.user_id)}
                       />
                       <Avatar className="h-6 w-6">
-                        <AvatarImage src={profile.avatar_url ?? undefined} />
+                        <AvatarImage src={resolvedProfile.avatar_url ?? undefined} />
                         <AvatarFallback className="text-xs">
-                          {profile.display_name?.charAt(0) || 'U'}
+                          {resolvedProfile.display_name?.charAt(0) || 'U'}
                         </AvatarFallback>
                       </Avatar>
                       <Label 
                         htmlFor={profile.user_id}
                         className="cursor-pointer flex-1"
                       >
-                        {profile.display_name || 'Unbekannt'}
+                        {resolvedProfile.display_name || 'Unbekannt'}
                       </Label>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </ScrollArea>
