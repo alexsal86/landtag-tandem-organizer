@@ -83,3 +83,10 @@ Verwende bevorzugt die zentralen Helfer aus `src/utils/typeSafety.ts`:
 4. Supabase-Resultate früh normalisieren.
 5. Hook-Rückgaben explizit typisieren.
 6. Erst danach feinere Domänen- und UI-Typen nachziehen.
+
+
+## Übergangsregel für `no-explicit-any`
+
+- Global ist `@typescript-eslint/no-explicit-any` aktuell auf **`warn`** gesetzt, damit die Migration inkrementell erfolgen kann.
+- Für spätere Verschärfung sind Datei-Scopes für `error` bereits im Lint-Setup vorbereitet, aber standardmäßig deaktiviert.
+- Aktivierung erfolgt erst, wenn Any-Delta, CI-Stabilität und Team-Kapazität für den jeweiligen Scope dokumentiert sind.
