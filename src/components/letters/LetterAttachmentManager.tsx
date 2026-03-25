@@ -10,25 +10,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import type { Database } from '@/integrations/supabase/types';
+import type { LetterAttachmentRecord } from '@/types/letterLayout';
 
-interface Attachment {
-  id: string;
-  file_name: string;
-  file_path: string | null;
-  file_type?: string | null;
-  file_size?: number | null;
-  uploaded_by: string | null;
-  created_at: string;
-  display_name?: string | null;
-  letter_id?: string;
-  document_id?: string | null;
-  updated_at?: string | null;
-}
+type Attachment = LetterAttachmentRecord;
+type LinkedDocument = Database['public']['Tables']['documents']['Row'];
 
 interface LetterAttachmentManagerProps {
   letterId: string;
   attachments: Attachment[];
-  onAttachmentUpdate: (attachments: Attachment[]) => void;
+  onAttachmentUpdate: (attachments?: Attachment[]) => void;
   readonly?: boolean;
 }
 
@@ -46,7 +37,7 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
   const [editingAttachment, setEditingAttachment] = useState<Attachment | null>(null);
   const [newDisplayName, setNewDisplayName] = useState("");
   const [showDocumentSelector, setShowDocumentSelector] = useState(false);
-  const [documents, setDocuments] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<LinkedDocument[]>([]);
 
   // Fetch documents from document management
   useEffect(() => {

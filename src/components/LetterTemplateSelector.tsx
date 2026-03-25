@@ -15,22 +15,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import LetterTemplateManager from '@/components/LetterTemplateManager';
 import { debugConsole } from '@/utils/debugConsole';
+import type { Database } from '@/integrations/supabase/types';
+import type { LetterTemplate } from '@/components/letters/types';
 
-interface LetterTemplate {
-  id: string;
-  name: string;
-  letterhead_html: string;
-  letterhead_css: string;
-  response_time_days: number;
-  is_default: boolean | null;
-  is_active: boolean | null;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-  tenant_id: string;
-  default_sender_id?: string | null;
-  default_info_blocks?: string[] | null;
-}
+type SenderInfo = Pick<Database['public']['Tables']['sender_information']['Row'], 'id' | 'name' | 'organization' | 'is_default'>;
+type InformationBlock = Pick<Database['public']['Tables']['information_blocks']['Row'], 'id' | 'name' | 'label' | 'is_default'>;
 
 interface LetterTemplateSelectorProps {
   onSelect: (template: LetterTemplate | null) => void;
@@ -46,8 +35,8 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
   const { toast } = useToast();
   
   const [templates, setTemplates] = useState<LetterTemplate[]>([]);
-  const [senderInfos, setSenderInfos] = useState<any[]>([]);
-  const [infoBlocks, setInfoBlocks] = useState<any[]>([]);
+  const [senderInfos, setSenderInfos] = useState<SenderInfo[]>([]);
+  const [infoBlocks, setInfoBlocks] = useState<InformationBlock[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showTemplateManager, setShowTemplateManager] = useState(false);

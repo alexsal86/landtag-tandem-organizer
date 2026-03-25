@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { buildFooterBlocksFromStored, resolveBlockWidthMm } from '@/components/letters/footerBlockUtils';
 import { debugConsole } from '@/utils/debugConsole';
 import type { DbInformationBlock, DbLetterAttachment, DbSenderInformation, HeaderImagePosition, InformationBlockData, LetterPdfGenerationResult, LetterRecord, LetterTemplate } from '@/components/letter-pdf/types';
-import type { LetterLayoutSettings } from '@/types/letterLayout';
+import { DEFAULT_DIN5008_LAYOUT, isLetterLayoutSettings, type LetterLayoutSettings } from '@/types/letterLayout';
 
 export const generateLetterPDF = async (letter: LetterRecord): Promise<LetterPdfGenerationResult | null> => {
   try {
@@ -13,40 +13,13 @@ export const generateLetterPDF = async (letter: LetterRecord): Promise<LetterPdf
     // This ensures 100% identical PDFs by using the EXACT same code
     
     // Default layout settings
-    const DEFAULT_LAYOUT = {
-      pageWidth: 210,
-      pageHeight: 297,
-      margins: { left: 25, right: 20, top: 45, bottom: 25 },
-      header: { height: 45, marginBottom: 8.46 },
-      addressField: { top: 46, left: 25, width: 85, height: 40, returnAddressFontSize: 8, recipientFontSize: 10 },
-      infoBlock: { top: 50, left: 125, width: 75, height: 40 },
-      subject: { top: 98.46, marginBottom: 8, fontSize: 13 },
-      content: { top: 98.46, maxHeight: 165, lineHeight: 4.5, fontSize: 11 },
-      footer: { top: 272, height: 18 },
-      attachments: { top: 230 },
-      foldHoleMarks: {
-        enabled: true,
-        left: 3,
-        strokeWidthPt: 1,
-        foldMarkWidth: 5,
-        holeMarkWidth: 8,
-        topMarkY: 105,
-        holeMarkY: 148.5,
-        bottomMarkY: 210,
-      },
-      pagination: {
-        enabled: true,
-        top: 263.77,
-        align: 'right' as const,
-        fontSize: 8,
-      }
-    };
+    const DEFAULT_LAYOUT: LetterLayoutSettings = { ...DEFAULT_DIN5008_LAYOUT };
     
     let template: LetterTemplate | null = null;
     let senderInfo: DbSenderInformation | null = null;
     let informationBlock: DbInformationBlock | null = null;
     let attachments: DbLetterAttachment[] = [];
-    let layoutSettings: LetterLayoutSettings | typeof DEFAULT_LAYOUT = DEFAULT_LAYOUT;
+    let layoutSettings: LetterLayoutSettings = DEFAULT_LAYOUT;
 
     // Fetch template
     if (letter.template_id) {
@@ -59,8 +32,8 @@ export const generateLetterPDF = async (letter: LetterRecord): Promise<LetterPdf
       if (!templateError && templateData) {
         template = templateData as LetterTemplate;
         // Parse layout_settings from jsonb
-        if (templateData.layout_settings && typeof templateData.layout_settings === 'object') {
-          layoutSettings = templateData.layout_settings as typeof DEFAULT_LAYOUT;
+        if (isLetterLayoutSettings(templateData.layout_settings)) {
+          layoutSettings = templateData.layout_settings;
         }
       }
     }
@@ -206,10 +179,10 @@ export const generateLetterPDF = async (letter: LetterRecord): Promise<LetterPdf
       return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
     };
 
-    const returnAddressFontSize = resolveFontSizePt((layoutSettings as any).addressField?.returnAddressFontSize, 8);
-    const recipientFontSize = resolveFontSizePt((layoutSettings as any).addressField?.recipientFontSize, 10);
-    const subjectFontSize = resolveFontSizePt((layoutSettings as any).subject?.fontSize, 13);
-    const contentFontSize = resolveFontSizePt((layoutSettings as any).content?.fontSize, 11);
+    const returnAddressFontSize = resolveFontSizePt(layoutSettings.addressField?.returnAddressFontSize, 8);
+    const recipientFontSize = resolveFontSizePt(layoutSettings.addressField?.recipientFontSize, 10);
+    const subjectFontSize = resolveFontSizePt(layoutSettings.subject?.fontSize, 13);
+    const contentFontSize = resolveFontSizePt(layoutSettings.content?.fontSize, 11);
     const paginationTop = 263.77;
     const foldHoleMarks = {
       enabled: layoutSettings.foldHoleMarks?.enabled ?? true,

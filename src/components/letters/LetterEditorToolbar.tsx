@@ -11,6 +11,11 @@ import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import LetterAttachmentManager from './LetterAttachmentManager';
 import type { Letter, LetterTemplate } from './types';
+import type { Database } from '@/integrations/supabase/types';
+import type { LetterAttachmentRecord } from '@/types/letterLayout';
+
+type SenderInfo = Database['public']['Tables']['sender_information']['Row'];
+type InformationBlock = Database['public']['Tables']['information_blocks']['Row'];
 
 interface LetterEditorToolbarProps {
   letter?: Letter;
@@ -28,10 +33,10 @@ interface LetterEditorToolbarProps {
   setShowBriefDetails: (v: boolean) => void;
   showPagination: boolean;
   setShowPagination: (v: boolean) => void;
-  attachments: any[];
+  attachments: LetterAttachmentRecord[];
   fetchAttachments: () => void;
-  senderInfos: any[];
-  informationBlocks: any[];
+  senderInfos: SenderInfo[];
+  informationBlocks: InformationBlock[];
   templates: LetterTemplate[];
   computedSalutation: string;
   onTemplateChange: (templateId: string) => void;
@@ -83,7 +88,7 @@ export const LetterEditorToolbar: React.FC<LetterEditorToolbarProps> = React.mem
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[420px] p-3">
               {letter?.id ? (
-                <LetterAttachmentManager letterId={letter.id} attachments={attachments as any} onAttachmentUpdate={fetchAttachments} readonly={!canEdit} />
+                <LetterAttachmentManager letterId={letter.id} attachments={attachments} onAttachmentUpdate={fetchAttachments} readonly={!canEdit} />
               ) : (
                 <div className="p-4 text-center text-muted-foreground border border-dashed rounded-lg">
                   <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -173,7 +178,7 @@ export const LetterEditorToolbar: React.FC<LetterEditorToolbarProps> = React.mem
                     <SelectTrigger><SelectValue placeholder="Absender auswählen..." /></SelectTrigger>
                     <SelectContent className="z-[100]">
                       <SelectItem value="none">Kein Absender</SelectItem>
-                      {senderInfos.map((info: any) => (
+                      {senderInfos.map((info) => (
                         <SelectItem key={info.id} value={info.id}>
                           <div className="flex items-center gap-2">
                             <Building className="h-4 w-4" />{info.name}
@@ -187,7 +192,7 @@ export const LetterEditorToolbar: React.FC<LetterEditorToolbarProps> = React.mem
                 <div>
                   <Label>Informationsblöcke</Label>
                   <div className="space-y-2 mt-2">
-                    {informationBlocks.map((block: any) => (
+                    {informationBlocks.map((block) => (
                       <div key={block.id} className="flex items-center space-x-2">
                         <input type="checkbox" id={`block-${block.id}`} checked={editedLetter.information_block_ids?.includes(block.id) || false}
                           onChange={(e) => {
