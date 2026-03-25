@@ -320,8 +320,8 @@ export function WidgetConfigDialog({ widget, open, onOpenChange, onSave }: Widge
                       <Label>Arbeitszeit (Minuten)</Label>
                       <Input
                         type="number"
-                        value={config.workDuration || 25}
-                        onChange={(e) => updateConfig('workDuration', Number(e.target.value))}
+                        value={(config as any).workDuration || 25}
+                        onChange={(e) => updateConfig('workDuration' as any, Number(e.target.value))}
                         min={1}
                         max={60}
                       />
