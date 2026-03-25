@@ -2,6 +2,104 @@ import type { Database } from '@/integrations/supabase/types';
 
 export type LetterAttachmentRecord = Database['public']['Tables']['letter_attachments']['Row'];
 export type LetterTemplateRecord = Database['public']['Tables']['letter_templates']['Row'];
+export type SenderInformationRecord = Database['public']['Tables']['sender_information']['Row'];
+export type InformationBlockRecord = Database['public']['Tables']['information_blocks']['Row'];
+
+export type LayoutBlockKey =
+  | 'header'
+  | 'addressField'
+  | 'returnAddress'
+  | 'infoBlock'
+  | 'subject'
+  | 'content'
+  | 'footer'
+  | 'attachments'
+  | 'pagination';
+
+export type LayoutEditorTab =
+  | 'canvas-designer'
+  | 'header-designer'
+  | 'footer-designer'
+  | 'layout-settings'
+  | 'general'
+  | 'block-address'
+  | 'block-info'
+  | 'block-subject'
+  | 'block-content'
+  | 'block-attachments';
+
+export interface LetterBlockLine {
+  id: string;
+  type: string;
+  label?: string;
+  value?: string;
+  content?: string;
+  isVariable?: boolean;
+  labelBold?: boolean;
+  valueBold?: boolean;
+  fontSize?: number;
+  fontFamily?: string;
+  color?: string;
+  spacerHeight?: number;
+  widthValue?: number;
+  widthUnit?: string;
+  prefixShape?: 'none' | 'line' | 'circle' | 'rectangle' | 'sunflower' | 'lion' | 'wappen';
+}
+
+export interface LineModeBlockData {
+  mode: 'lines';
+  lines: LetterBlockLine[];
+}
+
+export interface LetterCanvasElement {
+  id: string;
+  type: 'text' | 'image' | 'shape' | 'block';
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  content?: string;
+  blockContent?: string;
+  imageUrl?: string;
+  blobUrl?: string;
+  fontSize?: number;
+  fontFamily?: string;
+  fontWeight?: string;
+  fontStyle?: string;
+  textDecoration?: string;
+  color?: string;
+  textLineHeight?: number;
+  textAlign?: 'left' | 'center' | 'right' | 'justify';
+  isVariable?: boolean;
+  variablePreviewText?: string;
+  shapeType?: 'line' | 'circle' | 'rectangle' | 'sunflower' | 'lion' | 'wappen';
+  fillColor?: string;
+  strokeColor?: string;
+  strokeWidth?: number;
+  borderRadius?: number;
+}
+
+export interface LetterLayoutBlockConfig {
+  key: LayoutBlockKey;
+  label: string;
+  color: string;
+  canMoveX?: boolean;
+  canResize?: boolean;
+  jumpTo: LayoutEditorTab;
+  isCustom?: boolean;
+}
+
+export interface LetterLayoutCanvasState {
+  selected: LayoutBlockKey;
+  zoomLevel: number;
+  showRuler: boolean;
+  plainPreview: boolean;
+}
+
+export interface LetterLayoutToolActions {
+  onLayoutChange: (settings: LetterLayoutSettings) => void;
+  onJumpToTab?: (tab: LayoutEditorTab) => void;
+}
 
 export interface LetterLayoutSettings {
   pageWidth: number;
@@ -88,7 +186,7 @@ export interface LetterLayoutSettings {
     signatureImagePath?: string;
     fontSize?: number;
   };
-  blockContent?: Record<string, unknown>;
+  blockContent?: Record<string, LetterCanvasElement[] | LineModeBlockData>;
   disabledBlocks?: Array<'header' | 'addressField' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments'>;
   lockedBlocks?: Array<'header' | 'addressField' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments'>;
 }
@@ -113,6 +211,12 @@ export const isLetterLayoutSettings = (value: unknown): value is LetterLayoutSet
     candidate.footer &&
     candidate.attachments
   );
+};
+
+export const isLineModeBlockData = (value: unknown): value is LineModeBlockData => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const candidate = value as Partial<LineModeBlockData>;
+  return candidate.mode === 'lines' && Array.isArray(candidate.lines);
 };
 
 export const DEFAULT_DIN5008_LAYOUT: LetterLayoutSettings = {

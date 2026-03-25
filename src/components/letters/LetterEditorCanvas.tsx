@@ -14,6 +14,12 @@ import { EditableCanvasOverlay } from './EditableCanvasOverlay';
 import type { HeaderElement } from '@/components/canvas-engine/types';
 import type { BlockLine } from '@/components/letters/BlockLineEditor';
 import { LetterAttachmentList, LetterClosingBlock } from './LetterContentBlocks';
+import type {
+  InformationBlockRecord,
+  LetterAttachmentRecord,
+  LetterLayoutSettings,
+  SenderInformationRecord,
+} from '@/types/letterLayout';
 
 // ─── DIN A4 constants ────────────────────────────────────────────────────────
 const PAGE_W_MM = 210;
@@ -32,16 +38,16 @@ interface LetterEditorCanvasProps {
   subject?: string;
   salutation?: string;
   content: string;
-  contentNodes?: any;
-  recipientAddress?: any;
+  contentNodes?: string;
+  recipientAddress?: { name?: string; address?: string };
   letterDate?: string;
   referenceNumber?: string;
-  attachments?: any[];
+  attachments?: LetterAttachmentRecord[];
   showPagination?: boolean;
-  template?: any;
-  layoutSettings?: any;
-  senderInfo?: any;
-  informationBlock?: any;
+  template?: { layout_settings?: LetterLayoutSettings };
+  layoutSettings?: LetterLayoutSettings;
+  senderInfo?: SenderInformationRecord | null;
+  informationBlock?: InformationBlockRecord[] | null;
   addressFieldElements?: HeaderElement[];
   returnAddressElements?: HeaderElement[];
   infoBlockElements?: HeaderElement[];
@@ -67,12 +73,12 @@ interface LetterEditorCanvasProps {
   onSalutationChange?: (salutation: string) => void;
   onRecipientNameChange?: (name: string) => void;
   onRecipientAddressChange?: (address: string) => void;
-  onRecipientContactSelect?: (contact: any) => void;
+  onRecipientContactSelect?: (contact: { id: string }) => void;
   onSenderChange?: (senderId: string) => void;
   onInfoBlockChange?: (blockIds: string[]) => void;
   onAttachmentNameChange?: (attachmentId: string, displayName: string) => void;
-  senderInfos?: any[];
-  informationBlocks?: any[];
+  senderInfos?: SenderInformationRecord[];
+  informationBlocks?: InformationBlockRecord[];
   selectedSenderId?: string;
   selectedRecipientContactId?: string;
   selectedInfoBlockIds?: string[];
@@ -567,7 +573,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
                   </SelectTrigger>
                   <SelectContent className="z-[200]">
                     <SelectItem value="none">Kein Absender</SelectItem>
-                    {senderInfos.map((info: any) => (
+                    {senderInfos.map((info) => (
                       <SelectItem key={info.id} value={info.id}>{info.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -625,7 +631,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
             >
               <div className="space-y-2">
                 <Label className="text-xs">Blöcke auswählen</Label>
-                {informationBlocks.map((block: any) => (
+                {informationBlocks.map((block) => (
                   <label key={block.id} className="flex items-center gap-2 text-xs cursor-pointer">
                     <input
                       type="checkbox"
