@@ -139,7 +139,7 @@ export function QuickCapture({ dossierId = null }: QuickCaptureProps) {
               dossier_id: dossierId,
               entry_type: "email",
               title: parsed.metadata.subject || "E-Mail (eingefügt)",
-              content: parsed.metadata.textContent || parsed.metadata.htmlContent || "",
+              content: parsed.textBody || parsed.htmlBody || "",
               metadata,
             });
             toast.success("E-Mail aus Outlook eingefügt");

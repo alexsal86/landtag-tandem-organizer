@@ -65,7 +65,7 @@ export function CaseFileLettersTab({ letters, onAdd, onRemove }: CaseFileLetters
     if (!selectedLetterId) return;
     setIsSubmitting(true);
     const selectedLetter = availableLetters.find(l => l.id === selectedLetterId);
-    const success = await onAdd(selectedLetterId, notes || undefined, selectedLetter?.title);
+    const success = await onAdd(selectedLetterId, notes || undefined, selectedLetter?.title ?? undefined);
     setIsSubmitting(false);
     if (success) {
       setDialogOpen(false);
