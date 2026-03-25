@@ -3,6 +3,8 @@ import { useDossiers, useUpdateDossier } from "../hooks/useDossiers";
 import { QuickCapture } from "./QuickCapture";
 import { EntryCard } from "./EntryCard";
 import { DossierLinksView } from "./DossierLinksView";
+import { DossierQualityFields } from "./DossierQualityFields";
+import { DossierReviewReminder } from "./DossierReviewReminder";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,7 +25,8 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
   const { data: entries, isLoading } = useDossierEntries(dossierId);
   const updateDossier = useUpdateDossier();
   const dossier = dossiers?.find((d) => d.id === dossierId);
-  const [activeTab, setActiveTab] = useState("alle");
+  const [activeSection, setActiveSection] = useState("eintraege");
+  const [activeEntryFilter, setActiveEntryFilter] = useState("alle");
   const [editOpen, setEditOpen] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editSummary, setEditSummary] = useState("");
@@ -31,9 +34,9 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
   const [editPriority, setEditPriority] = useState("");
 
   const entryTypes = Object.keys(ENTRY_TYPE_CONFIG) as EntryType[];
-  const filteredEntries = activeTab === "alle"
+  const filteredEntries = activeEntryFilter === "alle"
     ? entries
-    : entries?.filter((e) => e.entry_type === activeTab);
+    : entries?.filter((e) => e.entry_type === activeEntryFilter);
 
   const openEdit = () => {
     if (!dossier) return;
@@ -101,40 +104,59 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
         </Dialog>
       </div>
 
-      {/* Quick capture */}
-      <QuickCapture dossierId={dossierId} />
+      {/* Review reminder (shown at top if overdue) */}
+      {dossier && <DossierReviewReminder dossier={dossier} />}
 
-      {/* Links / Verknüpfungen */}
-      <DossierLinksView dossierId={dossierId} />
-
-      {/* Entry type filter tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      {/* Section tabs */}
+      <Tabs value={activeSection} onValueChange={setActiveSection}>
         <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="alle">Alle</TabsTrigger>
-          {entryTypes.map((t) => (
-            <TabsTrigger key={t} value={t}>
-              {ENTRY_TYPE_CONFIG[t].icon} {ENTRY_TYPE_CONFIG[t].label}
-            </TabsTrigger>
-          ))}
+          <TabsTrigger value="eintraege">📋 Einträge</TabsTrigger>
+          <TabsTrigger value="qualitaet">📊 Qualität</TabsTrigger>
+          <TabsTrigger value="verknuepfungen">🔗 Verknüpfungen</TabsTrigger>
         </TabsList>
-      </Tabs>
 
-      {/* Entries */}
-      {isLoading ? (
-        <div className="flex justify-center py-8">
-          <Loader2 className="animate-spin h-6 w-6 text-muted-foreground" />
-        </div>
-      ) : !filteredEntries?.length ? (
-        <p className="text-center text-sm text-muted-foreground py-8">
-          {activeTab === "alle" ? "Noch keine Einträge in diesem Dossier" : `Keine ${ENTRY_TYPE_CONFIG[activeTab as EntryType]?.label ?? activeTab}-Einträge`}
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {filteredEntries.map((entry) => (
-            <EntryCard key={entry.id} entry={entry} />
-          ))}
-        </div>
-      )}
+        <TabsContent value="eintraege" className="space-y-4">
+          {/* Quick capture */}
+          <QuickCapture dossierId={dossierId} />
+
+          {/* Entry type filter tabs */}
+          <Tabs value={activeEntryFilter} onValueChange={setActiveEntryFilter}>
+            <TabsList className="flex-wrap h-auto gap-1">
+              <TabsTrigger value="alle">Alle</TabsTrigger>
+              {entryTypes.map((t) => (
+                <TabsTrigger key={t} value={t}>
+                  {ENTRY_TYPE_CONFIG[t].icon} {ENTRY_TYPE_CONFIG[t].label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+
+          {/* Entries */}
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="animate-spin h-6 w-6 text-muted-foreground" />
+            </div>
+          ) : !filteredEntries?.length ? (
+            <p className="text-center text-sm text-muted-foreground py-8">
+              {activeEntryFilter === "alle" ? "Noch keine Einträge in diesem Dossier" : `Keine ${ENTRY_TYPE_CONFIG[activeEntryFilter as EntryType]?.label ?? activeEntryFilter}-Einträge`}
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {filteredEntries.map((entry) => (
+                <EntryCard key={entry.id} entry={entry} />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="qualitaet" className="space-y-4">
+          {dossier && <DossierQualityFields dossier={dossier} />}
+        </TabsContent>
+
+        <TabsContent value="verknuepfungen" className="space-y-4">
+          <DossierLinksView dossierId={dossierId} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
