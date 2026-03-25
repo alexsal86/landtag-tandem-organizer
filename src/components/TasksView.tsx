@@ -321,7 +321,13 @@ export function TasksView() {
                           <div className="mt-4 space-y-3 animate-fade-in">
                             <div className="border border-border rounded-lg p-3 bg-muted/10">
                               <div className="space-y-2">
-                                <SimpleRichTextEditor key={`${task.id}-${commentEditorKeys[task.id] || 0}`} initialContent={newComment[task.id] || ""} onChange={(value) => setNewComment(prev => ({ ...prev, [task.id]: value }))} placeholder="Kommentar hinzufügen..." minHeight="60px" />
+                                <SimpleRichTextEditor
+                                  initialContent={newComment[task.id] || ""}
+                                  contentVersion={`${task.id}-${commentEditorKeys[task.id] || 0}`}
+                                  onChange={(value) => setNewComment(prev => ({ ...prev, [task.id]: value }))}
+                                  placeholder="Kommentar hinzufügen..."
+                                  minHeight="60px"
+                                />
                                 <div className="flex justify-end">
                                   <Button onClick={async () => { const success = await ops.addComment(task.id, newComment[task.id] || ''); if (success) { setNewComment(prev => ({ ...prev, [task.id]: "" })); setCommentEditorKeys(prev => ({ ...prev, [task.id]: (prev[task.id] || 0) + 1 })); } }} disabled={!newComment[task.id]?.trim()} size="sm"><Send className="h-4 w-4" /></Button>
                                 </div>

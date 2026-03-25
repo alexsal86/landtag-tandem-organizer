@@ -173,7 +173,11 @@ export function EmailComposer() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-                <SimpleRichTextEditor key={hook.editorKey} initialContent={hook.bodyHtml} onChange={hook.setBodyHtml} />
+                <SimpleRichTextEditor
+                  initialContent={hook.bodyHtml}
+                  contentVersion={hook.editorKey}
+                  onChange={hook.setBodyHtml}
+                />
               </div>
             </CardContent>
           </Card>

@@ -50,7 +50,13 @@ export function DecisionCardActions({ commentEditorKey, decision, handleComplete
             <>
               <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground"><MessageSquare className={cn("h-4 w-4", promptColorClasses.icon)} />Begründung ergänzen</div>
               <p className="text-xs text-muted-foreground">Bitte begründe deine Entscheidung kurz. Der Refresh erfolgt nach dem Absenden.</p>
-              <SimpleRichTextEditor key={commentEditorKey} initialContent="" onChange={setCommentDraft} placeholder="Kurze Begründung eingeben..." minHeight="90px" />
+              <SimpleRichTextEditor
+                initialContent=""
+                contentVersion={commentEditorKey}
+                onChange={setCommentDraft}
+                placeholder="Kurze Begründung eingeben..."
+                minHeight="90px"
+              />
               <div className="flex justify-end"><Button type="button" size="sm" onClick={() => void handleSubmitJustification()} disabled={isSubmittingComment || !sanitizedCommentDraft} className={promptColorClasses.submitButton}><Send className="h-3.5 w-3.5 mr-1" />{isSubmittingComment ? "Speichere..." : "Begründung absenden"}</Button></div>
             </>
           )}
