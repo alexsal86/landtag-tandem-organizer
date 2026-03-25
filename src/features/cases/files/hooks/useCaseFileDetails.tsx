@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/use-toast";
+import { buildCaseItemInteractionInsertPayload } from "@/features/cases/shared/utils/caseInteropAdapters";
 import { debugConsole } from "@/utils/debugConsole";
 import { CaseFile } from "./useCaseFiles";
 import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
@@ -728,8 +729,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     if (!user) return false;
     const { error } = await supabase
       .from("case_item_interactions")
-      // INTEROP-ANY(TS-4829, Cases-DetailsHook, 2026-04-22): insert payload spans polymorphic interaction source variants.
-      .insert([{ ...interaction, created_by: user.id }] as any);
+      .insert(buildCaseItemInteractionInsertPayload(interaction as Record<string, unknown>, user.id));
 
     if (error) {
       toast({ title: "Fehler beim Hinzufügen", variant: "destructive" });

@@ -11,6 +11,7 @@ import { icons, LucideIcon } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
+import { getCaseFileProcessingStatuses } from "@/features/cases/shared/utils/caseInteropAdapters";
 import { debugConsole } from "@/utils/debugConsole";
 import { cn } from "@/lib/utils";
 
@@ -36,9 +37,7 @@ export function CaseFileCurrentStatus({ caseFile, onUpdate, onUpdateProcessingSt
   const [history, setHistory] = useState<StatusHistoryEntry[]>([]);
   const { statuses: processingStatuses } = useCaseFileProcessingStatuses();
 
-  // INTEROP-ANY(TS-4828, Cases-CurrentStatus, 2026-04-22): status JSONB shape is not fully normalized yet.
-  const currentProcessingStatuses: string[] = (caseFile as any).processing_statuses || 
-    ((caseFile as any).processing_status ? [(caseFile as any).processing_status] : []);
+  const currentProcessingStatuses: string[] = getCaseFileProcessingStatuses(caseFile);
 
   const getIconComponent = (iconName?: string | null): LucideIcon | null => {
     if (!iconName) return null;
