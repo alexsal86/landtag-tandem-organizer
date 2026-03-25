@@ -215,6 +215,8 @@ const Index = (): React.JSX.Element => {
         return withSectionBoundary('Drucksachen', <DrucksachenView />);
       case "casefiles":
         return withSectionBoundary('Vorgänge', <CaseFilesView />);
+      case "dossiers":
+        return withSectionBoundary('Dossiers', <CaseFilesView mode="dossiers" />);
       case "chat":
         return withSectionBoundary('Chat', <MatrixChatView />);
       case "daten":
