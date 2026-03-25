@@ -80,6 +80,52 @@ export interface MatrixClientSessionState {
   e2eeDiagnostics: MatrixE2EEDiagnostics;
 }
 
+export interface MatrixPresenceState {
+  typingUsers: MatrixTypingUsersMap;
+  sendTypingNotification: (roomId: string, isTyping: boolean) => void;
+}
+
+export interface MatrixClientState {
+  client: sdk.MatrixClient | null;
+  isConnected: boolean;
+  isConnecting: boolean;
+  connectionError: string | null;
+  cryptoEnabled: boolean;
+  e2eeDiagnostics: MatrixE2EEDiagnostics;
+  rooms: MatrixRoom[];
+  roomMessages: MatrixRoomMessagesMap;
+  roomHistoryState: MatrixRoomHistoryMap;
+}
+
+interface MatrixEventWithStatus extends sdk.MatrixEvent {
+  status?: unknown;
+}
+
+interface MatrixSasData {
+  sas: {
+    emoji?: Array<[string, string]>;
+    decimal?: [number, number, number] | null;
+  };
+  confirm: () => Promise<void>;
+  mismatch: () => void;
+  cancel: () => void;
+}
+
+interface MatrixVerificationRequest {
+  transactionId?: string;
+  otherDeviceId?: string;
+  phase: VerificationPhase;
+  accept: () => Promise<void>;
+  startVerification: (method: 'm.sas.v1') => Promise<Verifier>;
+  cancel: () => Promise<void>;
+  on?: (event: 'change', handler: () => void) => void;
+  off?: (event: 'change', handler: () => void) => void;
+}
+
+interface MatrixClientProviderProps {
+  children: ReactNode;
+}
+
 const MAX_CACHED_MESSAGES = 200;
 const MAX_CACHED_ROOMS = 60;
 const SCROLLBACK_BATCH_LIMIT = 40;
@@ -223,7 +269,7 @@ const mapMatrixEventToMessage = (room: sdk.Room, event: sdk.MatrixEvent): Matrix
 };
 
 const isLocalEchoEvent = (event: sdk.MatrixEvent): boolean => {
-  const localEchoByStatus = Boolean((event as any).status);
+  const localEchoByStatus = Boolean((event as MatrixEventWithStatus).status);
   const localEchoByTxn = Boolean(event.getUnsigned()?.transaction_id) && !event.getId();
   return localEchoByStatus || localEchoByTxn;
 };
@@ -235,14 +281,14 @@ const isLocalEchoEvent = (event: sdk.MatrixEvent): boolean => {
  */
 function setupVerifierListeners(
   verifier: Verifier,
-  verificationRequest: any,
+  verificationRequest: MatrixVerificationRequest,
   setActiveSasVerification: React.Dispatch<React.SetStateAction<MatrixSasVerificationState | null>>,
   setLastVerificationError: React.Dispatch<React.SetStateAction<string | null>>,
   describeError?: (error: unknown) => string,
 ): () => void {
   const formatError = describeError ?? ((e: unknown) => (e instanceof Error ? e.message : 'Verifizierung abgebrochen'));
 
-  const onShowSas = (sas: any) => {
+  const onShowSas = (sas: MatrixSasData) => {
     const emojis = (sas.sas.emoji || []).map(([symbol, description]: [string, string]) => ({ symbol, description }));
     setActiveSasVerification({
       transactionId: verificationRequest.transactionId,
@@ -387,7 +433,7 @@ const MatrixClientContext = createContext<MatrixClientContextType>(defaultMatrix
 
 // ─── Provider ────────────────────────────────────────────────────────────────
 
-export function MatrixClientProvider({ children }: { children: ReactNode }): React.JSX.Element {
+export function MatrixClientProvider({ children }: MatrixClientProviderProps): React.JSX.Element {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { setLiveUnreadCount } = useMatrixUnread();
@@ -425,7 +471,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }): Rea
   const isConnectedRef = useRef(false);
   const authPasswordRef = useRef<string | undefined>(undefined);
   const clientRef = useRef<sdk.MatrixClient | null>(null);
-  const listenersRef = useRef<Array<{ event: string; handler: (...args: any[]) => void }>>([]);
+  const listenersRef = useRef<Array<{ event: string; handler: (...args: unknown[]) => void }>>([]);
   const refreshInFlightRef = useRef<Set<string>>(new Set());
   const historyLoadInFlightRef = useRef<Set<string>>(new Set());
   const messagesRoomLruRef = useRef<string[]>([]);
@@ -785,7 +831,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }): Rea
       }
 
       // 7. Register event listeners (named references for cleanup)
-      const registeredListeners: Array<{ event: string; handler: (...args: any[]) => void }> = [];
+      const registeredListeners: Array<{ event: string; handler: (...args: unknown[]) => void }> = [];
 
       const onSync = (state: string) => {
         if (state === 'PREPARED') {
@@ -909,7 +955,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }): Rea
         });
       };
 
-      const onVerificationRequestReceived = async (verificationRequest: any) => {
+      const onVerificationRequestReceived = async (verificationRequest: MatrixVerificationRequest) => {
         matrixLogger.log('[Matrix] Incoming verification request, phase:', verificationRequest.phase);
 
         if (verificationRequest.phase === VerificationPhase.Requested) {
@@ -1456,7 +1502,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }): Rea
 
     const describeError = (error: unknown): string => {
       if (error instanceof sdk.MatrixEvent) {
-        const content = error.getContent() || {};
+        const content = (error.getContent() ?? {}) as Record<string, unknown>;
         const code = typeof content.code === 'string' ? content.code : null;
         const reason = typeof content.reason === 'string' ? content.reason : null;
         if (code && reason) return `${code}: ${reason}`;
@@ -1468,31 +1514,31 @@ export function MatrixClientProvider({ children }: { children: ReactNode }): Rea
     };
 
     const trimmedDeviceId = otherDeviceId?.trim();
-    let verificationRequest = trimmedDeviceId
+    let verificationRequest: MatrixVerificationRequest = trimmedDeviceId
       ? await crypto.requestDeviceVerification(userId, trimmedDeviceId)
       : await crypto.requestOwnUserVerification();
 
     // Wait for the other client to accept
-    if ((verificationRequest as any).phase !== VerificationPhase.Started) {
+    if (verificationRequest.phase !== VerificationPhase.Started) {
       await new Promise<void>((resolve, reject) => {
         let timeoutId: ReturnType<typeof setTimeout>;
         const checkReady = () => {
-          const phase = (verificationRequest as any).phase;
+          const phase = verificationRequest.phase;
           if (phase === VerificationPhase.Ready || phase === VerificationPhase.Started) {
             clearTimeout(timeoutId);
-            (verificationRequest as any).off?.('change', checkReady);
+            verificationRequest.off?.('change', checkReady);
             resolve();
           } else if (phase === VerificationPhase.Cancelled || phase === VerificationPhase.Done) {
             clearTimeout(timeoutId);
-            (verificationRequest as any).off?.('change', checkReady);
+            verificationRequest.off?.('change', checkReady);
             reject(new Error('Verifizierung wurde vom anderen Gerät abgebrochen.'));
           }
         };
 
-        (verificationRequest as any).on?.('change', checkReady);
+        verificationRequest.on?.('change', checkReady);
         checkReady();
         timeoutId = setTimeout(() => {
-          (verificationRequest as any).off?.('change', checkReady);
+          verificationRequest.off?.('change', checkReady);
           reject(new Error('Verifizierungs-Timeout: Der andere Client hat nicht rechtzeitig geantwortet.'));
         }, 60000);
       });
