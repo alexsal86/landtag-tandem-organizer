@@ -3614,6 +3614,7 @@ export type Database = {
           file_path: string | null
           id: string
           is_curated: boolean
+          is_pinned: boolean
           metadata: Json | null
           source_url: string | null
           tenant_id: string
@@ -3630,6 +3631,7 @@ export type Database = {
           file_path?: string | null
           id?: string
           is_curated?: boolean
+          is_pinned?: boolean
           metadata?: Json | null
           source_url?: string | null
           tenant_id: string
@@ -3646,6 +3648,7 @@ export type Database = {
           file_path?: string | null
           id?: string
           is_curated?: boolean
+          is_pinned?: boolean
           metadata?: Json | null
           source_url?: string | null
           tenant_id?: string

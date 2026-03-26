@@ -1,0 +1,1 @@
+ALTER TABLE public.dossier_entries ADD COLUMN IF NOT EXISTS is_pinned boolean NOT NULL DEFAULT false;
