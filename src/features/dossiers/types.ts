@@ -28,6 +28,7 @@ export interface DossierEntry {
   file_name: string | null;
   metadata: Record<string, unknown>;
   is_curated: boolean;
+  is_pinned: boolean;
   created_by: string;
   tenant_id: string;
   created_at: string;
