@@ -21,7 +21,7 @@ export function useInboxEntries() {
         .is("dossier_id", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as DossierEntry[];
+      return (data ?? []).map((d) => ({ ...d, is_pinned: (d as Record<string, unknown>).is_pinned ?? false, metadata: d.metadata ?? {} })) as DossierEntry[];
     },
   });
 }
@@ -42,7 +42,28 @@ export function useDossierEntries(dossierId: string | null) {
         .eq("dossier_id", dossierId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as DossierEntry[];
+      return (data ?? []).map((d) => ({ ...d, is_pinned: (d as Record<string, unknown>).is_pinned ?? false, metadata: d.metadata ?? {} })) as DossierEntry[];
+    },
+  });
+}
+
+/** Entry count for a dossier (lightweight) */
+export function useDossierEntryCounts(dossierId: string | null) {
+  const { currentTenant } = useTenant();
+  const tenantId = currentTenant?.id;
+
+  return useQuery({
+    queryKey: ["dossier-entry-counts", dossierId, tenantId],
+    enabled: !!tenantId && !!dossierId,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("dossier_entries")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId!)
+        .eq("dossier_id", dossierId!);
+      if (error) throw error;
+      return { total: count ?? 0, pinned: 0 };
     },
   });
 }
@@ -81,10 +102,11 @@ export function useCreateEntry() {
         .select()
         .maybeSingle();
       if (error) throw error;
-      return data as DossierEntry;
+      return data as unknown as DossierEntry;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dossier-entries"] });
+      qc.invalidateQueries({ queryKey: ["dossier-entry-counts"] });
       toast.success("Eintrag gespeichert");
     },
     onError: (err) => toast.error(`Fehler: ${err.message}`),
@@ -104,6 +126,7 @@ export function useAssignEntryToDossier() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dossier-entries"] });
+      qc.invalidateQueries({ queryKey: ["dossier-entry-counts"] });
       toast.success("Eintrag zugeordnet");
     },
     onError: (err) => toast.error(`Fehler: ${err.message}`),
@@ -123,7 +146,27 @@ export function useDeleteEntry() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dossier-entries"] });
+      qc.invalidateQueries({ queryKey: ["dossier-entry-counts"] });
       toast.success("Eintrag gelöscht");
+    },
+    onError: (err) => toast.error(`Fehler: ${err.message}`),
+  });
+}
+
+export function usePinEntry() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ entryId, pinned }: { entryId: string; pinned: boolean }) => {
+      const { error } = await supabase
+        .from("dossier_entries")
+        .update({ is_pinned: pinned } as never)
+        .eq("id", entryId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["dossier-entries"] });
+      toast.success("Eintrag aktualisiert");
     },
     onError: (err) => toast.error(`Fehler: ${err.message}`),
   });

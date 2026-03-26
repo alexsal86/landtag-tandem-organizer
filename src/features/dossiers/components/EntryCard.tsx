@@ -3,19 +3,19 @@ import { ENTRY_TYPE_CONFIG } from "../types";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { useDossiers } from "../hooks/useDossiers";
-import { useAssignEntryToDossier } from "../hooks/useDossierEntries";
-import { useDeleteEntry } from "../hooks/useDossierEntries";
+import { useAssignEntryToDossier, useDeleteEntry } from "../hooks/useDossierEntries";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, FolderInput, Check } from "lucide-react";
+import { Trash2, FolderInput, Check, Pin, PinOff } from "lucide-react";
 import { useState } from "react";
 
 interface EntryCardProps {
   entry: DossierEntry;
   showAssign?: boolean;
+  onPin?: (entryId: string, pinned: boolean) => void;
 }
 
-export function EntryCard({ entry, showAssign = false }: EntryCardProps) {
+export function EntryCard({ entry, showAssign = false, onPin }: EntryCardProps) {
   const config = ENTRY_TYPE_CONFIG[entry.entry_type as EntryType] ?? { label: entry.entry_type, icon: '📄' };
   const { data: dossiers } = useDossiers();
   const assignEntry = useAssignEntryToDossier();
@@ -37,9 +37,10 @@ export function EntryCard({ entry, showAssign = false }: EntryCardProps) {
   };
 
   return (
-    <div className="rounded-md border border-border bg-card p-3 space-y-1.5 group">
+    <div className={`rounded-md border border-border bg-card p-3 space-y-1.5 group ${entry.is_pinned ? "ring-1 ring-primary/20 bg-primary/[0.02]" : ""}`}>
       <div className="flex items-center gap-2 text-sm">
         <span>{config.icon}</span>
+        {entry.is_pinned && <Pin className="h-3 w-3 text-primary shrink-0" />}
         <span className="font-medium truncate flex-1">{entry.title || 'Ohne Titel'}</span>
         {!entry.is_curated && (
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-warning/10 text-warning shrink-0">roh</span>
@@ -77,6 +78,17 @@ export function EntryCard({ entry, showAssign = false }: EntryCardProps) {
 
       {/* Actions */}
       <div className="flex items-center gap-1 pt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {onPin && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs gap-1"
+            onClick={() => onPin(entry.id, !entry.is_pinned)}
+          >
+            {entry.is_pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
+            {entry.is_pinned ? "Lösen" : "Anpinnen"}
+          </Button>
+        )}
         {isInbox && !assigning && (
           <Button
             variant="ghost"

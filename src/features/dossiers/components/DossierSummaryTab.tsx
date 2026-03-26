@@ -75,7 +75,7 @@ export function DossierSummaryTab({ dossier, recentEntries }: DossierSummaryTabP
           </div>
         ) : (
           <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed rounded-md bg-muted/30 p-3 min-h-[48px]">
-            {dossier.summary || "Noch keine Zusammenfassung. Klicke „Bearbeiten", um die aktuelle Lage zu beschreiben."}
+            {dossier.summary || 'Noch keine Zusammenfassung. Klicke "Bearbeiten", um die aktuelle Lage zu beschreiben.'}
           </p>
         )}
       </section>
