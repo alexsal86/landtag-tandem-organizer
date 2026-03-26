@@ -1,17 +1,18 @@
-import { useDossierEntries } from "../hooks/useDossierEntries";
+import { useDossierEntries, usePinEntry } from "../hooks/useDossierEntries";
 import { useDossiers, useUpdateDossier } from "../hooks/useDossiers";
-import { QuickCapture } from "./QuickCapture";
-import { EntryCard } from "./EntryCard";
+import { SmartCapture } from "./SmartCapture";
+import { EntryTimeline } from "./EntryTimeline";
 import { DossierLinksView } from "./DossierLinksView";
+import { DossierSummaryTab } from "./DossierSummaryTab";
+import { DossierBriefingTab } from "./DossierBriefingTab";
 import { DossierQualityFields } from "./DossierQualityFields";
-import { DossierReviewReminder } from "./DossierReviewReminder";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ArrowLeft, Loader2, Settings2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { DOSSIER_STATUS_OPTIONS, DOSSIER_PRIORITY_OPTIONS, ENTRY_TYPE_CONFIG, type EntryType } from "../types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
@@ -24,8 +25,9 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
   const { data: dossiers } = useDossiers();
   const { data: entries, isLoading } = useDossierEntries(dossierId);
   const updateDossier = useUpdateDossier();
+  const pinEntry = usePinEntry();
   const dossier = dossiers?.find((d) => d.id === dossierId);
-  const [activeSection, setActiveSection] = useState("eintraege");
+  const [activeSection, setActiveSection] = useState("uebersicht");
   const [activeEntryFilter, setActiveEntryFilter] = useState("alle");
   const [editOpen, setEditOpen] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -53,6 +55,10 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
       { onSuccess: () => setEditOpen(false) }
     );
   };
+
+  const handlePin = useCallback((entryId: string, pinned: boolean) => {
+    pinEntry.mutate({ entryId, pinned });
+  }, [pinEntry]);
 
   return (
     <div className="space-y-4">
@@ -104,20 +110,23 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
         </Dialog>
       </div>
 
-      {/* Review reminder (shown at top if overdue) */}
-      {dossier && <DossierReviewReminder dossier={dossier} />}
-
       {/* Section tabs */}
       <Tabs value={activeSection} onValueChange={setActiveSection}>
         <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="eintraege">📋 Einträge</TabsTrigger>
-          <TabsTrigger value="qualitaet">📊 Qualität</TabsTrigger>
+          <TabsTrigger value="uebersicht">📋 Übersicht</TabsTrigger>
+          <TabsTrigger value="eintraege">📝 Einträge</TabsTrigger>
           <TabsTrigger value="verknuepfungen">🔗 Verknüpfungen</TabsTrigger>
+          <TabsTrigger value="briefing">📄 Briefing</TabsTrigger>
         </TabsList>
 
+        {/* Übersicht (default) */}
+        <TabsContent value="uebersicht" className="space-y-4">
+          {dossier && <DossierSummaryTab dossier={dossier} recentEntries={entries} />}
+        </TabsContent>
+
+        {/* Einträge */}
         <TabsContent value="eintraege" className="space-y-4">
-          {/* Quick capture */}
-          <QuickCapture dossierId={dossierId} />
+          <SmartCapture dossierId={dossierId} />
 
           {/* Entry type filter tabs */}
           <Tabs value={activeEntryFilter} onValueChange={setActiveEntryFilter}>
@@ -131,30 +140,24 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
             </TabsList>
           </Tabs>
 
-          {/* Entries */}
           {isLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="animate-spin h-6 w-6 text-muted-foreground" />
             </div>
-          ) : !filteredEntries?.length ? (
-            <p className="text-center text-sm text-muted-foreground py-8">
-              {activeEntryFilter === "alle" ? "Noch keine Einträge in diesem Dossier" : `Keine ${ENTRY_TYPE_CONFIG[activeEntryFilter as EntryType]?.label ?? activeEntryFilter}-Einträge`}
-            </p>
           ) : (
-            <div className="space-y-2">
-              {filteredEntries.map((entry) => (
-                <EntryCard key={entry.id} entry={entry} />
-              ))}
-            </div>
+            <EntryTimeline entries={filteredEntries ?? []} onPin={handlePin} />
           )}
         </TabsContent>
 
-        <TabsContent value="qualitaet" className="space-y-4">
+        {/* Verknüpfungen */}
+        <TabsContent value="verknuepfungen" className="space-y-4">
+          <DossierLinksView dossierId={dossierId} />
           {dossier && <DossierQualityFields dossier={dossier} />}
         </TabsContent>
 
-        <TabsContent value="verknuepfungen" className="space-y-4">
-          <DossierLinksView dossierId={dossierId} />
+        {/* Briefing */}
+        <TabsContent value="briefing" className="space-y-4">
+          {dossier && <DossierBriefingTab dossier={dossier} entries={entries} />}
         </TabsContent>
       </Tabs>
     </div>

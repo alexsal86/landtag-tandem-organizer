@@ -1,13 +1,13 @@
 import { useState, useMemo } from "react";
 import { useDossiers, useCreateDossier } from "../hooks/useDossiers";
+import { DossierCard } from "./DossierCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Loader2, Plus, FolderOpen, Search, ArrowUpDown, Bell } from "lucide-react";
-import { formatDistanceToNow, isPast } from "date-fns";
-import { de } from "date-fns/locale";
+import { Loader2, Plus, FolderOpen, Search, ArrowUpDown } from "lucide-react";
+import { isPast } from "date-fns";
 import { DOSSIER_STATUS_OPTIONS, DOSSIER_PRIORITY_OPTIONS } from "../types";
 
 interface DossierListViewProps {
@@ -23,7 +23,6 @@ export function DossierListView({ onSelect }: DossierListViewProps) {
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
 
-  // Filter state
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("alle");
   const [filterPriority, setFilterPriority] = useState<string>("alle");
@@ -34,7 +33,6 @@ export function DossierListView({ onSelect }: DossierListViewProps) {
     if (!dossiers) return [];
     let result = [...dossiers];
 
-    // Text search
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase();
       result = result.filter(
@@ -44,17 +42,14 @@ export function DossierListView({ onSelect }: DossierListViewProps) {
       );
     }
 
-    // Status filter
     if (filterStatus !== "alle") {
       result = result.filter((d) => d.status === filterStatus);
     }
 
-    // Priority filter
     if (filterPriority !== "alle") {
       result = result.filter((d) => d.priority === filterPriority);
     }
 
-    // Sort
     const priorityOrder: Record<string, number> = { hoch: 0, mittel: 1, niedrig: 2 };
     result.sort((a, b) => {
       let cmp = 0;
@@ -99,12 +94,6 @@ export function DossierListView({ onSelect }: DossierListViewProps) {
   if (isLoading) {
     return <div className="flex justify-center py-8"><Loader2 className="animate-spin h-6 w-6 text-muted-foreground" /></div>;
   }
-
-  const priorityColor: Record<string, string> = {
-    hoch: "bg-destructive/10 text-destructive",
-    mittel: "bg-amber-500/10 text-amber-700",
-    niedrig: "bg-muted text-muted-foreground",
-  };
 
   return (
     <div className="space-y-4">
@@ -175,7 +164,7 @@ export function DossierListView({ onSelect }: DossierListViewProps) {
         </div>
       </div>
 
-      {/* List */}
+      {/* Cards */}
       {!filteredAndSorted.length ? (
         <div className="flex flex-col items-center py-12 text-muted-foreground gap-2">
           <FolderOpen className="h-10 w-10" />
@@ -184,36 +173,10 @@ export function DossierListView({ onSelect }: DossierListViewProps) {
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {filteredAndSorted.map((d) => {
-            const isOverdue = d.next_review_at ? isPast(new Date(d.next_review_at)) : false;
-            return (
-              <button
-                key={d.id}
-                onClick={() => onSelect?.(d.id)}
-                className="w-full text-left rounded-md border border-border bg-card p-3 hover:bg-muted/50 transition-colors space-y-1"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="font-medium truncate flex-1">{d.title}</span>
-                  {isOverdue && (
-                    <span className="shrink-0" title="Review überfällig">
-                      <Bell className="h-3.5 w-3.5 text-destructive" />
-                    </span>
-                  )}
-                  <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${priorityColor[d.priority] ?? "bg-muted text-muted-foreground"}`}>
-                    {d.priority}
-                  </span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground capitalize shrink-0">
-                    {d.status}
-                  </span>
-                </div>
-                {d.summary && <p className="text-sm text-muted-foreground line-clamp-2">{d.summary}</p>}
-                <p className="text-xs text-muted-foreground">
-                  Aktualisiert {formatDistanceToNow(new Date(d.updated_at), { addSuffix: true, locale: de })}
-                </p>
-              </button>
-            );
-          })}
+        <div className="space-y-3">
+          {filteredAndSorted.map((d) => (
+            <DossierCard key={d.id} dossier={d} onSelect={onSelect} />
+          ))}
         </div>
       )}
     </div>
