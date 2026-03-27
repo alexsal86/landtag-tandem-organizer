@@ -26,7 +26,6 @@ interface ContactSelectorProps {
 const CONTACT_COLUMNS = `
   id, name, organization, email, phone, contact_type, category, avatar_url, is_favorite,
   business_street, business_house_number, business_postal_code, business_city, business_country,
-  private_street, private_house_number, private_postal_code, private_city, private_country,
   address
 `;
 
