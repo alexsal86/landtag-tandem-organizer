@@ -365,7 +365,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                   </div>
                   <SheetDescription className="text-base">
                     {contact.contact_type === "organization" 
-                      ? `${contact.legal_form ? contact.legal_form + " • " : ""}${contact.industry || contact.main_contact_person || ""}`
+                      ? contact.role || ""
                       : contact.role
                     }
                   </SheetDescription>
