@@ -374,7 +374,7 @@ export function AppointmentPreparationDataTab({
       name: selectedContact.name,
       avatar_url: selectedContact.avatar_url || '',
       role: selectedContact.role || selectedContact.position || '',
-      organization: selectedContact.organization || selectedContact.company || '',
+      organization: selectedContact.organization || '',
       note: selectedContact.notes || ''
     };
 
