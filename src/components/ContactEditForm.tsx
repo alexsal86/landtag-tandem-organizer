@@ -855,15 +855,6 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
             />
           </div>
 
-          <div>
-            <Label htmlFor="additional_info">Zusätzliche Informationen</Label>
-            <Textarea
-              id="additional_info"
-              value={formData.additional_info || ''}
-              onChange={(e) => handleChange('additional_info', e.target.value)}
-              rows={4}
-            />
-          </div>
 
           <div>
             <Label htmlFor="tags">Tags</Label>
