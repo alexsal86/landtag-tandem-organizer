@@ -62,8 +62,6 @@ interface Contact {
   last_contact?: string;
   avatar_url?: string;
   notes?: string;
-  notes?: string;
-  tags?: string[];
   tags?: string[];
   inherited_tags?: string[];
   business_street?: string;
