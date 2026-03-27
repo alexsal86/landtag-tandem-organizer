@@ -81,7 +81,7 @@ export function StakeholderListView({
             const businessAddress = [stakeholder.business_street, stakeholder.business_house_number, stakeholder.business_postal_code, stakeholder.business_city]
               .filter(Boolean)
               .join(' ');
-            const displayAddress = businessAddress || stakeholder.address || stakeholder.location;
+            const displayAddress = businessAddress || stakeholder.address;
 
             return (
               <TableRow key={stakeholder.id} className="hover:bg-muted/50">
