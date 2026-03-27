@@ -207,9 +207,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
     const contact = contacts.find(c => c.name === editedLetter.recipient_name);
     const infoBlock = informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id));
     const recipientData = contact ? {
-      name: contact.name, street: [contact.private_street, contact.private_house_number].filter(Boolean).join(' ') || [contact.business_street, contact.business_house_number].filter(Boolean).join(' '),
-      postal_code: contact.private_postal_code || contact.business_postal_code || '', city: contact.private_city || contact.business_city || '',
-      country: contact.private_country || contact.business_country || '', gender: contact.gender || '', last_name: contact.last_name || contact.name?.split(' ').pop() || '',
+      name: contact.name, street: [contact.business_street, contact.business_house_number].filter(Boolean).join(' '),
+      postal_code: contact.business_postal_code || '', city: contact.business_city || '',
+      country: contact.business_country || '', gender: contact.gender || '', last_name: contact.last_name || contact.name?.split(' ').pop() || '',
     } : editedLetter.recipient_name ? { name: editedLetter.recipient_name, street: '', postal_code: '', city: '', country: '' } : null;
     const varMap = buildVariableMap(
       { subject: editedLetter.subject, letterDate: editedLetter.letter_date, referenceNumber: editedLetter.reference_number },

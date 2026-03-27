@@ -39,7 +39,6 @@ const fieldConfig = [
   { key: 'birthday', label: 'Geburtstag', icon: Calendar },
   { key: 'website', label: 'Website', icon: FileText },
   { key: 'notes', label: 'Notizen', icon: FileText },
-  { key: 'additional_info', label: 'Zusätzliche Infos', icon: FileText },
 ];
 
 

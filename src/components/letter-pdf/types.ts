@@ -82,11 +82,6 @@ export type DbContact = {
   name: string;
   gender?: string | null;
   last_name?: string | null;
-  private_street?: string | null;
-  private_house_number?: string | null;
-  private_postal_code?: string | null;
-  private_city?: string | null;
-  private_country?: string | null;
   business_street?: string | null;
   business_house_number?: string | null;
   business_postal_code?: string | null;

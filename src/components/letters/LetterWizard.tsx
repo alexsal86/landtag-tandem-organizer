@@ -190,7 +190,7 @@ export const LetterWizard: React.FC<LetterWizardProps> = ({ onComplete, onCancel
 
   const filteredContacts = contacts.filter(c =>
     c.name.toLowerCase().includes(contactSearch.toLowerCase()) ||
-    c.company?.toLowerCase().includes(contactSearch.toLowerCase()) ||
+    c.organization?.toLowerCase().includes(contactSearch.toLowerCase()) ||
     c.email?.toLowerCase().includes(contactSearch.toLowerCase())
   );
 

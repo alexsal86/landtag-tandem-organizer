@@ -25,7 +25,7 @@ const STALE_TIME = 2 * 60 * 1000; // 2 minutes
 async function fetchContacts(tenantId: string): Promise<Contact[]> {
   const { data, error } = await supabase
     .from('contacts')
-    .select('id, name, organization, gender, last_name, private_street, private_house_number, private_postal_code, private_city, private_country, business_street, business_house_number, business_postal_code, business_city, business_country')
+    .select('id, name, organization, gender, last_name, business_street, business_house_number, business_postal_code, business_city, business_country')
     .eq('tenant_id', tenantId)
     .order('name');
   if (error) throw error;

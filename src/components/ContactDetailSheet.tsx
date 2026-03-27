@@ -722,15 +722,6 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                   </Card>
                 )}
 
-                {/* Additional Info */}
-                {contact.additional_info && (
-                  <Card>
-                    <CardContent className="p-4">
-                      <h3 className="font-semibold text-lg mb-2">Zusätzliche Informationen</h3>
-                      <p className="text-muted-foreground whitespace-pre-wrap">{contact.additional_info}</p>
-                    </CardContent>
-                  </Card>
-                )}
 
                 {contact.last_contact && (
                   <Card>

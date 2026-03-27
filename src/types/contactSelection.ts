@@ -21,11 +21,6 @@ export interface ContactListItem {
   business_postal_code?: string;
   business_city?: string;
   business_country?: string;
-  private_street?: string;
-  private_house_number?: string;
-  private_postal_code?: string;
-  private_city?: string;
-  private_country?: string;
   address?: string;
 }
 
