@@ -151,7 +151,7 @@ export const formatContactAddress = (contact: Contact) => {
   const country = contact.business_country;
 
   const addressParts = [
-    contact.organization && useBusinessAddress ? contact.organization : null,
+    contact.organization ? contact.organization : null,
     contact.name,
     street && houseNumber ? `${street} ${houseNumber}` : (street || houseNumber),
     postalCode && city ? `${postalCode} ${city}` : (postalCode || city),

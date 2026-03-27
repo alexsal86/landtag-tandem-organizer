@@ -185,7 +185,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
     const contact = contacts.find(c => c.id === contactId);
     if (contact) {
       const hasBusinessAddress = !!(contact.business_street || contact.business_postal_code || contact.business_city);
-      setEditedLetter(prev => ({ ...prev, contact_id: contactId, recipient_name: contact.name, recipient_address: formatContactAddress(contact, hasBusinessAddress) }));
+      setEditedLetter(prev => ({ ...prev, contact_id: contactId, recipient_name: contact.name, recipient_address: formatContactAddress(contact) }));
     }
   };
 
