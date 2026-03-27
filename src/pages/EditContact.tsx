@@ -38,8 +38,6 @@ const createEmptyContact = (): EditableContact => ({
   category: "citizen",
   priority: "medium",
   notes: "",
-  industry: "",
-  main_contact_person: "",
   avatar_url: "",
 });
 
