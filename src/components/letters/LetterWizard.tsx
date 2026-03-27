@@ -159,7 +159,7 @@ export const LetterWizard: React.FC<LetterWizardProps> = ({ onComplete, onCancel
     if (!currentTenant) return;
     const { data } = await supabase
       .from('contacts')
-      .select('id, name, address, email, company')
+      .select('id, name, address, email, organization')
       .eq('tenant_id', currentTenant.id)
       .order('name')
       .limit(200);
