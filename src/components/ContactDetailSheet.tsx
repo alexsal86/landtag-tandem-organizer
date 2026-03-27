@@ -62,11 +62,8 @@ interface Contact {
   last_contact?: string;
   avatar_url?: string;
   notes?: string;
-  additional_info?: string;
-  legal_form?: string;
-  industry?: string;
-  main_contact_person?: string;
-  business_description?: string;
+  notes?: string;
+  tags?: string[];
   tags?: string[];
   inherited_tags?: string[];
   business_street?: string;
