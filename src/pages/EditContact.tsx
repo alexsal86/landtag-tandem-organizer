@@ -230,7 +230,6 @@ export default function EditContact() {
           priority: contact.priority,
           notes: contact.notes || null,
           avatar_url: contact.avatar_url || null,
-          avatar_url: contact.avatar_url || null,
           updated_at: new Date().toISOString(),
         })
         .eq("id", contact.id)
