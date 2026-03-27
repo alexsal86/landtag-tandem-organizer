@@ -229,8 +229,7 @@ export default function EditContact() {
           category: contact.category,
           priority: contact.priority,
           notes: contact.notes || null,
-          industry: contact.industry || null,
-          main_contact_person: contact.main_contact_person || null,
+          avatar_url: contact.avatar_url || null,
           avatar_url: contact.avatar_url || null,
           updated_at: new Date().toISOString(),
         })
