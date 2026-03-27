@@ -377,27 +377,30 @@ export default function EditContact() {
                           </div>
                         )}
                         {contact.contact_type === "organization" && (
-                        <div>
-                          <Label htmlFor="email">E-Mail</Label>
-                          <Input
-                            id="email"
-                            type="email"
-                            value={contact.email || ""}
-                            onChange={(e) =>
-                              setContact({ ...contact, email: e.target.value })
-                            }
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="phone">Telefon</Label>
-                          <Input
-                            id="phone"
-                            value={contact.phone || ""}
-                            onChange={(e) =>
-                              setContact({ ...contact, phone: e.target.value })
-                            }
-                          />
-                        </div>
+                          <>
+                            <div>
+                              <Label htmlFor="email">E-Mail</Label>
+                              <Input
+                                id="email"
+                                type="email"
+                                value={contact.email || ""}
+                                onChange={(e) =>
+                                  setContact({ ...contact, email: e.target.value })
+                                }
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="phone">Telefon</Label>
+                              <Input
+                                id="phone"
+                                value={contact.phone || ""}
+                                onChange={(e) =>
+                                  setContact({ ...contact, phone: e.target.value })
+                                }
+                              />
+                            </div>
+                          </>
+                        )}
                       </div>
 
                       <div className="space-y-4">
