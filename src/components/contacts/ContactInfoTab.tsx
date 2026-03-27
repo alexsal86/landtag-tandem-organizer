@@ -116,7 +116,7 @@ export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ conta
       </Card>
 
       {/* Address */}
-      {(contact.business_street || contact.business_city || contact.address || contact.location) && (
+      {(contact.business_street || contact.business_city || contact.address) && (
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-3"><MapPin className="h-4 w-4 text-primary" /><h3 className="font-semibold">Geschäftsadresse</h3></div>
