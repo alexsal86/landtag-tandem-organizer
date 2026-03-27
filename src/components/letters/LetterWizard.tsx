@@ -32,7 +32,7 @@ interface Contact {
   name: string;
   address?: string | null;
   email?: string | null;
-  company?: string | null;
+  organization?: string | null;
 }
 
 interface LetterTemplate {
