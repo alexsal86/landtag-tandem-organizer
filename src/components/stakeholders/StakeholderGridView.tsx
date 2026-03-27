@@ -69,7 +69,7 @@ export function StakeholderGridView({
                         </div>
                         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                           {stakeholder.category && <Badge variant="outline" className={getCategoryColor(stakeholder.category)}>{stakeholder.category}</Badge>}
-                          {stakeholder.industry && <span className="truncate">{stakeholder.industry}</span>}
+                          {stakeholder.role && <span className="truncate">{stakeholder.role}</span>}
                           <span className="text-xs">{stakeholderContacts.length} Kontakte</span>
                         </div>
                       </div>
