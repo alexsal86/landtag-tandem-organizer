@@ -50,7 +50,7 @@ export default function ContactDetail() {
           organization: data.organization,
           email: data.email,
           phone: data.phone,
-          location: data.location,
+          address: data.address,
           category: data.category,
           priority: data.priority,
           last_contact: data.last_contact,
