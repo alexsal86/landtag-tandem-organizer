@@ -189,7 +189,7 @@ export function ContactListTable({
                 {/* Organisation */}
                 <TableCell className="py-1">
                   <span className="text-sm truncate block max-w-[160px]">
-                    {contact.contact_type === "organization" ? (contact.industry || contact.legal_form || "–") : (contact.organization || "–")}
+                    {contact.contact_type === "organization" ? "–" : (contact.organization || "–")}
                   </span>
                 </TableCell>
 
