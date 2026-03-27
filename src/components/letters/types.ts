@@ -143,7 +143,7 @@ export const extractFontFamilyFromContentNodes = (contentNodes?: unknown): strin
   return findFontFamilyInLexicalNode(parsed.root || parsed);
 };
 
-export const formatContactAddress = (contact: Contact, _useBusinessAddress = false) => {
+export const formatContactAddress = (contact: Contact) => {
   const street = contact.business_street;
   const houseNumber = contact.business_house_number;
   const postalCode = contact.business_postal_code;

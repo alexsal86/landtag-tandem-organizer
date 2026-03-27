@@ -868,7 +868,7 @@ export function AppointmentPreparationDataTab({
                           <div>
                             <div className="font-medium">{contact.name}</div>
                             <div className="text-xs text-muted-foreground">
-                              {(contact.organization || contact.company) && `${contact.organization || contact.company} • `}
+                              {contact.organization && `${contact.organization} • `}
                               {contact.role || contact.position}
                             </div>
                           </div>

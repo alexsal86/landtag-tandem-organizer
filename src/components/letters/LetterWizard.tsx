@@ -339,9 +339,9 @@ export const LetterWizard: React.FC<LetterWizardProps> = ({ onComplete, onCancel
                           }`}
                         >
                           <p className="font-medium">{contact.name}</p>
-                          {(contact.company || contact.address) && (
+                          {(contact.organization || contact.address) && (
                             <p className="text-xs text-muted-foreground truncate">
-                              {contact.company}{contact.company && contact.address ? ' · ' : ''}{contact.address}
+                              {contact.organization}{contact.organization && contact.address ? ' · ' : ''}{contact.address}
                             </p>
                           )}
                         </button>

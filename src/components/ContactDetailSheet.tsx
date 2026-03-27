@@ -674,14 +674,6 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                 )}
 
                 {/* Organization Details */}
-                {contact.contact_type === "organization" && contact.business_description && (
-                  <Card>
-                    <CardContent className="p-4">
-                      <h3 className="font-semibold text-lg mb-2">Geschäftsbeschreibung</h3>
-                      <p className="text-muted-foreground">{contact.business_description}</p>
-                    </CardContent>
-                  </Card>
-                )}
 
                 {/* Tags */}
                 {(allTags.direct.length > 0 || allTags.inherited.length > 0) && (
