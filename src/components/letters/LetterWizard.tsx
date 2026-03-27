@@ -317,8 +317,8 @@ export const LetterWizard: React.FC<LetterWizardProps> = ({ onComplete, onCancel
                     <div className="flex items-center gap-2 p-2 bg-primary/5 border border-primary/20 rounded-lg">
                       <User className="h-4 w-4 text-primary" />
                       <span className="font-medium text-sm">{selectedContact.name}</span>
-                      {selectedContact.company && (
-                        <span className="text-xs text-muted-foreground">({selectedContact.company})</span>
+                      {selectedContact.organization && (
+                        <span className="text-xs text-muted-foreground">({selectedContact.organization})</span>
                       )}
                       <Button variant="ghost" size="sm" className="ml-auto h-6 w-6 p-0" onClick={() => setSelectedContact(null)}>
                         <X className="h-3 w-3" />
