@@ -629,45 +629,6 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
             </>
           )}
 
-          {formData.contact_type === "organization" && (
-            <>
-              <div>
-                <Label htmlFor="legal_form">Rechtsform</Label>
-                <Input
-                  id="legal_form"
-                  value={formData.legal_form || ''}
-                  onChange={(e) => handleChange('legal_form', e.target.value)}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="industry">Branche</Label>
-                <Input
-                  id="industry"
-                  value={formData.industry || ''}
-                  onChange={(e) => handleChange('industry', e.target.value)}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="main_contact_person">Hauptansprechpartner</Label>
-                <Input
-                  id="main_contact_person"
-                  value={formData.main_contact_person || ''}
-                  onChange={(e) => handleChange('main_contact_person', e.target.value)}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="business_description">Geschäftsbeschreibung</Label>
-                <Textarea
-                  id="business_description"
-                  value={formData.business_description || ''}
-                  onChange={(e) => handleChange('business_description', e.target.value)}
-                />
-              </div>
-            </>
-          )}
 
           <div>
             <Label htmlFor="category">Kategorie</Label>
