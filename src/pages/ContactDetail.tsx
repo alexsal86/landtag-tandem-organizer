@@ -311,12 +311,12 @@ export default function ContactDetail() {
                         </div>
                     </div>
                     
-                    {contact.location && (
+                    {(contact.address || contact.business_city) && (
                       <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
                         <MapPin className="h-5 w-5 text-muted-foreground" />
                         <div>
                           <p className="font-medium">Standort</p>
-                          <p className="text-muted-foreground">{contact.location}</p>
+                          <p className="text-muted-foreground">{contact.address || contact.business_city}</p>
                         </div>
                       </div>
                     )}

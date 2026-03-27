@@ -176,7 +176,7 @@ export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ conta
       )}
 
       {contact.notes && (<Card><CardContent className="p-4"><h3 className="font-semibold mb-2">Notizen</h3><p className="text-sm text-muted-foreground whitespace-pre-wrap">{contact.notes}</p></CardContent></Card>)}
-      {contact.additional_info && (<Card><CardContent className="p-4"><h3 className="font-semibold mb-2">Zusätzliche Informationen</h3><p className="text-sm text-muted-foreground whitespace-pre-wrap">{contact.additional_info}</p></CardContent></Card>)}
+      {contact.last_contact && (<Card><CardContent className="p-4"><h3 className="font-semibold mb-2">Letzter Kontakt</h3><p className="text-sm text-muted-foreground">{contact.last_contact}</p></CardContent></Card>)}
       {contact.last_contact && (<Card><CardContent className="p-4"><h3 className="font-semibold mb-2">Letzter Kontakt</h3><p className="text-sm text-muted-foreground">{contact.last_contact}</p></CardContent></Card>)}
     </div>
   );

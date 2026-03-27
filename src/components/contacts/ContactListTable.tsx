@@ -223,7 +223,7 @@ export function ContactListTable({
                 {/* Address */}
                 <TableCell className="py-1">
                   <span className="text-sm text-muted-foreground truncate block max-w-[180px]">
-                    {contact.address || contact.location || "—"}
+                    {contact.address || contact.business_city || "—"}
                   </span>
                 </TableCell>
 

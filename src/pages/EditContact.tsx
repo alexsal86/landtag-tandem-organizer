@@ -377,37 +377,6 @@ export default function EditContact() {
                           </div>
                         )}
                         {contact.contact_type === "organization" && (
-                          <>
-                            <div>
-                              <Label htmlFor="industry">Branche</Label>
-                              <Input
-                                id="industry"
-                                value={contact.industry || ""}
-                                onChange={(e) =>
-                                  setContact({
-                                    ...contact,
-                                    industry: e.target.value,
-                                  })
-                                }
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="main_contact_person">
-                                Ansprechperson
-                              </Label>
-                              <Input
-                                id="main_contact_person"
-                                value={contact.main_contact_person || ""}
-                                onChange={(e) =>
-                                  setContact({
-                                    ...contact,
-                                    main_contact_person: e.target.value,
-                                  })
-                                }
-                              />
-                            </div>
-                          </>
-                        )}
                         <div>
                           <Label htmlFor="email">E-Mail</Label>
                           <Input

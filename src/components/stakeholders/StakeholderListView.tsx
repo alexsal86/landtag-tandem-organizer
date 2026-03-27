@@ -116,7 +116,7 @@ export function StakeholderListView({
                     <HoverCardContent align="start" className="w-96 space-y-3">
                       <div>
                         <p className="font-semibold">{stakeholder.name}</p>
-                        {stakeholder.industry && <p className="text-sm text-muted-foreground">{stakeholder.industry}</p>}
+                        {stakeholder.role && <p className="text-sm text-muted-foreground">{stakeholder.role}</p>}
                       </div>
 
                       <div className="space-y-1">

@@ -80,7 +80,7 @@ export function StakeholderGridView({
                   <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                     {stakeholder.email && <div className="flex items-center gap-1"><Mail className="h-3 w-3" /><span className="truncate">{stakeholder.email}</span></div>}
                     {stakeholder.phone && <div className="flex items-center gap-1"><Phone className="h-3 w-3" /><span>{stakeholder.phone}</span></div>}
-                    {(stakeholder.address || stakeholder.location) && <div className="flex items-center gap-1"><MapPin className="h-3 w-3" /><span className="truncate">{stakeholder.address || stakeholder.location}</span></div>}
+                    {(stakeholder.address || stakeholder.business_city) && <div className="flex items-center gap-1"><MapPin className="h-3 w-3" /><span className="truncate">{stakeholder.address || stakeholder.business_city}</span></div>}
                   </div>
 
                   <div className="pt-2">
