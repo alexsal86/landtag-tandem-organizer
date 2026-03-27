@@ -1,148 +1,96 @@
 
 
-## Konzept: Einheitlicher Informationsraum — Wissen + Dossier verschmelzen
+# Kontakte-Tabelle verschlanken und Stakeholder-Frage klaren
 
-### Problemanalyse
+## Zur Stakeholder-Frage: Trennung lohnt sich nicht
 
-**Ist-Zustand:**
-- **Wissen (Knowledge):** Artikel-basiert, kuratiert, Rich-Text-Editor, Themen-Zuordnung. Gut für fertige Inhalte, aber kein schneller Einwurf möglich.
-- **Dossier:** Aktuell nur eine gefilterte Ansicht der Fallakten (`CaseFilesView mode="dossiers"`). Nutzt dieselbe Struktur, dasselbe UI, dasselbe Datenmodell. Zu nah an der Fallakte.
+Stakeholder sind aktuell Kontakte mit bestimmten Tags/Kategorien. Eine Trennung in zwei Tabellen wurde bedeuten:
+- Doppelte Daten (Name, E-Mail, Adresse in beiden Tabellen)
+- Alle Verknupfungen (Termine, Dokumente, Akten, Dossiers, Karte) mussten doppelt gepflegt werden
+- Kontakte, die beides sind (z.B. ein Burger, der auch Stakeholder ist), mussten synchronisiert werden
 
-**Soll-Zustand:**
-Ein einheitlicher Bereich, der zwei Phasen unterstützt:
-1. **Schnell erfassen** — Roh-Informationen aus beliebigen Quellen reinwerfen (Notiz, Datei, Link, E-Mail-Import)
-2. **Später kuratieren** — Strukturieren, verschlagworten, verknüpfen, aufbereiten
+**Empfehlung:** Einheitliche Tabelle beibehalten. Die Unterscheidung lauft uber `category` und `tags` — das funktioniert bereits gut mit der Kartenansicht, Themen-Zuordnung und Stakeholder-Views. Keine Anderung nötig.
 
-### Architektur-Vorschlag
+## Spalten-Reduktion: Von ~65 auf ~45 Spalten
+
+### Spalten die entfernt werden (20 Stuck)
+
+**Nie genutzt im Abgeordnetenburo-Kontext:**
+- `certifications` — Zertifizierungen, irrelevant
+- `marketing_consent` — Marketing-Einwilligung, kein Marketing-Tool
+- `newsletter_subscription` — Newsletter, nicht relevant
+- `meeting_preferences` — nie in UI genutzt
+- `gdpr_consent_date` — DSGVO-Datum, in Praxis nie gepflegt
+- `data_protection_notes` — Datenschutz-Notizen, nie genutzt
+
+**Redundant:**
+- `company` — Duplikat von `organization`, wird vereinheitlicht
+- `additional_info` — Duplikat von `notes`
+- `added_at` — Duplikat von `created_at`
+- `added_reason` — nie sinnvoll befullt
+- `location` — vage; strukturierte Adressfelder existieren bereits
+
+**Zu granular fur den Alltag (Private Adresse):**
+- `private_street`, `private_house_number`, `private_postal_code`, `private_city`, `private_country` — Private Adressen werden im Burobetrieb fast nie gepflegt. Falls nötig, kann `address` als Freitextfeld dienen.
+- `private_phone`, `private_phone_2` — Privattelefon 1+2 separat zu fuhren ist Overkill; `phone` + `mobile_phone` reichen
+- `business_phone_2` — Zweite Geschaftsnummer, extrem selten
+
+### Spalten die bleiben (~45)
 
 ```text
-┌─────────────────────────────────────────────┐
-│              WISSENSBEREICH                  │
-│  (ersetzt sowohl "Wissen" als auch "Dossier")│
-├─────────────────────────────────────────────┤
-│                                             │
-│  ┌─────────────┐    ┌────────────────────┐  │
-│  │  EINGANG     │    │   DOSSIERS         │  │
-│  │  (Inbox)     │───>│   (thematische     │  │
-│  │              │    │    Sammlungen)      │  │
-│  │ Schnellnot.  │    │                    │  │
-│  │ Datei-Drop   │    │  Notizen           │  │
-│  │ Link einfüg. │    │  Dokumente/Dateien │  │
-│  │ E-Mail paste │    │  Links/Quellen     │  │
-│  │              │    │  Verknüpfungen     │  │
-│  └─────────────┘    │  (Kontakte, Aufg.)  │  │
-│                      └────────────────────┘  │
-│                                             │
-│  ┌──────────────────────────────────────┐   │
-│  │  ARTIKEL (kuratiert)                  │   │
-│  │  = bisherige Wissens-Dokumente        │   │
-│  │  Rich-Text, versioniert, publizierbar │   │
-│  └──────────────────────────────────────┘   │
-└─────────────────────────────────────────────┘
+── Identitat ──────────────────────────────
+id, tenant_id, user_id, contact_type, name, first_name, last_name, title, gender
+
+── Einordnung ─────────────────────────────
+category, priority, tags, is_favorite, role, position, department
+
+── Organisation ───────────────────────────
+organization, organization_id
+
+── Kommunikation ──────────────────────────
+email, email_2, email_3, phone, mobile_phone, business_phone
+
+── Adresse (Geschaft) ────────────────────
+business_street, business_house_number, business_postal_code, business_city, business_country, address
+
+── Online ─────────────────────────────────
+website, linkedin, twitter, facebook, instagram, xing
+
+── Persönlich ─────────────────────────────
+birthday, notes, avatar_url
+
+── Geo ────────────────────────────────────
+coordinates, geocoded_at, geocoding_source
+
+── System ─────────────────────────────────
+created_at, updated_at, last_contact
 ```
 
-### Neues Datenmodell
+## Technische Umsetzung
 
-**Neue Tabelle: `dossiers`** (eigenständig, NICHT auf case_files basierend)
+### 1. Migration: Daten konsolidieren, dann Spalten droppen
 
-| Spalte | Typ | Beschreibung |
-|--------|-----|-------------|
-| id | uuid | PK |
-| title | text | Dossier-Titel |
-| summary | text | Kurzbeschreibung |
-| status | text | beobachten, aktiv, ruhend, archiviert |
-| priority | text | hoch, mittel, niedrig |
-| owner_id | uuid | Verantwortliche Person (→ profiles) |
-| topic_id | uuid | Themen-Zuordnung (optional) |
-| tenant_id | uuid | Mandant |
-| created_by | uuid | Ersteller (→ profiles) |
-| created_at | timestamptz | |
-| updated_at | timestamptz | |
+Vor dem Drop werden Daten gerettet:
+- `company` → in `organization` ubernehmen (wo `organization` leer ist)
+- `additional_info` → an `notes` anhangen (wo `notes` leer oder `additional_info` gefullt)
+- `added_at` → ignorieren (created_at existiert)
+- `private_phone` → in `phone` ubernehmen (wo `phone` leer)
 
-**Neue Tabelle: `dossier_entries`** (der zentrale Baustein)
+Dann 20 Spalten droppen.
 
-| Spalte | Typ | Beschreibung |
-|--------|-----|-------------|
-| id | uuid | PK |
-| dossier_id | uuid | FK → dossiers (nullable für Eingangskorb) |
-| entry_type | text | notiz, datei, link, email, zitat |
-| title | text | Kurztitel |
-| content | text | Freitext/HTML |
-| source_url | text | Link/Quelle |
-| file_path | text | Storage-Pfad (für Uploads) |
-| file_name | text | Dateiname |
-| metadata | jsonb | E-Mail-Header, Extraktionsdaten etc. |
-| is_curated | boolean | false = roh, true = aufbereitet |
-| created_by | uuid | |
-| tenant_id | uuid | |
-| created_at | timestamptz | |
-| updated_at | timestamptz | |
+### 2. Code anpassen
 
-**Verknüpfungstabelle: `dossier_links`**
+**Dateien die geandert werden:**
+- `src/types/contact.ts` — `ContactBase` verschlanken (Felder entfernen: `legal_form`, `industry`, `main_contact_person`, `business_description`, `location`, `additional_info`)
+- `src/components/ContactEditForm.tsx` — Referenzen auf `company`, `gdpr_consent_date`, `additional_info` entfernen
+- `src/components/GlobalSearchCommand.tsx` — `company` aus Select/Filter entfernen
+- `src/components/appointment-preparations/AppointmentPreparationDataTab.tsx` — `company` durch `organization` ersetzen
+- `src/components/letters/LetterWizard.tsx` — `company` durch `organization` ersetzen
+- `src/components/contact-import/types.ts` — Import-Mappings fur entfernte Felder anpassen
+- `src/hooks/useInfiniteContacts.ts` — Select-Queries anpassen
 
-| Spalte | Typ | Beschreibung |
-|--------|-----|-------------|
-| id | uuid | PK |
-| dossier_id | uuid | FK → dossiers |
-| linked_type | text | contact, task, appointment, case_file, document |
-| linked_id | uuid | ID des verknüpften Objekts |
-
-### UX-Konzept
-
-**Navigation:** Ein Bereich "Wissen" mit drei Unter-Tabs:
-- **Eingang** — Alle Einträge ohne Dossier-Zuordnung (dossier_id IS NULL). Schnellerfassung prominent.
-- **Dossiers** — Thematische Sammlungen. Klick öffnet Detail mit allen Einträgen, Verknüpfungen, Quellen.
-- **Artikel** — Bisherige Knowledge-Dokumente (kuratiert, publizierbar).
-
-**Schnellerfassung (Eingang + direkt in Dossier):**
-- Textarea + Drag-and-Drop-Zone + Link-Eingabe
-- Paste von E-Mails (bestehende Outlook-Integration nutzen)
-- Optional: Dossier direkt auswählen oder "Eingang" lassen
-- Minimaler Aufwand: Titel wird aus Inhalt/Dateiname auto-generiert
-
-**Dossier-Detail:**
-- Übersicht (Titel, Status, Verantwortliche, Zusammenfassung)
-- Chronologische Einträge (Notizen, Dateien, Links, E-Mails)
-- Verknüpfungen (Kontakte, Aufgaben, Termine, Fallakten)
-- Filter nach Eintragstyp und Kurationsstatus
-
-### Umsetzungsplan (3 Phasen)
-
-**Phase 1 — Fundament (dieser Sprint)**
-- DB-Migration: `dossiers`, `dossier_entries`, `dossier_links` + RLS
-- Dossier-Liste + Erstellen/Bearbeiten
-- Schnellerfassung (Notiz + Datei-Upload) im Eingangskorb
-- Bestehende Wissen-Artikel bleiben parallel bestehen
-
-**Phase 2 — Zusammenführung**
-- Dossier-Detailansicht mit allen Eintragstypen
-- Verknüpfungen zu Kontakten, Aufgaben, Terminen
-- E-Mail-Import in Dossier (bestehende EML-Parser nutzen)
-- Drag-and-Drop von Eingang → Dossier
-- Navigation vereinheitlichen (alter "Dossiers"-Link unter Fallakten entfernen)
-
-**Phase 3 — Migration + Polish**
-- Bestehende Knowledge-Dokumente als Artikel-Typ in neues System überführen
-- Alten Knowledge-Bereich als Tab "Artikel" integrieren
-- Link-Previews, Volltext-Suche über Einträge
-- "Stale Content"-Hinweise, Review-Zyklen
-
-### Technische Details
-
-- `dossier_entries` mit `dossier_id = NULL` bilden den Eingangskorb
-- Bestehende `knowledge_documents` bleiben zunächst erhalten und werden in Phase 3 migriert
-- `CaseFilesView mode="dossiers"` wird in Phase 2 durch die neue Dossier-Ansicht ersetzt
-- Storage nutzt den bestehenden `documents`-Bucket
-- RLS: tenant-basiert, analog zu Fallakten
-- Build-Fehler (CalendarSyncDebug, ContactSelector etc.) sind vorbestehend und werden separat behoben
-
-### Dateien (Phase 1)
-
-| Datei | Aktion |
-|-------|--------|
-| `supabase/migrations/xxx.sql` | Neue Tabellen + RLS |
-| `src/features/dossiers/` | Neues Feature-Verzeichnis (hooks, types, components) |
-| `src/components/DossiersView.tsx` | Neue Hauptansicht mit Tabs (Eingang/Dossiers/Artikel) |
-| `src/components/Navigation.tsx` | Dossier-Link von Fallakten-Gruppe lösen, in Wissen integrieren |
-| `src/pages/Index.tsx` | Neue Route für vereinheitlichten Wissensbereich |
+### 3. Was sich NICHT andert
+- Stakeholder-System bleibt wie es ist (gleiche Tabelle, Tag-basiert)
+- Alle Verknupfungstabellen (contact_topics, appointment_contacts, etc.) bleiben unberuhrt
+- Kartenansicht funktioniert weiterhin (nutzt `coordinates`, `business_street` etc.)
 
