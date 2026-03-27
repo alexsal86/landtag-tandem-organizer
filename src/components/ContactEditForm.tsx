@@ -690,14 +690,6 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
             />
           </div>
 
-          <div>
-            <Label htmlFor="location">Ort</Label>
-            <Input
-              id="location"
-              value={formData.location || ''}
-              onChange={(e) => handleChange('location', e.target.value)}
-            />
-          </div>
 
           <div>
             <Label htmlFor="address">Adresse</Label>
