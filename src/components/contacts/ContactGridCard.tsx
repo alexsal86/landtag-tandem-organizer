@@ -77,7 +77,7 @@ export function ContactGridCard({
                 <CardTitle className="text-lg mb0">{contact.name}</CardTitle>
                 <p className="text-sm text-muted-foreground">
                   {contact.contact_type === "organization"
-                    ? `${contact.legal_form ? contact.legal_form + " • " : ""}${contact.industry || contact.main_contact_person || ""}`
+                    ? contact.role || ""
                     : contact.role}
                 </p>
               </div>
