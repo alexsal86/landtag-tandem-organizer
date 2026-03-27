@@ -109,7 +109,7 @@ export function StakeholderListView({
                         </Avatar>
                         <div>
                           <div className="font-medium underline-offset-2 hover:underline">{stakeholder.name}</div>
-                          {stakeholder.industry && <div className="text-xs text-muted-foreground truncate max-w-[220px]">{stakeholder.industry}</div>}
+                          {stakeholder.role && <div className="text-xs text-muted-foreground truncate max-w-[220px]">{stakeholder.role}</div>}
                         </div>
                       </button>
                     </HoverCardTrigger>
