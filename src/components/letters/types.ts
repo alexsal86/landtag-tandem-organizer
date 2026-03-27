@@ -57,11 +57,6 @@ export interface Contact {
   organization?: string | null;
   gender?: string | null;
   last_name?: string | null;
-  private_street?: string | null;
-  private_house_number?: string | null;
-  private_postal_code?: string | null;
-  private_city?: string | null;
-  private_country?: string | null;
   business_street?: string | null;
   business_house_number?: string | null;
   business_postal_code?: string | null;
@@ -148,15 +143,15 @@ export const extractFontFamilyFromContentNodes = (contentNodes?: unknown): strin
   return findFontFamilyInLexicalNode(parsed.root || parsed);
 };
 
-export const formatContactAddress = (contact: Contact, useBusinessAddress = false) => {
-  const street = useBusinessAddress ? contact.business_street : contact.private_street;
-  const houseNumber = useBusinessAddress ? contact.business_house_number : contact.private_house_number;
-  const postalCode = useBusinessAddress ? contact.business_postal_code : contact.private_postal_code;
-  const city = useBusinessAddress ? contact.business_city : contact.private_city;
-  const country = useBusinessAddress ? contact.business_country : contact.private_country;
+export const formatContactAddress = (contact: Contact) => {
+  const street = contact.business_street;
+  const houseNumber = contact.business_house_number;
+  const postalCode = contact.business_postal_code;
+  const city = contact.business_city;
+  const country = contact.business_country;
 
   const addressParts = [
-    contact.organization && useBusinessAddress ? contact.organization : null,
+    contact.organization ? contact.organization : null,
     contact.name,
     street && houseNumber ? `${street} ${houseNumber}` : (street || houseNumber),
     postalCode && city ? `${postalCode} ${city}` : (postalCode || city),

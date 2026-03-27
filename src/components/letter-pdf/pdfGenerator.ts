@@ -519,10 +519,10 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
   // ── Build FULL variable map identical to LetterEditor ──
   const recipientVarData = contact ? {
     name: contact.name,
-    street: [contact.private_street, contact.private_house_number].filter(Boolean).join(' ') || [contact.business_street, contact.business_house_number].filter(Boolean).join(' '),
-    postal_code: contact.private_postal_code || contact.business_postal_code || '',
-    city: contact.private_city || contact.business_city || '',
-    country: contact.private_country || contact.business_country || '',
+    street: [contact.business_street, contact.business_house_number].filter(Boolean).join(' '),
+    postal_code: contact.business_postal_code || '',
+    city: contact.business_city || '',
+    country: contact.business_country || '',
     gender: contact.gender || '',
     title: contact.title || '',
     last_name: contact.last_name || contact.name?.split(' ').pop() || '',

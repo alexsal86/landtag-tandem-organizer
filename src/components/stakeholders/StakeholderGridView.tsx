@@ -69,7 +69,7 @@ export function StakeholderGridView({
                         </div>
                         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                           {stakeholder.category && <Badge variant="outline" className={getCategoryColor(stakeholder.category)}>{stakeholder.category}</Badge>}
-                          {stakeholder.industry && <span className="truncate">{stakeholder.industry}</span>}
+                          {stakeholder.role && <span className="truncate">{stakeholder.role}</span>}
                           <span className="text-xs">{stakeholderContacts.length} Kontakte</span>
                         </div>
                       </div>
@@ -80,7 +80,7 @@ export function StakeholderGridView({
                   <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                     {stakeholder.email && <div className="flex items-center gap-1"><Mail className="h-3 w-3" /><span className="truncate">{stakeholder.email}</span></div>}
                     {stakeholder.phone && <div className="flex items-center gap-1"><Phone className="h-3 w-3" /><span>{stakeholder.phone}</span></div>}
-                    {(stakeholder.address || stakeholder.location) && <div className="flex items-center gap-1"><MapPin className="h-3 w-3" /><span className="truncate">{stakeholder.address || stakeholder.location}</span></div>}
+                    {(stakeholder.address || stakeholder.business_city) && <div className="flex items-center gap-1"><MapPin className="h-3 w-3" /><span className="truncate">{stakeholder.address || stakeholder.business_city}</span></div>}
                   </div>
 
                   <div className="pt-2">

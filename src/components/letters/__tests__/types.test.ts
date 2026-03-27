@@ -97,11 +97,6 @@ describe('formatContactAddress', () => {
     id: '1',
     name: 'Max Mustermann',
     organization: 'ACME GmbH',
-    private_street: 'Hauptstraße',
-    private_house_number: '42',
-    private_postal_code: '76131',
-    private_city: 'Karlsruhe',
-    private_country: 'Deutschland',
     business_street: 'Businesspark',
     business_house_number: '1',
     business_postal_code: '10115',
@@ -109,16 +104,8 @@ describe('formatContactAddress', () => {
     business_country: 'Deutschland',
   };
 
-  it('formats private address by default', () => {
+  it('formats business address', () => {
     const result = formatContactAddress(contact);
-    expect(result).toContain('Max Mustermann');
-    expect(result).toContain('Hauptstraße 42');
-    expect(result).toContain('76131 Karlsruhe');
-    expect(result).not.toContain('ACME');
-  });
-
-  it('formats business address when requested', () => {
-    const result = formatContactAddress(contact, true);
     expect(result).toContain('ACME GmbH');
     expect(result).toContain('Businesspark 1');
     expect(result).toContain('10115 Berlin');

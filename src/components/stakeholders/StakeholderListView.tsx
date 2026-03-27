@@ -81,7 +81,7 @@ export function StakeholderListView({
             const businessAddress = [stakeholder.business_street, stakeholder.business_house_number, stakeholder.business_postal_code, stakeholder.business_city]
               .filter(Boolean)
               .join(' ');
-            const displayAddress = businessAddress || stakeholder.address || stakeholder.location;
+            const displayAddress = businessAddress || stakeholder.address;
 
             return (
               <TableRow key={stakeholder.id} className="hover:bg-muted/50">
@@ -109,14 +109,14 @@ export function StakeholderListView({
                         </Avatar>
                         <div>
                           <div className="font-medium underline-offset-2 hover:underline">{stakeholder.name}</div>
-                          {stakeholder.industry && <div className="text-xs text-muted-foreground truncate max-w-[220px]">{stakeholder.industry}</div>}
+                          {stakeholder.role && <div className="text-xs text-muted-foreground truncate max-w-[220px]">{stakeholder.role}</div>}
                         </div>
                       </button>
                     </HoverCardTrigger>
                     <HoverCardContent align="start" className="w-96 space-y-3">
                       <div>
                         <p className="font-semibold">{stakeholder.name}</p>
-                        {stakeholder.industry && <p className="text-sm text-muted-foreground">{stakeholder.industry}</p>}
+                        {stakeholder.role && <p className="text-sm text-muted-foreground">{stakeholder.role}</p>}
                       </div>
 
                       <div className="space-y-1">

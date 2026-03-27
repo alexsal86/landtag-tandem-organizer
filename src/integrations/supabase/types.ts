@@ -2725,9 +2725,6 @@ export type Database = {
       }
       contacts: {
         Row: {
-          added_at: string | null
-          added_reason: string | null
-          additional_info: string | null
           address: string | null
           avatar_url: string | null
           birthday: string | null
@@ -2735,23 +2732,18 @@ export type Database = {
           business_country: string | null
           business_house_number: string | null
           business_phone: string | null
-          business_phone_2: string | null
           business_postal_code: string | null
           business_street: string | null
           category: string | null
-          certifications: string[] | null
-          company: string | null
           contact_type: string | null
           coordinates: Json | null
           created_at: string
-          data_protection_notes: string | null
           department: string | null
           email: string | null
           email_2: string | null
           email_3: string | null
           facebook: string | null
           first_name: string | null
-          gdpr_consent_date: string | null
           gender: string | null
           geocoded_at: string | null
           geocoding_source: string | null
@@ -2761,25 +2753,14 @@ export type Database = {
           last_contact: string | null
           last_name: string | null
           linkedin: string | null
-          location: string | null
-          marketing_consent: boolean | null
-          meeting_preferences: string | null
           mobile_phone: string | null
           name: string
-          newsletter_subscription: boolean | null
           notes: string | null
           organization: string | null
           organization_id: string | null
           phone: string | null
           position: string | null
           priority: string | null
-          private_city: string | null
-          private_country: string | null
-          private_house_number: string | null
-          private_phone: string | null
-          private_phone_2: string | null
-          private_postal_code: string | null
-          private_street: string | null
           role: string | null
           tags: string[] | null
           tenant_id: string
@@ -2791,9 +2772,6 @@ export type Database = {
           xing: string | null
         }
         Insert: {
-          added_at?: string | null
-          added_reason?: string | null
-          additional_info?: string | null
           address?: string | null
           avatar_url?: string | null
           birthday?: string | null
@@ -2801,23 +2779,18 @@ export type Database = {
           business_country?: string | null
           business_house_number?: string | null
           business_phone?: string | null
-          business_phone_2?: string | null
           business_postal_code?: string | null
           business_street?: string | null
           category?: string | null
-          certifications?: string[] | null
-          company?: string | null
           contact_type?: string | null
           coordinates?: Json | null
           created_at?: string
-          data_protection_notes?: string | null
           department?: string | null
           email?: string | null
           email_2?: string | null
           email_3?: string | null
           facebook?: string | null
           first_name?: string | null
-          gdpr_consent_date?: string | null
           gender?: string | null
           geocoded_at?: string | null
           geocoding_source?: string | null
@@ -2827,25 +2800,14 @@ export type Database = {
           last_contact?: string | null
           last_name?: string | null
           linkedin?: string | null
-          location?: string | null
-          marketing_consent?: boolean | null
-          meeting_preferences?: string | null
           mobile_phone?: string | null
           name: string
-          newsletter_subscription?: boolean | null
           notes?: string | null
           organization?: string | null
           organization_id?: string | null
           phone?: string | null
           position?: string | null
           priority?: string | null
-          private_city?: string | null
-          private_country?: string | null
-          private_house_number?: string | null
-          private_phone?: string | null
-          private_phone_2?: string | null
-          private_postal_code?: string | null
-          private_street?: string | null
           role?: string | null
           tags?: string[] | null
           tenant_id: string
@@ -2857,9 +2819,6 @@ export type Database = {
           xing?: string | null
         }
         Update: {
-          added_at?: string | null
-          added_reason?: string | null
-          additional_info?: string | null
           address?: string | null
           avatar_url?: string | null
           birthday?: string | null
@@ -2867,23 +2826,18 @@ export type Database = {
           business_country?: string | null
           business_house_number?: string | null
           business_phone?: string | null
-          business_phone_2?: string | null
           business_postal_code?: string | null
           business_street?: string | null
           category?: string | null
-          certifications?: string[] | null
-          company?: string | null
           contact_type?: string | null
           coordinates?: Json | null
           created_at?: string
-          data_protection_notes?: string | null
           department?: string | null
           email?: string | null
           email_2?: string | null
           email_3?: string | null
           facebook?: string | null
           first_name?: string | null
-          gdpr_consent_date?: string | null
           gender?: string | null
           geocoded_at?: string | null
           geocoding_source?: string | null
@@ -2893,25 +2847,14 @@ export type Database = {
           last_contact?: string | null
           last_name?: string | null
           linkedin?: string | null
-          location?: string | null
-          marketing_consent?: boolean | null
-          meeting_preferences?: string | null
           mobile_phone?: string | null
           name?: string
-          newsletter_subscription?: boolean | null
           notes?: string | null
           organization?: string | null
           organization_id?: string | null
           phone?: string | null
           position?: string | null
           priority?: string | null
-          private_city?: string | null
-          private_country?: string | null
-          private_house_number?: string | null
-          private_phone?: string | null
-          private_phone_2?: string | null
-          private_postal_code?: string | null
-          private_street?: string | null
           role?: string | null
           tags?: string[] | null
           tenant_id?: string

@@ -63,7 +63,7 @@ export function usePDFData(letter: LetterRecord): PDFDataState {
         if (letter.contact_id) {
           const { data, error } = await supabase
             .from('contacts')
-            .select('id, name, gender, last_name, title, private_street, private_house_number, private_postal_code, private_city, private_country, business_street, business_house_number, business_postal_code, business_city, business_country')
+            .select('id, name, gender, last_name, title, business_street, business_house_number, business_postal_code, business_city, business_country')
             .eq('id', letter.contact_id)
             .single();
           if (error) throw error;

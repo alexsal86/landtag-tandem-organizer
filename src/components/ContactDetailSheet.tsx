@@ -62,11 +62,6 @@ interface Contact {
   last_contact?: string;
   avatar_url?: string;
   notes?: string;
-  additional_info?: string;
-  legal_form?: string;
-  industry?: string;
-  main_contact_person?: string;
-  business_description?: string;
   tags?: string[];
   inherited_tags?: string[];
   business_street?: string;
@@ -370,7 +365,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                   </div>
                   <SheetDescription className="text-base">
                     {contact.contact_type === "organization" 
-                      ? `${contact.legal_form ? contact.legal_form + " • " : ""}${contact.industry || contact.main_contact_person || ""}`
+                      ? contact.role || ""
                       : contact.role
                     }
                   </SheetDescription>
@@ -679,14 +674,6 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                 )}
 
                 {/* Organization Details */}
-                {contact.contact_type === "organization" && contact.business_description && (
-                  <Card>
-                    <CardContent className="p-4">
-                      <h3 className="font-semibold text-lg mb-2">Geschäftsbeschreibung</h3>
-                      <p className="text-muted-foreground">{contact.business_description}</p>
-                    </CardContent>
-                  </Card>
-                )}
 
                 {/* Tags */}
                 {(allTags.direct.length > 0 || allTags.inherited.length > 0) && (
@@ -725,15 +712,6 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
                   </Card>
                 )}
 
-                {/* Additional Info */}
-                {contact.additional_info && (
-                  <Card>
-                    <CardContent className="p-4">
-                      <h3 className="font-semibold text-lg mb-2">Zusätzliche Informationen</h3>
-                      <p className="text-muted-foreground whitespace-pre-wrap">{contact.additional_info}</p>
-                    </CardContent>
-                  </Card>
-                )}
 
                 {contact.last_contact && (
                   <Card>

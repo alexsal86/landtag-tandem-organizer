@@ -264,7 +264,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
 
       // Clean date fields - convert empty strings to null for database
       const cleanedUpdateData: Record<string, any> = { ...updateData };
-      const dateFields = ['birthday', 'founding_date', 'contract_start_date', 'contract_end_date', 'gdpr_consent_date'];
+      const dateFields = ['birthday', 'founding_date', 'contract_start_date', 'contract_end_date'];
       
       dateFields.forEach(field => {
         if (cleanedUpdateData[field] === '' || cleanedUpdateData[field] === undefined) {
@@ -629,45 +629,6 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
             </>
           )}
 
-          {formData.contact_type === "organization" && (
-            <>
-              <div>
-                <Label htmlFor="legal_form">Rechtsform</Label>
-                <Input
-                  id="legal_form"
-                  value={formData.legal_form || ''}
-                  onChange={(e) => handleChange('legal_form', e.target.value)}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="industry">Branche</Label>
-                <Input
-                  id="industry"
-                  value={formData.industry || ''}
-                  onChange={(e) => handleChange('industry', e.target.value)}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="main_contact_person">Hauptansprechpartner</Label>
-                <Input
-                  id="main_contact_person"
-                  value={formData.main_contact_person || ''}
-                  onChange={(e) => handleChange('main_contact_person', e.target.value)}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="business_description">Geschäftsbeschreibung</Label>
-                <Textarea
-                  id="business_description"
-                  value={formData.business_description || ''}
-                  onChange={(e) => handleChange('business_description', e.target.value)}
-                />
-              </div>
-            </>
-          )}
 
           <div>
             <Label htmlFor="category">Kategorie</Label>
@@ -729,14 +690,6 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
             />
           </div>
 
-          <div>
-            <Label htmlFor="location">Ort</Label>
-            <Input
-              id="location"
-              value={formData.location || ''}
-              onChange={(e) => handleChange('location', e.target.value)}
-            />
-          </div>
 
           <div>
             <Label htmlFor="address">Adresse</Label>
@@ -902,15 +855,6 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
             />
           </div>
 
-          <div>
-            <Label htmlFor="additional_info">Zusätzliche Informationen</Label>
-            <Textarea
-              id="additional_info"
-              value={formData.additional_info || ''}
-              onChange={(e) => handleChange('additional_info', e.target.value)}
-              rows={4}
-            />
-          </div>
 
           <div>
             <Label htmlFor="tags">Tags</Label>

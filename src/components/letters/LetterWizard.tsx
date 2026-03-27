@@ -32,7 +32,7 @@ interface Contact {
   name: string;
   address?: string | null;
   email?: string | null;
-  company?: string | null;
+  organization?: string | null;
 }
 
 interface LetterTemplate {
@@ -159,7 +159,7 @@ export const LetterWizard: React.FC<LetterWizardProps> = ({ onComplete, onCancel
     if (!currentTenant) return;
     const { data } = await supabase
       .from('contacts')
-      .select('id, name, address, email, company')
+      .select('id, name, address, email, organization')
       .eq('tenant_id', currentTenant.id)
       .order('name')
       .limit(200);
@@ -190,7 +190,7 @@ export const LetterWizard: React.FC<LetterWizardProps> = ({ onComplete, onCancel
 
   const filteredContacts = contacts.filter(c =>
     c.name.toLowerCase().includes(contactSearch.toLowerCase()) ||
-    c.company?.toLowerCase().includes(contactSearch.toLowerCase()) ||
+    c.organization?.toLowerCase().includes(contactSearch.toLowerCase()) ||
     c.email?.toLowerCase().includes(contactSearch.toLowerCase())
   );
 
@@ -317,8 +317,8 @@ export const LetterWizard: React.FC<LetterWizardProps> = ({ onComplete, onCancel
                     <div className="flex items-center gap-2 p-2 bg-primary/5 border border-primary/20 rounded-lg">
                       <User className="h-4 w-4 text-primary" />
                       <span className="font-medium text-sm">{selectedContact.name}</span>
-                      {selectedContact.company && (
-                        <span className="text-xs text-muted-foreground">({selectedContact.company})</span>
+                      {selectedContact.organization && (
+                        <span className="text-xs text-muted-foreground">({selectedContact.organization})</span>
                       )}
                       <Button variant="ghost" size="sm" className="ml-auto h-6 w-6 p-0" onClick={() => setSelectedContact(null)}>
                         <X className="h-3 w-3" />
@@ -339,9 +339,9 @@ export const LetterWizard: React.FC<LetterWizardProps> = ({ onComplete, onCancel
                           }`}
                         >
                           <p className="font-medium">{contact.name}</p>
-                          {(contact.company || contact.address) && (
+                          {(contact.organization || contact.address) && (
                             <p className="text-xs text-muted-foreground truncate">
-                              {contact.company}{contact.company && contact.address ? ' · ' : ''}{contact.address}
+                              {contact.organization}{contact.organization && contact.address ? ' · ' : ''}{contact.address}
                             </p>
                           )}
                         </button>

@@ -34,7 +34,6 @@ export interface ContactBase extends ContactCommunicationFields {
   role?: string | null;
   organization?: string | null;
   organization_id?: string | null;
-  location?: string | null;
   address?: string | null;
   birthday?: string | null;
   category?: ContactCategory | null;
@@ -42,7 +41,6 @@ export interface ContactBase extends ContactCommunicationFields {
   last_contact?: string | null;
   avatar_url?: string | null;
   notes?: string | null;
-  additional_info?: string | null;
   is_favorite?: boolean | null;
   gender?: string | null;
   tags?: string[] | null;
@@ -51,10 +49,6 @@ export interface ContactBase extends ContactCommunicationFields {
   business_postal_code?: string | null;
   business_city?: string | null;
   business_country?: string | null;
-  legal_form?: string | null;
-  industry?: string | null;
-  main_contact_person?: string | null;
-  business_description?: string | null;
 }
 
 export interface PersonContact extends ContactBase {

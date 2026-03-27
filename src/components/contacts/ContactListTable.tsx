@@ -157,7 +157,7 @@ export function ContactListTable({
                           <div className="space-y-1.5 text-sm">
                             {contact.birthday && <div className="flex items-center gap-2"><CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />{format(new Date(contact.birthday), "dd.MM.yyyy", { locale: de })}</div>}
                             {contact.last_contact && <div className="flex items-center gap-2"><Clock className="h-3.5 w-3.5 text-muted-foreground" />Letzter Kontakt: {format(new Date(contact.last_contact), "dd.MM.yyyy", { locale: de })}</div>}
-                            {(contact.additional_info || contact.notes) && <p className="text-muted-foreground line-clamp-2">{contact.additional_info || contact.notes}</p>}
+                            {contact.notes && <p className="text-muted-foreground line-clamp-2">{contact.notes}</p>}
                           </div>
                           {!!contact.tags?.length && <div className="flex flex-wrap gap-1">{contact.tags.slice(0, 4).map(tag => <Badge key={tag} variant="secondary" className="text-xs"><Tag className="h-3 w-3 mr-1" />{tag}</Badge>)}</div>}
                         </HoverCardContent>
@@ -178,7 +178,7 @@ export function ContactListTable({
                         <div className="space-y-1.5 text-sm">
                           {contact.birthday && <div className="flex items-center gap-2"><CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />{format(new Date(contact.birthday), "dd.MM.yyyy", { locale: de })}</div>}
                           {contact.last_contact && <div className="flex items-center gap-2"><Clock className="h-3.5 w-3.5 text-muted-foreground" />Letzter Kontakt: {format(new Date(contact.last_contact), "dd.MM.yyyy", { locale: de })}</div>}
-                          {(contact.additional_info || contact.notes) && <p className="text-muted-foreground line-clamp-2">{contact.additional_info || contact.notes}</p>}
+                          {contact.notes && <p className="text-muted-foreground line-clamp-2">{contact.notes}</p>}
                         </div>
                         {!!contact.tags?.length && <div className="flex flex-wrap gap-1">{contact.tags.slice(0, 4).map(tag => <Badge key={tag} variant="secondary" className="text-xs"><Tag className="h-3 w-3 mr-1" />{tag}</Badge>)}</div>}
                       </HoverCardContent>
@@ -189,7 +189,7 @@ export function ContactListTable({
                 {/* Organisation */}
                 <TableCell className="py-1">
                   <span className="text-sm truncate block max-w-[160px]">
-                    {contact.contact_type === "organization" ? (contact.industry || contact.legal_form || "–") : (contact.organization || "–")}
+                    {contact.contact_type === "organization" ? "–" : (contact.organization || "–")}
                   </span>
                 </TableCell>
 
@@ -223,7 +223,7 @@ export function ContactListTable({
                 {/* Address */}
                 <TableCell className="py-1">
                   <span className="text-sm text-muted-foreground truncate block max-w-[180px]">
-                    {contact.address || contact.location || "—"}
+                    {contact.address || contact.business_city || "—"}
                   </span>
                 </TableCell>
 

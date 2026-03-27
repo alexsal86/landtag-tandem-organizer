@@ -116,7 +116,7 @@ export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ conta
       </Card>
 
       {/* Address */}
-      {(contact.business_street || contact.business_city || contact.address || contact.location) && (
+      {(contact.business_street || contact.business_city || contact.address) && (
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-3"><MapPin className="h-4 w-4 text-primary" /><h3 className="font-semibold">Geschäftsadresse</h3></div>
@@ -128,7 +128,7 @@ export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ conta
                 </div>
               )}
               {contact.business_country && <div><p className="text-muted-foreground text-xs">Land</p><p className="font-medium">{contact.business_country}</p></div>}
-              {!contact.business_street && (contact.address || contact.location) && <p className="font-medium">{contact.address || contact.location}</p>}
+              {!contact.business_street && contact.address && <p className="font-medium">{contact.address}</p>}
             </div>
           </CardContent>
         </Card>
@@ -158,9 +158,6 @@ export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ conta
         </Card>
       )}
 
-      {contact.contact_type === "organization" && contact.business_description && (
-        <Card><CardContent className="p-4"><h3 className="font-semibold mb-2">Geschäftsbeschreibung</h3><p className="text-sm text-muted-foreground">{contact.business_description}</p></CardContent></Card>
-      )}
 
       {(allTags.direct.length > 0 || allTags.inherited.length > 0) && (
         <Card>
@@ -179,7 +176,7 @@ export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ conta
       )}
 
       {contact.notes && (<Card><CardContent className="p-4"><h3 className="font-semibold mb-2">Notizen</h3><p className="text-sm text-muted-foreground whitespace-pre-wrap">{contact.notes}</p></CardContent></Card>)}
-      {contact.additional_info && (<Card><CardContent className="p-4"><h3 className="font-semibold mb-2">Zusätzliche Informationen</h3><p className="text-sm text-muted-foreground whitespace-pre-wrap">{contact.additional_info}</p></CardContent></Card>)}
+      {contact.last_contact && (<Card><CardContent className="p-4"><h3 className="font-semibold mb-2">Letzter Kontakt</h3><p className="text-sm text-muted-foreground">{contact.last_contact}</p></CardContent></Card>)}
       {contact.last_contact && (<Card><CardContent className="p-4"><h3 className="font-semibold mb-2">Letzter Kontakt</h3><p className="text-sm text-muted-foreground">{contact.last_contact}</p></CardContent></Card>)}
     </div>
   );

@@ -77,7 +77,7 @@ export function ContactGridCard({
                 <CardTitle className="text-lg mb0">{contact.name}</CardTitle>
                 <p className="text-sm text-muted-foreground">
                   {contact.contact_type === "organization"
-                    ? `${contact.legal_form ? contact.legal_form + " • " : ""}${contact.industry || contact.main_contact_person || ""}`
+                    ? contact.role || ""
                     : contact.role}
                 </p>
               </div>
@@ -91,13 +91,11 @@ export function ContactGridCard({
           <div className="space-y-3">
             {contact.contact_type === "person" ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground"><Building className="h-4 w-4" /><span className="truncate">{contact.organization || "Keine Organisation"}</span></div>
-            ) : contact.business_description ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground"><Building className="h-4 w-4" /><span className="truncate">{contact.business_description}</span></div>
             ) : null}
             <div className="flex items-center gap-2 text-sm text-muted-foreground"><Mail className="h-4 w-4" /><span className="truncate">{contact.email || "Keine E-Mail"}</span></div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground"><Phone className="h-4 w-4" /><span>{contact.phone || "Keine Telefonnummer"}</span></div>
-            {contact.location && <div className="flex items-center gap-2 text-sm text-muted-foreground"><MapPin className="h-4 w-4" /><span>{contact.location}</span></div>}
-            {contact.address && <div className="flex items-center gap-2 text-sm text-muted-foreground"><MapPin className="h-4 w-4" /><span className="truncate">{contact.address}</span></div>}
+            {(contact.business_city || contact.address) && <div className="flex items-center gap-2 text-sm text-muted-foreground"><MapPin className="h-4 w-4" /><span>{contact.business_city || contact.address}</span></div>}
+            {contact.address && !contact.business_city && <div className="flex items-center gap-2 text-sm text-muted-foreground"><MapPin className="h-4 w-4" /><span className="truncate">{contact.address}</span></div>}
             {contact.last_contact && <div className="pt-2 border-t border-border"><span className="text-xs text-muted-foreground">Letzter Kontakt: {contact.last_contact}</span></div>}
           </div>
           <div className="flex gap-2 mt-4">

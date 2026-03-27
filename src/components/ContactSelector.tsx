@@ -26,7 +26,6 @@ interface ContactSelectorProps {
 const CONTACT_COLUMNS = `
   id, name, organization, email, phone, contact_type, category, avatar_url, is_favorite,
   business_street, business_house_number, business_postal_code, business_city, business_country,
-  private_street, private_house_number, private_postal_code, private_city, private_country,
   address
 `;
 
@@ -34,10 +33,7 @@ const formatContactAddress = (contact: Contact): string => {
   const businessAddr = contact.business_street && contact.business_city
     ? `${contact.business_street}${contact.business_house_number ? ' ' + contact.business_house_number : ''}\n${contact.business_postal_code || ''} ${contact.business_city || ''}${contact.business_country && contact.business_country !== 'Deutschland' ? '\n' + contact.business_country : ''}`
     : '';
-  const privateAddr = contact.private_street && contact.private_city
-    ? `${contact.private_street}${contact.private_house_number ? ' ' + contact.private_house_number : ''}\n${contact.private_postal_code || ''} ${contact.private_city || ''}${contact.private_country && contact.private_country !== 'Deutschland' ? '\n' + contact.private_country : ''}`
-    : '';
-  return businessAddr || privateAddr || contact.address || '';
+  return businessAddr || contact.address || '';
 };
 
 const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').toUpperCase();

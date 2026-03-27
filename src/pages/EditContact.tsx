@@ -38,8 +38,6 @@ const createEmptyContact = (): EditableContact => ({
   category: "citizen",
   priority: "medium",
   notes: "",
-  industry: "",
-  main_contact_person: "",
   avatar_url: "",
 });
 
@@ -107,8 +105,6 @@ export default function EditContact() {
       category: data.category ?? "citizen",
       priority: data.priority ?? "medium",
       notes: data.notes || "",
-      industry: "",
-      main_contact_person: "",
       avatar_url: data.avatar_url || "",
     });
   };
@@ -233,8 +229,6 @@ export default function EditContact() {
           category: contact.category,
           priority: contact.priority,
           notes: contact.notes || null,
-          industry: contact.industry || null,
-          main_contact_person: contact.main_contact_person || null,
           avatar_url: contact.avatar_url || null,
           updated_at: new Date().toISOString(),
         })
@@ -384,56 +378,28 @@ export default function EditContact() {
                         {contact.contact_type === "organization" && (
                           <>
                             <div>
-                              <Label htmlFor="industry">Branche</Label>
+                              <Label htmlFor="email">E-Mail</Label>
                               <Input
-                                id="industry"
-                                value={contact.industry || ""}
+                                id="email"
+                                type="email"
+                                value={contact.email || ""}
                                 onChange={(e) =>
-                                  setContact({
-                                    ...contact,
-                                    industry: e.target.value,
-                                  })
+                                  setContact({ ...contact, email: e.target.value })
                                 }
                               />
                             </div>
                             <div>
-                              <Label htmlFor="main_contact_person">
-                                Ansprechperson
-                              </Label>
+                              <Label htmlFor="phone">Telefon</Label>
                               <Input
-                                id="main_contact_person"
-                                value={contact.main_contact_person || ""}
+                                id="phone"
+                                value={contact.phone || ""}
                                 onChange={(e) =>
-                                  setContact({
-                                    ...contact,
-                                    main_contact_person: e.target.value,
-                                  })
+                                  setContact({ ...contact, phone: e.target.value })
                                 }
                               />
                             </div>
                           </>
                         )}
-                        <div>
-                          <Label htmlFor="email">E-Mail</Label>
-                          <Input
-                            id="email"
-                            type="email"
-                            value={contact.email || ""}
-                            onChange={(e) =>
-                              setContact({ ...contact, email: e.target.value })
-                            }
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="phone">Telefon</Label>
-                          <Input
-                            id="phone"
-                            value={contact.phone || ""}
-                            onChange={(e) =>
-                              setContact({ ...contact, phone: e.target.value })
-                            }
-                          />
-                        </div>
                       </div>
 
                       <div className="space-y-4">
