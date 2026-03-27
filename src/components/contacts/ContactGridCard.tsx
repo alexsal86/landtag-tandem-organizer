@@ -91,8 +91,6 @@ export function ContactGridCard({
           <div className="space-y-3">
             {contact.contact_type === "person" ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground"><Building className="h-4 w-4" /><span className="truncate">{contact.organization || "Keine Organisation"}</span></div>
-            ) : contact.business_description ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground"><Building className="h-4 w-4" /><span className="truncate">{contact.business_description}</span></div>
             ) : null}
             <div className="flex items-center gap-2 text-sm text-muted-foreground"><Mail className="h-4 w-4" /><span className="truncate">{contact.email || "Keine E-Mail"}</span></div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground"><Phone className="h-4 w-4" /><span>{contact.phone || "Keine Telefonnummer"}</span></div>
