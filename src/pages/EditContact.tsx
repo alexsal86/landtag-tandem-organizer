@@ -105,8 +105,6 @@ export default function EditContact() {
       category: data.category ?? "citizen",
       priority: data.priority ?? "medium",
       notes: data.notes || "",
-      industry: "",
-      main_contact_person: "",
       avatar_url: data.avatar_url || "",
     });
   };
