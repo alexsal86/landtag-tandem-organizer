@@ -1411,8 +1411,140 @@ export function AppointmentPreparationDataTab({
             Vorbereitungsdaten · Inhalte & Kommunikation
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           {(["basics", "communication"] as const).map(renderPreparationSection)}
+
+          {/* Structured: Wichtige Themen */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <h4 className="text-sm font-medium">Wichtige Themen</h4>
+              <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                {keyTopicItems.length}
+              </span>
+            </div>
+            {keyTopicItems.map((item, idx) => (
+              <div key={item.id} className="rounded-lg border bg-muted/20 p-3 space-y-2">
+                <div className="flex items-start gap-2">
+                  <Input
+                    value={item.topic}
+                    onChange={(e) => updateKeyTopicItem(idx, 'topic', e.target.value)}
+                    onKeyDown={(e) => handleKeyTopicKeyDown(e, idx)}
+                    placeholder="Thema eingeben..."
+                    className="flex-1"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeKeyTopicItem(idx)}
+                    className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+                <Textarea
+                  value={item.background}
+                  onChange={(e) => updateKeyTopicItem(idx, 'background', e.target.value)}
+                  placeholder="Hintergrundinformationen (optional)"
+                  rows={2}
+                  className="resize-none text-sm"
+                />
+              </div>
+            ))}
+            <Button variant="outline" size="sm" onClick={addKeyTopicItem}>
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Thema hinzufügen
+            </Button>
+          </div>
+
+          {/* Structured: Ergänzende Gesprächspunkte */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <h4 className="text-sm font-medium">Ergänzende Gesprächspunkte</h4>
+              <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                {talkingPointItems.length}
+              </span>
+            </div>
+            {talkingPointItems.map((item, idx) => (
+              <div key={item.id} className="rounded-lg border bg-muted/20 p-3 space-y-2">
+                <div className="flex items-start gap-2">
+                  <Input
+                    value={item.point}
+                    onChange={(e) => updateTalkingPointItem(idx, 'point', e.target.value)}
+                    onKeyDown={(e) => handleTalkingPointKeyDown(e, idx)}
+                    placeholder="Gesprächspunkt eingeben..."
+                    className="flex-1"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeTalkingPointItem(idx)}
+                    className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+                <Textarea
+                  value={item.background}
+                  onChange={(e) => updateTalkingPointItem(idx, 'background', e.target.value)}
+                  placeholder="Hintergrundinformationen (optional)"
+                  rows={2}
+                  className="resize-none text-sm"
+                />
+              </div>
+            ))}
+            <Button variant="outline" size="sm" onClick={addTalkingPointItem}>
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Gesprächspunkt hinzufügen
+            </Button>
+          </div>
+
+          {/* Structured: Fragen & Antworten */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <h4 className="text-sm font-medium">Fragen & Antworten</h4>
+              <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                {qaPairs.length}
+              </span>
+            </div>
+            {qaPairs.map((pair, idx) => (
+              <div key={pair.id} className="rounded-lg border bg-muted/20 p-3 space-y-2">
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 space-y-2">
+                    <div>
+                      <label className="text-xs text-muted-foreground font-medium">Frage</label>
+                      <Input
+                        value={pair.question}
+                        onChange={(e) => updateQaPair(idx, 'question', e.target.value)}
+                        placeholder="Mögliche Frage..."
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground font-medium">Antwort</label>
+                      <Textarea
+                        value={pair.answer}
+                        onChange={(e) => updateQaPair(idx, 'answer', e.target.value)}
+                        placeholder="Vorbereitete Antwort..."
+                        rows={2}
+                        className="resize-none"
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeQaPair(idx)}
+                    className="h-8 w-8 shrink-0 text-destructive hover:text-destructive mt-5"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+            <Button variant="outline" size="sm" onClick={addQaPair}>
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Frage hinzufügen
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
