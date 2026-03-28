@@ -546,6 +546,72 @@ export function AppointmentPreparationDataTab({
     debouncedSave(buildPreparationData(editData, { program: updated }));
   };
 
+  // --- Q&A pair handlers ---
+  const addQaPair = () => {
+    const newPair: QAPair = { id: crypto.randomUUID(), question: '', answer: '' };
+    const updated = [...qaPairs, newPair];
+    setQaPairs(updated);
+    debouncedSave(buildPreparationData(editData, { qa_pairs: updated }));
+  };
+  const updateQaPair = (idx: number, field: 'question' | 'answer', value: string) => {
+    const updated = qaPairs.map((p, i) => i === idx ? { ...p, [field]: value } : p);
+    setQaPairs(updated);
+    debouncedSave(buildPreparationData(editData, { qa_pairs: updated }));
+  };
+  const removeQaPair = (idx: number) => {
+    const updated = qaPairs.filter((_, i) => i !== idx);
+    setQaPairs(updated);
+    debouncedSave(buildPreparationData(editData, { qa_pairs: updated }));
+  };
+
+  // --- Key topic item handlers ---
+  const addKeyTopicItem = () => {
+    const newItem: TopicItem = { id: crypto.randomUUID(), topic: '', background: '' };
+    const updated = [...keyTopicItems, newItem];
+    setKeyTopicItems(updated);
+    debouncedSave(buildPreparationData(editData, { key_topic_items: updated }));
+  };
+  const updateKeyTopicItem = (idx: number, field: 'topic' | 'background', value: string) => {
+    const updated = keyTopicItems.map((item, i) => i === idx ? { ...item, [field]: value } : item);
+    setKeyTopicItems(updated);
+    debouncedSave(buildPreparationData(editData, { key_topic_items: updated }));
+  };
+  const removeKeyTopicItem = (idx: number) => {
+    const updated = keyTopicItems.filter((_, i) => i !== idx);
+    setKeyTopicItems(updated);
+    debouncedSave(buildPreparationData(editData, { key_topic_items: updated }));
+  };
+  const handleKeyTopicKeyDown = (e: React.KeyboardEvent, idx: number) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      addKeyTopicItem();
+    }
+  };
+
+  // --- Talking point item handlers ---
+  const addTalkingPointItem = () => {
+    const newItem: TalkingPointItem = { id: crypto.randomUUID(), point: '', background: '' };
+    const updated = [...talkingPointItems, newItem];
+    setTalkingPointItems(updated);
+    debouncedSave(buildPreparationData(editData, { talking_point_items: updated }));
+  };
+  const updateTalkingPointItem = (idx: number, field: 'point' | 'background', value: string) => {
+    const updated = talkingPointItems.map((item, i) => i === idx ? { ...item, [field]: value } : item);
+    setTalkingPointItems(updated);
+    debouncedSave(buildPreparationData(editData, { talking_point_items: updated }));
+  };
+  const removeTalkingPointItem = (idx: number) => {
+    const updated = talkingPointItems.filter((_, i) => i !== idx);
+    setTalkingPointItems(updated);
+    debouncedSave(buildPreparationData(editData, { talking_point_items: updated }));
+  };
+  const handleTalkingPointKeyDown = (e: React.KeyboardEvent, idx: number) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      addTalkingPointItem();
+    }
+  };
+
   const fieldSections = {
     basics: {
       title: "Grundlagen",
