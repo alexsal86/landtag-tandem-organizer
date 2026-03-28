@@ -229,6 +229,9 @@ export function AppointmentPreparationDataTab({
     companions: overrides?.companions ?? companions,
     has_parking: overrides?.has_parking ?? hasParking,
     program: overrides?.program ?? programRows,
+    qa_pairs: overrides?.qa_pairs ?? qaPairs,
+    key_topic_items: overrides?.key_topic_items ?? keyTopicItems,
+    talking_point_items: overrides?.talking_point_items ?? talkingPointItems,
   });
 
 
