@@ -49,6 +49,25 @@ export interface AppointmentPreparation {
       role?: string;
       organization?: string;
       note?: string;
+      contact_id?: string;
+    }>;
+    // Structured Q&A pairs
+    qa_pairs?: Array<{
+      id: string;
+      question: string;
+      answer: string;
+    }>;
+    // Structured topic items
+    key_topic_items?: Array<{
+      id: string;
+      topic: string;
+      background: string;
+    }>;
+    // Structured talking point items
+    talking_point_items?: Array<{
+      id: string;
+      point: string;
+      background: string;
     }>;
     // Begleitpersonen
     companions?: Array<{
