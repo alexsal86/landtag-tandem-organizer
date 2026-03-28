@@ -187,6 +187,9 @@ export function AppointmentPreparationDataTab({
       setHasParking(nextPreparationData.has_parking ?? false);
       setProgramRows(nextPreparationData.program ?? []);
       setVisitReason(nextPreparationData.visit_reason ?? '');
+      setQaPairs(nextPreparationData.qa_pairs ?? []);
+      setKeyTopicItems(nextPreparationData.key_topic_items ?? []);
+      setTalkingPointItems(nextPreparationData.talking_point_items ?? []);
 
       if (nextPreparationData.contact_name && nextPreparationData.contact_info) {
         setShowCustomContact(true);
