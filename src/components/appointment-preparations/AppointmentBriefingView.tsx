@@ -137,13 +137,28 @@ export function AppointmentBriefingView({ preparation, appointmentInfo, compact 
   const conversationPartners = getConversationPartnersFromPreparationData(d);
   const companions = d.companions ?? [];
   const program = d.program ?? [];
+  const qaPairs = d.qa_pairs ?? [];
+  const keyTopicItems = d.key_topic_items ?? [];
+  const talkingPointItems = d.talking_point_items ?? [];
 
   const peopleContextLines = [d.audience, d.facts_figures].filter(Boolean) as string[];
   const importantTopicLines = getImportantTopicLines(d);
+
+  // Build Q&A lines: prefer structured pairs, fallback to free text
+  const qaLines: string[] = [];
+  if (qaPairs.length > 0) {
+    qaPairs.forEach(pair => {
+      if (pair.question) qaLines.push(`F: ${pair.question}`);
+      if (pair.answer) qaLines.push(`A: ${pair.answer}`);
+    });
+  } else if (d.questions_answers) {
+    qaLines.push(...splitPreparationTextToList(d.questions_answers));
+  }
+
   const additionalContextLines = [
     ...splitPreparationTextToList(d.position_statements),
     ...splitPreparationTextToList(d.objectives),
-    ...splitPreparationTextToList(d.questions_answers),
+    ...qaLines,
   ];
   const briefingNotes = getBriefingNotes(preparation);
   const publicRelationsStatus = getPublicRelationsStatus(d);
