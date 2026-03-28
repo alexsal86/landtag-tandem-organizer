@@ -192,7 +192,7 @@ export function AppointmentPreparationDataTab({
     try {
       const { data, error } = await supabase
         .from('contacts')
-        .select('id, name, email, phone, role, position, organization, company, notes, avatar_url')
+        .select('id, name, email, phone, role, position, organization, notes, avatar_url')
         .eq('tenant_id', currentTenant.id)
         .order('name');
 
