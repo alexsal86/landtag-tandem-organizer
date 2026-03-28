@@ -137,6 +137,16 @@ export function AppointmentPreparationDataTab({
   const [visitReason, setVisitReason] = useState<string>(
     preparationDataWithDefaults.visit_reason ?? ''
   );
+  const [qaPairs, setQaPairs] = useState<QAPair[]>(
+    preparationDataWithDefaults.qa_pairs ?? []
+  );
+  const [keyTopicItems, setKeyTopicItems] = useState<TopicItem[]>(
+    preparationDataWithDefaults.key_topic_items ?? []
+  );
+  const [talkingPointItems, setTalkingPointItems] = useState<TalkingPointItem[]>(
+    preparationDataWithDefaults.talking_point_items ?? []
+  );
+  const [partnerSearchTexts, setPartnerSearchTexts] = useState<Record<string, string>>({});
 
   const [contacts, setContacts] = useState<ContactOption[]>([]);
   const [selectedContactId, setSelectedContactId] = useState("");
