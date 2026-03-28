@@ -137,13 +137,28 @@ export function AppointmentBriefingView({ preparation, appointmentInfo, compact 
   const conversationPartners = getConversationPartnersFromPreparationData(d);
   const companions = d.companions ?? [];
   const program = d.program ?? [];
+  const qaPairs = d.qa_pairs ?? [];
+  const keyTopicItems = d.key_topic_items ?? [];
+  const talkingPointItems = d.talking_point_items ?? [];
 
   const peopleContextLines = [d.audience, d.facts_figures].filter(Boolean) as string[];
   const importantTopicLines = getImportantTopicLines(d);
+
+  // Build Q&A lines: prefer structured pairs, fallback to free text
+  const qaLines: string[] = [];
+  if (qaPairs.length > 0) {
+    qaPairs.forEach(pair => {
+      if (pair.question) qaLines.push(`F: ${pair.question}`);
+      if (pair.answer) qaLines.push(`A: ${pair.answer}`);
+    });
+  } else if (d.questions_answers) {
+    qaLines.push(...splitPreparationTextToList(d.questions_answers));
+  }
+
   const additionalContextLines = [
     ...splitPreparationTextToList(d.position_statements),
     ...splitPreparationTextToList(d.objectives),
-    ...splitPreparationTextToList(d.questions_answers),
+    ...qaLines,
   ];
   const briefingNotes = getBriefingNotes(preparation);
   const publicRelationsStatus = getPublicRelationsStatus(d);
@@ -293,13 +308,40 @@ export function AppointmentBriefingView({ preparation, appointmentInfo, compact 
                 <BulletList items={peopleContextLines} />
               </BriefingSection>
 
-              <BriefingSection
-                icon={<MessageCircleIcon className="h-4 w-4" />}
-                title="Wichtige Themen"
-                isEmpty={importantTopicLines.length === 0}
-              >
-                <BulletList items={importantTopicLines} />
-              </BriefingSection>
+              {/* Structured Topics with background info */}
+              {keyTopicItems.length > 0 && (
+                <BriefingSection icon={<MessageCircleIcon className="h-4 w-4" />} title="Wichtige Themen">
+                  <div className="space-y-3">
+                    {keyTopicItems.map((item) => (
+                      <div key={item.id}>
+                        <p className="flex gap-2"><span className="text-primary shrink-0">→</span><span className="font-medium break-words">{item.topic}</span></p>
+                        {item.background && <p className="pl-5 text-muted-foreground text-xs break-words">{item.background}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </BriefingSection>
+              )}
+
+              {/* Fallback: flat topic lines */}
+              {keyTopicItems.length === 0 && importantTopicLines.length > 0 && (
+                <BriefingSection icon={<MessageCircleIcon className="h-4 w-4" />} title="Wichtige Themen">
+                  <BulletList items={importantTopicLines} />
+                </BriefingSection>
+              )}
+
+              {/* Structured Q&A pairs */}
+              {qaPairs.length > 0 && (
+                <BriefingSection icon={<MessageCircleIcon className="h-4 w-4" />} title="Fragen & Antworten">
+                  <div className="space-y-3">
+                    {qaPairs.map((pair) => (
+                      <div key={pair.id} className="space-y-1">
+                        {pair.question && <p className="font-medium text-foreground">F: {pair.question}</p>}
+                        {pair.answer && <p className="text-muted-foreground">A: {pair.answer}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </BriefingSection>
+              )}
 
               <BriefingSection
                 icon={<MessageCircleIcon className="h-4 w-4" />}
