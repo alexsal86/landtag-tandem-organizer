@@ -30,6 +30,9 @@ import type { EventPayloadStatus } from "@/components/event-planning/types";
 type ConversationPartner = AppointmentConversationPartner;
 type Companion = NonNullable<AppointmentPreparation['preparation_data']['companions']>[number];
 type ProgramRow = NonNullable<AppointmentPreparation['preparation_data']['program']>[number];
+type QAPair = { id: string; question: string; answer: string };
+type TopicItem = { id: string; topic: string; background: string };
+type TalkingPointItem = { id: string; point: string; background: string };
 type ContactOption = {
   id: string;
   name: string;
@@ -38,7 +41,6 @@ type ContactOption = {
   role: string | null;
   position: string | null;
   organization: string | null;
-  company: string | null;
   notes: string | null;
   avatar_url: string | null;
 };
