@@ -382,28 +382,44 @@ export function AppointmentPreparationDataTab({
     }));
   };
 
-  const addConversationPartnerFromContact = () => {
-    if (!selectedPartnerContactId) return;
-
-    const selectedContact = contactsById.get(selectedPartnerContactId);
-    if (!selectedContact) return;
-
-    const newPartner: ConversationPartner = {
-      id: crypto.randomUUID(),
-      name: selectedContact.name,
-      avatar_url: selectedContact.avatar_url || '',
-      role: selectedContact.role || selectedContact.position || '',
-      organization: selectedContact.organization || '',
-      note: selectedContact.notes || ''
-    };
-
-    const updated = [...conversationPartners, newPartner];
+  const selectContactForPartner = (idx: number, contactId: string) => {
+    const contact = contactsById.get(contactId);
+    if (!contact) return;
+    const updated = conversationPartners.map((partner, i) =>
+      i === idx ? {
+        ...partner,
+        name: contact.name,
+        avatar_url: contact.avatar_url || '',
+        role: contact.role || contact.position || '',
+        organization: contact.organization || '',
+        note: contact.notes || partner.note || '',
+        contact_id: contactId,
+      } : partner
+    );
     setConversationPartners(updated);
-    setSelectedPartnerContactId('');
+    setPartnerSearchTexts(prev => ({ ...prev, [conversationPartners[idx].id]: '' }));
     debouncedSave(buildPreparationData(editData, {
       conversation_partners: updated,
       contact_person: undefined
     }));
+  };
+
+  const unlinkContactFromPartner = (idx: number) => {
+    const updated = conversationPartners.map((partner, i) =>
+      i === idx ? { ...partner, contact_id: undefined } : partner
+    );
+    setConversationPartners(updated);
+    debouncedSave(buildPreparationData(editData, {
+      conversation_partners: updated,
+      contact_person: undefined
+    }));
+  };
+
+  const getPartnerSearchResults = (partnerId: string) => {
+    const searchText = partnerSearchTexts[partnerId] || '';
+    if (searchText.length < 2) return [];
+    const lower = searchText.toLowerCase();
+    return contacts.filter(c => c.name.toLowerCase().includes(lower)).slice(0, 8);
   };
 
   const updateConversationPartner = (idx: number, field: keyof ConversationPartner, value: string) => {
