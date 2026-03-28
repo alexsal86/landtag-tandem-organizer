@@ -620,8 +620,6 @@ export function AppointmentPreparationDataTab({
       fields: [
         { key: "last_meeting_date", label: "Letztes Treffen", placeholder: "Datum des letzten Treffens", type: "date" },
         { key: "objectives", label: "Ziele", placeholder: "Welche Ziele sollen erreicht werden?", multiline: true },
-        { key: "key_topics", label: "Wichtige Themen", placeholder: "Ein Thema pro Zeile oder als Liste", multiline: true },
-        { key: "talking_points", label: "Ergänzende Gesprächspunkte", placeholder: "Optionale Ergänzungen, ebenfalls gern zeilenweise", multiline: true },
       ]
     },
     people: {
