@@ -319,7 +319,31 @@ export default function AppointmentPreparationDetail() {
           <div className="mt-6">
             <TabsContent value="briefing">
               <div className="space-y-4">
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={pdfLoading}
+                    onClick={async () => {
+                      setPdfLoading(true);
+                      try {
+                        await generateBriefingPdf({
+                          preparation,
+                          appointmentTitle: appointmentInfo?.title,
+                          appointmentLocation: appointmentInfo?.location ?? undefined,
+                          appointmentStartTime: appointmentInfo?.start_time,
+                          appointmentEndTime: appointmentInfo?.end_time,
+                        });
+                      } catch (e) {
+                        toast({ title: "Fehler", description: "PDF konnte nicht erstellt werden.", variant: "destructive" });
+                      } finally {
+                        setPdfLoading(false);
+                      }
+                    }}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    {pdfLoading ? "Wird erstellt..." : "PDF herunterladen"}
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
