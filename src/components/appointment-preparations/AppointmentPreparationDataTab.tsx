@@ -98,6 +98,7 @@ export function AppointmentPreparationDataTab({
   onUpdate,
   onOpenAppointmentDetails
 }: AppointmentPreparationDataTabProps) {
+  const navigate = useNavigate();
   const extendedPreparation = preparation as ExtendedAppointmentPreparation;
   const preparationDataWithDefaults = getPreparationDataWithDefaults(preparation.preparation_data);
 
