@@ -14,6 +14,7 @@ import { AppointmentPreparationFileUpload } from "@/components/appointments/Appo
 import { AppointmentDetailsSidebar } from "@/components/calendar/AppointmentDetailsSidebar";
 import { AppointmentBriefingView } from "@/components/appointment-preparations/AppointmentBriefingView";
 import { supabase } from "@/integrations/supabase/client";
+import { generateBriefingPdf } from "@/components/appointment-preparations/briefingPdfGenerator";
 import { useAuth } from "@/hooks/useAuth";
 import { debugConsole } from "@/utils/debugConsole";
 import { useTenant } from "@/hooks/useTenant";
