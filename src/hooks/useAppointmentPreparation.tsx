@@ -103,6 +103,7 @@ export interface AppointmentConversationPartner {
   role?: string;
   organization?: string;
   note?: string;
+  contact_id?: string;
 }
 
 export function splitPreparationTextToList(text: string | undefined | null): string[] {
