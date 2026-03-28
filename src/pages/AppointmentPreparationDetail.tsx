@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Edit, FileText, Upload, Calendar, Clock, MapPin, Briefcase, ExternalLink, Notebook } from "lucide-react";
+import { ArrowLeft, Edit, FileText, Upload, Calendar, Clock, MapPin, Briefcase, ExternalLink, Notebook, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
