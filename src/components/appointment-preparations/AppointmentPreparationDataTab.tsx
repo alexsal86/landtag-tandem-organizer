@@ -791,66 +791,8 @@ export function AppointmentPreparationDataTab({
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
 
-      {/* 1. Anlass des Besuchs */}
-      <Card className="lg:order-2">
-        <CardContent className="pt-6">
-          <Collapsible
-            open={expandedSections.anlass}
-            onOpenChange={() => toggleSection('anlass')}
-          >
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
-              <div className="flex items-center gap-3">
-                <TagIcon className="h-5 w-5 text-primary" />
-                <h3 className="font-medium">Anlass des Besuchs</h3>
-                {visitReason && (
-                  <Badge variant="secondary" className="text-xs">
-                    {VISIT_REASON_OPTIONS.find(o => o.value === visitReason)?.label ?? visitReason}
-                  </Badge>
-                )}
-              </div>
-              {expandedSections.anlass ? (
-                <ChevronDownIcon className="h-4 w-4" />
-              ) : (
-                <ChevronRightIcon className="h-4 w-4" />
-              )}
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-4">
-              <div className="space-y-4 px-1">
-                <div className="flex flex-wrap gap-3">
-                  {VISIT_REASON_OPTIONS.map(option => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => handleVisitReasonChange(option.value)}
-                      className={`px-4 py-2 rounded-full border text-sm font-medium transition-colors ${
-                        visitReason === option.value
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'bg-background border-border hover:bg-muted'
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Freifeld zum Anlass</label>
-                  <Textarea
-                    value={editData.visit_reason_details ?? ''}
-                    onChange={(e) => handleFieldChange('visit_reason_details', e.target.value)}
-                    placeholder="Weitere Details zum Anlass des Besuchs"
-                    rows={3}
-                    className="resize-none"
-                  />
-                </div>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        </CardContent>
-      </Card>
-
-      {/* 2. Gesprächspartner */}
-      <Card className="lg:order-1">
+      {/* 1. Gesprächspartner (moved to top) */}
+      <Card>
         <CardContent className="pt-6">
           <Collapsible
             open={expandedSections.gespraechspartner}
@@ -953,116 +895,159 @@ export function AppointmentPreparationDataTab({
               {conversationPartners.length === 0 && (
                 <p className="text-sm text-muted-foreground px-1">Noch keine Gesprächspartner hinzugefügt.</p>
               )}
-              <div className="rounded-lg border bg-muted/20 p-3">
-                <label className="mb-2 block text-sm font-medium">Aus Kontakten hinzufügen</label>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Select
-                    value={selectedPartnerContactId}
-                    onValueChange={setSelectedPartnerContactId}
-                  >
-                    <SelectTrigger className="sm:flex-1">
-                      <SelectValue placeholder="Kontakt auswählen..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {contacts.map((contact) => (
-                        <SelectItem key={contact.id} value={contact.id}>
-                          <div>
-                            <div className="font-medium">{contact.name}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {contact.organization && `${contact.organization} • `}
-                              {contact.role || contact.position}
+              {conversationPartners.map((partner, idx) => {
+                const isLinked = !!partner.contact_id;
+                const searchResults = getPartnerSearchResults(partner.id);
+                const searchText = partnerSearchTexts[partner.id] || '';
+
+                return (
+                  <div key={partner.id} className="grid grid-cols-1 gap-3 items-start rounded-lg border bg-muted/20 p-3 md:grid-cols-[auto_1.2fr_1fr_1fr_1fr_auto]">
+                    {/* Avatar with hover upload overlay */}
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground sr-only">Foto</label>
+                      <div className="relative group cursor-pointer" onClick={() => document.getElementById(`partner-photo-${partner.id}`)?.click()}>
+                        <Avatar className="h-14 w-14 border">
+                          <AvatarImage src={partner.avatar_url || undefined} alt={partner.name || "Gesprächspartner"} />
+                          <AvatarFallback>{getPartnerInitials(partner.name)}</AvatarFallback>
+                        </Avatar>
+                        <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <CameraIcon className="h-5 w-5 text-white" />
+                        </div>
+                        <Input
+                          id={`partner-photo-${partner.id}`}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            void handleConversationPartnerPhotoUpload(idx, e.target.files?.[0] ?? null);
+                            e.target.value = '';
+                          }}
+                        />
+                      </div>
+                    </div>
+                    {/* Name field with autocomplete */}
+                    <div className="space-y-1 relative">
+                      <label className="text-xs text-muted-foreground">Name</label>
+                      {isLinked ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={partner.name}
+                            disabled
+                            className="bg-muted/50"
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 shrink-0"
+                            title="Kontakt öffnen"
+                            onClick={() => navigate(`/contacts/${partner.contact_id}`)}
+                          >
+                            <ExternalLinkIcon className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 shrink-0"
+                            title="Kontakt-Verknüpfung lösen"
+                            onClick={() => unlinkContactFromPartner(idx)}
+                          >
+                            <UnlinkIcon className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <Input
+                            value={searchText || partner.name}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setPartnerSearchTexts(prev => ({ ...prev, [partner.id]: val }));
+                              updateConversationPartner(idx, 'name', val);
+                            }}
+                            onFocus={() => {
+                              if (!searchText && partner.name) {
+                                setPartnerSearchTexts(prev => ({ ...prev, [partner.id]: partner.name }));
+                              }
+                            }}
+                            onBlur={() => {
+                              // Delay to allow click on dropdown
+                              setTimeout(() => {
+                                setPartnerSearchTexts(prev => ({ ...prev, [partner.id]: '' }));
+                              }, 200);
+                            }}
+                            placeholder="Name eingeben oder Kontakt suchen..."
+                          />
+                          {searchResults.length > 0 && searchText.length >= 2 && (
+                            <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg max-h-48 overflow-auto">
+                              {searchResults.map(contact => (
+                                <button
+                                  key={contact.id}
+                                  type="button"
+                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent transition-colors"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    selectContactForPartner(idx, contact.id);
+                                  }}
+                                >
+                                  <Avatar className="h-6 w-6 border">
+                                    <AvatarImage src={contact.avatar_url || undefined} />
+                                    <AvatarFallback className="text-[10px]">{getPartnerInitials(contact.name)}</AvatarFallback>
+                                  </Avatar>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="font-medium truncate">{contact.name}</div>
+                                    <div className="text-xs text-muted-foreground truncate">
+                                      {[contact.organization, contact.role || contact.position].filter(Boolean).join(' • ')}
+                                    </div>
+                                  </div>
+                                  <LinkIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                </button>
+                              ))}
                             </div>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={addConversationPartnerFromContact}
-                    disabled={!selectedPartnerContactId}
-                  >
-                    <PlusIcon className="mr-2 h-4 w-4" />
-                    Übernehmen
-                  </Button>
-                </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Rolle, Organisation, Hinweis und Foto werden aus dem Kontakt übernommen und können danach angepasst werden.
-                </p>
-              </div>
-              {conversationPartners.map((partner, idx) => (
-                <div key={partner.id} className="grid grid-cols-1 gap-3 items-start rounded-lg border bg-muted/20 p-3 md:grid-cols-[auto_1.2fr_1fr_1fr_1fr_auto]">
-                  <div className="space-y-2">
-                    <label className="text-xs text-muted-foreground">Foto</label>
-                    <div className="space-y-2">
-                      <Avatar className="h-14 w-14 border">
-                        <AvatarImage src={partner.avatar_url || undefined} alt={partner.name || "Gesprächspartner"} />
-                        <AvatarFallback>{getPartnerInitials(partner.name)}</AvatarFallback>
-                      </Avatar>
-                      <Label
-                        htmlFor={`partner-photo-${partner.id}`}
-                        className="inline-flex cursor-pointer items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-background"
-                      >
-                        <UploadIcon className="h-3.5 w-3.5" />
-                        Foto hochladen
-                      </Label>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Rolle</label>
                       <Input
-                        id={`partner-photo-${partner.id}`}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          void handleConversationPartnerPhotoUpload(idx, e.target.files?.[0] ?? null);
-                          e.target.value = '';
-                        }}
+                        value={partner.role ?? ''}
+                        onChange={(e) => updateConversationPartner(idx, 'role', e.target.value)}
+                        placeholder="z.B. Geschäftsführung"
+                        disabled={isLinked}
+                        className={isLinked ? "bg-muted/50" : ""}
                       />
                     </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Organisation</label>
+                      <Input
+                        value={partner.organization ?? ''}
+                        onChange={(e) => updateConversationPartner(idx, 'organization', e.target.value)}
+                        placeholder="z.B. Verband / Unternehmen"
+                        disabled={isLinked}
+                        className={isLinked ? "bg-muted/50" : ""}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Hinweis</label>
+                      <Input
+                        value={partner.note ?? ''}
+                        onChange={(e) => updateConversationPartner(idx, 'note', e.target.value)}
+                        placeholder="Zusätzlicher Kontext"
+                      />
+                    </div>
+                    <div className="pt-6">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeConversationPartner(idx)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Name</label>
-                    <Input
-                      value={partner.name}
-                      onChange={(e) => updateConversationPartner(idx, 'name', e.target.value)}
-                      placeholder="Name des Gesprächspartners"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Rolle</label>
-                    <Input
-                      value={partner.role ?? ''}
-                      onChange={(e) => updateConversationPartner(idx, 'role', e.target.value)}
-                      placeholder="z.B. Geschäftsführung"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Organisation</label>
-                    <Input
-                      value={partner.organization ?? ''}
-                      onChange={(e) => updateConversationPartner(idx, 'organization', e.target.value)}
-                      placeholder="z.B. Verband / Unternehmen"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Hinweis</label>
-                    <Input
-                      value={partner.note ?? ''}
-                      onChange={(e) => updateConversationPartner(idx, 'note', e.target.value)}
-                      placeholder="Zusätzlicher Kontext"
-                    />
-                  </div>
-                  <div className="pt-6">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeConversationPartner(idx)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <TrashIcon className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
               <Button variant="outline" size="sm" onClick={addConversationPartner} className="mt-2">
                 <PlusIcon className="h-4 w-4 mr-2" />
                 Gesprächspartner hinzufügen
@@ -1072,7 +1057,65 @@ export function AppointmentPreparationDataTab({
         </CardContent>
       </Card>
 
-      {/* 2. Begleitpersonen */}
+      {/* 2. Anlass des Besuchs */}
+      <Card>
+        <CardContent className="pt-6">
+          <Collapsible
+            open={expandedSections.anlass}
+            onOpenChange={() => toggleSection('anlass')}
+          >
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+              <div className="flex items-center gap-3">
+                <TagIcon className="h-5 w-5 text-primary" />
+                <h3 className="font-medium">Anlass des Besuchs</h3>
+                {visitReason && (
+                  <Badge variant="secondary" className="text-xs">
+                    {VISIT_REASON_OPTIONS.find(o => o.value === visitReason)?.label ?? visitReason}
+                  </Badge>
+                )}
+              </div>
+              {expandedSections.anlass ? (
+                <ChevronDownIcon className="h-4 w-4" />
+              ) : (
+                <ChevronRightIcon className="h-4 w-4" />
+              )}
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-4">
+              <div className="space-y-4 px-1">
+                <div className="flex flex-wrap gap-3">
+                  {VISIT_REASON_OPTIONS.map(option => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => handleVisitReasonChange(option.value)}
+                      className={`px-4 py-2 rounded-full border text-sm font-medium transition-colors ${
+                        visitReason === option.value
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background border-border hover:bg-muted'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Freifeld zum Anlass</label>
+                  <Textarea
+                    value={editData.visit_reason_details ?? ''}
+                    onChange={(e) => handleFieldChange('visit_reason_details', e.target.value)}
+                    placeholder="Weitere Details zum Anlass des Besuchs"
+                    rows={3}
+                    className="resize-none"
+                  />
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </CardContent>
+      </Card>
+
+      {/* Begleitpersonen */}
       <Card>
         <CardContent className="pt-6">
           <Collapsible
