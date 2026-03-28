@@ -642,7 +642,6 @@ export function AppointmentPreparationDataTab({
       title: "Kommunikation",
       icon: MessageSquareIcon,
       fields: [
-        { key: "questions_answers", label: "Fragen & Antworten", placeholder: "Mögliche Fragen und vorbereitete Antworten", multiline: true },
         { key: "briefing_notes", label: "Weitere Notizen", placeholder: "Optionale ergänzende Briefing-Notizen", multiline: true },
       ]
     },
