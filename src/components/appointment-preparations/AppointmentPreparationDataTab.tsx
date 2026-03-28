@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { debugConsole } from "@/utils/debugConsole";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,7 @@ import {
   CalendarIcon, ClockIcon, UsersIcon, PlusIcon,
   ExternalLinkIcon, FileTextIcon, ChevronDownIcon, ChevronRightIcon, FolderIcon,
   MessageSquareIcon, SettingsIcon, CheckCircleIcon, CarIcon, MapIcon, ClipboardListIcon,
-  TagIcon, TrashIcon, UploadIcon
+  TagIcon, TrashIcon, CameraIcon, LinkIcon, UnlinkIcon
 } from "lucide-react";
 import { AppointmentPreparation, AppointmentConversationPartner, getConversationPartnersFromPreparationData } from "@/hooks/useAppointmentPreparation";
 import { debounce } from "@/utils/debounce";
