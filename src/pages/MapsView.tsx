@@ -40,7 +40,7 @@ export const MapsView = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-y-auto">
         {activeTab === 'wahlkreise' && <ElectionDistrictsView />}
         {activeTab === 'stadtteile' && <KarlsruheDistrictsView />}
       </div>
