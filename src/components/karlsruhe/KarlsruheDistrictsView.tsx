@@ -26,6 +26,7 @@ export const KarlsruheDistrictsView = () => {
   const { districts, isLoading, refetch } = useKarlsruheDistricts();
   const { flags, deleteFlag } = useMapFlags();
   const { flagTypes } = useMapFlagTypes();
+  const { activeLayers } = useMapLayers();
   const [selectedDistrict, setSelectedDistrict] = useState<KarlsruheDistrict | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [flagMode, setFlagMode] = useState(false);
@@ -40,6 +41,30 @@ export const KarlsruheDistrictsView = () => {
   const [isColorMap, setIsColorMap] = useState(false);
   const [showElectionPrecincts, setShowElectionPrecincts] = useState(false);
   
+  // Map instance for dynamic layers
+  const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
+
+  // Dynamic layer visibility (initialized from defaults)
+  const [visibleLayerIds, setVisibleLayerIds] = useState<Set<string>>(new Set());
+  
+  // Initialize layer visibility from defaults
+  useEffect(() => {
+    if (activeLayers.length > 0 && visibleLayerIds.size === 0) {
+      setVisibleLayerIds(new Set(
+        activeLayers.filter(l => l.visible_by_default).map(l => l.id)
+      ));
+    }
+  }, [activeLayers]);
+
+  const toggleLayerVisibility = useCallback((layerId: string) => {
+    setVisibleLayerIds(prev => {
+      const next = new Set(prev);
+      if (next.has(layerId)) next.delete(layerId);
+      else next.add(layerId);
+      return next;
+    });
+  }, []);
+
   // Routing state
   const [showRoutePlanner, setShowRoutePlanner] = useState(false);
   const [waypoints, setWaypoints] = useState<Waypoint[]>([]);
