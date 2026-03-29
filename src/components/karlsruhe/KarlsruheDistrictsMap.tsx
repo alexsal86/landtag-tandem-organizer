@@ -73,6 +73,8 @@ interface KarlsruheDistrictsMapProps {
   // Heatmap props
   showHeatmap?: boolean;
   heatmapPoints?: [number, number, number][];
+  showElectionPrecincts?: boolean;
+  electionPrecinctGeoJsonUrl?: string;
 }
 
 interface DistrictGeoProperties {
@@ -82,6 +84,10 @@ interface DistrictGeoProperties {
 
 interface DistrictLayerConfig extends LayerConfig<Feature<DistrictGeoProperties>> {
   district: KarlsruheDistrict;
+}
+
+interface ElectionPrecinctGeoProperties {
+  [key: string]: unknown;
 }
 
 export const KarlsruheDistrictsMap = ({
@@ -103,6 +109,8 @@ export const KarlsruheDistrictsMap = ({
   onRouteFound,
   showHeatmap = false,
   heatmapPoints = [],
+  showElectionPrecincts = false,
+  electionPrecinctGeoJsonUrl = 'https://transparenz.karlsruhe.de/dataset/61eaf3b7-5e8c-4742-be4b-4068cd9e901c/resource/77edb714-6b50-4fc3-98f3-5559bcdff20f/download/wahlbezirke.geojson',
 }: KarlsruheDistrictsMapProps) => {
   const { currentTenant } = useTenant();
   const mapRef = useRef<HTMLDivElement>(null);
@@ -112,7 +120,9 @@ export const KarlsruheDistrictsMap = ({
   const flagMarkersRef = useRef<Map<string, L.Marker>>(new Map());
   const stakeholderMarkersRef = useRef<Map<string, L.Marker>>(new Map());
   const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const electionPrecinctLayerRef = useRef<L.GeoJSON | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [electionPrecinctFeatures, setElectionPrecinctFeatures] = useState<Feature<ElectionPrecinctGeoProperties>[] | null>(null);
   const districtLayerConfigs = useMemo<DistrictLayerConfig[]>(() => {
     if (!showDistrictBoundaries) return [];
 
@@ -156,6 +166,23 @@ export const KarlsruheDistrictsMap = ({
     () => flagTypes.filter((type) => visibleFlagTypes.has(type.id) && type.tag_filter),
     [flagTypes, visibleFlagTypes],
   );
+
+  const getElectionPrecinctName = useCallback((properties?: ElectionPrecinctGeoProperties): string => {
+    if (!properties) return 'Wahlbezirk';
+
+    const labelKeys = ['name', 'Name', 'wahlbezirk', 'Wahlbezirk', 'bezirk', 'Bezirk', 'id', 'ID'];
+    for (const key of labelKeys) {
+      const value = properties[key];
+      if (typeof value === 'string' && value.trim().length > 0) {
+        return value;
+      }
+      if (typeof value === 'number') {
+        return value.toString();
+      }
+    }
+
+    return 'Wahlbezirk';
+  }, []);
 
   // Extract stakeholder loading logic into a reusable function
   const loadStakeholders = useCallback(async () => {
@@ -435,6 +462,71 @@ export const KarlsruheDistrictsMap = ({
       });
     });
   }, [selectedDistrict, mapReady]);
+
+  // Load election precinct GeoJSON on demand
+  useEffect(() => {
+    if (!showElectionPrecincts || electionPrecinctFeatures) return;
+
+    const loadElectionPrecincts = async () => {
+      try {
+        const response = await fetch(electionPrecinctGeoJsonUrl);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const geojson = await response.json() as unknown;
+        if (isFeatureCollection<ElectionPrecinctGeoProperties>(geojson)) {
+          const features = geojson.features.filter((feature): feature is Feature<ElectionPrecinctGeoProperties> =>
+            hasProperties<ElectionPrecinctGeoProperties>(feature),
+          );
+          setElectionPrecinctFeatures(features);
+        }
+      } catch (error) {
+        debugConsole.error('Konnte Wahlbezirke-GeoJSON nicht laden:', error);
+      }
+    };
+
+    void loadElectionPrecincts();
+  }, [showElectionPrecincts, electionPrecinctFeatures, electionPrecinctGeoJsonUrl]);
+
+  // Render election precinct overlay
+  useEffect(() => {
+    if (!mapReady || !mapInstanceRef.current) return;
+
+    if (electionPrecinctLayerRef.current) {
+      electionPrecinctLayerRef.current.remove();
+      electionPrecinctLayerRef.current = null;
+    }
+
+    if (!showElectionPrecincts || !electionPrecinctFeatures || electionPrecinctFeatures.length === 0) {
+      return;
+    }
+
+    const layer = L.geoJSON(
+      { type: 'FeatureCollection', features: electionPrecinctFeatures } as GeoJSON.GeoJsonObject,
+      {
+        style: {
+          color: '#1d4ed8',
+          weight: 1,
+          fillColor: '#60a5fa',
+          fillOpacity: 0.08,
+        },
+        onEachFeature: (feature, leafletLayer) => {
+          const title = getElectionPrecinctName(feature.properties as ElectionPrecinctGeoProperties | undefined);
+          leafletLayer.bindTooltip(`Wahlbezirk: ${title}`, { sticky: true });
+        },
+      },
+    ).addTo(mapInstanceRef.current);
+
+    electionPrecinctLayerRef.current = layer;
+
+    return () => {
+      if (electionPrecinctLayerRef.current) {
+        electionPrecinctLayerRef.current.remove();
+        electionPrecinctLayerRef.current = null;
+      }
+    };
+  }, [mapReady, showElectionPrecincts, electionPrecinctFeatures, getElectionPrecinctName]);
 
   // Setup realtime subscription for contact updates
   useEffect(() => {
