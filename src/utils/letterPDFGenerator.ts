@@ -120,18 +120,15 @@ export const generateLetterPDF = async (letter: LetterRecord): Promise<LetterPdf
 
     const senderVarData = senderInfo ? {
       name: senderInfo.name ?? undefined, organization: senderInfo.organization ?? undefined,
-      street: senderInfo.street ?? undefined, house_number: senderInfo.house_number ?? undefined,
-      postal_code: senderInfo.postal_code ?? undefined, city: senderInfo.city ?? undefined,
-      wahlkreis_street: senderInfo.wahlkreis_street ?? undefined,
-      wahlkreis_house_number: senderInfo.wahlkreis_house_number ?? undefined,
-      wahlkreis_postal_code: senderInfo.wahlkreis_postal_code ?? undefined,
-      wahlkreis_city: senderInfo.wahlkreis_city ?? undefined,
       landtag_street: senderInfo.landtag_street ?? undefined,
       landtag_house_number: senderInfo.landtag_house_number ?? undefined,
       landtag_postal_code: senderInfo.landtag_postal_code ?? undefined,
       landtag_city: senderInfo.landtag_city ?? undefined,
+      wahlkreis_street: senderInfo.wahlkreis_street ?? undefined,
+      wahlkreis_house_number: senderInfo.wahlkreis_house_number ?? undefined,
+      wahlkreis_postal_code: senderInfo.wahlkreis_postal_code ?? undefined,
+      wahlkreis_city: senderInfo.wahlkreis_city ?? undefined,
       phone: senderInfo.phone ?? undefined,
-      email: senderInfo.email ?? undefined,
       wahlkreis_email: senderInfo.wahlkreis_email ?? undefined,
       landtag_email: senderInfo.landtag_email ?? undefined,
       return_address_line: senderInfo.return_address_line ?? undefined,
@@ -140,7 +137,7 @@ export const generateLetterPDF = async (letter: LetterRecord): Promise<LetterPdf
 
     const varMap = buildVariableMap(
       { subject: letter.subject || '', letterDate: letter.letter_date || undefined, referenceNumber: letter.reference_number || undefined },
-      senderVarData, recipientVarData, null, attachments.map(a => ({ file_path: a.file_path, file_name: a.file_name ?? undefined, title: a.title ?? undefined, file_type: a.file_type ?? undefined, file_size: a.file_size ?? undefined }))
+      senderVarData, recipientVarData, null, attachments.map(a => ({ file_path: a.file_path || '', file_name: a.file_name ?? undefined, title: a.display_name ?? undefined, file_type: a.file_type ?? undefined, file_size: a.file_size ?? undefined }))
     );
 
     // HTML to text conversion (EXACT copy from LetterPDFExport)
