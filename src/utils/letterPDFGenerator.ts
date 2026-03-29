@@ -637,6 +637,8 @@ export const generateLetterPDF = async (letter: LetterRecord): Promise<LetterPdf
       pdf.text(subjectText, leftMargin, contentTop + 3);
     }
     
+    const lineHeight = layoutSettings.content?.lineHeight || 4.5;
+
     // Salutation (with variable substitution)
     let contentStartY = contentTop + 12;
     if (letter.subject || letter.title) {
