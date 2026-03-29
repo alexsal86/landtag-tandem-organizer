@@ -200,6 +200,7 @@ export const KarlsruheDistrictsView = () => {
                 showHeatmap={showHeatmap}
                 heatmapPoints={heatmapPoints}
                 showElectionPrecincts={showElectionPrecincts}
+                onMapReady={setMapInstance}
               />
             )}
           </CardContent>
