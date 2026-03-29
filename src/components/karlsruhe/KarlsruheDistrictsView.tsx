@@ -203,6 +203,12 @@ export const KarlsruheDistrictsView = () => {
                 onMapReady={setMapInstance}
               />
             )}
+            {/* Dynamic GeoJSON layers from registry */}
+            <DynamicGeoJsonLayers
+              map={mapInstance}
+              layers={activeLayers}
+              visibleLayerIds={visibleLayerIds}
+            />
           </CardContent>
         </Card>
 
