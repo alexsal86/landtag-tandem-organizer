@@ -332,8 +332,7 @@ export const generateLetterPDF = async (letter: LetterRecord): Promise<LetterPdf
       pdf.line(foldHoleMarks.left, foldHoleMarks.bottomMarkY, foldHoleMarks.left + foldHoleMarks.foldMarkWidth, foldHoleMarks.bottomMarkY);
     };
     
-    // Draw debug guides for page 1 (ALWAYS ENABLED for testing)
-    drawDebugGuides(1);
+    // Draw fold and hole marks (always rendered)
     drawFoldAndHoleMarks();
     
     // Footer content from template
