@@ -662,18 +662,6 @@ export const generateLetterPDF = async (letter: LetterRecord): Promise<LetterPdf
       
       const paginationY = paginationTop;
       
-      // Debug pagination box
-      pdf.setFontSize(6);
-      pdf.setDrawColor(255, 0, 255);
-      pdf.setLineWidth(0.1);
-      const pageText = `Seite ${page} von ${letterPages}`;
-      const pageTextWidth = pdf.getTextWidth(pageText);
-      const pageTextX = (pageWidth - pageTextWidth) / 2;
-      pdf.rect(pageTextX - 2, paginationY - 3, pageTextWidth + 4, 5);
-      pdf.setTextColor(255, 0, 255);
-      pdf.setFontSize(6);
-      pdf.text("Pagination: 4.23mm über Fußzeile", pageTextX, paginationY - 4);
-      
       // Add page number at right edge with configured pagination font size
       pdf.setFontSize(layoutSettings.pagination?.fontSize ?? 8);
       pdf.setFont('helvetica', 'normal');

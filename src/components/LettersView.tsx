@@ -120,14 +120,12 @@ const LettersView: React.FC = () => {
       sender_info_id: config.senderInfoId,
       information_block_ids: [],
       tenant_id: currentTenant?.id || '',
-      user_id: user?.id || '',
       created_by: user?.id || '',
       created_at: '',
       updated_at: '',
       recipient_name: config.recipientName,
       recipient_address: config.recipientAddress,
       contact_id: config.contactId,
-      archived_at: null
     } as unknown as Letter;
     
     setSelectedLetter(newLetter);
