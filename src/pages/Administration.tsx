@@ -40,6 +40,7 @@ import { PressTemplateManager } from "@/components/administration/PressTemplateM
 import { PressOccasionManager } from "@/components/administration/PressOccasionManager";
 import { SuperadminTenantManagement } from "@/components/administration/SuperadminTenantManagement";
 import { GeoDataImport } from "@/components/administration/GeoDataImport";
+import { MapLayerAdmin } from "@/components/administration/MapLayerAdmin";
 import { MyWorkSystemOverview } from "@/components/administration/MyWorkSystemOverview";
 import { DashboardHintSettings } from "@/components/administration/DashboardHintSettings";
 import { MotivationalMessagesOverview } from "@/components/administration/MotivationalMessagesOverview";
