@@ -159,7 +159,7 @@ Deno.serve(withSafeHandler("import-election-districts", async (req) => {
       }
     )
   }
-});
+}));
 
 function transformGeometry(geometry: any): any {
   if (geometry.type === 'MultiPolygon') {
