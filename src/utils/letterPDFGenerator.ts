@@ -4,9 +4,11 @@ import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { buildFooterBlocksFromStored, resolveBlockWidthMm } from '@/components/letters/footerBlockUtils';
 import { debugConsole } from '@/utils/debugConsole';
+import { buildVariableMap } from '@/lib/letterVariables';
+import { getLetterAssetPublicUrl } from '@/components/letters/letterAssetUrls';
 import type { FooterLineBlock } from '@/components/letters/footerBlockUtils';
 import type { BlockLine } from '@/components/letters/BlockLineEditor';
-import type { DbInformationBlock, DbLetterAttachment, DbSenderInformation, HeaderImagePosition, InformationBlockData, LetterPdfGenerationResult, LetterRecord, LetterTemplate } from '@/components/letter-pdf/types';
+import type { DbInformationBlock, DbLetterAttachment, DbSenderInformation, DbContact, HeaderImagePosition, InformationBlockData, LetterPdfGenerationResult, LetterRecord, LetterTemplate } from '@/components/letter-pdf/types';
 import { DEFAULT_DIN5008_LAYOUT, isLetterLayoutSettings, type LetterLayoutSettings } from '@/types/letterLayout';
 
 type HeaderTextElement = {
