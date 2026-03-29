@@ -24,7 +24,7 @@ export const useKarlsruheDistricts = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('karlsruhe_districts')
-        .select('id, name, center_coordinates, color, area_km2, population, is_city_boundary, created_at, updated_at')
+        .select('id, name, boundaries, center_coordinates, color, area_km2, population, is_city_boundary, created_at, updated_at')
         .order('name');
 
       if (error) throw error;
