@@ -73,7 +73,7 @@ const LettersView: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('letters')
-        .select('id, title, content, content_html, recipient_name, recipient_address, contact_id, template_id, sender_info_id, information_block_ids, status, sent_date, sent_method, expected_response_date, created_by, created_at, updated_at, tenant_id, user_id, archived_at')
+        .select('id, title, content, content_html, recipient_name, recipient_address, contact_id, template_id, sender_info_id, information_block_ids, status, sent_date, sent_method, expected_response_date, created_by, created_at, updated_at, tenant_id')
         .eq('tenant_id', currentTenant.id)
         .order('updated_at', { ascending: false });
 
