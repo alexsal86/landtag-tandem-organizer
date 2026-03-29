@@ -204,7 +204,7 @@ serve(withSafeHandler("analyze-parliament-protocol", async (req) => {
       }
     );
   }
-});
+}));
 
 // Fallback PDF text extraction for server-side analysis
 async function extractTextFromPDF(pdfData: Blob): Promise<string> {
