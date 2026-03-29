@@ -1,14 +1,18 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import L from 'leaflet';
 import { useKarlsruheDistricts, KarlsruheDistrict } from '@/hooks/useKarlsruheDistricts';
 import { useMapFlags, MapFlag } from '@/hooks/useMapFlags';
 import { useMapFlagTypes } from '@/hooks/useMapFlagTypes';
 import { useHeatmapData, HeatmapSource } from '@/hooks/useHeatmapData';
+import { useMapLayers } from '@/hooks/useMapLayers';
 import { KarlsruheDistrictsMap } from './KarlsruheDistrictsMap';
 import { MapFlagTypeManager } from './MapFlagTypeManager';
 import { MapFlagEditor } from './MapFlagEditor';
 import { MapFlagLayerToggle } from './MapFlagLayerToggle';
 import { DistrictNotesEditor } from './DistrictNotesEditor';
 import { RoutePlannerPanel, Waypoint } from './RoutePlannerPanel';
+import { MapLayerPanel } from './MapLayerPanel';
+import { DynamicGeoJsonLayers } from './DynamicGeoJsonLayers';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,6 +26,7 @@ export const KarlsruheDistrictsView = () => {
   const { districts, isLoading, refetch } = useKarlsruheDistricts();
   const { flags, deleteFlag } = useMapFlags();
   const { flagTypes } = useMapFlagTypes();
+  const { activeLayers } = useMapLayers();
   const [selectedDistrict, setSelectedDistrict] = useState<KarlsruheDistrict | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [flagMode, setFlagMode] = useState(false);
@@ -36,6 +41,30 @@ export const KarlsruheDistrictsView = () => {
   const [isColorMap, setIsColorMap] = useState(false);
   const [showElectionPrecincts, setShowElectionPrecincts] = useState(false);
   
+  // Map instance for dynamic layers
+  const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
+
+  // Dynamic layer visibility (initialized from defaults)
+  const [visibleLayerIds, setVisibleLayerIds] = useState<Set<string>>(new Set());
+  
+  // Initialize layer visibility from defaults
+  useEffect(() => {
+    if (activeLayers.length > 0 && visibleLayerIds.size === 0) {
+      setVisibleLayerIds(new Set(
+        activeLayers.filter(l => l.visible_by_default).map(l => l.id)
+      ));
+    }
+  }, [activeLayers]);
+
+  const toggleLayerVisibility = useCallback((layerId: string) => {
+    setVisibleLayerIds(prev => {
+      const next = new Set(prev);
+      if (next.has(layerId)) next.delete(layerId);
+      else next.add(layerId);
+      return next;
+    });
+  }, []);
+
   // Routing state
   const [showRoutePlanner, setShowRoutePlanner] = useState(false);
   const [waypoints, setWaypoints] = useState<Waypoint[]>([]);
@@ -171,8 +200,15 @@ export const KarlsruheDistrictsView = () => {
                 showHeatmap={showHeatmap}
                 heatmapPoints={heatmapPoints}
                 showElectionPrecincts={showElectionPrecincts}
+                onMapReady={setMapInstance}
               />
             )}
+            {/* Dynamic GeoJSON layers from registry */}
+            <DynamicGeoJsonLayers
+              map={mapInstance}
+              layers={activeLayers}
+              visibleLayerIds={visibleLayerIds}
+            />
           </CardContent>
         </Card>
 
@@ -195,6 +231,15 @@ export const KarlsruheDistrictsView = () => {
 
       {/* Controls and Info - Grid Below */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Dynamic Layer Panel */}
+        {activeLayers.length > 0 && (
+          <MapLayerPanel
+            layers={activeLayers}
+            visibleLayerIds={visibleLayerIds}
+            onToggleLayer={toggleLayerVisibility}
+          />
+        )}
+
         {/* Flag Controls */}
         <Card>
           <CardHeader>

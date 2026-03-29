@@ -165,6 +165,7 @@ export const adminMenuItems: AdminMenuItem[] = [
       { id: "districts", label: "Betreuungswahlkreise", icon: MapPin },
       { id: "mapping", label: "Wahlkreis-Zuordnung", icon: Building2 },
       { id: "geo-import", label: "Geo-Datenimport", icon: Globe },
+      { id: "map-layers", label: "Karten-Layer", icon: MapPin },
       { id: "mywork-overview", label: "Meine Arbeit Übersicht", icon: PanelTop },
       { id: "dashboard-hints", label: "Dashboard-Hinweise", icon: PanelTop },
       { id: "motivational-messages", label: "Motivationssprüche", icon: PanelTop },
