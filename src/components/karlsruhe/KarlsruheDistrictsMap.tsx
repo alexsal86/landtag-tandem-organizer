@@ -112,6 +112,7 @@ export const KarlsruheDistrictsMap = ({
   heatmapPoints = [],
   showElectionPrecincts = false,
   electionPrecinctGeoJsonUrl = 'https://transparenz.karlsruhe.de/dataset/61eaf3b7-5e8c-4742-be4b-4068cd9e901c/resource/77edb714-6b50-4fc3-98f3-5559bcdff20f/download/wahlbezirke.geojson',
+  onMapReady,
 }: KarlsruheDistrictsMapProps) => {
   const { currentTenant } = useTenant();
   const mapRef = useRef<HTMLDivElement>(null);
