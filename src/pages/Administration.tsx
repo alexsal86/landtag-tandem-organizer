@@ -408,6 +408,7 @@ export default function Administration(): React.JSX.Element | null {
             </Card>
           );
         case "geo-import": return <GeoDataImport />;
+        case "map-layers": return <MapLayerAdmin />;
         case "mywork-overview": return <MyWorkSystemOverview />;
         case "dashboard-hints": return <DashboardHintSettings />;
         case "motivational-messages": return <MotivationalMessagesOverview />;
