@@ -1,14 +1,18 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import L from 'leaflet';
 import { useKarlsruheDistricts, KarlsruheDistrict } from '@/hooks/useKarlsruheDistricts';
 import { useMapFlags, MapFlag } from '@/hooks/useMapFlags';
 import { useMapFlagTypes } from '@/hooks/useMapFlagTypes';
 import { useHeatmapData, HeatmapSource } from '@/hooks/useHeatmapData';
+import { useMapLayers } from '@/hooks/useMapLayers';
 import { KarlsruheDistrictsMap } from './KarlsruheDistrictsMap';
 import { MapFlagTypeManager } from './MapFlagTypeManager';
 import { MapFlagEditor } from './MapFlagEditor';
 import { MapFlagLayerToggle } from './MapFlagLayerToggle';
 import { DistrictNotesEditor } from './DistrictNotesEditor';
 import { RoutePlannerPanel, Waypoint } from './RoutePlannerPanel';
+import { MapLayerPanel } from './MapLayerPanel';
+import { DynamicGeoJsonLayers } from './DynamicGeoJsonLayers';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
