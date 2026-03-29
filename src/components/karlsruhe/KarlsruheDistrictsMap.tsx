@@ -75,6 +75,7 @@ interface KarlsruheDistrictsMapProps {
   heatmapPoints?: [number, number, number][];
   showElectionPrecincts?: boolean;
   electionPrecinctGeoJsonUrl?: string;
+  onMapReady?: (map: L.Map | null) => void;
 }
 
 interface DistrictGeoProperties {
