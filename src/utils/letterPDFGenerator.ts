@@ -619,8 +619,6 @@ export const generateLetterPDF = async (letter: LetterRecord): Promise<LetterPdf
             letterPages++;
             currentPage++;
             
-            // Draw debug guides for new pages
-            drawDebugGuides(currentPage);
             drawFoldAndHoleMarks();
             
             // Add footer for new page using template footer blocks
