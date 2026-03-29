@@ -5,7 +5,7 @@ import '@/styles/leaflet-overrides.css';
 import { KarlsruheDistrict } from '@/hooks/useKarlsruheDistricts';
 import { MapFlag } from '@/hooks/useMapFlags';
 import { MapFlagType } from '@/hooks/useMapFlagTypes';
-import { useMapFlagStakeholders } from '@/hooks/useMapFlagStakeholders';
+import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
 import { lucideIconToSvg, isLucideIcon } from '@/utils/lucideIconToSvg';
 import { debugConsole } from '@/utils/debugConsole';
@@ -104,6 +104,7 @@ export const KarlsruheDistrictsMap = ({
   showHeatmap = false,
   heatmapPoints = [],
 }: KarlsruheDistrictsMapProps) => {
+  const { currentTenant } = useTenant();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const layersRef = useRef<Map<string, L.GeoJSON>>(new Map());
@@ -138,7 +139,7 @@ export const KarlsruheDistrictsMap = ({
 
   // Extract stakeholder loading logic into a reusable function
   const loadStakeholders = useCallback(async () => {
-    if (!mapInstanceRef.current || !showStakeholders) return;
+    if (!mapInstanceRef.current || !showStakeholders || !currentTenant?.id) return;
 
     const map = mapInstanceRef.current;
 
@@ -161,9 +162,10 @@ export const KarlsruheDistrictsMap = ({
     const { data: allData, error } = await supabase
       .from('contacts')
       .select('id, name, organization, email, phone, tags, website, coordinates, business_street, business_city, business_postal_code')
+      .eq('tenant_id', currentTenant.id)
       .eq('contact_type', 'organization')
       .not('coordinates', 'is', null)
-      .overlaps('tags', activeTagFilters);
+      .not('tags', 'is', null);
 
     if (error) {
       debugConsole.error('Error loading stakeholder contacts:', error);
@@ -177,7 +179,7 @@ export const KarlsruheDistrictsMap = ({
       if (!normalizedTag) continue;
 
       const data = stakeholders.filter((contact) =>
-        contact.tags?.some((tag) => tag.toLowerCase() === normalizedTag),
+        contact.tags?.some((tag) => tag.trim().toLowerCase() === normalizedTag),
       );
 
       if (data.length === 0) continue;
@@ -241,7 +243,7 @@ export const KarlsruheDistrictsMap = ({
         stakeholderMarkersRef.current.set(`${flagType.id}-${stakeholder.id}`, stakeholderMarker);
       });
     }
-  }, [showStakeholders, visibleStakeholderTypes]);
+  }, [showStakeholders, visibleStakeholderTypes, currentTenant?.id]);
 
   // Initialize map
   useEffect(() => {
