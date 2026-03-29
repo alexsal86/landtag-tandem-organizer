@@ -322,6 +322,7 @@ export const KarlsruheDistrictsMap = ({
 
     mapInstanceRef.current = map;
     setMapReady(true);
+    onMapReady?.(map);
 
     return () => {
       map.remove();
