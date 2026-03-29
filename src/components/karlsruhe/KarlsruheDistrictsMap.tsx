@@ -118,15 +118,35 @@ export const KarlsruheDistrictsMap = ({
 
     return districts
       .map((district) => {
-        if (!isFeatureCollection<DistrictGeoProperties>(district.boundaries)) return null;
+        const b = district.boundaries as any;
+        if (!b) return null;
+
+        let features: Feature<DistrictGeoProperties>[];
+
+        if (isFeatureCollection<DistrictGeoProperties>(b)) {
+          // Already a FeatureCollection — use as-is
+          features = b.features.filter((f): f is Feature<DistrictGeoProperties> =>
+            hasProperties<DistrictGeoProperties>(f),
+          );
+        } else if (b.type === 'Polygon' || b.type === 'MultiPolygon') {
+          // Raw geometry — wrap into a Feature
+          features = [{
+            type: 'Feature' as const,
+            properties: { name: district.name, color: district.color } as DistrictGeoProperties,
+            geometry: { type: b.type, coordinates: b.coordinates },
+          }];
+        } else {
+          return null;
+        }
+
+        if (features.length === 0) return null;
+
         return {
           id: district.id,
           label: district.name,
           visible: true,
           district,
-          features: district.boundaries.features.filter((feature): feature is Feature<DistrictGeoProperties> =>
-            hasProperties<DistrictGeoProperties>(feature),
-          ),
+          features,
         };
       })
       .filter((layer): layer is DistrictLayerConfig => layer !== null);
