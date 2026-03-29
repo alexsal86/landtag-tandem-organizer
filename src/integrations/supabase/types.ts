@@ -6751,6 +6751,83 @@ export type Database = {
           },
         ]
       }
+      map_layers: {
+        Row: {
+          created_at: string
+          description: string | null
+          fill_color: string
+          fill_opacity: number
+          group_name: string
+          icon: string | null
+          id: string
+          is_active: boolean
+          label_property: string | null
+          name: string
+          sort_order: number
+          source_path: string | null
+          source_table: string | null
+          source_type: string
+          stroke_color: string
+          stroke_dash_array: string | null
+          stroke_width: number
+          tenant_id: string
+          updated_at: string
+          visible_by_default: boolean
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          fill_color?: string
+          fill_opacity?: number
+          group_name?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          label_property?: string | null
+          name: string
+          sort_order?: number
+          source_path?: string | null
+          source_table?: string | null
+          source_type?: string
+          stroke_color?: string
+          stroke_dash_array?: string | null
+          stroke_width?: number
+          tenant_id: string
+          updated_at?: string
+          visible_by_default?: boolean
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          fill_color?: string
+          fill_opacity?: number
+          group_name?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          label_property?: string | null
+          name?: string
+          sort_order?: number
+          source_path?: string | null
+          source_table?: string | null
+          source_type?: string
+          stroke_color?: string
+          stroke_dash_array?: string | null
+          stroke_width?: number
+          tenant_id?: string
+          updated_at?: string
+          visible_by_default?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "map_layers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       map_routes: {
         Row: {
           created_at: string | null
