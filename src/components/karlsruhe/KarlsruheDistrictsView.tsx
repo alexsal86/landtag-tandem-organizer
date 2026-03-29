@@ -34,6 +34,7 @@ export const KarlsruheDistrictsView = () => {
   const [showDistricts, setShowDistricts] = useState(true);
   const [showStakeholders, setShowStakeholders] = useState(true);
   const [isColorMap, setIsColorMap] = useState(false);
+  const [showElectionPrecincts, setShowElectionPrecincts] = useState(false);
   
   // Routing state
   const [showRoutePlanner, setShowRoutePlanner] = useState(false);
@@ -169,6 +170,7 @@ export const KarlsruheDistrictsView = () => {
                 onRouteFound={setRouteInfo}
                 showHeatmap={showHeatmap}
                 heatmapPoints={heatmapPoints}
+                showElectionPrecincts={showElectionPrecincts}
               />
             )}
           </CardContent>
@@ -298,6 +300,18 @@ export const KarlsruheDistrictsView = () => {
               />
             </div>
 
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Map className="h-4 w-4 text-muted-foreground" />
+                <Label htmlFor="show-election-precincts" className="text-sm">Wahlbezirke 2021</Label>
+              </div>
+              <Switch
+                id="show-election-precincts"
+                checked={showElectionPrecincts}
+                onCheckedChange={setShowElectionPrecincts}
+              />
+            </div>
+
             {showHeatmap && (
               <div className="pt-2">
                 <Label className="text-xs text-muted-foreground mb-1 block">Datenquelle</Label>
@@ -335,6 +349,13 @@ export const KarlsruheDistrictsView = () => {
               </div>
               <span className="text-sm text-muted-foreground">Stakeholder (Tag-basiert)</span>
             </div>
+
+            {showElectionPrecincts && (
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded border border-blue-700 bg-blue-400/20" />
+                <span className="text-sm text-muted-foreground">Wahlbezirke Landtagswahl 2021</span>
+              </div>
+            )}
 
             {showHeatmap && (
               <div className="pt-2 border-t">
