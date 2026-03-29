@@ -231,6 +231,15 @@ export const KarlsruheDistrictsView = () => {
 
       {/* Controls and Info - Grid Below */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Dynamic Layer Panel */}
+        {activeLayers.length > 0 && (
+          <MapLayerPanel
+            layers={activeLayers}
+            visibleLayerIds={visibleLayerIds}
+            onToggleLayer={toggleLayerVisibility}
+          />
+        )}
+
         {/* Flag Controls */}
         <Card>
           <CardHeader>
