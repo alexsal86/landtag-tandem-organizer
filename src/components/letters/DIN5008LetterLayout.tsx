@@ -681,9 +681,29 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               backgroundColor: debugMode ? 'rgba(0,255,0,0.02)' : 'transparent',
               overflow: 'hidden'
             }}
-            dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(content) }}
-            className="din5008-content-text"
-          />
+          >
+            <div
+              dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(content) }}
+              className="din5008-content-text"
+            />
+            {/* Closing formula + signature */}
+            {!hideClosing && (
+              <LetterClosingBlock
+                formula={layout.closing?.formula}
+                signatureImagePath={layout.closing?.signatureImagePath}
+                signatureName={layout.closing?.signatureName}
+                signatureTitle={layout.closing?.signatureTitle}
+                fontSizePt={layout.closing?.fontSize || 11}
+                className="din5008-content-text"
+              />
+            )}
+            {/* Attachments in flow after closing */}
+            <LetterAttachmentList
+              attachments={attachments}
+              hasSignature={hasSignature}
+              fontSizePt={layout.salutation?.fontSize || 11}
+            />
+          </div>
         </>
       )}
 
