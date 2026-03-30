@@ -236,6 +236,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
     if (!user) return;
 
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const channelName = `navigation_visits_only_${user.id}_${crypto.randomUUID()}`;
     const debouncedInvalidate = (): void => {
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(invalidateCounts, 1000);
@@ -246,7 +247,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
     };
 
     const channel = supabase
-      .channel(`navigation_visits_only_${user.id}_${Date.now()}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
