@@ -405,6 +405,7 @@ export function useMyWorkTeamData(): UseMyWorkTeamDataResult {
     if (!user?.id || !currentTenant?.id || !effectiveData.canViewTeam) return;
 
     let timeout: ReturnType<typeof setTimeout> | null = null;
+    const channelName = `my-work-team-${user.id}-${crypto.randomUUID()}`;
     const scheduleReload = () => {
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => {
@@ -414,7 +415,7 @@ export function useMyWorkTeamData(): UseMyWorkTeamDataResult {
     };
 
     const channel = supabase
-      .channel(`my-work-team-${user.id}`)
+      .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "time_entries", filter: `tenant_id=eq.${currentTenant.id}` }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "employee_meeting_requests", filter: `tenant_id=eq.${currentTenant.id}` }, scheduleReload)
       .subscribe();
