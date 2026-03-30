@@ -359,6 +359,12 @@ export function MyWorkTasksTab() {
         isVisible={showCelebration}
         onAnimationComplete={() => setShowCelebration(false)}
       />
+
+      <TodoCreateDialog
+        open={todoCreateOpen}
+        onOpenChange={setTodoCreateOpen}
+        onTodoCreated={() => loadTasks()}
+      />
     </div>
   );
 }
