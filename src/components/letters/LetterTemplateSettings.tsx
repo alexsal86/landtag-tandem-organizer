@@ -79,7 +79,7 @@ const DIN5008_FIELDS = [
   { path: ['content', 'fontSize'], label: 'Inhalt Schriftgröße (pt)', section: 'Inhalt' },
   { path: ['footer', 'top'], label: 'Footer von oben', section: 'Footer' },
   { path: ['footer', 'height'], label: 'Footer Höhe', section: 'Footer' },
-  { path: ['attachments', 'top'], label: 'Anlagen von oben', section: 'Anlagen' },
+  // attachments.top entfernt: Anlagen folgen jetzt dynamisch nach der Unterschrift
 ];
 
 type Din5008FieldPath = typeof DIN5008_FIELDS[number]['path'];
