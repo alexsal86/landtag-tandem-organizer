@@ -178,7 +178,7 @@ export function MyWorkView() {
                 <StickyNote className="h-4 w-4 mr-2" />
                 Quick Note
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate("/tasks?action=create")}>
+              <DropdownMenuItem onClick={() => setSearchParams(new URLSearchParams([["tab", "tasks"], ["action", "create-task"]]))}>
                 <CheckSquare className="h-4 w-4 mr-2" />
                 Aufgabe
               </DropdownMenuItem>
@@ -186,7 +186,7 @@ export function MyWorkView() {
                 <Vote className="h-4 w-4 mr-2" />
                 Entscheidung
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate("/meetings?action=create-meeting")}>
+              <DropdownMenuItem onClick={() => setSearchParams(new URLSearchParams([["tab", "jourFixe"], ["action", "create-meeting"]]))}>
                 <Calendar className="h-4 w-4 mr-2" />
                 Jour Fixe
               </DropdownMenuItem>

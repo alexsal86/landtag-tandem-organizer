@@ -13,6 +13,7 @@ import { useTenantProfiles } from "@/hooks/useTenantProfiles";
 import { Separator } from "@/components/ui/separator";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { CelebrationAnimationSystem } from "@/components/celebrations";
+import { TodoCreateDialog } from "@/components/TodoCreateDialog";
 import { addDays, isAfter, isBefore, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { MyWorkTasksToolbar } from "./MyWorkTasksToolbar";
@@ -65,14 +66,16 @@ export function MyWorkTasksTab() {
     useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
 
+  const [todoCreateOpen, setTodoCreateOpen] = useState(false);
+
   useEffect(() => {
     const action = searchParams.get("action");
     if (action === "create-task") {
       searchParams.delete("action");
       setSearchParams(searchParams, { replace: true });
-      navigate("/tasks?action=create");
+      setTodoCreateOpen(true);
     }
-  }, [navigate, searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams]);
 
   const {
     availableTaskStatuses,
@@ -355,6 +358,12 @@ export function MyWorkTasksTab() {
       <CelebrationAnimationSystem
         isVisible={showCelebration}
         onAnimationComplete={() => setShowCelebration(false)}
+      />
+
+      <TodoCreateDialog
+        open={todoCreateOpen}
+        onOpenChange={setTodoCreateOpen}
+        onTodoCreated={() => loadTasks()}
       />
     </div>
   );
