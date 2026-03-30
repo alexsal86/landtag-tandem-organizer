@@ -65,14 +65,16 @@ export function MyWorkTasksTab() {
     useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
 
+  const [todoCreateOpen, setTodoCreateOpen] = useState(false);
+
   useEffect(() => {
     const action = searchParams.get("action");
     if (action === "create-task") {
       searchParams.delete("action");
       setSearchParams(searchParams, { replace: true });
-      navigate("/tasks?action=create");
+      setTodoCreateOpen(true);
     }
-  }, [navigate, searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams]);
 
   const {
     availableTaskStatuses,
