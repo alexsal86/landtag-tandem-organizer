@@ -1,84 +1,53 @@
 
 
-# Brief-Tool: Analyse und Korrekturen
+# 1. Anlagen unter die Unterschrift + pretext-Bewertung
 
-## Gefundene Probleme
+## Zu Frage 2: pretext hilft euch hier nicht
 
-### 1. KRITISCH: LettersView fragt nicht-existente Spalten ab
-`src/components/LettersView.tsx` Zeile 76 fragt `user_id` und `archived_at` aus der `letters`-Tabelle ab — diese Spalten existieren nicht (bestatigt durch DB-Schema). Das verursacht einen PostgREST-Fehler, der das Laden von Briefen komplett blockieren kann.
+**pretext** ist eine reine Text-Mess-Library: sie berechnet, wie hoch ein Plaintext-Block bei gegebener Breite wird — ohne DOM-Layout. Das ist nutzlich fur Canvas-Rendering oder Virtualisierung.
 
-Gleicher Fehler in `handleWizardComplete` (Zeile 123-130): `user_id` und `archived_at` werden beim Erstellen eines neuen Briefes gesetzt.
+Euer Problem ist aber ein anderes: Ihr habt **Rich-HTML-Content** (Lexical-Editor-Output mit `<p>`, `<strong>`, Listen etc.) und musst diesen auf DIN-A4-Seiten umbrechen. pretext kann:
+- Kein HTML/Rich-Text messen
+- Keine Bilder, Listen, Tabellen berucksichtigen
+- Keinen mehrseitigen Umbruch berechnen
 
-### 2. KRITISCH: letterPDFGenerator.ts hat Debug-Guides IMMER an
-`src/utils/letterPDFGenerator.ts` Zeile 335-336: `drawDebugGuides(1)` wird IMMER aufgerufen (Kommentar sagt "ALWAYS ENABLED for testing"). Das bedeutet, jede PDF die uber diesen Generator erzeugt wird (z.B. beim Archivieren), enthalt rote/grune/blaue Hilfslinien, Rand-Markierungen und DIN-5008-Annotationen.
+Eure aktuelle Losung (ResizeObserver + Block-Break-Offsets + Viewport/Translate-Pagination) ist tatsachlich der richtige Ansatz fur HTML-basierte Briefvorschau. Das ist kein Bug, sondern die Standard-Technik (auch Google Docs macht es ahnlich mit virtuellen Seiten).
 
-### 3. Zwei duplizierte PDF-Generatoren
-Es gibt ZWEI separate PDF-Generatoren mit divergierendem Code:
-- `src/components/letter-pdf/pdfGenerator.ts` (976 Zeilen) — verwendet vom PDF-Export-Button im Editor (bessere Version, mit Variable-Substitution, Header-Rendering, Signature)
-- `src/utils/letterPDFGenerator.ts` (702 Zeilen) — verwendet fur Archivierung und andere Flows (schlechtere Version, Debug-Guides immer an, keine Variable-Substitution, keine Signatur/Abschlussformel)
+**Fazit: pretext ist fur euren Anwendungsfall nicht geeignet.** Eure bestehende Pagination-Engine ist konzeptionell korrekt. Das Problem liegt nur in der Anlagen-Positionierung.
 
-Das fuhrt zu **inkonsistenten PDFs** je nachdem, ob man den Export-Button oder die Archivierung nutzt.
+---
 
-### 4. DOCX-Generator vereinfacht zu stark
-`src/utils/letterDOCXGenerator.ts`:
-- Keine Anrede/Salutation aus dem Template
-- Hardcoded "Mit freundlichen Grusen" statt die konfigurierte Grussformel
-- Keine Variable-Substitution ({{anrede}}, {{empfaenger_name}} etc.)
-- Keine Signatur/Unterschriftsbild
-- Keine Anlagen-Liste am Ende
-- Sender-Info zeigt nur Landtag-Adresse, ignoriert Wahlkreis-Varianten
+## Zu Frage 1: Anlagen unter die Unterschrift verschieben
 
-### 5. Edge-Function Syntax-Fehler (pre-existing, nicht vom Brieftool)
-4 Edge-Functions haben fehlende Semikolons nach `Deno.serve(...)`:
-- `import-election-districts/index.ts` — Zeile 162: `)` statt `);`
-- `matrix-bot-handler/index.ts` — Zeile 668
-- `matrix-decision-handler/index.ts` — Zeile 110
-- `send-matrix-morning-greeting/index.ts` — Zeile 283
-- `sync-external-calendar/index.ts` — Zeile 525
+### Ist-Zustand
+- `LetterEditorCanvas.tsx` rendert Closing + Attachments bereits korrekt **im Content-Flow** (Zeile 431-440: `renderContentFlow` = Content → Closing → Attachments)
+- Die Pagination sieht die Anlagen als Teil des Flows → sie werden korrekt auf Folgeseiten umgebrochen
+- **ABER**: Der `EditableCanvasOverlay` fur Anlagen (Zeile 690-715) ist mit `top={layout.attachments?.top ?? 230}` fest auf Seite 1 positioniert — das ist die **Edit-Overlay-Position**, nicht die Render-Position
 
-Plus ein Typ-Fehler in `respond-public-event-invitation.test.ts` (provider: `"turnstile"` als `string` statt als Literal-Typ).
+Das heisst: Die **Vorschau** rendert Anlagen bereits im Flow (unter der Unterschrift). Aber das **Edit-Overlay** (der gruner Stift zum Bearbeiten der Anlagenamen) sitzt fest bei 230mm.
 
-## Umsetzungsplan
+### Problem im DIN5008LetterLayout (reine Vorschau ohne Editor)
+In `DIN5008LetterLayout.tsx` gibt es zwei Modi:
+1. **Integrated mode** (Zeile 580-648): Anlagen sind im Content-Flow → korrekt unter Unterschrift ✓
+2. **Legacy mode** (Zeile 703-719): Anlagen werden mit `position: absolute` und festem Top-Wert positioniert → Problem
 
-### Schritt 1: LettersView Query fixen
-**Datei:** `src/components/LettersView.tsx`
-- Zeile 76: `user_id` und `archived_at` aus dem `.select()` entfernen
-- Zeile 113-131: `user_id` und `archived_at` aus dem `newLetter`-Objekt entfernen
-- Gleiche Fixes in `src/components/DocumentsView.tsx` (Zeile 210)
+### Umsetzungsplan
 
-### Schritt 2: letterPDFGenerator.ts Debug-Guides deaktivieren
-**Datei:** `src/utils/letterPDFGenerator.ts`
-- Zeile 335-337: `drawDebugGuides(1)` nur aufrufen wenn ein `debugMode`-Parameter gesetzt ist (aktuell gibt es keinen solchen Parameter in `generateLetterPDF`)
-- Optional: `debugMode`-Parameter zur `generateLetterPDF`-Funktion hinzufugen
+**Schritt 1: EditableCanvasOverlay fur Anlagen entfernen**
+- `src/components/letters/LetterEditorCanvas.tsx` Zeile 690-715: Den gesamten `EditableCanvasOverlay` fur Anlagen entfernen
+- Die Bearbeitungsfunktion ist bereits uber den Popover im `renderAttachments()` (Zeile 347-421) abgedeckt — der grune Stift erscheint inline bei Hover uber die Anlagen im Flow
+- Das doppelte Edit-UI (Overlay + Inline-Popover) ist redundant
 
-### Schritt 3: letterPDFGenerator.ts mit pdfGenerator.ts abgleichen
-**Datei:** `src/utils/letterPDFGenerator.ts`
-Die wichtigsten fehlenden Features aus `pdfGenerator.ts` ubernehmen:
-- Variable-Substitution (buildVariableMap, substituteBlockLines)
-- BlockLine-basiertes Rendering fur Absender/Adressfeld/Infoblock
-- Grussformel + Signatur aus `layout.closing`
-- Anlagen-Liste nach dem Brieftext
-- Contact-Daten laden fur Empfanger-Variablen
+**Schritt 2: Legacy-Mode Anlagen ebenfalls in den Flow verschieben**
+- `src/components/letters/DIN5008LetterLayout.tsx` Zeile 703-719: Den absolut positionierten Legacy-Anlagen-Block entfernen
+- Stattdessen die Anlagen auch im Legacy-Mode nach dem Content-`div` als Flow-Element rendern (gleich wie im Integrated-Mode)
 
-### Schritt 4: DOCX-Generator verbessern
-**Datei:** `src/utils/letterDOCXGenerator.ts`
-- Contact laden fur Variablen-Auflosung
-- Anrede aus Template (`layout.salutation.template`) mit Variable-Substitution
-- Grussformel aus `layout.closing.formula` statt hartcodiert
-- Signaturname aus `layout.closing.signatureName`
-- Anlagen-Liste am Ende des Dokuments hinzufugen
+**Schritt 3: `attachments.top` aus Layout-Settings als deprecated behandeln**
+- `src/components/letters/LayoutSettingsEditor.tsx`: Das Feld "Anlagen von oben (mm)" ausblenden oder entfernen, da die Position jetzt dynamisch ist
+- `src/components/letters/LetterLayoutCanvasDesigner.tsx`: Den Anlagen-Block aus der Canvas-Designer-Ansicht entfernen (kein Drag auf feste Position mehr)
 
-### Schritt 5: Edge-Function Syntax-Fehler fixen
-5 Dateien: jeweils fehlendes `;` nach der schliesenden `)` von `Deno.serve()` hinzufugen.
-Plus Test-Fix: `provider: "turnstile" as const` im Captcha-Mock.
-
-## Zusammenfassung
-
-| Datei | Problem |
-|---|---|
-| `src/components/LettersView.tsx` | Fragt `user_id`, `archived_at` ab die nicht existieren |
-| `src/components/DocumentsView.tsx` | Setzt `user_id`, `archived_at` beim Wizard |
-| `src/utils/letterPDFGenerator.ts` | Debug-Guides immer an; divergiert stark vom Haupt-PDF-Generator |
-| `src/utils/letterDOCXGenerator.ts` | Keine Variablen, hardcoded Grussformel, keine Anlagen |
-| 5 Edge-Functions | Fehlende Semikolons / Typ-Fehler |
+### Ergebnis
+- Anlagen folgen immer direkt nach der Unterschrift
+- Der Abstand wird uber `LetterAttachmentList` gesteuert: 4.5mm mit Unterschrift, 13.5mm ohne
+- Bei mehrseitigen Briefen werden Anlagen korrekt auf die nachste Seite umgebrochen, wenn sie nicht mehr auf die aktuelle passen
 
