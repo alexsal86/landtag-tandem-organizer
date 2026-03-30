@@ -8,25 +8,27 @@ import { JourFixeMeetingAgenda } from "@/components/my-work/jour-fixe/JourFixeMe
 import { JourFixeMeetingCard } from "@/components/my-work/jour-fixe/JourFixeMeetingCard";
 import { JourFixeMeetingList } from "@/components/my-work/jour-fixe/JourFixeMeetingList";
 import { useJourFixeAgenda } from "@/components/my-work/hooks/useJourFixeAgenda";
+import { StandaloneMeetingCreator } from "@/components/meetings/StandaloneMeetingCreator";
 
 export function MyWorkJourFixeTab() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { upcomingMeetings, pastMeetings, meetingParticipants, loading } = useMyWorkJourFixeMeetings(user?.id);
+  const { upcomingMeetings, pastMeetings, meetingParticipants, loading, refetch } = useMyWorkJourFixeMeetings(user?.id);
   const [upcomingOpen, setUpcomingOpen] = useState(true);
   const [pastOpen, setPastOpen] = useState(false);
   const { expandedMeetingId, toggleMeeting, getAgendaData, systemDataMaps } = useJourFixeAgenda(user?.id, currentTenant?.id);
+  const [isCreateMeetingOpen, setIsCreateMeetingOpen] = useState(false);
 
   useEffect(() => {
     const action = searchParams.get("action");
     if (action === "create-meeting") {
       searchParams.delete("action");
       setSearchParams(searchParams, { replace: true });
-      navigate("/meetings?action=create-meeting");
+      setIsCreateMeetingOpen(true);
     }
-  }, [navigate, searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams]);
 
   if (loading) {
     return (
@@ -105,6 +107,12 @@ export function MyWorkJourFixeTab() {
           )}
         </>
       )}
+
+      <StandaloneMeetingCreator
+        open={isCreateMeetingOpen}
+        onOpenChange={setIsCreateMeetingOpen}
+        onMeetingCreated={() => refetch?.()}
+      />
     </section>
   );
 }
