@@ -681,9 +681,29 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               backgroundColor: debugMode ? 'rgba(0,255,0,0.02)' : 'transparent',
               overflow: 'hidden'
             }}
-            dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(content) }}
-            className="din5008-content-text"
-          />
+          >
+            <div
+              dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(content) }}
+              className="din5008-content-text"
+            />
+            {/* Closing formula + signature */}
+            {!hideClosing && (
+              <LetterClosingBlock
+                formula={layout.closing?.formula}
+                signatureImagePath={layout.closing?.signatureImagePath}
+                signatureName={layout.closing?.signatureName}
+                signatureTitle={layout.closing?.signatureTitle}
+                fontSizePt={layout.closing?.fontSize || 11}
+                className="din5008-content-text"
+              />
+            )}
+            {/* Attachments in flow after closing */}
+            <LetterAttachmentList
+              attachments={attachments}
+              hasSignature={hasSignature}
+              fontSizePt={layout.salutation?.fontSize || 11}
+            />
+          </div>
         </>
       )}
 
@@ -700,23 +720,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         }
       `}</style>
 
-      {/* Attachments in legacy mode */}
-      {layout.subject?.integrated === false && attachmentList.length > 0 && (
-        <LetterAttachmentList
-          attachments={attachments}
-          hasSignature={hasSignature}
-          fontSizePt={10}
-          containerStyle={{
-            position: 'absolute',
-            top: `calc(${subject ? contentTopMm + 11 : contentTopMm + 3}mm + ${hasSignature ? 4.5 : 13.5}mm)`,
-            left: '25mm',
-            right: '20mm',
-            backgroundColor: debugMode ? 'rgba(128,128,128,0.05)' : 'transparent',
-          }}
-          headingStyle={{ fontWeight: 700 }}
-          itemStyle={{ paddingLeft: 0 }}
-        />
-      )}
+      {/* Legacy-Anlagen entfernt: Anlagen werden jetzt immer im Content-Flow nach der Unterschrift gerendert */}
 
       {/* Template Footer Blocks - matches PDF exactly */}
       <TemplateFooterBlocks footerBlocks={template?.footer_blocks} debugMode={debugMode} />
