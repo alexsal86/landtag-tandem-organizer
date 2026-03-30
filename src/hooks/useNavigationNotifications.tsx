@@ -246,7 +246,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
     };
 
     const channel = supabase
-      .channel('navigation_visits_only')
+      .channel(`navigation_visits_only_${user.id}_${Date.now()}`)
       .on(
         'postgres_changes',
         {
