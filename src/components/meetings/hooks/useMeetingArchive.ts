@@ -10,7 +10,7 @@ type ArchiveDeps = Pick<MeetingsDataReturn,
   'user' | 'currentTenant' | 'toast' | 'profiles' | 'linkedQuickNotes' | 'meetingLinkedCaseItems' |
   'loadMeetings' | 'loadCarryoverBufferItems' | 'loadAgendaItems' |
   'setActiveMeeting' | 'setActiveMeetingId' | 'setAgendaItems' | 'setLinkedQuickNotes' |
-  'setSelectedMeeting' | 'setIsFocusMode'
+  'setSelectedMeeting' | 'setIsFocusMode' | 'setArchivedMeetingId'
 >;
 
 export const mapBirthdayAssignedToValue = (
