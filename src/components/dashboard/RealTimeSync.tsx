@@ -267,7 +267,8 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
     if (!isConnected) return;
 
     try {
-      const channel = supabase.channel('dashboard_presence');
+      const channel = channelRef.current;
+      if (!channel) return;
       await channel.send({
         type: 'broadcast',
         event: 'layout_update',
