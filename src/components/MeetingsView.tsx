@@ -55,6 +55,19 @@ export function MeetingsView() {
     return <MeetingArchiveView onBack={() => data.setShowArchive(false)} />;
   }
 
+  // Show protocol after archiving
+  if (data.archivedMeetingId) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle p-4">
+        <MeetingProtocolView
+          meetingId={data.archivedMeetingId}
+          onBack={() => data.setArchivedMeetingId(null)}
+          isPostArchive
+        />
+      </div>
+    );
+  }
+
   // Show focus mode
   if (data.isFocusMode && data.activeMeeting) {
     return (
