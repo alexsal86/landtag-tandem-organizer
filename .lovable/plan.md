@@ -1,77 +1,88 @@
 
-Ziel: Die Bereiche „Fallakte“ und „Team“ wieder zuverlässig öffnbar machen, indem die verbleibenden Supabase-Realtime-Kollisionen beseitigt und die „+ Neu“-Flows in „Meine Arbeit“ vollständig im Kontext gehalten werden.
 
-1. Ursache klar eingrenzen
-- Der aktuelle Fehler ist nicht mehr nur `navigation_visits_only`, sondern jetzt konkret `realtime:case-files-changes`.
-- In der Codebasis gibt es noch mehrere Realtime-Abos mit statischen Channel-Namen. Das passt exakt zum bekannten Supabase/React-Strict-Mode-Problem: `supabase.channel("same-name")` liefert denselben Channel zurück, und beim nächsten Mount werden `.on(...).subscribe()` erneut auf einem bereits subscribten Channel ausgeführt.
-- Das erklärt auch die Symptome:
-  - Fallakte öffnet nicht: `useCaseFiles.tsx` verwendet noch `channel('case-files-changes')`
-  - Team kann ebenfalls crashen, weil `MyWorkTeamTab` `TeamAnnouncementsManager` rendert und `useTeamAnnouncements.ts` noch `channel('team-announcements-changes')` nutzt
+# Meeting-Abschluss: Analyse, Protokoll-Verbesserung und Bestätigungsansicht
 
-2. Konkrete Dateien anpassen
-- `src/features/cases/files/hooks/useCaseFiles.tsx`
-  - statischen Channel-Namen `case-files-changes` auf eindeutigen Namen umstellen
-  - Muster analog zu den bereits gefixten Hooks:
-    - `case-files-changes-${tenantId}-${userId}-${crypto.randomUUID()}`
-  - Cleanup beibehalten
-- `src/hooks/useTeamAnnouncements.ts`
-  - statischen Channel-Namen `team-announcements-changes` ebenfalls auf eindeutigen Namen umstellen
-  - Filter/Callbacks unverändert lassen
-- `src/features/cases/files/components/MyWorkCaseFilesTab.tsx`
-  - Channel ist derzeit nur halb-dynamisch (`my-work-casefiles-${user.id}`); auch dieser sollte pro Mount eindeutig werden
-  - zusätzlich Tenant in den Namen aufnehmen
-- Danach gezielt weitere statische Postgres-Realtime-Abos härten, damit der nächste Bereich nicht direkt wieder ausfällt:
-  - `src/hooks/useCounts.tsx`
-  - `src/components/dashboard/AppointmentFeedbackWidget.tsx`
-  - `src/components/meetings/PendingJourFixeNotes.tsx`
-  - `src/components/knowledge/hooks/useKnowledgeData.ts`
+## Ist-Zustand: Was passiert beim Archivieren?
 
-3. Einheitliches Robustheitsmuster anwenden
-- Für alle betroffenen Hooks dasselbe Muster nutzen:
-  - eindeutiger `channelName`
-  - alle `.on(...)` vor `.subscribe()`
-  - sauberes `removeChannel(channel)` im Cleanup
-  - Debounce/Refresh-Logik unverändert lassen
-- Optional zur Stabilität:
-  - bei `subscribe((status) => ...)` auf `SUBSCRIBED` einmal aktiv nachladen, falls Daten zwischen Initial-Load und Kanalaufbau geändert wurden
+Der `archiveMeeting`-Flow in `useMeetingArchive.ts` verarbeitet folgende System-Punkte:
 
-4. „+ Neu“ in „Meine Arbeit“ vervollständigen
-- Der Kontext soll laut Wunsch vollständig in „Meine Arbeit“ bleiben.
-- Bereits geprüft: Aufgaben und Jour Fixe laufen schon inline.
-- Noch offen ist „Akte erstellen“:
-  - `src/features/cases/files/components/MyWorkCaseFilesTab.tsx` navigiert bei `action=create-casefile` noch nach `/casefiles?action=create`
-- Umsetzung:
-  - in `MyWorkCaseFilesTab` eine Inline-Erstellung für neue Akten ergänzen
-  - den `action=create-casefile` Parameter lokal im Tab verarbeiten, statt per `navigate(...)` die Ansicht zu verlassen
-- Zusätzlich prüfen:
-  - ob „Anliegen erstellen“ im Cases-Workspace bereits inline startet; falls nicht, denselben Kontext-Ansatz dort ebenfalls anwenden
+| System-Typ | Verarbeitung beim Archivieren | Status |
+|---|---|---|
+| **Agenda-Punkte mit Zuweisung** (ohne task_id) | Aufgabe erstellt mit Beschreibung + Ergebnis | Funktioniert |
+| **Agenda-Punkte mit verknupfter Aufgabe** (task_id) | Kind-Aufgabe unter bestehender Aufgabe erstellt | Funktioniert |
+| **Geburtstage** (`system_type='birthdays'`) | Aufgaben pro Kontakt mit Aktion (Karte/Mail/etc.) | Funktioniert |
+| **Markierte Termine** (starred_appointments) | Eltern-Aufgabe + Kind-Aufgaben pro Termin | Funktioniert |
+| **Quick Notes** (Ergebnisse) | `meeting_result` in quick_notes gespeichert | Funktioniert |
+| **Vorgange/Case Items** (Ergebnisse) | Notiz in `case_item_notes` erstellt | Funktioniert |
+| **Ubertrag-Punkte** (carry_over_to_next) | In nachstes Meeting oder Buffer ubertragen | Funktioniert |
+| **Entscheidungen** (`system_type='decisions'`) | **NICHT verarbeitet** — offene Entscheidungen werden beim Archivieren ignoriert |
+| **Aufgaben** (`system_type='tasks'`) | Nur indirekt uber task_id-Verknupfung — der System-Punkt selbst wird nicht separat verarbeitet |
 
-5. Erwartetes Ergebnis
-- Fallakten öffnen wieder ohne Blank Screen
-- Team-Tab öffnet wieder stabil, inklusive Team-Mitteilungen
-- Weitere Bereiche brechen nicht mehr an derselben Realtime-Ursache weg
-- „+ Neu“ bleibt vollständig in „Meine Arbeit“, ohne Sprung auf andere Seiten
+### Lucken
+1. **Entscheidungen werden nicht aktualisiert** — wenn im Fokus-Modus ein Ergebnis fur eine Entscheidung eingetragen wurde, wird dieses nicht in die `decisions`-Tabelle zuruckgeschrieben
+2. **Das Protokoll zeigt nur Basis-Daten** — keine Quick Notes, keine Entscheidungen, keine erstellten Aufgaben, keine Vorgange, keine Geburtstags-Aktionen
 
-Technische Details
-- Wahrscheinliche Root Cause:
-  - statische Supabase-Realtime-Channel-Namen in React 18/Strict Mode
-- Bereits bestätigte Problemstellen im Code:
-  - `useCaseFiles.tsx` → `channel('case-files-changes')`
-  - `useTeamAnnouncements.ts` → `channel('team-announcements-changes')`
-- Bereits erfolgreiche Gegenbeispiele im Projekt:
-  - `useNavigationNotifications.tsx`
-  - `useMyWorkTeamData.ts`
-- Implementierungsprinzip:
-  ```text
-  const channelName = `feature-${tenantId}-${userId}-${crypto.randomUUID()}`
-  const channel = supabase
-    .channel(channelName)
-    .on(...)
-    .subscribe()
-  return () => supabase.removeChannel(channel)
-  ```
+### Nach dem Archivieren
+- Der State wird komplett zuruckgesetzt (`setActiveMeeting(null)`, etc.)
+- Der User sieht nur einen kurzen Toast: "Besprechung archiviert"
+- Kein Protokoll, keine Zusammenfassung
 
-Abgrenzung
-- Es sieht aktuell nicht nach einem Routing-Problem des Team-Tabs aus.
-- Der sichtbare Fehler spricht klar für Realtime-Kanal-Kollisionen als primäre Ursache der nicht öffnenden Bereiche.
-- Ich würde daher zuerst die Realtime-Abos systematisch bereinigen und danach erst tiefer in Tab-/Routing-Logik gehen, falls noch etwas übrig bleibt.
+---
+
+## Umsetzungsplan
+
+### 1. Protokoll-Ansicht erweitern (`MeetingProtocolView.tsx`)
+
+Das aktuelle Protokoll ladt nur `meeting_agenda_items` mit Basis-Feldern. Es soll zusatzlich laden und anzeigen:
+
+- **Teilnehmer**: Meeting-Ersteller + `meeting_participants` mit Profilnamen
+- **Entscheidungen**: Aus `decisions`-Tabelle, die mit dem Meeting verknupft sind (uber `meeting_agenda_items` mit `system_type='decisions'`)
+- **Quick Notes mit Ergebnissen**: Notes die `meeting_id` haben und `meeting_result` enthalten
+- **Vorgange/Case Items**: Verknupfte Case Items mit ihren Meeting-Ergebnissen
+- **Erstellte Aufgaben**: Aufgaben mit `category='meeting'` die bei der Archivierung erstellt wurden (uber Beschreibung mit Meeting-Titel/Datum identifizierbar)
+- **Hierarchische Agenda**: `parent_id` berucksichtigen fur Haupt-/Unterpunkte
+- **System-Typ-Icons**: Visuell unterscheiden zwischen normalen Punkten, Geburtstagen, Quick Notes, etc.
+
+### 2. Protokoll nach Archivierung anzeigen
+
+In `useMeetingArchive.ts` und `MeetingsView.tsx`:
+
+- Neuen State `archivedMeetingId` in `useMeetingsData` einfuhren
+- Nach erfolgreichem Archivieren: statt nur Toast + Reset, zusatzlich `archivedMeetingId` setzen
+- In `MeetingsView.tsx`: wenn `archivedMeetingId` gesetzt ist, das erweiterte Protokoll als Bestatigungs-Overlay/Ansicht rendern
+- Mit Button "Zuruck zur Ubersicht" den State zurucksetzen
+- Auch aus dem Fokus-Modus heraus soll nach Archivierung das Protokoll erscheinen
+
+### 3. Entscheidungs-Ergebnisse beim Archivieren zuruckschreiben (optional)
+
+In `useMeetingArchive.ts` einen neuen Schritt einfugen:
+- Agenda-Items mit `system_type='decisions'` und `result_text` finden
+- Die verknupfte Entscheidung in der `decisions`-Tabelle mit dem Ergebnis aktualisieren (Status auf 'decided' setzen, `result` fullen)
+
+---
+
+## Technische Details
+
+**Betroffene Dateien:**
+- `src/components/MeetingProtocolView.tsx` — erweitern um Teilnehmer, Entscheidungen, Quick Notes, Case Items, erstellte Tasks, Hierarchie
+- `src/components/meetings/hooks/useMeetingArchive.ts` — nach Archivierung Meeting-ID zuruckgeben statt nur Reset
+- `src/components/meetings/hooks/useMeetingsData.ts` — neuer State `archivedMeetingId`
+- `src/components/MeetingsView.tsx` — Protokoll-Ansicht nach Archivierung rendern
+
+**Protokoll-Sektionen (neu):**
+```text
+Besprechungsprotokoll
+├── Header (Titel, Datum, Ort)
+├── Teilnehmer
+├── Tagesordnung mit Ergebnissen (hierarchisch)
+│   ├── Hauptpunkte mit Unterpunkten
+│   ├── Notizen + Ergebnisse
+│   └── Zuweisungen
+├── Entscheidungen (violett markiert)
+├── Besprochene Notizen (amber markiert)
+├── Besprochene Vorgänge (mit Ergebnissen)
+├── Markierte Termine
+├── Erstellte Aufgaben (Zusammenfassung)
+└── Footer
+```
+
