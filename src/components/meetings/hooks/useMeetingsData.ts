@@ -70,6 +70,7 @@ export function useMeetingsData() {
   const [activeMeetingId, setActiveMeetingId] = useState<string | null>(null);
   const [showArchive, setShowArchive] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
+  const [archivedMeetingId, setArchivedMeetingId] = useState<string | null>(null);
   const [meetingParticipants, setMeetingParticipants] = useState<MeetingParticipant[]>([]);
   const [currentUserIsParticipant, setCurrentUserIsParticipant] = useState(false);
   const [showCarryoverBuffer, setShowCarryoverBuffer] = useState(false);
