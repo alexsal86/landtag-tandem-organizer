@@ -63,8 +63,9 @@ export function PendingJourFixeNotes({ className, onNotesLinked }: PendingJourFi
   useEffect(() => {
     if (onNotesLinked) {
       // Subscribe to real-time updates
+      const channelName = `pending-notes-${user?.id}-${crypto.randomUUID()}`;
       const channel = supabase
-        .channel('pending-notes-changes')
+        .channel(channelName)
         .on(
           'postgres_changes',
           {

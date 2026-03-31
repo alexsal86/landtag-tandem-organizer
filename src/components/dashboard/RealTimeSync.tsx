@@ -198,7 +198,7 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
       
       // Setup real-time listener for database changes
       const subscription = supabase
-        .channel('dashboard_changes')
+        .channel(`dashboard_changes_${user?.id}_${crypto.randomUUID()}`)
         .on('postgres_changes', {
           event: 'UPDATE',
           schema: 'public',

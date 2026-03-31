@@ -75,8 +75,9 @@ export const AppointmentFeedbackWidget = ({
   // Realtime subscription
   useEffect(() => {
     if (!user?.id) return;
+    const channelName = `appointment-feedback-${user.id}-${crypto.randomUUID()}`;
     const channel = supabase
-      .channel('appointment-feedback-changes')
+      .channel(channelName)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',

@@ -174,7 +174,8 @@ export function useKnowledgeData() {
   // Realtime
   useEffect(() => {
     if (!user || !tenantId) return;
-    const channel = supabase.channel('knowledge-documents-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'knowledge_documents', filter: `tenant_id=eq.${tenantId}` }, async (payload) => {
+    const channelName = `knowledge-docs-${tenantId}-${crypto.randomUUID()}`;
+    const channel = supabase.channel(channelName).on('postgres_changes', { event: '*', schema: 'public', table: 'knowledge_documents', filter: `tenant_id=eq.${tenantId}` }, async (payload) => {
       if (payload.eventType === 'DELETE') {
         const deletedId = (payload.old as any)?.id;
         if (!deletedId) return;

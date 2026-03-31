@@ -301,8 +301,9 @@ export const useCaseFiles = () => {
       void fetchCaseFiles();
     };
 
+    const channelName = `case-files-changes-${currentTenant.id}-${user.id}-${crypto.randomUUID()}`;
     const channel = supabase
-      .channel('case-files-changes')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {

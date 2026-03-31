@@ -144,8 +144,9 @@ export function useCounts(): CountsData {
       debounceTimer = setTimeout(() => fetchCounts(), 600);
     };
 
+    const channelName = `counts-changes-${currentTenant.id}-${crypto.randomUUID()}`;
     const channel = supabase
-      .channel('counts-changes')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
