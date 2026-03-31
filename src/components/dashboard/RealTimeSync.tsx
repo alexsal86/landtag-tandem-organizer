@@ -105,7 +105,7 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
   const initializeRealTimeSync = async () => {
     try {
       // Setup presence tracking
-      const channel = supabase.channel('dashboard_presence', {
+      const channel = supabase.channel(`dashboard_presence_${user?.id}_${crypto.randomUUID()}`, {
         config: {
           presence: {
             key: user?.id
