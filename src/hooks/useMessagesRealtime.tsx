@@ -67,7 +67,7 @@ function ensureChannel(userId: string): void {
 
   currentUserId = userId;
   channelRef = supabase
-    .channel('shared-messages-realtime')
+    .channel(`shared-messages-realtime-${userId}-${crypto.randomUUID()}`)
     .on('postgres_changes', {
       event: 'INSERT',
       schema: 'public',

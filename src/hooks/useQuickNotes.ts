@@ -284,7 +284,7 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
     if (!user) return;
 
     const channel = supabase
-      .channel('quick-notes-list-changes')
+      .channel(`quick-notes-${user.id}-${crypto.randomUUID()}`)
       .on(
         'postgres_changes',
         {
