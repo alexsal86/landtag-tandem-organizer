@@ -1,53 +1,77 @@
 
+Ziel: Die Bereiche „Fallakte“ und „Team“ wieder zuverlässig öffnbar machen, indem die verbleibenden Supabase-Realtime-Kollisionen beseitigt und die „+ Neu“-Flows in „Meine Arbeit“ vollständig im Kontext gehalten werden.
 
-# 1. Anlagen unter die Unterschrift + pretext-Bewertung
+1. Ursache klar eingrenzen
+- Der aktuelle Fehler ist nicht mehr nur `navigation_visits_only`, sondern jetzt konkret `realtime:case-files-changes`.
+- In der Codebasis gibt es noch mehrere Realtime-Abos mit statischen Channel-Namen. Das passt exakt zum bekannten Supabase/React-Strict-Mode-Problem: `supabase.channel("same-name")` liefert denselben Channel zurück, und beim nächsten Mount werden `.on(...).subscribe()` erneut auf einem bereits subscribten Channel ausgeführt.
+- Das erklärt auch die Symptome:
+  - Fallakte öffnet nicht: `useCaseFiles.tsx` verwendet noch `channel('case-files-changes')`
+  - Team kann ebenfalls crashen, weil `MyWorkTeamTab` `TeamAnnouncementsManager` rendert und `useTeamAnnouncements.ts` noch `channel('team-announcements-changes')` nutzt
 
-## Zu Frage 2: pretext hilft euch hier nicht
+2. Konkrete Dateien anpassen
+- `src/features/cases/files/hooks/useCaseFiles.tsx`
+  - statischen Channel-Namen `case-files-changes` auf eindeutigen Namen umstellen
+  - Muster analog zu den bereits gefixten Hooks:
+    - `case-files-changes-${tenantId}-${userId}-${crypto.randomUUID()}`
+  - Cleanup beibehalten
+- `src/hooks/useTeamAnnouncements.ts`
+  - statischen Channel-Namen `team-announcements-changes` ebenfalls auf eindeutigen Namen umstellen
+  - Filter/Callbacks unverändert lassen
+- `src/features/cases/files/components/MyWorkCaseFilesTab.tsx`
+  - Channel ist derzeit nur halb-dynamisch (`my-work-casefiles-${user.id}`); auch dieser sollte pro Mount eindeutig werden
+  - zusätzlich Tenant in den Namen aufnehmen
+- Danach gezielt weitere statische Postgres-Realtime-Abos härten, damit der nächste Bereich nicht direkt wieder ausfällt:
+  - `src/hooks/useCounts.tsx`
+  - `src/components/dashboard/AppointmentFeedbackWidget.tsx`
+  - `src/components/meetings/PendingJourFixeNotes.tsx`
+  - `src/components/knowledge/hooks/useKnowledgeData.ts`
 
-**pretext** ist eine reine Text-Mess-Library: sie berechnet, wie hoch ein Plaintext-Block bei gegebener Breite wird — ohne DOM-Layout. Das ist nutzlich fur Canvas-Rendering oder Virtualisierung.
+3. Einheitliches Robustheitsmuster anwenden
+- Für alle betroffenen Hooks dasselbe Muster nutzen:
+  - eindeutiger `channelName`
+  - alle `.on(...)` vor `.subscribe()`
+  - sauberes `removeChannel(channel)` im Cleanup
+  - Debounce/Refresh-Logik unverändert lassen
+- Optional zur Stabilität:
+  - bei `subscribe((status) => ...)` auf `SUBSCRIBED` einmal aktiv nachladen, falls Daten zwischen Initial-Load und Kanalaufbau geändert wurden
 
-Euer Problem ist aber ein anderes: Ihr habt **Rich-HTML-Content** (Lexical-Editor-Output mit `<p>`, `<strong>`, Listen etc.) und musst diesen auf DIN-A4-Seiten umbrechen. pretext kann:
-- Kein HTML/Rich-Text messen
-- Keine Bilder, Listen, Tabellen berucksichtigen
-- Keinen mehrseitigen Umbruch berechnen
+4. „+ Neu“ in „Meine Arbeit“ vervollständigen
+- Der Kontext soll laut Wunsch vollständig in „Meine Arbeit“ bleiben.
+- Bereits geprüft: Aufgaben und Jour Fixe laufen schon inline.
+- Noch offen ist „Akte erstellen“:
+  - `src/features/cases/files/components/MyWorkCaseFilesTab.tsx` navigiert bei `action=create-casefile` noch nach `/casefiles?action=create`
+- Umsetzung:
+  - in `MyWorkCaseFilesTab` eine Inline-Erstellung für neue Akten ergänzen
+  - den `action=create-casefile` Parameter lokal im Tab verarbeiten, statt per `navigate(...)` die Ansicht zu verlassen
+- Zusätzlich prüfen:
+  - ob „Anliegen erstellen“ im Cases-Workspace bereits inline startet; falls nicht, denselben Kontext-Ansatz dort ebenfalls anwenden
 
-Eure aktuelle Losung (ResizeObserver + Block-Break-Offsets + Viewport/Translate-Pagination) ist tatsachlich der richtige Ansatz fur HTML-basierte Briefvorschau. Das ist kein Bug, sondern die Standard-Technik (auch Google Docs macht es ahnlich mit virtuellen Seiten).
+5. Erwartetes Ergebnis
+- Fallakten öffnen wieder ohne Blank Screen
+- Team-Tab öffnet wieder stabil, inklusive Team-Mitteilungen
+- Weitere Bereiche brechen nicht mehr an derselben Realtime-Ursache weg
+- „+ Neu“ bleibt vollständig in „Meine Arbeit“, ohne Sprung auf andere Seiten
 
-**Fazit: pretext ist fur euren Anwendungsfall nicht geeignet.** Eure bestehende Pagination-Engine ist konzeptionell korrekt. Das Problem liegt nur in der Anlagen-Positionierung.
+Technische Details
+- Wahrscheinliche Root Cause:
+  - statische Supabase-Realtime-Channel-Namen in React 18/Strict Mode
+- Bereits bestätigte Problemstellen im Code:
+  - `useCaseFiles.tsx` → `channel('case-files-changes')`
+  - `useTeamAnnouncements.ts` → `channel('team-announcements-changes')`
+- Bereits erfolgreiche Gegenbeispiele im Projekt:
+  - `useNavigationNotifications.tsx`
+  - `useMyWorkTeamData.ts`
+- Implementierungsprinzip:
+  ```text
+  const channelName = `feature-${tenantId}-${userId}-${crypto.randomUUID()}`
+  const channel = supabase
+    .channel(channelName)
+    .on(...)
+    .subscribe()
+  return () => supabase.removeChannel(channel)
+  ```
 
----
-
-## Zu Frage 1: Anlagen unter die Unterschrift verschieben
-
-### Ist-Zustand
-- `LetterEditorCanvas.tsx` rendert Closing + Attachments bereits korrekt **im Content-Flow** (Zeile 431-440: `renderContentFlow` = Content → Closing → Attachments)
-- Die Pagination sieht die Anlagen als Teil des Flows → sie werden korrekt auf Folgeseiten umgebrochen
-- **ABER**: Der `EditableCanvasOverlay` fur Anlagen (Zeile 690-715) ist mit `top={layout.attachments?.top ?? 230}` fest auf Seite 1 positioniert — das ist die **Edit-Overlay-Position**, nicht die Render-Position
-
-Das heisst: Die **Vorschau** rendert Anlagen bereits im Flow (unter der Unterschrift). Aber das **Edit-Overlay** (der gruner Stift zum Bearbeiten der Anlagenamen) sitzt fest bei 230mm.
-
-### Problem im DIN5008LetterLayout (reine Vorschau ohne Editor)
-In `DIN5008LetterLayout.tsx` gibt es zwei Modi:
-1. **Integrated mode** (Zeile 580-648): Anlagen sind im Content-Flow → korrekt unter Unterschrift ✓
-2. **Legacy mode** (Zeile 703-719): Anlagen werden mit `position: absolute` und festem Top-Wert positioniert → Problem
-
-### Umsetzungsplan
-
-**Schritt 1: EditableCanvasOverlay fur Anlagen entfernen**
-- `src/components/letters/LetterEditorCanvas.tsx` Zeile 690-715: Den gesamten `EditableCanvasOverlay` fur Anlagen entfernen
-- Die Bearbeitungsfunktion ist bereits uber den Popover im `renderAttachments()` (Zeile 347-421) abgedeckt — der grune Stift erscheint inline bei Hover uber die Anlagen im Flow
-- Das doppelte Edit-UI (Overlay + Inline-Popover) ist redundant
-
-**Schritt 2: Legacy-Mode Anlagen ebenfalls in den Flow verschieben**
-- `src/components/letters/DIN5008LetterLayout.tsx` Zeile 703-719: Den absolut positionierten Legacy-Anlagen-Block entfernen
-- Stattdessen die Anlagen auch im Legacy-Mode nach dem Content-`div` als Flow-Element rendern (gleich wie im Integrated-Mode)
-
-**Schritt 3: `attachments.top` aus Layout-Settings als deprecated behandeln**
-- `src/components/letters/LayoutSettingsEditor.tsx`: Das Feld "Anlagen von oben (mm)" ausblenden oder entfernen, da die Position jetzt dynamisch ist
-- `src/components/letters/LetterLayoutCanvasDesigner.tsx`: Den Anlagen-Block aus der Canvas-Designer-Ansicht entfernen (kein Drag auf feste Position mehr)
-
-### Ergebnis
-- Anlagen folgen immer direkt nach der Unterschrift
-- Der Abstand wird uber `LetterAttachmentList` gesteuert: 4.5mm mit Unterschrift, 13.5mm ohne
-- Bei mehrseitigen Briefen werden Anlagen korrekt auf die nachste Seite umgebrochen, wenn sie nicht mehr auf die aktuelle passen
-
+Abgrenzung
+- Es sieht aktuell nicht nach einem Routing-Problem des Team-Tabs aus.
+- Der sichtbare Fehler spricht klar für Realtime-Kanal-Kollisionen als primäre Ursache der nicht öffnenden Bereiche.
+- Ich würde daher zuerst die Realtime-Abos systematisch bereinigen und danach erst tiefer in Tab-/Routing-Logik gehen, falls noch etwas übrig bleibt.
