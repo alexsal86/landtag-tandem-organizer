@@ -539,7 +539,7 @@ export const KarlsruheDistrictsMap = ({
     debugConsole.log('Setting up realtime subscription for contacts');
 
     const channel = supabase
-      .channel('contacts_map_changes')
+      .channel(`contacts_map_changes_${crypto.randomUUID()}`)
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',

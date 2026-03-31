@@ -112,8 +112,9 @@ export function useTeamAnnouncements() {
   useEffect(() => {
     if (!currentTenant?.id) return;
 
+    const channelName = `team-announcements-${currentTenant.id}-${crypto.randomUUID()}`;
     const channel = supabase
-      .channel('team-announcements-changes')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
