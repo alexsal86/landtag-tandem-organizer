@@ -32,7 +32,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
     user, currentTenant, toast, profiles, linkedQuickNotes, meetingLinkedCaseItems,
     loadMeetings, loadCarryoverBufferItems, loadAgendaItems,
     setActiveMeeting, setActiveMeetingId, setAgendaItems, setLinkedQuickNotes,
-    setSelectedMeeting, setIsFocusMode,
+    setSelectedMeeting, setIsFocusMode, setArchivedMeetingId,
   } = deps;
 
   const ensureReviewParentItem = async (meetingId: string) => {
