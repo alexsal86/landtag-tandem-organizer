@@ -622,6 +622,7 @@ export function useMeetingsData() {
     activeMeetingId, setActiveMeetingId,
     showArchive, setShowArchive,
     isFocusMode, setIsFocusMode,
+    archivedMeetingId, setArchivedMeetingId,
     starredAppointmentIds: sidebar.starredAppointmentIds,
     expandedApptNotes: sidebar.expandedApptNotes,
     setExpandedApptNotes: sidebar.setExpandedApptNotes,
