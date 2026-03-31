@@ -23,6 +23,7 @@ export function MeetingsView() {
     setActiveMeeting: data.setActiveMeeting, setActiveMeetingId: data.setActiveMeetingId,
     setAgendaItems: data.setAgendaItems, setLinkedQuickNotes: data.setLinkedQuickNotes,
     setSelectedMeeting: data.setSelectedMeeting, setIsFocusMode: data.setIsFocusMode,
+    setArchivedMeetingId: data.setArchivedMeetingId,
   });
   const agendaOps = useAgendaOperations({
     selectedMeeting: data.selectedMeeting, activeMeeting: data.activeMeeting,
