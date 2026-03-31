@@ -447,6 +447,25 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       // Step 5e: Clear completed carryover buffer
       await clearCompletedCarryoverBuffer(meeting);
 
+      // Step 5f: Write back decision results
+      try {
+        const decisionItems = agendaItemsData?.filter(item => item.system_type === 'decisions' && item.result_text?.trim()) || [];
+        for (const dItem of decisionItems) {
+          // Try to find matching decision by title and update it
+          const { data: matchedDecisions } = await supabase
+            .from('decisions')
+            .select('id')
+            .eq('title', dItem.title)
+            .limit(1);
+          if (matchedDecisions && matchedDecisions.length > 0) {
+            await supabase
+              .from('decisions')
+              .update({ status: 'decided', result: dItem.result_text })
+              .eq('id', matchedDecisions[0].id);
+          }
+        }
+      } catch (e) { debugConsole.error('Error writing back decision results (non-fatal):', e); }
+
       // Step 6: Archive meeting
       const { error: archiveError } = await supabase.from('meetings').update({ status: 'archived' }).eq('id', meeting.id).select();
       if (archiveError) throw archiveError;
@@ -471,7 +490,8 @@ export function useMeetingArchive(deps: ArchiveDeps) {
         }
       } catch (e) { debugConsole.error('Error sending archive notifications (non-fatal):', e); }
 
-      // Step 7: Reset state
+      // Step 7: Reset state and show protocol
+      const archivedId = meeting.id!;
       setActiveMeeting(null);
       setActiveMeetingId(null);
       setAgendaItems([]);
@@ -480,6 +500,10 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       setIsFocusMode(false);
 
       await loadMeetings();
+      
+      // Show protocol as confirmation
+      setArchivedMeetingId(archivedId);
+      
       toast({ title: "Besprechung archiviert", description: "Die Besprechung wurde erfolgreich archiviert und Aufgaben wurden erstellt. Teilnehmer wurden benachrichtigt." });
     } catch (error) {
       debugConsole.error('Archive meeting error:', error);
