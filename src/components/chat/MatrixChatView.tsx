@@ -14,6 +14,7 @@ import { RoomFilter, RoomFilterType } from './RoomFilter';
 import { CreateRoomDialog } from './CreateRoomDialog';
 import { ReplyPreview } from './ReplyPreview';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { MatrixReplyPreview } from '@/types/matrix';
 
 export function MatrixChatView() {
@@ -201,18 +202,6 @@ export function MatrixChatView() {
     );
   }
 
-  // Connecting...
-  if (isConnecting) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Verbinde mit Matrix...</p>
-        </div>
-      </div>
-    );
-  }
-
   // Connection error
   if (connectionError) {
     return (
@@ -253,11 +242,18 @@ export function MatrixChatView() {
           <div className="flex items-center gap-2">
             <div className={cn(
               "flex items-center gap-1.5 px-2 py-1 rounded-full text-xs",
-              isConnected 
-                ? "bg-green-500/10 text-green-600" 
-                : "bg-red-500/10 text-red-600"
+              isConnecting
+                ? "bg-amber-500/10 text-amber-600"
+                : isConnected
+                  ? "bg-green-500/10 text-green-600"
+                  : "bg-red-500/10 text-red-600"
             )}>
-              {isConnected ? (
+              {isConnecting ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>Verbinde...</span>
+                </>
+              ) : isConnected ? (
                 <>
                   <Wifi className="h-3 w-3" />
                   <span>Verbunden</span>
@@ -308,11 +304,25 @@ export function MatrixChatView() {
             onFilterChange={setRoomFilter}
             counts={roomCounts}
           />
-          <RoomList
-            rooms={filteredRooms}
-            selectedRoomId={selectedRoomId}
-            onSelectRoom={setSelectedRoomId}
-          />
+          {isConnecting && rooms.length === 0 ? (
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 p-3 rounded-lg">
+                  <Skeleton className="h-9 w-9 rounded-full flex-shrink-0" />
+                  <div className="flex-1 space-y-1.5 min-w-0">
+                    <Skeleton className="h-3.5 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <RoomList
+              rooms={filteredRooms}
+              selectedRoomId={selectedRoomId}
+              onSelectRoom={setSelectedRoomId}
+            />
+          )}
           </div>
         )}
 
