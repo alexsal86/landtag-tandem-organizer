@@ -1757,13 +1757,8 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
           connect(credentials);
         }
       };
-      if ('requestIdleCallback' in window) {
-        const id = requestIdleCallback(start, { timeout: 1500 });
-        return () => cancelIdleCallback(id);
-      } else {
-        const id = setTimeout(start, 500);
-        return () => clearTimeout(id);
-      }
+      const id = setTimeout(start, 0);
+      return () => clearTimeout(id);
     }
   }, [credentials, connect]);
 
