@@ -135,6 +135,22 @@ const Index = (): React.JSX.Element => {
     }
   }, [user, authLoading, navigate, activeSection]);
 
+  // Preload the MatrixChatView bundle in the background so the first click on
+  // the chat tab never triggers a network fetch.
+  useEffect(() => {
+    if (!user) return;
+    const preload = () => {
+      import("@/components/chat/MatrixChatView").catch(() => {/* ignore */});
+    };
+    if ('requestIdleCallback' in window) {
+      const id = requestIdleCallback(preload, { timeout: 3000 });
+      return () => cancelIdleCallback(id);
+    } else {
+      const id = setTimeout(preload, 1000);
+      return () => clearTimeout(id);
+    }
+  }, [user]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
