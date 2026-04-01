@@ -218,6 +218,57 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   // ── Measurement-based block breaks ──
   const [blockBreaks, setBlockBreaks] = useState<number[]>([]);
 
+  // ── Line-level break collector using Range.getClientRects() ──
+  const collectLineBreaks = useCallback(
+    (el: HTMLDivElement): number[] => {
+      const containerTop = el.getBoundingClientRect().top;
+      const breaks: number[] = [];
+      const TEXT_BLOCK_TAGS = new Set(['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'DIV', 'BLOCKQUOTE']);
+
+      const recordLineRects = (node: HTMLElement) => {
+        // Try to get line-level rects via Range over all text nodes
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const rects = range.getClientRects();
+        if (rects.length > 0) {
+          for (let k = 0; k < rects.length; k++) {
+            const bottom = pxToMm(rects[k].bottom - containerTop);
+            if (bottom > 0) breaks.push(bottom);
+          }
+        } else {
+          // Fallback: use offsetTop + offsetHeight
+          breaks.push(pxToMm(node.offsetTop + node.offsetHeight));
+        }
+      };
+
+      const children = el.children;
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i] as HTMLElement;
+        if (child.classList.contains('din5008-content-text')) {
+          // Drill into content blocks
+          const innerChildren = child.children;
+          for (let j = 0; j < innerChildren.length; j++) {
+            const inner = innerChildren[j] as HTMLElement;
+            if (TEXT_BLOCK_TAGS.has(inner.tagName)) {
+              recordLineRects(inner);
+            } else {
+              // Atomic block (table, image, etc.) — don't split
+              breaks.push(pxToMm(inner.offsetTop + inner.offsetHeight));
+            }
+          }
+        } else {
+          // Atomic blocks outside content text (closing, attachments)
+          breaks.push(pxToMm(child.offsetTop + child.offsetHeight));
+        }
+      }
+
+      // Final break at total flow height
+      breaks.push(pxToMm(el.scrollHeight));
+      return breaks;
+    },
+    [],
+  );
+
   // ── closing metadata ──
   const closingFormula: string | undefined = layout.closing?.formula;
   const closingName: string | undefined = layout.closing?.signatureName;
@@ -238,46 +289,38 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   const flowMeasureRef = useRef<HTMLDivElement>(null);
   const [flowHeightMm, setFlowHeightMm] = useState(0);
 
-  // Measure the hidden flow container and extract block boundaries
+  // Measure the hidden flow container and extract line-level break boundaries
   useEffect(() => {
     const el = flowMeasureRef.current;
     if (!el) return;
 
-    const measure = () => {
-      setFlowHeightMm(pxToMm(el.scrollHeight));
+    let cancelled = false;
 
-      // Collect bottom-edge Y positions (in mm) of all direct block children
-      const breaks: number[] = [];
-      const children = el.children;
-      for (let i = 0; i < children.length; i++) {
-        const child = children[i] as HTMLElement;
-        // For the main content div, drill into its block children (p, div, etc.)
-        if (child.classList.contains('din5008-content-text')) {
-          const innerChildren = child.children;
-          for (let j = 0; j < innerChildren.length; j++) {
-            const inner = innerChildren[j] as HTMLElement;
-            breaks.push(pxToMm(inner.offsetTop + inner.offsetHeight));
-          }
-        } else {
-          breaks.push(pxToMm(child.offsetTop + child.offsetHeight));
-        }
-      }
-      // Also add the total height as final break
-      breaks.push(pxToMm(el.scrollHeight));
-      setBlockBreaks(breaks);
+    const measure = () => {
+      if (cancelled) return;
+      setFlowHeightMm(pxToMm(el.scrollHeight));
+      setBlockBreaks(collectLineBreaks(el));
     };
 
-    measure();
+    // Wait for fonts before first measurement to avoid stale glyph metrics
+    document.fonts.ready.then(() => {
+      if (!cancelled) measure();
+    });
 
     const ro = new ResizeObserver(() => measure());
     ro.observe(el);
 
-    return () => ro.disconnect();
-  }, [renderedHtml, closingFormula, closingName, attachments]);
+    return () => {
+      cancelled = true;
+      ro.disconnect();
+    };
+  }, [renderedHtml, closingFormula, closingName, attachments, collectLineBreaks]);
 
-  // ── Compute page breaks from block boundaries ──
+  // ── Compute page breaks from line-level break boundaries ──
+  const lineHeightMm = layout.content?.lineHeight ?? 4.5;
+
   const computePageBreaks = useCallback(
-    (breaks: number[], p1Body: number, pNBody: number): number[] => {
+    (breaks: number[], p1Body: number, pNBody: number, lineHMm: number): number[] => {
       if (breaks.length === 0) return [];
       // pageOffsets[i] = the flow-offset (mm) where page i starts
       const pageOffsets: number[] = [0];
@@ -288,7 +331,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
         const capacity = isFirst ? p1Body : pNBody;
         const limit = consumed + capacity;
 
-        // Find the last block break that fits within this page
+        // Find the last line break that fits within this page
         let bestBreak = consumed; // fallback: no content fits
         for (const b of breaks) {
           if (b <= consumed) continue;
@@ -299,9 +342,18 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
           }
         }
 
-        // If no block fits (single block taller than page), force-advance
+        // If no line fits (single block taller than page), force-advance
         if (bestBreak <= consumed) {
           bestBreak = limit;
+        }
+
+        // Snap bestBreak down to the nearest line-grid multiple so that the
+        // page always ends flush with a complete line (the user's insight:
+        // we know the line height, so we use it as a snapping grid).
+        if (lineHMm > 0) {
+          bestBreak = Math.floor(bestBreak / lineHMm) * lineHMm;
+          // Guard: snap must not regress behind consumed
+          if (bestBreak <= consumed) bestBreak = consumed + lineHMm;
         }
 
         // If remaining content after bestBreak is negligible, stop
@@ -317,7 +369,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
     [],
   );
 
-  const pageOffsets = computePageBreaks(blockBreaks, page1BodyMmRaw, pageNBodyMmRaw);
+  const pageOffsets = computePageBreaks(blockBreaks, page1BodyMmRaw, pageNBodyMmRaw, lineHeightMm);
   const totalPages = Math.max(1, pageOffsets.length);
 
   // ── overlay dimensions ──
