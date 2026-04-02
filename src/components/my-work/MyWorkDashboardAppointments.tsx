@@ -42,22 +42,6 @@ interface AppointmentRequestItem {
   myHasResponded: boolean;
 }
 
-interface DayTimelineItem {
-  id: string;
-  title: string;
-  start: string;
-  end: string;
-  simulated?: boolean;
-}
-
-interface TimelineLayoutItem {
-  item: DayTimelineItem;
-  startMinutes: number;
-  endMinutes: number;
-  durationMinutes: number;
-  column: number;
-  totalColumns: number;
-}
 
 const SPECIAL_DAY_DISMISSALS_STORAGE_KEY = 'mywork-dashboard-special-day-dismissals';
 
