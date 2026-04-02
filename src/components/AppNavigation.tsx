@@ -920,69 +920,55 @@ export function AppNavigation({
 
         {/* User Avatar + Menu (bottom) */}
         <div className="border-t border-border px-2 py-2 shrink-0">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-[hsl(var(--nav-hover))] transition-colors">
-                <div className="relative shrink-0">
-                  <Avatar className="h-7 w-7">
-                    <AvatarImage src={userProfile?.avatar_url || undefined} />
-                    <AvatarFallback className="text-[10px]">
-                      {userProfile?.display_name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  {statusDisplay && (
-                    <span className="absolute -bottom-0.5 -right-0.5 text-[10px]">
-                      {statusDisplay.emoji}
-                    </span>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0 text-left">
-                  <p className="text-[12px] font-medium truncate">
-                    {userProfile?.display_name || 'Benutzer'}
-                  </p>
-                  <p className="text-[10px] text-[hsl(var(--nav-muted))] truncate">
-                    {statusDisplay?.label || 'Online'}
-                  </p>
-                </div>
-                <ChevronRight className="h-3 w-3 text-[hsl(var(--nav-muted))] shrink-0" />
+          <div className="flex items-center gap-1.5 px-1">
+            {/* Avatar opens UserStatusSelector dialog */}
+            <UserStatusSelector>
+              <button className="relative shrink-0 rounded-full hover:ring-2 hover:ring-primary/30 transition-all">
+                <Avatar className="h-7 w-7">
+                  <AvatarImage src={userProfile?.avatar_url || undefined} />
+                  <AvatarFallback className="text-[10px]">
+                    {userProfile?.display_name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                {statusDisplay && (
+                  <span className="absolute -bottom-0.5 -right-0.5 text-[10px]">
+                    {statusDisplay.emoji}
+                  </span>
+                )}
               </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" side="right" align="end">
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">{userProfile?.display_name || 'Benutzer'}</p>
-                  <p className="text-xs text-muted-foreground">{user?.email}</p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <div className="p-2">
-                <p className="text-xs text-muted-foreground mb-2">Status</p>
-                <UserStatusSelector>
-                  <Button variant="outline" size="sm" className="w-full justify-between">
-                    <span className="flex items-center gap-2">
-                      <span>{statusDisplay?.emoji || '🟢'}</span>
-                      <span className="text-sm">{statusDisplay?.label || 'Online'}</span>
-                    </span>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                </UserStatusSelector>
-              </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => { onSectionChange('profile-edit'); setActivePanel('home'); }}>
-                <User className="mr-2 h-4 w-4" />
-                Profil bearbeiten
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { onSectionChange('settings'); setActivePanel('home'); }}>
-                <Settings className="mr-2 h-4 w-4" />
-                Einstellungen
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
-                <LogOut className="mr-2 h-4 w-4" />
-                Abmelden
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </UserStatusSelector>
+
+            {/* Settings/Menu dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors">
+                  <Settings className="h-3.5 w-3.5 text-[hsl(var(--nav-muted))]" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" side="right" align="end">
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium">{userProfile?.display_name || 'Benutzer'}</p>
+                    <p className="text-xs text-muted-foreground">{user?.email}</p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => { onSectionChange('profile-edit'); setActivePanel('home'); }}>
+                  <User className="mr-2 h-4 w-4" />
+                  Profil bearbeiten
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { onSectionChange('settings'); setActivePanel('home'); }}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Einstellungen
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Abmelden
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </nav>
       
