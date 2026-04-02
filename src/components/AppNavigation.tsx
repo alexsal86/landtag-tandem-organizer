@@ -709,6 +709,51 @@ export function AppNavigation({
             </div>
           )}
         </ScrollArea>
+
+        {/* Quick Appointment Request */}
+        <div className="border-t border-border p-2">
+          <Collapsible open={isQuickRequestOpen} onOpenChange={(open) => {
+            setIsQuickRequestOpen(open);
+            if (open) resetRequestForm();
+          }}>
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center justify-between w-full px-2 py-1.5 rounded-md text-[12px] hover:bg-[hsl(var(--nav-hover))] transition-colors">
+                <span className="flex items-center gap-1.5">
+                  <Plus className="h-3.5 w-3.5" />
+                  <span className="font-medium">Terminanfrage</span>
+                </span>
+                <ChevronDown className={cn("h-3 w-3 text-[hsl(var(--nav-muted))] transition-transform", isQuickRequestOpen && "rotate-180")} />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-2 pt-2 px-1">
+              <div>
+                <Label htmlFor="nav-req-title" className="text-[11px]">Titel</Label>
+                <Input id="nav-req-title" value={requestTitle} onChange={e => setRequestTitle(e.target.value)} placeholder="z. B. Gespräch mit Verband" className="h-7 text-xs" />
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                <div>
+                  <Label htmlFor="nav-req-date" className="text-[11px]">Datum</Label>
+                  <Input id="nav-req-date" type="date" value={requestDate} onChange={e => setRequestDate(e.target.value)} className="h-7 text-xs" />
+                </div>
+                <div>
+                  <Label htmlFor="nav-req-time" className="text-[11px]">Uhrzeit</Label>
+                  <Input id="nav-req-time" type="time" value={requestTime} onChange={e => setRequestTime(e.target.value)} className="h-7 text-xs" />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="nav-req-location" className="text-[11px]">Ort / Format</Label>
+                <Input id="nav-req-location" value={requestLocation} onChange={e => setRequestLocation(e.target.value)} placeholder="Landtag / Digital" className="h-7 text-xs" />
+              </div>
+              <div>
+                <Label htmlFor="nav-req-requester" className="text-[11px]">Anfragende Stelle</Label>
+                <Input id="nav-req-requester" value={requestRequester} onChange={e => setRequestRequester(e.target.value)} placeholder="Name / Organisation" className="h-7 text-xs" />
+              </div>
+              <Button size="sm" className="w-full h-7 text-xs" onClick={createRequest} disabled={isSubmittingRequest}>
+                {isSubmittingRequest ? 'Erstelle…' : 'Terminanfrage anlegen'}
+              </Button>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
       </div>
     );
   };
