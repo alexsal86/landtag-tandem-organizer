@@ -126,6 +126,9 @@ export function TaskCard({
     : "Zuweisen";
   const CHECKBOX_SIZE = 16;
   const CHECKBOX_CENTER = CHECKBOX_SIZE / 2;
+  const CONNECTOR_X = CHECKBOX_CENTER + 8;
+  const PARENT_LINE_START_TOP = 6;
+  const CHILD_CONNECTOR_TARGET_TOP = 16;
   const [parentLineHeight, setParentLineHeight] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const childrenRef = useRef<HTMLDivElement>(null);
@@ -159,8 +162,8 @@ export function TaskCard({
 
       const containerTop = container.getBoundingClientRect().top;
       const lastChildRect = lastChild.getBoundingClientRect();
-      const lineStart = CHECKBOX_CENTER;
-      const lineEnd = lastChildRect.top - containerTop + lastChildRect.height / 2;
+      const lineStart = PARENT_LINE_START_TOP;
+      const lineEnd = lastChildRect.top - containerTop + CHILD_CONNECTOR_TARGET_TOP;
       setParentLineHeight(Math.max(0, lineEnd - lineStart));
     };
 
@@ -245,8 +248,8 @@ export function TaskCard({
           className="absolute bg-border/70"
           aria-hidden="true"
           style={{
-            left: `${CHECKBOX_CENTER}px`,
-            top: `${CHECKBOX_CENTER}px`,
+            left: `${CONNECTOR_X}px`,
+            top: `${PARENT_LINE_START_TOP}px`,
             height: `${parentLineHeight}px`,
             width: "2px",
           }}
@@ -259,10 +262,9 @@ export function TaskCard({
           aria-hidden="true"
           style={{
             left: `-${CHECKBOX_CENTER + 8}px`,
-            top: "50%",
+            top: 0,
             width: `${CHECKBOX_CENTER + 4}px`,
-            height: `${CHECKBOX_CENTER + 4}px`,
-            transform: "translateY(-50%)",
+            height: `${CHILD_CONNECTOR_TARGET_TOP}px`,
             borderLeft: "2px solid hsl(var(--border) / 0.7)",
             borderBottom: "2px solid hsl(var(--border) / 0.7)",
             borderBottomLeftRadius: "8px",
@@ -416,7 +418,7 @@ export function TaskCard({
       </div>
 
       {hasSubtasks && (
-        <div ref={childrenRef} className="mt-2 space-y-2 pl-8">
+        <div ref={childrenRef} className="mt-2 space-y-2">
           {childTasks.map((childTask, index) => (
             <TaskCard
               key={childTask.id}
