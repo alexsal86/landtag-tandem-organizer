@@ -266,11 +266,19 @@ const Index = (): React.JSX.Element => {
         Zum Hauptinhalt springen
       </a>
       
-      <div className="flex min-h-screen w-full bg-background overflow-hidden">
-        <div className="hidden md:block sticky top-0 h-screen z-30">
+      <div className={cn("flex min-h-screen w-full bg-background overflow-hidden", isResizing && "select-none")}>
+        <div className="hidden md:flex sticky top-0 h-screen z-30" style={{ width: navWidth }}>
           <AppNavigation 
             activeSection={activeSection} 
             onSectionChange={handleSectionChange}
+          />
+          {/* Resize Handle */}
+          <div
+            onMouseDown={startResize}
+            className={cn(
+              "w-1 cursor-col-resize hover:bg-primary/30 transition-colors shrink-0",
+              isResizing && "bg-primary/40"
+            )}
           />
         </div>
         <div className={`flex flex-col flex-1 h-screen ${isCalendar ? "overflow-hidden min-h-0" : "overflow-y-auto"}`}>
