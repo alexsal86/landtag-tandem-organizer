@@ -186,9 +186,6 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
         {quickAction && (
           <Separator orientation="vertical" className="h-5 bg-border" />
         )}
-
-        {/* Search */}
-        <HeaderSearch />
       </div>
 
       {/* Right: Actions with Office Info */}

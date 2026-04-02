@@ -438,25 +438,25 @@ export function AppNavigation({
                       className={cn(
                         "flex items-start gap-2 px-2 py-1.5 rounded-md text-[12px] group cursor-pointer transition-colors",
                         "hover:bg-[hsl(var(--nav-hover))]",
-                        !n.read && "bg-[hsl(var(--nav-active-bg))]"
+                        !n.is_read && "bg-[hsl(var(--nav-active-bg))]"
                       )}
                       onClick={() => {
-                        if (!n.read) markAsRead(n.id);
+                        if (!n.is_read) markAsRead(n.id);
                       }}
                     >
                       <div className="flex-1 min-w-0">
-                        <p className={cn("truncate text-[12px]", !n.read && "font-medium")}>
+                        <p className={cn("truncate text-[12px]", !n.is_read && "font-medium")}>
                           {n.title}
                         </p>
-                        {n.body && (
-                          <p className="text-[11px] text-[hsl(var(--nav-muted))] truncate">{n.body}</p>
+                        {n.message && (
+                          <p className="text-[11px] text-[hsl(var(--nav-muted))] truncate">{n.message}</p>
                         )}
                         <p className="text-[10px] text-[hsl(var(--nav-muted))] mt-0.5">
                           {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: de })}
                         </p>
                       </div>
                       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 shrink-0 mt-0.5">
-                        {!n.read && (
+                        {!n.is_read && (
                           <button
                             onClick={(e) => { e.stopPropagation(); markAsRead(n.id); }}
                             className="h-5 w-5 rounded flex items-center justify-center hover:bg-[hsl(var(--nav-active-bg))]"
