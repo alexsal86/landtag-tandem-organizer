@@ -13,19 +13,9 @@ import { getSpecialDayHint } from '@/utils/dashboard/specialDays';
 import { type DashboardData } from '@/hooks/useDashboardData';
 import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
-import { useAppointmentRequest } from '@/hooks/useAppointmentRequest';
 import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
-import {
-  APPOINTMENT_REQUEST_APPOINTMENT_MARKER,
-  APPOINTMENT_REQUEST_LOCATION_MARKER,
-  APPOINTMENT_REQUEST_REQUESTER_MARKER,
-  APPOINTMENT_REQUEST_START_MARKER,
-  APPOINTMENT_REQUEST_TITLE_MARKER,
-  APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES,
-} from '@/features/appointments/requestMarkers';
 
 interface Props {
   data: DashboardData;
