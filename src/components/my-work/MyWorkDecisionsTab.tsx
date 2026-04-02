@@ -11,6 +11,10 @@ import { useMyWorkDecisionsSidebarData } from "@/hooks/useMyWorkDecisionsSidebar
 import { DecisionTabId, useMyWorkSettings } from "@/hooks/useMyWorkSettings";
 import { useTenantUsers } from "@/hooks/useTenantUsers";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { StandaloneDecisionCreator } from "@/components/task-decisions/StandaloneDecisionCreator";
+import { Search, Settings2 } from "lucide-react";
 import { DecisionListToolbar } from "./decisions/DecisionListToolbar";
 import { DecisionList } from "./decisions/DecisionList";
 import { DecisionDialogs } from "./decisions/DecisionDialogs";
@@ -140,15 +144,19 @@ export function MyWorkDecisionsTab() {
           <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
             <div>
               <DecisionListToolbar
-                isCreateOpen={state.isCreateOpen}
-                onCreateOpenChange={actions.setCreateOpen}
-                onDecisionCreated={actions.handleDecisionCreated}
-                onOpenDefaultParticipants={() => setDefaultParticipantsOpen(true)}
-                onSearchChange={setSearchQuery}
-                searchQuery={searchQuery}
                 tabConfig={tabConfig}
                 visibleDecisionTabs={visibleDecisionTabs}
               />
+              <div className="mt-3 flex items-center gap-2 lg:hidden">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input placeholder="Suchen..." value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} className="pl-8 h-8 text-xs" />
+                </div>
+                <StandaloneDecisionCreator isOpen={state.isCreateOpen} onOpenChange={actions.setCreateOpen} onDecisionCreated={actions.handleDecisionCreated} />
+                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setDefaultParticipantsOpen(true)} title="Standard-Teilnehmer">
+                  <Settings2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
               <TabsContent value={activeTab} className="mt-3">
                 <DecisionList
                   archivingDecisionId={state.archivingDecisionId}
@@ -180,10 +188,16 @@ export function MyWorkDecisionsTab() {
             </div>
 
             <DecisionSidebarContainer
+              isCreateOpen={state.isCreateOpen}
               openQuestions={sidebarData.openQuestions}
               newComments={sidebarData.newComments}
+              onCreateOpenChange={actions.setCreateOpen}
+              onDecisionCreated={actions.handleDecisionCreated}
+              onOpenDefaultParticipants={() => setDefaultParticipantsOpen(true)}
+              onSearchChange={setSearchQuery}
               pendingDirectReplies={sidebarData.pendingDirectReplies}
               discussionComments={sidebarData.discussionComments}
+              searchQuery={searchQuery}
               recentActivities={sidebarData.recentActivities}
               onQuestionClick={handleOpenDetails}
               onCommentClick={handleOpenDetails}
