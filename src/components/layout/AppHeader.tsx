@@ -209,7 +209,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
                     return (
                       <div key={onlineUser.user_id} style={{ zIndex: index + 1 }}>
                         <Avatar 
-                          className="h-6 w-6 border-2 border-[hsl(var(--nav))] ring-2"
+                          className="h-6 w-6 border-2 border-background ring-2"
                           style={{ '--tw-ring-color': statusColor } as React.CSSProperties}
                         >
                           <AvatarImage src={onlineUser.avatar_url || undefined} />
