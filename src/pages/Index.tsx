@@ -44,7 +44,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { MobileHeader } from "@/components/MobileHeader";
-import { AppHeader } from "@/components/layout/AppHeader";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { cn } from "@/lib/utils";
 import { SubNavigation } from "@/components/layout/SubNavigation";
