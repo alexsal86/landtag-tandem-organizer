@@ -164,8 +164,8 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
   return (
     <header
       className={cn(
-        'h-14 bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] flex items-center justify-between px-4 sticky top-0 z-40',
-        !isLetterManagement && 'border-b border-[hsl(var(--nav-foreground)/0.1)]',
+        'h-14 bg-background text-foreground flex items-center justify-between px-4 sticky top-0 z-40',
+        !isLetterManagement && 'border-b border-border',
       )}
     >
       {/* Left: Quick Action + Search */}
@@ -176,7 +176,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
             size="sm" 
             variant="ghost"
             onClick={handleQuickAction}
-            className="h-7 px-2 text-xs bg-[hsl(var(--nav-hover))] hover:bg-[hsl(var(--nav-active-bg))] text-[hsl(var(--nav-foreground))]"
+            className="h-7 px-2 text-xs bg-muted hover:bg-accent text-foreground"
           >
             <Plus className="h-3.5 w-3.5 mr-1" />
             {quickAction.label}
@@ -184,7 +184,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
         )}
 
         {quickAction && (
-          <Separator orientation="vertical" className="h-5 bg-[hsl(var(--nav-foreground)/0.2)]" />
+          <Separator orientation="vertical" className="h-5 bg-border" />
         )}
 
         {/* Search */}
@@ -209,7 +209,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
                     return (
                       <div key={onlineUser.user_id} style={{ zIndex: index + 1 }}>
                         <Avatar 
-                          className="h-6 w-6 border-2 border-[hsl(var(--nav))] ring-2"
+                          className="h-6 w-6 border-2 border-background ring-2"
                           style={{ '--tw-ring-color': statusColor } as React.CSSProperties}
                         >
                           <AvatarImage src={onlineUser.avatar_url || undefined} />
@@ -330,12 +330,12 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
         </DropdownMenu>
         
         {/* Separator zwischen Avatar und Büro-Info */}
-        <Separator orientation="vertical" className="h-6 bg-[hsl(var(--nav-foreground)/0.2)]" />
+        <Separator orientation="vertical" className="h-6 bg-border" />
         
         {/* Office Title rechts neben Avatar */}
         <div className="text-right hidden lg:block">
-          <p className="text-sm font-medium leading-none text-[hsl(var(--nav-foreground))]">{appSettings.app_name}</p>
-          <p className="text-xs text-[hsl(var(--nav-muted))]">{appSettings.app_subtitle}</p>
+          <p className="text-sm font-medium leading-none text-foreground">{appSettings.app_name}</p>
+          <p className="text-xs text-muted-foreground">{appSettings.app_subtitle}</p>
         </div>
       </div>
     </header>

@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { AppNavigation, getNavigationGroups } from "@/components/AppNavigation";
 import { prefetchRoute } from "@/lib/routePrefetch";
+import { useNavWidth } from "@/hooks/useNavWidth";
 
 // Lazy load all major view components for better initial load performance
 const CustomizableDashboard = lazyWithRetry(() => import("@/components/CustomizableDashboard").then(m => ({ default: m.CustomizableDashboard })));
@@ -45,12 +46,14 @@ import { Loader2 } from "lucide-react";
 import { MobileHeader } from "@/components/MobileHeader";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { cn } from "@/lib/utils";
 import { SubNavigation } from "@/components/layout/SubNavigation";
 import { MobileSubNavigation } from "@/components/layout/MobileSubNavigation";
 const CreateContact = lazyWithRetry(() => import("./CreateContact"));
 const NotFound = lazyWithRetry(() => import("./NotFound"));
 
 const Index = (): React.JSX.Element => {
+  const { width: navWidth, isResizing, startResize } = useNavWidth();
   const { user, loading: authLoading } = useAuth();
   const { currentTenant, loading: tenantLoading } = useTenant();
   const navigate = useNavigate();
@@ -264,11 +267,19 @@ const Index = (): React.JSX.Element => {
         Zum Hauptinhalt springen
       </a>
       
-      <div className="flex min-h-screen w-full bg-background overflow-hidden">
-        <div className="hidden md:block sticky top-0 h-screen z-30">
+      <div className={cn("flex min-h-screen w-full bg-background overflow-hidden", isResizing && "select-none")}>
+        <div className="hidden md:flex sticky top-0 h-screen z-30" style={{ width: navWidth }}>
           <AppNavigation 
             activeSection={activeSection} 
             onSectionChange={handleSectionChange}
+          />
+          {/* Resize Handle */}
+          <div
+            onMouseDown={startResize}
+            className={cn(
+              "w-1 cursor-col-resize hover:bg-primary/30 transition-colors shrink-0",
+              isResizing && "bg-primary/40"
+            )}
           />
         </div>
         <div className={`flex flex-col flex-1 h-screen ${isCalendar ? "overflow-hidden min-h-0" : "overflow-y-auto"}`}>
