@@ -749,7 +749,7 @@ export function AppNavigation({
         isMobile ? "h-full" : "h-screen"
       )}>
         {/* Logo + Workspace Name + Subtitle */}
-        <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border shrink-0">
+        <div className="flex items-center gap-2.5 px-4 py-3 shrink-0">
           <button onClick={handleLogoClick} className="transition-transform hover:scale-105 shrink-0">
             {appSettings.app_logo_url ? (
               <img 
