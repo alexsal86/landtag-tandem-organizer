@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { AppNavigation, getNavigationGroups } from "@/components/AppNavigation";
 import { prefetchRoute } from "@/lib/routePrefetch";
+import { useNavWidth } from "@/hooks/useNavWidth";
 
 // Lazy load all major view components for better initial load performance
 const CustomizableDashboard = lazyWithRetry(() => import("@/components/CustomizableDashboard").then(m => ({ default: m.CustomizableDashboard })));
