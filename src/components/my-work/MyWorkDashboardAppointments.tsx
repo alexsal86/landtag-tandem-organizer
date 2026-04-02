@@ -136,33 +136,8 @@ export const DashboardAppointments = ({ data }: Props) => {
     specialDays, feedbackReminderVisible, pendingFeedbackCount, isLoading,
   } = data;
 
-  const [isQuickRequestOpen, setIsQuickRequestOpen] = useState(false);
-  const [timelineItems, setTimelineItems] = useState<DayTimelineItem[]>([]);
-  const [isTimelineLoading, setIsTimelineLoading] = useState(false);
   const [preparations, setPreparations] = useState<Map<string, AppointmentPreparation>>(new Map());
   const [expandedBriefingId, setExpandedBriefingId] = useState<string | null>(null);
-  const {
-    requestTitle,
-    setRequestTitle,
-    requestDate,
-    setRequestDate,
-    requestTime,
-    setRequestTime,
-    requestLocation,
-    setRequestLocation,
-    requestRequester,
-    setRequestRequester,
-    isSubmittingRequest,
-    resetForm,
-    createRequest,
-  } = useAppointmentRequest({
-    onSuccess: (message, description) => {
-      toast({ title: message, description });
-    },
-    onError: (message, description) => {
-      toast({ title: message, description, variant: 'destructive' });
-    },
-  });
 
   useEffect(() => {
     if (isQuickRequestOpen) {
