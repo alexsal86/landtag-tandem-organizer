@@ -805,8 +805,7 @@ export function AppNavigation({
                 onClick={() => setActivePanel(activePanel === 'notifications' ? 'home' : 'notifications')}
                 className={cn(
                   "h-7 rounded-md flex items-center gap-1.5 px-2 transition-colors relative",
-                  "bg-[hsl(var(--nav-hover))]",
-                  activePanel === 'notifications' && "bg-[hsl(var(--nav-active-bg))] font-medium"
+                  activePanel === 'notifications' ? "bg-[hsl(var(--nav-active-bg))] font-medium" : "hover:bg-[hsl(var(--nav-hover))]"
                 )}
               >
                 <Bell className="h-4 w-4 shrink-0" />
