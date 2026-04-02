@@ -164,8 +164,8 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
   return (
     <header
       className={cn(
-        'h-14 bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] flex items-center justify-between px-4 sticky top-0 z-40',
-        !isLetterManagement && 'border-b border-[hsl(var(--nav-foreground)/0.1)]',
+        'h-14 bg-background text-foreground flex items-center justify-between px-4 sticky top-0 z-40',
+        !isLetterManagement && 'border-b border-border',
       )}
     >
       {/* Left: Quick Action + Search */}
