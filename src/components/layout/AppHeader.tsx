@@ -176,7 +176,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
             size="sm" 
             variant="ghost"
             onClick={handleQuickAction}
-            className="h-7 px-2 text-xs bg-[hsl(var(--nav-hover))] hover:bg-[hsl(var(--nav-active-bg))] text-[hsl(var(--nav-foreground))]"
+            className="h-7 px-2 text-xs bg-muted hover:bg-accent text-foreground"
           >
             <Plus className="h-3.5 w-3.5 mr-1" />
             {quickAction.label}
