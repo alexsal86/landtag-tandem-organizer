@@ -10,7 +10,7 @@ type CasesWorkspaceShellProps = {
 export function CasesWorkspaceShell({ onDragEnd, left, right }: CasesWorkspaceShellProps) {
   return (
     <DragDropContext onDragEnd={onDragEnd}>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,80fr)_minmax(0,20fr)]">
         {left}
         {right}
       </div>

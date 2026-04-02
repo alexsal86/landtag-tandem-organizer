@@ -74,6 +74,8 @@ type CaseItemListProps = {
 };
 
 export function CaseItemList(props: CaseItemListProps) {
+  const desktopGridColumns = "hidden xl:grid [grid-template-columns:minmax(20px,28px)_34px_minmax(180px,2fr)_minmax(260px,4fr)_72px_minmax(90px,0.8fr)_36px_44px_minmax(92px,1fr)]";
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -106,7 +108,7 @@ export function CaseItemList(props: CaseItemListProps) {
                   </div>
                 ) : (
                   <div className="space-y-1.5">
-                    <div className="hidden xl:grid grid-cols-[28px_34px_minmax(220px,2fr)_minmax(420px,4fr)_72px_minmax(90px,0.8fr)_36px_44px_92px] gap-2 border-b px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <div className={cn(desktopGridColumns, "gap-2 border-b pl-0 pr-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground")}>
                       <span />
                       <span className="group inline-flex items-center justify-center gap-0.5"><button type="button" className={props.sortButtonClass("channel", "asc")} onClick={() => props.toggleSort("channel", "asc")}><ArrowUp className="h-3 w-3" /></button><button type="button" className={props.sortButtonClass("channel", "desc")} onClick={() => props.toggleSort("channel", "desc")}><ArrowDown className="h-3 w-3" /></button></span>
                       <span className="group inline-flex items-center gap-0.5">Betreff<button type="button" className={props.sortButtonClass("subject", "asc")} onClick={() => props.toggleSort("subject", "asc")}><ArrowUp className="h-3 w-3" /></button><button type="button" className={props.sortButtonClass("subject", "desc")} onClick={() => props.toggleSort("subject", "desc")}><ArrowDown className="h-3 w-3" /></button></span>
@@ -133,8 +135,8 @@ export function CaseItemList(props: CaseItemListProps) {
                             <div ref={(el) => { dragProvided.innerRef(el); if (props.isHighlighted(item.id) && el) props.highlightRef(item.id)(el); }} {...dragProvided.draggableProps} className={cn("border-b outline-none focus:outline-none focus-visible:ring-0", dragSnapshot.isDragging && "opacity-80 shadow-lg rounded-md bg-background", props.isHighlighted(item.id) && "notification-highlight")}>
                               <ContextMenu>
                                 <ContextMenuTrigger asChild>
-                                  <button type="button" className={cn("w-full px-2 py-2 text-left transition-colors hover:bg-muted/40", isActive && "bg-primary/5", props.focusedItemIndex >= 0 && props.focusedItemIndex === index && "ring-1 ring-primary/40")} onClick={() => props.handleSelectCaseItem(item)}>
-                                    <div className="hidden xl:grid h-12 grid-cols-[28px_34px_minmax(220px,2fr)_minmax(420px,4fr)_72px_minmax(90px,0.8fr)_36px_44px_92px] items-center gap-2 text-xs text-muted-foreground">
+                                  <button type="button" className={cn("w-full py-2 pr-2 pl-0 text-left transition-colors hover:bg-muted/40", isActive && "bg-primary/5", props.focusedItemIndex >= 0 && props.focusedItemIndex === index && "ring-1 ring-primary/40")} onClick={() => props.handleSelectCaseItem(item)}>
+                                    <div className={cn(desktopGridColumns, "h-12 items-center gap-2 text-xs text-muted-foreground")}>
                                       <span {...dragProvided.dragHandleProps} className="inline-flex items-center justify-center cursor-grab text-muted-foreground/50 hover:text-muted-foreground" onClick={(e) => e.stopPropagation()}><GripVertical className="h-4 w-4" /></span>
                                       <span className="inline-flex" title={channel?.label || "Kanal unbekannt"}><span className="flex h-7 w-7 items-center justify-center rounded-md bg-muted text-muted-foreground"><ChannelIcon className="h-4 w-4" /></span></span>
                                       <span className="truncate text-sm font-medium text-foreground inline-flex items-center gap-1">{props.getItemSubject(item)}</span>
