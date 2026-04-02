@@ -6,7 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { NotificationBell } from '@/components/NotificationBell';
 import { OnlineUsersWidget } from '@/components/OnlineUsersWidget';
 import { UserStatusSelector } from '@/components/UserStatusSelector';
-import { HeaderSearch } from '@/components/layout/HeaderSearch';
+
 import { useAuth } from '@/hooks/useAuth';
 import { useUserStatus } from '@/hooks/useUserStatus';
 import { useTenant } from '@/hooks/useTenant';

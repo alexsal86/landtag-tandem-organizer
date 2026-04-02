@@ -14,6 +14,8 @@ import {
   Plus,
   X,
   Star,
+  Check,
+  Trash2,
 } from "lucide-react";
 import { useMatrixUnread } from "@/contexts/MatrixUnreadContext";
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
@@ -21,7 +23,9 @@ import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { useFavicon } from "@/hooks/useFavicon";
 import { useQuickAccessPages, QuickAccessPage } from "@/hooks/useQuickAccessPages";
+import { useNotifications } from "@/contexts/NotificationContext";
 import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Tooltip,
   TooltipContent,
@@ -35,6 +39,8 @@ import {
 } from "@/components/ui/popover";
 import { navigationGroups, getNavigationGroups, NavGroup, NavSubItem } from "@/components/navigation/navigationConfig";
 import { HelpDialog } from "@/components/navigation/HelpDialog";
+import { formatDistanceToNow } from "date-fns";
+import { de } from "date-fns/locale";
 
 // Re-export for backward compatibility
 export { getNavigationGroups };
@@ -70,6 +76,7 @@ export function AppNavigation({
   const appSettings = useAppSettings();
   useFavicon(appSettings.app_logo_url);
   const { pages: quickAccessPages, addPage, removePage } = useQuickAccessPages();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
   
   // Expanded groups state
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -79,6 +86,7 @@ export function AppNavigation({
   const [newBadgeItems, setNewBadgeItems] = useState<Set<string>>(new Set());
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
   const [quickAccessPopoverOpen, setQuickAccessPopoverOpen] = useState(false);
+  const [showNotificationsPanel, setShowNotificationsPanel] = useState(false);
 
   // Auto-expand the group containing the active section
   useEffect(() => {
@@ -176,7 +184,7 @@ export function AppNavigation({
   // Skeleton loader
   if (isRoleLoading) {
     return (
-      <nav className="flex flex-col h-full bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-r border-border shrink-0">
+      <nav className="flex flex-col h-full w-full bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-r border-border shrink-0">
         <div className="h-14 flex items-center gap-2 px-4 border-b border-border">
           <div className="h-7 w-7 rounded-lg animate-skeleton" />
           <div className="h-4 w-24 rounded animate-skeleton" />
@@ -248,7 +256,6 @@ export function AppNavigation({
         <button
           onClick={() => {
             toggleGroup(group.id);
-            // Navigate to first sub-item if not active
             if (!isActive && group.subItems) {
               handleNavigationClick(group.subItems[0].id);
             }
@@ -259,17 +266,17 @@ export function AppNavigation({
             isActive && "font-medium"
           )}
         >
-          {isExpanded ? (
-            <ChevronDown className="h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))]" />
-          ) : (
-            <ChevronRight className="h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))]" />
-          )}
           <group.icon className="h-4 w-4 shrink-0" />
           <span className="truncate text-[13px]">{group.label}</span>
           {badge > 0 && (
             <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-destructive text-[10px] text-white flex items-center justify-center font-bold px-1">
               {badge > 99 ? '99+' : badge}
             </span>
+          )}
+          {isExpanded ? (
+            <ChevronDown className={cn("h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))]", badge > 0 ? "" : "ml-auto")} />
+          ) : (
+            <ChevronRight className={cn("h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))]", badge > 0 ? "" : "ml-auto")} />
           )}
         </button>
         {isExpanded && group.subItems && (
@@ -283,10 +290,14 @@ export function AppNavigation({
     );
   };
 
+  // Quick action button states
+  const isHomeActive = activeSection === 'mywork' || activeSection === 'dashboard';
+  const isCasefilesActive = activeSection === 'casefiles';
+
   return (
     <TooltipProvider delayDuration={300}>
       <nav className={cn(
-        "flex flex-col bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-r border-border shrink-0 select-none",
+        "flex flex-col w-full bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-r border-border shrink-0 select-none",
         isMobile ? "h-full" : "h-screen"
       )}>
         {/* Logo + Workspace Name */}
@@ -315,62 +326,158 @@ export function AppNavigation({
 
         {/* Quick Action Buttons */}
         <div className="flex items-center gap-1 px-3 py-2 border-b border-border">
+          {/* Home */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={() => handleNavigationClick('mywork')}
-                className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors"
+                className={cn(
+                  "h-7 rounded-md flex items-center gap-1.5 px-2 transition-colors",
+                  "bg-[hsl(var(--nav-hover))]",
+                  isHomeActive && "bg-[hsl(var(--nav-active-bg))] font-medium"
+                )}
               >
-                <Home className="h-4 w-4" />
+                <Home className="h-4 w-4 shrink-0" />
+                {isHomeActive && <span className="text-xs">Home</span>}
               </button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">Meine Arbeit</TooltipContent>
+            {!isHomeActive && <TooltipContent side="bottom" className="text-xs">Meine Arbeit</TooltipContent>}
           </Tooltip>
 
+          {/* Notifications */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={() => handleNavigationClick('notifications')}
-                className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors relative"
+                onClick={() => setShowNotificationsPanel(prev => !prev)}
+                className={cn(
+                  "h-7 rounded-md flex items-center gap-1.5 px-2 transition-colors relative",
+                  "bg-[hsl(var(--nav-hover))]",
+                  showNotificationsPanel && "bg-[hsl(var(--nav-active-bg))] font-medium"
+                )}
               >
-                <Bell className="h-4 w-4" />
-                {(navigationCounts['notifications'] || 0) > 0 && (
+                <Bell className="h-4 w-4 shrink-0" />
+                {showNotificationsPanel && <span className="text-xs">Inbox</span>}
+                {!showNotificationsPanel && unreadCount > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] rounded-full bg-destructive text-[8px] text-white flex items-center justify-center font-bold px-0.5">
-                    {navigationCounts['notifications'] > 99 ? '99+' : navigationCounts['notifications']}
+                    {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}
               </button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">Benachrichtigungen</TooltipContent>
+            {!showNotificationsPanel && <TooltipContent side="bottom" className="text-xs">Benachrichtigungen</TooltipContent>}
           </Tooltip>
 
+          {/* Case Files */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={() => handleNavigationClick('casefiles')}
-                className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors"
+                className={cn(
+                  "h-7 rounded-md flex items-center gap-1.5 px-2 transition-colors",
+                  "bg-[hsl(var(--nav-hover))]",
+                  isCasefilesActive && "bg-[hsl(var(--nav-active-bg))] font-medium"
+                )}
               >
-                <Briefcase className="h-4 w-4" />
+                <Briefcase className="h-4 w-4 shrink-0" />
+                {isCasefilesActive && <span className="text-xs">Akten</span>}
               </button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">Fallakten</TooltipContent>
+            {!isCasefilesActive && <TooltipContent side="bottom" className="text-xs">Fallakten</TooltipContent>}
           </Tooltip>
 
+          {/* Search */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={() => {
-                  // Trigger global search - dispatching custom event
-                  window.dispatchEvent(new CustomEvent('open-global-search'));
+                  window.dispatchEvent(new CustomEvent('openGlobalSearch', { detail: { query: '' } }));
                 }}
-                className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors"
+                className="h-7 rounded-md flex items-center gap-1.5 px-2 bg-[hsl(var(--nav-hover))] hover:bg-[hsl(var(--nav-active-bg))] transition-colors"
               >
-                <Search className="h-4 w-4" />
+                <Search className="h-4 w-4 shrink-0" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">Suche</TooltipContent>
+            <TooltipContent side="bottom" className="text-xs">Suche (⌘K)</TooltipContent>
           </Tooltip>
         </div>
+
+        {/* Inline Notifications Panel */}
+        {showNotificationsPanel && (
+          <div className="border-b border-border flex flex-col max-h-[50vh]">
+            <div className="flex items-center justify-between px-3 py-2">
+              <span className="text-xs font-semibold text-[hsl(var(--nav-foreground))]">
+                Benachrichtigungen {unreadCount > 0 && `(${unreadCount})`}
+              </span>
+              <div className="flex items-center gap-1">
+                {unreadCount > 0 && (
+                  <button
+                    onClick={() => markAllAsRead()}
+                    className="text-[10px] text-[hsl(var(--nav-muted))] hover:text-[hsl(var(--nav-foreground))] transition-colors px-1"
+                  >
+                    Alle gelesen
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowNotificationsPanel(false)}
+                  className="h-5 w-5 rounded flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors"
+                >
+                  <X className="h-3 w-3 text-[hsl(var(--nav-muted))]" />
+                </button>
+              </div>
+            </div>
+            <ScrollArea className="flex-1 px-2 pb-2">
+              {notifications.length === 0 ? (
+                <div className="px-2 py-4 text-center text-[11px] text-[hsl(var(--nav-muted))]">
+                  Keine Benachrichtigungen
+                </div>
+              ) : (
+                <div className="space-y-0.5">
+                  {notifications.slice(0, 20).map(n => (
+                    <div
+                      key={n.id}
+                      className={cn(
+                        "flex items-start gap-2 px-2 py-1.5 rounded-md text-[12px] group cursor-pointer transition-colors",
+                        "hover:bg-[hsl(var(--nav-hover))]",
+                        !n.read && "bg-[hsl(var(--nav-active-bg))]"
+                      )}
+                      onClick={() => {
+                        if (!n.read) markAsRead(n.id);
+                      }}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className={cn("truncate text-[12px]", !n.read && "font-medium")}>
+                          {n.title}
+                        </p>
+                        {n.body && (
+                          <p className="text-[11px] text-[hsl(var(--nav-muted))] truncate">{n.body}</p>
+                        )}
+                        <p className="text-[10px] text-[hsl(var(--nav-muted))] mt-0.5">
+                          {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: de })}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 shrink-0 mt-0.5">
+                        {!n.read && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); markAsRead(n.id); }}
+                            className="h-5 w-5 rounded flex items-center justify-center hover:bg-[hsl(var(--nav-active-bg))]"
+                          >
+                            <Check className="h-3 w-3" />
+                          </button>
+                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deleteNotification(n.id); }}
+                          className="h-5 w-5 rounded flex items-center justify-center hover:bg-[hsl(var(--nav-active-bg))]"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+        )}
 
         {/* Main Navigation */}
         <div className="flex-1 flex flex-col py-2 px-2 gap-0.5 overflow-y-auto">
@@ -467,13 +574,13 @@ export function AppNavigation({
                       teamSubItems.some(i => i.id === activeSection) && "font-medium"
                     )}
                   >
-                    {expandedGroups.has('team') ? (
-                      <ChevronDown className="h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))]" />
-                    ) : (
-                      <ChevronRight className="h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))]" />
-                    )}
                     <UserCog className="h-4 w-4" />
                     <span>Team</span>
+                    {expandedGroups.has('team') ? (
+                      <ChevronDown className="h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))] ml-auto" />
+                    ) : (
+                      <ChevronRight className="h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))] ml-auto" />
+                    )}
                   </button>
                   {expandedGroups.has('team') && (
                     <div className="mt-0.5">
