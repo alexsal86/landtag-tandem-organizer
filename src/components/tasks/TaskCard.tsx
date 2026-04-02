@@ -126,6 +126,7 @@ export function TaskCard({
     : "Zuweisen";
   const CHECKBOX_SIZE = 16;
   const CHECKBOX_CENTER = CHECKBOX_SIZE / 2;
+  const CONNECTOR_X = CHECKBOX_CENTER + 8;
   const PARENT_LINE_START_TOP = 6;
   const CHILD_CONNECTOR_TARGET_TOP = 16;
   const [parentLineHeight, setParentLineHeight] = useState<number | null>(null);
@@ -247,7 +248,7 @@ export function TaskCard({
           className="absolute bg-border/70"
           aria-hidden="true"
           style={{
-            left: `${CHECKBOX_CENTER}px`,
+            left: `${CONNECTOR_X}px`,
             top: `${PARENT_LINE_START_TOP}px`,
             height: `${parentLineHeight}px`,
             width: "2px",
@@ -417,7 +418,7 @@ export function TaskCard({
       </div>
 
       {hasSubtasks && (
-        <div ref={childrenRef} className="mt-2 space-y-2 pl-8">
+        <div ref={childrenRef} className="mt-2 space-y-2">
           {childTasks.map((childTask, index) => (
             <TaskCard
               key={childTask.id}
