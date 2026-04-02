@@ -535,6 +535,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
   const refreshInFlightRef = useRef<Set<string>>(new Set());
   const historyLoadInFlightRef = useRef<Set<string>>(new Set());
   const messagesRoomLruRef = useRef<string[]>([]);
+  const keyBackupActivatedRef = useRef(false);
 
   const touchRoomInLru = useCallback((roomId: string) => {
     const lru = messagesRoomLruRef.current;
@@ -895,21 +896,42 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
       // 7. Register event listeners (named references for cleanup)
       const registeredListeners: MatrixEventListener[] = [];
 
-      const onSync = (state: string) => {
-        if (state === 'PREPARED') {
+      const onSync = (state: string, prevState: string | null) => {
+        matrixLogger.log('[Matrix] Sync state:', prevState, '->', state);
+
+        if (state === 'PREPARED' || state === 'SYNCING' || state === 'CATCHUP') {
           isConnectedRef.current = true;
           setIsConnected(true);
           setIsConnecting(false);
-          setCryptoEnabled(Boolean(matrixClient.getCrypto()));
-          updateRoomList(matrixClient);
-          // Re-activate key backup downloader so missing session keys are fetched from backup
-          const cryptoApi = matrixClient.getCrypto();
-          if (cryptoApi) {
-            cryptoApi.checkKeyBackupAndEnable().catch(() => {});
+          setConnectionError(null);
+
+          if (state === 'PREPARED') {
+            setCryptoEnabled(Boolean(matrixClient.getCrypto()));
+            updateRoomList(matrixClient);
+            // Nur beim ersten PREPARED pro Client-Session den Key-Backup-Downloader aktivieren.
+            // PREPARED feuert auch nach jedem Reconnect-Zyklus – wiederholte Aufrufe sind redundant.
+            if (!keyBackupActivatedRef.current) {
+              keyBackupActivatedRef.current = true;
+              const cryptoApi = matrixClient.getCrypto();
+              if (cryptoApi) {
+                cryptoApi.checkKeyBackupAndEnable().catch(() => {});
+              }
+            }
           }
+        } else if (state === 'RECONNECTING') {
+          // SDK versucht selbstständig zu reconnecten – Verbindungsstatus auf false setzen,
+          // isConnecting auf true für Spinner-Feedback, aber noch kein Fehler-Banner.
+          isConnectedRef.current = false;
+          setIsConnected(false);
+          setIsConnecting(true);
         } else if (state === 'ERROR') {
           isConnectedRef.current = false;
+          setIsConnected(false);
           setConnectionError('Sync-Fehler aufgetreten');
+          setIsConnecting(false);
+        } else if (state === 'STOPPED') {
+          isConnectedRef.current = false;
+          setIsConnected(false);
           setIsConnecting(false);
         }
       };
@@ -1235,6 +1257,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
       setClient(null);
     }
     isConnectedRef.current = false;
+    keyBackupActivatedRef.current = false;
     authPasswordRef.current = undefined;
     setIsConnected(false);
     setCryptoEnabled(false);
