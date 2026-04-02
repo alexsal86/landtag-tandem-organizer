@@ -64,7 +64,11 @@ import { formatDistanceToNow, format, isToday, isTomorrow, addDays } from "date-
 import { de } from "date-fns/locale";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useQuery } from "@tanstack/react-query";
+import { useAppointmentRequest } from "@/hooks/useAppointmentRequest";
 
 // Re-export for backward compatibility
 export { getNavigationGroups };
@@ -108,6 +112,22 @@ export function AppNavigation({
   const { currentTenant } = useTenant();
   const { toast } = useToast();
   const navigate = useNavigate();
+  
+  // Appointment request hook
+  const {
+    requestTitle, setRequestTitle,
+    requestDate, setRequestDate,
+    requestTime, setRequestTime,
+    requestLocation, setRequestLocation,
+    requestRequester, setRequestRequester,
+    isSubmittingRequest,
+    resetForm: resetRequestForm,
+    createRequest,
+  } = useAppointmentRequest({
+    onSuccess: (message, description) => toast({ title: message, description }),
+    onError: (message, description) => toast({ title: message, description, variant: 'destructive' }),
+  });
+  const [isQuickRequestOpen, setIsQuickRequestOpen] = useState(false);
   
   // Panel state
   const [activePanel, setActivePanel] = useState<ActivePanel>('home');
@@ -689,6 +709,51 @@ export function AppNavigation({
             </div>
           )}
         </ScrollArea>
+
+        {/* Quick Appointment Request */}
+        <div className="border-t border-border p-2">
+          <Collapsible open={isQuickRequestOpen} onOpenChange={(open) => {
+            setIsQuickRequestOpen(open);
+            if (open) resetRequestForm();
+          }}>
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center justify-between w-full px-2 py-1.5 rounded-md text-[12px] hover:bg-[hsl(var(--nav-hover))] transition-colors">
+                <span className="flex items-center gap-1.5">
+                  <Plus className="h-3.5 w-3.5" />
+                  <span className="font-medium">Terminanfrage</span>
+                </span>
+                <ChevronDown className={cn("h-3 w-3 text-[hsl(var(--nav-muted))] transition-transform", isQuickRequestOpen && "rotate-180")} />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-2 pt-2 px-1">
+              <div>
+                <Label htmlFor="nav-req-title" className="text-[11px]">Titel</Label>
+                <Input id="nav-req-title" value={requestTitle} onChange={e => setRequestTitle(e.target.value)} placeholder="z. B. Gespräch mit Verband" className="h-7 text-xs" />
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                <div>
+                  <Label htmlFor="nav-req-date" className="text-[11px]">Datum</Label>
+                  <Input id="nav-req-date" type="date" value={requestDate} onChange={e => setRequestDate(e.target.value)} className="h-7 text-xs" />
+                </div>
+                <div>
+                  <Label htmlFor="nav-req-time" className="text-[11px]">Uhrzeit</Label>
+                  <Input id="nav-req-time" type="time" value={requestTime} onChange={e => setRequestTime(e.target.value)} className="h-7 text-xs" />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="nav-req-location" className="text-[11px]">Ort / Format</Label>
+                <Input id="nav-req-location" value={requestLocation} onChange={e => setRequestLocation(e.target.value)} placeholder="Landtag / Digital" className="h-7 text-xs" />
+              </div>
+              <div>
+                <Label htmlFor="nav-req-requester" className="text-[11px]">Anfragende Stelle</Label>
+                <Input id="nav-req-requester" value={requestRequester} onChange={e => setRequestRequester(e.target.value)} placeholder="Name / Organisation" className="h-7 text-xs" />
+              </div>
+              <Button size="sm" className="w-full h-7 text-xs" onClick={createRequest} disabled={isSubmittingRequest}>
+                {isSubmittingRequest ? 'Erstelle…' : 'Terminanfrage anlegen'}
+              </Button>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
       </div>
     );
   };
@@ -749,7 +814,7 @@ export function AppNavigation({
         isMobile ? "h-full" : "h-screen"
       )}>
         {/* Logo + Workspace Name + Subtitle */}
-        <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border shrink-0">
+        <div className="flex items-center gap-2.5 px-4 py-3 shrink-0">
           <button onClick={handleLogoClick} className="transition-transform hover:scale-105 shrink-0">
             {appSettings.app_logo_url ? (
               <img 
@@ -780,7 +845,7 @@ export function AppNavigation({
         </div>
 
         {/* Quick Action Buttons (Panel Switchers) */}
-        <div className="flex items-center gap-1 px-3 py-2 border-b border-border">
+        <div className="flex items-center gap-1 px-3 py-3">
           {/* Home */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -788,8 +853,7 @@ export function AppNavigation({
                 onClick={() => setActivePanel('home')}
                 className={cn(
                   "h-7 rounded-md flex items-center gap-1.5 px-2 transition-colors",
-                  "bg-[hsl(var(--nav-hover))]",
-                  activePanel === 'home' && "bg-[hsl(var(--nav-active-bg))] font-medium"
+                  activePanel === 'home' ? "bg-[hsl(var(--nav-active-bg))] font-medium" : "hover:bg-[hsl(var(--nav-hover))]"
                 )}
               >
                 <Home className="h-4 w-4 shrink-0" />
@@ -806,8 +870,7 @@ export function AppNavigation({
                 onClick={() => setActivePanel(activePanel === 'notifications' ? 'home' : 'notifications')}
                 className={cn(
                   "h-7 rounded-md flex items-center gap-1.5 px-2 transition-colors relative",
-                  "bg-[hsl(var(--nav-hover))]",
-                  activePanel === 'notifications' && "bg-[hsl(var(--nav-active-bg))] font-medium"
+                  activePanel === 'notifications' ? "bg-[hsl(var(--nav-active-bg))] font-medium" : "hover:bg-[hsl(var(--nav-hover))]"
                 )}
               >
                 <Bell className="h-4 w-4 shrink-0" />
@@ -829,8 +892,7 @@ export function AppNavigation({
                 onClick={() => setActivePanel(activePanel === 'appointments' ? 'home' : 'appointments')}
                 className={cn(
                   "h-7 rounded-md flex items-center gap-1.5 px-2 transition-colors",
-                  "bg-[hsl(var(--nav-hover))]",
-                  activePanel === 'appointments' && "bg-[hsl(var(--nav-active-bg))] font-medium"
+                  activePanel === 'appointments' ? "bg-[hsl(var(--nav-active-bg))] font-medium" : "hover:bg-[hsl(var(--nav-hover))]"
                 )}
               >
                 <Calendar className="h-4 w-4 shrink-0" />
@@ -847,8 +909,7 @@ export function AppNavigation({
                 onClick={() => setActivePanel(activePanel === 'casefiles' ? 'home' : 'casefiles')}
                 className={cn(
                   "h-7 rounded-md flex items-center gap-1.5 px-2 transition-colors",
-                  "bg-[hsl(var(--nav-hover))]",
-                  activePanel === 'casefiles' && "bg-[hsl(var(--nav-active-bg))] font-medium"
+                  activePanel === 'casefiles' ? "bg-[hsl(var(--nav-active-bg))] font-medium" : "hover:bg-[hsl(var(--nav-hover))]"
                 )}
               >
                 <Briefcase className="h-4 w-4 shrink-0" />
@@ -865,7 +926,7 @@ export function AppNavigation({
                 onClick={() => {
                   window.dispatchEvent(new CustomEvent('openGlobalSearch', { detail: { query: '' } }));
                 }}
-                className="h-7 rounded-md flex items-center gap-1.5 px-2 bg-[hsl(var(--nav-hover))] hover:bg-[hsl(var(--nav-active-bg))] transition-colors ml-auto"
+                className="h-7 rounded-md flex items-center gap-1.5 px-2 hover:bg-[hsl(var(--nav-hover))] transition-colors ml-auto"
               >
                 <Search className="h-4 w-4 shrink-0" />
               </button>
@@ -924,69 +985,55 @@ export function AppNavigation({
 
         {/* User Avatar + Menu (bottom) */}
         <div className="border-t border-border px-2 py-2 shrink-0">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-[hsl(var(--nav-hover))] transition-colors">
-                <div className="relative shrink-0">
-                  <Avatar className="h-7 w-7">
-                    <AvatarImage src={userProfile?.avatar_url || undefined} />
-                    <AvatarFallback className="text-[10px]">
-                      {userProfile?.display_name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  {statusDisplay && (
-                    <span className="absolute -bottom-0.5 -right-0.5 text-[10px]">
-                      {statusDisplay.emoji}
-                    </span>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0 text-left">
-                  <p className="text-[12px] font-medium truncate">
-                    {userProfile?.display_name || 'Benutzer'}
-                  </p>
-                  <p className="text-[10px] text-[hsl(var(--nav-muted))] truncate">
-                    {statusDisplay?.label || 'Online'}
-                  </p>
-                </div>
-                <ChevronRight className="h-3 w-3 text-[hsl(var(--nav-muted))] shrink-0" />
+          <div className="flex items-center gap-1.5 px-1">
+            {/* Avatar opens UserStatusSelector dialog */}
+            <UserStatusSelector>
+              <button className="relative shrink-0 rounded-full hover:ring-2 hover:ring-primary/30 transition-all">
+                <Avatar className="h-7 w-7">
+                  <AvatarImage src={userProfile?.avatar_url || undefined} />
+                  <AvatarFallback className="text-[10px]">
+                    {userProfile?.display_name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                {statusDisplay && (
+                  <span className="absolute -bottom-0.5 -right-0.5 text-[10px]">
+                    {statusDisplay.emoji}
+                  </span>
+                )}
               </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" side="right" align="end">
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">{userProfile?.display_name || 'Benutzer'}</p>
-                  <p className="text-xs text-muted-foreground">{user?.email}</p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <div className="p-2">
-                <p className="text-xs text-muted-foreground mb-2">Status</p>
-                <UserStatusSelector>
-                  <Button variant="outline" size="sm" className="w-full justify-between">
-                    <span className="flex items-center gap-2">
-                      <span>{statusDisplay?.emoji || '🟢'}</span>
-                      <span className="text-sm">{statusDisplay?.label || 'Online'}</span>
-                    </span>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                </UserStatusSelector>
-              </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => { onSectionChange('profile-edit'); setActivePanel('home'); }}>
-                <User className="mr-2 h-4 w-4" />
-                Profil bearbeiten
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { onSectionChange('settings'); setActivePanel('home'); }}>
-                <Settings className="mr-2 h-4 w-4" />
-                Einstellungen
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
-                <LogOut className="mr-2 h-4 w-4" />
-                Abmelden
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </UserStatusSelector>
+
+            {/* Settings/Menu dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors">
+                  <Settings className="h-3.5 w-3.5 text-[hsl(var(--nav-muted))]" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" side="right" align="end">
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium">{userProfile?.display_name || 'Benutzer'}</p>
+                    <p className="text-xs text-muted-foreground">{user?.email}</p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => { onSectionChange('profile-edit'); setActivePanel('home'); }}>
+                  <User className="mr-2 h-4 w-4" />
+                  Profil bearbeiten
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { onSectionChange('settings'); setActivePanel('home'); }}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Einstellungen
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Abmelden
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </nav>
       
