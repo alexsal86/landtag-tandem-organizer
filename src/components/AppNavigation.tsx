@@ -861,7 +861,7 @@ export function AppNavigation({
                 onClick={() => {
                   window.dispatchEvent(new CustomEvent('openGlobalSearch', { detail: { query: '' } }));
                 }}
-                className="h-7 rounded-md flex items-center gap-1.5 px-2 bg-[hsl(var(--nav-hover))] hover:bg-[hsl(var(--nav-active-bg))] transition-colors ml-auto"
+                className="h-7 rounded-md flex items-center gap-1.5 px-2 hover:bg-[hsl(var(--nav-hover))] transition-colors ml-auto"
               >
                 <Search className="h-4 w-4 shrink-0" />
               </button>
