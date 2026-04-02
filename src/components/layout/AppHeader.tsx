@@ -6,7 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { NotificationBell } from '@/components/NotificationBell';
 import { OnlineUsersWidget } from '@/components/OnlineUsersWidget';
 import { UserStatusSelector } from '@/components/UserStatusSelector';
-import { HeaderSearch } from '@/components/layout/HeaderSearch';
+
 import { useAuth } from '@/hooks/useAuth';
 import { useUserStatus } from '@/hooks/useUserStatus';
 import { useTenant } from '@/hooks/useTenant';
@@ -186,9 +186,6 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
         {quickAction && (
           <Separator orientation="vertical" className="h-5 bg-border" />
         )}
-
-        {/* Search */}
-        <HeaderSearch />
       </div>
 
       {/* Right: Actions with Office Info */}
