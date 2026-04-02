@@ -788,8 +788,7 @@ export function AppNavigation({
                 onClick={() => setActivePanel('home')}
                 className={cn(
                   "h-7 rounded-md flex items-center gap-1.5 px-2 transition-colors",
-                  "bg-[hsl(var(--nav-hover))]",
-                  activePanel === 'home' && "bg-[hsl(var(--nav-active-bg))] font-medium"
+                  activePanel === 'home' ? "bg-[hsl(var(--nav-active-bg))] font-medium" : "hover:bg-[hsl(var(--nav-hover))]"
                 )}
               >
                 <Home className="h-4 w-4 shrink-0" />
