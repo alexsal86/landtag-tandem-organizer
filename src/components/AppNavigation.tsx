@@ -827,8 +827,7 @@ export function AppNavigation({
                 onClick={() => setActivePanel(activePanel === 'appointments' ? 'home' : 'appointments')}
                 className={cn(
                   "h-7 rounded-md flex items-center gap-1.5 px-2 transition-colors",
-                  "bg-[hsl(var(--nav-hover))]",
-                  activePanel === 'appointments' && "bg-[hsl(var(--nav-active-bg))] font-medium"
+                  activePanel === 'appointments' ? "bg-[hsl(var(--nav-active-bg))] font-medium" : "hover:bg-[hsl(var(--nav-hover))]"
                 )}
               >
                 <Calendar className="h-4 w-4 shrink-0" />
