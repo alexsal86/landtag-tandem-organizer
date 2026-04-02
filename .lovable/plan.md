@@ -1,88 +1,139 @@
 
 
-# Meeting-Abschluss: Analyse, Protokoll-Verbesserung und Bestätigungsansicht
+# Navigation-Redesign: Notion-Style Sidebar
 
-## Ist-Zustand: Was passiert beim Archivieren?
+## Ubersicht
+Die aktuelle Navigation ist eine schmale 72px Icon-Leiste mit Text darunter. Der Umbau orientiert sich am Notion-Layout: breitere, helle Sidebar mit Icons links neben Text, resizable per Drag, Schnellzugriff-Buttons oben und ein personlicher Favoriten-Bereich.
 
-Der `archiveMeeting`-Flow in `useMeetingArchive.ts` verarbeitet folgende System-Punkte:
+## Betroffene Dateien
+- `src/components/AppNavigation.tsx` — komplett umbauen
+- `src/pages/Index.tsx` — Layout-Wrapper anpassen (resizable nav)
+- `src/index.css` — Nav-Farbvariablen auf hell umstellen
+- `src/components/layout/SubNavigation.tsx` — moglicherweise entfernen/integrieren (Sub-Items werden inline in der Sidebar angezeigt)
+- Neuer Hook: `src/hooks/useNavWidth.ts` — Breite persistent speichern
+- Neuer Hook/Komponente: `src/hooks/useQuickAccessPages.ts` — Schnellzugriff-Seiten verwalten
 
-| System-Typ | Verarbeitung beim Archivieren | Status |
-|---|---|---|
-| **Agenda-Punkte mit Zuweisung** (ohne task_id) | Aufgabe erstellt mit Beschreibung + Ergebnis | Funktioniert |
-| **Agenda-Punkte mit verknupfter Aufgabe** (task_id) | Kind-Aufgabe unter bestehender Aufgabe erstellt | Funktioniert |
-| **Geburtstage** (`system_type='birthdays'`) | Aufgaben pro Kontakt mit Aktion (Karte/Mail/etc.) | Funktioniert |
-| **Markierte Termine** (starred_appointments) | Eltern-Aufgabe + Kind-Aufgaben pro Termin | Funktioniert |
-| **Quick Notes** (Ergebnisse) | `meeting_result` in quick_notes gespeichert | Funktioniert |
-| **Vorgange/Case Items** (Ergebnisse) | Notiz in `case_item_notes` erstellt | Funktioniert |
-| **Ubertrag-Punkte** (carry_over_to_next) | In nachstes Meeting oder Buffer ubertragen | Funktioniert |
-| **Entscheidungen** (`system_type='decisions'`) | **NICHT verarbeitet** — offene Entscheidungen werden beim Archivieren ignoriert |
-| **Aufgaben** (`system_type='tasks'`) | Nur indirekt uber task_id-Verknupfung — der System-Punkt selbst wird nicht separat verarbeitet |
+## 1. Resizable Sidebar mit Drag-Handle
 
-### Lucken
-1. **Entscheidungen werden nicht aktualisiert** — wenn im Fokus-Modus ein Ergebnis fur eine Entscheidung eingetragen wurde, wird dieses nicht in die `decisions`-Tabelle zuruckgeschrieben
-2. **Das Protokoll zeigt nur Basis-Daten** — keine Quick Notes, keine Entscheidungen, keine erstellten Aufgaben, keine Vorgange, keine Geburtstags-Aktionen
+**`src/hooks/useNavWidth.ts`** (neu):
+- Breite in `localStorage` persistieren (wie `useUserPreference`)
+- Default: 240px, Min: 200px, Max: 400px
+- Expose: `width`, `setWidth`, `isResizing`
 
-### Nach dem Archivieren
-- Der State wird komplett zuruckgesetzt (`setActiveMeeting(null)`, etc.)
-- Der User sieht nur einen kurzen Toast: "Besprechung archiviert"
-- Kein Protokoll, keine Zusammenfassung
+**`src/pages/Index.tsx`**:
+- Statt fester `w-[72px]` Nav-Wrapper: dynamische Breite aus Hook
+- Resizer-Div (4px breit, cursor-col-resize) zwischen Nav und Content
+- `onMouseDown` → `mousemove` Listener fur Drag, clamped auf Min/Max
 
----
+## 2. Quick-Action-Buttons uber "Meine Arbeit"
 
-## Umsetzungsplan
+Oberhalb des "Meine Arbeit"-Eintrags kommen 4-5 kleine runde Buttons in einer Zeile:
+- **Home** (Dashboard)
+- **Benachrichtigungen** (Bell — aus Header verschoben)
+- **Akten/Fall** (Briefcase — Schnellzugriff auf Fallakten)
+- **Suche** (Search — offnet globale Suche)
 
-### 1. Protokoll-Ansicht erweitern (`MeetingProtocolView.tsx`)
+Verhalten wie Notion:
+- Im Normalzustand nur das Icon sichtbar (rund, 28px)
+- Bei Hover/Klick expandiert ein Tooltip oder kleiner Label
+- Diese Buttons sind in einer horizontalen Leiste oberhalb der Nav-Items
 
-Das aktuelle Protokoll ladt nur `meeting_agenda_items` mit Basis-Feldern. Es soll zusatzlich laden und anzeigen:
+## 3. Icon + Text nebeneinander (horizontal)
 
-- **Teilnehmer**: Meeting-Ersteller + `meeting_participants` mit Profilnamen
-- **Entscheidungen**: Aus `decisions`-Tabelle, die mit dem Meeting verknupft sind (uber `meeting_agenda_items` mit `system_type='decisions'`)
-- **Quick Notes mit Ergebnissen**: Notes die `meeting_id` haben und `meeting_result` enthalten
-- **Vorgange/Case Items**: Verknupfte Case Items mit ihren Meeting-Ergebnissen
-- **Erstellte Aufgaben**: Aufgaben mit `category='meeting'` die bei der Archivierung erstellt wurden (uber Beschreibung mit Meeting-Titel/Datum identifizierbar)
-- **Hierarchische Agenda**: `parent_id` berucksichtigen fur Haupt-/Unterpunkte
-- **System-Typ-Icons**: Visuell unterscheiden zwischen normalen Punkten, Geburtstagen, Quick Notes, etc.
+Aktuell: `flex-col items-center` mit Icon oben, 10px Text darunter.
+Neu: `flex-row items-center gap-2` mit Icon links (16px) und Text rechts (13px), beides gleich hoch.
 
-### 2. Protokoll nach Archivierung anzeigen
+```text
+Vorher:          Nachher:
+  [Icon]         [Icon] Meine Arbeit
+  Text           [Icon] Chat
+                 [Icon] Kalender
+```
 
-In `useMeetingArchive.ts` und `MeetingsView.tsx`:
+- Sub-Items werden inline darunter eingeruckt angezeigt (wie Notion-Seitenbaum)
+- Aktive Gruppe ist aufgeklappt, andere zugeklappt
+- Collapsible-Gruppen mit ChevronRight/Down
 
-- Neuen State `archivedMeetingId` in `useMeetingsData` einfuhren
-- Nach erfolgreichem Archivieren: statt nur Toast + Reset, zusatzlich `archivedMeetingId` setzen
-- In `MeetingsView.tsx`: wenn `archivedMeetingId` gesetzt ist, das erweiterte Protokoll als Bestatigungs-Overlay/Ansicht rendern
-- Mit Button "Zuruck zur Ubersicht" den State zurucksetzen
-- Auch aus dem Fokus-Modus heraus soll nach Archivierung das Protokoll erscheinen
+## 4. Schnellzugriff-Bereich (Personliche Favoriten)
 
-### 3. Entscheidungs-Ergebnisse beim Archivieren zuruckschreiben (optional)
+**`src/hooks/useQuickAccessPages.ts`** (neu):
+- Array von `{ id, label, icon, route }` in `localStorage` speichern
+- CRUD-Operationen: add, remove, reorder
+- Default: leer
 
-In `useMeetingArchive.ts` einen neuen Schritt einfugen:
-- Agenda-Items mit `system_type='decisions'` und `result_text` finden
-- Die verknupfte Entscheidung in der `decisions`-Tabelle mit dem Ergebnis aktualisieren (Status auf 'decided' setzen, `result` fullen)
+In der Sidebar unter den System-Nav-Items:
+- Abschnitt "Schnellzugriff" mit kleiner Uberschrift
+- Darunter die gepinnten Seiten als klickbare Links
+- "+ Seite hinzufugen" Button offnet ein Popover mit verfugbaren Sections
+- Drag & Drop fur Reihenfolge (optional, spater)
 
----
+## 5. Heller Hintergrund + sichtbare Grenzlinie
+
+**`src/index.css`** — Nav-Variablen andern:
+
+Light Mode:
+```css
+--nav: 0 0% 97%;              /* Sehr helles Grau wie Notion */
+--nav-foreground: 0 0% 15%;   /* Dunkler Text */
+--nav-accent: 0 0% 90%;
+--nav-hover: 0 0% 93%;
+--nav-active-bg: 0 0% 90%;
+--nav-muted: 0 0% 55%;
+```
+
+Dark Mode:
+```css
+--nav: 220 10% 12%;
+--nav-foreground: 210 20% 85%;
+--nav-hover: 220 10% 16%;
+--nav-active-bg: 220 10% 20%;
+```
+
+Border rechts: `border-r border-border` (sichtbarer als aktuell `border-[hsl(var(--nav-foreground)/0.1)]`)
+
+**AppHeader**: Muss ebenfalls auf hellen Hintergrund umgestellt werden, da Header und Nav aktuell dieselbe dunkle Farbe teilen. Header wird `bg-background border-b border-border`.
+
+## 6. Build-Errors fixen
+
+Die Edge-Function-Fehler (`matrix-bot-handler`, `matrix-decision-handler`, `send-matrix-morning-greeting`, `sync-external-calendar`) haben alle dasselbe Problem: ein Semikolon nach der schliessenden Klammer von `serve(...)`. Das muss zu einem Komma oder entfernt werden. Diese sind pre-existing, werden aber gleich mitgefixt.
 
 ## Technische Details
 
-**Betroffene Dateien:**
-- `src/components/MeetingProtocolView.tsx` — erweitern um Teilnehmer, Entscheidungen, Quick Notes, Case Items, erstellte Tasks, Hierarchie
-- `src/components/meetings/hooks/useMeetingArchive.ts` — nach Archivierung Meeting-ID zuruckgeben statt nur Reset
-- `src/components/meetings/hooks/useMeetingsData.ts` — neuer State `archivedMeetingId`
-- `src/components/MeetingsView.tsx` — Protokoll-Ansicht nach Archivierung rendern
-
-**Protokoll-Sektionen (neu):**
+**Resize-Mechanik**:
 ```text
-Besprechungsprotokoll
-├── Header (Titel, Datum, Ort)
-├── Teilnehmer
-├── Tagesordnung mit Ergebnissen (hierarchisch)
-│   ├── Hauptpunkte mit Unterpunkten
-│   ├── Notizen + Ergebnisse
-│   └── Zuweisungen
-├── Entscheidungen (violett markiert)
-├── Besprochene Notizen (amber markiert)
-├── Besprochene Vorgänge (mit Ergebnissen)
-├── Markierte Termine
-├── Erstellte Aufgaben (Zusammenfassung)
-└── Footer
+[Nav: 240px resizable] | [4px drag handle] | [Content: flex-1]
+```
+- `mousedown` auf Handle startet Resize
+- `mousemove` updated width (clamped 200-400)
+- `mouseup` beendet Resize, speichert in localStorage
+- Wahrend Resize: `select-none` auf Body, `cursor-col-resize` global
+
+**Nav-Item-Struktur** (neu):
+```text
+┌─────────────────────────────┐
+│ [Logo]  Workspace-Name      │
+├─────────────────────────────┤
+│ [🏠] [🔔] [📁] [🔍]       │  ← Quick Actions
+├─────────────────────────────┤
+│ 🏠 Meine Arbeit             │  ← Nav Items horizontal
+│ 💬 Chat                     │
+│ 📅 Kalender                 │
+│   ├ Terminkalender           │  ← Sub-Items eingeklappt
+│   └ Planungen                │
+│ ✅ Aufgaben                  │
+│   ├ Aufgaben                 │
+│   ├ Entscheidungen           │
+│   └ Jour fixe                │
+│ 📁 Akten                    │
+│ 👥 Kontakte                 │
+│ ⋯ Mehr                      │
+├─────────────────────────────┤
+│ Schnellzugriff               │  ← Personliche Favoriten
+│ + Seite hinzufugen           │
+├─────────────────────────────┤
+│ 🛡️ Admin                    │  ← Footer
+│ ❓ Hilfe                     │
+│ 👤 Team                     │
+└─────────────────────────────┘
 ```
 
