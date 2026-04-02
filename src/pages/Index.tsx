@@ -52,6 +52,7 @@ const CreateContact = lazyWithRetry(() => import("./CreateContact"));
 const NotFound = lazyWithRetry(() => import("./NotFound"));
 
 const Index = (): React.JSX.Element => {
+  const { width: navWidth, isResizing, startResize } = useNavWidth();
   const { user, loading: authLoading } = useAuth();
   const { currentTenant, loading: tenantLoading } = useTenant();
   const navigate = useNavigate();
