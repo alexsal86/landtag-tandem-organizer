@@ -130,17 +130,17 @@ All colors MUST be HSL.
     --shadow-card: 0 4px 20px -4px rgba(0, 0, 0, 0.5);
     --shadow-elegant: 0 8px 30px -6px rgba(0, 0, 0, 0.7);
     
-    /* Navigation Dark Mode - Neutrales Dunkelgrau */
-    --nav: 222 84% 8%;                   /* Dunkles Blau-Grau */
-    --nav-foreground: 210 40% 95%;       /* Weiß */
-    --nav-accent: 215 25% 45%;           /* Gedämpftes Blau-Grau */
-    --nav-hover: 222 60% 12%;
-    --nav-active-bg: 222 60% 18%;
-    --nav-muted: 215 20% 55%;
+    /* Navigation Dark Mode */
+    --nav: 220 10% 12%;
+    --nav-foreground: 210 20% 85%;
+    --nav-accent: 220 10% 25%;
+    --nav-hover: 220 10% 16%;
+    --nav-active-bg: 220 10% 20%;
+    --nav-muted: 215 15% 50%;
     
-    /* Header Dark Mode - gleiche Farbe wie Navigation */
-    --header-background: 222 84% 8%;
-    --header-border: 222 60% 15%;
+    /* Header Dark Mode */
+    --header-background: 222 84% 5%;
+    --header-border: 217 32% 20%;
 
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
