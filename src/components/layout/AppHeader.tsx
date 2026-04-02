@@ -184,7 +184,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
         )}
 
         {quickAction && (
-          <Separator orientation="vertical" className="h-5 bg-[hsl(var(--nav-foreground)/0.2)]" />
+          <Separator orientation="vertical" className="h-5 bg-border" />
         )}
 
         {/* Search */}
