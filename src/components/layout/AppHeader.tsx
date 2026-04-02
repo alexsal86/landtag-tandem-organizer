@@ -330,12 +330,12 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
         </DropdownMenu>
         
         {/* Separator zwischen Avatar und Büro-Info */}
-        <Separator orientation="vertical" className="h-6 bg-[hsl(var(--nav-foreground)/0.2)]" />
+        <Separator orientation="vertical" className="h-6 bg-border" />
         
         {/* Office Title rechts neben Avatar */}
         <div className="text-right hidden lg:block">
-          <p className="text-sm font-medium leading-none text-[hsl(var(--nav-foreground))]">{appSettings.app_name}</p>
-          <p className="text-xs text-[hsl(var(--nav-muted))]">{appSettings.app_subtitle}</p>
+          <p className="text-sm font-medium leading-none text-foreground">{appSettings.app_name}</p>
+          <p className="text-xs text-muted-foreground">{appSettings.app_subtitle}</p>
         </div>
       </div>
     </header>
