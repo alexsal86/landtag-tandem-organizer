@@ -113,6 +113,22 @@ export function AppNavigation({
   const { toast } = useToast();
   const navigate = useNavigate();
   
+  // Appointment request hook
+  const {
+    requestTitle, setRequestTitle,
+    requestDate, setRequestDate,
+    requestTime, setRequestTime,
+    requestLocation, setRequestLocation,
+    requestRequester, setRequestRequester,
+    isSubmittingRequest,
+    resetForm: resetRequestForm,
+    createRequest,
+  } = useAppointmentRequest({
+    onSuccess: (message, description) => toast({ title: message, description }),
+    onError: (message, description) => toast({ title: message, description, variant: 'destructive' }),
+  });
+  const [isQuickRequestOpen, setIsQuickRequestOpen] = useState(false);
+  
   // Panel state
   const [activePanel, setActivePanel] = useState<ActivePanel>('home');
   
