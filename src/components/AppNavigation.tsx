@@ -57,7 +57,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { navigationGroups, getNavigationGroups, NavGroup } from "@/components/navigation/navigationConfig";
 import { HelpDialog } from "@/components/navigation/HelpDialog";
-import { OnlineUsersWidget } from "@/components/OnlineUsersWidget";
 import { formatDistanceToNow, format, isToday, isTomorrow, addDays } from "date-fns";
 import { de } from "date-fns/locale";
 import { useToast } from "@/components/ui/use-toast";
@@ -106,7 +105,7 @@ export function AppNavigation({
   const { pages: quickAccessPages, addPage, removePage } = useQuickAccessPages();
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
   const { user, signOut } = useAuth();
-  const { currentStatus, getStatusDisplay, onlineUsers } = useUserStatus();
+  const { currentStatus, getStatusDisplay } = useUserStatus();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -875,52 +874,10 @@ export function AppNavigation({
         {activePanel === 'appointments' && renderAppointmentsPanel()}
         {activePanel === 'casefiles' && renderCasefilesPanel()}
 
-        {/* Online Users (compact) */}
-        <div className="border-t border-border px-3 py-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className="flex items-center gap-2 w-full rounded-md px-1 py-1 hover:bg-[hsl(var(--nav-hover))] transition-colors">
-                <div className="flex -space-x-1.5">
-                  {onlineUsers.length === 0 ? (
-                    <div className="h-5 w-5 rounded-full bg-muted border border-[hsl(var(--nav-muted))]/30 flex items-center justify-center">
-                      <span className="text-[8px] text-[hsl(var(--nav-muted))]">○</span>
-                    </div>
-                  ) : (
-                    <>
-                      {onlineUsers.slice(0, 4).map((ou) => {
-                        const uStatus = getStatusDisplay(ou.status);
-                        return (
-                          <Avatar key={ou.user_id} className="h-5 w-5 border border-[hsl(var(--nav))]">
-                            <AvatarImage src={ou.avatar_url || undefined} />
-                            <AvatarFallback className="text-[8px] bg-muted">
-                              {ou.display_name?.charAt(0) || '?'}
-                            </AvatarFallback>
-                          </Avatar>
-                        );
-                      })}
-                      {onlineUsers.length > 4 && (
-                        <div className="h-5 w-5 rounded-full bg-primary/20 border border-[hsl(var(--nav))] flex items-center justify-center">
-                          <span className="text-[8px] font-medium">+{onlineUsers.length - 4}</span>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-                <span className="text-[11px] text-[hsl(var(--nav-muted))]">
-                  {onlineUsers.length === 0 ? 'Niemand online' : `${onlineUsers.length} online`}
-                </span>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-0" side="right" align="end">
-              <OnlineUsersWidget />
-            </PopoverContent>
-          </Popover>
-        </div>
-
         {/* User Avatar + Quick Actions (bottom-left on Home) */}
         <div className="border-t border-border px-2 py-2 shrink-0">
           <div className="flex items-center gap-2 px-1">
-            <UserStatusSelector>
+            <UserStatusSelector showOnlineUsers>
               <button className="relative shrink-0 rounded-full hover:ring-2 hover:ring-primary/30 transition-all">
                 <Avatar className="h-7 w-7">
                   <AvatarImage src={userProfile?.avatar_url || undefined} />

@@ -13,11 +13,11 @@ import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useUserStatus } from '@/hooks/useUserStatus';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Calendar, Clock, MessageSquare, Settings, Smile } from 'lucide-react';
+import { OnlineUsersWidget } from "@/components/OnlineUsersWidget";
 
 // Emoji categories
 const emojiCategories = {
@@ -30,9 +30,10 @@ const emojiCategories = {
 
 interface UserStatusSelectorProps {
   children: React.ReactNode;
+  showOnlineUsers?: boolean;
 }
 
-export const UserStatusSelector: React.FC<UserStatusSelectorProps> = ({ children }) => {
+export const UserStatusSelector: React.FC<UserStatusSelectorProps> = ({ children, showOnlineUsers = false }) => {
   const { user } = useAuth();
   const { 
     currentStatus, 
@@ -109,7 +110,7 @@ export const UserStatusSelector: React.FC<UserStatusSelectorProps> = ({ children
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className={showOnlineUsers ? "max-w-3xl max-h-[90vh] overflow-y-auto" : "max-w-md"}>
         <div className="-mx-6 -mt-6 mb-4 border-b border-border bg-muted/40 px-6 py-2">
           <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Online-Anzeige</p>
           <div className="mt-1 inline-flex items-center gap-2 rounded-md bg-background px-2 py-1 text-xs">
@@ -123,6 +124,13 @@ export const UserStatusSelector: React.FC<UserStatusSelectorProps> = ({ children
             Status ändern
           </DialogTitle>
         </DialogHeader>
+
+        {showOnlineUsers && (
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Anwesenheit</Label>
+            <OnlineUsersWidget />
+          </div>
+        )}
 
         <div className="space-y-6">
           {/* Current Status Display */}
