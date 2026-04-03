@@ -22,11 +22,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
 type OnOpenSearchCallback = () => void;
@@ -69,7 +64,7 @@ const myworkTabActions: Record<string, { label: string; action: string }> = {
 
 export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element => {
   const { user, signOut } = useAuth();
-  const { currentStatus, getStatusDisplay, onlineUsers } = useUserStatus();
+  const { currentStatus, getStatusDisplay } = useUserStatus();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -240,55 +235,6 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
 
       {/* Right: Actions with Office Info */}
       <div className="flex items-center gap-3 ml-auto">
-        {/* Online Users */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="relative h-8 w-8 p-0" aria-label="Online-Benutzer anzeigen">
-              {onlineUsers.length === 0 ? (
-                <div className="h-6 w-6 rounded-full bg-muted border-2 border-muted-foreground/30 flex items-center justify-center">
-                  <span className="text-muted-foreground text-[10px]">○</span>
-                </div>
-              ) : (
-                <div className="flex -space-x-2">
-                  {onlineUsers.slice(0, 3).map((onlineUser, index) => {
-                    const userStatusDisplay = getStatusDisplay(onlineUser.status);
-                    const statusColor = userStatusDisplay?.color || '#22c55e';
-                    return (
-                      <div key={onlineUser.user_id} style={{ zIndex: index + 1 }}>
-                        <Avatar 
-                          className="h-6 w-6 border-2 border-background ring-2"
-                          style={{ '--tw-ring-color': statusColor } as React.CSSProperties}
-                        >
-                          <AvatarImage src={onlineUser.avatar_url || undefined} />
-                          <AvatarFallback className="text-[10px] bg-muted text-foreground">
-                            {onlineUser.display_name?.charAt(0) || "?"}
-                          </AvatarFallback>
-                        </Avatar>
-                      </div>
-                    );
-                  })}
-                  {/* Grüner Kreis IMMER VORNE */}
-                  <div 
-                    className="h-6 w-6 rounded-full bg-green-500 border-2 border-white flex items-center justify-center"
-                    style={{ zIndex: onlineUsers.length + 1 }}
-                  >
-                    {onlineUsers.length > 3 ? (
-                      <span className="text-[10px] font-medium text-white">
-                        +{onlineUsers.length - 3}
-                      </span>
-                    ) : (
-                      <span className="text-white text-[10px]">●</span>
-                    )}
-                  </div>
-                </div>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-80 p-0" align="end">
-            <OnlineUsersWidget />
-          </PopoverContent>
-        </Popover>
-
         {/* Notifications */}
         <NotificationBell />
 
@@ -325,7 +271,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-64" align="end">
+          <DropdownMenuContent className="w-[22rem]" align="end">
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium leading-none">
@@ -354,6 +300,11 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </UserStatusSelector>
+            </div>
+
+            <div className="px-2 pb-2">
+              <p className="text-xs text-muted-foreground mb-2">Anwesenheit</p>
+              <OnlineUsersWidget />
             </div>
             
             <DropdownMenuSeparator />
