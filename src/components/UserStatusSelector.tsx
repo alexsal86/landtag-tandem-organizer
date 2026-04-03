@@ -110,6 +110,13 @@ export const UserStatusSelector: React.FC<UserStatusSelectorProps> = ({ children
         {children}
       </DialogTrigger>
       <DialogContent className="max-w-md">
+        <div className="-mx-6 -mt-6 mb-4 border-b border-border bg-muted/40 px-6 py-2">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Online-Anzeige</p>
+          <div className="mt-1 inline-flex items-center gap-2 rounded-md bg-background px-2 py-1 text-xs">
+            <span>{currentDisplay.emoji}</span>
+            <span className="font-medium">{currentDisplay.label}</span>
+          </div>
+        </div>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="w-5 h-5" />
