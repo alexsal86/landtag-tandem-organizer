@@ -1,11 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type ElementType } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Home, 
   Shield,
-  Clock,
   Users,
-  UserCog,
   HelpCircle,
   Bell,
   Briefcase,
@@ -57,7 +55,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { navigationGroups, getNavigationGroups, NavGroup, NavSubItem } from "@/components/navigation/navigationConfig";
+import { navigationGroups, getNavigationGroups, NavGroup } from "@/components/navigation/navigationConfig";
 import { HelpDialog } from "@/components/navigation/HelpDialog";
 import { OnlineUsersWidget } from "@/components/OnlineUsersWidget";
 import { formatDistanceToNow, format, isToday, isTomorrow, addDays } from "date-fns";
@@ -255,18 +253,7 @@ export function AppNavigation({
 
   const isAbgeordneter = userRole === 'abgeordneter';
   const isBueroleitung = userRole === 'bueroleitung';
-  const showTimeTracking = !isAbgeordneter && userRole !== null;
   const showEmployeePage = isAbgeordneter || isBueroleitung;
-
-  const getTeamSubItems = (): NavSubItem[] => {
-    const items: NavSubItem[] = [];
-    if (showTimeTracking) items.push({ id: "time", label: "Zeiterfassung", icon: Clock });
-    if (showEmployeePage) items.push({ id: "employee", label: "Mitarbeiter", icon: Users });
-    return items;
-  };
-
-  const teamSubItems = getTeamSubItems();
-  const showTeamGroup = teamSubItems.length > 0;
 
   const handleNavigationClick = useCallback(async (sectionId: string) => {
     setClickedItem(sectionId);
@@ -347,7 +334,7 @@ export function AppNavigation({
 
   const renderNavItem = (
     id: string,
-    Icon: React.ElementType,
+    Icon: ElementType,
     label: string,
     badge: number = 0,
     indent: boolean = false,
@@ -501,59 +488,6 @@ export function AppNavigation({
         )}
       </div>
 
-      {/* Bottom Section: Help + Team + Admin */}
-      <div className="border-t border-border py-2 px-2 space-y-0.5">
-        <button
-          onClick={() => setHelpDialogOpen(true)}
-          className="flex items-center w-full gap-2 py-1.5 px-2 rounded-md text-[13px] hover:bg-[hsl(var(--nav-hover))] transition-colors"
-        >
-          <HelpCircle className="h-4 w-4" />
-          <span>Hilfe</span>
-        </button>
-
-        {showTeamGroup && (
-          <>
-            {teamSubItems.length === 1 ? (
-              renderNavItem(teamSubItems[0].id, teamSubItems[0].icon, teamSubItems[0].label)
-            ) : (
-              <div>
-                <button
-                  onClick={() => {
-                    toggleGroup('team');
-                    if (!teamSubItems.some(i => i.id === activeSection)) {
-                      handleNavigationClick(teamSubItems[0].id);
-                    }
-                  }}
-                  className={cn(
-                    "flex items-center w-full gap-2 py-1.5 px-2 rounded-md text-[13px] hover:bg-[hsl(var(--nav-hover))] transition-colors",
-                    teamSubItems.some(i => i.id === activeSection) && "font-medium"
-                  )}
-                >
-                  <UserCog className="h-4 w-4" />
-                  <span>Team</span>
-                  {expandedGroups.has('team') ? (
-                    <ChevronDown className="h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))] ml-auto" />
-                  ) : (
-                    <ChevronRight className="h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))] ml-auto" />
-                  )}
-                </button>
-                {expandedGroups.has('team') && (
-                  <div className="mt-0.5">
-                    {teamSubItems.map(item =>
-                      renderNavItem(item.id, item.icon, item.label, 0, true)
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </>
-        )}
-
-        {hasAdminAccess && renderNavItem(
-          "administration", Shield, "Admin",
-          navigationCounts['administration'] || 0
-        )}
-      </div>
     </>
   );
 
@@ -983,10 +917,9 @@ export function AppNavigation({
           </Popover>
         </div>
 
-        {/* User Avatar + Menu (bottom) */}
+        {/* User Avatar + Quick Actions (bottom-left on Home) */}
         <div className="border-t border-border px-2 py-2 shrink-0">
-          <div className="flex items-center gap-1.5 px-1">
-            {/* Avatar opens UserStatusSelector dialog */}
+          <div className="flex items-center gap-2 px-1">
             <UserStatusSelector>
               <button className="relative shrink-0 rounded-full hover:ring-2 hover:ring-primary/30 transition-all">
                 <Avatar className="h-7 w-7">
@@ -1003,36 +936,82 @@ export function AppNavigation({
               </button>
             </UserStatusSelector>
 
-            {/* Settings/Menu dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors">
-                  <Settings className="h-3.5 w-3.5 text-[hsl(var(--nav-muted))]" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" side="right" align="end">
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium">{userProfile?.display_name || 'Benutzer'}</p>
-                    <p className="text-xs text-muted-foreground">{user?.email}</p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => { onSectionChange('profile-edit'); setActivePanel('home'); }}>
-                  <User className="mr-2 h-4 w-4" />
-                  Profil bearbeiten
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { onSectionChange('settings'); setActivePanel('home'); }}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Einstellungen
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Abmelden
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <span className="h-5 w-px bg-border" aria-hidden="true" />
+
+            <div className="flex items-center gap-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setHelpDialogOpen(true)}
+                    className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors"
+                    aria-label="Hilfe"
+                  >
+                    <HelpCircle className="h-3.5 w-3.5 text-[hsl(var(--nav-muted))]" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">Hilfe</TooltipContent>
+              </Tooltip>
+
+              {showEmployeePage && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => handleNavigationClick('employee')}
+                      className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors"
+                      aria-label="Mitarbeiter"
+                    >
+                      <Users className="h-3.5 w-3.5 text-[hsl(var(--nav-muted))]" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">Mitarbeiter</TooltipContent>
+                </Tooltip>
+              )}
+
+              {hasAdminAccess && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => handleNavigationClick('administration')}
+                      className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors"
+                      aria-label="Admin"
+                    >
+                      <Shield className="h-3.5 w-3.5 text-[hsl(var(--nav-muted))]" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">Admin</TooltipContent>
+                </Tooltip>
+              )}
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors" aria-label="Einstellungen">
+                    <Settings className="h-3.5 w-3.5 text-[hsl(var(--nav-muted))]" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" side="right" align="end">
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium">{userProfile?.display_name || 'Benutzer'}</p>
+                      <p className="text-xs text-muted-foreground">{user?.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => { onSectionChange('profile-edit'); setActivePanel('home'); }}>
+                    <User className="mr-2 h-4 w-4" />
+                    Profil bearbeiten
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => { onSectionChange('settings'); setActivePanel('home'); }}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    Einstellungen
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Abmelden
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
       </nav>
