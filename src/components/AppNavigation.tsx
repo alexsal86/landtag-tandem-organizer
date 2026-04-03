@@ -14,8 +14,10 @@ import {
   X,
   Star,
   Check,
+  CheckCheck,
   Trash2,
   Calendar,
+  ListFilter,
   Upload,
   Settings,
   LogOut,
@@ -72,6 +74,7 @@ import { buildDeepLinkPath } from "@/utils/notificationDeepLinks";
 export { getNavigationGroups };
 
 type ActivePanel = 'home' | 'notifications' | 'casefiles' | 'appointments';
+type NotificationFilter = 'unread' | 'all';
 
 interface NavigationProps {
   activeSection: string;
@@ -138,6 +141,7 @@ export function AppNavigation({
   const [newBadgeItems, setNewBadgeItems] = useState<Set<string>>(new Set());
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
   const [quickAccessPopoverOpen, setQuickAccessPopoverOpen] = useState(false);
+  const [notificationFilter, setNotificationFilter] = useState<NotificationFilter>('unread');
   
   // User profile
   const [userProfile, setUserProfile] = useState<{ display_name?: string | null; avatar_url?: string | null } | null>(null);
@@ -491,12 +495,42 @@ export function AppNavigation({
     </>
   );
 
-  const renderNotificationsPanel = () => (
+  const renderNotificationsPanel = () => {
+    const filteredNotifications = notifications.filter((notification) => (
+      notificationFilter === 'all' ? true : !notification.is_read
+    ));
+    const showAllReadState = notificationFilter === 'unread' && notifications.length > 0 && filteredNotifications.length === 0;
+
+    return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-        <span className="text-sm font-semibold text-[hsl(var(--nav-foreground))]">
-          Benachrichtigungen {unreadCount > 0 && `(${unreadCount})`}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-[hsl(var(--nav-foreground))]">
+            Benachrichtigungen {unreadCount > 0 && `(${unreadCount})`}
+          </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="h-6 w-6 rounded-md flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors"
+                aria-label="Benachrichtigungen filtern"
+              >
+                <ListFilter className="h-3.5 w-3.5 text-[hsl(var(--nav-muted))]" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
+              <DropdownMenuLabel>Filter</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setNotificationFilter('all')}>
+                <span className="flex-1">Ungelesen und gelesen</span>
+                {notificationFilter === 'all' && <Check className="h-4 w-4" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setNotificationFilter('unread')}>
+                <span className="flex-1">Ungelesen</span>
+                {notificationFilter === 'unread' && <Check className="h-4 w-4" />}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
         {unreadCount > 0 && (
           <button
             onClick={() => markAllAsRead()}
@@ -507,14 +541,36 @@ export function AppNavigation({
         )}
       </div>
       <ScrollArea className="flex-1">
-        {notifications.length === 0 ? (
+        {showAllReadState ? (
+          <div className="px-4 py-12 h-full flex flex-col items-center justify-center text-center">
+            <CheckCheck className="h-12 w-12 mb-4 text-[hsl(var(--nav-muted))]" />
+            <p className="text-2xl mb-4 text-[hsl(var(--nav-foreground))]">Du bist auf dem neuesten Stand</p>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">Filter bearbeiten</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-56">
+                <DropdownMenuLabel>Filter</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setNotificationFilter('all')}>
+                  <span className="flex-1">Ungelesen und gelesen</span>
+                  {notificationFilter === 'all' && <Check className="h-4 w-4" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setNotificationFilter('unread')}>
+                  <span className="flex-1">Ungelesen</span>
+                  {notificationFilter === 'unread' && <Check className="h-4 w-4" />}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        ) : notifications.length === 0 ? (
           <div className="px-4 py-12 text-center">
             <Bell className="h-8 w-8 mx-auto mb-2 text-[hsl(var(--nav-muted))]" />
             <p className="text-sm text-[hsl(var(--nav-muted))]">Keine Benachrichtigungen</p>
           </div>
         ) : (
           <div className="space-y-0.5 p-2">
-            {notifications.map(n => (
+            {filteredNotifications.map(n => (
               <div
                 key={n.id}
                 className={cn(
@@ -566,7 +622,7 @@ export function AppNavigation({
         )}
       </ScrollArea>
     </div>
-  );
+  )};
 
   const renderAppointmentsPanel = () => {
     // Group appointments by day
