@@ -1,97 +1,59 @@
 
 
-# Navigation-Umbau: Quick-Action-Panels, Header entfernen, Avatar + Anwesenheit in Nav
+# Benachrichtigungs-Deep-Links in der Sidebar + Archiv/Gelöscht-Handling
 
-## Übersicht
+## Problem
 
-Die Quick-Action-Buttons in der Sidebar werden zu **Panel-Umschaltern**: Jeder Button ersetzt den normalen Navigationsinhalt durch einen eigenen Bereich. Der Header wird komplett entfernt, da alle Elemente (Benachrichtigungen, Avatar, Anwesenheit, Quick Actions, Suche) in die Navigation wandern.
+Die Benachrichtigungen im Sidebar-Panel navigieren aktuell nicht zum jeweiligen Element. Der `onClick`-Handler markiert nur als gelesen, nutzt aber nicht `buildDeepLinkPath` für die Navigation. Zudem gibt es kein Handling für archivierte oder gelöschte Ziel-Elemente.
 
-## Konzept der Quick-Action-Panels
+## Änderungen
 
-```text
-Aktiver Button  │ Sidebar zeigt
-────────────────┼──────────────────────────────
-Home (default)  │ Normale Navigation (Gruppen, Schnellzugriff, etc.)
-Benachrichtigung│ NUR Benachrichtigungen (volle Sidebar-Höhe)
-Akten           │ NUR Fallakten-Liste + Dossier-Upload
-Termine         │ NUR kommende Termine + Anfragen + Feedback-Hinweis
-```
+### 1. Navigation bei Klick auf Benachrichtigung (`AppNavigation.tsx`)
 
-## Änderungen im Detail
+Im `renderNotificationsPanel` den `onClick`-Handler erweitern:
+- `buildDeepLinkPath(n)` aufrufen um den Zielpfad zu ermitteln
+- Bei externen URLs (`https://...`) via `window.location.href` öffnen
+- Bei internen Pfaden via `navigate(path)` navigieren (Deep-Link mit `?highlight=` Parameter)
+- Sidebar auf mobile schließen
+- Als gelesen markieren
 
-### 1. Quick-Action-Panels statt Navigation (`AppNavigation.tsx`)
+Das ist exakt das gleiche Muster wie in `NotificationCenter.tsx` Zeile 157-171.
 
-**State**: `activePanel: 'home' | 'notifications' | 'casefiles' | 'appointments'` (default: `'home'`)
+### 2. Archiv- und Gelöscht-Handling (`notificationDeepLinks.ts`)
 
-- **Home**: Wie bisher — normale Navigationsgruppen, Schnellzugriff, Footer
-- **Benachrichtigungen**: Der bestehende Inline-Panel wird zur Vollansicht (ganzer Bereich unter Quick-Actions). Keine normale Nav sichtbar.
-- **Fallakten**: Kompakte Liste der eigenen/zugewiesenen Fallakten (via `useCaseFiles`-Hook) + Dossier-Upload-Fläche (Dropzone für SmartCapture-Inbox)
-- **Termine** (neu, Calendar-Icon): Kompakte Liste der Termine der nächsten 3-5 Tage (via Supabase-Query auf `appointments`), Terminanfragen (offene Entscheidungen mit `appointment_request`-Marker) und ein Hinweis-Banner wenn offene Termin-Feedbacks existieren
+Die bestehende `buildDeepLinkPath`-Funktion wird erweitert, damit sie den Status des Ziel-Elements berücksichtigen kann. Dafür:
 
-### 2. Neues Termin-Icon als Quick-Action
+- Für **archivierte** Elemente: Die Deep-Link-Pfade bereits korrekt auf Archiv-Tabs verweisen (z.B. `/tasks?tab=archived&highlight=xxx`, `/decisions?tab=archived&highlight=xxx`). Das erfordert ein neues optionales Feld im Notification-Data (`target_status: 'active' | 'archived' | 'deleted'`), das vom Backend beim Archivieren/Löschen gesetzt werden kann.
 
-Neben Home, Bell, Briefcase und Search kommt ein **Calendar**-Icon als 4. Panel-Button (Search bleibt als reiner Dialog-Trigger, kein Panel).
+- Für **gelöschte** Elemente: Wenn `target_status === 'deleted'`, wird statt der Navigation ein Toast/Dialog angezeigt ("Dieses Element wurde gelöscht und ist nicht mehr verfügbar").
 
-### 3. NotificationBell aus Header entfernen
+- **Fallback ohne Backend-Änderung** (pragmatischer Ansatz): Die Zielseiten selbst (Tasks, Decisions, etc.) prüfen beim Laden mit `highlight`-Parameter, ob das Element existiert. Falls nicht gefunden, wird eine Info-Meldung angezeigt. Falls archiviert, wird automatisch zum Archiv-Tab gewechselt.
 
-Wird nicht mehr benötigt — Benachrichtigungen sind jetzt im Sidebar-Panel.
+### 3. Highlight-Handling auf Zielseiten verbessern
 
-### 4. Avatar-Menü in die Navigation (ganz unten)
+Die Zielseiten (Tasks, Decisions, Meetings, etc.) nutzen bereits `useNotificationHighlight`. Erweitert wird:
 
-Das gesamte User-Avatar-Dropdown (Profil, Einstellungen, Status-Selector, Abmelden) wird in den unteren Bereich der Navigation verschoben, unter Hilfe/Team/Admin. Zeigt Avatar + Name + Status-Emoji.
+- **Automatischer Tab-Wechsel**: Wenn ein `highlight`-Element nicht im aktiven Tab gefunden wird, archivierte Tabs durchsuchen und ggf. dorthin wechseln
+- **Nicht-gefunden-Meldung**: Toast anzeigen wenn das Element in keinem Tab existiert ("Dieses Element existiert nicht mehr")
 
-### 5. App-Untertitel unter dem App-Namen
+Das betrifft primär:
+- `DecisionsOverview.tsx` — hat bereits Archiv-Tab
+- `TaskList` / Tasks-Seite — hat bereits Archiv-Logik
+- Weitere Seiten: Meetings, Dokumente
 
-Im Logo-Header-Bereich der Navigation wird `appSettings.app_subtitle` als zweite Zeile unter `appSettings.app_name` angezeigt.
-
-### 6. Anwesenheit (Online-Users) in die Navigation
-
-Die `OnlineUsersWidget`-Popover-Anzeige aus dem Header wandert in die Navigation, z.B. als kompakte Avatar-Reihe oberhalb des User-Avatars oder unterhalb der Quick-Actions.
-
-### 7. Header komplett entfernen
-
-- `AppHeader` wird aus `Index.tsx` entfernt
-- Quick-Actions (z.B. "Neuer Termin", "Neue Aufgabe") werden stattdessen direkt in die jeweiligen View-Komponenten verschoben oder über die bestehende `SubNavigation` abgebildet
-- Die `sectionConfig` mit Quick-Actions bleibt als Utility erhalten für `SubNavigation` oder inline-Buttons auf den Seiten
-- `SubNavigation` bleibt bestehen (zeigt Unter-Tabs für Gruppen)
-
-### 8. Index.tsx Layout-Anpassung
-
-- Entferne `<AppHeader />` aus dem Layout
-- `SubNavigation` rückt direkt an die Oberkante des Content-Bereichs
-- Quick-Action-Buttons (Neuer Termin etc.) werden in die `SubNavigation` integriert oder als Inline-Buttons auf den jeweiligen Seiten belassen
-
-## Betroffene Dateien
+### Betroffene Dateien
 
 | Datei | Änderung |
 |---|---|
-| `src/components/AppNavigation.tsx` | Panel-System (home/notifications/casefiles/appointments), Calendar-Quick-Action, Avatar+Status unten, Subtitle, Anwesenheit |
-| `src/pages/Index.tsx` | `<AppHeader />` entfernen, Layout anpassen |
-| `src/components/layout/AppHeader.tsx` | Kann gelöscht oder nur noch für Mobile behalten werden |
-| `src/components/layout/SubNavigation.tsx` | Optional: Quick-Action-Button integrieren |
-| `src/components/MobileHeader.tsx` | Bleibt bestehen (Mobile-Header separat) |
+| `src/components/AppNavigation.tsx` | onClick-Handler: navigate + buildDeepLinkPath + markAsRead |
+| `src/utils/notificationDeepLinks.ts` | Keine Änderung nötig (Pfade sind bereits korrekt) |
+| `src/components/task-decisions/DecisionsOverview.tsx` | Auto-Tab-Wechsel zu Archiv wenn highlight-Element dort liegt |
+| `src/pages/TasksPage.tsx` (o.ä.) | Analog: Archiv-Suche bei highlight |
+| Betroffene Zielseiten | Toast "Element nicht mehr vorhanden" wenn highlight-ID nirgends gefunden |
 
-## Nav-Struktur (neu)
+### Umsetzungsreihenfolge
 
-```text
-┌────────────────────────────────┐
-│ [Logo] App-Name                │
-│        App-Untertitel          │
-├────────────────────────────────┤
-│ [🏠] [🔔] [📅] [📁] [🔍]    │  ← Panel-Switcher + Search
-├────────────────────────────────┤
-│                                │
-│  Panel-Inhalt:                 │
-│  - Home: normale Nav           │
-│  - Bell: Benachrichtigungen    │
-│  - Calendar: Termine           │
-│  - Briefcase: Fallakten        │
-│                                │
-├────────────────────────────────┤
-│ 👥 Online: [Avatars...]       │  ← Anwesenheit
-├────────────────────────────────┤
-│ [Avatar] Max Mustermann  🟢   │  ← User-Menü (Dropdown)
-│          online                │
-└────────────────────────────────┘
-```
+1. **Sidebar-Navigation** einbauen (Hauptfix, ~5 Zeilen in AppNavigation.tsx)
+2. **Archiv-Auto-Switch** auf den wichtigsten Seiten (Decisions, Tasks)
+3. **Nicht-gefunden-Toast** als Fallback auf allen highlight-fähigen Seiten
 
