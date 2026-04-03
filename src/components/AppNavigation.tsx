@@ -66,6 +66,7 @@ import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useQuery } from "@tanstack/react-query";
 import { useAppointmentRequest } from "@/hooks/useAppointmentRequest";
+import { buildDeepLinkPath } from "@/utils/notificationDeepLinks";
 
 // Re-export for backward compatibility
 export { getNavigationGroups };
@@ -521,7 +522,16 @@ export function AppNavigation({
                   "hover:bg-[hsl(var(--nav-hover))]",
                   !n.is_read && "bg-[hsl(var(--nav-active-bg))]"
                 )}
-                onClick={() => { if (!n.is_read) markAsRead(n.id); }}
+                onClick={() => {
+                  if (!n.is_read) markAsRead(n.id);
+                  const path = buildDeepLinkPath(n);
+                  if (/^https?:\/\//i.test(path)) {
+                    window.location.href = path;
+                  } else {
+                    navigate(path);
+                  }
+                  if (isMobile) onSectionChange(activeSection);
+                }}
               >
                 <div className="flex-1 min-w-0">
                   <p className={cn("text-[12px]", !n.is_read && "font-medium")}>

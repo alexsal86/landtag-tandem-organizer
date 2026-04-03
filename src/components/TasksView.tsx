@@ -31,7 +31,7 @@ import type { Task } from "./tasks/types";
 
 export function TasksView() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { isHighlighted, highlightRef } = useNotificationHighlight();
+  const { isHighlighted, highlightRef, highlightId } = useNotificationHighlight();
   const { toast } = useToast();
   const { isItemNew } = useNewItemIndicators('tasks');
 
@@ -80,6 +80,31 @@ export function TasksView() {
   }, [searchParams, setSearchParams]);
 
   const isOverdue = (dueDate: string) => new Date(dueDate) < new Date();
+
+  // Auto-open archive or show not-found toast when highlight ID isn't in active tasks
+  useEffect(() => {
+    if (!highlightId || data.tasks.length === 0) return;
+    const found = data.tasks.some(t => t.id === highlightId);
+    if (found) return;
+
+    // Check archived_tasks
+    supabase.from("archived_tasks").select("id").eq("task_id", highlightId).maybeSingle().then(({ data: archived }) => {
+      if (archived) {
+        setArchiveModalOpen(true);
+      } else {
+        toast({
+          title: "Element nicht gefunden",
+          description: "Diese Aufgabe existiert nicht mehr oder wurde gelöscht.",
+          variant: "destructive",
+        });
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("highlight");
+          return next;
+        }, { replace: true });
+      }
+    });
+  }, [highlightId, data.tasks]);
 
   const handleTaskClick = (task: Task) => { setSelectedTask(task); setSidebarOpen(true); };
   const handleToggleHideSnoozeSubtasks = (hide: boolean) => {
