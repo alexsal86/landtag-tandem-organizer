@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Settings, LogOut, User, Plus, Calendar, Users, FileText, CheckSquare, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -131,11 +131,56 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
   };
   
   const quickAction = getQuickAction();
+  const [visibleQuickAction, setVisibleQuickAction] = useState(quickAction);
+  const [quickActionPhase, setQuickActionPhase] = useState<'idle' | 'closing' | 'opening'>('idle');
+  const quickActionTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const previousActionKey = visibleQuickAction?.action ?? null;
+    const nextActionKey = quickAction?.action ?? null;
+
+    if (previousActionKey === nextActionKey) {
+      return;
+    }
+
+    if (quickActionTimerRef.current !== null) {
+      window.clearTimeout(quickActionTimerRef.current);
+      quickActionTimerRef.current = null;
+    }
+
+    if (!visibleQuickAction || !quickAction) {
+      setVisibleQuickAction(quickAction);
+      setQuickActionPhase(quickAction ? 'opening' : 'closing');
+      quickActionTimerRef.current = window.setTimeout(() => {
+        setQuickActionPhase('idle');
+        quickActionTimerRef.current = null;
+      }, 260);
+      return;
+    }
+
+    setQuickActionPhase('closing');
+    quickActionTimerRef.current = window.setTimeout(() => {
+      setVisibleQuickAction(quickAction);
+      setQuickActionPhase('opening');
+      quickActionTimerRef.current = window.setTimeout(() => {
+        setQuickActionPhase('idle');
+        quickActionTimerRef.current = null;
+      }, 260);
+    }, 260);
+  }, [quickAction, visibleQuickAction]);
+
+  useEffect(() => {
+    return () => {
+      if (quickActionTimerRef.current !== null) {
+        window.clearTimeout(quickActionTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleQuickAction = (): void => {
-    if (quickAction) {
+    if (visibleQuickAction) {
       const urlParams = new URLSearchParams(location.search);
-      urlParams.set('action', quickAction.action);
+      urlParams.set('action', visibleQuickAction.action);
       navigate(`${location.pathname}?${urlParams.toString()}`);
     }
   };
@@ -171,19 +216,24 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
       {/* Left: Quick Action + Search */}
       <div className="hidden md:flex items-center gap-4">
         {/* Quick Action Button */}
-        {quickAction && (
+        {visibleQuickAction && (
           <Button 
             size="sm" 
             variant="ghost"
             onClick={handleQuickAction}
-            className="h-7 px-2 text-xs bg-muted hover:bg-accent text-foreground"
+            className={cn(
+              'h-7 px-2 text-xs bg-muted hover:bg-accent text-foreground overflow-hidden transition-all duration-300 ease-out',
+              quickActionPhase === 'closing' && 'max-w-0 opacity-0 -translate-x-2 px-0',
+              quickActionPhase === 'opening' && 'max-w-44 opacity-100 translate-x-0',
+              quickActionPhase === 'idle' && 'max-w-44 opacity-100 translate-x-0',
+            )}
           >
-            <Plus className="h-3.5 w-3.5 mr-1" />
-            {quickAction.label}
+            <Plus className="h-3.5 w-3.5 mr-1 shrink-0" />
+            <span className="whitespace-nowrap">{visibleQuickAction.label}</span>
           </Button>
         )}
 
-        {quickAction && (
+        {visibleQuickAction && (
           <Separator orientation="vertical" className="h-5 bg-border" />
         )}
       </div>
