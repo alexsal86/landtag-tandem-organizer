@@ -31,7 +31,7 @@ import type { Task } from "./tasks/types";
 
 export function TasksView() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { isHighlighted, highlightRef } = useNotificationHighlight();
+  const { isHighlighted, highlightRef, highlightId } = useNotificationHighlight();
   const { toast } = useToast();
   const { isItemNew } = useNewItemIndicators('tasks');
 
