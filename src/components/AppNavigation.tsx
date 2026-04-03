@@ -83,7 +83,7 @@ interface NavigationProps {
 
 // Available pages for quick access
 const availableQuickPages: QuickAccessPage[] = [
-  { id: "mywork", label: "Meine Arbeit", icon: "Home", route: "/mywork" },
+  { id: "mywork", label: "Meine Arbeit", icon: "NotebookTabs", route: "/mywork" },
   { id: "calendar", label: "Kalender", icon: "Calendar", route: "/calendar" },
   { id: "tasks", label: "Aufgaben", icon: "CheckSquare", route: "/tasks" },
   { id: "contacts", label: "Kontakte", icon: "Users", route: "/contacts" },
