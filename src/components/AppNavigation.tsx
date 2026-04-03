@@ -554,7 +554,7 @@ export function AppNavigation({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setNotificationFilter('all')}>
                   <span className="flex-1">Ungelesen und gelesen</span>
-                  {notificationFilter === 'all' && <Check className="h-4 w-4" />}
+                  {(notificationFilter as NotificationFilter) === 'all' && <Check className="h-4 w-4" />}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setNotificationFilter('unread')}>
                   <span className="flex-1">Ungelesen</span>
