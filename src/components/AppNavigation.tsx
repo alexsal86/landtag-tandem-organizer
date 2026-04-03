@@ -351,7 +351,7 @@ export function AppNavigation({
         key={id}
         onClick={() => handleNavigationClick(id)}
         className={cn(
-          "flex items-center w-full gap-2 py-1.5 px-2 rounded-md text-[13px] transition-colors relative group",
+          "flex items-center w-full gap-2 py-1.5 px-2 rounded-md text-sm transition-colors relative group",
           indent && "pl-8",
           "hover:bg-[hsl(var(--nav-hover))]",
           (isActive || isPending) && "bg-[hsl(var(--nav-active-bg))] font-medium",
@@ -359,7 +359,7 @@ export function AppNavigation({
         )}
       >
         <Icon className={cn("h-4 w-4 shrink-0", clickedItem === id && "animate-nav-bounce")} />
-        <span className="truncate text-[13px]">{label}</span>
+        <span className="truncate text-sm">{label}</span>
         {badge > 0 && (
           <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-destructive text-[10px] text-white flex items-center justify-center font-bold px-1">
             {badge > 99 ? '99+' : badge}
@@ -394,13 +394,13 @@ export function AppNavigation({
             }
           }}
           className={cn(
-            "flex items-center w-full gap-2 py-1.5 px-2 rounded-md text-[13px] transition-colors",
+            "flex items-center w-full gap-2 py-1.5 px-2 rounded-md text-sm transition-colors",
             "hover:bg-[hsl(var(--nav-hover))]",
             isActive && "font-medium"
           )}
         >
           <group.icon className="h-4 w-4 shrink-0" />
-          <span className="truncate text-[13px]">{group.label}</span>
+          <span className="truncate text-sm">{group.label}</span>
           {badge > 0 && (
             <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-destructive text-[10px] text-white flex items-center justify-center font-bold px-1">
               {badge > 99 ? '99+' : badge}
@@ -469,7 +469,7 @@ export function AppNavigation({
             <button
               onClick={() => handleNavigationClick(page.id)}
               className={cn(
-                "flex-1 flex items-center gap-2 py-1 px-2 rounded-md text-[13px] transition-colors truncate",
+                "flex-1 flex items-center gap-2 py-1 px-2 rounded-md text-sm transition-colors truncate",
                 "hover:bg-[hsl(var(--nav-hover))]",
                 activeSection === page.id && "bg-[hsl(var(--nav-active-bg))] font-medium"
               )}
