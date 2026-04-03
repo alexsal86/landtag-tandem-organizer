@@ -1,5 +1,6 @@
 import {
   Home,
+  NotebookTabs,
   MessageSquare,
   Calendar,
   CheckSquare,
@@ -35,7 +36,7 @@ export const navigationGroups: NavGroup[] = [
   {
     id: "mywork",
     label: "Meine Arbeit",
-    icon: Home,
+    icon: NotebookTabs,
     route: "/mywork"
   },
   {
