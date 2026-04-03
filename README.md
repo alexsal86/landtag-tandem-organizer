@@ -205,3 +205,17 @@ npm run test:e2e-smoke
 | Karten | Leaflet + React-Leaflet |
 | Chat | Matrix SDK |
 | Testing | Vitest |
+
+---
+
+## Mobile App (neu)
+
+Ein erstes React-Native/Expo-Scaffold liegt unter `apps/mobile`.
+
+Quickstart:
+```bash
+npm install
+npm run mobile:start
+```
+
+Details: `docs/mobile/mobile-quickstart.md`.
