@@ -10,6 +10,7 @@
         "@hookform/resolvers": "^5.2.1",
         "@kenjiuno/msgreader": "^1.28.0",
         "@lexical/code": "0.40.0",
+        "@lexical/dragon": "0.40.0",
         "@lexical/file": "0.40.0",
         "@lexical/hashtag": "0.40.0",
         "@lexical/html": "0.40.0",
