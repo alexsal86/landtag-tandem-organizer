@@ -128,7 +128,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
           <div className="flex items-center justify-between px-2">
             {!isCollapsed ? (
               <>
-                <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+                <SidebarGroupLabel className="text-sm">Navigation</SidebarGroupLabel>
                 <SidebarTrigger />
               </>
             ) : (
@@ -167,7 +167,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                               <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-destructive animate-pulse" />
                             )}
                           </div>
-                          {!isCollapsed && <span>{item.label}</span>}
+                          {!isCollapsed && <span className="text-sm">{item.label}</span>}
                         </div>
                         {/* Matrix unread badge for expanded sidebar */}
                         {!isCollapsed && item.id === 'chat' && matrixUnreadCount > 0 && (
@@ -239,7 +239,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                           isCollapsed && "justify-center"
                         )}>
                           <Shield />
-                          {!isCollapsed && <span>Administration</span>}
+                          {!isCollapsed && <span className="text-sm">Administration</span>}
                         </div>
                         {!isCollapsed && navigationCounts['administration'] > 0 && (
                           <NavigationBadge 
