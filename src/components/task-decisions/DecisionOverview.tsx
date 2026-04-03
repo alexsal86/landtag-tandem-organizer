@@ -83,7 +83,19 @@ export const DecisionOverview = () => {
     if (!highlightId || decisions.length === 0 || !user?.id) return;
 
     const decision = decisions.find((d) => d.id === highlightId);
-    if (!decision) return;
+    if (!decision) {
+      toast({
+        title: "Element nicht gefunden",
+        description: "Diese Entscheidung existiert nicht mehr oder wurde gelöscht.",
+        variant: "destructive",
+      });
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("highlight");
+        return next;
+      }, { replace: true });
+      return;
+    }
 
     let targetTab = filtering.activeTab;
     if (decision.status === "archived") {
