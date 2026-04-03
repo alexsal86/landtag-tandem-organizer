@@ -11,11 +11,6 @@ import {
   Plus, 
   Search, 
   Briefcase, 
-  Users, 
-  FileText, 
-  CheckSquare, 
-  Calendar,
-  Mail,
   LayoutGrid,
   List,
   Layers,
@@ -213,20 +208,6 @@ classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === 
     return Icon || null;
   };
 
-  const statusCounts = {
-    all: visibleCaseFiles.length,
-    active: visibleCaseFiles.filter(cf => cf.status === 'active').length,
-    pending: visibleCaseFiles.filter(cf => cf.status === 'pending').length,
-    closed: visibleCaseFiles.filter(cf => cf.status === 'closed').length,
-    archived: visibleCaseFiles.filter(cf => cf.status === 'archived').length,
-  };
-
-  const scopeCounts = {
-    all: visibleCaseFiles.length,
-    small: visibleCaseFiles.filter((cf) => classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === "small").length,
-    large: visibleCaseFiles.filter((cf) => classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === "large").length,
-  };
-
   if (selectedCaseFile) {
     return (
       <div className="space-y-6 p-6">
@@ -273,53 +254,6 @@ classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === 
           </CardContent>
         </Card>
       )}
-
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-5">
-        <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setStatusFilter("all")}>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">{statusCounts.all}</div>
-            <p className="text-sm text-muted-foreground">Gesamt</p>
-          </CardContent>
-        </Card>
-        <Card className="cursor-pointer hover:bg-muted/50 transition-colors border-l-4 border-l-green-500" onClick={() => setStatusFilter("active")}>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">{statusCounts.active}</div>
-            <p className="text-sm text-muted-foreground">Aktiv</p>
-          </CardContent>
-        </Card>
-        <Card className="cursor-pointer hover:bg-muted/50 transition-colors border-l-4 border-l-yellow-500" onClick={() => setStatusFilter("pending")}>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">{statusCounts.pending}</div>
-            <p className="text-sm text-muted-foreground">Wartend</p>
-          </CardContent>
-        </Card>
-        <Card className="cursor-pointer hover:bg-muted/50 transition-colors border-l-4 border-l-blue-500" onClick={() => setStatusFilter("closed")}>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">{statusCounts.closed}</div>
-            <p className="text-sm text-muted-foreground">Abgeschlossen</p>
-          </CardContent>
-        </Card>
-        <Card className="cursor-pointer hover:bg-muted/50 transition-colors border-l-4 border-l-gray-500" onClick={() => setStatusFilter("archived")}>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">{statusCounts.archived}</div>
-            <p className="text-sm text-muted-foreground">Archiviert</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Vorgangsgröße</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="flex flex-wrap gap-2">
-            <Button variant={scopeFilter === "all" ? "secondary" : "outline"} size="sm" onClick={() => setScopeFilter("all")}>Alle ({scopeCounts.all})</Button>
-            <Button variant={scopeFilter === "small" ? "secondary" : "outline"} size="sm" onClick={() => setScopeFilter("small")}>Kleine Vorgänge ({scopeCounts.small})</Button>
-            <Button variant={scopeFilter === "large" ? "secondary" : "outline"} size="sm" onClick={() => setScopeFilter("large")}>Große Akten ({scopeCounts.large})</Button>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Filters */}
       <Card>
