@@ -26,6 +26,7 @@ export function MyWorkPlanungsKartenSection() {
   const [plannings, setPlannings] = useState<PlanningCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedPlanningIds, setExpandedPlanningIds] = useState<Set<string>>(new Set());
+  const [showCompletedPlannings, setShowCompletedPlannings] = useState(false);
   const [newChecklistTitles, setNewChecklistTitles] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -194,6 +195,92 @@ export function MyWorkPlanungsKartenSection() {
     );
   }
 
+  const openPlannings = plannings.filter((planning) => !planning.is_completed);
+  const completedPlannings = plannings.filter((planning) => planning.is_completed);
+  const renderPlanningCard = (planning: PlanningCard) => (
+    <Collapsible key={planning.id} open={expandedPlanningIds.has(planning.id)} onOpenChange={() => toggleDetails(planning.id)}>
+      <div className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
+        <CalendarPlus className="h-4 w-4 mt-1 text-muted-foreground" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={cn("font-bold text-base", planning.is_completed && "line-through text-muted-foreground")}>{planning.title}</span>
+            {planning.isCollaborator && <Badge variant="secondary" className="text-xs">Mitwirkend</Badge>}
+            {planning.is_completed && <Badge variant="outline" className="text-xs text-green-600 border-green-200">Erledigt</Badge>}
+          </div>
+          {planning.description && <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{planning.description}</p>}
+          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+            {planning.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{planning.location}</span>}
+            {planning.confirmed_date && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{format(new Date(planning.confirmed_date), "dd.MM.yyyy", { locale: de })}</span>}
+            {planning.confirmed_date && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{format(new Date(planning.confirmed_date), "HH:mm", { locale: de })} Uhr</span>}
+            {planning.checklistProgress.total > 0 ? (
+              <span className="flex items-center gap-2">
+                <span className="flex items-center gap-1"><CheckSquare className="h-3 w-3" />{planning.checklistProgress.completed}/{planning.checklistProgress.total}</span>
+                <CollapsibleTrigger asChild>
+                  <button type="button" className="text-primary hover:underline inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    Details {expandedPlanningIds.has(planning.id) ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                  </button>
+                </CollapsibleTrigger>
+              </span>
+            ) : (
+              <CollapsibleTrigger asChild>
+                <button type="button" className="text-primary hover:underline inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                  Details {expandedPlanningIds.has(planning.id) ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                </button>
+              </CollapsibleTrigger>
+            )}
+          </div>
+          <CollapsibleContent className="mt-3 border-t pt-3 space-y-3">
+            {planning.description && (
+              <div><Label className="text-xs text-muted-foreground">Beschreibung</Label><p className="text-sm mt-1">{planning.description}</p></div>
+            )}
+            <div>
+              <Label className="text-xs text-muted-foreground">Checkliste</Label>
+              <div className="mt-2 space-y-2">
+                {planning.checklistItems.length > 0 ? (
+                  planning.checklistItems.map((item) => (
+                    <button key={item.id} type="button" className="text-sm flex items-center gap-2 text-left hover:text-foreground"
+                      onClick={(e) => { e.stopPropagation(); toggleChecklistItem(item.id, !item.is_completed); }}>
+                      {item.is_completed ? <CheckSquare className="h-4 w-4 text-green-600" /> : <Square className="h-4 w-4 text-muted-foreground" />}
+                      <span className={cn(item.is_completed && "line-through text-muted-foreground")}>{item.title}</span>
+                    </button>
+                  ))
+                ) : <p className="text-sm text-muted-foreground">Noch keine Einträge</p>}
+              </div>
+              <div className="flex items-center gap-2 mt-3">
+                <Input value={newChecklistTitles[planning.id] || ""} onChange={(e) => setNewChecklistTitles((prev) => ({ ...prev, [planning.id]: e.target.value }))}
+                  onClick={(e) => e.stopPropagation()} placeholder="Neuer Checklisten-Eintrag" className="h-8" />
+                <Button type="button" size="sm" onClick={(e) => { e.stopPropagation(); addChecklistItem(planning); }}>
+                  <Plus className="h-3.5 w-3.5 mr-1" />Hinzufügen
+                </Button>
+              </div>
+            </div>
+          </CollapsibleContent>
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {planning.user_id === user?.id && (
+            <TooltipProvider><Tooltip><TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className={cn("h-7 w-7", planning.is_completed && "text-green-600")}
+                onClick={(e) => { e.stopPropagation(); toggleCompleted(planning.id, !planning.is_completed); }}>
+                <CheckCircle className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger><TooltipContent>{planning.is_completed ? "Als unerledigt markieren" : "Als erledigt markieren"}</TooltipContent></Tooltip></TooltipProvider>
+          )}
+          {planning.user_id === user?.id && (
+            <TooltipProvider><Tooltip><TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7"
+                onClick={(e) => { e.stopPropagation(); archivePlanning(planning.id); }}>
+                <Archive className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger><TooltipContent>Archivieren</TooltipContent></Tooltip></TooltipProvider>
+          )}
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/eventplanning/${planning.id}`)}>
+            <ExternalLink className="h-3 w-3" />
+          </Button>
+        </div>
+      </div>
+    </Collapsible>
+  );
+
   return (
     <section className="space-y-2 p-4">
       <h3 className="text-sm font-semibold text-foreground">Planungs-Karten</h3>
@@ -203,90 +290,25 @@ export function MyWorkPlanungsKartenSection() {
           <p>Keine Planungen</p>
         </div>
       ) : (
-        plannings.map((planning) => (
-          <Collapsible key={planning.id} open={expandedPlanningIds.has(planning.id)} onOpenChange={() => toggleDetails(planning.id)}>
-            <div className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
-              <CalendarPlus className="h-4 w-4 mt-1 text-muted-foreground" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className={cn("font-bold text-base", planning.is_completed && "line-through text-muted-foreground")}>{planning.title}</span>
-                  {planning.isCollaborator && <Badge variant="secondary" className="text-xs">Mitwirkend</Badge>}
-                  {planning.is_completed && <Badge variant="outline" className="text-xs text-green-600 border-green-200">Erledigt</Badge>}
-                </div>
-                {planning.description && <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{planning.description}</p>}
-                <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
-                  {planning.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{planning.location}</span>}
-                  {planning.confirmed_date && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{format(new Date(planning.confirmed_date), "dd.MM.yyyy", { locale: de })}</span>}
-                  {planning.confirmed_date && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{format(new Date(planning.confirmed_date), "HH:mm", { locale: de })} Uhr</span>}
-                  {planning.checklistProgress.total > 0 && (
-                    <span className="flex items-center gap-2">
-                      <span className="flex items-center gap-1"><CheckSquare className="h-3 w-3" />{planning.checklistProgress.completed}/{planning.checklistProgress.total}</span>
-                      <CollapsibleTrigger asChild>
-                        <button type="button" className="text-primary hover:underline inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                          Details {expandedPlanningIds.has(planning.id) ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                        </button>
-                      </CollapsibleTrigger>
-                    </span>
-                  )}
-                  {planning.checklistProgress.total === 0 && (
-                    <CollapsibleTrigger asChild>
-                      <button type="button" className="text-primary hover:underline inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        Details {expandedPlanningIds.has(planning.id) ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                      </button>
-                    </CollapsibleTrigger>
-                  )}
-                </div>
-                <CollapsibleContent className="mt-3 border-t pt-3 space-y-3">
-                  {planning.description && (
-                    <div><Label className="text-xs text-muted-foreground">Beschreibung</Label><p className="text-sm mt-1">{planning.description}</p></div>
-                  )}
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Checkliste</Label>
-                    <div className="mt-2 space-y-2">
-                      {planning.checklistItems.length > 0 ? (
-                        planning.checklistItems.map((item) => (
-                          <button key={item.id} type="button" className="text-sm flex items-center gap-2 text-left hover:text-foreground"
-                            onClick={(e) => { e.stopPropagation(); toggleChecklistItem(item.id, !item.is_completed); }}>
-                            {item.is_completed ? <CheckSquare className="h-4 w-4 text-green-600" /> : <Square className="h-4 w-4 text-muted-foreground" />}
-                            <span className={cn(item.is_completed && "line-through text-muted-foreground")}>{item.title}</span>
-                          </button>
-                        ))
-                      ) : <p className="text-sm text-muted-foreground">Noch keine Einträge</p>}
-                    </div>
-                    <div className="flex items-center gap-2 mt-3">
-                      <Input value={newChecklistTitles[planning.id] || ""} onChange={(e) => setNewChecklistTitles((prev) => ({ ...prev, [planning.id]: e.target.value }))}
-                        onClick={(e) => e.stopPropagation()} placeholder="Neuer Checklisten-Eintrag" className="h-8" />
-                      <Button type="button" size="sm" onClick={(e) => { e.stopPropagation(); addChecklistItem(planning); }}>
-                        <Plus className="h-3.5 w-3.5 mr-1" />Hinzufügen
-                      </Button>
-                    </div>
-                  </div>
-                </CollapsibleContent>
-              </div>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                {planning.user_id === user?.id && (
-                  <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className={cn("h-7 w-7", planning.is_completed && "text-green-600")}
-                      onClick={(e) => { e.stopPropagation(); toggleCompleted(planning.id, !planning.is_completed); }}>
-                      <CheckCircle className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger><TooltipContent>{planning.is_completed ? "Als unerledigt markieren" : "Als erledigt markieren"}</TooltipContent></Tooltip></TooltipProvider>
-                )}
-                {planning.user_id === user?.id && (
-                  <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-7 w-7"
-                      onClick={(e) => { e.stopPropagation(); archivePlanning(planning.id); }}>
-                      <Archive className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger><TooltipContent>Archivieren</TooltipContent></Tooltip></TooltipProvider>
-                )}
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/eventplanning/${planning.id}`)}>
-                  <ExternalLink className="h-3 w-3" />
-                </Button>
-              </div>
-            </div>
-          </Collapsible>
-        ))
+        <>
+          {openPlannings.map((planning) => renderPlanningCard(planning))}
+          {completedPlannings.length > 0 && (
+            <Collapsible open={showCompletedPlannings} onOpenChange={setShowCompletedPlannings}>
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="w-full mt-2 px-3 py-2 rounded-md border bg-muted/30 hover:bg-muted/50 transition-colors text-sm font-medium flex items-center justify-between"
+                >
+                  <span>Erledigte Planungen ({completedPlannings.length})</span>
+                  {showCompletedPlannings ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-2 pt-2">
+                {completedPlannings.map((planning) => renderPlanningCard(planning))}
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+        </>
       )}
     </section>
   );
