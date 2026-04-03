@@ -844,7 +844,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
           if (!isReady) {
             try {
               await cryptoApi.bootstrapSecretStorage({
-                // @ts-expect-error matrix-js-sdk GeneratedSecretStorageKey type mismatch with fallback branch
+                // matrix-js-sdk GeneratedSecretStorageKey type mismatch with fallback branch
                 createSecretStorageKey: async () => {
                   if (existingKey) {
                     try {
@@ -854,7 +854,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
                   }
                   // No valid key in localStorage — generate a new one and persist it
                   const newKey = await cryptoApi.createRecoveryKeyFromPassphrase(undefined);
-                  localStorage.setItem(`matrix_recovery_key:${userId}`, newKey.encodedPrivateKey);
+                  localStorage.setItem(`matrix_recovery_key:${userId}`, newKey.encodedPrivateKey ?? '');
                   matrixLogger.log('Generated and stored new Matrix recovery key');
                   return newKey;
                 },

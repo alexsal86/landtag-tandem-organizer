@@ -20,7 +20,9 @@
         "@lexical/plain-text": "0.40.0",
         "@lexical/react": "0.40.0",
         "@lexical/rich-text": "0.40.0",
+        "@lexical/selection": "0.40.0",
         "@lexical/table": "0.40.0",
+        "@lexical/utils": "0.40.0",
         "@lexical/yjs": "0.40.0",
         "@matrix-org/matrix-sdk-crypto-wasm": "^16.0.0",
         "@radix-ui/react-accordion": "^1.2.12",
@@ -2830,6 +2832,10 @@
     "@jest/fake-timers/@types/node": ["@types/node@25.5.2", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@types/node/-/node-25.5.2.tgz", { "dependencies": { "undici-types": "~7.18.0" } }, "sha512-tO4ZIRKNC+MDWV4qKVZe3Ql/woTnmHDr5JD8UI5hn2pwBrHEwOEMZK7WlNb5RKB6EoJ02gwmQS9OrjuFnZYdpg=="],
 
     "@jest/types/@types/node": ["@types/node@25.5.2", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@types/node/-/node-25.5.2.tgz", { "dependencies": { "undici-types": "~7.18.0" } }, "sha512-tO4ZIRKNC+MDWV4qKVZe3Ql/woTnmHDr5JD8UI5hn2pwBrHEwOEMZK7WlNb5RKB6EoJ02gwmQS9OrjuFnZYdpg=="],
+
+    "@landtag/api-client/@landtag/domain": ["@landtag/domain@file:packages/domain", {}],
+
+    "@landtag/mobile/@landtag/domain": ["@landtag/domain@file:packages/domain", {}],
 
     "@landtag/mobile/@types/react": ["@types/react@19.1.17", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@types/react/-/react-19.1.17.tgz", { "dependencies": { "csstype": "^3.0.2" } }, "sha512-Qec1E3mhALmaspIrhWt9jkQMNdw6bReVu64mjvhbhq2NFPftLPVr+l1SZgmw/66WwBNpDh7ao5AT6gF5v41PFA=="],
 
