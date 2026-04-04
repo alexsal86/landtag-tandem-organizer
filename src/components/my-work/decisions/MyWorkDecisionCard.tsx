@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { EmailPreviewDialog } from "@/components/task-decisions/EmailPreviewDialog";
 import { DecisionAttachmentPreviewDialog } from "@/components/task-decisions/DecisionAttachmentPreviewDialog";
@@ -76,7 +77,6 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
 
   const { appointmentLink, appointmentRequestNarrative, displayDescription, isAppointmentRequest, isRequestedStartValid, plainDescription, requestedStart, requestedTitle, summary, summaryItems, targetDeputy, winningResponse } = useDecisionCardDerivedData(decision);
 
-  const shouldShowTimeline = isAppointmentRequest && isRequestedStartValid;
   const shouldLoadTimeline = isAppointmentRequest && isRequestedStartValid;
   const timelineWindowMinutes = 6 * 60 + APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES;
   const timelineHeight = 264;
@@ -183,8 +183,7 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
       responseRefreshTimeoutRef.current = null;
     }
   };
-  const openScheduleHover = () => {};
-  const closeScheduleHover = () => {};
+  // hover handlers removed – HoverCard handles open/close natively
 
   const handleResponseSubmitted = (meta?: { responseType: string; color?: string }) => {
     clearResponseRefreshTimeout();
@@ -265,23 +264,11 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
               <div className="mb-2 flex items-start justify-between gap-2">
                 <h3 className="font-bold text-lg leading-snug">{decision.title}</h3>
                 {isAppointmentRequest && isRequestedStartValid && (
-                  <TooltipProvider><Tooltip><TooltipTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={(event) => { event.stopPropagation(); setIsSchedulePinnedOpen((previous) => !previous); }} onMouseEnter={openScheduleHover} onMouseLeave={closeScheduleHover} aria-label="Termin-Tagesvorschau anzeigen"><Info className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Tagessimulation für den angefragten Termin anzeigen</p></TooltipContent></Tooltip></TooltipProvider>
-                )}
-              </div>
-
-              {decision.description && (
-                <div className={cn("grid gap-4", shouldShowTimeline && "lg:grid-cols-2")} onClick={(event) => event.stopPropagation()}>
-                  <div className="min-w-0">
-                    {appointmentRequestNarrative && <p className="mb-3 text-sm leading-relaxed text-muted-foreground">{appointmentRequestNarrative}</p>}
-                    <div className={cn("relative", !detailsExpanded && hasLongDescription && "max-h-[26rem] overflow-hidden")}>
-                      <RichTextDisplay content={displayDescription} className="leading-relaxed [&_p:last-child]:mb-0" />
-                      {!detailsExpanded && hasLongDescription && <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background via-background/95 to-transparent" />}
-                    </div>
-                    {hasLongDescription && <Button variant="ghost" size="sm" className="mt-2 h-7 px-0 text-xs" onClick={() => setDetailsExpanded((previous) => !previous)}>{detailsExpanded ? "Weniger Details" : "Details anzeigen"}{detailsExpanded ? <ChevronUp className="h-3.5 w-3.5 ml-1" /> : <ChevronDown className="h-3.5 w-3.5 ml-1" />}</Button>}
-                  </div>
-
-                  {shouldShowTimeline && (
-                    <div className="rounded-md border border-border bg-background/95 p-2" onMouseEnter={openScheduleHover} onMouseLeave={closeScheduleHover}>
+                  <HoverCard openDelay={200} closeDelay={300}>
+                    <HoverCardTrigger asChild>
+                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={(event) => { event.stopPropagation(); setIsSchedulePinnedOpen((previous) => !previous); }} aria-label="Termin-Tagesvorschau anzeigen"><Info className="h-4 w-4" /></Button>
+                    </HoverCardTrigger>
+                    <HoverCardContent side="left" align="start" className="w-[380px] p-2" onClick={(event) => event.stopPropagation()}>
                       <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-foreground"><CalendarDays className="h-3.5 w-3.5" />Tageskontext ±3 Stunden ({requestedStart ? format(requestedStart, "dd.MM.yyyy HH:mm", { locale: de }) : ""} Uhr)</div>
                       {isTimelineLoading ? <p className="text-xs text-muted-foreground">Lade Termine…</p> : dayTimelineItems.length === 0 ? <p className="text-xs text-muted-foreground">Keine Termine für diesen Tag.</p> : (
                         <div className="grid grid-cols-[56px_1fr] border border-border rounded-md overflow-hidden bg-muted/15">
@@ -292,8 +279,21 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
                           </div>
                         </div>
                       )}
+                    </HoverCardContent>
+                  </HoverCard>
+                )}
+              </div>
+
+              {decision.description && (
+                <div onClick={(event) => event.stopPropagation()}>
+                  <div className="min-w-0">
+                    {appointmentRequestNarrative && <p className="mb-3 text-sm leading-relaxed text-muted-foreground">{appointmentRequestNarrative}</p>}
+                    <div className={cn("relative", !detailsExpanded && hasLongDescription && "max-h-[26rem] overflow-hidden")}>
+                      <RichTextDisplay content={displayDescription} className="leading-relaxed [&_p:last-child]:mb-0" />
+                      {!detailsExpanded && hasLongDescription && <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background via-background/95 to-transparent" />}
                     </div>
-                  )}
+                    {hasLongDescription && <Button variant="ghost" size="sm" className="mt-2 h-7 px-0 text-xs" onClick={() => setDetailsExpanded((previous) => !previous)}>{detailsExpanded ? "Weniger Details" : "Details anzeigen"}{detailsExpanded ? <ChevronUp className="h-3.5 w-3.5 ml-1" /> : <ChevronDown className="h-3.5 w-3.5 ml-1" />}</Button>}
+                  </div>
                 </div>
               )}
             </div>
