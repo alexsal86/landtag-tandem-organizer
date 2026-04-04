@@ -45,7 +45,6 @@ export function MyWorkView() {
     feedbackFeedCoreRolesOnly,
     isCountsLoading,
     loadCounts,
-    realtimeStatus,
     role,
     roleFlags,
     shouldIncludeTeamCountRef,
@@ -164,13 +163,6 @@ export function MyWorkView() {
         </div>
 
         <div className="flex shrink-0 items-center gap-2 pb-2">
-          <Badge
-            data-help-id="mywork-realtime"
-            variant={realtimeStatus === "connected" ? "secondary" : "destructive"}
-            className="hidden md:inline-flex"
-          >
-            Realtime: {realtimeStatus === "connected" ? "online" : realtimeStatus === "connecting" ? "verbinde…" : "degradiert"}
-          </Badge>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" className="gap-1" data-help-id="mywork-new-menu">
