@@ -29,6 +29,7 @@ import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { useFavicon } from "@/hooks/useFavicon";
 import { useQuickAccessPages, QuickAccessPage } from "@/hooks/useQuickAccessPages";
+import { useRecentlyVisited } from "@/hooks/useRecentlyVisited";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserStatus } from "@/hooks/useUserStatus";
