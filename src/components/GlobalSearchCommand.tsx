@@ -599,7 +599,7 @@ export function GlobalSearchCommand() {
             {contacts.map((contact) => (
               <CommandItem
                 key={contact.id}
-                onSelect={() => runCommand(() => navigate(`/?section=contacts&contact=${contact.id}`))}
+                onSelect={() => runCommand(() => navigate(`/?section=contacts&contact=${contact.id}&highlight=${contact.id}`))}
               >
                 <User className="mr-2 h-4 w-4" />
                 <span>{contact.name}</span>
