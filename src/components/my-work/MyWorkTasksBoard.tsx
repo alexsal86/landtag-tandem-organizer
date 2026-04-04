@@ -106,6 +106,8 @@ export function MyWorkTasksBoard({
           getChildTasks={getChildTasks}
           getCommentCount={(taskId) => taskCommentCounts[taskId] || 0}
           showPersistentCommentIndicator
+          connectorParentLineStartTop={16}
+          connectorChildTargetTop={16}
         />
       ))}
     </div>
