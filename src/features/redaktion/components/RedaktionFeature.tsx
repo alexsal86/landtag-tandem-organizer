@@ -6,6 +6,7 @@ import { useRedaktionSpecialDays } from "@/features/redaktion/hooks/useRedaktion
 import { Button } from "@/components/ui/button";
 
 export function RedaktionFeature() {
+  console.log("[RedaktionFeature] mounted");
   const { data: specialDays = [] } = useRedaktionSpecialDays();
   const [isThemenspeicherOpen, setIsThemenspeicherOpen] = useState(false);
 

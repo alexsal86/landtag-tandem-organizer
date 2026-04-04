@@ -26,6 +26,9 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     debugConsole.error('ErrorBoundary caught:', error, errorInfo);
+    console.error('[ErrorBoundary] name:', error.name, 'message:', error.message);
+    console.error('[ErrorBoundary] stack:', error.stack);
+    console.error('[ErrorBoundary] componentStack:', errorInfo.componentStack);
   }
 
   render() {
@@ -41,6 +44,11 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
           <p className="text-sm text-muted-foreground text-center max-w-md">
             {this.props.fallbackMessage || 'Ein unerwarteter Fehler ist aufgetreten. Bitte laden Sie die Seite neu.'}
           </p>
+          {this.state.error && (
+            <pre className="mt-2 max-h-32 w-full max-w-lg overflow-auto rounded border bg-muted p-2 text-xs text-destructive">
+              {this.state.error.message}{'\n'}{this.state.error.stack}
+            </pre>
+          )}
           <Button onClick={() => { this.setState({ hasError: false, error: null }); window.location.reload(); }}>
             Seite neu laden
           </Button>
