@@ -320,7 +320,7 @@ export function CaseItemDetailPanel({
   };
 
   return (
-    <div className="mx-2 mb-3 rounded-md border bg-muted/20 p-3 space-y-4">
+    <div className="mx-2 mb-3 space-y-4">
       <div className="grid gap-4 lg:grid-cols-[minmax(230px,1fr)_minmax(0,2.8fr)]">
         <div className="space-y-3">
           <div className="space-y-2 rounded-md border bg-background p-3 text-sm">
