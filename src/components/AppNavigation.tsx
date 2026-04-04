@@ -615,9 +615,20 @@ export function AppNavigation({
             <Bell className="h-8 w-8 mx-auto mb-2 text-[hsl(var(--nav-muted))]" />
             <p className="text-sm text-[hsl(var(--nav-muted))]">Keine Benachrichtigungen</p>
           </div>
-        ) : (
-          <div className="space-y-0.5 p-2">
-            {filteredNotifications.map(n => (
+        ) : (() => {
+          // Group notifications by date
+          const groups: { label: string; items: typeof filteredNotifications }[] = [];
+          const todayItems = filteredNotifications.filter(n => isToday(new Date(n.created_at)));
+          const yesterdayItems = filteredNotifications.filter(n => isYesterday(new Date(n.created_at)));
+          const olderItems = filteredNotifications.filter(n => {
+            const d = new Date(n.created_at);
+            return !isToday(d) && !isYesterday(d);
+          });
+          if (todayItems.length > 0) groups.push({ label: 'Heute', items: todayItems });
+          if (yesterdayItems.length > 0) groups.push({ label: 'Gestern', items: yesterdayItems });
+          if (olderItems.length > 0) groups.push({ label: 'Älter', items: olderItems });
+
+          const renderNotificationItem = (n: typeof filteredNotifications[0]) => (
               <div
                 key={n.id}
                 className={cn(
@@ -664,8 +675,23 @@ export function AppNavigation({
                   </button>
                 </div>
               </div>
-            ))}
-          </div>
+          );
+
+          return (
+            <div className="p-2 space-y-3">
+              {groups.map(group => (
+                <div key={group.label}>
+                  <p className="text-[11px] font-semibold text-[hsl(var(--nav-muted))] uppercase tracking-wider px-2 mb-1">
+                    {group.label}
+                  </p>
+                  <div className="space-y-0.5">
+                    {group.items.map(renderNotificationItem)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })()
         )}
       </ScrollArea>
     </div>
