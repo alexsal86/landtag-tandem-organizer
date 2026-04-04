@@ -271,7 +271,22 @@ export function AppNavigation({
     setPendingSection(null);
     // Switch to home panel when navigating
     setActivePanel('home');
-  }, [markNavigationAsVisited, onSectionChange]);
+    // Track recently visited
+    const allPages = [...availableQuickPages];
+    navigationGroups.forEach(g => {
+      if (g.subItems) {
+        g.subItems.forEach(item => {
+          if (!allPages.some(p => p.id === item.id)) {
+            allPages.push({ id: item.id, label: item.label, icon: 'Circle', route: `/${item.id}` });
+          }
+        });
+      }
+    });
+    const matched = allPages.find(p => p.id === sectionId);
+    if (matched) {
+      trackVisit(sectionId, matched.label, matched.icon, matched.route);
+    }
+  }, [markNavigationAsVisited, onSectionChange, trackVisit]);
 
   const handleLogoClick = () => {
     setClickedItem('dashboard');
