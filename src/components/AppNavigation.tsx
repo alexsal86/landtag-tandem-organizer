@@ -850,12 +850,7 @@ export function AppNavigation({
       </div>
 
       {/* Dossier Upload Area */}
-      <div className="mx-2 mt-2 p-3 rounded-md border-2 border-dashed border-[hsl(var(--nav-muted))]/30 hover:border-primary/50 transition-colors cursor-pointer text-center"
-        onClick={() => handleNavigationClick('casefiles')}
-      >
-        <Upload className="h-5 w-5 mx-auto mb-1 text-[hsl(var(--nav-muted))]" />
-        <p className="text-[11px] text-[hsl(var(--nav-muted))]">Dossier hochladen</p>
-      </div>
+      <NavDossierCapture />
 
       <ScrollArea className="flex-1 mt-2">
         {caseFiles.length === 0 ? (
