@@ -117,6 +117,13 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
     return textarea.value;
   };
 
+  const formatDateWithoutYear = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('de-DE', {
+      day: '2-digit',
+      month: 'short'
+    });
+  };
+
   if (compact) {
     return (
       <>
@@ -124,18 +131,18 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
           {loading && <div className="animate-pulse space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-6 bg-muted rounded" />)}</div>}
           {error && <p className="text-xs text-muted-foreground">{error}</p>}
           {!loading && !error && (
-            <div className="space-y-2">
+            <div className="grid grid-cols-2">
               {filteredArticles.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Keine Artikel gefunden</p>
+                <p className="text-xs text-muted-foreground col-span-2">Keine Artikel gefunden</p>
               ) : (
                 filteredArticles.slice(0, 8).map((article) => (
                   <div
                     key={article.id}
-                    className="group cursor-pointer hover:bg-muted/40 rounded px-1 py-1 transition-colors"
+                    className="group cursor-pointer hover:bg-muted/40 px-2 py-2 transition-colors border-border border-b odd:border-r"
                     onClick={() => window.open(article.link, '_blank')}
                   >
                     <div className="flex items-start justify-between gap-1">
-                      <span className="text-sm text-foreground line-clamp-1 flex-1">{decodeHtmlEntities(article.title)}</span>
+                      <span className="text-sm text-foreground line-clamp-3 flex-1">{decodeHtmlEntities(article.title)}</span>
                       <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                         <Button
                           variant="ghost"
@@ -165,7 +172,10 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
                         </Button>
                       </div>
                     </div>
-                    <span className="text-[11px] text-primary block mt-0.5">{article.source}</span>
+                    <div className="text-[11px] text-muted-foreground mt-1">
+                      <span className="text-primary">{article.source}</span>
+                      <span> • {formatDateWithoutYear(article.pub_date)}</span>
+                    </div>
                   </div>
                 ))
               )}
