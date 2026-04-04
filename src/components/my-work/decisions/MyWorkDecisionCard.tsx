@@ -71,7 +71,6 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
   const [commentPromptColor, setCommentPromptColor] = useState("green");
   const [resolvedDeputyName, setResolvedDeputyName] = useState<string | null>(null);
   const responseRefreshTimeoutRef = useRef<number | null>(null);
-  const scheduleHoverTimeoutRef = useRef<number | null>(null);
   const { toast } = useToast();
   const { currentTenant } = useTenant();
 
