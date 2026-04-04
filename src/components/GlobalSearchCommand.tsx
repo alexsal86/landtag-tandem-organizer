@@ -673,7 +673,7 @@ export function GlobalSearchCommand() {
             {letters.map((letter) => (
               <CommandItem
                 key={letter.id}
-                onSelect={() => runCommand(() => navigate(`/letters/${letter.id}`))}
+                onSelect={() => runCommand(() => navigate(`/letters/${letter.id}?highlight=${letter.id}`))}
               >
                 <Mail className="mr-2 h-4 w-4" />
                 <span>{letter.title}</span>
