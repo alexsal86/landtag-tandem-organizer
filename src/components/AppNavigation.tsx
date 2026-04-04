@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, type ElementType } from "react";
+import { NavDossierCapture } from "./NavDossierCapture";
 import { useNavigate } from "react-router-dom";
 import { 
   Home, 
