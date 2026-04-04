@@ -1,57 +1,51 @@
 
-# Tageskontext-Flackern gezielt beheben
 
-## Wahrscheinliche eigentliche Ursache
+# Themenspeicher-Fehler in Redaktion diagnostizieren und beheben
 
-Das Problem sitzt sehr wahrscheinlich nicht primär im Hover selbst, sondern im Daten-/Render-Zyklus:
+## Situation
 
-- In `useDecisionCardDerivedData.ts` wird `requestedStart` aktuell direkt mit `new Date(requestedStartIso)` erzeugt
-- Dadurch entsteht bei jedem Render ein neues `Date`-Objekt
-- `MyWorkDecisionCard.tsx` hat einen `useEffect` für den Tageskontext, der von `requestedStart` abhängt
-- Ergebnis: Der Effect läuft unnötig oft neu, setzt `isTimelineLoading` immer wieder und lädt die Timeline erneut
-- Während das Hover-Overlay offen ist, wechselt der Inhalt dadurch ständig zwischen Laden/Inhalt/leer und wirkt wie extremes Flackern
+Der Redaktion-Tab zeigt einen Fehler (ErrorBoundary-Fallback "Redaktion konnte nicht geladen werden"). Die genaue Ursache ist nicht aus dem Code oder Build-Logs ersichtlich -- es gibt keine TypeScript-Fehler, keine Build-Fehler, und keine sichtbaren Runtime-Errors in den Logs. Der Fehler tritt erst zur Laufzeit auf und wird von der ErrorBoundary gefangen.
 
-Zusätzlich wird bei Fehlern aktuell destruktiv auf `setDayTimelineItems([])` zurückgesetzt, was das instabile Verhalten weiter verstärken kann.
+## Diagnose-Ansatz
 
-## Was ich ändern würde
+Da der Fehler nicht reproduzierbar ist (Auth-Gate), werde ich diagnostische `console.error`-Ausgaben einfügen, damit beim nächsten Auftreten die genaue Fehlermeldung sichtbar wird.
 
-### 1. `requestedStart` stabil machen
-In `src/components/my-work/decisions/hooks/useDecisionCardDerivedData.ts`:
-- `requestedStart` per `useMemo` aus `requestedStartIso` ableiten
-- damit bleibt die Referenz stabil, solange sich der ISO-Wert nicht ändert
+### Schritt 1: ErrorBoundary um Fehlerdetails erweitern
 
-Beispielhaft logisch:
-- `const requestedStart = useMemo(() => requestedStartIso ? new Date(requestedStartIso) : null, [requestedStartIso])`
+In `src/components/ErrorBoundary.tsx`:
+- Im `componentDidCatch` den Fehlernamen und die Message zusätzlich per `console.error` mit einem eindeutigen Prefix ausgeben
+- Im Fallback-Render den `error.message` anzeigen, damit der User sehen kann, was genau schiefgeht
 
-### 2. Timeline-Load gegen unnötige Reloads absichern
-In `src/components/my-work/decisions/MyWorkDecisionCard.tsx`:
-- den Lade-Effect mit einem Request-Guard absichern
-- nur das neueste Ergebnis übernehmen
-- bei erneutem Render nicht jedes Mal wieder aggressiv `isTimelineLoading(true)` setzen, wenn dieselbe Anfrage schon geladen wurde
-- optional einen Schlüssel wie `tenantId + requestedStartIso + requestedTitle + decision.id` merken und gleiche Requests überspringen
+### Schritt 2: Try-Catch in RedaktionFeature und PlannerBoard
 
-### 3. Vorhandene Daten nicht bei transienten Fehlern wegwerfen
-Ebenfalls in `MyWorkDecisionCard.tsx`:
-- im `catch` nicht mehr blind `setDayTimelineItems([])` ausführen
-- bestehende Timeline-Daten stehen lassen, wenn ein Reload fehlschlägt
-- das folgt auch dem vorhandenen Projektmuster zur Flicker-Vermeidung
+In `src/features/redaktion/components/RedaktionFeature.tsx`:
+- Console.log beim Mount, um zu bestätigen dass die Komponente geladen wird
 
-### 4. HoverCard als UI behalten
-Die Overlay-Idee ist grundsätzlich richtig:
-- `HoverCard` kann bleiben
-- das Problem ist sehr wahrscheinlich der instabile Inhalt, nicht die Komponente selbst
-- nur falls danach noch leichtes Zucken bleibt, würde ich als Feinschliff `sideOffset`, Breite oder Trigger-Button minimal anpassen
+In `src/features/redaktion/components/PlannerBoard.tsx`:
+- Console.log am Anfang der Komponente mit den wesentlichen States (currentTenant, user vorhanden ja/nein)
+- Das hilft herauszufinden, ob der Fehler beim initialen Render oder beim Datenladen passiert
 
-## Betroffene Dateien
+### Schritt 3: Mögliche Ursachen präventiv absichern
 
-- `src/components/my-work/decisions/hooks/useDecisionCardDerivedData.ts`
-- `src/components/my-work/decisions/MyWorkDecisionCard.tsx`
+Basierend auf Code-Review könnten diese Stellen Probleme verursachen:
 
-## Erwartetes Ergebnis
+1. **`Kalenderansicht.tsx` Zeile 18**: `withDragAndDrop<CalendarEvent>(Calendar)` wird bei jedem Modul-Load ausgeführt. Falls `CalendarEvent` nicht definiert ist bevor diese Zeile läuft, gibt es einen Runtime-Error.
 
-Danach sollte der Tageskontext:
-- nur beim Hover erscheinen
-- offen stabil bleiben
-- nicht ständig neu laden
-- nicht mehr zwischen Ladezustand und Inhalt flackern
-- auch bei kurzzeitigen Query-Problemen ruhig bleiben
+2. **`PlannerBoard.tsx`**: `useSearchParams()` wird verwendet, was einen `RouterContext` voraussetzt. Das sollte vorhanden sein, aber zur Sicherheit prüfen.
+
+3. **Supabase-Queries in `useTopicBacklog`/`useSocialPlannerItems`**: Falls eine Query einen unerwarteten Fehler wirft der nicht gefangen wird, könnte das den Render-Zyklus brechen.
+
+## Umsetzung
+
+### Datei 1: `src/components/ErrorBoundary.tsx`
+- `error.message` und `error.stack` im Fallback sichtbar machen (in einer kleinen, scrollbaren `<pre>`-Box), damit der User den Fehler direkt melden kann
+
+### Datei 2: `src/features/redaktion/components/RedaktionFeature.tsx`
+- `console.log("[RedaktionFeature] mounted")` am Anfang der Komponente
+
+### Datei 3: `src/features/redaktion/components/PlannerBoard.tsx`
+- `console.log("[PlannerBoard] render", { hasTenant, hasUser })` am Anfang
+
+## Ergebnis
+
+Nach dem Deploy werden beim nächsten Besuch des Redaktion-Tabs die genaue Fehlermeldung in der Konsole und auf dem Bildschirm sichtbar. Damit kann die eigentliche Ursache gezielt behoben werden.
