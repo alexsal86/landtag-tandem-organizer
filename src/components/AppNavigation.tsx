@@ -691,8 +691,8 @@ export function AppNavigation({
               ))}
             </div>
           );
-        })()
-        )}
+        })())}
+
       </ScrollArea>
     </div>
   )};
