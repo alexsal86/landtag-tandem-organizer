@@ -593,22 +593,6 @@ export function GlobalSearchCommand() {
           </>
         )}
 
-        {!searchQuery && (
-          <CommandGroup heading="🚀 Navigation">
-            {navigationItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <CommandItem
-                  key={item.path}
-                  onSelect={() => runCommand(() => navigate(item.path))}
-                >
-                  <Icon className="mr-2 h-4 w-4" />
-                  <span>{item.label}</span>
-                </CommandItem>
-              );
-            })}
-          </CommandGroup>
-        )}
 
         {contacts && contacts.length > 0 && (
           <CommandGroup heading="👤 Kontakte">
