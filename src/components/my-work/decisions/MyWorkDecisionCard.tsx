@@ -72,6 +72,7 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
   const [commentPromptColor, setCommentPromptColor] = useState("green");
   const [resolvedDeputyName, setResolvedDeputyName] = useState<string | null>(null);
   const responseRefreshTimeoutRef = useRef<number | null>(null);
+  const scheduleHoverTimeoutRef = useRef<number | null>(null);
   const { toast } = useToast();
   const { currentTenant } = useTenant();
 
@@ -184,6 +185,22 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
       responseRefreshTimeoutRef.current = null;
     }
   };
+  const clearScheduleHoverTimeout = () => {
+    if (scheduleHoverTimeoutRef.current !== null) {
+      window.clearTimeout(scheduleHoverTimeoutRef.current);
+      scheduleHoverTimeoutRef.current = null;
+    }
+  };
+  const openScheduleHover = () => {
+    clearScheduleHoverTimeout();
+    setIsScheduleHoverOpen(true);
+  };
+  const closeScheduleHover = () => {
+    clearScheduleHoverTimeout();
+    scheduleHoverTimeoutRef.current = window.setTimeout(() => {
+      setIsScheduleHoverOpen(false);
+    }, 180);
+  };
 
   const handleResponseSubmitted = (meta?: { responseType: string; color?: string }) => {
     clearResponseRefreshTimeout();
@@ -219,7 +236,10 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
     }
   };
 
-  useEffect(() => () => clearResponseRefreshTimeout(), []);
+  useEffect(() => () => {
+    clearResponseRefreshTimeout();
+    clearScheduleHoverTimeout();
+  }, []);
   useEffect(() => {
     const loadDayTimeline = async () => {
       if (!shouldLoadTimeline || !currentTenant?.id || !requestedStart) return;
@@ -262,7 +282,7 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
               <div className="mb-2 flex items-start justify-between gap-2">
                 <h3 className="font-bold text-lg leading-snug">{decision.title}</h3>
                 {isAppointmentRequest && isRequestedStartValid && (
-                  <TooltipProvider><Tooltip><TooltipTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={(event) => { event.stopPropagation(); setIsSchedulePinnedOpen((previous) => !previous); }} onMouseEnter={() => setIsScheduleHoverOpen(true)} onMouseLeave={() => setIsScheduleHoverOpen(false)} aria-label="Termin-Tagesvorschau anzeigen"><Info className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Tagessimulation für den angefragten Termin anzeigen</p></TooltipContent></Tooltip></TooltipProvider>
+                  <TooltipProvider><Tooltip><TooltipTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={(event) => { event.stopPropagation(); setIsSchedulePinnedOpen((previous) => !previous); }} onMouseEnter={openScheduleHover} onMouseLeave={closeScheduleHover} aria-label="Termin-Tagesvorschau anzeigen"><Info className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Tagessimulation für den angefragten Termin anzeigen</p></TooltipContent></Tooltip></TooltipProvider>
                 )}
               </div>
 
@@ -278,7 +298,7 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
                   </div>
 
                   {shouldShowTimeline && (
-                    <div className="rounded-md border border-border bg-background/95 p-2">
+                    <div className="rounded-md border border-border bg-background/95 p-2" onMouseEnter={openScheduleHover} onMouseLeave={closeScheduleHover}>
                       <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-foreground"><CalendarDays className="h-3.5 w-3.5" />Tageskontext ±3 Stunden ({requestedStart ? format(requestedStart, "dd.MM.yyyy HH:mm", { locale: de }) : ""} Uhr)</div>
                       {isTimelineLoading ? <p className="text-xs text-muted-foreground">Lade Termine…</p> : dayTimelineItems.length === 0 ? <p className="text-xs text-muted-foreground">Keine Termine für diesen Tag.</p> : (
                         <div className="grid grid-cols-[56px_1fr] border border-border rounded-md overflow-hidden bg-muted/15">
