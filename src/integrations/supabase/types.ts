@@ -9353,6 +9353,7 @@ export type Database = {
       }
       social_content_items: {
         Row: {
+          alt_text: string | null
           approval_required: boolean
           approval_state: string
           approved_at: string | null
@@ -9366,6 +9367,8 @@ export type Database = {
           draft_text: string | null
           format: string | null
           format_variant: string | null
+          hashtags: string[]
+          hashtags_in_comment: boolean
           hook: string | null
           id: string
           notes: string | null
@@ -9380,6 +9383,7 @@ export type Database = {
           workflow_status: string
         }
         Insert: {
+          alt_text?: string | null
           approval_required?: boolean
           approval_state?: string
           approved_at?: string | null
@@ -9393,6 +9397,8 @@ export type Database = {
           draft_text?: string | null
           format?: string | null
           format_variant?: string | null
+          hashtags?: string[]
+          hashtags_in_comment?: boolean
           hook?: string | null
           id?: string
           notes?: string | null
@@ -9407,6 +9413,7 @@ export type Database = {
           workflow_status?: string
         }
         Update: {
+          alt_text?: string | null
           approval_required?: boolean
           approval_state?: string
           approved_at?: string | null
@@ -9420,6 +9427,8 @@ export type Database = {
           draft_text?: string | null
           format?: string | null
           format_variant?: string | null
+          hashtags?: string[]
+          hashtags_in_comment?: boolean
           hook?: string | null
           id?: string
           notes?: string | null
