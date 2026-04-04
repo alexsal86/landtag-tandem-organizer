@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -298,6 +298,13 @@ export function useTopicBacklog() {
     void loadTopics();
   }, [loadTopics]);
 
+  const loadTopicsRef = useRef(loadTopics);
+  useEffect(() => {
+    loadTopicsRef.current = loadTopics;
+  }, [loadTopics]);
+
+  const uniqueChannelId = useRef(crypto.randomUUID());
+
   useEffect(() => {
     if (!currentTenant?.id) return;
 
@@ -306,12 +313,12 @@ export function useTopicBacklog() {
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => {
         timeout = null;
-        void loadTopics();
+        void loadTopicsRef.current();
       }, 250);
     };
 
     const channel = supabase
-      .channel(`topic-backlog-${currentTenant.id}`)
+      .channel(`topic-backlog-${currentTenant.id}-${uniqueChannelId.current}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "topic_backlog", filter: `tenant_id=eq.${currentTenant.id}` }, scheduleRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "social_content_items", filter: `tenant_id=eq.${currentTenant.id}` }, scheduleRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "social_content_item_channels", filter: `tenant_id=eq.${currentTenant.id}` }, scheduleRefresh)
@@ -322,7 +329,7 @@ export function useTopicBacklog() {
       if (timeout) clearTimeout(timeout);
       supabase.removeChannel(channel);
     };
-  }, [currentTenant?.id, loadTopics]);
+  }, [currentTenant?.id]);
 
   return {
     topics,

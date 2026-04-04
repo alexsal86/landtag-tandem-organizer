@@ -30,6 +30,9 @@ export interface SocialPlannerItem {
   notes: string | null;
   responsible_user_id: string | null;
   scheduled_for: string | null;
+  hashtags: string[];
+  hashtags_in_comment: boolean;
+  alt_text: string | null;
 }
 
 export interface PlannerChannel {
@@ -113,6 +116,9 @@ export function useSocialPlannerItems() {
             notes,
             responsible_user_id,
             scheduled_for,
+            hashtags,
+            hashtags_in_comment,
+            alt_text,
             topic_backlog:topic_backlog_id(topic, tags),
             social_content_item_channels(channel_id, social_content_channels(name))
           `)
@@ -161,6 +167,9 @@ export function useSocialPlannerItems() {
             notes: row.notes,
             responsible_user_id: row.responsible_user_id,
             scheduled_for: row.scheduled_for,
+            hashtags: row.hashtags || [],
+            hashtags_in_comment: row.hashtags_in_comment ?? false,
+            alt_text: row.alt_text,
             channel_ids: channelLinks.map((entry) => entry.channel_id),
             channel_names: channelLinks.map((entry) => entry.social_content_channels?.name || "Unbekannter Kanal"),
           };
@@ -253,7 +262,7 @@ export function useSocialPlannerItems() {
 
   const updateItem = useCallback(async (
     id: string,
-    patch: Partial<Pick<SocialPlannerItem, "topic" | "workflow_status" | "approval_state" | "responsible_user_id" | "format" | "content_goal" | "format_variant" | "asset_requirements" | "approval_required" | "publish_link" | "performance_notes" | "scheduled_for" | "hook" | "core_message" | "draft_text" | "cta" | "notes" | "channel_ids">>,
+    patch: Partial<Pick<SocialPlannerItem, "topic" | "tags" | "workflow_status" | "approval_state" | "responsible_user_id" | "format" | "content_goal" | "format_variant" | "asset_requirements" | "approval_required" | "publish_link" | "performance_notes" | "scheduled_for" | "hook" | "core_message" | "draft_text" | "cta" | "notes" | "channel_ids" | "hashtags" | "hashtags_in_comment" | "alt_text">>,
   ) => {
     if (!currentTenant?.id) return;
 
@@ -279,6 +288,9 @@ export function useSocialPlannerItems() {
     if (typeof patch.draft_text !== "undefined") dbPatch.draft_text = patch.draft_text;
     if (typeof patch.cta !== "undefined") dbPatch.cta = patch.cta;
     if (typeof patch.notes !== "undefined") dbPatch.notes = patch.notes;
+    if (typeof patch.hashtags !== "undefined") dbPatch.hashtags = patch.hashtags;
+    if (typeof patch.hashtags_in_comment !== "undefined") dbPatch.hashtags_in_comment = patch.hashtags_in_comment;
+    if (typeof patch.alt_text !== "undefined") dbPatch.alt_text = patch.alt_text;
 
     if (Object.keys(dbPatch).length > 0) {
       const { error } = await supabase
@@ -297,6 +309,15 @@ export function useSocialPlannerItems() {
         .eq("id", currentItem.topic_backlog_id)
         .eq("tenant_id", currentTenant.id);
       if (topicError) throw new Error(getErrorMessage(topicError));
+    }
+
+    if (typeof patch.tags !== "undefined" && currentItem?.topic_backlog_id) {
+      const { error: tagsError } = await supabase
+        .from("topic_backlog")
+        .update({ tags: patch.tags })
+        .eq("id", currentItem.topic_backlog_id)
+        .eq("tenant_id", currentTenant.id);
+      if (tagsError) throw new Error(getErrorMessage(tagsError));
     }
 
     if (typeof patch.channel_ids !== "undefined") {

@@ -17,6 +17,8 @@ import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { TagInput } from "@/components/ui/tag-input";
+import { cn } from "@/lib/utils";
 import { useTenantUsers } from "@/hooks/useTenantUsers";
 import { type SocialPlannerItem, PlannerWorkflowStatus, useSocialPlannerItems } from "@/features/redaktion/hooks/useSocialPlannerItems";
 import { useTopicBacklog } from "@/features/redaktion/hooks/useTopicBacklog";
@@ -57,6 +59,14 @@ const CONTENT_GOAL_OPTIONS = [
 
 const FORMAT_VARIANT_OPTIONS = ["Story", "Carousel", "Reel", "Feed-Post", "Link-Post"];
 const ASSET_OPTIONS = ["Bild nötig", "Video nötig", "Grafik nötig", "Zitatkarte nötig"];
+
+const FORMAT_VARIANT_CHAR_LIMITS: Record<string, number | null> = {
+  "Story": null,
+  "Reel": 2200,
+  "Carousel": 2200,
+  "Feed-Post": 2200,
+  "Link-Post": 3000,
+};
 
 const TEMPLATE_OPTIONS = [
   {
@@ -113,6 +123,7 @@ const TEMPLATE_OPTIONS = [
 
 type SocialPlannerDraftPayload = {
   topic: string;
+  tags: string[];
   channel_ids: string[];
   format: string | null;
   content_goal: string | null;
@@ -130,6 +141,9 @@ type SocialPlannerDraftPayload = {
   scheduled_for: string | null;
   approval_state: string;
   workflow_status: PlannerWorkflowStatus;
+  hashtags: string[];
+  hashtags_in_comment: boolean;
+  alt_text: string | null;
 };
 
 type SocialPlannerTemplateId = (typeof TEMPLATE_OPTIONS)[number]["id"];
@@ -154,6 +168,24 @@ function applyTemplateToState(
   setters.setHook(template.hook);
   setters.setCta(template.cta);
   setters.setAssetRequirements([...template.asset_requirements]);
+}
+
+function CharCounter({ text, limit }: { text: string; limit: number | null }) {
+  const count = text.length;
+  if (limit === null) {
+    return <span className="text-xs text-muted-foreground">{count} Zeichen</span>;
+  }
+  const remaining = limit - count;
+  return (
+    <span className={cn(
+      "text-xs tabular-nums",
+      remaining < 0 ? "text-destructive font-medium" :
+      remaining < 50 ? "text-amber-500" :
+      "text-muted-foreground",
+    )}>
+      {count} / {limit}
+    </span>
+  );
 }
 
 function BriefingGroup({
@@ -190,14 +222,16 @@ interface SocialPlannerEditDialogProps {
   open: boolean;
   users: Array<{ id: string; display_name: string }>;
   channels: Array<{ id: string; name: string }>;
+  tagSuggestions: string[];
   onOpenChange: (open: boolean) => void;
   onSave: (itemId: string, payload: SocialPlannerDraftPayload) => Promise<void>;
 }
 
-function SocialPlannerEditDialog({ item, open, users, channels, onOpenChange, onSave }: SocialPlannerEditDialogProps) {
+function SocialPlannerEditDialog({ item, open, users, channels, tagSuggestions, onOpenChange, onSave }: SocialPlannerEditDialogProps) {
   const { toast } = useToast();
   const [selectedTemplate, setSelectedTemplate] = useState<string>("none");
   const [topic, setTopic] = useState("");
+  const [tagsValue, setTagsValue] = useState<string[]>([]);
   const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
   const [formatValue, setFormatValue] = useState("");
   const [contentGoal, setContentGoal] = useState("");
@@ -215,6 +249,9 @@ function SocialPlannerEditDialog({ item, open, users, channels, onOpenChange, on
   const [scheduledDate, setScheduledDate] = useState("");
   const [approvalState, setApprovalState] = useState("draft");
   const [workflowStatus, setWorkflowStatus] = useState<PlannerWorkflowStatus>("ideas");
+  const [hashtags, setHashtags] = useState<string[]>([]);
+  const [hashtagsInComment, setHashtagsInComment] = useState(false);
+  const [altText, setAltText] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -222,6 +259,7 @@ function SocialPlannerEditDialog({ item, open, users, channels, onOpenChange, on
 
     setSelectedTemplate("none");
     setTopic(item.topic);
+    setTagsValue(item.tags || []);
     setSelectedChannels(item.channel_ids);
     setFormatValue(item.format || "");
     setContentGoal(item.content_goal || "");
@@ -239,6 +277,9 @@ function SocialPlannerEditDialog({ item, open, users, channels, onOpenChange, on
     setScheduledDate(item.scheduled_for ? item.scheduled_for.slice(0, 16) : "");
     setApprovalState(item.approval_state || "draft");
     setWorkflowStatus(item.workflow_status);
+    setHashtags(item.hashtags || []);
+    setHashtagsInComment(item.hashtags_in_comment ?? false);
+    setAltText(item.alt_text || "");
   }, [item]);
 
   const channelOptions = useMemo(
@@ -272,6 +313,7 @@ function SocialPlannerEditDialog({ item, open, users, channels, onOpenChange, on
       setIsSaving(true);
       await onSave(item.id, {
         topic: topic.trim(),
+        tags: tagsValue,
         channel_ids: selectedChannels,
         format: formatValue.trim() || null,
         content_goal: contentGoal.trim() || null,
@@ -289,6 +331,9 @@ function SocialPlannerEditDialog({ item, open, users, channels, onOpenChange, on
         scheduled_for: scheduledDate ? new Date(scheduledDate).toISOString() : null,
         approval_state: approvalState,
         workflow_status: workflowStatus,
+        hashtags,
+        hashtags_in_comment: hashtagsInComment,
+        alt_text: altText.trim() || null,
       });
       onOpenChange(false);
     } catch {
@@ -336,6 +381,19 @@ function SocialPlannerEditDialog({ item, open, users, channels, onOpenChange, on
                 onChange={setSelectedChannels}
                 placeholder="Kanäle auswählen"
               />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label>Interne Tags</Label>
+              <TagInput
+                tags={tagsValue}
+                onTagsChange={setTagsValue}
+                placeholder="Tag hinzufügen (Enter oder Komma)…"
+                suggestions={tagSuggestions}
+              />
+              <p className="text-xs text-muted-foreground">
+                Interne Labels zur Organisation – nicht öffentlich sichtbar.
+              </p>
             </div>
           </div>
 
@@ -385,8 +443,38 @@ function SocialPlannerEditDialog({ item, open, users, channels, onOpenChange, on
             </div>
 
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="edit-draft-text">Entwurfstext</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="edit-draft-text">Entwurfstext</Label>
+                <CharCounter text={draftText} limit={FORMAT_VARIANT_CHAR_LIMITS[formatVariant] ?? null} />
+              </div>
               <Textarea id="edit-draft-text" rows={6} value={draftText} onChange={(event) => setDraftText(event.target.value)} placeholder="Textentwurf für den Beitrag" />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <div className="flex items-center justify-between">
+                <Label>Hashtags</Label>
+                <span className={cn(
+                  "text-xs tabular-nums",
+                  hashtags.length > 30 ? "text-destructive font-medium" : "text-muted-foreground",
+                )}>
+                  {hashtags.length} / 30 (Instagram-Limit)
+                </span>
+              </div>
+              <TagInput
+                tags={hashtags}
+                onTagsChange={setHashtags}
+                placeholder="#hashtag hinzufügen…"
+              />
+              <div className="flex items-center gap-2 mt-1">
+                <Switch
+                  id="hashtags-in-comment"
+                  checked={hashtagsInComment}
+                  onCheckedChange={setHashtagsInComment}
+                />
+                <Label htmlFor="hashtags-in-comment" className="text-sm font-normal cursor-pointer">
+                  Im ersten Kommentar posten (Instagram-Strategie)
+                </Label>
+              </div>
             </div>
           </BriefingGroup>
 
@@ -410,6 +498,22 @@ function SocialPlannerEditDialog({ item, open, users, channels, onOpenChange, on
                 })}
               </div>
             </div>
+
+            {(assetRequirements.includes("Bild nötig") || assetRequirements.includes("Grafik nötig")) && (
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="edit-alt-text">Alt-Text / Bildbeschreibung</Label>
+                <Textarea
+                  id="edit-alt-text"
+                  rows={2}
+                  value={altText}
+                  onChange={(event) => setAltText(event.target.value)}
+                  placeholder="Beschreibung des Bildes für Screenreader und Barrierefreiheit"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Pflichtfeld für barrierefreie Veröffentlichungen (WCAG).
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="edit-notes">Interne Notizen</Label>
@@ -499,6 +603,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   const { users } = useTenantUsers();
   const { topics, createTopic } = useTopicBacklog();
   const { items, channels, loading, updateItem, createItem, deleteItem } = useSocialPlannerItems();
+  console.log("[PlannerBoard] render", { hasUsers: !!users, topicsCount: topics?.length, itemsCount: items?.length, channelsCount: channels?.length, loading });
 
   const [viewMode, setViewMode] = useState<"calendar" | "kanban">("calendar");
   const [channelFilter, setChannelFilter] = useState<string>("all");
@@ -543,6 +648,11 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   const channelOptions = useMemo(
     () => channels.map((channel) => ({ value: channel.id, label: channel.name })),
     [channels],
+  );
+
+  const allTagSuggestions = useMemo(
+    () => [...new Set(items.flatMap((item) => item.tags))].sort(),
+    [items],
   );
 
   const filteredItems = useMemo(() => {
@@ -965,6 +1075,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
         open={editingItem !== null}
         users={users}
         channels={channels}
+        tagSuggestions={allTagSuggestions}
         onOpenChange={(open) => {
           if (!open) setEditingItemId(null);
         }}

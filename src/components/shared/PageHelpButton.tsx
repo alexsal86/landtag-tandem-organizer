@@ -8,10 +8,22 @@ import {
 interface PageHelpButtonProps {
   title: string;
   description: string;
-  features?: string[];
+  features?: Array<string | { label: string; targetId?: string }>;
 }
 
 export function PageHelpButton({ title, description, features }: PageHelpButtonProps) {
+  const highlightTarget = (targetId?: string) => {
+    if (!targetId) return;
+    const target = document.querySelector<HTMLElement>(`[data-help-id="${targetId}"]`);
+    if (!target) return;
+
+    target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    target.classList.add("ring-2", "ring-primary", "ring-offset-2", "animate-pulse");
+    window.setTimeout(() => {
+      target.classList.remove("ring-2", "ring-primary", "ring-offset-2", "animate-pulse");
+    }, 1800);
+  };
+
   return (
     <HoverCard openDelay={200}>
       <HoverCardTrigger asChild>
@@ -31,7 +43,19 @@ export function PageHelpButton({ title, description, features }: PageHelpButtonP
               {features.map((feature, i) => (
                 <li key={i} className="flex items-start gap-2">
                   <span className="text-primary mt-0.5">•</span>
-                  <span className="text-muted-foreground">{feature}</span>
+                  {typeof feature === "string" ? (
+                    <span className="text-muted-foreground">{feature}</span>
+                  ) : feature.targetId ? (
+                    <button
+                      type="button"
+                      onClick={() => highlightTarget(feature.targetId)}
+                      className="text-left text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-foreground transition-colors"
+                    >
+                      {feature.label}
+                    </button>
+                  ) : (
+                    <span className="text-muted-foreground">{feature.label}</span>
+                  )}
                 </li>
               ))}
             </ul>

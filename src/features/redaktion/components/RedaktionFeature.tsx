@@ -6,33 +6,31 @@ import { useRedaktionSpecialDays } from "@/features/redaktion/hooks/useRedaktion
 import { Button } from "@/components/ui/button";
 
 export function RedaktionFeature() {
+  console.log("[RedaktionFeature] mounted");
   const { data: specialDays = [] } = useRedaktionSpecialDays();
   const [isThemenspeicherOpen, setIsThemenspeicherOpen] = useState(false);
 
   return (
     <div className="p-4 pb-8">
+      {!isThemenspeicherOpen && (
+        <Button
+          type="button"
+          variant="outline"
+          className="fixed right-0 top-1/2 z-30 h-auto -translate-y-1/2 rounded-l-md rounded-r-none border-r-0 px-2 py-3 shadow-md"
+          onClick={() => setIsThemenspeicherOpen(true)}
+        >
+          <span className="flex flex-col items-center gap-2">
+            <Lightbulb className="h-8 w-8" />
+            <span className="[writing-mode:vertical-rl] rotate-180 text-xs font-medium tracking-wide">
+              Themenspeicher
+            </span>
+          </span>
+        </Button>
+      )}
       <div className="flex gap-4">
         {/* Main content */}
         <div className="min-w-0 flex-1">
-          <div className="relative">
-            {/* Themenspeicher toggle button - positioned at card top-right */}
-            {!isThemenspeicherOpen && (
-              <Button
-                type="button"
-                variant="outline"
-                className="absolute right-0 top-0 z-10 h-auto rounded-l-md border px-2 py-3 shadow-md"
-                onClick={() => setIsThemenspeicherOpen(true)}
-              >
-                <span className="flex flex-col items-center gap-2">
-                  <Lightbulb className="h-8 w-8" />
-                  <span className="[writing-mode:vertical-rl] rotate-180 text-xs font-medium tracking-wide">
-                    Themenspeicher
-                  </span>
-                </span>
-              </Button>
-            )}
-            <PlannerBoard specialDays={specialDays} />
-          </div>
+          <PlannerBoard specialDays={specialDays} />
         </div>
 
         {/* Themenspeicher side panel */}

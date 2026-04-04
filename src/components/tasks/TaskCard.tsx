@@ -130,6 +130,7 @@ export function TaskCard({
     : "Zuweisen";
   const CHECKBOX_SIZE = 16;
   const CHECKBOX_CENTER = CHECKBOX_SIZE / 2;
+  const CHECKBOX_TOP_IN_CARD = 12 + 2; // p-3 + mt-0.5
   const CONNECTOR_X = CHECKBOX_CENTER + 8;
   const [parentLineHeight, setParentLineHeight] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
