@@ -78,7 +78,7 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
 
   const { appointmentLink, appointmentRequestNarrative, displayDescription, isAppointmentRequest, isRequestedStartValid, plainDescription, requestedStart, requestedTitle, summary, summaryItems, targetDeputy, winningResponse } = useDecisionCardDerivedData(decision);
 
-  const shouldShowTimeline = isAppointmentRequest && isRequestedStartValid && (isSchedulePinnedOpen || isScheduleHoverOpen);
+  const shouldShowTimeline = isAppointmentRequest && isRequestedStartValid;
   const shouldLoadTimeline = isAppointmentRequest && isRequestedStartValid;
   const timelineWindowMinutes = 6 * 60 + APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES;
   const timelineHeight = 264;
