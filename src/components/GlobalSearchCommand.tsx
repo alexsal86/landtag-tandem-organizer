@@ -635,7 +635,7 @@ export function GlobalSearchCommand() {
             {tasks.map((task) => (
               <CommandItem
                 key={task.id}
-                onSelect={() => runCommand(() => navigate(`/?section=tasks&task=${task.id}`))}
+                onSelect={() => runCommand(() => navigate(`/?section=tasks&task=${task.id}&highlight=${task.id}`))}
               >
                 <CheckSquare className="mr-2 h-4 w-4" />
                 <span>{task.title}</span>
