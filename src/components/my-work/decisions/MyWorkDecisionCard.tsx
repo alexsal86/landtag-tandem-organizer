@@ -222,9 +222,13 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
   useEffect(() => () => {
     clearResponseRefreshTimeout();
   }, []);
+  const lastTimelineKeyRef = useRef<string | null>(null);
   useEffect(() => {
+    let cancelled = false;
     const loadDayTimeline = async () => {
       if (!shouldLoadTimeline || !currentTenant?.id || !requestedStart) return;
+      const requestKey = `${currentTenant.id}|${requestedStart.toISOString()}|${requestedTitle}|${decision.id}`;
+      if (lastTimelineKeyRef.current === requestKey) return;
       setIsTimelineLoading(true);
       try {
         const contextStartIso = new Date(requestedStart.getTime() - 3 * 60 * 60 * 1000).toISOString();
@@ -232,19 +236,22 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
         const contextEndIso = new Date(requestedEndTime.getTime() + 3 * 60 * 60 * 1000).toISOString();
         const { data, error } = await supabase.from("appointments").select("id, title, start_time, end_time").eq("tenant_id", currentTenant.id).lt("start_time", contextEndIso).gt("end_time", contextStartIso).order("start_time", { ascending: true });
         if (error) throw error;
+        if (cancelled) return;
         const existingItems: DayTimelineItem[] = (data || []).map((item) => ({ id: item.id, title: item.title, start: item.start_time, end: item.end_time }));
         const simulatedStart = requestedStart.toISOString();
         const simulatedEnd = new Date(requestedStart.getTime() + APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES * 60 * 1000).toISOString();
         const combined = existingItems.some((item) => item.start === simulatedStart && item.title.trim().toLowerCase() === requestedTitle.trim().toLowerCase()) ? existingItems : [...existingItems, { id: `simulated-${decision.id}`, title: `${requestedTitle} (angefragt)`, start: simulatedStart, end: simulatedEnd, simulated: true }];
         combined.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+        lastTimelineKeyRef.current = requestKey;
         setDayTimelineItems(combined);
       } catch {
-        setDayTimelineItems([]);
+        // Keep existing data on transient errors
       } finally {
-        setIsTimelineLoading(false);
+        if (!cancelled) setIsTimelineLoading(false);
       }
     };
     void loadDayTimeline();
+    return () => { cancelled = true; };
   }, [shouldLoadTimeline, currentTenant?.id, requestedStart, requestedTitle, decision.id]);
 
   const openMailLink = (mailtoUrl: string) => { window.location.href = mailtoUrl; };

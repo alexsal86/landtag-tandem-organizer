@@ -24,7 +24,10 @@ export const useDecisionCardDerivedData = (decision: MyWorkDecision) => {
   const appointmentId = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_APPOINTMENT_MARKER);
   const requestedBy = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_REQUESTER_MARKER) || "Ein Mitarbeiter";
   const targetDeputy = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_TARGET_DEPUTY_MARKER);
-  const requestedStart = requestedStartIso ? new Date(requestedStartIso) : null;
+  const requestedStart = useMemo(
+    () => (requestedStartIso ? new Date(requestedStartIso) : null),
+    [requestedStartIso],
+  );
   const isRequestedStartValid = Boolean(requestedStart && !Number.isNaN(requestedStart.getTime()));
 
   const summary = useMemo(() => getResponseSummary(decision.participants), [decision.participants]);
