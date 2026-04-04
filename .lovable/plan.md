@@ -1,79 +1,41 @@
 
 
-# Drei neue Sidebar-Features
+# Globale Suche verbessern
 
-## 1. Kürzlich besucht
+## Probleme & Lösungen
 
-**Hook: `useRecentlyVisited.ts`**
-- Speichert die letzten 8 besuchten Seiten im `localStorage` (Key: `nav-recently-visited`)
-- Interface: `{ id: string, label: string, icon: string, route: string, visitedAt: number }`
-- `trackVisit(id, label, icon, route)` — fügt hinzu / verschiebt nach oben, begrenzt auf 8 Einträge
-- `recentPages` — sortiert nach `visitedAt` desc
-- Deduplizierung nach `id`
+### 1. Navigation im Dialog entfernen
+Die Navigation-Gruppe (Zeilen 609-624, `navigationItems`) wird angezeigt wenn kein Suchbegriff eingegeben ist. Das ist redundant, da die Navigation bereits in der Sidebar existiert. Diese Gruppe wird komplett entfernt — stattdessen bleiben nur "Zuletzt gesucht" und "Beliebte Suchen" als leerer Zustand.
 
-**Integration in `AppNavigation.tsx`**
-- In `handleNavigationClick` wird `trackVisit()` aufgerufen (Label/Icon aus `navigationGroups` oder `availableQuickPages` ermitteln)
-- Im `renderHomePanel()` wird oberhalb des Schnellzugriffs eine "Kürzlich besucht"-Sektion eingefügt
-- Design: Gleicher Stil wie Schnellzugriff, aber mit `Clock`-Icon statt `Star`, kleinere Schrift (11px), max 5 Einträge sichtbar
-- Klick navigiert zur Seite
+### 2. Dialog verbreitern
+Die `CommandDialog` nutzt `DialogContent` mit `max-w-lg` (32rem). In `command.tsx` wird die `CommandDialog`-Klasse auf `max-w-2xl` (42rem) geändert, um mehr Platz für Ergebnisse zu schaffen.
 
-## 2. Benachrichtigungs-Gruppierung nach Datum
+### 3. Ergebnisse erscheinen erst beim zweiten Öffnen
+Das Problem liegt im Debounce-Timing zusammen mit `cmdk`. Wenn der Dialog mit einer Query via `openGlobalSearch` geöffnet wird, wird `searchQuery` per `queueMicrotask` gesetzt — aber `debouncedQuery` hinkt 500ms hinterher. Zusätzlich: `cmdk` filtert intern nach dem `value`-Prop der Items, aber die Items existieren noch nicht (queries laufen noch). 
 
-**In `renderNotificationsPanel()`**
-- Die bestehende flache Liste (`filteredNotifications.map(...)`) wird ersetzt durch gruppierte Darstellung
-- Gruppierung: `isToday()` → "Heute", `isYesterday()` → "Gestern", Rest → "Älter" (oder konkretes Datum bei < 7 Tagen)
-- Gruppen-Header: `text-[11px] font-semibold text-muted uppercase tracking-wider px-2 mb-1` (gleicher Stil wie Appointments-Panel)
-- Hilfsfunktion `groupNotificationsByDate(notifications)` liefert `{ label: string, items: Notification[] }[]`
-- Keine externen Abhängigkeiten nötig, `isToday`/`isTomorrow` aus `date-fns` sind bereits importiert; `isYesterday` wird zusätzlich importiert
+Lösung: Wenn der Dialog mit einer Query geöffnet wird, wird `debouncedQuery` sofort synchron mitgesetzt (kein Debounce nötig bei programmatischer Öffnung). Der Debounce-Timer wird nur für Tastatureingaben verwendet.
 
-## 3. Beliebige Elemente in den Schnellzugriff pinnen
+### 4. Highlight beim Navigieren zu Ergebnissen
+Aktuell navigiert `runCommand` zu Routes mit Query-Parametern (z.B. `?section=contacts&contact=ID`). Damit das Ergebnis auf der Zielseite visuell hervorgehoben wird:
 
-**Konzept: Drei-Punkte-Menü ("...") auf Element-Ebene**
+- Ein neuer Query-Parameter `highlight=ID` wird an die Navigation-URLs angehängt
+- Ein kleiner shared Hook `useHighlightedItem()` liest `highlight` aus den URL-Params
+- Die relevanten Views (Kontakte, Aufgaben, Fallakten, Dokumente, etc.) nutzen diesen Hook, um das Element mit einem temporären Highlight-Ring (`ring-2 ring-primary animate-pulse`) zu versehen und automatisch dorthin zu scrollen (`scrollIntoView`)
+- Das Highlight verschwindet nach 3 Sekunden automatisch
 
-Auf den jeweiligen Seiten (Fallakten, Planungen, Meetings, Aufgaben, Entscheidungen, Dokumente) wird in den Zeilen/Cards ein `MoreHorizontal`-Icon mit DropdownMenu ergänzt, das u.a. "Zum Schnellzugriff hinzufügen" enthält.
-
-**Erweiterung `useQuickAccessPages`**
-- Das Interface `QuickAccessPage` bekommt ein optionales Feld `type?: 'page' | 'item'` und `entityId?: string`
-- Neue Convenience-Funktion: `addItem(id, label, icon, route)` für Einzelelemente (z.B. eine Fallakte mit Route `/casefiles?highlight=uuid`)
-- `isInQuickAccess(id)` — prüft ob ein Element bereits gepinnt ist
-
-**Shared Component: `QuickAccessMenuItem`**
-- Wiederverwendbare DropdownMenu-Option: `<QuickAccessMenuItem id={...} label={...} icon={...} route={...} />`
-- Nutzt `useQuickAccessPages` intern
-- Zeigt "Zum Schnellzugriff" oder "Aus Schnellzugriff entfernen" je nach Status
-- Icon: `Star` (outline) / `StarOff`
-
-**Integration auf den Seiten** (Drei-Punkte-Menü erweitern):
-- `CaseFilesView` — bei jeder Fallakte im Kontextmenü
-- `EventPlanningListView` — bei jeder Planung
-- `MeetingsView` — bei jedem Jour fixe
-- `DecisionOverview` — bei jeder Entscheidung
-- `KnowledgeBaseView` — bei jedem Dokument
-
-Falls Seiten bereits ein `MoreHorizontal`-Menü haben, wird `QuickAccessMenuItem` als zusätzlicher Eintrag hinzugefügt. Falls nicht, wird ein kleines Drei-Punkte-Menü ergänzt.
-
-**Darstellung im Schnellzugriff**
-- Items mit `type === 'item'` zeigen das jeweilige Icon (z.B. `Briefcase` für Fallakte) statt `Star`
-- Beim Klick wird zur gespeicherten Route navigiert
-
-### Betroffene Dateien
+## Betroffene Dateien
 
 | Datei | Änderung |
 |---|---|
-| `src/hooks/useRecentlyVisited.ts` | Neuer Hook |
-| `src/hooks/useQuickAccessPages.ts` | `type`, `entityId`, `isInQuickAccess` ergänzen |
-| `src/components/AppNavigation.tsx` | Kürzlich-besucht-Sektion, Notifications-Gruppierung, trackVisit-Aufruf |
-| `src/components/shared/QuickAccessMenuItem.tsx` | Neue shared Component |
-| `src/components/my-work/cases/...` | Drei-Punkte-Menü mit QuickAccessMenuItem |
-| `src/components/event-planning/...` | Drei-Punkte-Menü mit QuickAccessMenuItem |
-| `src/components/meetings/...` | Drei-Punkte-Menü mit QuickAccessMenuItem |
-| `src/components/task-decisions/...` | Drei-Punkte-Menü mit QuickAccessMenuItem |
-| `src/components/KnowledgeBaseView.tsx` | Drei-Punkte-Menü mit QuickAccessMenuItem |
+| `src/components/GlobalSearchCommand.tsx` | Navigation entfernen, debouncedQuery sofort setzen bei programmatischer Öffnung, `highlight`-Param an URLs |
+| `src/components/ui/command.tsx` | `max-w-lg` → `max-w-2xl` in CommandDialog |
+| `src/hooks/useHighlightedItem.ts` | Neuer Hook: liest `highlight` aus URL, gibt `isHighlighted(id)` + Ref-Callback zurück |
+| Diverse Views (Kontakte-Liste, Aufgaben-Liste, Fallakten-Liste, etc.) | `useHighlightedItem` integrieren für Scroll + Ring-Animation |
 
-### Umsetzungsreihenfolge
+## Umsetzungsreihenfolge
 
-1. `useRecentlyVisited` Hook + Integration in AppNavigation
-2. Notifications-Gruppierung in `renderNotificationsPanel`
-3. `QuickAccessPages`-Erweiterung + `QuickAccessMenuItem`-Component
-4. Drei-Punkte-Menüs auf den 5 wichtigsten Seiten einbauen
+1. Navigation-Gruppe entfernen + Dialog verbreitern
+2. Debounce-Bug fixen (sofortige Query bei programmatischer Öffnung)
+3. `useHighlightedItem` Hook erstellen
+4. Highlight-Integration in den wichtigsten Views
 
