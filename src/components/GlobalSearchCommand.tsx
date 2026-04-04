@@ -654,7 +654,7 @@ export function GlobalSearchCommand() {
             {documents.map((doc) => (
               <CommandItem
                 key={doc.id}
-                onSelect={() => runCommand(() => navigate(`/?section=documents&document=${doc.id}`))}
+                onSelect={() => runCommand(() => navigate(`/?section=documents&document=${doc.id}&highlight=${doc.id}`))}
               >
                 <FileText className="mr-2 h-4 w-4" />
                 <span>{doc.title}</span>
