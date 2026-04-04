@@ -117,9 +117,11 @@ export function GlobalSearchCommand() {
       setOpen(true);
 
       if (detail?.query) {
-        queueMicrotask(() => {
-          setSearchQuery(detail.query);
-        });
+        // Set both searchQuery and debouncedQuery immediately to avoid waiting for debounce
+        setSearchQuery(detail.query);
+        setDebouncedQuery(detail.query);
+        // Clear any pending debounce timer
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       }
     };
     window.addEventListener('openGlobalSearch', handleOpenSearch);
