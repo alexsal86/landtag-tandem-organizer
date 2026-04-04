@@ -184,8 +184,7 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
       responseRefreshTimeoutRef.current = null;
     }
   };
-  const openScheduleHover = () => {};
-  const closeScheduleHover = () => {};
+  // hover handlers removed – HoverCard handles open/close natively
 
   const handleResponseSubmitted = (meta?: { responseType: string; color?: string }) => {
     clearResponseRefreshTimeout();
