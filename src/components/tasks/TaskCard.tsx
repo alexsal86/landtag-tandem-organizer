@@ -126,9 +126,10 @@ export function TaskCard({
     : "Zuweisen";
   const CHECKBOX_SIZE = 16;
   const CHECKBOX_CENTER = CHECKBOX_SIZE / 2;
+  const CHECKBOX_TOP_IN_CARD = 12 + 2; // p-3 + mt-0.5
   const CONNECTOR_X = CHECKBOX_CENTER + 8;
-  const PARENT_LINE_START_TOP = 6;
-  const CHILD_CONNECTOR_TARGET_TOP = 16;
+  const PARENT_LINE_START_TOP = CHECKBOX_TOP_IN_CARD + CHECKBOX_CENTER;
+  const CHILD_CONNECTOR_TARGET_TOP = CHECKBOX_TOP_IN_CARD + CHECKBOX_CENTER;
   const [parentLineHeight, setParentLineHeight] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const childrenRef = useRef<HTMLDivElement>(null);
