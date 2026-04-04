@@ -5,6 +5,7 @@ export interface QuickAccessPage {
   label: string;
   icon: string; // lucide icon name
   route: string;
+  type?: 'page' | 'item';
 }
 
 const STORAGE_KEY = 'nav-quick-access-pages';
@@ -48,5 +49,9 @@ export function useQuickAccessPages() {
     savePages(newPages);
   }, []);
 
-  return { pages, addPage, removePage, reorderPages };
+  const isInQuickAccess = useCallback((id: string) => {
+    return pages.some(p => p.id === id);
+  }, [pages]);
+
+  return { pages, addPage, removePage, reorderPages, isInQuickAccess };
 }

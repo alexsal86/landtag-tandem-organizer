@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { CalendarIcon, Clock, Plus, Edit, Check, X, Trash, Repeat, Archive, Globe, CheckCircle, ChevronRight, MapPin } from "lucide-react";
+import { CalendarIcon, Clock, Plus, Edit, Check, X, Trash, Repeat, Archive, Globe, CheckCircle, ChevronRight, MapPin, MoreVertical } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { QuickAccessMenuItem } from "@/components/shared/QuickAccessMenuItem";
 import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
 import { InlineMeetingParticipantsEditor } from "@/components/meetings/InlineMeetingParticipantsEditor";
 import { MeetingParticipantAvatars } from "@/components/meetings/MeetingParticipantAvatars";
@@ -166,6 +168,21 @@ export function MeetingSidebar({
                         </AlertDialog>
                       </>
                     )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => e.stopPropagation()}>
+                          <MoreVertical className="h-3.5 w-3.5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <QuickAccessMenuItem
+                          id={`meeting-${meeting.id}`}
+                          label={meeting.title}
+                          icon="Calendar"
+                          route={`/meetings?highlight=${meeting.id}`}
+                        />
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   </div>
                 </div>
