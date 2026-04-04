@@ -223,7 +223,6 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
 
   useEffect(() => () => {
     clearResponseRefreshTimeout();
-    clearScheduleHoverTimeout();
   }, []);
   useEffect(() => {
     const loadDayTimeline = async () => {
