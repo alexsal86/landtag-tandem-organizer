@@ -63,12 +63,12 @@ All colors MUST be HSL.
 
     --radius: 0.5rem;
 
-    /* Navigation Light Mode - Notion-style hell */
-    --nav: 0 0% 97%;
+    /* Navigation Light Mode - etwas dunkler für klarere Abhebung */
+    --nav: 0 0% 92%;
     --nav-foreground: 0 0% 15%;
-    --nav-accent: 0 0% 85%;
-    --nav-hover: 0 0% 93%;
-    --nav-active-bg: 0 0% 90%;
+    --nav-accent: 0 0% 80%;
+    --nav-hover: 0 0% 88%;
+    --nav-active-bg: 0 0% 84%;
     --nav-muted: 0 0% 55%;
     
     /* Header - heller Hintergrund */

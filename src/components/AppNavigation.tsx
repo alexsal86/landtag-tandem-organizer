@@ -1022,75 +1022,56 @@ export function AppNavigation({
 
         {/* User Avatar + Quick Actions (bottom-left on Home) */}
         <div className="border-t border-border px-2 py-2 shrink-0">
-          <div className="flex items-center gap-2 px-1">
-            <UserStatusSelector showOnlineUsers>
-              <button className="relative shrink-0 rounded-full hover:ring-2 hover:ring-primary/30 transition-all">
-                <Avatar className="h-7 w-7">
-                  <AvatarImage src={userProfile?.avatar_url || undefined} />
-                  <AvatarFallback className="text-[10px]">
-                    {userProfile?.display_name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-                {statusDisplay && (
-                  <span className="absolute -bottom-0.5 -right-0.5 text-[10px]">
-                    {statusDisplay.emoji}
-                  </span>
-                )}
-              </button>
-            </UserStatusSelector>
+          <div className="flex items-center justify-between gap-1 px-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setHelpDialogOpen(true)}
+                  className="h-8 w-8 rounded-md flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors"
+                  aria-label="Information"
+                >
+                  <HelpCircle className="h-3.5 w-3.5 text-[hsl(var(--nav-muted))]" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">Information</TooltipContent>
+            </Tooltip>
 
-            <span className="h-5 w-px bg-border" aria-hidden="true" />
-
-            <div className="flex items-center gap-1">
+            {showEmployeePage && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    onClick={() => setHelpDialogOpen(true)}
-                    className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors"
-                    aria-label="Hilfe"
+                    onClick={() => handleNavigationClick('employee')}
+                    className="h-8 w-8 rounded-md flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors"
+                    aria-label="Team"
                   >
-                    <HelpCircle className="h-3.5 w-3.5 text-[hsl(var(--nav-muted))]" />
+                    <Users className="h-3.5 w-3.5 text-[hsl(var(--nav-muted))]" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="top" className="text-xs">Hilfe</TooltipContent>
+                <TooltipContent side="top" className="text-xs">Team</TooltipContent>
               </Tooltip>
+            )}
 
-              {showEmployeePage && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() => handleNavigationClick('employee')}
-                      className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors"
-                      aria-label="Mitarbeiter"
-                    >
-                      <Users className="h-3.5 w-3.5 text-[hsl(var(--nav-muted))]" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="text-xs">Mitarbeiter</TooltipContent>
-                </Tooltip>
-              )}
-
-              {hasAdminAccess && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() => handleNavigationClick('administration')}
-                      className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors"
-                      aria-label="Admin"
-                    >
-                      <Shield className="h-3.5 w-3.5 text-[hsl(var(--nav-muted))]" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="text-xs">Admin</TooltipContent>
-                </Tooltip>
-              )}
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors" aria-label="Einstellungen">
-                    <Settings className="h-3.5 w-3.5 text-[hsl(var(--nav-muted))]" />
+            {hasAdminAccess && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => handleNavigationClick('administration')}
+                    className="h-8 w-8 rounded-md flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors"
+                    aria-label="Admin"
+                  >
+                    <Shield className="h-3.5 w-3.5 text-[hsl(var(--nav-muted))]" />
                   </button>
-                </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">Admin</TooltipContent>
+              </Tooltip>
+            )}
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="h-8 w-8 rounded-md flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors" aria-label="Einstellungen">
+                  <Settings className="h-3.5 w-3.5 text-[hsl(var(--nav-muted))]" />
+                </button>
+              </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" side="right" align="end">
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
@@ -1113,8 +1094,26 @@ export function AppNavigation({
                     Abmelden
                   </DropdownMenuItem>
                 </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+            </DropdownMenu>
+
+            <UserStatusSelector showOnlineUsers>
+              <button
+                className="relative h-8 w-8 rounded-md flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors"
+                aria-label="Profil"
+              >
+                <Avatar className="h-6 w-6">
+                  <AvatarImage src={userProfile?.avatar_url || undefined} />
+                  <AvatarFallback className="text-[10px]">
+                    {userProfile?.display_name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                {statusDisplay && (
+                  <span className="absolute -bottom-0.5 -right-0.5 text-[10px]">
+                    {statusDisplay.emoji}
+                  </span>
+                )}
+              </button>
+            </UserStatusSelector>
           </div>
         </div>
       </nav>
