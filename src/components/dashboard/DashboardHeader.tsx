@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ComponentType } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { CircleHelp, Users, Shield, Settings, CalendarX2 } from 'lucide-react';
+import { CircleHelp, Users, Shield, Settings, Sun, Moon, CloudSun, CloudMoon, Cloud, CloudFog, Wind, CloudRain, CloudSnow, CloudLightning } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentTimeSlot, getGreeting } from '@/utils/dashboard/timeUtils';
-import { getWeather, getWeatherIcon } from '@/utils/dashboard/weatherApi';
+import { getWeather } from '@/utils/dashboard/weatherApi';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
@@ -51,6 +51,25 @@ export const DashboardHeader = () => {
     weatherStuttgart ? { city: 'Stuttgart', ...weatherStuttgart } : null,
   ].filter((item): item is { city: string; temp: number; icon: string } => item !== null);
 
+  const getWeatherLucideIcon = (condition: string) => {
+    const iconMap: Record<string, ComponentType<{ className?: string }>> = {
+      'clear-day': Sun,
+      'clear-night': Moon,
+      'partly-cloudy-day': CloudSun,
+      'partly-cloudy-night': CloudMoon,
+      'cloudy': Cloud,
+      'fog': CloudFog,
+      'wind': Wind,
+      'rain': CloudRain,
+      'sleet': CloudSnow,
+      'snow': CloudSnow,
+      'hail': CloudSnow,
+      'thunderstorm': CloudLightning,
+    };
+
+    return iconMap[condition] || CloudSun;
+  };
+
   const lowerNavItems = [
     { label: 'Info', icon: CircleHelp, onClick: () => navigate('/mywork?tab=dashboard') },
     { label: 'Team', icon: Users, onClick: () => navigate('/mywork?tab=team') },
@@ -59,27 +78,32 @@ export const DashboardHeader = () => {
   ];
 
   return (
-    <div className="rounded-2xl bg-slate-950 text-slate-50 shadow-xl">
+    <div className="rounded-2xl border bg-background">
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 p-6 pb-5">
-        <div className="space-y-2">
-          <p className="text-lg font-medium text-slate-200 capitalize">{dayDate}</p>
-          <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
+        <div className="space-y-1">
+          <p className="text-lg font-medium text-foreground/80 capitalize">{dayDate}</p>
+          <h1 className="text-3xl font-semibold tracking-tight">
             {greeting}, {userName}!
           </h1>
         </div>
 
         <div className="flex items-end justify-end gap-6">
           {weatherItems.map((item) => (
-            <div key={item.city} className="min-w-[7rem]">
-              <p className="text-4xl leading-none">{getWeatherIcon(item.icon)}</p>
-              <p className="mt-1 text-xs text-slate-300">{item.city}</p>
-              <p className="text-3xl font-semibold leading-tight">{Math.round(item.temp)}°C</p>
+            <div key={item.city} className="flex items-center gap-3 min-w-[9rem]">
+              {(() => {
+                const Icon = getWeatherLucideIcon(item.icon);
+                return <Icon className="h-10 w-10 text-muted-foreground" />;
+              })()}
+              <div>
+                <p className="text-sm text-muted-foreground">{item.city}</p>
+                <p className="text-3xl font-semibold leading-tight">{Math.round(item.temp)}°C</p>
+              </div>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="border-t border-slate-800/90 px-4 py-3">
+      <div className="border-t px-4 py-3">
         <div className="flex items-center justify-end gap-2">
           {lowerNavItems.map(({ label, icon: Icon, onClick }) => (
             <button
@@ -89,7 +113,7 @@ export const DashboardHeader = () => {
               onClick={onClick}
               className={cn(
                 'inline-flex h-10 w-10 items-center justify-center rounded-full',
-                'text-slate-300 transition-colors hover:bg-slate-800 hover:text-white',
+                'text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
               )}
             >
               <Icon className="h-5 w-5" />
@@ -102,12 +126,12 @@ export const DashboardHeader = () => {
             onClick={() => navigate('/profile/edit')}
             className={cn(
               'inline-flex h-10 w-10 items-center justify-center rounded-full',
-              'ring-1 ring-slate-700 transition-colors hover:ring-slate-500',
+              'ring-1 ring-border transition-colors hover:ring-muted-foreground/40',
             )}
           >
             <Avatar className="h-10 w-10">
               <AvatarImage src={avatarUrl ?? undefined} alt={userName} />
-              <AvatarFallback className="bg-slate-700 text-slate-100 text-sm">
+              <AvatarFallback className="text-sm">
                 {userName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
