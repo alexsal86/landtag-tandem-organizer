@@ -20,13 +20,9 @@ import {
   FileText, 
   Mail, 
   FileSignature,
-  Home,
   Users,
   Vote,
-  MessageSquare,
   CalendarPlus,
-  MapPin,
-  Settings,
   Briefcase
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
