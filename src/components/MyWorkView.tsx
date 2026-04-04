@@ -165,9 +165,15 @@ export function MyWorkView() {
         <div className="flex shrink-0 items-center gap-2 pb-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" className="gap-1" data-help-id="mywork-new-menu">
+              <Button
+                size="sm"
+                className="group h-9 w-9 rounded-full px-0 transition-all duration-200 ease-out hover:w-[5.25rem] hover:px-3 focus-visible:w-[5.25rem] focus-visible:px-3 data-[state=open]:w-[5.25rem] data-[state=open]:px-3"
+                data-help-id="mywork-new-menu"
+              >
                 <Plus className="h-4 w-4" />
-                Neu
+                <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 ease-out group-hover:ml-1 group-hover:max-w-12 group-hover:opacity-100 group-focus-visible:ml-1 group-focus-visible:max-w-12 group-focus-visible:opacity-100 group-data-[state=open]:ml-1 group-data-[state=open]:max-w-12 group-data-[state=open]:opacity-100">
+                  Neu
+                </span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
