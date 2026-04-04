@@ -795,7 +795,7 @@ export function GlobalSearchCommand() {
             {archivedTasks.map((task) => (
               <CommandItem
                 key={task.id}
-                onSelect={() => runCommand(() => navigate(`/?section=tasks&archived=true&task=${task.id}`))}
+                onSelect={() => runCommand(() => navigate(`/?section=tasks&archived=true&task=${task.id}&highlight=${task.id}`))}
               >
                 <CheckSquare className="mr-2 h-4 w-4" />
                 <span>{task.title}</span>
