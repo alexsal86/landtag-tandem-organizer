@@ -692,7 +692,7 @@ export function GlobalSearchCommand() {
             {protocols.map((protocol) => (
               <CommandItem
                 key={protocol.id}
-                onSelect={() => runCommand(() => navigate(`/?section=meetings&meeting=${protocol.id}`))}
+                onSelect={() => runCommand(() => navigate(`/?section=meetings&meeting=${protocol.id}&highlight=${protocol.id}`))}
               >
                 <FileSignature className="mr-2 h-4 w-4" />
                 <span>{protocol.title}</span>
