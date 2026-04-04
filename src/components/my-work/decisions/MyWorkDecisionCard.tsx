@@ -63,7 +63,6 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
   const [showCommentPrompt, setShowCommentPrompt] = useState(false);
   const [showCommentEditor, setShowCommentEditor] = useState(false);
   const [isSchedulePinnedOpen, setIsSchedulePinnedOpen] = useState(false);
-  const [isScheduleHoverOpen, setIsScheduleHoverOpen] = useState(false);
   const [dayTimelineItems, setDayTimelineItems] = useState<DayTimelineItem[]>([]);
   const [isTimelineLoading, setIsTimelineLoading] = useState(false);
   const [commentDraft, setCommentDraft] = useState("");
