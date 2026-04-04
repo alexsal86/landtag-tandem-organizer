@@ -4,9 +4,11 @@ import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { buildFooterBlocksFromStored, resolveBlockWidthMm } from '@/components/letters/footerBlockUtils';
 import { debugConsole } from '@/utils/debugConsole';
+import { buildVariableMap } from '@/lib/letterVariables';
+import { getLetterAssetPublicUrl } from '@/components/letters/letterAssetUrls';
 import type { FooterLineBlock } from '@/components/letters/footerBlockUtils';
 import type { BlockLine } from '@/components/letters/BlockLineEditor';
-import type { DbInformationBlock, DbLetterAttachment, DbSenderInformation, HeaderImagePosition, InformationBlockData, LetterPdfGenerationResult, LetterRecord, LetterTemplate } from '@/components/letter-pdf/types';
+import type { DbInformationBlock, DbLetterAttachment, DbSenderInformation, DbContact, HeaderImagePosition, InformationBlockData, LetterPdfGenerationResult, LetterRecord, LetterTemplate } from '@/components/letter-pdf/types';
 import { DEFAULT_DIN5008_LAYOUT, isLetterLayoutSettings, type LetterLayoutSettings } from '@/types/letterLayout';
 
 type HeaderTextElement = {
@@ -92,6 +94,51 @@ export const generateLetterPDF = async (letter: LetterRecord): Promise<LetterPdf
         attachments = attachmentData ?? [];
       }
     }
+
+    // Fetch contact for variable substitution
+    let contact: DbContact | null = null;
+    if (letter.contact_id) {
+      const { data: contactData } = await supabase
+        .from('contacts')
+        .select('id, name, gender, last_name, business_street, business_house_number, business_postal_code, business_city, business_country, title')
+        .eq('id', letter.contact_id)
+        .maybeSingle();
+      contact = contactData as DbContact | null;
+    }
+
+    // Build variable map for substitution
+    const recipientVarData = contact ? {
+      name: contact.name,
+      street: [contact.business_street, contact.business_house_number].filter(Boolean).join(' '),
+      postal_code: contact.business_postal_code || '',
+      city: contact.business_city || '',
+      country: contact.business_country || '',
+      gender: contact.gender || '',
+      title: contact.title || '',
+      last_name: contact.last_name || contact.name?.split(' ').pop() || '',
+    } : letter.recipient_name ? { name: letter.recipient_name, street: '', postal_code: '', city: '', country: '' } : null;
+
+    const senderVarData = senderInfo ? {
+      name: senderInfo.name ?? undefined, organization: senderInfo.organization ?? undefined,
+      landtag_street: senderInfo.landtag_street ?? undefined,
+      landtag_house_number: senderInfo.landtag_house_number ?? undefined,
+      landtag_postal_code: senderInfo.landtag_postal_code ?? undefined,
+      landtag_city: senderInfo.landtag_city ?? undefined,
+      wahlkreis_street: senderInfo.wahlkreis_street ?? undefined,
+      wahlkreis_house_number: senderInfo.wahlkreis_house_number ?? undefined,
+      wahlkreis_postal_code: senderInfo.wahlkreis_postal_code ?? undefined,
+      wahlkreis_city: senderInfo.wahlkreis_city ?? undefined,
+      phone: senderInfo.phone ?? undefined,
+      wahlkreis_email: senderInfo.wahlkreis_email ?? undefined,
+      landtag_email: senderInfo.landtag_email ?? undefined,
+      return_address_line: senderInfo.return_address_line ?? undefined,
+      website: senderInfo.website ?? undefined,
+    } : null;
+
+    const varMap = buildVariableMap(
+      { subject: letter.subject || '', letterDate: letter.letter_date || undefined, referenceNumber: letter.reference_number || undefined },
+      senderVarData, recipientVarData, null, attachments.map(a => ({ file_path: a.file_path || '', file_name: a.file_name ?? undefined, title: a.display_name ?? undefined, file_type: a.file_type ?? undefined, file_size: a.file_size ?? undefined }))
+    );
 
     // HTML to text conversion (EXACT copy from LetterPDFExport)
     const convertHtmlToText = (html: string): string => {
@@ -332,8 +379,7 @@ export const generateLetterPDF = async (letter: LetterRecord): Promise<LetterPdf
       pdf.line(foldHoleMarks.left, foldHoleMarks.bottomMarkY, foldHoleMarks.left + foldHoleMarks.foldMarkWidth, foldHoleMarks.bottomMarkY);
     };
     
-    // Draw debug guides for page 1 (ALWAYS ENABLED for testing)
-    drawDebugGuides(1);
+    // Draw fold and hole marks (always rendered)
     drawFoldAndHoleMarks();
     
     // Footer content from template
@@ -591,12 +637,35 @@ export const generateLetterPDF = async (letter: LetterRecord): Promise<LetterPdf
       pdf.text(subjectText, leftMargin, contentTop + 3);
     }
     
+    const lineHeight = layoutSettings.content?.lineHeight || 4.5;
+
+    // Salutation (with variable substitution)
+    let contentStartY = contentTop + 12;
+    if (letter.subject || letter.title) {
+      contentStartY += 8;
+    }
+
+    let salutationText = layoutSettings.salutation?.template || '';
+    if (salutationText === '{{anrede}}') {
+      salutationText = varMap['{{anrede}}'] || 'Sehr geehrte Damen und Herren,';
+    } else if (salutationText.includes('{{')) {
+      for (const [placeholder, value] of Object.entries(varMap)) {
+        salutationText = salutationText.split(placeholder).join(value);
+      }
+    }
+    if (salutationText) {
+      const salutationFontSize = layoutSettings.salutation?.fontSize || contentFontSize;
+      pdf.setFontSize(salutationFontSize);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(salutationText, leftMargin, contentStartY);
+      contentStartY += lineHeight;
+    }
+
     // Letter content
     pdf.setFontSize(contentFontSize);
     pdf.setFont('helvetica', 'normal');
     
     const contentText = letter.content_html ? convertHtmlToText(letter.content_html) : letter.content;
-    const lineHeight = 4.5;
     
     // Add pagination tracking
     let currentPage = 1;
@@ -613,15 +682,13 @@ export const generateLetterPDF = async (letter: LetterRecord): Promise<LetterPdf
         
         const lines = pdf.splitTextToSize(paragraph.trim(), currentMaxWidth);
         
-        lines.forEach((line: string, lineIndex: number) => {
+        lines.forEach((line: string) => {
           // Check if we need a new page (keep space for footer and pagination)
           if (currentY > contentBottom) {
             pdf.addPage();
             letterPages++;
             currentPage++;
             
-            // Draw debug guides for new pages
-            drawDebugGuides(currentPage);
             drawFoldAndHoleMarks();
             
             // Add footer for new page using template footer blocks
@@ -648,13 +715,73 @@ export const generateLetterPDF = async (letter: LetterRecord): Promise<LetterPdf
       return currentY;
     };
     
-    // Render content starting after subject
-    let contentStartY = contentTop + 12;
-    if (letter.subject || letter.title) {
-      contentStartY += 8;
-    }
+    let endY = renderContentText(contentText, contentStartY);
     
-    renderContentText(contentText, contentStartY);
+    // Closing formula and signature
+    if (layoutSettings.closing?.formula) {
+      endY += lineHeight; // blank line before closing
+      pdf.setFontSize(layoutSettings.closing?.fontSize || contentFontSize);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(layoutSettings.closing.formula, leftMargin, endY);
+      endY += lineHeight;
+      
+      // Signature image
+      const signatureImagePath = layoutSettings.closing?.signatureImagePath;
+      if (signatureImagePath) {
+        const signatureUrl = getLetterAssetPublicUrl(signatureImagePath);
+        if (signatureUrl) {
+          try {
+            const response = await fetch(signatureUrl);
+            if (response.ok) {
+              const blob = await response.blob();
+              const base64 = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              });
+              const sigHeight = 9;
+              pdf.addImage(base64, 'PNG', leftMargin, endY, 30, sigHeight);
+              endY += sigHeight + 1;
+            }
+          } catch (e) {
+            debugConsole.warn('Could not load signature image:', e);
+            endY += 13.5;
+          }
+        } else {
+          endY += 13.5;
+        }
+      } else {
+        endY += 4.5;
+      }
+      
+      // Signature name
+      if (layoutSettings.closing?.signatureName) {
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(layoutSettings.closing.signatureName, leftMargin, endY);
+        endY += lineHeight;
+      }
+      if (layoutSettings.closing?.signatureTitle) {
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(layoutSettings.closing.signatureTitle, leftMargin, endY);
+        endY += lineHeight;
+      }
+    }
+
+    // Attachments list
+    if (attachments.length > 0) {
+      const hasSignature = !!layoutSettings.closing?.signatureImagePath;
+      endY += hasSignature ? lineHeight : lineHeight * 3;
+      pdf.setFontSize(contentFontSize);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Anlagen:', leftMargin, endY);
+      endY += lineHeight;
+      attachments.forEach(a => {
+        const name = a.display_name || a.file_name;
+        pdf.text(`  ${name}`, leftMargin + 5, endY);
+        endY += lineHeight;
+      });
+    }
     
     // Add pagination to all pages
     if (hasPagination) {
@@ -664,18 +791,6 @@ export const generateLetterPDF = async (letter: LetterRecord): Promise<LetterPdf
       }
       
       const paginationY = paginationTop;
-      
-      // Debug pagination box
-      pdf.setFontSize(6);
-      pdf.setDrawColor(255, 0, 255);
-      pdf.setLineWidth(0.1);
-      const pageText = `Seite ${page} von ${letterPages}`;
-      const pageTextWidth = pdf.getTextWidth(pageText);
-      const pageTextX = (pageWidth - pageTextWidth) / 2;
-      pdf.rect(pageTextX - 2, paginationY - 3, pageTextWidth + 4, 5);
-      pdf.setTextColor(255, 0, 255);
-      pdf.setFontSize(6);
-      pdf.text("Pagination: 4.23mm über Fußzeile", pageTextX, paginationY - 4);
       
       // Add page number at right edge with configured pagination font size
       pdf.setFontSize(layoutSettings.pagination?.fontSize ?? 8);

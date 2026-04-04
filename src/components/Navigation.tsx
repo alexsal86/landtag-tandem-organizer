@@ -91,7 +91,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   };
 
   return (
-    <Sidebar collapsible="icon" className="border-r">
+    <Sidebar collapsible="icon" className="border-r text-sm">
       <SidebarHeader className="border-b h-12">
         <SidebarMenu>
           <SidebarMenuItem>
@@ -112,8 +112,8 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                 </div>
               )}
               {!isCollapsed && (
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">{appSettings.app_name}</span>
+                <div className="grid flex-1 text-left leading-tight">
+                  <span className="truncate text-base font-semibold">{appSettings.app_name}</span>
                   <span className="truncate text-xs">{appSettings.app_subtitle}</span>
                 </div>
               )}
@@ -128,7 +128,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
           <div className="flex items-center justify-between px-2">
             {!isCollapsed ? (
               <>
-                <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+                <SidebarGroupLabel className="text-sm">Navigation</SidebarGroupLabel>
                 <SidebarTrigger />
               </>
             ) : (
@@ -167,11 +167,11 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                               <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-destructive animate-pulse" />
                             )}
                           </div>
-                          {!isCollapsed && <span>{item.label}</span>}
+                          {!isCollapsed && <span className="text-sm">{item.label}</span>}
                         </div>
                         {/* Matrix unread badge for expanded sidebar */}
                         {!isCollapsed && item.id === 'chat' && matrixUnreadCount > 0 && (
-                          <Badge variant="destructive" className="ml-auto text-xs">
+                          <Badge variant="destructive" className="ml-auto text-sm">
                             {matrixUnreadCount > 99 ? '99+' : matrixUnreadCount}
                           </Badge>
                         )}
@@ -203,8 +203,8 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                               {contextNotifications.map(notification => (
                                 <div key={notification.id} className="p-2 rounded border-l-2 border-l-primary bg-muted/50">
                                   <p className="text-sm font-medium">{notification.title}</p>
-                                  <p className="text-xs text-muted-foreground line-clamp-2">{notification.message}</p>
-                                  <p className="text-xs text-muted-foreground mt-1">
+                                  <p className="text-sm text-muted-foreground line-clamp-2">{notification.message}</p>
+                                  <p className="text-sm text-muted-foreground mt-1">
                                     {new Date(notification.created_at).toLocaleString('de-DE')}
                                   </p>
                                 </div>
@@ -239,7 +239,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                           isCollapsed && "justify-center"
                         )}>
                           <Shield />
-                          {!isCollapsed && <span>Administration</span>}
+                          {!isCollapsed && <span className="text-sm">Administration</span>}
                         </div>
                         {!isCollapsed && navigationCounts['administration'] > 0 && (
                           <NavigationBadge 
@@ -265,8 +265,8 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                               {contextNotifications.map(notification => (
                                 <div key={notification.id} className="p-2 rounded border-l-2 border-l-primary bg-muted/50">
                                   <p className="text-sm font-medium">{notification.title}</p>
-                                  <p className="text-xs text-muted-foreground line-clamp-2">{notification.message}</p>
-                                  <p className="text-xs text-muted-foreground mt-1">
+                                  <p className="text-sm text-muted-foreground line-clamp-2">{notification.message}</p>
+                                  <p className="text-sm text-muted-foreground mt-1">
                                     {new Date(notification.created_at).toLocaleString('de-DE')}
                                   </p>
                                 </div>

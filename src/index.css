@@ -63,17 +63,17 @@ All colors MUST be HSL.
 
     --radius: 0.5rem;
 
-    /* Navigation Light Mode - Neutrales Grau */
-    --nav: 220 15% 20%;                  /* Dunkles Grau */
-    --nav-foreground: 0 0% 98%;          /* Weiß */
-    --nav-accent: 220 15% 40%;           /* Helleres Grau für Akzent */
-    --nav-hover: 220 15% 25%;
-    --nav-active-bg: 220 15% 30%;
-    --nav-muted: 220 10% 55%;
+    /* Navigation Light Mode - Notion-style hell */
+    --nav: 0 0% 97%;
+    --nav-foreground: 0 0% 15%;
+    --nav-accent: 0 0% 85%;
+    --nav-hover: 0 0% 93%;
+    --nav-active-bg: 0 0% 90%;
+    --nav-muted: 0 0% 55%;
     
-    /* Header gleiche Farbe wie Navigation */
-    --header-background: 220 15% 20%;
-    --header-border: 220 15% 28%;
+    /* Header - heller Hintergrund */
+    --header-background: 0 0% 100%;
+    --header-border: 210 15% 88%;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -130,17 +130,17 @@ All colors MUST be HSL.
     --shadow-card: 0 4px 20px -4px rgba(0, 0, 0, 0.5);
     --shadow-elegant: 0 8px 30px -6px rgba(0, 0, 0, 0.7);
     
-    /* Navigation Dark Mode - Neutrales Dunkelgrau */
-    --nav: 222 84% 8%;                   /* Dunkles Blau-Grau */
-    --nav-foreground: 210 40% 95%;       /* Weiß */
-    --nav-accent: 215 25% 45%;           /* Gedämpftes Blau-Grau */
-    --nav-hover: 222 60% 12%;
-    --nav-active-bg: 222 60% 18%;
-    --nav-muted: 215 20% 55%;
+    /* Navigation Dark Mode */
+    --nav: 220 10% 12%;
+    --nav-foreground: 210 20% 85%;
+    --nav-accent: 220 10% 25%;
+    --nav-hover: 220 10% 16%;
+    --nav-active-bg: 220 10% 20%;
+    --nav-muted: 215 15% 50%;
     
-    /* Header Dark Mode - gleiche Farbe wie Navigation */
-    --header-background: 222 84% 8%;
-    --header-border: 222 60% 15%;
+    /* Header Dark Mode */
+    --header-background: 222 84% 5%;
+    --header-border: 217 32% 20%;
 
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;

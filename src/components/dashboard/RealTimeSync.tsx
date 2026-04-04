@@ -105,7 +105,7 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
   const initializeRealTimeSync = async () => {
     try {
       // Setup presence tracking
-      const channel = supabase.channel('dashboard_presence', {
+      const channel = supabase.channel(`dashboard_presence_${user?.id}_${crypto.randomUUID()}`, {
         config: {
           presence: {
             key: user?.id
@@ -198,7 +198,7 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
       
       // Setup real-time listener for database changes
       const subscription = supabase
-        .channel('dashboard_changes')
+        .channel(`dashboard_changes_${user?.id}_${crypto.randomUUID()}`)
         .on('postgres_changes', {
           event: 'UPDATE',
           schema: 'public',
@@ -267,7 +267,8 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
     if (!isConnected) return;
 
     try {
-      const channel = supabase.channel('dashboard_presence');
+      const channel = channelRef.current;
+      if (!channel) return;
       await channel.send({
         type: 'broadcast',
         event: 'layout_update',

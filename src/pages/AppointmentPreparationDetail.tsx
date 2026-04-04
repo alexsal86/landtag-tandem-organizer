@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Edit, FileText, Upload, Calendar, Clock, MapPin, Briefcase, ExternalLink, Notebook } from "lucide-react";
+import { ArrowLeft, Edit, FileText, Upload, Calendar, Clock, MapPin, Briefcase, ExternalLink, Notebook, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ import { AppointmentPreparationFileUpload } from "@/components/appointments/Appo
 import { AppointmentDetailsSidebar } from "@/components/calendar/AppointmentDetailsSidebar";
 import { AppointmentBriefingView } from "@/components/appointment-preparations/AppointmentBriefingView";
 import { supabase } from "@/integrations/supabase/client";
+import { generateBriefingPdf } from "@/components/appointment-preparations/briefingPdfGenerator";
 import { useAuth } from "@/hooks/useAuth";
 import { debugConsole } from "@/utils/debugConsole";
 import { useTenant } from "@/hooks/useTenant";
@@ -47,6 +48,7 @@ export default function AppointmentPreparationDetail() {
   const [appointmentInfo, setAppointmentInfo] = useState<AppointmentPreparationAppointmentDetails | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [showAppointmentSidebar, setShowAppointmentSidebar] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const appointmentId = searchParams.get('appointmentId');
   const title = searchParams.get('title');
@@ -317,7 +319,31 @@ export default function AppointmentPreparationDetail() {
           <div className="mt-6">
             <TabsContent value="briefing">
               <div className="space-y-4">
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={pdfLoading}
+                    onClick={async () => {
+                      setPdfLoading(true);
+                      try {
+                        await generateBriefingPdf({
+                          preparation,
+                          appointmentTitle: appointmentInfo?.title,
+                          appointmentLocation: appointmentInfo?.location ?? undefined,
+                          appointmentStartTime: appointmentInfo?.start_time,
+                          appointmentEndTime: appointmentInfo?.end_time,
+                        });
+                      } catch (e) {
+                        toast({ title: "Fehler", description: "PDF konnte nicht erstellt werden.", variant: "destructive" });
+                      } finally {
+                        setPdfLoading(false);
+                      }
+                    }}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    {pdfLoading ? "Wird erstellt..." : "PDF herunterladen"}
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"

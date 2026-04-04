@@ -535,6 +535,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
   const refreshInFlightRef = useRef<Set<string>>(new Set());
   const historyLoadInFlightRef = useRef<Set<string>>(new Set());
   const messagesRoomLruRef = useRef<string[]>([]);
+  const keyBackupActivatedRef = useRef(false);
 
   const touchRoomInLru = useCallback((roomId: string) => {
     const lru = messagesRoomLruRef.current;
@@ -830,86 +831,122 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
         }
       }
 
-      // 4. Bootstrap Secret Storage (only if NOT already ready)
-      const crypto = matrixClient.getCrypto();
-      if (crypto) {
-        const recoveryKey = localStorage.getItem(`matrix_recovery_key:${creds.userId}`);
+      // Helper: bootstrap secret storage, cross-signing, and key backup.
+      // Extracted so it can be called from both the normal init path and the
+      // OTK-collision recovery path, which recreates the client from scratch.
+      const bootstrapCryptoSecrets = async (cryptoApi: ReturnType<typeof matrixClient.getCrypto>, userId: string, password?: string) => {
+        if (!cryptoApi) return;
+
+        // 4. Bootstrap Secret Storage
+        const existingKey = localStorage.getItem(`matrix_recovery_key:${userId}`);
         try {
-          const isReady = await crypto.isSecretStorageReady();
-          if (!isReady && recoveryKey) {
+          const isReady = await cryptoApi.isSecretStorageReady();
+          if (!isReady) {
             try {
-              await crypto.bootstrapSecretStorage({
-                // @ts-expect-error matrix-js-sdk GeneratedSecretStorageKey type mismatch with fallback branch
+              await cryptoApi.bootstrapSecretStorage({
+                // matrix-js-sdk GeneratedSecretStorageKey type mismatch with fallback branch
                 createSecretStorageKey: async () => {
-                  try {
-                    const privateKey = decodeRecoveryKey(recoveryKey.trim());
-                    return { privateKey, encodedPrivateKey: recoveryKey.trim() };
-                  } catch {
-                    return {};
+                  if (existingKey) {
+                    try {
+                      const privateKey = decodeRecoveryKey(existingKey.trim());
+                      return { privateKey, encodedPrivateKey: existingKey.trim() };
+                    } catch { /* fall through and generate a fresh key */ }
                   }
+                  // No valid key in localStorage — generate a new one and persist it
+                  const newKey = await cryptoApi.createRecoveryKeyFromPassphrase(undefined);
+                  localStorage.setItem(`matrix_recovery_key:${userId}`, newKey.encodedPrivateKey ?? '');
+                  matrixLogger.log('Generated and stored new Matrix recovery key');
+                  return newKey;
                 },
               });
               matrixLogger.log('Secret Storage bootstrapped');
             } catch (e) {
               matrixLogger.warn('bootstrapSecretStorage failed (non-critical):', e);
             }
-          } else if (isReady) {
+          } else {
             matrixLogger.log('Secret Storage already ready, skipping bootstrap');
           }
         } catch (e) {
           matrixLogger.warn('isSecretStorageReady check failed:', e);
         }
 
-        // 5. Bootstrap Cross-Signing with UIA (password only)
-        if (uiaPassword) {
-          try {
-            const localpart = creds.userId.split(':')[0].substring(1);
-            
-            await crypto.bootstrapCrossSigning({
-              authUploadDeviceSigningKeys: async (makeRequest: (auth: Record<string, unknown>) => Promise<void>) => {
-                await makeRequest({
-                  type: 'm.login.password',
-                  identifier: { type: 'm.id.user', user: localpart },
-                  password: uiaPassword,
-                });
-              },
-            });
-            matrixLogger.log('Cross-Signing bootstrapped (with UIA password)');
-          } catch (e) {
-            matrixLogger.warn(`bootstrapCrossSigning failed: ${toSafeErrorMessage(e)}`);
-          }
-        } else {
-          matrixLogger.info('Skipping bootstrapCrossSigning: no password available for UIA');
-          matrixLogger.info('Alternative UIA-Strategie: UIA nur bei Bedarf in einem separaten Schritt starten (z. B. serverseitig verifiziertes Token/OIDC), um Passwort-Passage im Connect-Flow weiter zu reduzieren.');
+        // 5. Bootstrap Cross-Signing.
+        // Always attempt — bootstrapCrossSigning is idempotent: if keys already
+        // exist server-side it merely restores them from secret storage (no UIA
+        // required). UIA is only needed when uploading keys for the very first
+        // time, so the authUploadDeviceSigningKeys callback is provided only
+        // when a password is available.
+        try {
+          await cryptoApi.bootstrapCrossSigning(
+            password
+              ? {
+                  authUploadDeviceSigningKeys: async (makeRequest: (auth: Record<string, unknown>) => Promise<void>) => {
+                    const localpart = userId.split(':')[0].substring(1);
+                    await makeRequest({
+                      type: 'm.login.password',
+                      identifier: { type: 'm.id.user', user: localpart },
+                      password,
+                    });
+                  },
+                }
+              : {}
+          );
+          matrixLogger.log('Cross-Signing bootstrapped');
+        } catch (e) {
+          matrixLogger.warn(`bootstrapCrossSigning failed: ${toSafeErrorMessage(e)}`);
         }
 
         // 6. Check & enable key backup
         try {
-          await crypto.checkKeyBackupAndEnable();
+          await cryptoApi.checkKeyBackupAndEnable();
           matrixLogger.log('Key backup checked/enabled');
         } catch (e) {
           matrixLogger.warn('checkKeyBackupAndEnable failed (non-critical):', e);
         }
-      }
+      };
+
+      // 4-6. Bootstrap crypto secrets (secret storage, cross-signing, key backup)
+      await bootstrapCryptoSecrets(matrixClient.getCrypto(), creds.userId, uiaPassword);
 
       // 7. Register event listeners (named references for cleanup)
       const registeredListeners: MatrixEventListener[] = [];
 
-      const onSync = (state: string) => {
-        if (state === 'PREPARED') {
+      const onSync = (state: string, prevState: string | null) => {
+        matrixLogger.log('[Matrix] Sync state:', prevState, '->', state);
+
+        if (state === 'PREPARED' || state === 'SYNCING' || state === 'CATCHUP') {
           isConnectedRef.current = true;
           setIsConnected(true);
           setIsConnecting(false);
-          setCryptoEnabled(Boolean(matrixClient.getCrypto()));
-          updateRoomList(matrixClient);
-          // Re-activate key backup downloader so missing session keys are fetched from backup
-          const cryptoApi = matrixClient.getCrypto();
-          if (cryptoApi) {
-            cryptoApi.checkKeyBackupAndEnable().catch(() => {});
+          setConnectionError(null);
+
+          if (state === 'PREPARED') {
+            setCryptoEnabled(Boolean(matrixClient.getCrypto()));
+            updateRoomList(matrixClient);
+            // Nur beim ersten PREPARED pro Client-Session den Key-Backup-Downloader aktivieren.
+            // PREPARED feuert auch nach jedem Reconnect-Zyklus – wiederholte Aufrufe sind redundant.
+            if (!keyBackupActivatedRef.current) {
+              keyBackupActivatedRef.current = true;
+              const cryptoApi = matrixClient.getCrypto();
+              if (cryptoApi) {
+                cryptoApi.checkKeyBackupAndEnable().catch(() => {});
+              }
+            }
           }
+        } else if (state === 'RECONNECTING') {
+          // SDK versucht selbstständig zu reconnecten – Verbindungsstatus auf false setzen,
+          // isConnecting auf true für Spinner-Feedback, aber noch kein Fehler-Banner.
+          isConnectedRef.current = false;
+          setIsConnected(false);
+          setIsConnecting(true);
         } else if (state === 'ERROR') {
           isConnectedRef.current = false;
+          setIsConnected(false);
           setConnectionError('Sync-Fehler aufgetreten');
+          setIsConnecting(false);
+        } else if (state === 'STOPPED') {
+          isConnectedRef.current = false;
+          setIsConnected(false);
           setIsConnecting(false);
         }
       };
@@ -1154,12 +1191,11 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
         clientRef.current = matrixClient;
         if (!getCoiCapabilityStatus().blocked) {
           await matrixClient.initRustCrypto();
+          // Re-bootstrap crypto secrets on the fresh device (same as normal init path)
+          await bootstrapCryptoSecrets(matrixClient.getCrypto(), creds.userId, uiaPassword);
         }
-        // Re-register listeners on new client
-        for (const l of registeredListeners) {
-          // @ts-expect-error matrix-js-sdk event union type mismatch
-          matrixClient.removeListener(l.event, l.handler);
-        }
+        // Re-register listeners on the new client (old client was stopped above;
+        // registeredListeners still holds refs to the handlers, not the old client)
         registeredListeners.length = 0;
         matrixClient.on(sdk.ClientEvent.Sync, onSync);
         matrixClient.on(sdk.RoomEvent.Timeline, onTimeline as (...args: unknown[]) => void);
@@ -1235,6 +1271,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
       setClient(null);
     }
     isConnectedRef.current = false;
+    keyBackupActivatedRef.current = false;
     authPasswordRef.current = undefined;
     setIsConnected(false);
     setCryptoEnabled(false);
@@ -1757,13 +1794,8 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
           connect(credentials);
         }
       };
-      if ('requestIdleCallback' in window) {
-        const id = requestIdleCallback(start, { timeout: 1500 });
-        return () => cancelIdleCallback(id);
-      } else {
-        const id = setTimeout(start, 500);
-        return () => clearTimeout(id);
-      }
+      const id = setTimeout(start, 0);
+      return () => clearTimeout(id);
     }
   }, [credentials, connect]);
 

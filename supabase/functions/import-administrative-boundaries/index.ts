@@ -134,7 +134,7 @@ serve(withSafeHandler("import-administrative-boundaries", async (req) => {
       }
     );
   }
-});
+}));
 
 // Calculate centroid of a MultiPolygon
 function calculateCentroid(geometry: any): [number, number] {

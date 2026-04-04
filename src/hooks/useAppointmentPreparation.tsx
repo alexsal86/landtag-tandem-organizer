@@ -49,6 +49,25 @@ export interface AppointmentPreparation {
       role?: string;
       organization?: string;
       note?: string;
+      contact_id?: string;
+    }>;
+    // Structured Q&A pairs
+    qa_pairs?: Array<{
+      id: string;
+      question: string;
+      answer: string;
+    }>;
+    // Structured topic items
+    key_topic_items?: Array<{
+      id: string;
+      topic: string;
+      background: string;
+    }>;
+    // Structured talking point items
+    talking_point_items?: Array<{
+      id: string;
+      point: string;
+      background: string;
     }>;
     // Begleitpersonen
     companions?: Array<{
@@ -84,6 +103,7 @@ export interface AppointmentConversationPartner {
   role?: string;
   organization?: string;
   note?: string;
+  contact_id?: string;
 }
 
 export function splitPreparationTextToList(text: string | undefined | null): string[] {
@@ -98,10 +118,28 @@ export function splitPreparationTextToList(text: string | undefined | null): str
 export function getImportantTopicLines(
   preparationData: AppointmentPreparation['preparation_data']
 ): string[] {
-  return [
-    ...splitPreparationTextToList(preparationData.key_topics),
-    ...splitPreparationTextToList(preparationData.talking_points),
-  ];
+  const lines: string[] = [];
+
+  // Prefer structured items, fallback to free text
+  const keyTopicItems = preparationData.key_topic_items ?? [];
+  if (keyTopicItems.length > 0) {
+    keyTopicItems.forEach(item => {
+      if (item.topic) lines.push(item.topic);
+    });
+  } else {
+    lines.push(...splitPreparationTextToList(preparationData.key_topics));
+  }
+
+  const talkingPointItems = preparationData.talking_point_items ?? [];
+  if (talkingPointItems.length > 0) {
+    talkingPointItems.forEach(item => {
+      if (item.point) lines.push(item.point);
+    });
+  } else {
+    lines.push(...splitPreparationTextToList(preparationData.talking_points));
+  }
+
+  return lines;
 }
 
 export function getBriefingNotes(

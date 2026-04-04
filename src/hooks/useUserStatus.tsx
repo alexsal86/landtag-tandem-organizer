@@ -53,6 +53,7 @@ export const useUserStatus = () => {
   const [usersWithStatus, setUsersWithStatus] = useState<UserWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAwayTimerActive, setIsAwayTimerActive] = useState(false);
+  const statusChannelRef = useRef<any>(null);
   const presenceChannelRef = useRef<any>(null);
 
   // Auto-away timer
@@ -123,7 +124,14 @@ export const useUserStatus = () => {
 
   // Load current user status
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
+
+    if (statusChannelRef.current) {
+      supabase.removeChannel(statusChannelRef.current);
+      statusChannelRef.current = null;
+    }
+
+    let isMounted = true;
 
     const loadCurrentStatus = async () => {
       setLoading(true);
@@ -135,17 +143,19 @@ export const useUserStatus = () => {
 
       if (error && error.code !== 'PGRST116') {
         debugConsole.error('Error loading user status:', error);
-      } else if (data) {
+      } else if (data && isMounted) {
         setCurrentStatus(data);
       }
-      setLoading(false);
+      if (isMounted) {
+        setLoading(false);
+      }
     };
 
-    loadCurrentStatus();
+    void loadCurrentStatus();
 
     // Set up realtime subscription for status changes
     const statusSubscription = supabase
-      .channel(`user_status:${user.id}`)
+      .channel(`user_status:${user.id}:${crypto.randomUUID()}`)
       .on(
         'postgres_changes',
         {
@@ -156,17 +166,25 @@ export const useUserStatus = () => {
         },
         (payload) => {
           debugConsole.log('Status changed:', payload);
+          if (!isMounted) return;
+
           if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
             setCurrentStatus(payload.new as UserStatus);
           }
         }
-      )
-      .subscribe();
+      );
+
+    statusChannelRef.current = statusSubscription;
+    statusSubscription.subscribe();
 
     return () => {
-      statusSubscription.unsubscribe();
+      isMounted = false;
+      if (statusChannelRef.current) {
+        supabase.removeChannel(statusChannelRef.current);
+        statusChannelRef.current = null;
+      }
     };
-  }, [user]);
+  }, [user?.id]);
 
   // Set up presence tracking for online users - TENANT SPECIFIC
   useEffect(() => {

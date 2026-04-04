@@ -5,7 +5,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { UserBadge } from "@/components/ui/user-badge";
 import { getHashedColor } from "@/utils/userColors";
 import { NewItemIndicator } from "../NewItemIndicator";
-import { CheckCircle, Clock, Archive } from "lucide-react";
+import { CheckCircle, Clock, Archive, MoreVertical } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { QuickAccessMenuItem } from "@/components/shared/QuickAccessMenuItem";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -125,7 +127,22 @@ export function EventPlanningTable({
                         <TooltipContent>Archivieren</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                  )}
+                   )}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-7 w-7">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <QuickAccessMenuItem
+                        id={`planning-${planning.id}`}
+                        label={planning.title}
+                        icon="Calendar"
+                        route={`/event-planning?highlight=${planning.id}`}
+                      />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </TableCell>
             </TableRow>

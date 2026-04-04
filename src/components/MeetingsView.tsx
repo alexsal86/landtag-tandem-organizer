@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Users } from "lucide-react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { MeetingArchiveView } from "./MeetingArchiveView";
+import { MeetingProtocolView } from "./MeetingProtocolView";
 import { FocusModeView } from "@/components/meetings/FocusModeView";
 import { ActiveMeetingPanel } from "@/components/meetings/ActiveMeetingPanel";
 import { MeetingSidebar } from "@/components/meetings/MeetingSidebar";
@@ -22,6 +23,7 @@ export function MeetingsView() {
     setActiveMeeting: data.setActiveMeeting, setActiveMeetingId: data.setActiveMeetingId,
     setAgendaItems: data.setAgendaItems, setLinkedQuickNotes: data.setLinkedQuickNotes,
     setSelectedMeeting: data.setSelectedMeeting, setIsFocusMode: data.setIsFocusMode,
+    setArchivedMeetingId: data.setArchivedMeetingId,
   });
   const agendaOps = useAgendaOperations({
     selectedMeeting: data.selectedMeeting, activeMeeting: data.activeMeeting,
@@ -51,6 +53,19 @@ export function MeetingsView() {
   // Show archive view
   if (data.showArchive) {
     return <MeetingArchiveView onBack={() => data.setShowArchive(false)} />;
+  }
+
+  // Show protocol after archiving
+  if (data.archivedMeetingId) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle p-4">
+        <MeetingProtocolView
+          meetingId={data.archivedMeetingId}
+          onBack={() => data.setArchivedMeetingId(null)}
+          isPostArchive
+        />
+      </div>
+    );
   }
 
   // Show focus mode

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, Database, User, ChevronLeft, ChevronRight, Lock, Unlock, Save, Trash2, Upload } from 'lucide-react';
+import { Search, Plus, Database, User, ChevronLeft, ChevronRight, Lock, Unlock, Save, Trash2, Upload, MoreVertical } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { QuickAccessMenuItem } from "@/components/shared/QuickAccessMenuItem";
 import EnhancedLexicalEditor from './EnhancedLexicalEditor';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useNotificationHighlight } from '@/hooks/useNotificationHighlight';
@@ -225,6 +227,16 @@ const KnowledgeBaseView = () => {
                             <div className="flex items-center gap-4 text-xs text-muted-foreground"><div className="flex items-center gap-1"><User className="h-3 w-3" />{doc.creator_name}</div><div>{formatDate(doc.updated_at)}</div></div>
                           </div>
                           {doc.created_by === user?.id && <div onClick={(e) => e.stopPropagation()}><Button variant="ghost" size="sm" onClick={() => data.handleDeleteDocument(doc.id)}><Trash2 className="h-4 w-4" /></Button></div>}
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0"><MoreVertical className="h-4 w-4" /></Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <QuickAccessMenuItem id={`knowledge-${doc.id}`} label={doc.title} icon="Database" route={`/knowledge/${doc.id}`} />
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>

@@ -60,8 +60,9 @@ export function MyWorkCaseFilesTab() {
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => { timeout = null; void loadCaseFiles(); }, 250);
     };
+    const channelName = `my-work-casefiles-${currentTenant.id}-${user.id}-${crypto.randomUUID()}`;
     const channel = supabase
-      .channel(`my-work-casefiles-${user.id}`)
+      .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "case_files" }, scheduleRefresh)
       .subscribe();
     return () => {

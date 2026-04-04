@@ -6,7 +6,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
-import { MessageCircle, Bell, Send, Reply } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { StandaloneDecisionCreator } from "@/components/task-decisions/StandaloneDecisionCreator";
+import { MessageCircle, Bell, Search, Send, Reply, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -40,10 +42,16 @@ interface NewComment {
 }
 
 interface MyWorkDecisionSidebarProps {
+  isCreateOpen: boolean;
   openQuestions: OpenQuestion[];
   newComments: NewComment[];
   pendingDirectReplies: NewComment[];
+  onCreateOpenChange: (open: boolean) => void;
+  onDecisionCreated: () => void;
+  onOpenDefaultParticipants: () => void;
+  onSearchChange: (value: string) => void;
   discussionComments?: SidebarDiscussionComment[];
+  searchQuery: string;
   recentActivities?: Array<{
     id: string;
     decisionId: string;
@@ -68,10 +76,16 @@ const getInitials = (name: string | null) => {
 };
 
 export function MyWorkDecisionSidebar({
+  isCreateOpen,
   openQuestions,
   newComments,
   pendingDirectReplies,
+  onCreateOpenChange,
+  onDecisionCreated,
+  onOpenDefaultParticipants,
+  onSearchChange,
   discussionComments = [],
+  searchQuery,
   recentActivities = [],
   onQuestionClick,
   onCommentClick,
@@ -155,6 +169,17 @@ export function MyWorkDecisionSidebar({
 
   return (
     <aside className="hidden lg:block space-y-3 sticky top-4">
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input placeholder="Suchen..." value={searchQuery} onChange={(event) => onSearchChange(event.target.value)} className="pl-8 h-8 text-xs" />
+        </div>
+        <StandaloneDecisionCreator isOpen={isCreateOpen} onOpenChange={onCreateOpenChange} onDecisionCreated={onDecisionCreated} />
+        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={onOpenDefaultParticipants} title="Standard-Teilnehmer">
+          <Settings2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+
       <Card>
         <CardHeader className="pb-2 px-3 pt-3">
           <div className="flex items-center justify-between">

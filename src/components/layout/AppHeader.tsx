@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Settings, LogOut, User, Plus, Calendar, Users, FileText, CheckSquare, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { NotificationBell } from '@/components/NotificationBell';
 import { OnlineUsersWidget } from '@/components/OnlineUsersWidget';
 import { UserStatusSelector } from '@/components/UserStatusSelector';
-import { HeaderSearch } from '@/components/layout/HeaderSearch';
+
 import { useAuth } from '@/hooks/useAuth';
 import { useUserStatus } from '@/hooks/useUserStatus';
 import { useTenant } from '@/hooks/useTenant';
@@ -22,11 +22,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
 type OnOpenSearchCallback = () => void;
@@ -69,7 +64,7 @@ const myworkTabActions: Record<string, { label: string; action: string }> = {
 
 export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element => {
   const { user, signOut } = useAuth();
-  const { currentStatus, getStatusDisplay, onlineUsers } = useUserStatus();
+  const { currentStatus, getStatusDisplay } = useUserStatus();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -131,11 +126,56 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
   };
   
   const quickAction = getQuickAction();
+  const [visibleQuickAction, setVisibleQuickAction] = useState(quickAction);
+  const [quickActionPhase, setQuickActionPhase] = useState<'idle' | 'closing' | 'opening'>('idle');
+  const quickActionTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const previousActionKey = visibleQuickAction?.action ?? null;
+    const nextActionKey = quickAction?.action ?? null;
+
+    if (previousActionKey === nextActionKey) {
+      return;
+    }
+
+    if (quickActionTimerRef.current !== null) {
+      window.clearTimeout(quickActionTimerRef.current);
+      quickActionTimerRef.current = null;
+    }
+
+    if (!visibleQuickAction || !quickAction) {
+      setVisibleQuickAction(quickAction);
+      setQuickActionPhase(quickAction ? 'opening' : 'closing');
+      quickActionTimerRef.current = window.setTimeout(() => {
+        setQuickActionPhase('idle');
+        quickActionTimerRef.current = null;
+      }, 260);
+      return;
+    }
+
+    setQuickActionPhase('closing');
+    quickActionTimerRef.current = window.setTimeout(() => {
+      setVisibleQuickAction(quickAction);
+      setQuickActionPhase('opening');
+      quickActionTimerRef.current = window.setTimeout(() => {
+        setQuickActionPhase('idle');
+        quickActionTimerRef.current = null;
+      }, 260);
+    }, 260);
+  }, [quickAction, visibleQuickAction]);
+
+  useEffect(() => {
+    return () => {
+      if (quickActionTimerRef.current !== null) {
+        window.clearTimeout(quickActionTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleQuickAction = (): void => {
-    if (quickAction) {
+    if (visibleQuickAction) {
       const urlParams = new URLSearchParams(location.search);
-      urlParams.set('action', quickAction.action);
+      urlParams.set('action', visibleQuickAction.action);
       navigate(`${location.pathname}?${urlParams.toString()}`);
     }
   };
@@ -164,84 +204,37 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
   return (
     <header
       className={cn(
-        'h-14 bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] flex items-center justify-between px-4 sticky top-0 z-40',
-        !isLetterManagement && 'border-b border-[hsl(var(--nav-foreground)/0.1)]',
+        'h-14 bg-background text-foreground flex items-center justify-between px-4 sticky top-0 z-40',
+        !isLetterManagement && 'border-b border-border',
       )}
     >
       {/* Left: Quick Action + Search */}
       <div className="hidden md:flex items-center gap-4">
         {/* Quick Action Button */}
-        {quickAction && (
+        {visibleQuickAction && (
           <Button 
             size="sm" 
             variant="ghost"
             onClick={handleQuickAction}
-            className="h-7 px-2 text-xs bg-[hsl(var(--nav-hover))] hover:bg-[hsl(var(--nav-active-bg))] text-[hsl(var(--nav-foreground))]"
+            className={cn(
+              'h-7 px-2 text-xs bg-muted hover:bg-accent text-foreground overflow-hidden transition-all duration-300 ease-out',
+              quickActionPhase === 'closing' && 'max-w-0 opacity-0 -translate-x-2 px-0',
+              quickActionPhase === 'opening' && 'max-w-44 opacity-100 translate-x-0',
+              quickActionPhase === 'idle' && 'max-w-44 opacity-100 translate-x-0',
+            )}
           >
-            <Plus className="h-3.5 w-3.5 mr-1" />
-            {quickAction.label}
+            <Plus className="h-3.5 w-3.5 mr-1 shrink-0" />
+            <span className="whitespace-nowrap">{visibleQuickAction.label}</span>
           </Button>
         )}
 
-        {quickAction && (
-          <Separator orientation="vertical" className="h-5 bg-[hsl(var(--nav-foreground)/0.2)]" />
+        {visibleQuickAction && (
+          <Separator orientation="vertical" className="h-5 bg-border" />
         )}
-
-        {/* Search */}
-        <HeaderSearch />
       </div>
 
       {/* Right: Actions with Office Info */}
       <div className="flex items-center gap-3 ml-auto">
-        {/* Online Users */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="relative h-8 w-8 p-0" aria-label="Online-Benutzer anzeigen">
-              {onlineUsers.length === 0 ? (
-                <div className="h-6 w-6 rounded-full bg-muted border-2 border-muted-foreground/30 flex items-center justify-center">
-                  <span className="text-muted-foreground text-[10px]">○</span>
-                </div>
-              ) : (
-                <div className="flex -space-x-2">
-                  {onlineUsers.slice(0, 3).map((onlineUser, index) => {
-                    const userStatusDisplay = getStatusDisplay(onlineUser.status);
-                    const statusColor = userStatusDisplay?.color || '#22c55e';
-                    return (
-                      <div key={onlineUser.user_id} style={{ zIndex: index + 1 }}>
-                        <Avatar 
-                          className="h-6 w-6 border-2 border-[hsl(var(--nav))] ring-2"
-                          style={{ '--tw-ring-color': statusColor } as React.CSSProperties}
-                        >
-                          <AvatarImage src={onlineUser.avatar_url || undefined} />
-                          <AvatarFallback className="text-[10px] bg-muted text-foreground">
-                            {onlineUser.display_name?.charAt(0) || "?"}
-                          </AvatarFallback>
-                        </Avatar>
-                      </div>
-                    );
-                  })}
-                  {/* Grüner Kreis IMMER VORNE */}
-                  <div 
-                    className="h-6 w-6 rounded-full bg-green-500 border-2 border-white flex items-center justify-center"
-                    style={{ zIndex: onlineUsers.length + 1 }}
-                  >
-                    {onlineUsers.length > 3 ? (
-                      <span className="text-[10px] font-medium text-white">
-                        +{onlineUsers.length - 3}
-                      </span>
-                    ) : (
-                      <span className="text-white text-[10px]">●</span>
-                    )}
-                  </div>
-                </div>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-80 p-0" align="end">
-            <OnlineUsersWidget />
-          </PopoverContent>
-        </Popover>
-
         {/* Notifications */}
         <NotificationBell />
 
@@ -278,7 +271,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-64" align="end">
+          <DropdownMenuContent className="w-[22rem]" align="end">
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium leading-none">
@@ -308,6 +301,11 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
                 </Button>
               </UserStatusSelector>
             </div>
+
+            <div className="px-2 pb-2">
+              <p className="text-xs text-muted-foreground mb-2">Anwesenheit</p>
+              <OnlineUsersWidget />
+            </div>
             
             <DropdownMenuSeparator />
             
@@ -330,12 +328,12 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
         </DropdownMenu>
         
         {/* Separator zwischen Avatar und Büro-Info */}
-        <Separator orientation="vertical" className="h-6 bg-[hsl(var(--nav-foreground)/0.2)]" />
+        <Separator orientation="vertical" className="h-6 bg-border" />
         
         {/* Office Title rechts neben Avatar */}
         <div className="text-right hidden lg:block">
-          <p className="text-sm font-medium leading-none text-[hsl(var(--nav-foreground))]">{appSettings.app_name}</p>
-          <p className="text-xs text-[hsl(var(--nav-muted))]">{appSettings.app_subtitle}</p>
+          <p className="text-sm font-medium leading-none text-foreground">{appSettings.app_name}</p>
+          <p className="text-xs text-muted-foreground">{appSettings.app_subtitle}</p>
         </div>
       </div>
     </header>

@@ -2,14 +2,20 @@ import { SidebarDiscussionComment, SidebarNewComment, SidebarOpenQuestion } from
 import { MyWorkDecisionSidebar } from "./MyWorkDecisionSidebar";
 
 interface DecisionSidebarContainerProps {
+  isCreateOpen: boolean;
   discussionComments?: SidebarDiscussionComment[];
   newComments: SidebarNewComment[];
+  onCreateOpenChange: (open: boolean) => void;
+  onDecisionCreated: () => void;
+  onOpenDefaultParticipants: () => void;
+  onSearchChange: (value: string) => void;
   onActivityClick?: (activity: { decisionId: string; type: "comment" | "response" | "decision"; targetId: string }) => void;
   onCommentClick: (decisionId: string) => void;
   onQuestionClick: (decisionId: string) => void;
   onResponseSent?: () => void;
   openQuestions: SidebarOpenQuestion[];
   pendingDirectReplies: SidebarNewComment[];
+  searchQuery: string;
   recentActivities?: Array<{
     id: string;
     decisionId: string;

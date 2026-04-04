@@ -361,10 +361,33 @@ export function useEventPlanningData() {
     try {
       const { data: activeData, error: activeError } = await supabase.from("appointment_preparations").select("*").eq("is_archived", false).order("created_at", { ascending: false });
       if (activeError) debugConsole.error("Error fetching active preparations:", activeError);
-      else setAppointmentPreparations(activeData || []);
+
       const { data: archivedData, error: archivedError } = await supabase.from("appointment_preparations").select("*").eq("is_archived", true).order("archived_at", { ascending: false });
       if (archivedError) debugConsole.error("Error fetching archived preparations:", archivedError);
-      else setArchivedPreparations(archivedData || []);
+
+      // Sync titles with current appointment titles
+      const allPreps = [...(activeData || []), ...(archivedData || [])];
+      const appointmentIds = allPreps.map(p => p.appointment_id).filter(Boolean) as string[];
+      if (appointmentIds.length > 0) {
+        const { data: appointments } = await supabase
+          .from("appointments")
+          .select("id, title")
+          .in("id", appointmentIds);
+        if (appointments) {
+          const titleMap = new Map(appointments.map(a => [a.id, a.title]));
+          const updateTitle = (prep: any) => {
+            const apptTitle = prep.appointment_id ? titleMap.get(prep.appointment_id) : null;
+            if (apptTitle) return { ...prep, title: `Terminplanung: ${apptTitle}` };
+            return prep;
+          };
+          setAppointmentPreparations((activeData || []).map(updateTitle));
+          setArchivedPreparations((archivedData || []).map(updateTitle));
+          return;
+        }
+      }
+
+      setAppointmentPreparations(activeData || []);
+      setArchivedPreparations(archivedData || []);
     } catch (error) { handleAppError(error, { context: 'fetchAppointmentPreparations' }); }
   };
 

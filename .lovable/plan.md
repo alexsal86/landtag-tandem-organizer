@@ -1,96 +1,79 @@
 
 
-# Kontakte-Tabelle verschlanken und Stakeholder-Frage klaren
+# Drei neue Sidebar-Features
 
-## Zur Stakeholder-Frage: Trennung lohnt sich nicht
+## 1. Kürzlich besucht
 
-Stakeholder sind aktuell Kontakte mit bestimmten Tags/Kategorien. Eine Trennung in zwei Tabellen wurde bedeuten:
-- Doppelte Daten (Name, E-Mail, Adresse in beiden Tabellen)
-- Alle Verknupfungen (Termine, Dokumente, Akten, Dossiers, Karte) mussten doppelt gepflegt werden
-- Kontakte, die beides sind (z.B. ein Burger, der auch Stakeholder ist), mussten synchronisiert werden
+**Hook: `useRecentlyVisited.ts`**
+- Speichert die letzten 8 besuchten Seiten im `localStorage` (Key: `nav-recently-visited`)
+- Interface: `{ id: string, label: string, icon: string, route: string, visitedAt: number }`
+- `trackVisit(id, label, icon, route)` — fügt hinzu / verschiebt nach oben, begrenzt auf 8 Einträge
+- `recentPages` — sortiert nach `visitedAt` desc
+- Deduplizierung nach `id`
 
-**Empfehlung:** Einheitliche Tabelle beibehalten. Die Unterscheidung lauft uber `category` und `tags` — das funktioniert bereits gut mit der Kartenansicht, Themen-Zuordnung und Stakeholder-Views. Keine Anderung nötig.
+**Integration in `AppNavigation.tsx`**
+- In `handleNavigationClick` wird `trackVisit()` aufgerufen (Label/Icon aus `navigationGroups` oder `availableQuickPages` ermitteln)
+- Im `renderHomePanel()` wird oberhalb des Schnellzugriffs eine "Kürzlich besucht"-Sektion eingefügt
+- Design: Gleicher Stil wie Schnellzugriff, aber mit `Clock`-Icon statt `Star`, kleinere Schrift (11px), max 5 Einträge sichtbar
+- Klick navigiert zur Seite
 
-## Spalten-Reduktion: Von ~65 auf ~45 Spalten
+## 2. Benachrichtigungs-Gruppierung nach Datum
 
-### Spalten die entfernt werden (20 Stuck)
+**In `renderNotificationsPanel()`**
+- Die bestehende flache Liste (`filteredNotifications.map(...)`) wird ersetzt durch gruppierte Darstellung
+- Gruppierung: `isToday()` → "Heute", `isYesterday()` → "Gestern", Rest → "Älter" (oder konkretes Datum bei < 7 Tagen)
+- Gruppen-Header: `text-[11px] font-semibold text-muted uppercase tracking-wider px-2 mb-1` (gleicher Stil wie Appointments-Panel)
+- Hilfsfunktion `groupNotificationsByDate(notifications)` liefert `{ label: string, items: Notification[] }[]`
+- Keine externen Abhängigkeiten nötig, `isToday`/`isTomorrow` aus `date-fns` sind bereits importiert; `isYesterday` wird zusätzlich importiert
 
-**Nie genutzt im Abgeordnetenburo-Kontext:**
-- `certifications` — Zertifizierungen, irrelevant
-- `marketing_consent` — Marketing-Einwilligung, kein Marketing-Tool
-- `newsletter_subscription` — Newsletter, nicht relevant
-- `meeting_preferences` — nie in UI genutzt
-- `gdpr_consent_date` — DSGVO-Datum, in Praxis nie gepflegt
-- `data_protection_notes` — Datenschutz-Notizen, nie genutzt
+## 3. Beliebige Elemente in den Schnellzugriff pinnen
 
-**Redundant:**
-- `company` — Duplikat von `organization`, wird vereinheitlicht
-- `additional_info` — Duplikat von `notes`
-- `added_at` — Duplikat von `created_at`
-- `added_reason` — nie sinnvoll befullt
-- `location` — vage; strukturierte Adressfelder existieren bereits
+**Konzept: Drei-Punkte-Menü ("...") auf Element-Ebene**
 
-**Zu granular fur den Alltag (Private Adresse):**
-- `private_street`, `private_house_number`, `private_postal_code`, `private_city`, `private_country` — Private Adressen werden im Burobetrieb fast nie gepflegt. Falls nötig, kann `address` als Freitextfeld dienen.
-- `private_phone`, `private_phone_2` — Privattelefon 1+2 separat zu fuhren ist Overkill; `phone` + `mobile_phone` reichen
-- `business_phone_2` — Zweite Geschaftsnummer, extrem selten
+Auf den jeweiligen Seiten (Fallakten, Planungen, Meetings, Aufgaben, Entscheidungen, Dokumente) wird in den Zeilen/Cards ein `MoreHorizontal`-Icon mit DropdownMenu ergänzt, das u.a. "Zum Schnellzugriff hinzufügen" enthält.
 
-### Spalten die bleiben (~45)
+**Erweiterung `useQuickAccessPages`**
+- Das Interface `QuickAccessPage` bekommt ein optionales Feld `type?: 'page' | 'item'` und `entityId?: string`
+- Neue Convenience-Funktion: `addItem(id, label, icon, route)` für Einzelelemente (z.B. eine Fallakte mit Route `/casefiles?highlight=uuid`)
+- `isInQuickAccess(id)` — prüft ob ein Element bereits gepinnt ist
 
-```text
-── Identitat ──────────────────────────────
-id, tenant_id, user_id, contact_type, name, first_name, last_name, title, gender
+**Shared Component: `QuickAccessMenuItem`**
+- Wiederverwendbare DropdownMenu-Option: `<QuickAccessMenuItem id={...} label={...} icon={...} route={...} />`
+- Nutzt `useQuickAccessPages` intern
+- Zeigt "Zum Schnellzugriff" oder "Aus Schnellzugriff entfernen" je nach Status
+- Icon: `Star` (outline) / `StarOff`
 
-── Einordnung ─────────────────────────────
-category, priority, tags, is_favorite, role, position, department
+**Integration auf den Seiten** (Drei-Punkte-Menü erweitern):
+- `CaseFilesView` — bei jeder Fallakte im Kontextmenü
+- `EventPlanningListView` — bei jeder Planung
+- `MeetingsView` — bei jedem Jour fixe
+- `DecisionOverview` — bei jeder Entscheidung
+- `KnowledgeBaseView` — bei jedem Dokument
 
-── Organisation ───────────────────────────
-organization, organization_id
+Falls Seiten bereits ein `MoreHorizontal`-Menü haben, wird `QuickAccessMenuItem` als zusätzlicher Eintrag hinzugefügt. Falls nicht, wird ein kleines Drei-Punkte-Menü ergänzt.
 
-── Kommunikation ──────────────────────────
-email, email_2, email_3, phone, mobile_phone, business_phone
+**Darstellung im Schnellzugriff**
+- Items mit `type === 'item'` zeigen das jeweilige Icon (z.B. `Briefcase` für Fallakte) statt `Star`
+- Beim Klick wird zur gespeicherten Route navigiert
 
-── Adresse (Geschaft) ────────────────────
-business_street, business_house_number, business_postal_code, business_city, business_country, address
+### Betroffene Dateien
 
-── Online ─────────────────────────────────
-website, linkedin, twitter, facebook, instagram, xing
+| Datei | Änderung |
+|---|---|
+| `src/hooks/useRecentlyVisited.ts` | Neuer Hook |
+| `src/hooks/useQuickAccessPages.ts` | `type`, `entityId`, `isInQuickAccess` ergänzen |
+| `src/components/AppNavigation.tsx` | Kürzlich-besucht-Sektion, Notifications-Gruppierung, trackVisit-Aufruf |
+| `src/components/shared/QuickAccessMenuItem.tsx` | Neue shared Component |
+| `src/components/my-work/cases/...` | Drei-Punkte-Menü mit QuickAccessMenuItem |
+| `src/components/event-planning/...` | Drei-Punkte-Menü mit QuickAccessMenuItem |
+| `src/components/meetings/...` | Drei-Punkte-Menü mit QuickAccessMenuItem |
+| `src/components/task-decisions/...` | Drei-Punkte-Menü mit QuickAccessMenuItem |
+| `src/components/KnowledgeBaseView.tsx` | Drei-Punkte-Menü mit QuickAccessMenuItem |
 
-── Persönlich ─────────────────────────────
-birthday, notes, avatar_url
+### Umsetzungsreihenfolge
 
-── Geo ────────────────────────────────────
-coordinates, geocoded_at, geocoding_source
-
-── System ─────────────────────────────────
-created_at, updated_at, last_contact
-```
-
-## Technische Umsetzung
-
-### 1. Migration: Daten konsolidieren, dann Spalten droppen
-
-Vor dem Drop werden Daten gerettet:
-- `company` → in `organization` ubernehmen (wo `organization` leer ist)
-- `additional_info` → an `notes` anhangen (wo `notes` leer oder `additional_info` gefullt)
-- `added_at` → ignorieren (created_at existiert)
-- `private_phone` → in `phone` ubernehmen (wo `phone` leer)
-
-Dann 20 Spalten droppen.
-
-### 2. Code anpassen
-
-**Dateien die geandert werden:**
-- `src/types/contact.ts` — `ContactBase` verschlanken (Felder entfernen: `legal_form`, `industry`, `main_contact_person`, `business_description`, `location`, `additional_info`)
-- `src/components/ContactEditForm.tsx` — Referenzen auf `company`, `gdpr_consent_date`, `additional_info` entfernen
-- `src/components/GlobalSearchCommand.tsx` — `company` aus Select/Filter entfernen
-- `src/components/appointment-preparations/AppointmentPreparationDataTab.tsx` — `company` durch `organization` ersetzen
-- `src/components/letters/LetterWizard.tsx` — `company` durch `organization` ersetzen
-- `src/components/contact-import/types.ts` — Import-Mappings fur entfernte Felder anpassen
-- `src/hooks/useInfiniteContacts.ts` — Select-Queries anpassen
-
-### 3. Was sich NICHT andert
-- Stakeholder-System bleibt wie es ist (gleiche Tabelle, Tag-basiert)
-- Alle Verknupfungstabellen (contact_topics, appointment_contacts, etc.) bleiben unberuhrt
-- Kartenansicht funktioniert weiterhin (nutzt `coordinates`, `business_street` etc.)
+1. `useRecentlyVisited` Hook + Integration in AppNavigation
+2. Notifications-Gruppierung in `renderNotificationsPanel`
+3. `QuickAccessPages`-Erweiterung + `QuickAccessMenuItem`-Component
+4. Drei-Punkte-Menüs auf den 5 wichtigsten Seiten einbauen
 
