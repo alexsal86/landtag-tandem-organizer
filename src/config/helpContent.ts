@@ -1,7 +1,7 @@
 export interface HelpContent {
   title: string;
   description: string;
-  features: string[];
+  features: Array<string | { label: string; targetId?: string }>;
 }
 
 export const MYWORK_HELP_CONTENT: Record<string, HelpContent> = {
@@ -9,49 +9,50 @@ export const MYWORK_HELP_CONTENT: Record<string, HelpContent> = {
     title: "Quick Notes",
     description: "Erfasse schnell Gedanken, Ideen oder Aufgaben.",
     features: [
-      "Notizen mit Farben und Prioritäten markieren",
-      "Notizen an Jour Fixe-Meetings anhängen",
-      "Als Aufgabe speichern für spätere Bearbeitung",
-      "Notizen teilen oder archivieren"
+      { label: "Direkt links eine neue Notiz erfassen und rechts bestehende Notizen prüfen" },
+      { label: "Notizen priorisieren, einfärben und in Aufgaben/Entscheidungen/Vorgänge umwandeln" },
+      { label: "Notizen mit Jour Fixe verknüpfen, teilen oder archivieren" },
+      { label: "Über den Neu-Button sofort eine neue Aufgabe/Entscheidung/Jour Fixe/Akte anlegen", targetId: "mywork-new-menu" }
     ]
   },
   tasks: {
     title: "Aufgaben",
     description: "Übersicht aller dir zugewiesenen und von dir erstellten Aufgaben.",
     features: [
-      "Aufgaben als erledigt markieren (Checkbox)",
-      "Unteraufgaben einzeln abhaken",
-      "Zur vollständigen Aufgabenliste wechseln (Pfeil-Icon)",
-      "Farbige Prioritätsanzeige (rot=hoch, gelb=mittel, grün=niedrig)"
+      { label: "Aufgaben nach Status priorisieren, öffnen und direkt als erledigt markieren" },
+      { label: "Unteraufgaben, Kommentare, Wiedervorlage und Anhänge in der Aufgabe pflegen" },
+      { label: "Zuständigkeit und Priorität anpassen sowie Entscheidungen aus Aufgaben anstoßen" },
+      { label: "Über den Neu-Button eine neue Aufgabe erstellen", targetId: "mywork-new-menu" }
     ]
   },
   decisions: {
     title: "Entscheidungen",
     description: "Abstimmungen, an denen du teilnimmst oder die du erstellt hast.",
     features: [
-      "Auf Entscheidungen antworten (Ja/Nein/Frage)",
-      "Status deiner erstellten Entscheidungen verfolgen",
-      "Neue Entscheidung erstellen",
-      "Farbige Anzeige: Grün=Ja, Rot=Nein, Orange=Fragen, Grau=Ausstehend"
+      { label: "Entscheidungen mit Ja/Nein/Frage beantworten und den Verlauf nachvollziehen" },
+      { label: "Offene Rückmeldungen und den Gesamtstatus pro Entscheidung überwachen" },
+      { label: "Neue Entscheidungen anlegen und mit Notizen oder Aufgaben verknüpfen", targetId: "mywork-new-menu" },
+      { label: "Per Tab-Navigation schnell zwischen Aufgaben, Entscheidungen und Vorgängen wechseln", targetId: "mywork-tab-decisions" }
     ]
   },
   jourFixe: {
     title: "Jour Fixe",
     description: "Deine regelmäßigen Team-Meetings mit Agenda und Protokoll.",
     features: [
-      "Kommende und vergangene Meetings einsehen",
-      "Meeting-Details und Agenda öffnen",
-      "Notizen für Meetings vorbereiten",
-      "Neues Jour Fixe erstellen"
+      { label: "Kommende und vergangene Jour-Fixe-Termine inkl. Detailansicht verwalten" },
+      { label: "Agenda, Protokoll und Vorbereitungsnotizen zentral pflegen" },
+      { label: "Aufgaben und Entscheidungen direkt aus dem Meeting-Kontext nachverfolgen" },
+      { label: "Neues Jour Fixe über den Neu-Button anlegen", targetId: "mywork-new-menu" }
     ]
   },
   cases: {
     title: "Vorgänge",
     description: "Zentrale Fallbearbeitung mit Anliegen als Arbeitsliste und Akten als Kontext.",
     features: [
-      "Anliegen als primäre Arbeitsliste mit Status und Fristen",
-      "Verknüpfte Akte direkt als Kontext-Detail anzeigen",
-      "Deep-Links mit caseItemId und caseFileId werden unterstützt"
+      { label: "Anliegen mit Status, Frist und Verantwortlichkeit als Arbeitsliste steuern" },
+      { label: "Verknüpfte Akten als Kontext öffnen und Historie nachvollziehen" },
+      { label: "Vorgänge und Akten neu anlegen", targetId: "mywork-new-menu" },
+      { label: "Zwischen den Bereichen über die Tab-Leiste springen", targetId: "mywork-tab-cases" }
     ]
   },
   plannings: {
@@ -67,19 +68,47 @@ export const MYWORK_HELP_CONTENT: Record<string, HelpContent> = {
     title: "Meine Zeit",
     description: "Erfasse und verwalte deine Arbeitszeiten.",
     features: [
-      "Wochenübersicht mit Soll/Ist-Vergleich",
-      "Schnelle Zeiterfassung für den aktuellen Tag",
-      "Letzte Einträge im Überblick"
+      { label: "Arbeitszeiten pro Tag erfassen und Einträge direkt korrigieren" },
+      { label: "Soll-/Ist-Stunden in der Wochen- und Monatsansicht prüfen" },
+      { label: "Offene oder fehlende Zeiten schnell identifizieren" },
+      { label: "Teamstatus prüfen (falls berechtigt)", targetId: "mywork-tab-team" }
     ]
   },
   team: {
     title: "Team",
     description: "Übersicht über dein Team und offene Anliegen.",
     features: [
-      "Arbeitszeitstatus der Teammitglieder",
-      "Offene Gesprächsanfragen",
-      "Warnungen bei fehlenden Zeiteinträgen",
-      "Direkter Zugang zu Mitarbeitergesprächen"
+      { label: "Arbeitszeitstatus und Auslastung im Team auf einen Blick sehen" },
+      { label: "Fehlende Zeiteinträge und offene Hinweise frühzeitig erkennen" },
+      { label: "Mitarbeitergespräche und Rückmeldungen strukturiert nachhalten" },
+      { label: "Realtime-Status prüfen, ob Live-Daten verbunden sind", targetId: "mywork-realtime" }
+    ]
+  },
+  dashboard: {
+    title: "Dashboard",
+    description: "Dein Überblick über die wichtigsten offenen Punkte in Meine Arbeit.",
+    features: [
+      { label: "Offene Aufgaben, Entscheidungen und Vorgänge in einer kompakten Übersicht prüfen" },
+      { label: "Schnell in den relevanten Arbeitsbereich springen", targetId: "mywork-tab-dashboard" },
+      { label: "Direkt neue Einträge über den Neu-Button anlegen", targetId: "mywork-new-menu" }
+    ]
+  },
+  redaktion: {
+    title: "Redaktion",
+    description: "Arbeite an redaktionellen Inhalten und behalte offene Punkte im Blick.",
+    features: [
+      { label: "Inhalte sichten, priorisieren und den Bearbeitungsstand verfolgen" },
+      { label: "Offene redaktionelle Aufgaben im Tagesgeschäft bündeln" },
+      { label: "Über die Tab-Leiste schnell in angrenzende Bereiche wechseln", targetId: "mywork-tab-redaktion" }
+    ]
+  },
+  feedbackfeed: {
+    title: "Feedback-Feed",
+    description: "Sammelt Rückmeldungen aus Terminen und laufenden Themen zentral an einer Stelle.",
+    features: [
+      { label: "Neue Rückmeldungen laufend prüfen und priorisiert abarbeiten" },
+      { label: "Bei Bedarf direkt Folgeaufgaben oder Vorgänge daraus erstellen", targetId: "mywork-new-menu" },
+      { label: "Für Live-Aktualisierung den Realtime-Status beachten", targetId: "mywork-realtime" }
     ]
   }
 };
