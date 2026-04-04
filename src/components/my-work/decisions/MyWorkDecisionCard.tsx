@@ -184,22 +184,8 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
       responseRefreshTimeoutRef.current = null;
     }
   };
-  const clearScheduleHoverTimeout = () => {
-    if (scheduleHoverTimeoutRef.current !== null) {
-      window.clearTimeout(scheduleHoverTimeoutRef.current);
-      scheduleHoverTimeoutRef.current = null;
-    }
-  };
-  const openScheduleHover = () => {
-    clearScheduleHoverTimeout();
-    setIsScheduleHoverOpen(true);
-  };
-  const closeScheduleHover = () => {
-    clearScheduleHoverTimeout();
-    scheduleHoverTimeoutRef.current = window.setTimeout(() => {
-      setIsScheduleHoverOpen(false);
-    }, 180);
-  };
+  const openScheduleHover = () => {};
+  const closeScheduleHover = () => {};
 
   const handleResponseSubmitted = (meta?: { responseType: string; color?: string }) => {
     clearResponseRefreshTimeout();
