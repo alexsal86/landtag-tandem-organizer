@@ -133,6 +133,7 @@ export function MyWorkView() {
               <button
                 key={tab.value}
                 onClick={() => handleTabChange(tab.value)}
+                data-help-id={`mywork-tab-${tab.value}`}
                 className={`flex items-center gap-1.5 ${tab.isLogo ? "px-2" : "px-4"} py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   isActiveTab
                     ? "border-primary text-primary"
@@ -164,7 +165,7 @@ export function MyWorkView() {
         <div className="flex shrink-0 items-center gap-2 pb-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" className="gap-1">
+              <Button size="sm" className="gap-1" data-help-id="mywork-new-menu">
                 <Plus className="h-4 w-4" />
                 Neu
               </Button>
