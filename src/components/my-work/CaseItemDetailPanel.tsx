@@ -141,19 +141,12 @@ export function CaseItemDetailPanel({
   onDelete?: () => void;
 }) {
   const [showMetaFields, setShowMetaFields] = useState(false);
-  const [showInteractionComposer, setShowInteractionComposer] = useState(false);
+  const [activeSection, setActiveSection] = useState<"sachlage" | TimelineInteractionType | "entscheidung">("sachlage");
   const [interactionFiles, setInteractionFiles] = useState<File[]>([]);
-  const [editingDocumentId, setEditingDocumentId] = useState<string | null>(null);
-  const [editingDocumentTitle, setEditingDocumentTitle] = useState("");
-  const [contactSearchResults, setContactSearchResults] = useState<Array<{ id: string; name: string; email: string | null; phone: string | null; organization: string | null }>>([]);
-  const [searchingContacts, setSearchingContacts] = useState(false);
-  const [showSearchResults, setShowSearchResults] = useState(false);
-  const contactSearchRef = useRef(0);
-  const searchContainerRef = useRef<HTMLDivElement>(null);
-  const { currentTenant } = useTenant();
+  const showInteractionComposer = activeSection !== "sachlage" && activeSection !== "entscheidung";
 
   useEffect(() => {
-    setShowInteractionComposer(false);
+    setActiveSection("sachlage");
     setInteractionFiles([]);
   }, [itemId]);
 
