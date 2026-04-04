@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "Landtag Mobile",
+    "slug": "landtag-mobile",
+    "scheme": "landtagmobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "de.landtag.mobile"
+    },
+    "android": {
+      "package": "de.landtag.mobile"
+    },
+    "plugins": [
+      "expo-router"
+    ]
+  }
+}
