@@ -155,6 +155,17 @@ export function GlobalDaySlipPanel() {
     setOpen(true); ds.setResolveMode(false); setShowArchive(false); setShowSettings(false);
   }, [ds.appendLinesToToday]);
 
+  const handleDaySlipButtonDragOver = useCallback((event: DragEvent<HTMLButtonElement>) => {
+    const hasDaySlipData = event.dataTransfer.types.includes("application/x-mywork-task-title") || event.dataTransfer.types.includes("text/plain");
+    if (!hasDaySlipData) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+  }, []);
+
+  const handleDaySlipButtonDrop = useCallback((event: DragEvent<HTMLButtonElement>) => {
+    handleDropToDaySlip(event as unknown as DragEvent<HTMLElement>);
+  }, [handleDropToDaySlip]);
+
   const handleEditorClick = useCallback((e: MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     const item = target.closest(".day-slip-item") as HTMLElement | null;
@@ -428,7 +439,7 @@ export function GlobalDaySlipPanel() {
         <div className="fixed bottom-24 right-6 z-50 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs text-emerald-800 shadow-lg backdrop-blur dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-100">{completionMessage}</div>
       )}
 
-      <button type="button" className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full border border-border/70 bg-background/90 shadow-lg backdrop-blur hover:bg-muted" aria-label="Tageszettel öffnen (Strg+Alt+J)" onClick={() => setOpen((prev: boolean) => !prev)}>
+      <button type="button" className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full border border-border/70 bg-background/90 shadow-lg backdrop-blur hover:bg-muted" aria-label="Tageszettel öffnen (Strg+Alt+J)" onClick={() => setOpen((prev: boolean) => !prev)} onDragOver={handleDaySlipButtonDragOver} onDrop={handleDaySlipButtonDrop}>
         {showCompletePulse ? <Check className="h-5 w-5 text-emerald-600 dark:text-emerald-300" /> : <ClipboardPen className="h-5 w-5" />}
         {ds.unresolvedCount > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-semibold text-white">{ds.unresolvedCount}</span>}
       </button>
