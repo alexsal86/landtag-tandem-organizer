@@ -763,7 +763,7 @@ export function GlobalSearchCommand() {
             {activePlannings.map((planning) => (
               <CommandItem
                 key={planning.id}
-                onSelect={() => runCommand(() => navigate(`/eventplanning/${planning.id}`))}
+                onSelect={() => runCommand(() => navigate(`/eventplanning/${planning.id}?highlight=${planning.id}`))}
               >
                 <CalendarPlus className="mr-2 h-4 w-4" />
                 <span>{planning.title}</span>
