@@ -1,59 +1,79 @@
 
 
-# Benachrichtigungs-Deep-Links in der Sidebar + Archiv/Gelöscht-Handling
+# Drei neue Sidebar-Features
 
-## Problem
+## 1. Kürzlich besucht
 
-Die Benachrichtigungen im Sidebar-Panel navigieren aktuell nicht zum jeweiligen Element. Der `onClick`-Handler markiert nur als gelesen, nutzt aber nicht `buildDeepLinkPath` für die Navigation. Zudem gibt es kein Handling für archivierte oder gelöschte Ziel-Elemente.
+**Hook: `useRecentlyVisited.ts`**
+- Speichert die letzten 8 besuchten Seiten im `localStorage` (Key: `nav-recently-visited`)
+- Interface: `{ id: string, label: string, icon: string, route: string, visitedAt: number }`
+- `trackVisit(id, label, icon, route)` — fügt hinzu / verschiebt nach oben, begrenzt auf 8 Einträge
+- `recentPages` — sortiert nach `visitedAt` desc
+- Deduplizierung nach `id`
 
-## Änderungen
+**Integration in `AppNavigation.tsx`**
+- In `handleNavigationClick` wird `trackVisit()` aufgerufen (Label/Icon aus `navigationGroups` oder `availableQuickPages` ermitteln)
+- Im `renderHomePanel()` wird oberhalb des Schnellzugriffs eine "Kürzlich besucht"-Sektion eingefügt
+- Design: Gleicher Stil wie Schnellzugriff, aber mit `Clock`-Icon statt `Star`, kleinere Schrift (11px), max 5 Einträge sichtbar
+- Klick navigiert zur Seite
 
-### 1. Navigation bei Klick auf Benachrichtigung (`AppNavigation.tsx`)
+## 2. Benachrichtigungs-Gruppierung nach Datum
 
-Im `renderNotificationsPanel` den `onClick`-Handler erweitern:
-- `buildDeepLinkPath(n)` aufrufen um den Zielpfad zu ermitteln
-- Bei externen URLs (`https://...`) via `window.location.href` öffnen
-- Bei internen Pfaden via `navigate(path)` navigieren (Deep-Link mit `?highlight=` Parameter)
-- Sidebar auf mobile schließen
-- Als gelesen markieren
+**In `renderNotificationsPanel()`**
+- Die bestehende flache Liste (`filteredNotifications.map(...)`) wird ersetzt durch gruppierte Darstellung
+- Gruppierung: `isToday()` → "Heute", `isYesterday()` → "Gestern", Rest → "Älter" (oder konkretes Datum bei < 7 Tagen)
+- Gruppen-Header: `text-[11px] font-semibold text-muted uppercase tracking-wider px-2 mb-1` (gleicher Stil wie Appointments-Panel)
+- Hilfsfunktion `groupNotificationsByDate(notifications)` liefert `{ label: string, items: Notification[] }[]`
+- Keine externen Abhängigkeiten nötig, `isToday`/`isTomorrow` aus `date-fns` sind bereits importiert; `isYesterday` wird zusätzlich importiert
 
-Das ist exakt das gleiche Muster wie in `NotificationCenter.tsx` Zeile 157-171.
+## 3. Beliebige Elemente in den Schnellzugriff pinnen
 
-### 2. Archiv- und Gelöscht-Handling (`notificationDeepLinks.ts`)
+**Konzept: Drei-Punkte-Menü ("...") auf Element-Ebene**
 
-Die bestehende `buildDeepLinkPath`-Funktion wird erweitert, damit sie den Status des Ziel-Elements berücksichtigen kann. Dafür:
+Auf den jeweiligen Seiten (Fallakten, Planungen, Meetings, Aufgaben, Entscheidungen, Dokumente) wird in den Zeilen/Cards ein `MoreHorizontal`-Icon mit DropdownMenu ergänzt, das u.a. "Zum Schnellzugriff hinzufügen" enthält.
 
-- Für **archivierte** Elemente: Die Deep-Link-Pfade bereits korrekt auf Archiv-Tabs verweisen (z.B. `/tasks?tab=archived&highlight=xxx`, `/decisions?tab=archived&highlight=xxx`). Das erfordert ein neues optionales Feld im Notification-Data (`target_status: 'active' | 'archived' | 'deleted'`), das vom Backend beim Archivieren/Löschen gesetzt werden kann.
+**Erweiterung `useQuickAccessPages`**
+- Das Interface `QuickAccessPage` bekommt ein optionales Feld `type?: 'page' | 'item'` und `entityId?: string`
+- Neue Convenience-Funktion: `addItem(id, label, icon, route)` für Einzelelemente (z.B. eine Fallakte mit Route `/casefiles?highlight=uuid`)
+- `isInQuickAccess(id)` — prüft ob ein Element bereits gepinnt ist
 
-- Für **gelöschte** Elemente: Wenn `target_status === 'deleted'`, wird statt der Navigation ein Toast/Dialog angezeigt ("Dieses Element wurde gelöscht und ist nicht mehr verfügbar").
+**Shared Component: `QuickAccessMenuItem`**
+- Wiederverwendbare DropdownMenu-Option: `<QuickAccessMenuItem id={...} label={...} icon={...} route={...} />`
+- Nutzt `useQuickAccessPages` intern
+- Zeigt "Zum Schnellzugriff" oder "Aus Schnellzugriff entfernen" je nach Status
+- Icon: `Star` (outline) / `StarOff`
 
-- **Fallback ohne Backend-Änderung** (pragmatischer Ansatz): Die Zielseiten selbst (Tasks, Decisions, etc.) prüfen beim Laden mit `highlight`-Parameter, ob das Element existiert. Falls nicht gefunden, wird eine Info-Meldung angezeigt. Falls archiviert, wird automatisch zum Archiv-Tab gewechselt.
+**Integration auf den Seiten** (Drei-Punkte-Menü erweitern):
+- `CaseFilesView` — bei jeder Fallakte im Kontextmenü
+- `EventPlanningListView` — bei jeder Planung
+- `MeetingsView` — bei jedem Jour fixe
+- `DecisionOverview` — bei jeder Entscheidung
+- `KnowledgeBaseView` — bei jedem Dokument
 
-### 3. Highlight-Handling auf Zielseiten verbessern
+Falls Seiten bereits ein `MoreHorizontal`-Menü haben, wird `QuickAccessMenuItem` als zusätzlicher Eintrag hinzugefügt. Falls nicht, wird ein kleines Drei-Punkte-Menü ergänzt.
 
-Die Zielseiten (Tasks, Decisions, Meetings, etc.) nutzen bereits `useNotificationHighlight`. Erweitert wird:
-
-- **Automatischer Tab-Wechsel**: Wenn ein `highlight`-Element nicht im aktiven Tab gefunden wird, archivierte Tabs durchsuchen und ggf. dorthin wechseln
-- **Nicht-gefunden-Meldung**: Toast anzeigen wenn das Element in keinem Tab existiert ("Dieses Element existiert nicht mehr")
-
-Das betrifft primär:
-- `DecisionsOverview.tsx` — hat bereits Archiv-Tab
-- `TaskList` / Tasks-Seite — hat bereits Archiv-Logik
-- Weitere Seiten: Meetings, Dokumente
+**Darstellung im Schnellzugriff**
+- Items mit `type === 'item'` zeigen das jeweilige Icon (z.B. `Briefcase` für Fallakte) statt `Star`
+- Beim Klick wird zur gespeicherten Route navigiert
 
 ### Betroffene Dateien
 
 | Datei | Änderung |
 |---|---|
-| `src/components/AppNavigation.tsx` | onClick-Handler: navigate + buildDeepLinkPath + markAsRead |
-| `src/utils/notificationDeepLinks.ts` | Keine Änderung nötig (Pfade sind bereits korrekt) |
-| `src/components/task-decisions/DecisionsOverview.tsx` | Auto-Tab-Wechsel zu Archiv wenn highlight-Element dort liegt |
-| `src/pages/TasksPage.tsx` (o.ä.) | Analog: Archiv-Suche bei highlight |
-| Betroffene Zielseiten | Toast "Element nicht mehr vorhanden" wenn highlight-ID nirgends gefunden |
+| `src/hooks/useRecentlyVisited.ts` | Neuer Hook |
+| `src/hooks/useQuickAccessPages.ts` | `type`, `entityId`, `isInQuickAccess` ergänzen |
+| `src/components/AppNavigation.tsx` | Kürzlich-besucht-Sektion, Notifications-Gruppierung, trackVisit-Aufruf |
+| `src/components/shared/QuickAccessMenuItem.tsx` | Neue shared Component |
+| `src/components/my-work/cases/...` | Drei-Punkte-Menü mit QuickAccessMenuItem |
+| `src/components/event-planning/...` | Drei-Punkte-Menü mit QuickAccessMenuItem |
+| `src/components/meetings/...` | Drei-Punkte-Menü mit QuickAccessMenuItem |
+| `src/components/task-decisions/...` | Drei-Punkte-Menü mit QuickAccessMenuItem |
+| `src/components/KnowledgeBaseView.tsx` | Drei-Punkte-Menü mit QuickAccessMenuItem |
 
 ### Umsetzungsreihenfolge
 
-1. **Sidebar-Navigation** einbauen (Hauptfix, ~5 Zeilen in AppNavigation.tsx)
-2. **Archiv-Auto-Switch** auf den wichtigsten Seiten (Decisions, Tasks)
-3. **Nicht-gefunden-Toast** als Fallback auf allen highlight-fähigen Seiten
+1. `useRecentlyVisited` Hook + Integration in AppNavigation
+2. Notifications-Gruppierung in `renderNotificationsPanel`
+3. `QuickAccessPages`-Erweiterung + `QuickAccessMenuItem`-Component
+4. Drei-Punkte-Menüs auf den 5 wichtigsten Seiten einbauen
 
