@@ -434,22 +434,7 @@ export function GlobalSearchCommand() {
 
   const activeFilterCount = Object.values(filters).filter(v => v).length;
 
-  const navigationItems = [
-    { label: "Dashboard", icon: Home, path: "/" },
-    { label: "Terminkalender", icon: Calendar, path: "/?section=calendar" },
-    { label: "Kontakte", icon: Users, path: "/?section=contacts" },
-    { label: "Aufgaben", icon: CheckSquare, path: "/?section=tasks" },
-    { label: "Fallakten", icon: Briefcase, path: "/?section=casefiles" },
-    { label: "Dossiers", icon: Briefcase, path: "/?section=dossiers" },
-    { label: "Entscheidungen", icon: Vote, path: "/?section=decisions" },
-    { label: "Jour fixe", icon: MessageSquare, path: "/?section=meetings" },
-    { label: "Planungen", icon: CalendarPlus, path: "/?section=eventplanning" },
-    { label: "Wahlkreise", icon: MapPin, path: "/?section=wahlkreise" },
-    { label: "Stadtteile KA", icon: MapPin, path: "/stadtteile-karlsruhe" },
-    { label: "Dokumente", icon: FileText, path: "/?section=documents" },
-    { label: "Korrespondenz", icon: Mail, path: "/?section=letters" },
-    { label: "Verwaltung", icon: Settings, path: "/?section=administration" },
-  ];
+  // Navigation items removed - redundant with sidebar
 
   const hasResults = (contacts?.length || 0) + (appointments?.length || 0) + 
                      (tasks?.length || 0) + (documents?.length || 0) + 
