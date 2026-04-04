@@ -141,7 +141,7 @@ export function CaseItemDetailPanel({
   onDelete?: () => void;
 }) {
   const [showMetaFields, setShowMetaFields] = useState(false);
-  const [showInteractionComposer, setShowInteractionComposer] = useState(false);
+  const [activeSection, setActiveSection] = useState<"sachlage" | TimelineInteractionType | "entscheidung">("sachlage");
   const [interactionFiles, setInteractionFiles] = useState<File[]>([]);
   const [editingDocumentId, setEditingDocumentId] = useState<string | null>(null);
   const [editingDocumentTitle, setEditingDocumentTitle] = useState("");
@@ -151,9 +151,10 @@ export function CaseItemDetailPanel({
   const contactSearchRef = useRef(0);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const { currentTenant } = useTenant();
+  const showInteractionComposer = activeSection !== "sachlage" && activeSection !== "entscheidung";
 
   useEffect(() => {
-    setShowInteractionComposer(false);
+    setActiveSection("sachlage");
     setInteractionFiles([]);
   }, [itemId]);
 
@@ -763,101 +764,131 @@ export function CaseItemDetailPanel({
         </div>
 
         <div className="space-y-3">
-          <div className="rounded-md border bg-background p-3 space-y-2">
-            <p className="font-bold">Interaktion erfassen</p>
-            <div className="flex flex-wrap gap-2 xl:flex-nowrap">
-              {interactionTypeOptions.map((option) => {
-                // Special handling for "Entscheidung stellen" button
-                if (option.value === "entscheidung") {
+          <div className="rounded-md border bg-background p-3">
+            <p className="font-bold mb-2">Interaktion erfassen</p>
+            <div className="grid grid-cols-[auto_1fr] gap-3">
+              {/* Left column: vertical button stack */}
+              <div className="flex flex-col gap-1.5 min-w-[120px]">
+                {/* Sachlage button - always first, pre-selected */}
+                <Button
+                  type="button"
+                  variant={activeSection === "sachlage" ? "default" : "outline"}
+                  size="sm"
+                  className="justify-start"
+                  onClick={() => setActiveSection("sachlage")}
+                >
+                  <FileEdit className="mr-1 h-3.5 w-3.5" />
+                  Sachlage
+                </Button>
+
+                {/* Separator */}
+                <div className="border-t border-border my-1" />
+
+                {/* Interaction type buttons */}
+                {interactionTypeOptions.map((option) => {
+                  if (option.value === "entscheidung") {
+                    const OptionIcon = option.icon;
+                    return (
+                      <Button
+                        key={option.value}
+                        type="button"
+                        variant={activeSection === "entscheidung" ? "default" : "outline"}
+                        size="sm"
+                        className="justify-start"
+                        onClick={() => {
+                          setActiveSection("entscheidung");
+                          onDecisionRequest();
+                        }}
+                      >
+                        <OptionIcon className="mr-1 h-3.5 w-3.5" />
+                        {option.label}
+                      </Button>
+                    );
+                  }
+
+                  const typeValue = option.value as TimelineInteractionType;
+                  const selected = activeSection === typeValue;
                   const OptionIcon = option.icon;
                   return (
                     <Button
                       key={option.value}
                       type="button"
-                      variant="outline"
+                      variant={selected ? "default" : "outline"}
                       size="sm"
-                      className="flex-1 justify-start"
-                      onClick={onDecisionRequest}
+                      className="justify-start"
+                      onClick={() => {
+                        if (selected) {
+                          onUpdate({ interactionType: "", interactionContact: "", interactionDateTime: "", interactionNote: "" });
+                          setActiveSection("sachlage");
+                          return;
+                        }
+                        onUpdate({ interactionType: typeValue });
+                        setActiveSection(typeValue);
+                      }}
                     >
                       <OptionIcon className="mr-1 h-3.5 w-3.5" />
                       {option.label}
                     </Button>
                   );
-                }
+                })}
+              </div>
 
-                // wir wissen hier, dass value eine TimelineInteractionType ist, da wir "entscheidung" abgefangen haben.
-                const typeValue = option.value as TimelineInteractionType;
-                const selected = editableCaseItem.interactionType === typeValue;
-                const OptionIcon = option.icon;
-                return (
-                  <Button
-                    key={option.value}
-                    type="button"
-                    variant={selected ? "default" : "outline"}
-                    size="sm"
-                    className="flex-1 justify-start"
-                    onClick={() => {
-                      if (selected && showInteractionComposer) {
-                        onUpdate({ interactionType: "", interactionContact: "", interactionDateTime: "", interactionNote: "" });
-                        setShowInteractionComposer(false);
-                        return;
-                      }
-                      onUpdate({ interactionType: typeValue });
-                      setShowInteractionComposer(true);
-                    }}
-                  >
-                    <OptionIcon className="mr-1 h-3.5 w-3.5" />
-                    {option.label}
-                  </Button>
-                );
-              })}
+              {/* Right column: content area based on active section */}
+              <div className="space-y-2 min-w-0">
+                {activeSection === "sachlage" && (
+                  <>
+                    <div className="space-y-1.5">
+                      <Label className="font-bold" htmlFor="detail-subject">Betreff</Label>
+                      <Input id="detail-subject" value={editableCaseItem.subject} onChange={(event) => onUpdate({ subject: event.target.value })} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="font-bold" htmlFor="detail-summary">Beschreibung</Label>
+                      <SimpleRichTextEditor
+                        key={`detail-summary-${itemId}`}
+                        initialContent={toEditorHtml(editableCaseItem.summary)}
+                        onChange={(html) => onUpdate({ summary: html })}
+                        placeholder="Beschreibung hinzufügen"
+                        minHeight="140px"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {showInteractionComposer && (
+                  <>
+                    {(editableCaseItem.interactionType === "anruf" || editableCaseItem.interactionType === "mail" || editableCaseItem.interactionType === "gespraech" || editableCaseItem.interactionType === "treffen") && (
+                      <Input
+                        placeholder={editableCaseItem.interactionType === "mail" ? "E-Mail-Adresse" : editableCaseItem.interactionType === "anruf" ? "Telefonnummer" : "Kontaktperson"}
+                        value={editableCaseItem.interactionContact}
+                        onChange={(event) => onUpdate({ interactionContact: event.target.value })}
+                      />
+                    )}
+                    {editableCaseItem.interactionType === "dokument" && (
+                      <DecisionFileUpload
+                        mode="creation"
+                        canUpload
+                        onFilesSelected={(files) => setInteractionFiles(files)}
+                      />
+                    )}
+                    <Input type="datetime-local" value={editableCaseItem.interactionDateTime} onChange={(event) => onUpdate({ interactionDateTime: event.target.value })} />
+                    <SimpleRichTextEditor
+                      key={editableCaseItem.timelineEvents.length}
+                      initialContent={editableCaseItem.interactionNote}
+                      onChange={(value) => onUpdate({ interactionNote: value })}
+                      placeholder="Kurztext"
+                      minHeight="120px"
+                      maxHeight="180px"
+                      scrollable
+                    />
+                    <Button type="button" size="sm" onClick={() => onAddInteraction(interactionFiles)}>Interaktion hinzufügen</Button>
+                  </>
+                )}
+
+                {activeSection === "entscheidung" && (
+                  <p className="text-xs text-muted-foreground">Entscheidungsdialog wurde geöffnet.</p>
+                )}
+              </div>
             </div>
-            {showInteractionComposer ? (
-              <>
-                {(editableCaseItem.interactionType === "anruf" || editableCaseItem.interactionType === "mail" || editableCaseItem.interactionType === "gespraech" || editableCaseItem.interactionType === "treffen") && (
-                  <Input
-                    placeholder={editableCaseItem.interactionType === "mail" ? "E-Mail-Adresse" : editableCaseItem.interactionType === "anruf" ? "Telefonnummer" : "Kontaktperson"}
-                    value={editableCaseItem.interactionContact}
-                    onChange={(event) => onUpdate({ interactionContact: event.target.value })}
-                  />
-                )}
-                {editableCaseItem.interactionType === "dokument" && (
-                  <DecisionFileUpload
-                    mode="creation"
-                    canUpload
-                    onFilesSelected={(files) => setInteractionFiles(files)}
-                  />
-                )}
-                <Input type="datetime-local" value={editableCaseItem.interactionDateTime} onChange={(event) => onUpdate({ interactionDateTime: event.target.value })} />
-                <SimpleRichTextEditor
-                  key={editableCaseItem.timelineEvents.length}
-                  initialContent={editableCaseItem.interactionNote}
-                  onChange={(value) => onUpdate({ interactionNote: value })}
-                  placeholder="Kurztext"
-                  minHeight="120px"
-                  maxHeight="180px"
-                  scrollable
-                />
-                <Button type="button" size="sm" onClick={() => onAddInteraction(interactionFiles)}>Interaktion hinzufügen</Button>
-              </>
-            ) : (
-              <p className="text-xs text-muted-foreground">Bitte Interaktion wählen, um Details zu öffnen.</p>
-            )}
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="font-bold" htmlFor="detail-subject">Betreff</Label>
-            <Input id="detail-subject" value={editableCaseItem.subject} onChange={(event) => onUpdate({ subject: event.target.value })} />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="font-bold" htmlFor="detail-summary">Beschreibung</Label>
-            <SimpleRichTextEditor
-              key={`detail-summary-${itemId}`}
-              initialContent={toEditorHtml(editableCaseItem.summary)}
-              onChange={(html) => onUpdate({ summary: html })}
-              placeholder="Beschreibung hinzufügen"
-              minHeight="140px"
-            />
           </div>
         </div>
       </div>
