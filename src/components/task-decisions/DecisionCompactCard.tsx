@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { QuickAccessMenuItem } from "@/components/shared/QuickAccessMenuItem";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TopicDisplay } from "@/components/topics/TopicSelector";
 import { cn } from "@/lib/utils";

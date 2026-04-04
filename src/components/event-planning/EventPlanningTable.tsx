@@ -5,7 +5,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { UserBadge } from "@/components/ui/user-badge";
 import { getHashedColor } from "@/utils/userColors";
 import { NewItemIndicator } from "../NewItemIndicator";
-import { CheckCircle, Clock, Archive } from "lucide-react";
+import { CheckCircle, Clock, Archive, MoreVertical } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { QuickAccessMenuItem } from "@/components/shared/QuickAccessMenuItem";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
