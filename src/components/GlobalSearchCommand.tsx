@@ -20,13 +20,9 @@ import {
   FileText, 
   Mail, 
   FileSignature,
-  Home,
   Users,
   Vote,
-  MessageSquare,
   CalendarPlus,
-  MapPin,
-  Settings,
   Briefcase
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -117,9 +113,11 @@ export function GlobalSearchCommand() {
       setOpen(true);
 
       if (detail?.query) {
-        queueMicrotask(() => {
-          setSearchQuery(detail.query);
-        });
+        // Set both searchQuery and debouncedQuery immediately to avoid waiting for debounce
+        setSearchQuery(detail.query);
+        setDebouncedQuery(detail.query);
+        // Clear any pending debounce timer
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       }
     };
     window.addEventListener('openGlobalSearch', handleOpenSearch);
@@ -432,22 +430,7 @@ export function GlobalSearchCommand() {
 
   const activeFilterCount = Object.values(filters).filter(v => v).length;
 
-  const navigationItems = [
-    { label: "Dashboard", icon: Home, path: "/" },
-    { label: "Terminkalender", icon: Calendar, path: "/?section=calendar" },
-    { label: "Kontakte", icon: Users, path: "/?section=contacts" },
-    { label: "Aufgaben", icon: CheckSquare, path: "/?section=tasks" },
-    { label: "Fallakten", icon: Briefcase, path: "/?section=casefiles" },
-    { label: "Dossiers", icon: Briefcase, path: "/?section=dossiers" },
-    { label: "Entscheidungen", icon: Vote, path: "/?section=decisions" },
-    { label: "Jour fixe", icon: MessageSquare, path: "/?section=meetings" },
-    { label: "Planungen", icon: CalendarPlus, path: "/?section=eventplanning" },
-    { label: "Wahlkreise", icon: MapPin, path: "/?section=wahlkreise" },
-    { label: "Stadtteile KA", icon: MapPin, path: "/stadtteile-karlsruhe" },
-    { label: "Dokumente", icon: FileText, path: "/?section=documents" },
-    { label: "Korrespondenz", icon: Mail, path: "/?section=letters" },
-    { label: "Verwaltung", icon: Settings, path: "/?section=administration" },
-  ];
+  // Navigation items removed - redundant with sidebar
 
   const hasResults = (contacts?.length || 0) + (appointments?.length || 0) + 
                      (tasks?.length || 0) + (documents?.length || 0) + 
@@ -606,29 +589,13 @@ export function GlobalSearchCommand() {
           </>
         )}
 
-        {!searchQuery && (
-          <CommandGroup heading="🚀 Navigation">
-            {navigationItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <CommandItem
-                  key={item.path}
-                  onSelect={() => runCommand(() => navigate(item.path))}
-                >
-                  <Icon className="mr-2 h-4 w-4" />
-                  <span>{item.label}</span>
-                </CommandItem>
-              );
-            })}
-          </CommandGroup>
-        )}
 
         {contacts && contacts.length > 0 && (
           <CommandGroup heading="👤 Kontakte">
             {contacts.map((contact) => (
               <CommandItem
                 key={contact.id}
-                onSelect={() => runCommand(() => navigate(`/?section=contacts&contact=${contact.id}`))}
+                onSelect={() => runCommand(() => navigate(`/?section=contacts&contact=${contact.id}&highlight=${contact.id}`))}
               >
                 <User className="mr-2 h-4 w-4" />
                 <span>{contact.name}</span>
@@ -647,7 +614,7 @@ export function GlobalSearchCommand() {
             {appointments.map((appointment) => (
               <CommandItem
                 key={appointment.id}
-                onSelect={() => runCommand(() => navigate(`/?section=calendar&appointment=${appointment.id}`))}
+                onSelect={() => runCommand(() => navigate(`/?section=calendar&appointment=${appointment.id}&highlight=${appointment.id}`))}
               >
                 <Calendar className="mr-2 h-4 w-4" />
                 <span>{appointment.title}</span>
@@ -664,7 +631,7 @@ export function GlobalSearchCommand() {
             {tasks.map((task) => (
               <CommandItem
                 key={task.id}
-                onSelect={() => runCommand(() => navigate(`/?section=tasks&task=${task.id}`))}
+                onSelect={() => runCommand(() => navigate(`/?section=tasks&task=${task.id}&highlight=${task.id}`))}
               >
                 <CheckSquare className="mr-2 h-4 w-4" />
                 <span>{task.title}</span>
@@ -683,7 +650,7 @@ export function GlobalSearchCommand() {
             {documents.map((doc) => (
               <CommandItem
                 key={doc.id}
-                onSelect={() => runCommand(() => navigate(`/?section=documents&document=${doc.id}`))}
+                onSelect={() => runCommand(() => navigate(`/?section=documents&document=${doc.id}&highlight=${doc.id}`))}
               >
                 <FileText className="mr-2 h-4 w-4" />
                 <span>{doc.title}</span>
@@ -702,7 +669,7 @@ export function GlobalSearchCommand() {
             {letters.map((letter) => (
               <CommandItem
                 key={letter.id}
-                onSelect={() => runCommand(() => navigate(`/letters/${letter.id}`))}
+                onSelect={() => runCommand(() => navigate(`/letters/${letter.id}?highlight=${letter.id}`))}
               >
                 <Mail className="mr-2 h-4 w-4" />
                 <span>{letter.title}</span>
@@ -721,7 +688,7 @@ export function GlobalSearchCommand() {
             {protocols.map((protocol) => (
               <CommandItem
                 key={protocol.id}
-                onSelect={() => runCommand(() => navigate(`/?section=meetings&meeting=${protocol.id}`))}
+                onSelect={() => runCommand(() => navigate(`/?section=meetings&meeting=${protocol.id}&highlight=${protocol.id}`))}
               >
                 <FileSignature className="mr-2 h-4 w-4" />
                 <span>{protocol.title}</span>
@@ -740,7 +707,7 @@ export function GlobalSearchCommand() {
             {caseFiles.map((caseFile) => (
               <CommandItem
                 key={caseFile.id}
-                onSelect={() => runCommand(() => navigate(`/?section=casefiles&casefile=${caseFile.id}`))}
+                onSelect={() => runCommand(() => navigate(`/?section=casefiles&casefile=${caseFile.id}&highlight=${caseFile.id}`))}
               >
                 <Briefcase className="mr-2 h-4 w-4" />
                 <span>{caseFile.title}</span>
@@ -760,7 +727,7 @@ export function GlobalSearchCommand() {
             {activeDecisions.map((decision) => (
               <CommandItem
                 key={decision.id}
-                onSelect={() => runCommand(() => navigate(`/decisions?id=${decision.id}`))}
+                onSelect={() => runCommand(() => navigate(`/decisions?id=${decision.id}&highlight=${decision.id}`))}
               >
                 <Vote className="mr-2 h-4 w-4" />
                 <span>{decision.title}</span>
@@ -777,7 +744,7 @@ export function GlobalSearchCommand() {
             {archivedDecisions.map((decision) => (
               <CommandItem
                 key={decision.id}
-                onSelect={() => runCommand(() => navigate(`/decisions?id=${decision.id}`))}
+                onSelect={() => runCommand(() => navigate(`/decisions?id=${decision.id}&highlight=${decision.id}`))}
               >
                 <Vote className="mr-2 h-4 w-4" />
                 <span>{decision.title}</span>
@@ -792,7 +759,7 @@ export function GlobalSearchCommand() {
             {activePlannings.map((planning) => (
               <CommandItem
                 key={planning.id}
-                onSelect={() => runCommand(() => navigate(`/eventplanning/${planning.id}`))}
+                onSelect={() => runCommand(() => navigate(`/eventplanning/${planning.id}?highlight=${planning.id}`))}
               >
                 <CalendarPlus className="mr-2 h-4 w-4" />
                 <span>{planning.title}</span>
@@ -809,7 +776,7 @@ export function GlobalSearchCommand() {
             {archivedPlannings.map((planning) => (
               <CommandItem
                 key={planning.id}
-                onSelect={() => runCommand(() => navigate(`/eventplanning/${planning.id}`))}
+                onSelect={() => runCommand(() => navigate(`/eventplanning/${planning.id}?highlight=${planning.id}`))}
               >
                 <CalendarPlus className="mr-2 h-4 w-4" />
                 <span>{planning.title}</span>
@@ -824,7 +791,7 @@ export function GlobalSearchCommand() {
             {archivedTasks.map((task) => (
               <CommandItem
                 key={task.id}
-                onSelect={() => runCommand(() => navigate(`/?section=tasks&archived=true&task=${task.id}`))}
+                onSelect={() => runCommand(() => navigate(`/?section=tasks&archived=true&task=${task.id}&highlight=${task.id}`))}
               >
                 <CheckSquare className="mr-2 h-4 w-4" />
                 <span>{task.title}</span>
