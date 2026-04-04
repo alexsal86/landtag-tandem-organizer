@@ -64,6 +64,8 @@ interface TaskCardProps {
   getChildTasks?: (taskId: string) => Task[];
   getCommentCount?: (taskId: string) => number;
   showPersistentCommentIndicator?: boolean;
+  connectorParentLineStartTop?: number;
+  connectorChildTargetTop?: number;
 }
 
 export function TaskCard({
@@ -98,6 +100,8 @@ export function TaskCard({
   getChildTasks,
   getCommentCount,
   showPersistentCommentIndicator = false,
+  connectorParentLineStartTop = 6,
+  connectorChildTargetTop = 16,
 }: TaskCardProps) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [editingDescription, setEditingDescription] = useState(false);
@@ -127,8 +131,6 @@ export function TaskCard({
   const CHECKBOX_SIZE = 16;
   const CHECKBOX_CENTER = CHECKBOX_SIZE / 2;
   const CONNECTOR_X = CHECKBOX_CENTER + 8;
-  const PARENT_LINE_START_TOP = 6;
-  const CHILD_CONNECTOR_TARGET_TOP = 16;
   const [parentLineHeight, setParentLineHeight] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const childrenRef = useRef<HTMLDivElement>(null);
@@ -162,8 +164,8 @@ export function TaskCard({
 
       const containerTop = container.getBoundingClientRect().top;
       const lastChildRect = lastChild.getBoundingClientRect();
-      const lineStart = PARENT_LINE_START_TOP;
-      const lineEnd = lastChildRect.top - containerTop + CHILD_CONNECTOR_TARGET_TOP;
+      const lineStart = connectorParentLineStartTop;
+      const lineEnd = lastChildRect.top - containerTop + connectorChildTargetTop;
       setParentLineHeight(Math.max(0, lineEnd - lineStart));
     };
 
@@ -249,7 +251,7 @@ export function TaskCard({
           aria-hidden="true"
           style={{
             left: `${CONNECTOR_X}px`,
-            top: `${PARENT_LINE_START_TOP}px`,
+            top: `${connectorParentLineStartTop}px`,
             height: `${parentLineHeight}px`,
             width: "2px",
           }}
@@ -264,7 +266,7 @@ export function TaskCard({
             left: `-${CHECKBOX_CENTER + 8}px`,
             top: 0,
             width: `${CHECKBOX_CENTER + 4}px`,
-            height: `${CHILD_CONNECTOR_TARGET_TOP}px`,
+            height: `${connectorChildTargetTop}px`,
             borderLeft: "2px solid hsl(var(--border) / 0.7)",
             borderBottom: "2px solid hsl(var(--border) / 0.7)",
             borderBottomLeftRadius: "8px",
@@ -448,6 +450,8 @@ export function TaskCard({
               getChildTasks={getChildTasks}
               getCommentCount={getCommentCount}
               showPersistentCommentIndicator={showPersistentCommentIndicator}
+              connectorParentLineStartTop={connectorParentLineStartTop}
+              connectorChildTargetTop={connectorChildTargetTop}
             />
           ))}
         </div>
