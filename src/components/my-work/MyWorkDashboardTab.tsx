@@ -7,6 +7,7 @@ import { useDashboardAppointmentsData } from '@/hooks/useDashboardAppointmentsDa
 import { useDashboardDeadlines } from '@/hooks/useDashboardDeadlines';
 import { NewsWidget } from '@/components/widgets/NewsWidget';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { CalendarDays, ClipboardList, Newspaper } from 'lucide-react';
 
 interface DashboardWidgetContainerProps {
   title: ReactNode;
@@ -50,7 +51,12 @@ function DeadlinesWidget() {
 
   return (
     <DashboardWidgetContainer
-      title="📋 Fristen"
+      title={
+        <span className="inline-flex items-center gap-2">
+          <ClipboardList className="h-4 w-4" />
+          Fristen
+        </span>
+      }
       isLoading={isLoading}
       hasError={isError}
       loadingFallback={<div className="animate-pulse h-32 bg-muted rounded-lg" />}
@@ -66,7 +72,12 @@ function AppointmentsWidget() {
 
   return (
     <DashboardWidgetContainer
-      title={`📅 ${dashboardData.isShowingTomorrow ? 'Deine Termine morgen' : 'Deine Termine heute'}`}
+      title={
+        <span className="inline-flex items-center gap-2">
+          <CalendarDays className="h-4 w-4" />
+          {dashboardData.isShowingTomorrow ? 'Deine Termine morgen' : 'Deine Termine heute'}
+        </span>
+      }
       isLoading={dashboardData.isLoading || dashboardData.tenantLoading}
       hasError={dashboardData.isError}
       loadingFallback={<div className="animate-pulse h-40 bg-muted rounded-lg" />}
@@ -80,7 +91,12 @@ function AppointmentsWidget() {
 function NewsWidgetCard() {
   return (
     <DashboardWidgetContainer
-      title="📰 News"
+      title={
+        <span className="inline-flex items-center gap-2">
+          <Newspaper className="h-4 w-4" />
+          News
+        </span>
+      }
       className="min-w-0"
       loadingFallback={null}
       errorFallback={<p className="text-sm text-muted-foreground">News konnten nicht geladen werden.</p>}
