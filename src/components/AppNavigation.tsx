@@ -510,7 +510,14 @@ export function AppNavigation({
         {quickAccessPages.map(page => (
           <div key={page.id} className="group flex items-center">
             <button
-              onClick={() => handleNavigationClick(page.route?.slice(1) || page.id)}
+              onClick={() => {
+                if (page.type === 'item' && page.route) {
+                  navigate(page.route);
+                  setActivePanel('home');
+                } else {
+                  handleNavigationClick(page.route?.slice(1) || page.id);
+                }
+              }}
               className={cn(
                 "flex-1 flex items-center gap-2 py-1 px-2 rounded-md text-sm transition-colors truncate",
                 "hover:bg-[hsl(var(--nav-hover))]",
