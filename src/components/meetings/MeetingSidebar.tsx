@@ -168,6 +168,21 @@ export function MeetingSidebar({
                         </AlertDialog>
                       </>
                     )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => e.stopPropagation()}>
+                          <MoreVertical className="h-3.5 w-3.5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <QuickAccessMenuItem
+                          id={`meeting-${meeting.id}`}
+                          label={meeting.title}
+                          icon="Calendar"
+                          route={`/meetings?highlight=${meeting.id}`}
+                        />
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   </div>
                 </div>
