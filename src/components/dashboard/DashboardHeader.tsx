@@ -1,14 +1,20 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { CircleHelp, Users, Shield, Settings, CalendarX2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentTimeSlot, getGreeting } from '@/utils/dashboard/timeUtils';
-import { getWeather, translateCondition, getWeatherIcon } from '@/utils/dashboard/weatherApi';
+import { getWeather, getWeatherIcon } from '@/utils/dashboard/weatherApi';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
 
 export const DashboardHeader = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [userName, setUserName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [weatherKarlsruhe, setWeatherKarlsruhe] = useState<{ temp: number; icon: string } | null>(null);
   const [weatherStuttgart, setWeatherStuttgart] = useState<{ temp: number; icon: string } | null>(null);
 
@@ -16,11 +22,12 @@ export const DashboardHeader = () => {
     if (!user?.id) return;
     supabase
       .from('profiles')
-      .select('display_name')
+      .select('display_name, avatar_url')
       .eq('user_id', user.id)
       .maybeSingle()
       .then(({ data }) => {
         setUserName(data?.display_name || user.email?.split('@')[0] || 'Nutzer');
+        setAvatarUrl(data?.avatar_url ?? null);
       });
   }, [user]);
 
@@ -39,26 +46,73 @@ export const DashboardHeader = () => {
   const now = new Date();
   const dayDate = format(now, "EEEE, d. MMMM", { locale: de });
   const greeting = getGreeting(getCurrentTimeSlot());
+  const weatherItems = [
+    weatherKarlsruhe ? { city: 'Karlsruhe', ...weatherKarlsruhe } : null,
+    weatherStuttgart ? { city: 'Stuttgart', ...weatherStuttgart } : null,
+  ].filter((item): item is { city: string; temp: number; icon: string } => item !== null);
+
+  const lowerNavItems = [
+    { label: 'Info', icon: CircleHelp, onClick: () => navigate('/mywork?tab=dashboard') },
+    { label: 'Team', icon: Users, onClick: () => navigate('/mywork?tab=team') },
+    { label: 'Admin', icon: Shield, onClick: () => navigate('/administration') },
+    { label: 'Einstellungen', icon: Settings, onClick: () => navigate('/settings') },
+  ];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6 max-w-6xl items-end">
-      <div className="flex items-baseline gap-3 flex-wrap">
-        <h1 className="text-2xl font-bold text-foreground capitalize">{dayDate}</h1>
-        <p className="text-lg text-muted-foreground">{greeting}, {userName}!</p>
+    <div className="rounded-2xl bg-slate-950 text-slate-50 shadow-xl">
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 p-6 pb-5">
+        <div className="space-y-2">
+          <p className="text-lg font-medium text-slate-200 capitalize">{dayDate}</p>
+          <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
+            {greeting}, {userName}!
+          </h1>
+        </div>
+
+        <div className="flex items-end justify-end gap-6">
+          {weatherItems.map((item) => (
+            <div key={item.city} className="min-w-[7rem]">
+              <p className="text-4xl leading-none">{getWeatherIcon(item.icon)}</p>
+              <p className="mt-1 text-xs text-slate-300">{item.city}</p>
+              <p className="text-3xl font-semibold leading-tight">{Math.round(item.temp)}°C</p>
+            </div>
+          ))}
+        </div>
       </div>
-      <div className="flex items-center justify-end gap-4 text-sm text-muted-foreground">
-        {weatherKarlsruhe && (
-          <span className="flex items-center gap-1">
-            <span className="text-lg">{getWeatherIcon(weatherKarlsruhe.icon)}</span>
-            <span>Karlsruhe {Math.round(weatherKarlsruhe.temp)}°C</span>
-          </span>
-        )}
-        {weatherStuttgart && (
-          <span className="flex items-center gap-1">
-            <span className="text-lg">{getWeatherIcon(weatherStuttgart.icon)}</span>
-            <span>Stuttgart {Math.round(weatherStuttgart.temp)}°C</span>
-          </span>
-        )}
+
+      <div className="border-t border-slate-800/90 px-4 py-3">
+        <div className="flex items-center justify-end gap-2">
+          {lowerNavItems.map(({ label, icon: Icon, onClick }) => (
+            <button
+              key={label}
+              type="button"
+              aria-label={label}
+              onClick={onClick}
+              className={cn(
+                'inline-flex h-10 w-10 items-center justify-center rounded-full',
+                'text-slate-300 transition-colors hover:bg-slate-800 hover:text-white',
+              )}
+            >
+              <Icon className="h-5 w-5" />
+            </button>
+          ))}
+
+          <button
+            type="button"
+            aria-label="Profil öffnen"
+            onClick={() => navigate('/profile/edit')}
+            className={cn(
+              'inline-flex h-10 w-10 items-center justify-center rounded-full',
+              'ring-1 ring-slate-700 transition-colors hover:ring-slate-500',
+            )}
+          >
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={avatarUrl ?? undefined} alt={userName} />
+              <AvatarFallback className="bg-slate-700 text-slate-100 text-sm">
+                {userName.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          </button>
+        </div>
       </div>
     </div>
   );

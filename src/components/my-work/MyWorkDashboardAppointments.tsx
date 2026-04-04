@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
-import { icons, X, ChevronDown, ChevronRight, FileText } from 'lucide-react';
+import { icons, X, ChevronDown, ChevronRight, FileText, CalendarX2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { AppointmentBriefingView } from '@/components/appointment-preparations/AppointmentBriefingView';
 import { generateBriefingPdf } from '@/components/appointment-preparations/briefingPdfGenerator';
@@ -243,9 +243,17 @@ export const DashboardAppointments = ({ data }: Props) => {
         )}
 
         {appointments.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            {isShowingTomorrow ? 'Keine Termine morgen.' : 'Keine Termine heute.'}
-          </p>
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 px-4 py-8 text-center">
+            <div className="mb-3 rounded-full bg-background p-3 shadow-sm">
+              <CalendarX2 className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <p className="text-base font-medium text-foreground">
+              {isShowingTomorrow ? 'Keine Termine morgen.' : 'Keine Termine heute.'}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Genieß den freien Slot – neue Termine erscheinen hier automatisch.
+            </p>
+          </div>
         ) : (
           <div className="space-y-1.5">
             {appointments.map((apt) => {
