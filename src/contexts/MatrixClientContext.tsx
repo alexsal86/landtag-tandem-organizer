@@ -159,6 +159,8 @@ interface MatrixVerificationRequest {
   transactionId?: string;
   otherDeviceId?: string;
   phase: VerificationPhase;
+  /** The active verifier once phase = Started (set by whichever side sent m.key.verification.start). */
+  verifier?: Verifier;
   accept: () => Promise<void>;
   startVerification: (method: 'm.sas.v1') => Promise<Verifier>;
   cancel: () => Promise<void>;
@@ -1106,7 +1108,12 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
         if (verificationRequest.phase === VerificationPhase.Cancelled || verificationRequest.phase === VerificationPhase.Done) return;
 
         try {
-          const verifier = await verificationRequest.startVerification('m.sas.v1');
+          // If the initiator already sent m.key.verification.start (phase = Started),
+          // the SDK has already created the verifier — reuse it instead of sending a
+          // competing start event (which would produce different SAS commitments → mismatch).
+          const verifier: Verifier = verificationRequest.phase === VerificationPhase.Started && verificationRequest.verifier
+            ? verificationRequest.verifier
+            : await verificationRequest.startVerification('m.sas.v1');
           const cleanupVerifierListeners = setupVerifierListeners(verifier, verificationRequest, setActiveSasVerification, setLastVerificationError);
           verifier.verify()
             .then(() => {
