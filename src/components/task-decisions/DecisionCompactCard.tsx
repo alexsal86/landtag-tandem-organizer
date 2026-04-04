@@ -150,7 +150,7 @@ export function DecisionCompactCard({
             )}
           </div>
 
-          {decision.isCreator && (
+          {decision.isCreator ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                 <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
@@ -158,6 +158,13 @@ export function DecisionCompactCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <QuickAccessMenuItem
+                  id={`decision-${decision.id}`}
+                  label={decision.title}
+                  icon="Vote"
+                  route={`/decisions?highlight=${decision.id}`}
+                />
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
@@ -204,6 +211,22 @@ export function DecisionCompactCard({
                   <Trash2 className="h-4 w-4 mr-2" />
                   Endgültig löschen
                 </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <QuickAccessMenuItem
+                  id={`decision-${decision.id}`}
+                  label={decision.title}
+                  icon="Vote"
+                  route={`/decisions?highlight=${decision.id}`}
+                />
               </DropdownMenuContent>
             </DropdownMenu>
           )}
