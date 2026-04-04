@@ -108,7 +108,8 @@ export function AppNavigation({
   const { role: userRole, hasAdminAccess, loading: isRoleLoading } = useResolvedUserRole();
   const appSettings = useAppSettings();
   useFavicon(appSettings.app_logo_url);
-  const { pages: quickAccessPages, addPage, removePage } = useQuickAccessPages();
+  const { pages: quickAccessPages, addPage, removePage, isInQuickAccess } = useQuickAccessPages();
+  const { recentPages, trackVisit } = useRecentlyVisited();
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
   const { user, signOut } = useAuth();
   const { currentStatus, getStatusDisplay } = useUserStatus();
