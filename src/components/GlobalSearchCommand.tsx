@@ -748,7 +748,7 @@ export function GlobalSearchCommand() {
             {archivedDecisions.map((decision) => (
               <CommandItem
                 key={decision.id}
-                onSelect={() => runCommand(() => navigate(`/decisions?id=${decision.id}`))}
+                onSelect={() => runCommand(() => navigate(`/decisions?id=${decision.id}&highlight=${decision.id}`))}
               >
                 <Vote className="mr-2 h-4 w-4" />
                 <span>{decision.title}</span>
