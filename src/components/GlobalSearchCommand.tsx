@@ -618,7 +618,7 @@ export function GlobalSearchCommand() {
             {appointments.map((appointment) => (
               <CommandItem
                 key={appointment.id}
-                onSelect={() => runCommand(() => navigate(`/?section=calendar&appointment=${appointment.id}`))}
+                onSelect={() => runCommand(() => navigate(`/?section=calendar&appointment=${appointment.id}&highlight=${appointment.id}`))}
               >
                 <Calendar className="mr-2 h-4 w-4" />
                 <span>{appointment.title}</span>
