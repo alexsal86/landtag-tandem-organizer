@@ -70,7 +70,10 @@
     "mobile:start": "npm --prefix apps/mobile run start",
     "mobile:android": "npm --prefix apps/mobile run android",
     "mobile:ios": "npm --prefix apps/mobile run ios",
-    "mobile:typecheck": "npm --prefix apps/mobile run typecheck"
+    "mobile:typecheck": "npm --prefix apps/mobile run typecheck",
+    "mobile:build:apk": "npx eas build --platform android --profile preview-apk --non-interactive --project-dir apps/mobile",
+    "mobile:build:aab": "npx eas build --platform android --profile production-aab --non-interactive --project-dir apps/mobile",
+    "mobile:eas:login": "npx eas login"
   },
   "dependencies": {
     "@eslint/js": "^10.0.1",

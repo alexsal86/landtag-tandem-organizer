@@ -218,4 +218,4 @@ npm install
 npm run mobile:start
 ```
 
-Details: `docs/mobile/mobile-quickstart.md`.
+Details: `docs/mobile/mobile-quickstart.md` (inkl. APK-Flow ohne Google-Account).

@@ -8,6 +8,7 @@ In wenigen Schritten eine native App (`apps/mobile`) starten, die später schrit
 - npm 10+
 - Android Studio (Android)
 - Apple/Xcode optional für iOS
+- **kein Google-Developer-Account notwendig für APK-Tests**
 
 ## Start lokal
 ```bash
@@ -19,56 +20,33 @@ Danach im Expo-Menü:
 - `a` für Android Emulator
 - oder **Expo Go** auf dem Handy nutzen (QR-Code)
 
-## Android Developer: nächste Schritte (ab jetzt)
-Da dein Google-Developer-Account bereit ist, gehen wir in diese Reihenfolge:
+## APK ohne Google-Account (3 Befehle)
+> Dafür brauchst du nur einen kostenlosen Expo-Account.
 
-### 1) EAS Build einrichten
 ```bash
-npm i -D eas-cli
-npx eas login
-npx eas init
+npm run mobile:eas:login
+npm run mobile:build:apk
+npm run mobile:build:aab
 ```
 
-### 2) Build-Profile anlegen
-Lege `apps/mobile/eas.json` an:
+- `mobile:build:apk`: erzeugt eine testbare APK (Sideloading/Internal).
+- `mobile:build:aab`: erzeugt ein AAB für späteren Play-Store-Upload.
 
-```json
-{
-  "build": {
-    "development": {
-      "developmentClient": true,
-      "distribution": "internal"
-    },
-    "preview": {
-      "distribution": "internal"
-    },
-    "production": {
-      "autoIncrement": true
-    }
-  }
-}
-```
+## Build-Profile
+Die Profile liegen in `apps/mobile/eas.json`:
+- `preview-apk` → Android APK
+- `production-aab` → Android App Bundle (AAB)
 
-### 3) Internen Android-Build erzeugen (AAB/APK)
-```bash
-npx eas build --platform android --profile preview
-```
-
-### 4) Google Play Internal Testing
-1. In Play Console App anlegen (Package: `de.landtag.mobile`).
-2. „Internal testing“-Track öffnen.
-3. Erzeugtes AAB hochladen.
-4. Testgruppe hinzufügen, Opt-in-Link teilen.
-
-### 5) Release-Check vor erstem Upload
-- App-Name + kurze Beschreibung
-- Datenschutzangaben (Data Safety)
-- Tester-E-Mail-Liste
-- Crash-Reporting aktiv (Sentry/Firebase)
+## Wenn du später doch in den Play Store willst
+1. Google Play Developer Account anlegen.
+2. App in der Play Console erstellen (`de.landtag.mobile`).
+3. Mit `npm run mobile:build:aab` ein AAB bauen.
+4. AAB in „Internal testing“ hochladen.
 
 ## Wichtige Pfade
 - `apps/mobile/app/index.tsx`: Einstiegsscreen
 - `apps/mobile/src/screens/LoginScreen.tsx`: erster Login-Flow
+- `apps/mobile/eas.json`: Android Build-Profile
 - `packages/domain/src/index.ts`: geteilte Domain-Typen
 - `packages/api-client/src/index.ts`: geteilte API-Client-Schicht
 
