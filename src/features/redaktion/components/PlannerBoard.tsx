@@ -499,6 +499,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   const { users } = useTenantUsers();
   const { topics, createTopic } = useTopicBacklog();
   const { items, channels, loading, updateItem, createItem, deleteItem } = useSocialPlannerItems();
+  console.log("[PlannerBoard] render", { hasUsers: !!users, topicsCount: topics?.length, itemsCount: items?.length, channelsCount: channels?.length, loading });
 
   const [viewMode, setViewMode] = useState<"calendar" | "kanban">("calendar");
   const [channelFilter, setChannelFilter] = useState<string>("all");
