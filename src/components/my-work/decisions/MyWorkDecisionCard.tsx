@@ -63,7 +63,6 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
   const [showCommentPrompt, setShowCommentPrompt] = useState(false);
   const [showCommentEditor, setShowCommentEditor] = useState(false);
   const [isSchedulePinnedOpen, setIsSchedulePinnedOpen] = useState(false);
-  const [isScheduleHoverOpen, setIsScheduleHoverOpen] = useState(false);
   const [dayTimelineItems, setDayTimelineItems] = useState<DayTimelineItem[]>([]);
   const [isTimelineLoading, setIsTimelineLoading] = useState(false);
   const [commentDraft, setCommentDraft] = useState("");
@@ -72,13 +71,12 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
   const [commentPromptColor, setCommentPromptColor] = useState("green");
   const [resolvedDeputyName, setResolvedDeputyName] = useState<string | null>(null);
   const responseRefreshTimeoutRef = useRef<number | null>(null);
-  const scheduleHoverTimeoutRef = useRef<number | null>(null);
   const { toast } = useToast();
   const { currentTenant } = useTenant();
 
   const { appointmentLink, appointmentRequestNarrative, displayDescription, isAppointmentRequest, isRequestedStartValid, plainDescription, requestedStart, requestedTitle, summary, summaryItems, targetDeputy, winningResponse } = useDecisionCardDerivedData(decision);
 
-  const shouldShowTimeline = isAppointmentRequest && isRequestedStartValid && (isSchedulePinnedOpen || isScheduleHoverOpen);
+  const shouldShowTimeline = isAppointmentRequest && isRequestedStartValid;
   const shouldLoadTimeline = isAppointmentRequest && isRequestedStartValid;
   const timelineWindowMinutes = 6 * 60 + APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES;
   const timelineHeight = 264;
@@ -185,22 +183,8 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
       responseRefreshTimeoutRef.current = null;
     }
   };
-  const clearScheduleHoverTimeout = () => {
-    if (scheduleHoverTimeoutRef.current !== null) {
-      window.clearTimeout(scheduleHoverTimeoutRef.current);
-      scheduleHoverTimeoutRef.current = null;
-    }
-  };
-  const openScheduleHover = () => {
-    clearScheduleHoverTimeout();
-    setIsScheduleHoverOpen(true);
-  };
-  const closeScheduleHover = () => {
-    clearScheduleHoverTimeout();
-    scheduleHoverTimeoutRef.current = window.setTimeout(() => {
-      setIsScheduleHoverOpen(false);
-    }, 180);
-  };
+  const openScheduleHover = () => {};
+  const closeScheduleHover = () => {};
 
   const handleResponseSubmitted = (meta?: { responseType: string; color?: string }) => {
     clearResponseRefreshTimeout();
@@ -238,7 +222,6 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
 
   useEffect(() => () => {
     clearResponseRefreshTimeout();
-    clearScheduleHoverTimeout();
   }, []);
   useEffect(() => {
     const loadDayTimeline = async () => {
