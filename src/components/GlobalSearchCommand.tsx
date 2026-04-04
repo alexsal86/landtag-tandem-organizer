@@ -711,7 +711,7 @@ export function GlobalSearchCommand() {
             {caseFiles.map((caseFile) => (
               <CommandItem
                 key={caseFile.id}
-                onSelect={() => runCommand(() => navigate(`/?section=casefiles&casefile=${caseFile.id}`))}
+                onSelect={() => runCommand(() => navigate(`/?section=casefiles&casefile=${caseFile.id}&highlight=${caseFile.id}`))}
               >
                 <Briefcase className="mr-2 h-4 w-4" />
                 <span>{caseFile.title}</span>
