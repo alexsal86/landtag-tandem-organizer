@@ -124,8 +124,9 @@ export function Themenspeicher({ onContentCreated }: Props) {
 
     const prefilledHook = selectedTopic.short_description || selectedTopic.topic;
     const prefilledCoreMessage = selectedTopic.topic;
-    const openNeedsHint = selectedTopic.open_production_needs.length
-      ? `Offener Produktionsbedarf: ${selectedTopic.open_production_needs.join(", ")}`
+    const openProductionNeeds = Array.isArray(selectedTopic.open_production_needs) ? selectedTopic.open_production_needs : [];
+    const openNeedsHint = openProductionNeeds.length
+      ? `Offener Produktionsbedarf: ${openProductionNeeds.join(", ")}`
       : "Produktionsbedarf bei Bedarf ergänzen.";
     const prefilledDraft = `${selectedTemplate.draftIntro}\n\nTags: ${(selectedTopic.tags ?? []).join(", ")}\n${openNeedsHint}`;
 
@@ -148,7 +149,7 @@ export function Themenspeicher({ onContentCreated }: Props) {
         workflow_status: "idea",
         approval_state: "draft",
         responsible_user_id: selectedTopic.owner_id,
-        asset_requirements: selectedTopic.open_production_needs,
+        asset_requirements: openProductionNeeds,
       } as never);
 
     if (itemError) {
@@ -275,7 +276,7 @@ export function Themenspeicher({ onContentCreated }: Props) {
       ) : (
         <div className="space-y-2">
           {topics.map((topic) => {
-            const statusMeta = STATUS_META[topic.status];
+            const statusMeta = STATUS_META[topic.status] ?? STATUS_META.idea;
             return (
               <div key={topic.id} className="group rounded-md border p-3 pr-14 space-y-3 relative">
                 <div className="flex items-start justify-between gap-2">
