@@ -71,6 +71,12 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
     loading,
   } = details;
 
+  useEffect(() => {
+    if (caseFile?.title) {
+      trackPageVisit(`casefile-${caseFileId}`, caseFile.title, 'Briefcase', `/cases?tab=files&id=${caseFileId}`);
+    }
+  }, [caseFileId, caseFile?.title]);
+
   if (loading) {
     return (
       <div className="space-y-6">

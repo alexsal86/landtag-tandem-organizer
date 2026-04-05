@@ -29,6 +29,12 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
   const pinEntry = usePinEntry();
   const dossier = dossiers?.find((d) => d.id === dossierId);
   const [activeSection, setActiveSection] = useState("uebersicht");
+
+  useEffect(() => {
+    if (dossier?.title) {
+      trackPageVisit(`dossier-${dossierId}`, dossier.title, 'Database', `/dossiers?id=${dossierId}`);
+    }
+  }, [dossierId, dossier?.title]);
   const [activeEntryFilter, setActiveEntryFilter] = useState("alle");
   const [editOpen, setEditOpen] = useState(false);
   const [editTitle, setEditTitle] = useState("");
