@@ -419,9 +419,7 @@ export function AppNavigation({
           <group.icon className="h-4 w-4 shrink-0" />
           <span className="truncate text-sm">{group.label}</span>
           {badge > 0 && (
-            <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-destructive text-[10px] text-white flex items-center justify-center font-bold px-1">
-              {badge > 99 ? '99+' : badge}
-            </span>
+            <span className="ml-auto h-2 w-2 rounded-full bg-destructive animate-pulse shrink-0" />
           )}
           {isExpanded ? (
             <ChevronDown className={cn("h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))]", badge > 0 ? "" : "ml-auto")} />
