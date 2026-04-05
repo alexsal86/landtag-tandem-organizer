@@ -75,13 +75,13 @@ export const DashboardHeader = () => {
 
       <div className="flex items-end justify-end gap-6">
         {weatherItems.map((item) => (
-          <div key={item.city} className="flex min-w-[9rem] items-center gap-3">
+          <div key={item.city} className="flex min-w-[9rem] items-center gap-2.5">
             {(() => {
               const Icon = getWeatherLucideIcon(item.icon);
-              return <Icon className="h-10 w-10 text-muted-foreground" />;
+              return <Icon className="h-11 w-11 text-muted-foreground" />;
             })()}
-            <div>
-              <p className="text-sm text-muted-foreground">{item.city}</p>
+            <div className="flex flex-col gap-0.5">
+              <p className="text-sm leading-none text-muted-foreground">{item.city}</p>
               <p className="text-3xl font-semibold leading-tight">{Math.round(item.temp)}°C</p>
             </div>
           </div>

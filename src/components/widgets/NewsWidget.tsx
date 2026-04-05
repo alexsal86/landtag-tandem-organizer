@@ -124,6 +124,17 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
     });
   };
 
+  const getCompactItemClasses = (index: number, total: number) => {
+    const isLastRow = index >= total - 2;
+    return [
+      'group cursor-pointer hover:bg-muted/40 px-2 py-2 transition-colors border-border',
+      isLastRow ? '' : 'border-b',
+      index % 2 === 0 ? 'border-r' : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+  };
+
   if (compact) {
     return (
       <>
@@ -135,19 +146,25 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
               {filteredArticles.length === 0 ? (
                 <p className="text-xs text-muted-foreground col-span-2">Keine Artikel gefunden</p>
               ) : (
-                filteredArticles.slice(0, 8).map((article) => (
+                filteredArticles.slice(0, 8).map((article, index, visibleArticles) => (
                   <div
                     key={article.id}
-                    className="group cursor-pointer hover:bg-muted/40 px-2 py-2 transition-colors border-border border-b odd:border-r"
+                    className={getCompactItemClasses(index, visibleArticles.length)}
                     onClick={() => window.open(article.link, '_blank')}
                   >
-                    <div className="flex items-start justify-between gap-1">
+                    <div className="flex items-start gap-1">
                       <span className="text-sm text-foreground line-clamp-3 flex-1">{decodeHtmlEntities(article.title)}</span>
-                      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    </div>
+                    <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                      <div className="min-w-0">
+                        <span className="text-primary">{article.source}</span>
+                        <span> • {formatDateWithoutYear(article.pub_date)}</span>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-0.5">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-5 w-5 p-0"
+                          className="h-4 w-4 p-0"
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedArticle(article);
@@ -155,12 +172,12 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
                           }}
                           title="News teilen"
                         >
-                          <Share2 className="h-3 w-3" />
+                          <Share2 className="h-2.5 w-2.5" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-5 w-5 p-0"
+                          className="h-4 w-4 p-0"
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedArticle(article);
@@ -168,13 +185,9 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
                           }}
                           title="Aufgabe erstellen"
                         >
-                          <CheckSquare className="h-3 w-3" />
+                          <CheckSquare className="h-2.5 w-2.5" />
                         </Button>
                       </div>
-                    </div>
-                    <div className="text-[11px] text-muted-foreground mt-1">
-                      <span className="text-primary">{article.source}</span>
-                      <span> • {formatDateWithoutYear(article.pub_date)}</span>
                     </div>
                   </div>
                 ))
