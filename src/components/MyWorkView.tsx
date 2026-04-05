@@ -167,7 +167,7 @@ export function MyWorkView() {
             <DropdownMenuTrigger asChild>
               <Button
                 size="sm"
-                className="group h-9 w-9 rounded-full px-0 transition-all duration-200 ease-out hover:w-[5.25rem] hover:px-3 focus-visible:w-[5.25rem] focus-visible:px-3 data-[state=open]:w-[5.25rem] data-[state=open]:px-3"
+                className="group h-9 w-9 gap-0 rounded-full px-0 transition-all duration-200 ease-out hover:w-[5.25rem] hover:gap-1 hover:px-3 focus-visible:w-[5.25rem] focus-visible:gap-1 focus-visible:px-3 data-[state=open]:w-[5.25rem] data-[state=open]:gap-1 data-[state=open]:px-3"
                 data-help-id="mywork-new-menu"
               >
                 <Plus className="h-4 w-4" />
