@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { trackPageVisit } from "@/hooks/useRecentlyVisited";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useCaseFileDetails } from "@/features/cases/files/hooks";
