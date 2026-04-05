@@ -236,34 +236,38 @@ export const DashboardAppointments = ({ data }: Props) => {
 
       <div>
         {isShowingTomorrow && (
-          <div className="mb-3 rounded-md border border-blue-200/70 bg-blue-50 px-3 py-2 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">
-            <p className="font-medium">
-              {appointments.length === 0
-                ? 'Heute und morgen stehen keine Termine an.'
-                : 'Heute stehen keine Termine mehr an.'}
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 px-4 py-6 text-center mb-3">
+            <div className="mb-3 rounded-full bg-background p-3 shadow-sm">
+              <CalendarX2 className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <p className="text-base font-medium text-foreground">
+              Keine Termine heute.
             </p>
-            <p className="text-xs text-blue-800/90 dark:text-blue-200/90">
+            <p className="mt-1 text-xs text-muted-foreground">
               {appointments.length === 0
-                ? 'Nutze den freien Zeitraum – neue Termine erscheinen hier automatisch.'
-                : 'Darunter siehst du zur Orientierung bereits die Termine für morgen.'}
+                ? 'Genieß den freien Slot – neue Termine erscheinen hier automatisch.'
+                : 'Zur Orientierung siehst du unten bereits die Termine für morgen.'}
             </p>
           </div>
         )}
 
-        {appointments.length === 0 ? (
+        {!isShowingTomorrow && appointments.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 px-4 py-8 text-center">
             <div className="mb-3 rounded-full bg-background p-3 shadow-sm">
               <CalendarX2 className="h-8 w-8 text-muted-foreground" />
             </div>
             <p className="text-base font-medium text-foreground">
-              {isShowingTomorrow ? 'Keine Termine heute und morgen.' : 'Keine Termine heute.'}
+              Keine Termine heute.
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               Genieß den freien Slot – neue Termine erscheinen hier automatisch.
             </p>
           </div>
-        ) : (
+        ) : appointments.length > 0 ? (
           <div className="space-y-1.5">
+            {isShowingTomorrow && (
+              <p className="text-xs font-medium text-muted-foreground mb-1">Morgen:</p>
+            )}
             {appointments.map((apt) => {
               const aptDate = format(new Date(apt.start_time), 'yyyy-MM-dd');
               const active = !isShowingTomorrow && isCurrentlyActive(apt);
