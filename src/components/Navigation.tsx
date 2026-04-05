@@ -1,6 +1,6 @@
 import { Calendar, Users, CheckSquare, Home, FileText, MessageSquare, MessageSquareText, Contact, Database, Clock, CalendarPlus, Shield, Vote, MapPin, Archive, Briefcase } from "lucide-react";
 import { useMatrixUnread } from "@/contexts/MatrixUnreadContext";
-import { NavigationBadge } from "./NavigationBadge";
+
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
