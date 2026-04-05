@@ -63,6 +63,13 @@ const KnowledgeBaseView = () => {
     }
   }, [highlightId, documentId, data.documents, navigate]);
 
+  // Track document visits
+  useEffect(() => {
+    if (data.selectedDocument?.title) {
+      trackPageVisit(`doc-${data.selectedDocument.id}`, data.selectedDocument.title, 'FileText', `/knowledge/${data.selectedDocument.id}`);
+    }
+  }, [data.selectedDocument?.id, data.selectedDocument?.title]);
+
   // URL-based document selection
   useEffect(() => {
     if (documentId && data.documents.length > 0) {
