@@ -947,9 +947,7 @@ export function AppNavigation({
                 <Bell className="h-4 w-4 shrink-0" />
                 {activePanel === 'notifications' && <span className="text-xs">Inbox</span>}
                 {activePanel !== 'notifications' && unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] rounded-full bg-destructive text-[8px] text-white flex items-center justify-center font-bold px-0.5">
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
+                  <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive animate-pulse" />
                 )}
               </button>
             </TooltipTrigger>

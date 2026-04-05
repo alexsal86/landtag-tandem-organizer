@@ -91,9 +91,7 @@ export function WidgetQuickAccess({ activeWidget, onWidgetChange }: WidgetQuickA
           >
             <widget.icon className="h-5 w-5" />
             {widget.id === 'appointmentfeedback' && pendingFeedbackCount > 0 && (
-              <div className="absolute -top-1 -right-1">
-                <NavigationBadge count={pendingFeedbackCount} size="sm" />
-              </div>
+              <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive animate-pulse" />
             )}
           </Button>
         ))}

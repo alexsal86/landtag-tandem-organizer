@@ -266,7 +266,7 @@ export function TaskCard({
           style={{
             left: `-${CHECKBOX_CENTER + 8}px`,
             top: 0,
-            width: `${CHECKBOX_CENTER + 4}px`,
+            width: `${CHECKBOX_CENTER + 8 - 4}px`,
             height: `${connectorChildTargetTop}px`,
             borderLeft: "2px solid hsl(var(--border) / 0.7)",
             borderBottom: "2px solid hsl(var(--border) / 0.7)",
