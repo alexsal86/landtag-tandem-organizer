@@ -1,6 +1,6 @@
 import { Calendar, Users, CheckSquare, Home, FileText, MessageSquare, MessageSquareText, Contact, Database, Clock, CalendarPlus, Shield, Vote, MapPin, Archive, Briefcase } from "lucide-react";
 import { useMatrixUnread } from "@/contexts/MatrixUnreadContext";
-import { NavigationBadge } from "./NavigationBadge";
+
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
@@ -8,7 +8,7 @@ import { useFavicon } from "@/hooks/useFavicon";
 import { cn } from "@/lib/utils";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { useAppSettings } from "@/hooks/useAppSettings";
-import { Badge } from "@/components/ui/badge";
+
 import {
   Sidebar,
   SidebarContent,
@@ -171,19 +171,10 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                         </div>
                         {/* Matrix unread badge for expanded sidebar */}
                         {!isCollapsed && item.id === 'chat' && matrixUnreadCount > 0 && (
-                          <Badge variant="destructive" className="ml-auto text-sm">
-                            {matrixUnreadCount > 99 ? '99+' : matrixUnreadCount}
-                          </Badge>
+                          <span className="ml-auto h-2 w-2 rounded-full bg-destructive animate-pulse shrink-0" />
                         )}
                         {!isCollapsed && item.id !== 'chat' && navigationCounts[item.id] > 0 && (
-                          <NavigationBadge 
-                            count={navigationCounts[item.id]}
-                            size="sm"
-                            className={cn(
-                              "nav-badge",
-                              hasNewSinceLastVisit(item.id) && "has-new"
-                            )}
-                          />
+                          <span className="ml-auto h-2 w-2 rounded-full bg-destructive animate-pulse shrink-0" />
                         )}
                       </SidebarMenuButton>
                     </HoverCardTrigger>
@@ -242,10 +233,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                           {!isCollapsed && <span className="text-sm">Administration</span>}
                         </div>
                         {!isCollapsed && navigationCounts['administration'] > 0 && (
-                          <NavigationBadge 
-                            count={navigationCounts['administration']}
-                            size="sm"
-                          />
+                          <span className="ml-auto h-2 w-2 rounded-full bg-destructive animate-pulse shrink-0" />
                         )}
                       </SidebarMenuButton>
                     </HoverCardTrigger>

@@ -380,9 +380,7 @@ export function AppNavigation({
         <Icon className={cn("h-4 w-4 shrink-0", clickedItem === id && "animate-nav-bounce")} />
         <span className="truncate text-sm">{label}</span>
         {badge > 0 && (
-          <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-destructive text-[10px] text-white flex items-center justify-center font-bold px-1">
-            {badge > 99 ? '99+' : badge}
-          </span>
+          <span className="ml-auto h-2 w-2 rounded-full bg-destructive animate-pulse shrink-0" />
         )}
       </button>
     );
@@ -421,9 +419,7 @@ export function AppNavigation({
           <group.icon className="h-4 w-4 shrink-0" />
           <span className="truncate text-sm">{group.label}</span>
           {badge > 0 && (
-            <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-destructive text-[10px] text-white flex items-center justify-center font-bold px-1">
-              {badge > 99 ? '99+' : badge}
-            </span>
+            <span className="ml-auto h-2 w-2 rounded-full bg-destructive animate-pulse shrink-0" />
           )}
           {isExpanded ? (
             <ChevronDown className={cn("h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))]", badge > 0 ? "" : "ml-auto")} />
@@ -951,9 +947,7 @@ export function AppNavigation({
                 <Bell className="h-4 w-4 shrink-0" />
                 {activePanel === 'notifications' && <span className="text-xs">Inbox</span>}
                 {activePanel !== 'notifications' && unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] rounded-full bg-destructive text-[8px] text-white flex items-center justify-center font-bold px-0.5">
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
+                  <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive animate-pulse" />
                 )}
               </button>
             </TooltipTrigger>

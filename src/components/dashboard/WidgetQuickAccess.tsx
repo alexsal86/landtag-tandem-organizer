@@ -1,6 +1,6 @@
 import { Phone, Timer, FileText, Plus, X, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { NavigationBadge } from "@/components/NavigationBadge";
+
 import { useAppointmentFeedback } from "@/hooks/useAppointmentFeedback";
 import { QuickNotesWidget } from '@/components/widgets/QuickNotesWidget';
 import { CallLogWidget } from '@/components/widgets/CallLogWidget';
@@ -91,9 +91,7 @@ export function WidgetQuickAccess({ activeWidget, onWidgetChange }: WidgetQuickA
           >
             <widget.icon className="h-5 w-5" />
             {widget.id === 'appointmentfeedback' && pendingFeedbackCount > 0 && (
-              <div className="absolute -top-1 -right-1">
-                <NavigationBadge count={pendingFeedbackCount} size="sm" />
-              </div>
+              <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive animate-pulse" />
             )}
           </Button>
         ))}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { trackPageVisit } from "@/hooks/useRecentlyVisited";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -98,6 +99,12 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
     fetchPlanningDetails, fetchEmailActions,
     timelineAssignments, upsertTimelineAssignment: saveTimelineAssignment, removeTimelineAssignment: deleteTimelineAssignment,
   } = data;
+
+  useEffect(() => {
+    if (selectedPlanning?.title) {
+      trackPageVisit(`planning-${selectedPlanning.id}`, selectedPlanning.title, 'Calendar', `/event-planning?id=${selectedPlanning.id}`);
+    }
+  }, [selectedPlanning?.id, selectedPlanning?.title]);
 
   if (!selectedPlanning) return null;
 

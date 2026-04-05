@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { trackPageVisit } from '@/hooks/useRecentlyVisited';
 import { Search, Plus, Database, User, ChevronLeft, ChevronRight, Lock, Unlock, Save, Trash2, Upload, MoreVertical } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { QuickAccessMenuItem } from "@/components/shared/QuickAccessMenuItem";
@@ -61,6 +62,13 @@ const KnowledgeBaseView = () => {
       if (doc) navigate(`/knowledge/${doc.id}`, { replace: true });
     }
   }, [highlightId, documentId, data.documents, navigate]);
+
+  // Track document visits
+  useEffect(() => {
+    if (data.selectedDocument?.title) {
+      trackPageVisit(`doc-${data.selectedDocument.id}`, data.selectedDocument.title, 'FileText', `/knowledge/${data.selectedDocument.id}`);
+    }
+  }, [data.selectedDocument?.id, data.selectedDocument?.title]);
 
   // URL-based document selection
   useEffect(() => {

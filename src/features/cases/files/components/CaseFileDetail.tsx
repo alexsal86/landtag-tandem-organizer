@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { trackPageVisit } from "@/hooks/useRecentlyVisited";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useCaseFileDetails } from "@/features/cases/files/hooks";
@@ -69,6 +70,12 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
     interactions,
     loading,
   } = details;
+
+  useEffect(() => {
+    if (caseFile?.title) {
+      trackPageVisit(`casefile-${caseFileId}`, caseFile.title, 'Briefcase', `/cases?tab=files&id=${caseFileId}`);
+    }
+  }, [caseFileId, caseFile?.title]);
 
   if (loading) {
     return (
