@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { trackPageVisit } from '@/hooks/useRecentlyVisited';
 import { Search, Plus, Database, User, ChevronLeft, ChevronRight, Lock, Unlock, Save, Trash2, Upload, MoreVertical } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { QuickAccessMenuItem } from "@/components/shared/QuickAccessMenuItem";
