@@ -174,14 +174,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                           <span className="ml-auto h-2 w-2 rounded-full bg-destructive animate-pulse shrink-0" />
                         )}
                         {!isCollapsed && item.id !== 'chat' && navigationCounts[item.id] > 0 && (
-                          <NavigationBadge 
-                            count={navigationCounts[item.id]}
-                            size="sm"
-                            className={cn(
-                              "nav-badge",
-                              hasNewSinceLastVisit(item.id) && "has-new"
-                            )}
-                          />
+                          <span className="ml-auto h-2 w-2 rounded-full bg-destructive animate-pulse shrink-0" />
                         )}
                       </SidebarMenuButton>
                     </HoverCardTrigger>
