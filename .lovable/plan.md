@@ -1,29 +1,42 @@
 
 
-# Fix: Redaktion-Tab crashed wegen Realtime-Subscription
+# Upload-Feld in der Navigationsleiste funktional machen
 
-## Ursache
+## Aktueller Zustand
+Das "Dossier hochladen"-Feld in der Navigation (Zeile 852-858 in `AppNavigation.tsx`) ist nur ein Klick-Dummy, der zur Aktenansicht navigiert. Es hat keine Upload-Funktionalität.
 
-In `src/features/redaktion/hooks/useTopicBacklog.ts` (Zeile 301-325) wird der Realtime-Channel mit dem Namen `topic-backlog-${currentTenant.id}` erstellt. Dieser Name ist **nicht eindeutig pro Mount**.
+## Was sich ändert
 
-Das Problem: `loadTopics` ist im Dependency-Array des `useEffect` (Zeile 325). Da `loadTopics` per `useCallback` von `[currentTenant?.id, user?.id]` abhängt, ändert sich seine Referenz bei jedem Render-Zyklus, in dem sich einer dieser Werte stabilisiert. Dadurch wird der Effect neu ausgeführt -- aber wenn der alte Channel noch nicht vollständig entfernt wurde oder in React 18 Strict Mode der gleiche Channelname wiederverwendet wird, wirft Supabase den Fehler:
+### 1. Navigation: Upload-Widget statt Klick-Dummy
+In `src/components/AppNavigation.tsx` (Zeile 852-858):
 
-> `cannot add postgres_changes callbacks for realtime:topic-backlog-... after subscribe()`
+Das statische `<div>` wird durch ein funktionales Inline-Widget ersetzt, das folgendes kann:
+- **Textfeld**: Notiz oder URL eingeben und absenden (Enter-Taste)
+- **Datei-Upload**: Button zum Dateien vom Rechner auswählen (alle Dateitypen, inkl. E-Mail .eml/.msg)
+- **Paste-Support**: E-Mails per Strg+V einfügen (Outlook-Integration)
+- **Drag & Drop**: Dateien auf das Feld ziehen (optional, da Platz begrenzt)
+- Automatische Erkennung: URLs werden als Link gespeichert, alles andere als Notiz oder Datei
+- Alles wird als Inbox-Eintrag (dossier_id = null) in `dossier_entries` gespeichert
 
-Dieser Fehler ist **nicht gefangen** und propagiert bis zur ErrorBoundary.
+Das Widget nutzt direkt `useCreateEntry()` aus den Dossier-Hooks. Die Erfolgsmeldung kommt automatisch vom Hook (`toast.success("Eintrag gespeichert")`).
 
-## Lösung
+### 2. Kompaktes Design für die Sidebar
+Da die Sidebar nur ~280px breit ist, wird das Widget kompakt gehalten:
+- Ein einzeiliges Input-Feld mit Placeholder "Notiz, Link oder Datei..."
+- Rechts daneben: Büroklammer-Icon (Datei-Upload) und Sende-Button
+- Visuelles Feedback: Spinner während Upload/Speichern
+- Passt sich dem bestehenden Nav-Farbschema an (`hsl(var(--nav-*))`)
 
-Zwei Änderungen in `src/features/redaktion/hooks/useTopicBacklog.ts`:
+### 3. Presence-Channel-Fehler beheben (Hintergrund-Fix)
+In `src/hooks/useUserStatus.tsx`: Der Presence-Channel hat dasselbe Problem wie der Topic-Backlog — der Channel-Name `user_presence_${currentTenant.id}` ist nicht eindeutig pro Mount. Wird mit `useRef(crypto.randomUUID())` behoben, analog zum bereits implementierten Fix.
 
-### 1. Eindeutigen Channel-Namen pro Mount verwenden
-Einen `useRef(crypto.randomUUID())` anlegen und diesen als Suffix im Channel-Namen verwenden. Das folgt dem bestehenden Projekt-Muster (siehe Memory: real-time-robustness-and-subscription-pattern).
+## Betroffene Dateien
+- `src/components/AppNavigation.tsx` — Upload-Widget einbauen
+- `src/hooks/useUserStatus.tsx` — Presence-Channel eindeutig machen
 
-### 2. `loadTopics` aus dem Dependency-Array des Realtime-Effects entfernen
-Stattdessen `loadTopics` über einen `useRef` referenzieren, damit der Effect nur bei Änderung von `currentTenant?.id` neu läuft -- nicht bei jeder Referenzänderung von `loadTopics`.
-
-### Ergebnis
-- Channel-Name ist pro Mount eindeutig → kein Konflikt bei Re-Mount
-- Effect läuft nur bei Tenant-Wechsel neu → kein unnötiges Neu-Subscriben
-- Fehler tritt nicht mehr auf → Redaktion-Tab und Themenspeicher funktionieren wieder
+## Ergebnis
+- Upload-Feld akzeptiert Links, Dateien, E-Mails und Notizen
+- Dateiauswahl vom Rechner funktioniert
+- Erfolgsmeldung erscheint nach jedem Upload
+- Presence-Fehler in der Konsole verschwindet
 

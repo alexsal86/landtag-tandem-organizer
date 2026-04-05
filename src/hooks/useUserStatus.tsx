@@ -197,8 +197,8 @@ export const useUserStatus = () => {
     }
 
     const setupPresence = async () => {
-      // TENANT-SPECIFIC channel name for isolation
-      const channelName = `user_presence_${currentTenant.id}`;
+      // TENANT-SPECIFIC channel name for isolation — unique per mount
+      const channelName = `user_presence_${currentTenant.id}_${crypto.randomUUID()}`;
       debugConsole.log('🏢 Setting up presence channel:', channelName);
       
       const channel = supabase.channel(channelName, {
