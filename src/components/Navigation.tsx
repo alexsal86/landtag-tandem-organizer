@@ -171,9 +171,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                         </div>
                         {/* Matrix unread badge for expanded sidebar */}
                         {!isCollapsed && item.id === 'chat' && matrixUnreadCount > 0 && (
-                          <Badge variant="destructive" className="ml-auto text-sm">
-                            {matrixUnreadCount > 99 ? '99+' : matrixUnreadCount}
-                          </Badge>
+                          <span className="ml-auto h-2 w-2 rounded-full bg-destructive animate-pulse shrink-0" />
                         )}
                         {!isCollapsed && item.id !== 'chat' && navigationCounts[item.id] > 0 && (
                           <NavigationBadge 
