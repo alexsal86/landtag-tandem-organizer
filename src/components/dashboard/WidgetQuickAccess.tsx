@@ -1,6 +1,6 @@
 import { Phone, Timer, FileText, Plus, X, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { NavigationBadge } from "@/components/NavigationBadge";
+
 import { useAppointmentFeedback } from "@/hooks/useAppointmentFeedback";
 import { QuickNotesWidget } from '@/components/widgets/QuickNotesWidget';
 import { CallLogWidget } from '@/components/widgets/CallLogWidget';

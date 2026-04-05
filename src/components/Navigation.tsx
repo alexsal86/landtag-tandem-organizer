@@ -8,7 +8,7 @@ import { useFavicon } from "@/hooks/useFavicon";
 import { cn } from "@/lib/utils";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { useAppSettings } from "@/hooks/useAppSettings";
-import { Badge } from "@/components/ui/badge";
+
 import {
   Sidebar,
   SidebarContent,
