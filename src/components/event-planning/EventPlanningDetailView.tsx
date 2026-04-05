@@ -100,6 +100,12 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
     timelineAssignments, upsertTimelineAssignment: saveTimelineAssignment, removeTimelineAssignment: deleteTimelineAssignment,
   } = data;
 
+  useEffect(() => {
+    if (selectedPlanning?.title) {
+      trackPageVisit(`planning-${selectedPlanning.id}`, selectedPlanning.title, 'Calendar', `/event-planning?id=${selectedPlanning.id}`);
+    }
+  }, [selectedPlanning?.id, selectedPlanning?.title]);
+
   if (!selectedPlanning) return null;
 
   const planningCollaborators = collaborators.filter(
