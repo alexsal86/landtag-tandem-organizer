@@ -28,6 +28,17 @@ function savePages(pages: RecentlyVisitedPage[]) {
   } catch {}
 }
 
+/**
+ * Standalone function to track a page visit without needing the hook.
+ * Useful for detail pages (case files, dossiers, documents, plannings).
+ */
+export function trackPageVisit(id: string, label: string, icon: string, route: string) {
+  const pages = loadPages();
+  const filtered = pages.filter(p => p.id !== id);
+  const next = [{ id, label, icon, route, visitedAt: Date.now() }, ...filtered].slice(0, MAX_ITEMS);
+  savePages(next);
+}
+
 export function useRecentlyVisited() {
   const [recentPages, setRecentPages] = useState<RecentlyVisitedPage[]>(loadPages);
 
