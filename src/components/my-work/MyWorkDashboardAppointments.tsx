@@ -351,7 +351,7 @@ export const DashboardAppointments = ({ data }: Props) => {
               );
             })}
           </div>
-        )}
+        ) : null}
       </div>
 
       {specialDayHint && isSpecialDayHintVisible && <Separator className="my-2" />}
