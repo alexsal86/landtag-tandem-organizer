@@ -818,36 +818,121 @@ export function SuperadminTenantManagement(): React.JSX.Element {
 
         {/* Tenant Create/Edit Dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingTenant ? "Tenant bearbeiten" : "Neuer Tenant"}
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="grid gap-2">
-                <Label>Name *</Label>
-                <Input
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  placeholder="z.B. Büro Mustermann"
-                />
+            <div className="space-y-6 py-4">
+              {/* Grunddaten */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-muted-foreground">Grunddaten</h4>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label>Name *</Label>
+                    <Input
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                      placeholder="z.B. Büro Mustermann"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between md:justify-end gap-3">
+                    <Label>Aktiv</Label>
+                    <Switch
+                      checked={formIsActive}
+                      onCheckedChange={setFormIsActive}
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Beschreibung</Label>
+                  <Textarea
+                    value={formDescription}
+                    onChange={(e) => setFormDescription(e.target.value)}
+                    placeholder="Optionale Beschreibung..."
+                    rows={2}
+                  />
+                </div>
               </div>
-              <div className="grid gap-2">
-                <Label>Beschreibung</Label>
-                <Textarea
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  placeholder="Optionale Beschreibung..."
-                  rows={2}
-                />
+
+              {/* Wahlkreis & Herkunft */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-muted-foreground">Wahlkreis & Herkunft</h4>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label>Wahlkreis-Name</Label>
+                    <Input
+                      value={formConstituency}
+                      onChange={(e) => setFormConstituency(e.target.value)}
+                      placeholder="z.B. Karlsruhe I"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Wahlkreis-Nummer</Label>
+                    <Input
+                      value={formConstituencyNumber}
+                      onChange={(e) => setFormConstituencyNumber(e.target.value)}
+                      placeholder="z.B. 27"
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label>Stadt / Ort</Label>
+                    <Input
+                      value={formCity}
+                      onChange={(e) => setFormCity(e.target.value)}
+                      placeholder="z.B. Karlsruhe"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Bundesland</Label>
+                    <Select value={formState} onValueChange={setFormState}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Bundesland wählen" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {BUNDESLAENDER.map(bl => (
+                          <SelectItem key={bl} value={bl}>{bl}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label>Partei / Fraktion</Label>
+                    <Input
+                      value={formParty}
+                      onChange={(e) => setFormParty(e.target.value)}
+                      placeholder="z.B. GRÜNE"
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <Label>Aktiv</Label>
-                <Switch
-                  checked={formIsActive}
-                  onCheckedChange={setFormIsActive}
-                />
+
+              {/* App-Einstellungen */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-muted-foreground">App-Einstellungen</h4>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label>App-Name</Label>
+                    <Input
+                      value={formAppName}
+                      onChange={(e) => setFormAppName(e.target.value)}
+                      placeholder="LandtagsOS"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>App-Untertitel</Label>
+                    <Input
+                      value={formAppSubtitle}
+                      onChange={(e) => setFormAppSubtitle(e.target.value)}
+                      placeholder="Koordinationssystem"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
             <div className="flex justify-end gap-2">
