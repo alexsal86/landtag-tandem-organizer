@@ -1,103 +1,57 @@
 
 
-# 4 Verbesserungen: Dashboard, Kürzlich besucht, Task-Linien, Badge-Punkte
+# Plan: Sitzungsverwaltung bereinigen + Tenant-Einrichtungsassistent
 
-## 1. "Keine Termine heute" immer mit Icon anzeigen
+## 1. Aktive Sitzungen bereinigen
 
-**Problem**: Wenn heute keine Termine sind aber morgen schon, wird nur eine blaue Info-Box gezeigt ("Heute stehen keine Termine mehr an"), ohne das CalendarX2-Icon. Das Icon erscheint nur, wenn auch morgen keine Termine sind.
+**Problem**: `trackSession()` in `useAuth.tsx` wird bei jedem `SIGNED_IN`-Event aufgerufen — auch bei Token-Refresh und Tab-Wechsel. Dadurch entstehen massenhaft Sitzungseinträge, obwohl es nur ein Gerät ist.
 
-**Lösung** in `src/components/my-work/MyWorkDashboardAppointments.tsx`:
-- Die CalendarX2-Leerstate-Karte ("Keine Termine heute") immer anzeigen, wenn `isShowingTomorrow` true ist — unabhängig davon, ob morgen Termine existieren
-- Falls morgen Termine vorhanden: Darunter die Termin-Liste mit dem Hinweis "Morgen:" als Überschrift anzeigen
-- Die doppelte blaue Info-Box (Zeile 238-251) durch die hübschere Icon-Karte ersetzen, die den Text situationsabhängig anpasst
+**Loesung** in `src/hooks/useAuth.tsx`:
+- `trackSession` nur bei echtem Login aufrufen (nicht bei `TOKEN_REFRESHED` oder `getSession()`-Wiederherstellung). Dafuer: Bei `getSession()` nur `last_active_at` updaten (kein neuer Eintrag), bei `SIGNED_IN` pruefen ob es wirklich ein frischer Login ist (Session-Wechsel)
+- Alte Sitzungen automatisch bereinigen: Beim Laden in `ActiveSessionsCard` nur Sitzungen der letzten 30 Tage anzeigen, aeltere loeschen
+- Duplikat-Vermeidung: `trackSession` prueft per `device_info` ob bereits eine Sitzung existiert und updated nur `last_active_at` + `is_current` statt eine neue anzulegen (existiert teilweise schon, aber die `getSession()`-Logik umgeht das)
 
-**Ergebnis**: "Keine Termine heute" wird immer mit CalendarX2-Icon dargestellt. Morgen-Termine erscheinen darunter als separate Liste mit Kennzeichnung.
-
----
-
-## 2. Kürzlich besucht um Planungen, Fallakten, Dossiers und Dokumente erweitern
-
-**Problem**: `trackVisit()` wird nur für Navigations-Menüpunkte aufgerufen (Zeile 286-289 in AppNavigation.tsx). Besuche von Detail-Seiten wie Veranstaltungsplanungen, Terminplanungen, Fallakten-Details, Dossier-Einträge und Dokumente werden nicht erfasst.
-
-**Lösung**:
-- In den relevanten Detail-Komponenten `trackVisit` aufrufen, wenn eine Detailseite geöffnet wird. Dafür muss `trackVisit` aus `useRecentlyVisited` an den passenden Stellen eingebunden werden:
-  - **Veranstaltungsplanung**: Beim Öffnen einer Planung den Titel tracken (z.B. in der EventPlanning-Detailansicht)
-  - **Terminplanung**: Beim Öffnen eines Terminplanungs-Eintrags
-  - **Fallakten**: Beim Öffnen einer Fallakte im Detail
-  - **Dossiers**: Beim Öffnen eines Dossier-Eintrags
-  - **Dokumente**: Beim Öffnen/Bearbeiten eines Dokuments
-
-- `useRecentlyVisited` als Singleton/Context verwenden oder als globale Funktion exportieren, damit Detail-Komponenten darauf zugreifen können, ohne dass `trackVisit` als Prop durchgereicht werden muss
-
-**Betroffene Dateien**: 
-- `src/hooks/useRecentlyVisited.ts` — Funktion als global nutzbar machen (z.B. über eine standalone `trackPageVisit`-Funktion, die direkt localStorage nutzt)
-- Detail-Komponenten für EventPlanning, Fallakten, Dossiers, Dokumente — `trackPageVisit` aufrufen
+**Loesung** in `src/components/account/ActiveSessionsCard.tsx`:
+- Beim Laden: Sitzungen aelter als 30 Tage automatisch loeschen (Cleanup-Query vor dem Fetch)
+- Maximal die letzten 10 Sitzungen anzeigen
 
 ---
 
-## 3. Task Parent-Child Connector-Linien korrigieren
+## 2. Tenant-Einrichtungsassistent fuer Superadmin
 
-**Problem**: Die L-förmigen Verbindungslinien von Parent- zu Child-Tasks in Meine Arbeit/Aufgaben stimmen nicht. Die Referenz ist das CommentThread-Pattern in Entscheidungen.
+**Problem**: Der aktuelle "Neuer Tenant"-Dialog hat nur Name, Beschreibung und Aktiv-Toggle. Tenant-spezifische Daten wie Herkunftsort, Wahlkreis, Bundesland etc. muessen separat konfiguriert werden.
 
-**Aktueller Code** (`src/components/tasks/TaskCard.tsx`, Zeile 131-134):
-```
-CHECKBOX_SIZE = 16
-CHECKBOX_CENTER = 8
-CHECKBOX_TOP_IN_CARD = 14 (12 + 2)
-CONNECTOR_X = 16 (CHECKBOX_CENTER + 8)
-```
+**Loesung**: Den Dialog in `SuperadminTenantManagement.tsx` zu einem mehrstufigen Formular erweitern, das beim Erstellen eines Tenants wesentliche Unterscheidungsmerkmale abfragt und in `settings` (JSON) bzw. `app_settings` speichert:
 
-Die vertikale Linie startet bei `CONNECTOR_X=16`, aber der L-Connector des Child-Elements hat `width = CHECKBOX_CENTER + 4 = 12px` und startet bei `left = -(CHECKBOX_CENTER + 8) = -16px`. Das ergibt eine Diskrepanz — die horizontale Linie reicht nicht exakt bis zur vertikalen Linie.
+### Neue Felder im Erstellungsdialog:
+- **Wahlkreis-Name** (z.B. "Karlsruhe I")
+- **Wahlkreis-Nummer** 
+- **Stadt/Ort** (Herkunftsort des Abgeordneten)
+- **Bundesland** (Dropdown: Baden-Wuerttemberg etc.)
+- **Partei/Fraktion**
+- **App-Name** (Standard: "LandtagsOS", ueberschreibbar)
+- **App-Untertitel** (Standard: "Koordinationssystem")
 
-**Referenz-Pattern** (CommentThread.tsx, Zeile 200-214):
-```
-AVATAR_SIZE = 24, AVATAR_CENTER = 12
-Vertikale: left = AVATAR_CENTER (12px)
-L-Connector: left = -(AVATAR_CENTER + 8) = -20px, width = AVATAR_CENTER + 8 - 4 = 16px
-```
-Hier stimmt: `-20 + 16 = -4px` → Die Linie endet 4px vor dem Element, was visuell zum Avatar-Rand passt.
+### Technische Umsetzung:
+- Felder werden in der `tenants.settings` JSON-Spalte gespeichert (constituency, city, state, party, constituency_number)
+- App-Name und -Untertitel werden als `app_settings`-Eintraege fuer den neuen Tenant angelegt (wie bereits im `initializeTenant`-Flow)
+- Der Dialog wird vergroessert (breiterer `DialogContent`), mit einem Grid-Layout fuer die Felder
+- Beim Bearbeiten eines bestehenden Tenants werden die Settings-Felder ebenfalls angezeigt und editierbar
 
-**Lösung** in `src/components/tasks/TaskCard.tsx`:
-- L-Connector-Breite anpassen: `width = CHECKBOX_CENTER + 8 - 4` (statt `CHECKBOX_CENTER + 4`), damit die horizontale Linie exakt an der vertikalen Linie ansetzt
-- `connectorChildTargetTop` so anpassen, dass die L-Linie auf Höhe der Checkbox endet (analog zum Avatar-Center im CommentThread)
-- Gleiche Korrektur in `src/components/tasks/TaskListRow.tsx`
+### Erweiterung der Edge Function:
+- `manage-tenant-user` → `initializeTenant`-Action erhaelt die neuen Settings-Daten und speichert sie in `tenants.settings` und `app_settings`
 
 ---
 
-## 4. Badges durch pulsierende Punkte ersetzen
+## 3. Pre-existing Build-Errors (kein Eingriff noetig)
 
-**Problem**: Navigation und Quick Actions zeigen Zahlen-Badges (z.B. "3", "12"). Der User will nur kleine pulsierende Punkte ohne Zahlen.
-
-**Lösung**:
-
-### a) `src/components/AppNavigation.tsx`
-- `renderNavItem` (Zeile 382-386): Badge-`<span>` mit Zahlen ersetzen durch kleinen pulsierenden Punkt:
-  ```
-  <span className="ml-auto h-2 w-2 rounded-full bg-destructive animate-pulse" />
-  ```
-- `renderNavGroup` (Zeile 423-427): Gleiche Änderung
-- Notification-Badge am Bell-Icon (Zeile 953-957): Zahlen entfernen, nur Punkt zeigen
-
-### b) `src/components/Navigation.tsx` 
-- `NavigationBadge` durch pulsierenden Punkt ersetzen (Zeile 178-186, 244-248)
-- Chat-Badge (Zeile 173-176): Bereits Punkt im collapsed-Modus, expanded-Modus ebenfalls auf Punkt umstellen
-
-### c) `src/components/dashboard/WidgetQuickAccess.tsx`
-- `NavigationBadge` (Zeile 93-97) durch pulsierenden Punkt ersetzen
-
-### d) Optional: `NavigationBadge`-Komponente vereinfachen oder durch eine `NotificationDot`-Komponente ersetzen
-
-**Ergebnis**: Überall nur noch dezente pulsierende Punkte statt Zahlen-Badges.
+Die Parse-Fehler in `matrix-bot-handler`, `matrix-decision-handler`, `send-matrix-morning-greeting` und `sync-external-calendar` sind vorbestehend und nicht durch die aktuellen Aenderungen verursacht. Ebenso der Typ-Fehler in `respond-public-event-invitation.test.ts`. Diese werden in diesem Schritt nicht angefasst.
 
 ---
 
-## Betroffene Dateien (Zusammenfassung)
-1. `src/components/my-work/MyWorkDashboardAppointments.tsx`
-2. `src/hooks/useRecentlyVisited.ts`
-3. Diverse Detail-Komponenten (EventPlanning, Fallakten, Dossiers, Dokumente)
-4. `src/components/tasks/TaskCard.tsx`
-5. `src/components/tasks/TaskListRow.tsx`
-6. `src/components/AppNavigation.tsx`
-7. `src/components/Navigation.tsx`
-8. `src/components/dashboard/WidgetQuickAccess.tsx`
+## Betroffene Dateien
+1. `src/hooks/useAuth.tsx` — Session-Tracking nur bei echtem Login
+2. `src/components/account/ActiveSessionsCard.tsx` — Cleanup + Limit
+3. `src/components/administration/SuperadminTenantManagement.tsx` — Erweiterter Erstellungsdialog
+4. `supabase/functions/manage-tenant-user/index.ts` — initializeTenant mit Settings-Daten
 
