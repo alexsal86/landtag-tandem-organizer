@@ -23,9 +23,9 @@ import { CanvasToolbar } from '@/components/letters/CanvasToolbar';
 import type { LetterLayoutSettings } from '@/types/letterLayout';
 import { SunflowerSVG, LionSVG, WappenSVG } from '@/components/letters/elements/shapeSVGs';
 
-import { BLOCK_VARIABLES, createElementId, getShapeFillColor, getShapeStrokeColor, ZOOM_STEPS } from './structured-header/constants';
-import { useCanvasGallery } from './structured-header/useCanvasGallery';
-import { useCanvasInteractions } from './structured-header/useCanvasInteractions';
+import { BLOCK_VARIABLES, createElementId, getShapeFillColor, getShapeStrokeColor, ZOOM_STEPS } from './constants';
+import { useCanvasGallery } from './useCanvasGallery';
+import { useCanvasInteractions } from './useCanvasInteractions';
 
 interface StructuredHeaderEditorProps {
   initialElements?: HeaderElement[];
