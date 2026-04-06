@@ -59,6 +59,13 @@ export function SuperadminTenantManagement(): React.JSX.Element {
   const [formName, setFormName] = useState<string>("");
   const [formDescription, setFormDescription] = useState<string>("");
   const [formIsActive, setFormIsActive] = useState<boolean>(true);
+  const [formConstituency, setFormConstituency] = useState<string>("");
+  const [formConstituencyNumber, setFormConstituencyNumber] = useState<string>("");
+  const [formCity, setFormCity] = useState<string>("");
+  const [formState, setFormState] = useState<string>("");
+  const [formParty, setFormParty] = useState<string>("");
+  const [formAppName, setFormAppName] = useState<string>("LandtagsOS");
+  const [formAppSubtitle, setFormAppSubtitle] = useState<string>("Koordinationssystem");
 
   // User states
   const [allUsers, setAllUsers] = useState<UserWithTenants[]>([]);
