@@ -25,7 +25,6 @@ const BUNDESLAENDER = [
   "Nordrhein-Westfalen", "Rheinland-Pfalz", "Saarland", "Sachsen",
   "Sachsen-Anhalt", "Schleswig-Holstein", "Thüringen",
 ];
-import { de } from "date-fns/locale";
 
 interface TenantWithStats {
   id: string;
