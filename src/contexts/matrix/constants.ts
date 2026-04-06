@@ -1,8 +1,9 @@
 import { getCoiCapabilityStatus } from '@/lib/coiRuntime';
+import type { MatrixMessage } from '@/types/matrix';
+import { getCoiCapabilityStatus } from '@/lib/coiRuntime';
 import type {
   MatrixClientContextType,
   MatrixE2EEDiagnostics,
-  MatrixMessage,
   MatrixRoomHistoryState,
   MatrixRoomId,
 } from './types';
