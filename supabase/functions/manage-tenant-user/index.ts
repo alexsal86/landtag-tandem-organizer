@@ -478,17 +478,17 @@ serve(withSafeHandler("manage-tenant-user", async (req) => {
           throw new Error('Only superadmin can initialize tenants');
         }
 
-        const { tenantId } = body;
+        const { tenantId, appName, appSubtitle } = body;
         if (!tenantId) {
           throw new Error('tenantId is required');
         }
 
         console.log(`Initializing tenant: ${tenantId}`);
 
-        // Default app settings for new tenant
+        // Default app settings for new tenant (use provided values or defaults)
         const defaultSettings = [
-          { tenant_id: tenantId, setting_key: 'app_name', setting_value: 'LandtagsOS' },
-          { tenant_id: tenantId, setting_key: 'app_subtitle', setting_value: 'Koordinationssystem' },
+          { tenant_id: tenantId, setting_key: 'app_name', setting_value: appName || 'LandtagsOS' },
+          { tenant_id: tenantId, setting_key: 'app_subtitle', setting_value: appSubtitle || 'Koordinationssystem' },
           { tenant_id: tenantId, setting_key: 'app_logo_url', setting_value: '' },
           { tenant_id: tenantId, setting_key: 'default_dashboard_cover_url', setting_value: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1920' },
           { tenant_id: tenantId, setting_key: 'default_dashboard_cover_position', setting_value: 'center' },
@@ -500,7 +500,6 @@ serve(withSafeHandler("manage-tenant-user", async (req) => {
 
         if (settingsError) {
           console.error('Error creating default settings:', settingsError);
-          // Don't throw - settings might already exist or not be critical
         }
 
         console.log(`Tenant ${tenantId} initialized successfully`);
@@ -509,7 +508,7 @@ serve(withSafeHandler("manage-tenant-user", async (req) => {
           user.id,
           user.email,
           'platform_admin.initialize_tenant',
-          { tenant_id: tenantId },
+          { tenant_id: tenantId, app_name: appName, app_subtitle: appSubtitle },
           tenantId,
         );
 

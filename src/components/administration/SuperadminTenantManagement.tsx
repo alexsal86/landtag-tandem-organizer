@@ -15,8 +15,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { Building2, Plus, Edit, Trash2, Users, UserPlus, RefreshCw, Copy, Check } from "lucide-react";
+import { Building2, Plus, Edit, Trash2, Users, UserPlus, RefreshCw, Copy, Check, MapPin } from "lucide-react";
 import { format } from "date-fns";
+import { de } from "date-fns/locale";
+
+const BUNDESLAENDER = [
+  "Baden-Württemberg", "Bayern", "Berlin", "Brandenburg", "Bremen",
+  "Hamburg", "Hessen", "Mecklenburg-Vorpommern", "Niedersachsen",
+  "Nordrhein-Westfalen", "Rheinland-Pfalz", "Saarland", "Sachsen",
+  "Sachsen-Anhalt", "Schleswig-Holstein", "Thüringen",
+];
 import { de } from "date-fns/locale";
 
 interface TenantWithStats {
