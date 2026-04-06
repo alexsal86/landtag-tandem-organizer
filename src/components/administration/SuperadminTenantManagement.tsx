@@ -160,6 +160,14 @@ export function SuperadminTenantManagement(): React.JSX.Element {
       return;
     }
 
+    const settingsData = {
+      constituency: formConstituency.trim(),
+      constituency_number: formConstituencyNumber.trim(),
+      city: formCity.trim(),
+      state: formState,
+      party: formParty.trim(),
+    };
+
     try {
       if (editingTenant) {
         const { error } = await supabase
@@ -168,11 +176,32 @@ export function SuperadminTenantManagement(): React.JSX.Element {
             name: formName.trim(),
             description: formDescription.trim() || null,
             is_active: formIsActive,
+            settings: settingsData,
             updated_at: new Date().toISOString(),
           })
           .eq("id", editingTenant.id);
 
         if (error) throw error;
+
+        // Update app_settings for this tenant
+        const settingsToUpsert = [
+          { tenant_id: editingTenant.id, setting_key: 'app_name', setting_value: formAppName.trim() || 'LandtagsOS' },
+          { tenant_id: editingTenant.id, setting_key: 'app_subtitle', setting_value: formAppSubtitle.trim() || 'Koordinationssystem' },
+        ];
+        for (const s of settingsToUpsert) {
+          const { data: existing } = await supabase
+            .from('app_settings')
+            .select('id')
+            .eq('tenant_id', s.tenant_id)
+            .eq('setting_key', s.setting_key)
+            .maybeSingle();
+          if (existing) {
+            await supabase.from('app_settings').update({ setting_value: s.setting_value }).eq('id', existing.id);
+          } else {
+            await supabase.from('app_settings').insert(s);
+          }
+        }
+
         toast({ title: "Gespeichert", description: "Tenant wurde aktualisiert" });
       } else {
         // Create new tenant
@@ -182,22 +211,26 @@ export function SuperadminTenantManagement(): React.JSX.Element {
             name: formName.trim(),
             description: formDescription.trim() || null,
             is_active: formIsActive,
-            settings: {},
+            settings: settingsData,
           }])
           .select('id')
           .single();
 
         if (error) throw error;
 
-        // Initialize tenant with default settings
+        // Initialize tenant with default settings including app name/subtitle
         if (newTenant) {
           const { error: initError } = await supabase.functions.invoke('manage-tenant-user', {
-            body: { action: 'initializeTenant', tenantId: newTenant.id }
+            body: {
+              action: 'initializeTenant',
+              tenantId: newTenant.id,
+              appName: formAppName.trim() || 'LandtagsOS',
+              appSubtitle: formAppSubtitle.trim() || 'Koordinationssystem',
+            }
           });
           
           if (initError) {
             debugConsole.error('Error initializing tenant:', initError);
-            // Don't fail the whole operation, just log
           }
         }
 
