@@ -15,9 +15,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { Building2, Plus, Edit, Trash2, Users, UserPlus, RefreshCw, Copy, Check } from "lucide-react";
+import { Building2, Plus, Edit, Trash2, Users, UserPlus, RefreshCw, Copy, Check, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+
+const BUNDESLAENDER = [
+  "Baden-Württemberg", "Bayern", "Berlin", "Brandenburg", "Bremen",
+  "Hamburg", "Hessen", "Mecklenburg-Vorpommern", "Niedersachsen",
+  "Nordrhein-Westfalen", "Rheinland-Pfalz", "Saarland", "Sachsen",
+  "Sachsen-Anhalt", "Schleswig-Holstein", "Thüringen",
+];
 
 interface TenantWithStats {
   id: string;
@@ -59,6 +66,13 @@ export function SuperadminTenantManagement(): React.JSX.Element {
   const [formName, setFormName] = useState<string>("");
   const [formDescription, setFormDescription] = useState<string>("");
   const [formIsActive, setFormIsActive] = useState<boolean>(true);
+  const [formConstituency, setFormConstituency] = useState<string>("");
+  const [formConstituencyNumber, setFormConstituencyNumber] = useState<string>("");
+  const [formCity, setFormCity] = useState<string>("");
+  const [formState, setFormState] = useState<string>("");
+  const [formParty, setFormParty] = useState<string>("");
+  const [formAppName, setFormAppName] = useState<string>("LandtagsOS");
+  const [formAppSubtitle, setFormAppSubtitle] = useState<string>("Koordinationssystem");
 
   // User states
   const [allUsers, setAllUsers] = useState<UserWithTenants[]>([]);
@@ -153,6 +167,14 @@ export function SuperadminTenantManagement(): React.JSX.Element {
       return;
     }
 
+    const settingsData = {
+      constituency: formConstituency.trim(),
+      constituency_number: formConstituencyNumber.trim(),
+      city: formCity.trim(),
+      state: formState,
+      party: formParty.trim(),
+    };
+
     try {
       if (editingTenant) {
         const { error } = await supabase
@@ -161,11 +183,32 @@ export function SuperadminTenantManagement(): React.JSX.Element {
             name: formName.trim(),
             description: formDescription.trim() || null,
             is_active: formIsActive,
+            settings: settingsData,
             updated_at: new Date().toISOString(),
           })
           .eq("id", editingTenant.id);
 
         if (error) throw error;
+
+        // Update app_settings for this tenant
+        const settingsToUpsert = [
+          { tenant_id: editingTenant.id, setting_key: 'app_name', setting_value: formAppName.trim() || 'LandtagsOS' },
+          { tenant_id: editingTenant.id, setting_key: 'app_subtitle', setting_value: formAppSubtitle.trim() || 'Koordinationssystem' },
+        ];
+        for (const s of settingsToUpsert) {
+          const { data: existing } = await supabase
+            .from('app_settings')
+            .select('id')
+            .eq('tenant_id', s.tenant_id)
+            .eq('setting_key', s.setting_key)
+            .maybeSingle();
+          if (existing) {
+            await supabase.from('app_settings').update({ setting_value: s.setting_value }).eq('id', existing.id);
+          } else {
+            await supabase.from('app_settings').insert(s);
+          }
+        }
+
         toast({ title: "Gespeichert", description: "Tenant wurde aktualisiert" });
       } else {
         // Create new tenant
@@ -175,22 +218,26 @@ export function SuperadminTenantManagement(): React.JSX.Element {
             name: formName.trim(),
             description: formDescription.trim() || null,
             is_active: formIsActive,
-            settings: {},
+            settings: settingsData,
           }])
           .select('id')
           .single();
 
         if (error) throw error;
 
-        // Initialize tenant with default settings
+        // Initialize tenant with default settings including app name/subtitle
         if (newTenant) {
           const { error: initError } = await supabase.functions.invoke('manage-tenant-user', {
-            body: { action: 'initializeTenant', tenantId: newTenant.id }
+            body: {
+              action: 'initializeTenant',
+              tenantId: newTenant.id,
+              appName: formAppName.trim() || 'LandtagsOS',
+              appSubtitle: formAppSubtitle.trim() || 'Koordinationssystem',
+            }
           });
           
           if (initError) {
             debugConsole.error('Error initializing tenant:', initError);
-            // Don't fail the whole operation, just log
           }
         }
 
@@ -330,11 +377,35 @@ export function SuperadminTenantManagement(): React.JSX.Element {
     setDialogOpen(true);
   };
 
-  const openEditTenantDialog = (tenant: TenantWithStats): void => {
+  const openEditTenantDialog = async (tenant: TenantWithStats): Promise<void> => {
     setEditingTenant(tenant);
     setFormName(tenant.name);
     setFormDescription(tenant.description || "");
     setFormIsActive(tenant.is_active);
+
+    // Load settings from tenant
+    const { data: tenantData } = await supabase
+      .from("tenants")
+      .select("settings")
+      .eq("id", tenant.id)
+      .maybeSingle();
+    const settings = (tenantData?.settings as Record<string, string>) ?? {};
+    setFormConstituency(settings.constituency || "");
+    setFormConstituencyNumber(settings.constituency_number || "");
+    setFormCity(settings.city || "");
+    setFormState(settings.state || "");
+    setFormParty(settings.party || "");
+
+    // Load app_settings
+    const { data: appSettings } = await supabase
+      .from("app_settings")
+      .select("setting_key, setting_value")
+      .eq("tenant_id", tenant.id)
+      .in("setting_key", ["app_name", "app_subtitle"]);
+    const settingsMap = Object.fromEntries((appSettings ?? []).map(s => [s.setting_key, s.setting_value]));
+    setFormAppName(settingsMap.app_name || "LandtagsOS");
+    setFormAppSubtitle(settingsMap.app_subtitle || "Koordinationssystem");
+
     setDialogOpen(true);
   };
 
@@ -349,6 +420,13 @@ export function SuperadminTenantManagement(): React.JSX.Element {
     setFormName("");
     setFormDescription("");
     setFormIsActive(true);
+    setFormConstituency("");
+    setFormConstituencyNumber("");
+    setFormCity("");
+    setFormState("");
+    setFormParty("");
+    setFormAppName("LandtagsOS");
+    setFormAppSubtitle("Koordinationssystem");
     setEditingTenant(null);
   };
 
@@ -747,36 +825,121 @@ export function SuperadminTenantManagement(): React.JSX.Element {
 
         {/* Tenant Create/Edit Dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingTenant ? "Tenant bearbeiten" : "Neuer Tenant"}
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="grid gap-2">
-                <Label>Name *</Label>
-                <Input
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  placeholder="z.B. Büro Mustermann"
-                />
+            <div className="space-y-6 py-4">
+              {/* Grunddaten */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-muted-foreground">Grunddaten</h4>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label>Name *</Label>
+                    <Input
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                      placeholder="z.B. Büro Mustermann"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between md:justify-end gap-3">
+                    <Label>Aktiv</Label>
+                    <Switch
+                      checked={formIsActive}
+                      onCheckedChange={setFormIsActive}
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Beschreibung</Label>
+                  <Textarea
+                    value={formDescription}
+                    onChange={(e) => setFormDescription(e.target.value)}
+                    placeholder="Optionale Beschreibung..."
+                    rows={2}
+                  />
+                </div>
               </div>
-              <div className="grid gap-2">
-                <Label>Beschreibung</Label>
-                <Textarea
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  placeholder="Optionale Beschreibung..."
-                  rows={2}
-                />
+
+              {/* Wahlkreis & Herkunft */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-muted-foreground">Wahlkreis & Herkunft</h4>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label>Wahlkreis-Name</Label>
+                    <Input
+                      value={formConstituency}
+                      onChange={(e) => setFormConstituency(e.target.value)}
+                      placeholder="z.B. Karlsruhe I"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Wahlkreis-Nummer</Label>
+                    <Input
+                      value={formConstituencyNumber}
+                      onChange={(e) => setFormConstituencyNumber(e.target.value)}
+                      placeholder="z.B. 27"
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label>Stadt / Ort</Label>
+                    <Input
+                      value={formCity}
+                      onChange={(e) => setFormCity(e.target.value)}
+                      placeholder="z.B. Karlsruhe"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Bundesland</Label>
+                    <Select value={formState} onValueChange={setFormState}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Bundesland wählen" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {BUNDESLAENDER.map(bl => (
+                          <SelectItem key={bl} value={bl}>{bl}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label>Partei / Fraktion</Label>
+                    <Input
+                      value={formParty}
+                      onChange={(e) => setFormParty(e.target.value)}
+                      placeholder="z.B. GRÜNE"
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <Label>Aktiv</Label>
-                <Switch
-                  checked={formIsActive}
-                  onCheckedChange={setFormIsActive}
-                />
+
+              {/* App-Einstellungen */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-muted-foreground">App-Einstellungen</h4>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label>App-Name</Label>
+                    <Input
+                      value={formAppName}
+                      onChange={(e) => setFormAppName(e.target.value)}
+                      placeholder="LandtagsOS"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>App-Untertitel</Label>
+                    <Input
+                      value={formAppSubtitle}
+                      onChange={(e) => setFormAppSubtitle(e.target.value)}
+                      placeholder="Koordinationssystem"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
             <div className="flex justify-end gap-2">
