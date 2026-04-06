@@ -107,24 +107,48 @@ const trackSession = async (userId: string): Promise<void> => {
   }
 };
 
+const updateLastActive = async (userId: string): Promise<void> => {
+  try {
+    const deviceInfo = navigator.userAgent;
+    await supabase
+      .from("user_sessions")
+      .update({ last_active_at: new Date().toISOString() })
+      .eq("user_id", userId)
+      .eq("device_info", deviceInfo)
+      .eq("is_current", true);
+  } catch (error: unknown) {
+    debugConsole.error("Error updating last active:", error);
+  }
+};
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }): React.JSX.Element => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect((): (() => void) => {
+    let previousUserId: string | null = null;
+
     const handleAuthStateChange: OnAuthStateChangeCallback = (event, nextSession) => {
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       setLoading(false);
 
-      if (event === "SIGNED_IN") {
-        const signedInUserId = nextSession?.user?.id;
-        if (signedInUserId) {
-          setTimeout((): void => {
-            void trackSession(signedInUserId);
-          }, 0);
-        }
+      const nextUserId = nextSession?.user?.id ?? null;
+
+      if (event === "SIGNED_IN" && nextUserId && nextUserId !== previousUserId) {
+        // Only track on genuine sign-in (user changed), not token refresh
+        previousUserId = nextUserId;
+        setTimeout((): void => {
+          void trackSession(nextUserId);
+        }, 0);
+      } else if (event === "TOKEN_REFRESHED" && nextUserId) {
+        // Just update last_active, don't create new session
+        setTimeout((): void => {
+          void updateLastActive(nextUserId);
+        }, 0);
+      } else if (event === "SIGNED_OUT") {
+        previousUserId = null;
       }
     };
 
@@ -149,8 +173,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }): React
 
       const existingUserId = existingSession?.user?.id;
       if (existingUserId) {
+        previousUserId = existingUserId;
+        // On page load/refresh, just update last_active for existing session
         setTimeout((): void => {
-          void trackSession(existingUserId);
+          void updateLastActive(existingUserId);
         }, 0);
       }
     });
