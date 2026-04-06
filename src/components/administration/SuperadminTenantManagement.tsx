@@ -370,11 +370,35 @@ export function SuperadminTenantManagement(): React.JSX.Element {
     setDialogOpen(true);
   };
 
-  const openEditTenantDialog = (tenant: TenantWithStats): void => {
+  const openEditTenantDialog = async (tenant: TenantWithStats): Promise<void> => {
     setEditingTenant(tenant);
     setFormName(tenant.name);
     setFormDescription(tenant.description || "");
     setFormIsActive(tenant.is_active);
+
+    // Load settings from tenant
+    const { data: tenantData } = await supabase
+      .from("tenants")
+      .select("settings")
+      .eq("id", tenant.id)
+      .maybeSingle();
+    const settings = (tenantData?.settings as Record<string, string>) ?? {};
+    setFormConstituency(settings.constituency || "");
+    setFormConstituencyNumber(settings.constituency_number || "");
+    setFormCity(settings.city || "");
+    setFormState(settings.state || "");
+    setFormParty(settings.party || "");
+
+    // Load app_settings
+    const { data: appSettings } = await supabase
+      .from("app_settings")
+      .select("setting_key, setting_value")
+      .eq("tenant_id", tenant.id)
+      .in("setting_key", ["app_name", "app_subtitle"]);
+    const settingsMap = Object.fromEntries((appSettings ?? []).map(s => [s.setting_key, s.setting_value]));
+    setFormAppName(settingsMap.app_name || "LandtagsOS");
+    setFormAppSubtitle(settingsMap.app_subtitle || "Koordinationssystem");
+
     setDialogOpen(true);
   };
 
@@ -389,6 +413,13 @@ export function SuperadminTenantManagement(): React.JSX.Element {
     setFormName("");
     setFormDescription("");
     setFormIsActive(true);
+    setFormConstituency("");
+    setFormConstituencyNumber("");
+    setFormCity("");
+    setFormState("");
+    setFormParty("");
+    setFormAppName("LandtagsOS");
+    setFormAppSubtitle("Koordinationssystem");
     setEditingTenant(null);
   };
 
