@@ -75,6 +75,12 @@ export const PlannerPostCard = memo(function PlannerPostCard({ item, onClick }: 
 
       {/* Title */}
       <p className="font-semibold leading-tight line-clamp-2">{item.topic}</p>
+      {(item.campaign_name || item.content_pillar) && (
+        <div className="flex flex-wrap gap-1">
+          {item.campaign_name && <Badge variant="outline" className="text-[9px]">{item.campaign_name}</Badge>}
+          {item.content_pillar && <Badge variant="secondary" className="text-[9px]">{item.content_pillar}</Badge>}
+        </div>
+      )}
 
       {/* Draft text preview */}
       {item.draft_text && (

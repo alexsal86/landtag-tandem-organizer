@@ -143,7 +143,9 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateA
                       {STATUS_LABELS[item.workflow_status]}
                     </Badge>
                     <Badge variant="outline" className="text-[10px]">{inferFormatType(item) === "story" ? "Story" : inferFormatType(item) === "feed" ? "Feed" : "Format offen"}</Badge>
+                    {item.content_pillar && <Badge variant="secondary" className="text-[10px]">{item.content_pillar}</Badge>}
                   </div>
+                  {item.campaign_name && <Badge variant="outline" className="text-[10px]">{item.campaign_name}</Badge>}
                   {item.tags.length > 0 && (
                     <div className="flex flex-wrap gap-0.5">
                       {item.tags.slice(0, 2).map((tag) => (

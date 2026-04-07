@@ -24,6 +24,9 @@ export interface TopicBacklogEntry {
   id: string;
   topic: string;
   tags: string[];
+  campaign_id: string | null;
+  campaign_name: string | null;
+  content_pillar: string | null;
   status: TopicEditorialStatus;
   priority: number;
   owner_id: string | null;
@@ -79,7 +82,7 @@ export function useTopicBacklog() {
       const [{ data: topicRows, error: topicError }, { data: channelRows, error: channelError }] = await Promise.all([
         supabase
           .from("topic_backlog")
-          .select("id, topic, tags, status, priority, owner_id, short_description")
+          .select("id, topic, tags, status, priority, owner_id, short_description, campaign_id, content_pillar")
           .eq("tenant_id", currentTenant.id)
           .order("priority", { ascending: false })
           .order("updated_at", { ascending: false }),
@@ -149,6 +152,12 @@ export function useTopicBacklog() {
       if (responsibleError) throw responsibleError;
 
       const ownerNameById = new Map((ownerRows || []).map((row) => [row.id, row.display_name || null]));
+      const campaignIds = Array.from(new Set(topicData.map((row) => row.campaign_id).filter((value): value is string => Boolean(value))));
+      const { data: campaignRows, error: campaignError } = campaignIds.length
+        ? await supabase.from("social_campaigns").select("id, name").in("id", campaignIds).eq("tenant_id", currentTenant.id)
+        : { data: [], error: null };
+      if (campaignError) throw campaignError;
+      const campaignNameById = new Map((campaignRows || []).map((row) => [row.id, row.name]));
       const responsibleNameById = new Map((responsibleRows || []).map((row) => [row.id, row.display_name || null]));
       const linkedByTopic = new Map<string, TopicBacklogLinkedContent[]>();
 
@@ -198,6 +207,9 @@ export function useTopicBacklog() {
             id: row.id,
             topic: row.topic,
             tags: row.tags || [],
+            campaign_id: row.campaign_id || null,
+            campaign_name: row.campaign_id ? campaignNameById.get(row.campaign_id) || null : null,
+            content_pillar: row.content_pillar || null,
             status: normalizeTopicStatus(row.status),
             priority: row.priority,
             owner_id: row.owner_id,
@@ -220,7 +232,7 @@ export function useTopicBacklog() {
   }, [currentTenant?.id, user?.id]);
 
   const createTopic = useCallback(
-    async (payload: { topic: string; tags?: string[]; priority?: number; status?: TopicEditorialStatus; owner_id?: string | null; short_description?: string | null }) => {
+    async (payload: { topic: string; tags?: string[]; priority?: number; status?: TopicEditorialStatus; owner_id?: string | null; short_description?: string | null; campaign_id?: string | null; content_pillar?: string | null }) => {
       if (!user?.id || !currentTenant?.id || !profileId) return null;
 
       const id = crypto.randomUUID();
@@ -237,6 +249,8 @@ export function useTopicBacklog() {
           status: normalizedStatus,
           owner_id: payload.owner_id ?? null,
           short_description: payload.short_description ?? null,
+          campaign_id: payload.campaign_id ?? null,
+          content_pillar: payload.content_pillar ?? null,
         });
 
       if (error) {
@@ -251,6 +265,9 @@ export function useTopicBacklog() {
         status: normalizedStatus,
         priority: payload.priority ?? 1,
         owner_id: payload.owner_id ?? null,
+        campaign_id: payload.campaign_id ?? null,
+        campaign_name: null,
+        content_pillar: payload.content_pillar ?? null,
       };
     },
     [currentTenant?.id, loadTopics, user?.id, profileId],

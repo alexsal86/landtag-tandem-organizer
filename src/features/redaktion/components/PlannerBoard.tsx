@@ -22,6 +22,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { type SocialPlannerItem, PlannerWorkflowStatus, useSocialPlannerItems } from "@/features/redaktion/hooks/useSocialPlannerItems";
 import { useTopicBacklog } from "@/features/redaktion/hooks/useTopicBacklog";
 import { usePlannerNotes } from "@/features/redaktion/hooks/usePlannerNotes";
+import { useSocialCampaigns } from "@/features/redaktion/hooks/useSocialCampaigns";
 import { useToast } from "@/hooks/use-toast";
 import type { SpecialDay } from "@/utils/dashboard/specialDays";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,7 +41,9 @@ const SORT_OPTIONS = [
   { value: "scheduled", label: "Veröffentlichungsfenster" },
   { value: "topic", label: "Thema" },
   { value: "status", label: "Status" },
+  { value: "campaign_phase", label: "Kampagnenphase" },
 ] as const;
+const CONTENT_PILLAR_OPTIONS = ["informieren", "mobilisieren", "service"] as const;
 
 const APPROVAL_LABELS: Record<string, string> = {
   draft: "Entwurf",
@@ -147,6 +150,8 @@ type SocialPlannerDraftPayload = {
   hashtags_in_comment: boolean;
   alt_text: string | null;
   image_url: string | null;
+  campaign_id: string | null;
+  content_pillar: string | null;
 };
 
 type SocialPlannerTemplateId = (typeof TEMPLATE_OPTIONS)[number]["id"];
@@ -233,12 +238,13 @@ interface SocialPlannerEditDialogProps {
   open: boolean;
   users: Array<{ id: string; display_name: string }>;
   channels: Array<{ id: string; name: string }>;
+  campaigns: Array<{ id: string; name: string }>;
   tagSuggestions: string[];
   onOpenChange: (open: boolean) => void;
   onSave: (itemId: string, payload: SocialPlannerDraftPayload) => Promise<void>;
 }
 
-function SocialPlannerEditDialog({ item, open, users, channels, tagSuggestions, onOpenChange, onSave }: SocialPlannerEditDialogProps) {
+function SocialPlannerEditDialog({ item, open, users, channels, campaigns, tagSuggestions, onOpenChange, onSave }: SocialPlannerEditDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedTemplate, setSelectedTemplate] = useState<string>("none");
@@ -265,6 +271,8 @@ function SocialPlannerEditDialog({ item, open, users, channels, tagSuggestions, 
   const [hashtagsInComment, setHashtagsInComment] = useState(false);
   const [altText, setAltText] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [campaignId, setCampaignId] = useState<string>("none");
+  const [contentPillar, setContentPillar] = useState<string>("none");
   const [uploadingImage, setUploadingImage] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -295,6 +303,8 @@ function SocialPlannerEditDialog({ item, open, users, channels, tagSuggestions, 
     setHashtagsInComment(item.hashtags_in_comment ?? false);
     setAltText(item.alt_text || "");
     setImageUrl(item.image_url || null);
+    setCampaignId(item.campaign_id || "none");
+    setContentPillar(item.content_pillar || "none");
   }, [item]);
 
   const channelOptions = useMemo(
@@ -350,6 +360,8 @@ function SocialPlannerEditDialog({ item, open, users, channels, tagSuggestions, 
         hashtags_in_comment: hashtagsInComment,
         alt_text: altText.trim() || null,
         image_url: imageUrl,
+        campaign_id: campaignId === "none" ? null : campaignId,
+        content_pillar: contentPillar === "none" ? null : contentPillar,
       });
       onOpenChange(false);
     } catch {
@@ -410,6 +422,26 @@ function SocialPlannerEditDialog({ item, open, users, channels, tagSuggestions, 
               <p className="text-xs text-muted-foreground">
                 Interne Labels zur Organisation – nicht öffentlich sichtbar.
               </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Kampagne</Label>
+              <Select value={campaignId} onValueChange={setCampaignId}>
+                <SelectTrigger><SelectValue placeholder="Kampagne (optional)" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Keine Kampagne</SelectItem>
+                  {campaigns.map((campaign) => <SelectItem key={campaign.id} value={campaign.id}>{campaign.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Content-Pillar</Label>
+              <Select value={contentPillar} onValueChange={setContentPillar}>
+                <SelectTrigger><SelectValue placeholder="Pillar (optional)" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nicht festgelegt</SelectItem>
+                  {CONTENT_PILLAR_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -667,6 +699,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   const [searchParams] = useSearchParams();
   const { users } = useTenantUsers();
   const { topics, createTopic } = useTopicBacklog();
+  const { campaigns } = useSocialCampaigns();
   const { items, channels, loading, updateItem, createItem, deleteItem } = useSocialPlannerItems();
   const { notes, createNote, updateNote, deleteNote } = usePlannerNotes();
   debugConsole.log("[PlannerBoard] render", { hasUsers: !!users, topicsCount: topics?.length, itemsCount: items?.length, channelsCount: channels?.length, loading });
@@ -675,6 +708,8 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   const [ownerFilter, setOwnerFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [formatFilter, setFormatFilter] = useState<PlannerFormatFilter>("all");
+  const [campaignFilter, setCampaignFilter] = useState<string>("all");
+  const [pillarFilter, setPillarFilter] = useState<string>("all");
   const [tagSearch, setTagSearch] = useState("");
   const [sortBy, setSortBy] = useState<(typeof SORT_OPTIONS)[number]["value"]>("scheduled");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -701,6 +736,8 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   const [createWorkflowStatus, setCreateWorkflowStatus] = useState<PlannerWorkflowStatus>("ideas");
   const [createScheduledDate, setCreateScheduledDate] = useState("");
   const [isCreatingDraft, setIsCreatingDraft] = useState(false);
+  const [createCampaignId, setCreateCampaignId] = useState<string>("none");
+  const [createContentPillar, setCreateContentPillar] = useState<string>("none");
 
   const editingItem = useMemo(
     () => items.find((item) => item.id === editingItemId) || null,
@@ -730,6 +767,8 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
         if (ownerFilter !== "all" && item.responsible_user_id !== ownerFilter) return false;
         if (statusFilter !== "all" && item.workflow_status !== statusFilter) return false;
         if (formatFilter !== "all" && inferFormatType(item) !== formatFilter) return false;
+        if (campaignFilter !== "all" && item.campaign_id !== campaignFilter) return false;
+        if (pillarFilter !== "all" && item.content_pillar !== pillarFilter) return false;
         if (!search) return true;
 
         return (
@@ -742,12 +781,24 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
       .sort((a, b) => {
         if (sortBy === "topic") return a.topic.localeCompare(b.topic);
         if (sortBy === "status") return a.workflow_status.localeCompare(b.workflow_status);
+        if (sortBy === "campaign_phase") {
+          const getPhaseRank = (item: SocialPlannerItem) => {
+            if (!item.campaign_start_date || !item.campaign_end_date) return 3;
+            const now = new Date();
+            const start = new Date(item.campaign_start_date);
+            const end = new Date(item.campaign_end_date);
+            if (now < start) return 0;
+            if (now > end) return 2;
+            return 1;
+          };
+          return getPhaseRank(a) - getPhaseRank(b);
+        }
 
         const aTime = a.scheduled_for ? new Date(a.scheduled_for).getTime() : Number.MAX_SAFE_INTEGER;
         const bTime = b.scheduled_for ? new Date(b.scheduled_for).getTime() : Number.MAX_SAFE_INTEGER;
         return aTime - bTime;
       });
-  }, [items, channelFilter, ownerFilter, statusFilter, formatFilter, tagSearch, sortBy]);
+  }, [items, channelFilter, ownerFilter, statusFilter, formatFilter, campaignFilter, pillarFilter, tagSearch, sortBy]);
 
   const handleSaveItem = useCallback(async (itemId: string, payload: SocialPlannerDraftPayload) => {
     await updateItem(itemId, payload);
@@ -775,6 +826,8 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
     setCreateApprovalState("draft");
     setCreateWorkflowStatus("ideas");
     setCreateScheduledDate("");
+    setCreateCampaignId("none");
+    setCreateContentPillar("none");
   };
 
   const handleCreateTemplateChange = (value: string) => {
@@ -831,6 +884,8 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
         draft_text: createDraftText.trim() || null,
         cta: createCta.trim() || null,
         notes: createNotes.trim() || null,
+        campaign_id: createCampaignId === "none" ? null : createCampaignId,
+        content_pillar: createContentPillar === "none" ? null : createContentPillar,
         responsible_user_id: createResponsibleUserId === "none" ? null : createResponsibleUserId,
         scheduled_for: createScheduledDate ? new Date(`${createScheduledDate}T09:00:00`).toISOString() : null,
         channel_ids: createChannelIds,
@@ -865,6 +920,8 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
     setOwnerFilter("all");
     setStatusFilter("all");
     setFormatFilter("all");
+    setCampaignFilter("all");
+    setPillarFilter("all");
     setTagSearch("");
     setSortBy("scheduled");
   };
@@ -877,7 +934,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
     }
   }, [updateItem, toast]);
 
-  const hasActiveFilters = channelFilter !== "all" || ownerFilter !== "all" || statusFilter !== "all" || formatFilter !== "all" || tagSearch.trim().length > 0 || sortBy !== "scheduled";
+  const hasActiveFilters = channelFilter !== "all" || ownerFilter !== "all" || statusFilter !== "all" || formatFilter !== "all" || campaignFilter !== "all" || pillarFilter !== "all" || tagSearch.trim().length > 0 || sortBy !== "scheduled";
 
   useEffect(() => {
     const highlightId = searchParams.get("highlight");
@@ -959,6 +1016,20 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
                     <SelectItem value="feed">Nur Feed</SelectItem>
                   </SelectContent>
                 </Select>
+                <Select value={campaignFilter} onValueChange={setCampaignFilter}>
+                  <SelectTrigger><SelectValue placeholder="Kampagne" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Alle Kampagnen</SelectItem>
+                    {campaigns.map((campaign) => <SelectItem key={campaign.id} value={campaign.id}>{campaign.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select value={pillarFilter} onValueChange={setPillarFilter}>
+                  <SelectTrigger><SelectValue placeholder="Content-Pillar" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Alle Pillars</SelectItem>
+                    {CONTENT_PILLAR_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                  </SelectContent>
+                </Select>
                 <Input value={tagSearch} onChange={(event) => setTagSearch(event.target.value)} placeholder="Thema/Tag suchen" />
                 <Select value={sortBy} onValueChange={(value) => setSortBy(value as (typeof SORT_OPTIONS)[number]["value"])}>
                   <SelectTrigger><SelectValue placeholder="Sortierung" /></SelectTrigger>
@@ -997,6 +1068,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
         open={editingItem !== null}
         users={users}
         channels={channels}
+        campaigns={campaigns}
         tagSuggestions={allTagSuggestions}
         onOpenChange={(open) => {
           if (!open) setEditingItemId(null);
@@ -1074,6 +1146,28 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
               <div className="space-y-2 md:col-span-2">
                 <Label>Kanäle</Label>
                 <MultiSelect options={channelOptions} selected={createChannelIds} onChange={setCreateChannelIds} placeholder="Kanäle auswählen" />
+              </div>
+              <div className="space-y-2">
+                <Label>Kampagne</Label>
+                <Select value={createCampaignId} onValueChange={setCreateCampaignId}>
+                  <SelectTrigger><SelectValue placeholder="Kampagne (optional)" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Keine Kampagne</SelectItem>
+                    {campaigns.map((campaign) => (
+                      <SelectItem key={campaign.id} value={campaign.id}>{campaign.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Content-Pillar</Label>
+                <Select value={createContentPillar} onValueChange={setCreateContentPillar}>
+                  <SelectTrigger><SelectValue placeholder="Pillar (optional)" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nicht festgelegt</SelectItem>
+                    {CONTENT_PILLAR_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
