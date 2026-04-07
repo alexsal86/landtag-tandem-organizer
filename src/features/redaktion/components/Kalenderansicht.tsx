@@ -44,7 +44,7 @@ interface Props {
   specialDays: SpecialDay[];
   notes: PlannerNote[];
   onCreateNote: (noteDate: string, content: string, color?: string) => Promise<void>;
-  onUpdateNote: (id: string, patch: Partial<Pick<PlannerNote, "content" | "color">>) => Promise<void>;
+  onUpdateNote: (id: string, patch: Partial<Pick<PlannerNote, "content" | "color" | "visible_to_all">>) => Promise<void>;
   onDeleteNote: (id: string) => Promise<void>;
 }
 

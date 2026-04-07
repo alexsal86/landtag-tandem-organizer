@@ -9650,6 +9650,7 @@ export type Database = {
           note_date: string
           tenant_id: string
           updated_at: string | null
+          visible_to_all: boolean
         }
         Insert: {
           color?: string
@@ -9660,6 +9661,7 @@ export type Database = {
           note_date: string
           tenant_id: string
           updated_at?: string | null
+          visible_to_all?: boolean
         }
         Update: {
           color?: string
@@ -9670,6 +9672,7 @@ export type Database = {
           note_date?: string
           tenant_id?: string
           updated_at?: string | null
+          visible_to_all?: boolean
         }
         Relationships: [
           {
