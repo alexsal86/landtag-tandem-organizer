@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
 import 'leaflet/dist/leaflet.css';
 import '@/styles/leaflet-overrides.css';
@@ -44,6 +44,15 @@ const getPartyColorHex = (district?: ElectionDistrict, isPartyAssociationBoundar
   }
 };
 
+const getDistrictMarkerDimensions = (zoomLevel: number) => {
+  const clampedZoom = Math.max(6, Math.min(13, zoomLevel));
+  const size = Math.round(14 + (clampedZoom - 6) * 2);
+  const fontSize = Math.max(9, Math.round(size * 0.4));
+  const borderWidth = Math.max(1, Math.round(size * 0.08));
+
+  return { size, fontSize, borderWidth };
+};
+
 const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({ 
   districts, 
   onDistrictClick, 
@@ -51,6 +60,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
   showPartyAssociations = false
 }) => {
   const { associations } = usePartyAssociations();
+  const [zoomLevel, setZoomLevel] = useState(8);
   const mapEl = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const districtLayerRef = useRef<L.LayerGroup | null>(null);
@@ -74,6 +84,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       preferCanvas: false, // Use SVG for better precision
     });
     mapRef.current = map;
+    setZoomLevel(map.getZoom());
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
@@ -89,6 +100,21 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       mapRef.current = null;
       districtLayerRef.current = null;
       markerLayerRef.current = null;
+    };
+  }, []);
+
+  // Keep marker sizing in sync with map zoom
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const handleZoomEnd = () => {
+      setZoomLevel(map.getZoom());
+    };
+
+    map.on('zoomend', handleZoomEnd);
+    return () => {
+      map.off('zoomend', handleZoomEnd);
     };
   }, []);
 
@@ -258,13 +284,14 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       const { lat, lng } = district.center_coordinates as { lat: number; lng: number };
       const partyColor = getPartyColorHex(district);
       const directMandate = district.representatives?.find(rep => rep.mandate_type === 'direct');
+      const { size, fontSize, borderWidth } = getDistrictMarkerDimensions(zoomLevel);
       
       const marker = L.marker([lat, lng], { 
         icon: L.divIcon({
-          html: `<div style="background: white; border: 2px solid ${partyColor}; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; color: black; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">${district.district_number}</div>`,
+          html: `<div style="background: white; border: ${borderWidth}px solid ${partyColor}; border-radius: 50%; width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: ${fontSize}px; color: black; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">${district.district_number}</div>`,
           className: 'custom-district-marker',
-          iconSize: [28, 28],
-          iconAnchor: [14, 14]
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2]
         })
       });
       
@@ -399,7 +426,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       // If only party associations are shown, center on Baden-Württemberg
       map.setView([48.7758, 9.1829], 8);
     }
-  }, [districts, selectedDistrict, onDistrictClick, showPartyAssociations, associations]);
+  }, [districts, selectedDistrict, onDistrictClick, showPartyAssociations, associations, zoomLevel]);
   
   if (!districts.length && !showPartyAssociations) {
     return (
