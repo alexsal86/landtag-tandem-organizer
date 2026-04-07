@@ -909,9 +909,13 @@ export function AppNavigation({
   );
 
   if (isMobile) {
+    const primaryMobileSections = new Set(['dashboard', 'mywork', 'calendar', 'contacts']);
     const visibleGroups = navigationGroups.filter((group) => {
-      if (group.id === 'home') return false;
-      return true;
+      if (group.route) {
+        const sectionId = group.route.replace('/', '');
+        return !primaryMobileSections.has(sectionId);
+      }
+      return (group.subItems || []).some((item) => !primaryMobileSections.has(item.id));
     });
 
     return (
@@ -944,7 +948,7 @@ export function AppNavigation({
                   className="justify-start"
                   onClick={() => {
                     trackMobileNavEvent('mobile_nav_quick_action', { action: 'notifications-panel' });
-                    setActivePanel('notifications');
+                    void handleNavigationClick('notifications');
                   }}
                 >
                   <Bell className="h-4 w-4 mr-1" />
@@ -961,7 +965,7 @@ export function AppNavigation({
                   {getGroupBadge(group) > 0 && <Badge className="ml-auto h-5 text-[10px]">{getGroupBadge(group)}</Badge>}
                 </div>
 
-                {group.subItems?.map((item) => {
+                {group.subItems?.filter((item) => !primaryMobileSections.has(item.id)).map((item) => {
                   const itemBadge = navigationCounts[item.id] || 0;
                   const isActive = activeSection === item.id;
                   return (
@@ -982,6 +986,26 @@ export function AppNavigation({
                     </button>
                   );
                 })}
+
+                {!group.subItems?.length && group.route && (
+                  <button
+                    onClick={() => {
+                      const target = group.route!.slice(1);
+                      trackMobileNavEvent('mobile_nav_more_item_click', { target, group: group.id });
+                      void handleNavigationClick(target);
+                    }}
+                    className={cn(
+                      "w-full flex items-center gap-2 rounded-md px-2 py-2 text-left text-sm",
+                      activeSection === group.route.slice(1) ? "bg-[hsl(var(--nav-active-bg))] font-medium" : "hover:bg-[hsl(var(--nav-hover))]"
+                    )}
+                  >
+                    <group.icon className="h-4 w-4 shrink-0" />
+                    <span className="flex-1 truncate">{group.label}</span>
+                    {(navigationCounts[group.route.slice(1)] || 0) > 0 && (
+                      <Badge className="h-5 min-w-5 px-1.5 text-[10px]">{navigationCounts[group.route.slice(1)]}</Badge>
+                    )}
+                  </button>
+                )}
               </div>
             ))}
           </div>
