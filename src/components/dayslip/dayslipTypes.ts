@@ -8,7 +8,7 @@ export interface DaySlipDayData {
   nodes?: string;
   struckLines?: string[];
   struckLineIds?: string[];
-  resolved?: Array<{ lineId: string; text: string; target: ResolveTarget }>;
+  resolved?: Array<{ lineId: string; text: string; target: ResolveTarget; snoozeUntil?: string }>;
   completedAt?: string;
   recurringInjected?: boolean;
   weekPlanInjected?: boolean;
