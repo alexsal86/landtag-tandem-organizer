@@ -16,6 +16,8 @@ export interface SocialPlannerItem {
   approval_state: string;
   channel_ids: string[];
   channel_names: string[];
+  channel_slugs: string[];
+  image_url: string | null;
   format: string | null;
   content_goal: string | null;
   format_variant: string | null;
