@@ -38,6 +38,7 @@ type DocumentFixture = {
   title: string;
   tenant_id: string;
   created_at: string;
+  folder_id?: string | null;
   archived_attachments: unknown[] | null;
 };
 
@@ -129,11 +130,8 @@ describe("useDocumentsData", () => {
     const docsData: DocumentFixture[] = [buildDocumentFixture({ id: "d1", title: "Doc 1" })];
     const foldersData: FolderFixture[] = [buildFolderFixture({ id: "f1", name: "Folder 1" })];
 
-    let documentsCallCount = 0;
     mockSupabase.from.mockImplementation((table: string) => {
       if (table === "documents") {
-        documentsCallCount += 1;
-
         const documentChain = createChain<DocumentFixture[]>({ data: docsData, error: null });
         documentChain.select = vi.fn((_selection?: string, options?: SelectOptions) => {
           if (options?.count === "exact" && options.head) {
@@ -141,10 +139,6 @@ describe("useDocumentsData", () => {
           }
           return documentChain;
         });
-
-        if (documentsCallCount > 1) {
-          documentChain.select = vi.fn(() => Promise.resolve({ count: 2 }));
-        }
 
         return documentChain;
       }
@@ -164,6 +158,57 @@ describe("useDocumentsData", () => {
 
     expect(mockSupabase.from).toHaveBeenCalledWith("documents");
     expect(mockSupabase.from).toHaveBeenCalledWith("document_folders");
+  });
+
+  it("maps grouped folder document counts for multiple folders", async () => {
+    const docsData: DocumentFixture[] = [buildDocumentFixture({ id: "d1", title: "Doc 1" })];
+    const foldersData: FolderFixture[] = [
+      buildFolderFixture({ id: "f1", name: "Folder 1", order_index: 0 }),
+      buildFolderFixture({ id: "f2", name: "Folder 2", order_index: 1 }),
+    ];
+    const folderDocsData: Array<{ folder_id: string | null }> = [
+      { folder_id: "f1" },
+      { folder_id: "f1" },
+      { folder_id: "f2" },
+      { folder_id: null },
+    ];
+
+    mockSupabase.from.mockImplementation((table: string) => {
+      if (table === "documents") {
+        const documentChain = createChain<DocumentFixture[] | Array<{ folder_id: string | null }>>({
+          data: docsData,
+          error: null,
+        });
+        documentChain.select = vi.fn((selection?: string, options?: SelectOptions) => {
+          if (options?.count === "exact" && options.head) {
+            return Promise.resolve({ count: 1 });
+          }
+          if (selection === "folder_id") {
+            return createChain<Array<{ folder_id: string | null }>>({ data: folderDocsData, error: null });
+          }
+          return documentChain;
+        });
+
+        return documentChain;
+      }
+
+      if (table === "document_folders") {
+        return createChain<FolderFixture[]>({ data: foldersData, error: null });
+      }
+
+      return createChain<unknown[]>({ data: [], error: null });
+    });
+
+    const { result } = renderHook(() => useDocumentsData("documents"));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.folders.map((folder) => ({ id: folder.id, documentCount: folder.documentCount }))).toEqual([
+      { id: "f1", documentCount: 2 },
+      { id: "f2", documentCount: 1 },
+    ]);
   });
 
   it("fetches letters when activeTab is 'letters'", async () => {
