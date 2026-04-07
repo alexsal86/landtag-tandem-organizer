@@ -56,11 +56,27 @@ export function ContactListTable({
   const [splitNameMode, setSplitNameMode] = useState(() => {
     try { return localStorage.getItem("contacts-split-name") === "true"; } catch { return false; }
   });
+  const [showSalutation, setShowSalutation] = useState(() => {
+    try { return localStorage.getItem("contacts-show-salutation") === "true"; } catch { return false; }
+  });
+  const [orgColumn, setOrgColumn] = useState(() => {
+    try { return localStorage.getItem("contacts-org-column") === "true"; } catch { return false; }
+  });
 
   const toggleSplitName = () => {
     const next = !splitNameMode;
     setSplitNameMode(next);
     try { localStorage.setItem("contacts-split-name", String(next)); } catch {}
+  };
+  const toggleSalutation = () => {
+    const next = !showSalutation;
+    setShowSalutation(next);
+    try { localStorage.setItem("contacts-show-salutation", String(next)); } catch {}
+  };
+  const toggleOrgColumn = () => {
+    const next = !orgColumn;
+    setOrgColumn(next);
+    try { localStorage.setItem("contacts-org-column", String(next)); } catch {}
   };
 
   return (
