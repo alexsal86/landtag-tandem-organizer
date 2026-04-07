@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { useTenantUsers } from "@/hooks/useTenantUsers";
 import { type SocialPlannerItem, PlannerWorkflowStatus, useSocialPlannerItems } from "@/features/redaktion/hooks/useSocialPlannerItems";
 import { useTopicBacklog } from "@/features/redaktion/hooks/useTopicBacklog";
+import { usePlannerNotes } from "@/features/redaktion/hooks/usePlannerNotes";
 import { useToast } from "@/hooks/use-toast";
 import type { SpecialDay } from "@/utils/dashboard/specialDays";
 
@@ -603,6 +604,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   const { users } = useTenantUsers();
   const { topics, createTopic } = useTopicBacklog();
   const { items, channels, loading, updateItem, createItem, deleteItem } = useSocialPlannerItems();
+  const { notes, createNote, updateNote, deleteNote } = usePlannerNotes();
   console.log("[PlannerBoard] render", { hasUsers: !!users, topicsCount: topics?.length, itemsCount: items?.length, channelsCount: channels?.length, loading });
 
   const [viewMode, setViewMode] = useState<"calendar" | "kanban">("calendar");
@@ -951,6 +953,10 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
               setIsCreateDialogOpen(true);
             }}
             specialDays={specialDays}
+            notes={notes}
+            onCreateNote={createNote}
+            onUpdateNote={updateNote}
+            onDeleteNote={deleteNote}
           />
         ) : (
           <DragDropContext onDragEnd={onDragEnd}>

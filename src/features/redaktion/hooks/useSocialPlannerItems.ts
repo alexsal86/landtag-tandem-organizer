@@ -16,6 +16,8 @@ export interface SocialPlannerItem {
   approval_state: string;
   channel_ids: string[];
   channel_names: string[];
+  channel_slugs: string[];
+  image_url: string | null;
   format: string | null;
   content_goal: string | null;
   format_variant: string | null;
@@ -119,8 +121,9 @@ export function useSocialPlannerItems() {
             hashtags,
             hashtags_in_comment,
             alt_text,
+            image_url,
             topic_backlog:topic_backlog_id(topic, tags),
-            social_content_item_channels(channel_id, social_content_channels(name))
+            social_content_item_channels(channel_id, social_content_channels(name, slug))
           `)
           .eq("tenant_id", currentTenant.id)
           .order("updated_at", { ascending: false }),
@@ -141,7 +144,7 @@ export function useSocialPlannerItems() {
         (itemRows || []).map((row) => {
           const channelLinks = (row.social_content_item_channels || []) as Array<{
             channel_id: string;
-            social_content_channels: { name: string } | null;
+            social_content_channels: { name: string; slug: string } | null;
           }>;
 
           const topicData = row.topic_backlog as { topic: string; tags: string[] | null } | null;
@@ -172,6 +175,8 @@ export function useSocialPlannerItems() {
             alt_text: row.alt_text,
             channel_ids: channelLinks.map((entry) => entry.channel_id),
             channel_names: channelLinks.map((entry) => entry.social_content_channels?.name || "Unbekannter Kanal"),
+            channel_slugs: channelLinks.map((entry) => entry.social_content_channels?.slug || ""),
+            image_url: row.image_url || null,
           };
         }),
       );
