@@ -31,8 +31,7 @@ export function TagFilterPanel({
 }: TagFilterPanelProps) {
   const getIconComponent = (iconName?: string): LucideIcon => {
     if (!iconName) return TagIcon;
-    const Icon = icons[iconName as keyof typeof icons] as LucideIcon;
-    return Icon || TagIcon;
+    return getLucideIcon(iconName) as LucideIcon || TagIcon;
   };
 
   if (tags.length === 0) return null;
