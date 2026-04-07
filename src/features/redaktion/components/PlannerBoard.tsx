@@ -522,16 +522,14 @@ function SocialPlannerEditDialog({ item, open, users, channels, tagSuggestions, 
                   </Button>
                 </div>
               ) : (
-                <label className="flex cursor-pointer items-center gap-2 rounded-md border border-dashed p-4 text-sm text-muted-foreground hover:bg-muted/50 transition-colors">
-                  <Upload className="h-4 w-4" />
-                  <span>{uploadingImage ? "Wird hochgeladen…" : "Bild auswählen oder hierher ziehen"}</span>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    disabled={uploadingImage}
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
+                <div
+                  className="flex cursor-pointer items-center gap-2 rounded-md border border-dashed p-4 text-sm text-muted-foreground hover:bg-muted/50 transition-colors"
+                  onClick={() => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'image/*';
+                    input.onchange = async () => {
+                      const file = input.files?.[0];
                       if (!file) return;
                       setUploadingImage(true);
                       try {
@@ -543,14 +541,19 @@ function SocialPlannerEditDialog({ item, open, users, channels, tagSuggestions, 
                         const { data } = supabase.storage.from('documents').getPublicUrl(filePath);
                         setImageUrl(data.publicUrl);
                         toast({ title: "Bild hochgeladen" });
-                      } catch {
-                        toast({ title: "Upload fehlgeschlagen", variant: "destructive" });
+                      } catch (err) {
+                        console.error("Image upload error:", err);
+                        toast({ title: "Upload fehlgeschlagen", description: String(err instanceof Error ? err.message : err), variant: "destructive" });
                       } finally {
                         setUploadingImage(false);
                       }
-                    }}
-                  />
-                </label>
+                    };
+                    input.click();
+                  }}
+                >
+                  <Upload className="h-4 w-4" />
+                  <span>{uploadingImage ? "Wird hochgeladen…" : "Bild auswählen oder hierher ziehen"}</span>
+                </div>
               )}
             </div>
 
