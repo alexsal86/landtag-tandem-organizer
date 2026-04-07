@@ -121,8 +121,9 @@ export function useSocialPlannerItems() {
             hashtags,
             hashtags_in_comment,
             alt_text,
+            image_url,
             topic_backlog:topic_backlog_id(topic, tags),
-            social_content_item_channels(channel_id, social_content_channels(name))
+            social_content_item_channels(channel_id, social_content_channels(name, slug))
           `)
           .eq("tenant_id", currentTenant.id)
           .order("updated_at", { ascending: false }),
