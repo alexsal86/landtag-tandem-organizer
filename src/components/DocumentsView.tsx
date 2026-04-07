@@ -24,6 +24,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { FileText, Upload, Download, Trash2, Plus, Search, Filter, Calendar, Tag, FileType, Folder, FolderPlus, FolderInput, Home, ChevronRight, MoreVertical, Edit, Mail, Edit3, Send, Grid, List, Settings, RotateCcw, ListTodo, ListTree, Info, UserPlus, Newspaper, Save } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 
 import LetterEditor from "./LetterEditor";
 import { PressReleasesList } from "./press/PressReleasesList";
@@ -50,6 +52,17 @@ import {
   isDocumentFolderWithCount,
   type DocumentDialogState,
 } from "./documents/operationsContract";
+
+const AUTO_ARCHIVE_DEFAULT_DAYS = 30;
+const AUTO_ARCHIVE_SETTING_KEY = "letters_auto_archive_days";
+const AUTO_ARCHIVE_LOCAL_KEY = "autoArchiveDays";
+
+const parseAutoArchiveDays = (value: unknown): number | null => {
+  const rawValue = typeof value === "string" ? parseInt(value, 10) : value;
+  if (typeof rawValue !== "number" || Number.isNaN(rawValue)) return null;
+  const normalizedValue = Math.round(rawValue);
+  return normalizedValue >= 1 && normalizedValue <= 365 ? normalizedValue : null;
+};
 
 export function DocumentsView() {
   const navigate = useNavigate();
@@ -119,7 +132,7 @@ export function DocumentsView() {
 
   // Archive settings
   const [showArchiveSettings, setShowArchiveSettings] = useState(false);
-  const [autoArchiveDays, setAutoArchiveDays] = useState(30);
+  const [autoArchiveDays, setAutoArchiveDays] = useState(AUTO_ARCHIVE_DEFAULT_DAYS);
   const [showArchivedLetterDetails, setShowArchivedLetterDetails] = useState(false);
   const [selectedArchivedDocument, setSelectedArchivedDocument] = useState<Document | null>(null);
 
@@ -143,6 +156,43 @@ export function DocumentsView() {
   };
 
   // URL syncing
+  useEffect(() => {
+    const localSetting = parseAutoArchiveDays(localStorage.getItem(AUTO_ARCHIVE_LOCAL_KEY));
+    if (localSetting !== null) {
+      setAutoArchiveDays(localSetting);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!data.currentTenant?.id) return;
+    let isActive = true;
+
+    const loadArchiveSettings = async () => {
+      const { data: archiveSetting, error } = await supabase
+        .from("app_settings")
+        .select("setting_value")
+        .eq("tenant_id", data.currentTenant.id)
+        .eq("setting_key", AUTO_ARCHIVE_SETTING_KEY)
+        .maybeSingle();
+
+      if (error) {
+        debugConsole.warn("Konnte Archivierungseinstellung nicht laden:", error);
+        return;
+      }
+
+      const persistedSetting = parseAutoArchiveDays(archiveSetting?.setting_value);
+      if (!isActive || persistedSetting === null) return;
+
+      setAutoArchiveDays(persistedSetting);
+      localStorage.setItem(AUTO_ARCHIVE_LOCAL_KEY, persistedSetting.toString());
+    };
+
+    loadArchiveSettings();
+    return () => {
+      isActive = false;
+    };
+  }, [data.currentTenant?.id]);
+
   useEffect(() => {
     const action = searchParams.get('action');
     const tab = searchParams.get('tab');
@@ -215,7 +265,35 @@ export function DocumentsView() {
 
   const filteredContactsForUpload = allContacts.filter(c => c.name.toLowerCase().includes(contactSearch.toLowerCase()) || c.organization?.toLowerCase().includes(contactSearch.toLowerCase()));
 
-  const saveArchiveSettings = () => { localStorage.setItem('autoArchiveDays', autoArchiveDays.toString()); toast({ title: "Einstellungen gespeichert" }); setShowArchiveSettings(false); };
+  const saveArchiveSettings = async () => {
+    const sanitizedDays = parseAutoArchiveDays(autoArchiveDays) ?? AUTO_ARCHIVE_DEFAULT_DAYS;
+    setAutoArchiveDays(sanitizedDays);
+    localStorage.setItem(AUTO_ARCHIVE_LOCAL_KEY, sanitizedDays.toString());
+
+    if (data.currentTenant?.id) {
+      const payload = {
+        tenant_id: data.currentTenant.id,
+        setting_key: AUTO_ARCHIVE_SETTING_KEY,
+        setting_value: sanitizedDays.toString(),
+      };
+
+      const { error } = await supabase
+        .from("app_settings")
+        .upsert(payload, { onConflict: "tenant_id,setting_key" });
+
+      if (error) {
+        toast({ title: "Einstellungen konnten nicht gespeichert werden", description: error.message, variant: "destructive" });
+        return;
+      }
+
+      toast({ title: "Einstellungen tenantweit gespeichert" });
+      setShowArchiveSettings(false);
+      return;
+    }
+
+    toast({ title: "Einstellung nur lokal gespeichert" });
+    setShowArchiveSettings(false);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-subtle p-6">
@@ -312,9 +390,14 @@ export function DocumentsView() {
               })}
             </div>
             {activeTab === 'letters' && (
-              <div className="flex border-b mt-4">
-                <button onClick={() => setLetterSubTab('active')} className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${letterSubTab === 'active' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Aktive Briefe</button>
-                <button onClick={() => setLetterSubTab('archived')} className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${letterSubTab === 'archived' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Versendete/Archivierte</button>
+              <div className="mt-4">
+                <div className="flex border-b">
+                  <button onClick={() => setLetterSubTab('active')} className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${letterSubTab === 'active' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Aktive Briefe</button>
+                  <button onClick={() => setLetterSubTab('archived')} className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${letterSubTab === 'archived' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Versendete/Archivierte</button>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Auto-Archivierung: {autoArchiveDays} Tage nach Versand ({data.currentTenant?.id ? "tenantweite Einstellung aus App-Settings" : "nur lokaler Browserwert"}).
+                </p>
               </div>
             )}
           </div>
@@ -484,6 +567,7 @@ export function DocumentsView() {
           onCloseTaskDialog={ops.closeTaskDialog} onCreateTaskFromLetter={ops.createTaskFromLetter}
           showArchiveSettings={dialogState.showArchiveSettings} setShowArchiveSettings={setShowArchiveSettings}
           autoArchiveDays={autoArchiveDays} setAutoArchiveDays={setAutoArchiveDays}
+          archiveSettingsScopeDescription={data.currentTenant?.id ? "Diese Einstellung wird tenantweit in den App-Einstellungen gespeichert." : "Ohne aktiven Tenant wird diese Einstellung nur in diesem Browser gespeichert."}
           onSaveArchiveSettings={saveArchiveSettings}
           selectedArchivedDocument={selectedArchivedDocument}
           showArchivedLetterDetails={dialogState.showArchivedLetterDetails}

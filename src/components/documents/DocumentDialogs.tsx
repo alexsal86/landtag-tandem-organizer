@@ -55,6 +55,7 @@ interface DocumentDialogsProps {
   setShowArchiveSettings: (v: boolean) => void;
   autoArchiveDays: number;
   setAutoArchiveDays: (v: number) => void;
+  archiveSettingsScopeDescription: string;
   onSaveArchiveSettings: () => void | Promise<void>;
   selectedArchivedDocument: Document | null;
   showArchivedLetterDetails: boolean;
@@ -133,13 +134,13 @@ export function DocumentDialogs(props: DocumentDialogsProps) {
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle>Auto-Archivierung Einstellungen</DialogTitle>
-            <DialogDescription>Konfigurieren Sie die automatische Archivierung von Briefen</DialogDescription>
+            <DialogDescription>Konfigurieren Sie die automatische Archivierung von Briefen. {props.archiveSettingsScopeDescription}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
               <Label>Archivierung nach (Tage)</Label>
-              <Input type="number" value={props.autoArchiveDays} onChange={(e) => props.setAutoArchiveDays(parseInt(e.target.value, 10) || 30)} min="1" max="365" />
-              <p className="text-sm text-muted-foreground mt-1">Briefe werden automatisch {props.autoArchiveDays} Tage nach dem Versenden archiviert</p>
+              <Input type="number" value={props.autoArchiveDays} onChange={(e) => props.setAutoArchiveDays(Math.min(365, Math.max(1, parseInt(e.target.value, 10) || 30)))} min="1" max="365" />
+              <p className="text-sm text-muted-foreground mt-1">Gültiger Bereich: 1 bis 365 Tage. Briefe werden nach {props.autoArchiveDays} Tagen nach Versand archiviert.</p>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => props.setShowArchiveSettings(false)}>Abbrechen</Button>
