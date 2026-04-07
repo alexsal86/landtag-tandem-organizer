@@ -3,7 +3,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { X, Tag as TagIcon } from 'lucide-react';
-import { icons, LucideIcon } from 'lucide-react';
+import { LucideIcon } from 'lucide-react';
+import { getLucideIcon } from '@/utils/iconUtils';
 import { Separator } from '@/components/ui/separator';
 
 interface Tag {
