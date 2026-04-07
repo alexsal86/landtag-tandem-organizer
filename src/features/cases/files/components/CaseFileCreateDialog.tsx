@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { useCaseFiles, CaseFileFormData } from "@/features/cases/files/hooks";
 import { useCaseFileTypes } from "@/features/cases/files/hooks";
-import { icons, LucideIcon } from "lucide-react";
+import { LucideIcon } from "lucide-react";
+import { getLucideIcon } from "@/utils/iconUtils";
 import {
   Dialog,
   DialogContent,
