@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { GripVertical, icons } from 'lucide-react';
+import { GripVertical } from 'lucide-react';
+import { getLucideIcon } from '@/utils/iconUtils';
 import { useNavigate } from 'react-router-dom';
 
 import { getCurrentTimeSlot, getCurrentDayOfWeek, getGreeting } from '@/utils/dashboard/timeUtils';

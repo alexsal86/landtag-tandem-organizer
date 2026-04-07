@@ -233,7 +233,7 @@ export const DashboardHintSettings = () => {
                 </SelectTrigger>
                 <SelectContent>
                   {AVAILABLE_HINT_ICONS.map((opt) => {
-                    const OptIcon = icons[opt.name as keyof typeof icons];
+                    const OptIcon = getLucideIcon(opt.name);
                     return (
                       <SelectItem key={opt.name} value={opt.name}>
                         <span className="flex items-center gap-2">
