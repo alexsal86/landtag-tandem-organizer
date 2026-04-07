@@ -1,6 +1,6 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-pangea/dnd";
-import { ArrowLeft, ArrowRight, CalendarDays, CheckSquare, ClipboardList, GripVertical, Kanban, Pencil, Plus, Tag, Trash2, type LucideIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, CheckSquare, ClipboardList, GripVertical, Image, Kanban, Pencil, Plus, Tag, Trash2, Upload, X, type LucideIcon } from "lucide-react";
 import { format } from "date-fns";
 import { useSearchParams } from "react-router-dom";
 import { de } from "date-fns/locale";
