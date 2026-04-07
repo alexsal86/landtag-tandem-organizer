@@ -12,6 +12,20 @@ const KnowledgeBaseView = lazyWithRetry(() => import("@/components/KnowledgeBase
 
 export function DossiersMainView() {
   const [activeTab, setActiveTab] = useState("eingang");
+
+  const DOSSIER_TAB_LABELS: Record<string, string> = {
+    eingang: "Eingang",
+    dossiers: "Dossiers",
+    artikel: "Artikel",
+  };
+
+  const handleTabChange = useCallback((tab: string) => {
+    setActiveTab(tab);
+    const label = DOSSIER_TAB_LABELS[tab];
+    if (label) {
+      trackPageVisit(`dossiers-${tab}`, `Wissen › ${label}`, "Database", `/dossiers?tab=${tab}`);
+    }
+  }, []);
   const [selectedDossierId, setSelectedDossierId] = useState<string | null>(null);
 
   const handleSelectDossier = (id: string) => {
