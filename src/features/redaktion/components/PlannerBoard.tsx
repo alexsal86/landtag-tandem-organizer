@@ -955,47 +955,56 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
               <Plus className="mr-1 h-4 w-4" />
               Neuen Inhalt entwerfen
             </Button>
-            {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
-                Filter zurücksetzen
-              </Button>
-            )}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="relative">
+                  <Filter className="mr-1 h-4 w-4" />
+                  Filter
+                  {hasActiveFilters && (
+                    <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-primary" />
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 space-y-3" align="end">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Filter & Sortierung</span>
+                  {hasActiveFilters && (
+                    <Button variant="ghost" size="sm" className="h-auto px-2 py-1 text-xs" onClick={clearFilters}>
+                      Zurücksetzen
+                    </Button>
+                  )}
+                </div>
+                <Select value={channelFilter} onValueChange={setChannelFilter}>
+                  <SelectTrigger><SelectValue placeholder="Kanal" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Alle Kanäle</SelectItem>
+                    {channels.map((channel) => <SelectItem key={channel.id} value={channel.id}>{channel.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+                  <SelectTrigger><SelectValue placeholder="Verantwortlich" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Alle Verantwortlichen</SelectItem>
+                    {users.map((user) => <SelectItem key={user.id} value={user.id}>{user.display_name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Alle Status</SelectItem>
+                    {STATUS_COLUMNS.map((status) => <SelectItem key={status.id} value={status.id}>{status.title}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Input value={tagSearch} onChange={(event) => setTagSearch(event.target.value)} placeholder="Thema/Tag suchen" />
+                <Select value={sortBy} onValueChange={(value) => setSortBy(value as (typeof SORT_OPTIONS)[number]["value"])}>
+                  <SelectTrigger><SelectValue placeholder="Sortierung" /></SelectTrigger>
+                  <SelectContent>
+                    {SORT_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </PopoverContent>
+            </Popover>
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-5">
-          <Select value={channelFilter} onValueChange={setChannelFilter}>
-            <SelectTrigger><SelectValue placeholder="Kanal" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle Kanäle</SelectItem>
-              {channels.map((channel) => <SelectItem key={channel.id} value={channel.id}>{channel.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-
-          <Select value={ownerFilter} onValueChange={setOwnerFilter}>
-            <SelectTrigger><SelectValue placeholder="Verantwortlich" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle Verantwortlichen</SelectItem>
-              {users.map((user) => <SelectItem key={user.id} value={user.id}>{user.display_name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle Status</SelectItem>
-              {STATUS_COLUMNS.map((status) => <SelectItem key={status.id} value={status.id}>{status.title}</SelectItem>)}
-            </SelectContent>
-          </Select>
-
-          <Input value={tagSearch} onChange={(event) => setTagSearch(event.target.value)} placeholder="Thema/Tag suchen" />
-
-          <Select value={sortBy} onValueChange={(value) => setSortBy(value as (typeof SORT_OPTIONS)[number]["value"])}>
-            <SelectTrigger><SelectValue placeholder="Sortierung" /></SelectTrigger>
-            <SelectContent>
-              {SORT_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
         </div>
       </CardHeader>
 
