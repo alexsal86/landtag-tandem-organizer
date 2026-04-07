@@ -89,8 +89,8 @@ export function MobileHeader() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full border-b bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))]">
-        <div className="flex h-14 items-center justify-between px-4">
+      <header className="sticky top-0 z-50 w-full border-b bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] pt-safe-top px-safe">
+        <div className="mobile-header-surface flex items-center justify-between px-4">
           {/* Left: Menu + Logo */}
           <div className="flex items-center gap-2">
             <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
@@ -185,7 +185,7 @@ export function MobileHeader() {
 
       {/* Mobile Search Overlay */}
       {showMobileSearch && (
-        <div className="fixed inset-0 z-[60] bg-background">
+        <div className="fixed inset-0 z-[60] bg-background pt-safe-top pb-safe-bottom px-safe">
           <div className="flex items-center gap-2 p-4 border-b">
             <Search className="h-5 w-5 text-muted-foreground shrink-0" />
             <Input
