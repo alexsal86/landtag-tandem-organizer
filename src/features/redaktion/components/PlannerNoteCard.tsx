@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown, Lock, Trash2, UserRoundPlus, Users } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { getColorClasses, NOTE_COLORS, type PlannerNote } from "@/features/redaktion/hooks/usePlannerNotes";
@@ -14,6 +15,7 @@ interface Props {
 export const PlannerNoteCard = memo(function PlannerNoteCard({ note, onUpdate, onDelete }: Props) {
   const { user } = useAuth();
   const [editing, setEditing] = useState(false);
+  const [colorMenuOpen, setColorMenuOpen] = useState(false);
   const [content, setContent] = useState(note.content);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const colors = getColorClasses(note.color);
@@ -48,7 +50,7 @@ export const PlannerNoteCard = memo(function PlannerNoteCard({ note, onUpdate, o
       {editing && isOwner ? (
         <textarea
           ref={inputRef}
-          className="w-full resize-none bg-transparent outline-none text-[20px] leading-tight min-h-[128px]"
+          className="w-full resize-none bg-transparent outline-none text-base leading-snug min-h-[80px] max-h-[32vh] overflow-y-auto"
           value={content}
           onChange={(e) => setContent(e.target.value)}
           onBlur={() => {
@@ -59,7 +61,7 @@ export const PlannerNoteCard = memo(function PlannerNoteCard({ note, onUpdate, o
           autoFocus
         />
       ) : (
-        <p className="whitespace-pre-wrap break-words text-[20px] leading-tight min-h-[128px]">
+        <p className="whitespace-pre-wrap break-words text-base leading-snug min-h-[80px]">
           {note.content || "Klicken zum Bearbeiten…"}
         </p>
       )}
@@ -68,22 +70,41 @@ export const PlannerNoteCard = memo(function PlannerNoteCard({ note, onUpdate, o
         {editing && isOwner ? (
           <>
             <div className="flex items-center gap-2">
-              {NOTE_COLORS.map((colorOption) => (
-                <button
-                  key={colorOption.value}
-                  type="button"
-                  className={cn(
-                    "h-6 w-6 rounded-full border-2",
-                    colorOption.solid,
-                    note.color === colorOption.value ? "ring-2 ring-offset-1 ring-primary" : "opacity-70",
-                  )}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void onUpdate(note.id, { color: colorOption.value });
-                  }}
-                />
-              ))}
-              <ChevronDown className={cn("h-4 w-4", colors.icon)} />
+              <Popover open={colorMenuOpen} onOpenChange={setColorMenuOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className={cn(
+                      "flex items-center gap-2 rounded-full px-1.5 py-1 transition-colors hover:bg-black/5 dark:hover:bg-white/10",
+                    )}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label="Notizfarbe ändern"
+                  >
+                    <span className={cn("h-6 w-6 rounded-full border-2", NOTE_COLORS.find((c) => c.value === note.color)?.solid || "bg-yellow-200")} />
+                    <ChevronDown className={cn("h-4 w-4", colors.icon)} />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto rounded-3xl p-3" align="start" sideOffset={8} onClick={(e) => e.stopPropagation()}>
+                  <div className="grid grid-cols-3 gap-3">
+                    {NOTE_COLORS.map((colorOption) => (
+                      <button
+                        key={colorOption.value}
+                        type="button"
+                        className={cn(
+                          "h-9 w-9 rounded-full border-2 transition",
+                          colorOption.solid,
+                          note.color === colorOption.value ? "ring-2 ring-offset-1 ring-primary" : "opacity-80 hover:opacity-100",
+                        )}
+                        onClick={() => {
+                          void onUpdate(note.id, { color: colorOption.value });
+                          setColorMenuOpen(false);
+                        }}
+                        aria-label={`Farbe ${colorOption.label}`}
+                      />
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="flex items-center gap-2">
               <UserRoundPlus className={cn("h-5 w-5", colors.icon)} />
