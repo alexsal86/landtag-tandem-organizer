@@ -21,6 +21,8 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { MY_WORK_TAB_VISIT_CONTEXTS } from "@/components/my-work/myWorkTabs";
 import { useMyWorkActiveTab } from "@/components/my-work/hooks/useMyWorkActiveTab";
 import { useMyWorkShellData } from "@/components/my-work/hooks/useMyWorkShellData";
+import { trackPageVisit } from "@/hooks/useRecentlyVisited";
+import { MY_WORK_TABS } from "@/components/my-work/myWorkTabs";
 
 const MyWorkQuickCapture = lazyWithRetry(() => import("./my-work/MyWorkQuickCapture").then(m => ({ default: m.MyWorkQuickCapture })));
 const MyWorkNotesList = lazyWithRetry(() => import("./my-work/MyWorkNotesList").then(m => ({ default: m.MyWorkNotesList })));
@@ -64,6 +66,19 @@ export function MyWorkView() {
 
   const handleTabChange = (tab: keyof typeof MY_WORK_TAB_VISIT_CONTEXTS) => {
     setActiveTab(tab);
+
+    // Track tab-specific recently visited entry
+    if (tab !== "dashboard") {
+      const tabConfig = MY_WORK_TABS.find(t => t.value === tab);
+      if (tabConfig) {
+        trackPageVisit(
+          `mywork-${tab}`,
+          `Meine Arbeit › ${tabConfig.label}`,
+          tabConfig.icon.displayName || "NotebookTabs",
+          `/mywork?tab=${tab}`
+        );
+      }
+    }
 
     const contexts = MY_WORK_TAB_VISIT_CONTEXTS[tab] || [];
     if (contexts.length === 0) return;

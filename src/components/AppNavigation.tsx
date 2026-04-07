@@ -455,20 +455,33 @@ export function AppNavigation({
               Kürzlich besucht
             </span>
           </div>
-          {recentPages.slice(0, 5).map(page => (
-            <button
-              key={page.id}
-              onClick={() => handleNavigationClick(page.id)}
-              className={cn(
-                "flex items-center gap-2 w-full py-1 px-2 rounded-md text-[12px] transition-colors truncate",
-                "hover:bg-[hsl(var(--nav-hover))]",
-                activeSection === page.id && "bg-[hsl(var(--nav-active-bg))] font-medium"
-              )}
-            >
-              <Clock className="h-3 w-3 text-[hsl(var(--nav-muted))] shrink-0" />
-              <span className="truncate">{page.label}</span>
-            </button>
-          ))}
+          {recentPages.slice(0, 5).map(page => {
+            const hasTabRoute = page.route.includes('?');
+            const handleClick = () => {
+              if (hasTabRoute) {
+                navigate(page.route);
+                setActivePanel('home');
+              } else {
+                // Extract section id from route or use page.id
+                const sectionId = page.route.startsWith('/') ? page.route.slice(1) : page.id;
+                handleNavigationClick(sectionId);
+              }
+            };
+            return (
+              <button
+                key={page.id}
+                onClick={handleClick}
+                className={cn(
+                  "flex items-center gap-2 w-full py-1 px-2 rounded-md text-[12px] transition-colors truncate",
+                  "hover:bg-[hsl(var(--nav-hover))]",
+                  activeSection === page.id && "bg-[hsl(var(--nav-active-bg))] font-medium"
+                )}
+              >
+                <Clock className="h-3 w-3 text-[hsl(var(--nav-muted))] shrink-0" />
+                <span className="truncate">{page.label}</span>
+              </button>
+            );
+          })}
         </div>
       )}
 

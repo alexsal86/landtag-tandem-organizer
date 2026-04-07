@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { trackPageVisit } from "@/hooks/useRecentlyVisited";
 import { InboxView } from "./InboxView";
 import { DossierListView } from "./DossierListView";
 import { DossierDetailView } from "./DossierDetailView";
@@ -11,6 +12,20 @@ const KnowledgeBaseView = lazyWithRetry(() => import("@/components/KnowledgeBase
 
 export function DossiersMainView() {
   const [activeTab, setActiveTab] = useState("eingang");
+
+  const DOSSIER_TAB_LABELS: Record<string, string> = {
+    eingang: "Eingang",
+    dossiers: "Dossiers",
+    artikel: "Artikel",
+  };
+
+  const handleTabChange = useCallback((tab: string) => {
+    setActiveTab(tab);
+    const label = DOSSIER_TAB_LABELS[tab];
+    if (label) {
+      trackPageVisit(`dossiers-${tab}`, `Wissen › ${label}`, "Database", `/dossiers?tab=${tab}`);
+    }
+  }, []);
   const [selectedDossierId, setSelectedDossierId] = useState<string | null>(null);
 
   const handleSelectDossier = (id: string) => {
@@ -28,7 +43,7 @@ export function DossiersMainView() {
 
   return (
     <div className="space-y-4">
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="eingang">📥 Eingang</TabsTrigger>
           <TabsTrigger value="dossiers">📁 Dossiers</TabsTrigger>
