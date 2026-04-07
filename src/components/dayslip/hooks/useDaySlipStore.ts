@@ -286,7 +286,11 @@ export function useDaySlipStore(userId?: string, tenantId?: string): UseDaySlipS
     const allLines = extractLinesFromHtml(yesterdayData?.html ?? "");
     const struck = new Set(yesterdayData?.struckLineIds ?? yesterdayData?.struckLines ?? []);
     const openUnstruck = allLines.filter((line) => !struck.has(line.id));
-    const snoozed = (yesterdayData?.resolved ?? []).filter((item) => item.target === "snoozed").map((item) => ({ lineId: item.lineId, text: item.text }));
+    const todayStr = toDayKey(new Date());
+    const snoozed = (yesterdayData?.resolved ?? [])
+      .filter((item) => item.target === "snoozed")
+      .filter((item) => !item.snoozeUntil || item.snoozeUntil <= todayStr)
+      .map((item) => ({ lineId: item.lineId, text: item.text }));
     const merged = new Map<string, DaySlipLineEntry>();
     openUnstruck.forEach((line) => merged.set(line.id, line));
     snoozed.forEach((line) => { if (!line.text.trim()) return; merged.set(line.lineId, { id: line.lineId, text: line.text.trim() }); });
