@@ -91,7 +91,7 @@ export const DashboardGreetingSection = ({ data }: Props) => {
     const renderSpecialDay = () => {
       if (!specialDayHint) return null;
       const HintIcon = specialDayHint.icon
-        ? icons[specialDayHint.icon as keyof typeof icons]
+        ? getLucideIcon(specialDayHint.icon)
         : null;
       return (
         <span className="flex items-start gap-2 my-1">
