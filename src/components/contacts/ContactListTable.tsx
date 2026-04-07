@@ -88,7 +88,6 @@ export function ContactListTable({
               <TableHead className="w-10 px-2 sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80"></TableHead>
             )}
             <TableHead className="w-10 px-2 sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80"></TableHead>
-            <SortableTableHead sortKey="gender" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort} className="w-16 sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">Anrede</SortableTableHead>
             {splitNameMode ? (
               <>
                 <SortableTableHead sortKey="name" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort} className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -101,21 +100,47 @@ export function ContactListTable({
             ) : (
               <SortableTableHead sortKey="name" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort} className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">Name</SortableTableHead>
             )}
-            <SortableTableHead sortKey="organization" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort} className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">Organisation</SortableTableHead>
+            {orgColumn && (
+              <SortableTableHead sortKey="organization" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort} className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">Organisation</SortableTableHead>
+            )}
             <SortableTableHead sortKey="email" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort} className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">Kontakt</SortableTableHead>
             <SortableTableHead sortKey="address" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort} className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">Adresse</SortableTableHead>
-            <TableHead className="w-20 sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center gap-1.5 cursor-pointer" onClick={toggleSplitName}>
-                      <Switch checked={splitNameMode} className="scale-75" tabIndex={-1} />
-                      <span className="text-xs">V/N</span>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>Vor-/Nachname aufteilen</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+            <TableHead className="w-44 sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+              <div className="flex items-center gap-3">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-1 cursor-pointer" onClick={toggleSplitName}>
+                        <Switch checked={splitNameMode} className="scale-[0.6]" tabIndex={-1} />
+                        <span className="text-[10px]">V/N</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>Vor-/Nachname aufteilen</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-1 cursor-pointer" onClick={toggleSalutation}>
+                        <Switch checked={showSalutation} className="scale-[0.6]" tabIndex={-1} />
+                        <span className="text-[10px]">Hr/Fr</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>Anrede inline anzeigen</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-1 cursor-pointer" onClick={toggleOrgColumn}>
+                        <Switch checked={orgColumn} className="scale-[0.6]" tabIndex={-1} />
+                        <span className="text-[10px]">Org</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>Organisation als eigene Spalte</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
             </TableHead>
           </TableRow>
         </TableHeader>
