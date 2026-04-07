@@ -3558,8 +3558,11 @@ export type Database = {
           id: string
           is_curated: boolean
           is_pinned: boolean
+          external_published_at: string | null
           metadata: Json | null
+          source_hash: string | null
           source_url: string | null
+          title_fingerprint: string | null
           tenant_id: string
           title: string | null
           updated_at: string
@@ -3575,8 +3578,11 @@ export type Database = {
           id?: string
           is_curated?: boolean
           is_pinned?: boolean
+          external_published_at?: string | null
           metadata?: Json | null
+          source_hash?: string | null
           source_url?: string | null
+          title_fingerprint?: string | null
           tenant_id: string
           title?: string | null
           updated_at?: string
@@ -3592,8 +3598,11 @@ export type Database = {
           id?: string
           is_curated?: boolean
           is_pinned?: boolean
+          external_published_at?: string | null
           metadata?: Json | null
+          source_hash?: string | null
           source_url?: string | null
+          title_fingerprint?: string | null
           tenant_id?: string
           title?: string | null
           updated_at?: string
@@ -3654,11 +3663,79 @@ export type Database = {
           },
         ]
       }
+      dossier_source_watchers: {
+        Row: {
+          created_at: string
+          created_by: string
+          dossier_id: string
+          id: string
+          is_active: boolean
+          keywords: string[]
+          last_checked_at: string | null
+          source_name: string
+          source_type: string
+          source_url: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          dossier_id: string
+          id?: string
+          is_active?: boolean
+          keywords?: string[]
+          last_checked_at?: string | null
+          source_name: string
+          source_type?: string
+          source_url: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          dossier_id?: string
+          id?: string
+          is_active?: boolean
+          keywords?: string[]
+          last_checked_at?: string | null
+          source_name?: string
+          source_type?: string
+          source_url?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dossier_source_watchers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dossier_source_watchers_dossier_id_fkey"
+            columns: ["dossier_id"]
+            isOneToOne: false
+            referencedRelation: "dossiers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dossier_source_watchers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dossiers: {
         Row: {
           created_at: string
           created_by: string
           id: string
+          last_briefing_at: string | null
           next_review_at: string | null
           open_questions: string | null
           owner_id: string | null
@@ -3677,6 +3754,7 @@ export type Database = {
           created_at?: string
           created_by: string
           id?: string
+          last_briefing_at?: string | null
           next_review_at?: string | null
           open_questions?: string | null
           owner_id?: string | null
@@ -3695,6 +3773,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           id?: string
+          last_briefing_at?: string | null
           next_review_at?: string | null
           open_questions?: string | null
           owner_id?: string | null

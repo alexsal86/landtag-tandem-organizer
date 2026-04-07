@@ -277,3 +277,23 @@ Alerting-Setup (MVP):
    - Action: Sofortalarm + Prioritäts-Tag setzen
 
 Diese vier Templates machen den Nutzen eures Automation-Systems sofort sichtbar, ohne dass Nutzer:innen selbst bei null anfangen müssen.
+
+## Dossier-Flow: Externe Informationsquellen als Automation-Template
+
+Für Dossiers wird der gleiche Trigger/Action-Ansatz genutzt:
+
+- **Trigger**: `schedule` (z. B. alle 30 Minuten)
+- **Conditions**: optional pro Tenant/Dossier (`dossier.status in ['beobachten','aktiv']`)
+- **Action**: `invoke_edge_function` auf `sync-dossier-external-sources`
+
+### Domänenobjekte
+
+- `dossier_source_watchers`: pro Dossier Quelle + Keywords (RSS, Presse, Verbände)
+- `dossier_entries` vom Typ `link` werden automatisch angelegt
+- Duplikatschutz über `source_hash` (URL-Hash) und Titel-Ähnlichkeit (`pg_trgm similarity >= 0.82`)
+
+### Ergebnis im Dossier
+
+- neue Treffer landen automatisch in der Timeline (`entry_type='link'`)
+- Metadaten enthalten Quelle, Importzeit, Keywords
+- im Dossier ist ein Filter **„Neu seit letztem Briefing“** verfügbar

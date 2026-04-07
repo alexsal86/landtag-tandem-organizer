@@ -71,6 +71,7 @@ export function useUpdateDossier() {
       risks_opportunities?: string;
       review_interval_days?: number | null;
       next_review_at?: string | null;
+      last_briefing_at?: string | null;
     }) => {
       const { id, ...updates } = input;
       const payload: Record<string, unknown> = { ...updates, updated_at: new Date().toISOString() };

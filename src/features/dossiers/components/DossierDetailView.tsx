@@ -6,6 +6,7 @@ import { DossierLinksView } from "./DossierLinksView";
 import { DossierSummaryTab } from "./DossierSummaryTab";
 import { DossierBriefingTab } from "./DossierBriefingTab";
 import { DossierQualityFields } from "./DossierQualityFields";
+import { DossierSourceWatchersPanel } from "./DossierSourceWatchersPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -45,7 +46,9 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
   const entryTypes = Object.keys(ENTRY_TYPE_CONFIG) as EntryType[];
   const filteredEntries = activeEntryFilter === "alle"
     ? entries
-    : entries?.filter((e) => e.entry_type === activeEntryFilter);
+    : activeEntryFilter === "neu_seit_briefing"
+      ? entries?.filter((entry) => !dossier?.last_briefing_at || new Date(entry.created_at) > new Date(dossier.last_briefing_at))
+      : entries?.filter((e) => e.entry_type === activeEntryFilter);
 
   const openEdit = () => {
     if (!dossier) return;
@@ -144,6 +147,7 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
                   {ENTRY_TYPE_CONFIG[t].icon} {ENTRY_TYPE_CONFIG[t].label}
                 </TabsTrigger>
               ))}
+              <TabsTrigger value="neu_seit_briefing">🆕 Neu seit letztem Briefing</TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -159,6 +163,7 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
         {/* Verknüpfungen */}
         <TabsContent value="verknuepfungen" className="space-y-4">
           <DossierLinksView dossierId={dossierId} />
+          <DossierSourceWatchersPanel dossierId={dossierId} />
           {dossier && <DossierQualityFields dossier={dossier} />}
         </TabsContent>
 
