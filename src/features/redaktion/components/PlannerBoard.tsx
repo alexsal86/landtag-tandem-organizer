@@ -25,6 +25,7 @@ import { useTopicBacklog } from "@/features/redaktion/hooks/useTopicBacklog";
 import { usePlannerNotes } from "@/features/redaktion/hooks/usePlannerNotes";
 import { useToast } from "@/hooks/use-toast";
 import type { SpecialDay } from "@/utils/dashboard/specialDays";
+import { supabase } from "@/integrations/supabase/client";
 
 const STATUS_COLUMNS: Array<{ id: PlannerWorkflowStatus; title: string }> = [
   { id: "ideas", title: "Ideen" },
