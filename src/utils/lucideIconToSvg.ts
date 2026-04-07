@@ -39,5 +39,5 @@ export const lucideIconToSvg = (
  * @returns true if it's a valid Lucide icon name
  */
 export const isLucideIcon = (iconName: string): boolean => {
-  return iconName in icons;
+  return getLucideIcon(iconName) !== null;
 };
