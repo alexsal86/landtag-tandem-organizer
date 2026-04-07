@@ -39,7 +39,7 @@ interface Props {
 export const PlannerPostCard = memo(function PlannerPostCard({ item, onClick }: Props) {
   const time = item.scheduled_for ? format(new Date(item.scheduled_for), "HH:mm") : null;
   const channelSlugs = item.channel_slugs || [];
-  const imageUrl = (item as any).image_url;
+  const imageUrl = item.image_url;
 
   return (
     <div
