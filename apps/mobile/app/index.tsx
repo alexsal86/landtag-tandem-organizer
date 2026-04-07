@@ -8,7 +8,7 @@ export default function IndexScreen(): React.JSX.Element {
       <StatusBar style="dark" />
       <View style={styles.container}>
         <Text style={styles.title}>Landtag Mobile</Text>
-        <Text style={styles.subtitle}>Startpunkt für die native App (Android + iOS).</Text>
+        <Text style={styles.subtitle}>Login + Tenant-Auswahl als nächster echter App-Schritt.</Text>
         <LoginScreen />
       </View>
     </SafeAreaView>

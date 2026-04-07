@@ -45,13 +45,19 @@ Die Profile liegen in `apps/mobile/eas.json`:
 
 ## Wichtige Pfade
 - `apps/mobile/app/index.tsx`: Einstiegsscreen
-- `apps/mobile/src/screens/LoginScreen.tsx`: erster Login-Flow
+- `apps/mobile/src/screens/LoginScreen.tsx`: Login + Tenant-Auswahl + erster Dashboard-Platzhalter
 - `apps/mobile/eas.json`: Android Build-Profile
 - `packages/domain/src/index.ts`: geteilte Domain-Typen
 - `packages/api-client/src/index.ts`: geteilte API-Client-Schicht
 
+## Aktueller Stand
+1. Login-Formular validiert E-Mail + Passwort.
+2. Mock-Auth-Service liefert vorbereiteten Session-Status inkl. Tenant-Liste.
+3. Tenant-Auswahl in der App möglich.
+4. Nach Auswahl erscheint ein erster MyWork-Placeholder-Screen.
+
 ## Nächste Umsetzungsschritte in Code
 1. `createAuthService().prepareLogin(...)` durch echten Supabase Login ersetzen.
 2. Secure Storage für Access-/Refresh-Token integrieren.
-3. Tenant-Auswahl nach erfolgreichem Login ergänzen.
+3. Tenant-Auswahl aus realen Membership-Daten laden.
 4. Erste produktive Screens (`MyWork`, `Tasks`) anbinden.
