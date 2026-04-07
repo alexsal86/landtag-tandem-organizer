@@ -52,6 +52,7 @@ import { AutomationRulesManager } from "@/components/administration/AutomationRu
 import { MeetingTemplateManager } from "@/components/administration/MeetingTemplateManager";
 import { PlanningTemplateManager } from "@/components/administration/PlanningTemplateManager";
 import { UserRolesManager } from "@/components/administration/UserRolesManager";
+import { OfficeSocialMediaSettings } from "@/components/administration/OfficeSocialMediaSettings";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -265,6 +266,7 @@ export default function Administration(): React.JSX.Element | null {
           return <UserColorManager />;
         case "collaboration": return <TenantCollaboration />;
         case "matrix": return <MatrixSettings />;
+        case "office-social-media": return <OfficeSocialMediaSettings />;
         case "vacation-checklist": return <VacationChecklistAdmin />;
         default: return <StatusAdminSettings />;
       }
