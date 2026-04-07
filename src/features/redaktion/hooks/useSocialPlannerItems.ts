@@ -296,6 +296,7 @@ export function useSocialPlannerItems() {
     if (typeof patch.hashtags !== "undefined") dbPatch.hashtags = patch.hashtags;
     if (typeof patch.hashtags_in_comment !== "undefined") dbPatch.hashtags_in_comment = patch.hashtags_in_comment;
     if (typeof patch.alt_text !== "undefined") dbPatch.alt_text = patch.alt_text;
+    if (typeof patch.image_url !== "undefined") dbPatch.image_url = patch.image_url;
 
     if (Object.keys(dbPatch).length > 0) {
       const { error } = await supabase

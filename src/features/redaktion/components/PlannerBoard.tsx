@@ -145,6 +145,7 @@ type SocialPlannerDraftPayload = {
   hashtags: string[];
   hashtags_in_comment: boolean;
   alt_text: string | null;
+  image_url: string | null;
 };
 
 type SocialPlannerTemplateId = (typeof TEMPLATE_OPTIONS)[number]["id"];
