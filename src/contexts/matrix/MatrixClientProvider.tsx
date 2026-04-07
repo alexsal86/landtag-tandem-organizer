@@ -466,12 +466,15 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
           try { await verificationRequest.accept(); matrixLogger.log('[Matrix] Verification request accepted'); } catch (e) { matrixLogger.error('[Matrix] Failed to accept verification request:', e); return; }
         }
 
-        if (verificationRequest.phase !== VerificationPhase.Ready && verificationRequest.phase !== VerificationPhase.Started) {
+        // Wait for Started phase specifically — the requester calls startVerification,
+        // which sends m.key.verification.start and triggers phase → Started.
+        // The acceptor must NEVER call startVerification itself.
+        if (verificationRequest.phase !== VerificationPhase.Started) {
           const waitResult = await new Promise<'ok' | 'cancelled' | 'timeout'>((resolve) => {
             let timeoutId: ReturnType<typeof setTimeout>;
             const check = () => {
               const phase = verificationRequest.phase;
-              if (phase === VerificationPhase.Ready || phase === VerificationPhase.Started) { clearTimeout(timeoutId); verificationRequest.off?.('change', check); resolve('ok'); }
+              if (phase === VerificationPhase.Started) { clearTimeout(timeoutId); verificationRequest.off?.('change', check); resolve('ok'); }
               else if (phase === VerificationPhase.Cancelled || phase === VerificationPhase.Done) { clearTimeout(timeoutId); verificationRequest.off?.('change', check); resolve('cancelled'); }
             };
             verificationRequest.on?.('change', check);
@@ -483,10 +486,11 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
 
         if (verificationRequest.phase === VerificationPhase.Cancelled || verificationRequest.phase === VerificationPhase.Done) return;
 
+        // Use the verifier the SDK set up when the requester sent m.key.verification.start
+        const verifier = verificationRequest.verifier;
+        if (!verifier) { matrixLogger.error('[Matrix] No verifier after Started phase — aborting'); return; }
+
         try {
-          const verifier: Verifier = verificationRequest.phase === VerificationPhase.Started && verificationRequest.verifier
-            ? verificationRequest.verifier
-            : await verificationRequest.startVerification('m.sas.v1');
           const cleanupVerifierListeners = setupVerifierListeners(verifier, verificationRequest, setActiveSasVerification, setLastVerificationError);
           verifier.verify()
             .then(() => { matrixLogger.log('[Matrix] Incoming SAS verification succeeded'); setLastVerificationError(null); setActiveSasVerification(null); cleanupVerifierListeners(); })
