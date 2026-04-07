@@ -66,6 +66,7 @@ import { de } from "date-fns/locale";
 import { Clock } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -288,6 +289,18 @@ export function AppNavigation({
       trackVisit(sectionId, matched.label, matched.icon, matched.route);
     }
   }, [markNavigationAsVisited, onSectionChange, trackVisit]);
+
+  const trackMobileNavEvent = useCallback((eventName: string, payload: Record<string, unknown> = {}) => {
+    if (!isMobile) return;
+    const detail = {
+      eventName,
+      section: activeSection,
+      timestamp: new Date().toISOString(),
+      ...payload,
+    };
+    window.dispatchEvent(new CustomEvent('mobileNavAnalytics', { detail }));
+    (window as { analytics?: { track?: (name: string, attrs: Record<string, unknown>) => void } }).analytics?.track?.(eventName, detail);
+  }, [isMobile, activeSection]);
 
   const handleLogoClick = () => {
     setClickedItem('dashboard');
@@ -894,6 +907,88 @@ export function AppNavigation({
       </ScrollArea>
     </div>
   );
+
+  if (isMobile) {
+    const visibleGroups = navigationGroups.filter((group) => {
+      if (group.id === 'home') return false;
+      return true;
+    });
+
+    return (
+      <div className="h-full flex flex-col bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))]">
+        <div className="px-4 py-3 border-b border-border">
+          <p className="text-sm font-semibold">Mehr</p>
+          <p className="text-xs text-[hsl(var(--nav-muted))]">Alle weiteren Bereiche & Schnellaktionen</p>
+        </div>
+
+        <ScrollArea className="flex-1">
+          <div className="p-3 space-y-3">
+            <div className="space-y-1.5">
+              <p className="text-[11px] uppercase tracking-wider text-[hsl(var(--nav-muted))] px-1">Schnellaktionen</p>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="justify-start"
+                  onClick={() => {
+                    trackMobileNavEvent('mobile_nav_quick_action', { action: 'global-search' });
+                    window.dispatchEvent(new CustomEvent('openGlobalSearch', { detail: { query: '' } }));
+                  }}
+                >
+                  <Search className="h-4 w-4 mr-1" />
+                  Suche
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="justify-start"
+                  onClick={() => {
+                    trackMobileNavEvent('mobile_nav_quick_action', { action: 'notifications-panel' });
+                    setActivePanel('notifications');
+                  }}
+                >
+                  <Bell className="h-4 w-4 mr-1" />
+                  Inbox
+                </Button>
+              </div>
+            </div>
+
+            {visibleGroups.map((group) => (
+              <div key={group.id} className="space-y-1 rounded-lg border border-border/60 bg-background/5 p-2">
+                <div className="flex items-center gap-2 px-1 py-1">
+                  <group.icon className="h-4 w-4 text-[hsl(var(--nav-muted))]" />
+                  <span className="text-xs font-medium">{group.label}</span>
+                  {getGroupBadge(group) > 0 && <Badge className="ml-auto h-5 text-[10px]">{getGroupBadge(group)}</Badge>}
+                </div>
+
+                {group.subItems?.map((item) => {
+                  const itemBadge = navigationCounts[item.id] || 0;
+                  const isActive = activeSection === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        trackMobileNavEvent('mobile_nav_more_item_click', { target: item.id, group: group.id });
+                        void handleNavigationClick(item.id);
+                      }}
+                      className={cn(
+                        "w-full flex items-center gap-2 rounded-md px-2 py-2 text-left text-sm",
+                        isActive ? "bg-[hsl(var(--nav-active-bg))] font-medium" : "hover:bg-[hsl(var(--nav-hover))]"
+                      )}
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      <span className="flex-1 truncate">{item.label}</span>
+                      {itemBadge > 0 && <Badge className="h-5 min-w-5 px-1.5 text-[10px]">{itemBadge}</Badge>}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
+    );
+  }
 
   return (
     <TooltipProvider delayDuration={300}>

@@ -1,16 +1,19 @@
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { LogOut, Menu, Search, Settings, User, X } from "lucide-react";
+import { Briefcase, Calendar, Home, LogOut, Plus, Search, Settings, User, Users, X, Grid3X3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { AppNavigation } from "@/components/AppNavigation";
 import { NotificationBell } from "@/components/NotificationBell";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
+import { useMatrixUnread } from "@/contexts/MatrixUnreadContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,18 +22,32 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+const CORE_TABS = [
+  { id: "dashboard", label: "Dashboard", icon: Home },
+  { id: "mywork", label: "Meine Arbeit", icon: Briefcase },
+  { id: "calendar", label: "Kalender", icon: Calendar },
+  { id: "contacts", label: "Kontakte", icon: Users },
+] as const;
+
 export function MobileHeader() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth();
   const { currentTenant } = useTenant();
+  const { navigationCounts } = useNavigationNotifications();
+  const { totalUnreadCount: matrixUnreadCount } = useMatrixUnread();
 
-  // Derive active section from URL path (same logic as Index.tsx)
-  const activeSection = (() => {
-    const path = location.pathname.split('/')[1] || 'dashboard';
-    return path || 'dashboard';
-  })();
+  const getActiveSectionFromPath = useCallback((pathname: string): string => {
+    if (pathname === '/') return 'dashboard';
+    const pathSection = pathname.slice(1).split('/')[0];
+    if (pathSection === 'letters') return 'documents';
+    return pathSection || 'dashboard';
+  }, []);
+
+  const activeSection = getActiveSectionFromPath(location.pathname);
+  const isCoreTab = CORE_TABS.some(tab => tab.id === activeSection);
+
   const [appSettings, setAppSettings] = useState({
     app_name: "LandtagsOS",
     app_logo_url: ""
@@ -39,6 +56,27 @@ export function MobileHeader() {
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [userProfile, setUserProfile] = useState<{ display_name?: string | null; avatar_url?: string | null } | null>(null);
+
+  const moreBadgeCount = useMemo(() => {
+    const coreIds = new Set(CORE_TABS.map(tab => tab.id));
+    const extraCount = Object.entries(navigationCounts)
+      .filter(([id]) => !coreIds.has(id))
+      .reduce((sum, [, count]) => sum + count, 0);
+    return extraCount + matrixUnreadCount;
+  }, [navigationCounts, matrixUnreadCount]);
+
+  const trackMobileNavEvent = useCallback((eventName: string, payload: Record<string, unknown> = {}) => {
+    const detail = {
+      eventName,
+      location: location.pathname,
+      activeSection,
+      timestamp: new Date().toISOString(),
+      ...payload,
+    };
+
+    window.dispatchEvent(new CustomEvent('mobileNavAnalytics', { detail }));
+    (window as { analytics?: { track?: (name: string, attrs: Record<string, unknown>) => void } }).analytics?.track?.(eventName, detail);
+  }, [activeSection, location.pathname]);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -59,8 +97,8 @@ export function MobileHeader() {
         });
       }
     };
-    
-    loadSettings();
+
+    void loadSettings();
   }, []);
 
   useEffect(() => {
@@ -72,12 +110,12 @@ export function MobileHeader() {
           .eq('user_id', user.id)
           .eq('tenant_id', currentTenant.id)
           .maybeSingle();
-        
+
         setUserProfile(profile);
       }
     };
 
-    loadProfile();
+    void loadProfile();
   }, [user, currentTenant]);
 
   if (!isMobile) return null;
@@ -87,63 +125,63 @@ export function MobileHeader() {
     navigate('/auth');
   };
 
+  const handleCoreTabNavigation = (section: string) => {
+    trackMobileNavEvent('mobile_nav_tab_click', { target: section, type: 'core-tab' });
+    navigate(section === 'dashboard' ? '/' : `/${section}`);
+  };
+
+  const openQuickAction = () => {
+    trackMobileNavEvent('mobile_nav_quick_action', { action: 'create-appointment' });
+    const params = new URLSearchParams(location.search);
+    params.set('action', 'create-appointment');
+    const search = params.toString();
+    navigate(`${location.pathname}${search ? `?${search}` : ''}`);
+  };
+
   return (
     <>
       <header className="sticky top-0 z-50 w-full border-b bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))]">
         <div className="flex h-14 items-center justify-between px-4">
-          {/* Left: Menu + Logo */}
-          <div className="flex items-center gap-2">
-            <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="-ml-2 text-[hsl(var(--nav-foreground))] hover:bg-[hsl(var(--nav-hover))]">
-                  <Menu className="h-5 w-5" />
-                  <span className="sr-only">Navigation öffnen</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="p-0 w-[72px] bg-[hsl(var(--nav))] border-[hsl(var(--nav-foreground)/0.1)]">
-                <AppNavigation 
-                  activeSection={activeSection} 
-                  onSectionChange={(section) => {
-                    navigate(section === 'dashboard' ? '/' : `/${section}`);
-                    setMobileNavOpen(false);
-                  }}
-                  isMobile={true}
-                />
-              </SheetContent>
-            </Sheet>
-            
-            <div className="flex items-center gap-2">
-              {appSettings.app_logo_url && (
-                <img 
-                  src={appSettings.app_logo_url} 
-                  alt="App Logo" 
-                  crossOrigin="anonymous"
-                  className="h-8 w-8 object-contain"
-                />
-              )}
-              <span className="font-semibold text-sm truncate max-w-[120px]">
-                {appSettings.app_name}
-              </span>
-            </div>
+          <div className="flex items-center gap-2 min-w-0">
+            {appSettings.app_logo_url && (
+              <img
+                src={appSettings.app_logo_url}
+                alt="App Logo"
+                crossOrigin="anonymous"
+                className="h-8 w-8 object-contain"
+              />
+            )}
+            <span className="font-semibold text-sm truncate max-w-[120px]">
+              {appSettings.app_name}
+            </span>
           </div>
 
-          {/* Right: Actions */}
           <div className="flex items-center gap-1">
-            {/* Search Button */}
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => setShowMobileSearch(true)}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={openQuickAction}
+              className="text-[hsl(var(--nav-foreground))] hover:bg-[hsl(var(--nav-hover))]"
+            >
+              <Plus className="h-5 w-5" />
+              <span className="sr-only">Schnellaktion</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                trackMobileNavEvent('mobile_nav_search_open');
+                setShowMobileSearch(true);
+              }}
               className="text-[hsl(var(--nav-foreground))] hover:bg-[hsl(var(--nav-hover))]"
             >
               <Search className="h-5 w-5" />
               <span className="sr-only">Suchen</span>
             </Button>
 
-            {/* Notifications */}
             <NotificationBell />
 
-            {/* User Avatar */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -183,7 +221,62 @@ export function MobileHeader() {
         </div>
       </header>
 
-      {/* Mobile Search Overlay */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden">
+        <div className="grid grid-cols-5 h-16 px-1">
+          {CORE_TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeSection === tab.id;
+            const badgeCount = navigationCounts[tab.id] || 0;
+
+            return (
+              <button
+                key={tab.id}
+                onClick={() => handleCoreTabNavigation(tab.id)}
+                className="flex flex-col items-center justify-center gap-0.5 text-[11px] relative"
+              >
+                <Icon className={`h-4 w-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                <span className={isActive ? 'text-primary font-medium' : 'text-muted-foreground'}>{tab.label}</span>
+                {badgeCount > 0 && (
+                  <Badge className="absolute top-1 right-3 h-4 min-w-4 px-1 text-[10px]">{badgeCount}</Badge>
+                )}
+              </button>
+            );
+          })}
+
+          <button
+            onClick={() => {
+              const nextOpen = !mobileNavOpen;
+              setMobileNavOpen(nextOpen);
+              trackMobileNavEvent(nextOpen ? 'mobile_nav_more_open' : 'mobile_nav_more_close', { target: 'more' });
+            }}
+            className="flex flex-col items-center justify-center gap-0.5 text-[11px] relative"
+          >
+            <Grid3X3 className={`h-4 w-4 ${!isCoreTab ? 'text-primary' : 'text-muted-foreground'}`} />
+            <span className={!isCoreTab ? 'text-primary font-medium' : 'text-muted-foreground'}>Mehr</span>
+            {moreBadgeCount > 0 && (
+              <Badge className="absolute top-1 right-3 h-4 min-w-4 px-1 text-[10px]">{moreBadgeCount}</Badge>
+            )}
+          </button>
+        </div>
+      </nav>
+
+      <Sheet open={mobileNavOpen} onOpenChange={(open) => {
+        setMobileNavOpen(open);
+        trackMobileNavEvent(open ? 'mobile_nav_more_open' : 'mobile_nav_more_close', { target: 'sheet' });
+      }}>
+        <SheetContent side="left" className="p-0 w-[85vw] max-w-[380px] bg-[hsl(var(--nav))] border-[hsl(var(--nav-foreground)/0.1)]">
+          <AppNavigation
+            activeSection={activeSection}
+            onSectionChange={(section) => {
+              trackMobileNavEvent('mobile_nav_sheet_select', { target: section, type: 'more-item' });
+              navigate(section === 'dashboard' ? '/' : `/${section}`);
+              setMobileNavOpen(false);
+            }}
+            isMobile={true}
+          />
+        </SheetContent>
+      </Sheet>
+
       {showMobileSearch && (
         <div className="fixed inset-0 z-[60] bg-background">
           <div className="flex items-center gap-2 p-4 border-b">
@@ -195,8 +288,8 @@ export function MobileHeader() {
               placeholder="Suchen..."
               className="flex-1 border-0 focus-visible:ring-0 px-0"
             />
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="icon"
               aria-label="Suche schließen"
               onClick={() => {
@@ -207,7 +300,7 @@ export function MobileHeader() {
               <X className="h-5 w-5" />
             </Button>
           </div>
-          
+
           <div className="p-4">
             {searchQuery ? (
               <p className="text-sm text-muted-foreground text-center py-8">

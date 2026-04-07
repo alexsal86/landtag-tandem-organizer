@@ -76,6 +76,7 @@ const Index = (): React.JSX.Element => {
   
   const [activeSection, setActiveSection] = useState<string>(() => getActiveSectionFromPath(location.pathname));
   const isCalendar = activeSection === "calendar";
+  const mobilePrimarySections = useMemo(() => new Set(["dashboard", "mywork", "calendar", "contacts"]), []);
   const isCreateContactRoute = activeSection === "contacts" && new URLSearchParams(location.search).get("action") === "new";
   
   // Dialog state management
@@ -296,7 +297,7 @@ const Index = (): React.JSX.Element => {
           <MobileHeader />
           {/* Mobile Sub-Navigation */}
           <div className="md:hidden">
-            {activeGroup?.subItems && activeGroup.subItems.length > 1 ? (
+            {activeGroup?.subItems && activeGroup.subItems.length > 1 && !mobilePrimarySections.has(activeSection) ? (
               <MobileSubNavigation
                 items={activeGroup.subItems}
                 activeItem={activeSection}
@@ -304,7 +305,7 @@ const Index = (): React.JSX.Element => {
               />
             ) : null}
           </div>
-          <main id="main-content" className="flex-1 min-h-0 bg-gradient-to-b from-background to-muted/20" tabIndex={-1}>
+          <main id="main-content" className="flex-1 min-h-0 bg-gradient-to-b from-background to-muted/20 pb-20 md:pb-0" tabIndex={-1}>
             <ErrorBoundary>
               <Suspense fallback={
                 <div className="flex items-center justify-center h-64">
