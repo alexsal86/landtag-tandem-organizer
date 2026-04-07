@@ -953,6 +953,10 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
               setIsCreateDialogOpen(true);
             }}
             specialDays={specialDays}
+            notes={notes}
+            onCreateNote={createNote}
+            onUpdateNote={updateNote}
+            onDeleteNote={deleteNote}
           />
         ) : (
           <DragDropContext onDragEnd={onDragEnd}>
