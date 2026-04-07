@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { TagInput } from "@/components/ui/tag-input";
 import { cn } from "@/lib/utils";
 import { useTenantUsers } from "@/hooks/useTenantUsers";
+import { useAuth } from "@/hooks/useAuth";
 import { type SocialPlannerItem, PlannerWorkflowStatus, useSocialPlannerItems } from "@/features/redaktion/hooks/useSocialPlannerItems";
 import { useTopicBacklog } from "@/features/redaktion/hooks/useTopicBacklog";
 import { usePlannerNotes } from "@/features/redaktion/hooks/usePlannerNotes";
