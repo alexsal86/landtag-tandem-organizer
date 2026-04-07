@@ -9351,6 +9351,83 @@ export type Database = {
           },
         ]
       }
+      social_content_variants: {
+        Row: {
+          asset_ids: string[]
+          caption: string | null
+          channel_id: string
+          content_item_id: string
+          created_at: string
+          created_by: string
+          first_comment: string | null
+          id: string
+          media_type: string | null
+          platform_metadata: Json
+          platform_status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          asset_ids?: string[]
+          caption?: string | null
+          channel_id: string
+          content_item_id: string
+          created_at?: string
+          created_by: string
+          first_comment?: string | null
+          id?: string
+          media_type?: string | null
+          platform_metadata?: Json
+          platform_status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          asset_ids?: string[]
+          caption?: string | null
+          channel_id?: string
+          content_item_id?: string
+          created_at?: string
+          created_by?: string
+          first_comment?: string | null
+          id?: string
+          media_type?: string | null
+          platform_metadata?: Json
+          platform_status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_content_variants_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "social_content_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_variants_content_item_id_fkey"
+            columns: ["content_item_id"]
+            isOneToOne: false
+            referencedRelation: "social_content_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_variants_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_variants_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_content_items: {
         Row: {
           alt_text: string | null

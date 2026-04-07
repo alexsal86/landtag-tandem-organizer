@@ -35,12 +35,28 @@ export interface SocialPlannerItem {
   hashtags: string[];
   hashtags_in_comment: boolean;
   alt_text: string | null;
+  variants: Record<string, SocialContentVariant>;
 }
 
 export interface PlannerChannel {
   id: string;
   name: string;
   slug: string;
+}
+
+export type SocialContentMediaType = "image" | "video" | "carousel" | "link" | "text";
+export type SocialContentPlatformStatus = "draft" | "ready" | "scheduled" | "published" | "failed";
+
+export interface SocialContentVariant {
+  id?: string;
+  content_item_id?: string;
+  channel_id: string;
+  caption: string;
+  first_comment: string;
+  media_type: SocialContentMediaType | "";
+  asset_ids: string[];
+  platform_metadata: Record<string, unknown>;
+  platform_status: SocialContentPlatformStatus;
 }
 
 // DB workflow_status values: idea, draft, approval, scheduled, published
@@ -96,7 +112,11 @@ export function useSocialPlannerItems() {
     try {
       setLoading(true);
 
-      const [{ data: itemRows, error: itemError }, { data: channelRows, error: channelError }] = await Promise.all([
+      const [
+        { data: itemRows, error: itemError },
+        { data: channelRows, error: channelError },
+        { data: variantRows, error: variantError },
+      ] = await Promise.all([
         supabase
           .from("social_content_items")
           .select(`
@@ -133,12 +153,43 @@ export function useSocialPlannerItems() {
           .eq("tenant_id", currentTenant.id)
           .eq("is_active", true)
           .order("sort_order", { ascending: true }),
+        supabase
+          .from("social_content_variants")
+          .select("id, content_item_id, channel_id, caption, first_comment, media_type, asset_ids, platform_metadata, platform_status")
+          .eq("tenant_id", currentTenant.id),
       ]);
 
       if (itemError) throw itemError;
       if (channelError) throw channelError;
+      if (variantError) throw variantError;
 
       setChannels((channelRows || []) as PlannerChannel[]);
+      const groupedVariants = new Map<string, Record<string, SocialContentVariant>>();
+      ((variantRows || []) as Array<{
+        id: string;
+        content_item_id: string;
+        channel_id: string;
+        caption: string | null;
+        first_comment: string | null;
+        media_type: SocialContentMediaType | null;
+        asset_ids: string[] | null;
+        platform_metadata: Record<string, unknown> | null;
+        platform_status: SocialContentPlatformStatus | null;
+      }>).forEach((variant) => {
+        const byChannel = groupedVariants.get(variant.content_item_id) || {};
+        byChannel[variant.channel_id] = {
+          id: variant.id,
+          content_item_id: variant.content_item_id,
+          channel_id: variant.channel_id,
+          caption: variant.caption || "",
+          first_comment: variant.first_comment || "",
+          media_type: variant.media_type || "",
+          asset_ids: variant.asset_ids || [],
+          platform_metadata: variant.platform_metadata || {},
+          platform_status: variant.platform_status || "draft",
+        };
+        groupedVariants.set(variant.content_item_id, byChannel);
+      });
 
       setItems(
         (itemRows || []).map((row) => {
@@ -177,6 +228,7 @@ export function useSocialPlannerItems() {
             channel_names: channelLinks.map((entry) => entry.social_content_channels?.name || "Unbekannter Kanal"),
             channel_slugs: channelLinks.map((entry) => entry.social_content_channels?.slug || ""),
             image_url: row.image_url || null,
+            variants: groupedVariants.get(row.id) || {},
           };
         }),
       );
@@ -207,6 +259,7 @@ export function useSocialPlannerItems() {
       draft_text?: string | null;
       notes?: string | null;
       cta?: string | null;
+      variants?: SocialContentVariant[];
     }) => {
       if (!user?.id || !currentTenant?.id || !profileId) return null;
 
@@ -259,6 +312,25 @@ export function useSocialPlannerItems() {
         }
       }
 
+      if (payload.variants?.length) {
+        const { error: variantError } = await supabase.from("social_content_variants").insert(
+          payload.variants.map((variant) => ({
+            id: variant.id,
+            content_item_id: id,
+            channel_id: variant.channel_id,
+            tenant_id: currentTenant.id,
+            created_by: profileId,
+            caption: variant.caption || null,
+            first_comment: variant.first_comment || null,
+            media_type: variant.media_type || null,
+            asset_ids: variant.asset_ids || [],
+            platform_metadata: variant.platform_metadata || {},
+            platform_status: variant.platform_status || "draft",
+          })),
+        );
+        if (variantError) throw new Error(getErrorMessage(variantError));
+      }
+
       await loadItems();
       return { id };
     },
@@ -267,7 +339,7 @@ export function useSocialPlannerItems() {
 
   const updateItem = useCallback(async (
     id: string,
-    patch: Partial<Pick<SocialPlannerItem, "topic" | "tags" | "workflow_status" | "approval_state" | "responsible_user_id" | "format" | "content_goal" | "format_variant" | "asset_requirements" | "approval_required" | "publish_link" | "performance_notes" | "scheduled_for" | "hook" | "core_message" | "draft_text" | "cta" | "notes" | "channel_ids" | "hashtags" | "hashtags_in_comment" | "alt_text" | "image_url">>,
+    patch: Partial<Pick<SocialPlannerItem, "topic" | "tags" | "workflow_status" | "approval_state" | "responsible_user_id" | "format" | "content_goal" | "format_variant" | "asset_requirements" | "approval_required" | "publish_link" | "performance_notes" | "scheduled_for" | "hook" | "core_message" | "draft_text" | "cta" | "notes" | "channel_ids" | "hashtags" | "hashtags_in_comment" | "alt_text" | "image_url" | "variants">>,
   ) => {
     if (!currentTenant?.id) return;
 
@@ -352,6 +424,37 @@ export function useSocialPlannerItems() {
       }
     }
 
+    if (typeof patch.variants !== "undefined") {
+      if (!user?.id || !profileId) return;
+      const variants = Object.values(patch.variants);
+      const { error: clearError } = await supabase
+        .from("social_content_variants")
+        .delete()
+        .eq("content_item_id", id)
+        .eq("tenant_id", currentTenant.id);
+      if (clearError) throw new Error(getErrorMessage(clearError));
+
+      if (variants.length > 0) {
+        const { error: upsertError } = await supabase.from("social_content_variants").upsert(
+          variants.map((variant) => ({
+            id: variant.id,
+            content_item_id: id,
+            channel_id: variant.channel_id,
+            tenant_id: currentTenant.id,
+            created_by: profileId,
+            caption: variant.caption || null,
+            first_comment: variant.first_comment || null,
+            media_type: variant.media_type || null,
+            asset_ids: variant.asset_ids || [],
+            platform_metadata: variant.platform_metadata || {},
+            platform_status: variant.platform_status || "draft",
+          })),
+          { onConflict: "content_item_id,channel_id" },
+        );
+        if (upsertError) throw new Error(getErrorMessage(upsertError));
+      }
+    }
+
     await loadItems();
   }, [currentTenant?.id, items, loadItems, profileId, user?.id]);
 
@@ -421,6 +524,7 @@ export function useSocialPlannerItems() {
       .on("postgres_changes", { event: "*", schema: "public", table: "social_content_items", filter: `tenant_id=eq.${currentTenant.id}` }, scheduleRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "social_content_item_channels", filter: `tenant_id=eq.${currentTenant.id}` }, scheduleRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "social_content_channels", filter: `tenant_id=eq.${currentTenant.id}` }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "social_content_variants", filter: `tenant_id=eq.${currentTenant.id}` }, scheduleRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "topic_backlog", filter: `tenant_id=eq.${currentTenant.id}` }, scheduleRefresh)
       .subscribe();
 

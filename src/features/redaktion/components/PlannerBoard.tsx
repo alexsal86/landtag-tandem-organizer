@@ -19,7 +19,14 @@ import { TagInput } from "@/components/ui/tag-input";
 import { cn } from "@/lib/utils";
 import { useTenantUsers } from "@/hooks/useTenantUsers";
 import { useAuth } from "@/hooks/useAuth";
-import { type SocialPlannerItem, PlannerWorkflowStatus, useSocialPlannerItems } from "@/features/redaktion/hooks/useSocialPlannerItems";
+import {
+  type SocialContentMediaType,
+  type SocialContentPlatformStatus,
+  type SocialContentVariant,
+  type SocialPlannerItem,
+  PlannerWorkflowStatus,
+  useSocialPlannerItems,
+} from "@/features/redaktion/hooks/useSocialPlannerItems";
 import { useTopicBacklog } from "@/features/redaktion/hooks/useTopicBacklog";
 import { usePlannerNotes } from "@/features/redaktion/hooks/usePlannerNotes";
 import { useToast } from "@/hooks/use-toast";
@@ -146,7 +153,56 @@ type SocialPlannerDraftPayload = {
   hashtags_in_comment: boolean;
   alt_text: string | null;
   image_url: string | null;
+  variants: Record<string, SocialContentVariant>;
 };
+
+const VARIANT_MEDIA_TYPES: Array<{ value: SocialContentMediaType; label: string }> = [
+  { value: "image", label: "Bild" },
+  { value: "video", label: "Video" },
+  { value: "carousel", label: "Carousel" },
+  { value: "link", label: "Link" },
+  { value: "text", label: "Text" },
+];
+
+const PLATFORM_STATUS_OPTIONS: Array<{ value: SocialContentPlatformStatus; label: string }> = [
+  { value: "draft", label: "Entwurf" },
+  { value: "ready", label: "Bereit" },
+  { value: "scheduled", label: "Geplant" },
+  { value: "published", label: "Veröffentlicht" },
+  { value: "failed", label: "Fehlgeschlagen" },
+];
+
+function getChannelRules(slug: string) {
+  switch (slug) {
+    case "instagram":
+      return { captionRequired: true, captionMax: 2200, firstCommentMax: 2200 };
+    case "x":
+    case "twitter":
+      return { captionRequired: true, captionMax: 280, firstCommentMax: 280 };
+    case "linkedin":
+      return { captionRequired: true, captionMax: 3000, firstCommentMax: 1250 };
+    case "facebook":
+      return { captionRequired: true, captionMax: 63206, firstCommentMax: 8000 };
+    default:
+      return { captionRequired: false, captionMax: 5000, firstCommentMax: 2000 };
+  }
+}
+
+function validateVariant(variant: SocialContentVariant | undefined, channelSlug: string): string[] {
+  const errors: string[] = [];
+  if (!variant) {
+    errors.push("Kanalvariante fehlt.");
+    return errors;
+  }
+  const rules = getChannelRules(channelSlug);
+  if (rules.captionRequired && !variant.caption.trim()) errors.push("Caption ist für diesen Kanal Pflicht.");
+  if (variant.caption.length > rules.captionMax) errors.push(`Caption überschreitet das Limit (${rules.captionMax}).`);
+  if (variant.first_comment.length > rules.firstCommentMax) errors.push(`First Comment überschreitet das Limit (${rules.firstCommentMax}).`);
+  if (!variant.media_type) errors.push("Media Type ist ein Pflichtfeld.");
+  if (variant.platform_status === "published" && !variant.caption.trim()) errors.push("Veröffentlichte Variante braucht eine Caption.");
+  if (!variant.asset_ids.every((assetId) => /^[a-zA-Z0-9-_/]+$/.test(assetId))) errors.push("Asset IDs dürfen nur Buchstaben, Zahlen, '-', '_' und '/' enthalten.");
+  return errors;
+}
 
 type SocialPlannerTemplateId = (typeof TEMPLATE_OPTIONS)[number]["id"];
 type PlannerFormatFilter = "all" | "story" | "feed";
@@ -231,7 +287,7 @@ interface SocialPlannerEditDialogProps {
   item: SocialPlannerItem | null;
   open: boolean;
   users: Array<{ id: string; display_name: string }>;
-  channels: Array<{ id: string; name: string }>;
+  channels: Array<{ id: string; name: string; slug: string }>;
   tagSuggestions: string[];
   onOpenChange: (open: boolean) => void;
   onSave: (itemId: string, payload: SocialPlannerDraftPayload) => Promise<void>;
@@ -265,6 +321,8 @@ function SocialPlannerEditDialog({ item, open, users, channels, tagSuggestions, 
   const [altText, setAltText] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [activeVariantChannelId, setActiveVariantChannelId] = useState<string>("");
+  const [variantsByChannel, setVariantsByChannel] = useState<Record<string, SocialContentVariant>>({});
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -294,7 +352,28 @@ function SocialPlannerEditDialog({ item, open, users, channels, tagSuggestions, 
     setHashtagsInComment(item.hashtags_in_comment ?? false);
     setAltText(item.alt_text || "");
     setImageUrl(item.image_url || null);
+    setVariantsByChannel(item.variants || {});
+    setActiveVariantChannelId(item.channel_ids[0] || "");
   }, [item]);
+
+  useEffect(() => {
+    setVariantsByChannel((current) => {
+      const next: Record<string, SocialContentVariant> = {};
+      selectedChannels.forEach((channelId) => {
+        next[channelId] = current[channelId] || {
+          channel_id: channelId,
+          caption: draftText || "",
+          first_comment: "",
+          media_type: "",
+          asset_ids: [],
+          platform_metadata: {},
+          platform_status: "draft",
+        };
+      });
+      return next;
+    });
+    setActiveVariantChannelId((current) => (selectedChannels.includes(current) ? current : (selectedChannels[0] || "")));
+  }, [draftText, selectedChannels]);
 
   const channelOptions = useMemo(
     () => channels.map((channel) => ({ value: channel.id, label: channel.name })),
@@ -320,6 +399,15 @@ function SocialPlannerEditDialog({ item, open, users, channels, tagSuggestions, 
 
     if (!topic.trim()) {
       toast({ title: "Thema fehlt", description: "Bitte ein Thema eintragen.", variant: "destructive" });
+      return;
+    }
+
+    const variantErrors = selectedChannels.flatMap((channelId) => {
+      const channelSlug = channels.find((channel) => channel.id === channelId)?.slug || "";
+      return validateVariant(variantsByChannel[channelId], channelSlug).map((error) => `${channels.find((channel) => channel.id === channelId)?.name || channelId}: ${error}`);
+    });
+    if (variantErrors.length > 0) {
+      toast({ title: "Varianten unvollständig", description: variantErrors[0], variant: "destructive" });
       return;
     }
 
@@ -349,6 +437,7 @@ function SocialPlannerEditDialog({ item, open, users, channels, tagSuggestions, 
         hashtags_in_comment: hashtagsInComment,
         alt_text: altText.trim() || null,
         image_url: imageUrl,
+        variants: variantsByChannel,
       });
       onOpenChange(false);
     } catch {
@@ -397,6 +486,117 @@ function SocialPlannerEditDialog({ item, open, users, channels, tagSuggestions, 
                 placeholder="Kanäle auswählen"
               />
             </div>
+
+            {selectedChannels.length > 0 && (
+              <div className="space-y-2 md:col-span-2 rounded-md border p-3">
+                <Label>Kanalvariante bearbeiten</Label>
+                <Select value={activeVariantChannelId} onValueChange={setActiveVariantChannelId}>
+                  <SelectTrigger><SelectValue placeholder="Kanalvariante wählen" /></SelectTrigger>
+                  <SelectContent>
+                    {selectedChannels.map((channelId) => {
+                      const channel = channels.find((entry) => entry.id === channelId);
+                      return <SelectItem key={channelId} value={channelId}>{channel?.name || channelId}</SelectItem>;
+                    })}
+                  </SelectContent>
+                </Select>
+                {activeVariantChannelId && (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="space-y-2 md:col-span-2">
+                      <Label>Caption</Label>
+                      <Textarea
+                        rows={4}
+                        value={variantsByChannel[activeVariantChannelId]?.caption || ""}
+                        onChange={(event) => setVariantsByChannel((current) => ({
+                          ...current,
+                          [activeVariantChannelId]: { ...current[activeVariantChannelId], caption: event.target.value },
+                        }))}
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label>First Comment</Label>
+                      <Textarea
+                        rows={3}
+                        value={variantsByChannel[activeVariantChannelId]?.first_comment || ""}
+                        onChange={(event) => setVariantsByChannel((current) => ({
+                          ...current,
+                          [activeVariantChannelId]: { ...current[activeVariantChannelId], first_comment: event.target.value },
+                        }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Media Type</Label>
+                      <Select
+                        value={variantsByChannel[activeVariantChannelId]?.media_type || "none"}
+                        onValueChange={(value) => setVariantsByChannel((current) => ({
+                          ...current,
+                          [activeVariantChannelId]: { ...current[activeVariantChannelId], media_type: value === "none" ? "" : value as SocialContentMediaType },
+                        }))}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Medium" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Bitte wählen</SelectItem>
+                          {VARIANT_MEDIA_TYPES.map((entry) => <SelectItem key={entry.value} value={entry.value}>{entry.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Platform Status</Label>
+                      <Select
+                        value={variantsByChannel[activeVariantChannelId]?.platform_status || "draft"}
+                        onValueChange={(value) => setVariantsByChannel((current) => ({
+                          ...current,
+                          [activeVariantChannelId]: { ...current[activeVariantChannelId], platform_status: value as SocialContentPlatformStatus },
+                        }))}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+                        <SelectContent>
+                          {PLATFORM_STATUS_OPTIONS.map((entry) => <SelectItem key={entry.value} value={entry.value}>{entry.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label>Asset IDs (Komma-getrennt)</Label>
+                      <Input
+                        value={(variantsByChannel[activeVariantChannelId]?.asset_ids || []).join(", ")}
+                        onChange={(event) => setVariantsByChannel((current) => ({
+                          ...current,
+                          [activeVariantChannelId]: {
+                            ...current[activeVariantChannelId],
+                            asset_ids: event.target.value.split(",").map((value) => value.trim()).filter(Boolean),
+                          },
+                        }))}
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label>Platform Metadata (JSON)</Label>
+                      <Textarea
+                        rows={3}
+                        value={JSON.stringify(variantsByChannel[activeVariantChannelId]?.platform_metadata || {}, null, 2)}
+                        onChange={(event) => {
+                          try {
+                            const parsed = JSON.parse(event.target.value) as Record<string, unknown>;
+                            setVariantsByChannel((current) => ({
+                              ...current,
+                              [activeVariantChannelId]: { ...current[activeVariantChannelId], platform_metadata: parsed },
+                            }));
+                          } catch {
+                            // handled via inline validation hint below
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="md:col-span-2 space-y-1">
+                      {validateVariant(
+                        variantsByChannel[activeVariantChannelId],
+                        channels.find((channel) => channel.id === activeVariantChannelId)?.slug || "",
+                      ).map((error) => (
+                        <p key={error} className="text-xs text-destructive">{error}</p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="space-y-2 md:col-span-2">
               <Label>Interne Tags</Label>
@@ -699,6 +899,8 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   const [createApprovalState, setCreateApprovalState] = useState("draft");
   const [createWorkflowStatus, setCreateWorkflowStatus] = useState<PlannerWorkflowStatus>("ideas");
   const [createScheduledDate, setCreateScheduledDate] = useState("");
+  const [createVariantsByChannel, setCreateVariantsByChannel] = useState<Record<string, SocialContentVariant>>({});
+  const [createActiveVariantChannelId, setCreateActiveVariantChannelId] = useState<string>("");
   const [isCreatingDraft, setIsCreatingDraft] = useState(false);
 
   const editingItem = useMemo(
@@ -774,6 +976,8 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
     setCreateApprovalState("draft");
     setCreateWorkflowStatus("ideas");
     setCreateScheduledDate("");
+    setCreateVariantsByChannel({});
+    setCreateActiveVariantChannelId("");
   };
 
   const handleCreateTemplateChange = (value: string) => {
@@ -790,10 +994,38 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
     });
   };
 
+  useEffect(() => {
+    setCreateVariantsByChannel((current) => {
+      const next: Record<string, SocialContentVariant> = {};
+      createChannelIds.forEach((channelId) => {
+        next[channelId] = current[channelId] || {
+          channel_id: channelId,
+          caption: createDraftText,
+          first_comment: "",
+          media_type: "",
+          asset_ids: [],
+          platform_metadata: {},
+          platform_status: "draft",
+        };
+      });
+      return next;
+    });
+    setCreateActiveVariantChannelId((current) => (createChannelIds.includes(current) ? current : (createChannelIds[0] || "")));
+  }, [createChannelIds, createDraftText]);
+
   const createDraft = async () => {
     const trimmedTopicTitle = createTopicTitle.trim();
     if (createTopicId === "none" && !trimmedTopicTitle) {
       toast({ title: "Bitte Thema auswählen oder neu eingeben", variant: "destructive" });
+      return;
+    }
+
+    const createVariantErrors = createChannelIds.flatMap((channelId) => {
+      const slug = channels.find((channel) => channel.id === channelId)?.slug || "";
+      return validateVariant(createVariantsByChannel[channelId], slug);
+    });
+    if (createVariantErrors.length > 0) {
+      toast({ title: "Kanalvarianten prüfen", description: createVariantErrors[0], variant: "destructive" });
       return;
     }
 
@@ -833,6 +1065,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
         responsible_user_id: createResponsibleUserId === "none" ? null : createResponsibleUserId,
         scheduled_for: createScheduledDate ? new Date(`${createScheduledDate}T09:00:00`).toISOString() : null,
         channel_ids: createChannelIds,
+        variants: createChannelIds.map((channelId) => createVariantsByChannel[channelId]).filter(Boolean),
       });
 
       toast({ title: "Entwurf erstellt", description: "Der Beitrag wurde mit Briefing-Feldern im Social Planner angelegt." });
@@ -1074,6 +1307,75 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
                 <Label>Kanäle</Label>
                 <MultiSelect options={channelOptions} selected={createChannelIds} onChange={setCreateChannelIds} placeholder="Kanäle auswählen" />
               </div>
+
+              {createChannelIds.length > 0 && (
+                <div className="space-y-2 md:col-span-2 rounded-md border p-3">
+                  <Label>Kanalvariante bearbeiten</Label>
+                  <Select value={createActiveVariantChannelId} onValueChange={setCreateActiveVariantChannelId}>
+                    <SelectTrigger><SelectValue placeholder="Kanalvariante wählen" /></SelectTrigger>
+                    <SelectContent>
+                      {createChannelIds.map((channelId) => {
+                        const channel = channels.find((entry) => entry.id === channelId);
+                        return <SelectItem key={channelId} value={channelId}>{channel?.name || channelId}</SelectItem>;
+                      })}
+                    </SelectContent>
+                  </Select>
+                  {createActiveVariantChannelId && (
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="space-y-2 md:col-span-2">
+                        <Label>Caption</Label>
+                        <Textarea
+                          rows={3}
+                          value={createVariantsByChannel[createActiveVariantChannelId]?.caption || ""}
+                          onChange={(event) => setCreateVariantsByChannel((current) => ({
+                            ...current,
+                            [createActiveVariantChannelId]: { ...current[createActiveVariantChannelId], caption: event.target.value },
+                          }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Media Type</Label>
+                        <Select
+                          value={createVariantsByChannel[createActiveVariantChannelId]?.media_type || "none"}
+                          onValueChange={(value) => setCreateVariantsByChannel((current) => ({
+                            ...current,
+                            [createActiveVariantChannelId]: { ...current[createActiveVariantChannelId], media_type: value === "none" ? "" : value as SocialContentMediaType },
+                          }))}
+                        >
+                          <SelectTrigger><SelectValue placeholder="Medium" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Bitte wählen</SelectItem>
+                            {VARIANT_MEDIA_TYPES.map((entry) => <SelectItem key={entry.value} value={entry.value}>{entry.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Platform Status</Label>
+                        <Select
+                          value={createVariantsByChannel[createActiveVariantChannelId]?.platform_status || "draft"}
+                          onValueChange={(value) => setCreateVariantsByChannel((current) => ({
+                            ...current,
+                            [createActiveVariantChannelId]: { ...current[createActiveVariantChannelId], platform_status: value as SocialContentPlatformStatus },
+                          }))}
+                        >
+                          <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+                          <SelectContent>
+                            {PLATFORM_STATUS_OPTIONS.map((entry) => <SelectItem key={entry.value} value={entry.value}>{entry.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="md:col-span-2 space-y-1">
+                        {validateVariant(
+                          createVariantsByChannel[createActiveVariantChannelId],
+                          channels.find((channel) => channel.id === createActiveVariantChannelId)?.slug || "",
+                        ).map((error) => (
+                          <p key={error} className="text-xs text-destructive">{error}</p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <BriefingGroup title="Wofür ist der Beitrag?" description="Vorlagen füllen Hook/CTA an, du kannst sie hier weiter schärfen." icon={ClipboardList}>
