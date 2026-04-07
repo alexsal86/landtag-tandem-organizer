@@ -171,7 +171,7 @@ export function DocumentsView() {
       const { data: archiveSetting, error } = await supabase
         .from("app_settings")
         .select("setting_value")
-        .eq("tenant_id", data.currentTenant.id)
+        .eq("tenant_id", data.currentTenant!.id)
         .eq("setting_key", AUTO_ARCHIVE_SETTING_KEY)
         .maybeSingle();
 

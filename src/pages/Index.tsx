@@ -12,7 +12,7 @@ import { useNavWidth } from "@/hooks/useNavWidth";
 const CustomizableDashboard = lazyWithRetry(() => import("@/components/CustomizableDashboard").then(m => ({ default: m.CustomizableDashboard })));
 const CalendarView = lazyWithRetry(() => import("@/components/CalendarView").then(m => ({ default: m.CalendarView })));
 const ContactsView = lazyWithRetry(() => import("@/components/ContactsView").then(m => ({ default: m.ContactsView })));
-const DocumentsView = lazyWithRetry(() => import("@/components/DocumentsView").then(m => ({ default: m.DocumentsView })));
+const DocumentsView = lazyWithRetry(() => import("@/components/DocumentsView").then(m => ({ default: m.DocumentsView as React.ComponentType })));
 const KnowledgeBaseView = lazyWithRetry(() => import("@/components/KnowledgeBaseView"));
 const TasksView = lazyWithRetry(() => import("@/components/TasksView").then(m => ({ default: m.TasksView })));
 const SettingsView = lazyWithRetry(() => import("@/components/SettingsView").then(m => ({ default: m.SettingsView })));
