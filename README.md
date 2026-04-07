@@ -104,6 +104,12 @@ Alle Seiten und schwere Komponenten werden über `lazyWithRetry()` geladen – L
 ### `debugConsole`
 Wrapper um `console.*` der im Production-Build stumm bleibt. Immer `debugConsole.log()` statt `console.log()` verwenden.
 
+**Logging-Regel für Feature-Komponenten (`src/features/**`):**
+- Erlaubt sind nur gezielte Debug-Logs für lokale Fehleranalyse (z. B. Render-/State-Diagnose während Entwicklung).
+- Kein dauerhaftes ungefiltertes Event-/Render-Spam-Logging in produktionsnahen Flows.
+- Direkte `console.*`-Aufrufe sind in Feature-Komponenten nicht erlaubt; stattdessen ausschließlich `debugConsole`.
+- Produktionsverhalten bleibt deaktiviert über den zentralen Guard in `src/utils/debugConsole.ts` (`isDebugConsoleEnabled()`), der nur bei explizit gesetztem Debug-Flag loggt.
+
 ### `handleAppError` / `getErrorMessage`
 Zentraler Error-Handler in `src/utils/errorHandler.ts`. Einheitliches Logging + optionaler Toast + optionales Rethrow:
 ```ts

@@ -4,9 +4,10 @@ import { PlannerBoard } from "./PlannerBoard";
 import { Themenspeicher } from "./Themenspeicher";
 import { useRedaktionSpecialDays } from "@/features/redaktion/hooks/useRedaktionSpecialDays";
 import { Button } from "@/components/ui/button";
+import { debugConsole } from "@/utils/debugConsole";
 
 export function RedaktionFeature() {
-  console.log("[RedaktionFeature] mounted");
+  debugConsole.log("[RedaktionFeature] mounted");
   const { data: specialDays = [] } = useRedaktionSpecialDays();
   const [isThemenspeicherOpen, setIsThemenspeicherOpen] = useState(false);
 

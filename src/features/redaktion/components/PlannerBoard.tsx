@@ -25,6 +25,7 @@ import { usePlannerNotes } from "@/features/redaktion/hooks/usePlannerNotes";
 import { useToast } from "@/hooks/use-toast";
 import type { SpecialDay } from "@/utils/dashboard/specialDays";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 
 const STATUS_COLUMNS: Array<{ id: PlannerWorkflowStatus; title: string }> = [
   { id: "ideas", title: "Ideen" },
@@ -668,7 +669,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   const { topics, createTopic } = useTopicBacklog();
   const { items, channels, loading, updateItem, createItem, deleteItem } = useSocialPlannerItems();
   const { notes, createNote, updateNote, deleteNote } = usePlannerNotes();
-  console.log("[PlannerBoard] render", { hasUsers: !!users, topicsCount: topics?.length, itemsCount: items?.length, channelsCount: channels?.length, loading });
+  debugConsole.log("[PlannerBoard] render", { hasUsers: !!users, topicsCount: topics?.length, itemsCount: items?.length, channelsCount: channels?.length, loading });
 
   const [channelFilter, setChannelFilter] = useState<string>("all");
   const [ownerFilter, setOwnerFilter] = useState<string>("all");
