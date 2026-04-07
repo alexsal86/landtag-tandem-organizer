@@ -54,7 +54,7 @@ export interface UseDaySlipStoreReturn {
   appendLinesToToday: (lines: string[]) => void;
   insertStructuredLines: (lines: string[]) => void;
   deleteLine: (lineId: string) => void;
-  toggleResolveLine: (lineId: string, line: string, target: ResolveTarget) => void;
+  toggleResolveLine: (lineId: string, line: string, target: ResolveTarget, snoozeUntil?: string) => void;
   createFromLine: (lineText: string, target: "note" | "task") => Promise<void>;
   persistResolvedItems: () => Promise<void>;
   onEditorChange: (editorState: EditorState, editor: LexicalEditor) => void;

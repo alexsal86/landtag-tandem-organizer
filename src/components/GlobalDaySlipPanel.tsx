@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useRef, useState, type DragEvent, type MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
 import { $createTextNode, $getRoot } from "lexical";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import {
-  Check, ClipboardPen, Clock3, Folder, FolderArchive, ListTodo, NotebookPen,
+  Check, ChevronDown, ClipboardPen, Clock3, Folder, FolderArchive, ListTodo, NotebookPen,
   Pencil, Scale, Settings, Trash2, X,
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { WeeklyRoutineGrid } from "@/components/dayslip/WeeklyRoutineGrid";
 import { WeekPlanningBanner } from "@/components/dayslip/WeekPlanningBanner";
