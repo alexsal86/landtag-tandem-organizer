@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
 import { icons, Loader2, Plus, RotateCcw, Save, Trash2 } from 'lucide-react';
+import { getLucideIcon } from '@/utils/iconUtils';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
