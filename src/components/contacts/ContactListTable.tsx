@@ -200,6 +200,8 @@ export function ContactListTable({
                     <button
                       onClick={(e) => { e.stopPropagation(); onToggleFavorite(contact.id, !contact.is_favorite); }}
                       className="absolute -top-1 -right-1.5 p-0 rounded-full hover:scale-110 transition-transform"
+                      aria-label={contact.is_favorite ? "Favorit entfernen" : "Als Favorit markieren"}
+                      title={contact.is_favorite ? "Favorit entfernen" : "Als Favorit markieren"}
                     >
                       <Star className={`h-3 w-3 ${contact.is_favorite ? 'text-yellow-500 fill-current' : 'text-muted-foreground/40 hover:text-yellow-500'}`} />
                     </button>
@@ -272,21 +274,36 @@ export function ContactListTable({
                   <div className="flex items-center gap-2">
                     {contact.email && (
                       <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                        <button className="text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(contact.email!); toast({ title: "E-Mail kopiert" }); }}>
+                        <button
+                          className="text-muted-foreground hover:text-foreground"
+                          onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(contact.email!); toast({ title: "E-Mail kopiert" }); }}
+                          aria-label="E-Mail-Adresse kopieren"
+                          title="E-Mail-Adresse kopieren"
+                        >
                           <Mail className="h-3.5 w-3.5" />
                         </button>
                       </TooltipTrigger><TooltipContent>{contact.email}</TooltipContent></Tooltip></TooltipProvider>
                     )}
                     {contact.phone && (
                       <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                        <button className="text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(contact.phone!); toast({ title: "Telefon kopiert" }); }}>
+                        <button
+                          className="text-muted-foreground hover:text-foreground"
+                          onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(contact.phone!); toast({ title: "Telefon kopiert" }); }}
+                          aria-label="Telefonnummer kopieren"
+                          title="Telefonnummer kopieren"
+                        >
                           <Phone className="h-3.5 w-3.5" />
                         </button>
                       </TooltipTrigger><TooltipContent>{contact.phone}</TooltipContent></Tooltip></TooltipProvider>
                     )}
                     {contact.linkedin && (
                       <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                        <button className="text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(contact.linkedin!); toast({ title: "LinkedIn kopiert" }); }}>
+                        <button
+                          className="text-muted-foreground hover:text-foreground"
+                          onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(contact.linkedin!); toast({ title: "LinkedIn kopiert" }); }}
+                          aria-label="LinkedIn-Profil kopieren"
+                          title="LinkedIn-Profil kopieren"
+                        >
                           <User className="h-3.5 w-3.5" />
                         </button>
                       </TooltipTrigger><TooltipContent>{contact.linkedin}</TooltipContent></Tooltip></TooltipProvider>

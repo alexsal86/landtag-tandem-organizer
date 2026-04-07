@@ -82,7 +82,14 @@ export function ContactGridCard({
                 </p>
               </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onToggleFavorite(contact.id, !contact.is_favorite); }} className="p-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => { e.stopPropagation(); onToggleFavorite(contact.id, !contact.is_favorite); }}
+              className="p-2"
+              aria-label={contact.is_favorite ? "Favorit entfernen" : "Als Favorit markieren"}
+              title={contact.is_favorite ? "Favorit entfernen" : "Als Favorit markieren"}
+            >
               <Star className={`h-4 w-4 transition-colors ${contact.is_favorite ? 'text-yellow-500 fill-current' : 'text-muted-foreground hover:text-yellow-500'}`} />
             </Button>
           </div>
@@ -106,6 +113,8 @@ export function ContactGridCard({
               variant="ghost"
               onClick={handleDeleteClick}
               className="px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+              aria-label="Kontakt löschen"
+              title="Kontakt löschen"
             >
               <Trash2 className="h-4 w-4" />
             </Button>

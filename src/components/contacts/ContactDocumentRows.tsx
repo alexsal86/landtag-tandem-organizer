@@ -119,6 +119,8 @@ export function ContactDocumentRows({ contactId, contactTags }: ContactDocumentR
                 size="sm"
                 onClick={() => handleDownload(doc.file_path, doc.file_name)}
                 className="h-6 w-6 p-0"
+                aria-label="Dokument herunterladen"
+                title="Dokument herunterladen"
               >
                 <Download className="h-3 w-3" />
               </Button>
@@ -127,6 +129,8 @@ export function ContactDocumentRows({ contactId, contactTags }: ContactDocumentR
                 size="sm"
                 onClick={() => handleOpenDocument(doc.id)}
                 className="h-6 w-6 p-0"
+                aria-label="Dokumentdetails öffnen"
+                title="Dokumentdetails öffnen"
               >
                 <ExternalLink className="h-3 w-3" />
               </Button>
@@ -193,6 +197,8 @@ export function ContactDocumentRows({ contactId, contactTags }: ContactDocumentR
                 size="sm"
                 onClick={() => handleDownload(doc.file_path, doc.file_name)}
                 className="h-6 w-6 p-0"
+                aria-label="Dokument herunterladen"
+                title="Dokument herunterladen"
               >
                 <Download className="h-3 w-3" />
               </Button>
@@ -201,6 +207,8 @@ export function ContactDocumentRows({ contactId, contactTags }: ContactDocumentR
                 size="sm"
                 onClick={() => handleOpenDocument(doc.id)}
                 className="h-6 w-6 p-0"
+                aria-label="Dokumentdetails öffnen"
+                title="Dokumentdetails öffnen"
               >
                 <ExternalLink className="h-3 w-3" />
               </Button>
