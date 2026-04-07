@@ -17,7 +17,8 @@ import {
   ChevronDown,
   ChevronRight
 } from "lucide-react";
-import { icons, LucideIcon } from "lucide-react";
+import { LucideIcon } from "lucide-react";
+import { getLucideIcon } from "@/utils/iconUtils";
 import { CaseFileCreateDialog } from "@/features/cases/files/components";
 import { CaseFileCard } from "@/features/cases/files/components";
 import { CaseFileDetail } from "@/features/cases/files/components";
