@@ -267,7 +267,7 @@ export function useSocialPlannerItems() {
 
   const updateItem = useCallback(async (
     id: string,
-    patch: Partial<Pick<SocialPlannerItem, "topic" | "tags" | "workflow_status" | "approval_state" | "responsible_user_id" | "format" | "content_goal" | "format_variant" | "asset_requirements" | "approval_required" | "publish_link" | "performance_notes" | "scheduled_for" | "hook" | "core_message" | "draft_text" | "cta" | "notes" | "channel_ids" | "hashtags" | "hashtags_in_comment" | "alt_text">>,
+    patch: Partial<Pick<SocialPlannerItem, "topic" | "tags" | "workflow_status" | "approval_state" | "responsible_user_id" | "format" | "content_goal" | "format_variant" | "asset_requirements" | "approval_required" | "publish_link" | "performance_notes" | "scheduled_for" | "hook" | "core_message" | "draft_text" | "cta" | "notes" | "channel_ids" | "hashtags" | "hashtags_in_comment" | "alt_text" | "image_url">>,
   ) => {
     if (!currentTenant?.id) return;
 
@@ -296,6 +296,7 @@ export function useSocialPlannerItems() {
     if (typeof patch.hashtags !== "undefined") dbPatch.hashtags = patch.hashtags;
     if (typeof patch.hashtags_in_comment !== "undefined") dbPatch.hashtags_in_comment = patch.hashtags_in_comment;
     if (typeof patch.alt_text !== "undefined") dbPatch.alt_text = patch.alt_text;
+    if (typeof patch.image_url !== "undefined") dbPatch.image_url = patch.image_url;
 
     if (Object.keys(dbPatch).length > 0) {
       const { error } = await supabase

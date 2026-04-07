@@ -1,6 +1,6 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-pangea/dnd";
-import { ArrowLeft, ArrowRight, CalendarDays, CheckSquare, ClipboardList, GripVertical, Kanban, Pencil, Plus, Tag, Trash2, type LucideIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, CheckSquare, ClipboardList, GripVertical, Image, Kanban, Pencil, Plus, Tag, Trash2, Upload, X, type LucideIcon } from "lucide-react";
 import { format } from "date-fns";
 import { useSearchParams } from "react-router-dom";
 import { de } from "date-fns/locale";
@@ -25,6 +25,7 @@ import { useTopicBacklog } from "@/features/redaktion/hooks/useTopicBacklog";
 import { usePlannerNotes } from "@/features/redaktion/hooks/usePlannerNotes";
 import { useToast } from "@/hooks/use-toast";
 import type { SpecialDay } from "@/utils/dashboard/specialDays";
+import { supabase } from "@/integrations/supabase/client";
 
 const STATUS_COLUMNS: Array<{ id: PlannerWorkflowStatus; title: string }> = [
   { id: "ideas", title: "Ideen" },
@@ -145,6 +146,7 @@ type SocialPlannerDraftPayload = {
   hashtags: string[];
   hashtags_in_comment: boolean;
   alt_text: string | null;
+  image_url: string | null;
 };
 
 type SocialPlannerTemplateId = (typeof TEMPLATE_OPTIONS)[number]["id"];
@@ -253,6 +255,8 @@ function SocialPlannerEditDialog({ item, open, users, channels, tagSuggestions, 
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [hashtagsInComment, setHashtagsInComment] = useState(false);
   const [altText, setAltText] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -281,6 +285,7 @@ function SocialPlannerEditDialog({ item, open, users, channels, tagSuggestions, 
     setHashtags(item.hashtags || []);
     setHashtagsInComment(item.hashtags_in_comment ?? false);
     setAltText(item.alt_text || "");
+    setImageUrl(item.image_url || null);
   }, [item]);
 
   const channelOptions = useMemo(
@@ -335,6 +340,7 @@ function SocialPlannerEditDialog({ item, open, users, channels, tagSuggestions, 
         hashtags,
         hashtags_in_comment: hashtagsInComment,
         alt_text: altText.trim() || null,
+        image_url: imageUrl,
       });
       onOpenChange(false);
     } catch {
@@ -500,21 +506,67 @@ function SocialPlannerEditDialog({ item, open, users, channels, tagSuggestions, 
               </div>
             </div>
 
-            {(assetRequirements.includes("Bild nötig") || assetRequirements.includes("Grafik nötig")) && (
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="edit-alt-text">Alt-Text / Bildbeschreibung</Label>
-                <Textarea
-                  id="edit-alt-text"
-                  rows={2}
-                  value={altText}
-                  onChange={(event) => setAltText(event.target.value)}
-                  placeholder="Beschreibung des Bildes für Screenreader und Barrierefreiheit"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Pflichtfeld für barrierefreie Veröffentlichungen (WCAG).
-                </p>
-              </div>
-            )}
+            <div className="space-y-3 md:col-span-2">
+              <Label>Bild hochladen</Label>
+              {imageUrl ? (
+                <div className="relative inline-block">
+                  <img src={imageUrl} alt="Vorschau" className="max-h-40 rounded-md border object-contain" />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -top-2 -right-2 h-6 w-6"
+                    onClick={() => setImageUrl(null)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <label className="flex cursor-pointer items-center gap-2 rounded-md border border-dashed p-4 text-sm text-muted-foreground hover:bg-muted/50 transition-colors">
+                  <Upload className="h-4 w-4" />
+                  <span>{uploadingImage ? "Wird hochgeladen…" : "Bild auswählen oder hierher ziehen"}</span>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploadingImage}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setUploadingImage(true);
+                      try {
+                        const fileExt = file.name.split('.').pop();
+                        const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
+                        const filePath = `planner-images/${fileName}`;
+                        const { error: uploadError } = await supabase.storage.from('documents').upload(filePath, file);
+                        if (uploadError) throw uploadError;
+                        const { data } = supabase.storage.from('documents').getPublicUrl(filePath);
+                        setImageUrl(data.publicUrl);
+                        toast({ title: "Bild hochgeladen" });
+                      } catch {
+                        toast({ title: "Upload fehlgeschlagen", variant: "destructive" });
+                      } finally {
+                        setUploadingImage(false);
+                      }
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="edit-alt-text">Alt-Text / Bildbeschreibung</Label>
+              <Textarea
+                id="edit-alt-text"
+                rows={2}
+                value={altText}
+                onChange={(event) => setAltText(event.target.value)}
+                placeholder="Beschreibung des Bildes für Screenreader und Barrierefreiheit"
+              />
+              <p className="text-xs text-muted-foreground">
+                Pflichtfeld für barrierefreie Veröffentlichungen (WCAG).
+              </p>
+            </div>
 
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="edit-notes">Interne Notizen</Label>
