@@ -229,12 +229,14 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                           "flex items-center gap-2",
                           isCollapsed && "justify-center"
                         )}>
-                          <Shield />
+                          <div className="relative">
+                            <Shield />
+                            {navigationCounts['administration'] > 0 && (
+                              <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-destructive animate-pulse-slow" />
+                            )}
+                          </div>
                           {!isCollapsed && <span className="text-sm">Administration</span>}
                         </div>
-                        {!isCollapsed && navigationCounts['administration'] > 0 && (
-                          <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-destructive animate-pulse-slow" />
-                        )}
                       </SidebarMenuButton>
                     </HoverCardTrigger>
                     <HoverCardContent side="right" className="w-80">
