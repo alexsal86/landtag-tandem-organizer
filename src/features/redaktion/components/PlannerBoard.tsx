@@ -254,6 +254,8 @@ function SocialPlannerEditDialog({ item, open, users, channels, tagSuggestions, 
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [hashtagsInComment, setHashtagsInComment] = useState(false);
   const [altText, setAltText] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
