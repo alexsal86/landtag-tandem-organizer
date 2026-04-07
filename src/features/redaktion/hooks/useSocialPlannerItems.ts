@@ -144,7 +144,7 @@ export function useSocialPlannerItems() {
         (itemRows || []).map((row) => {
           const channelLinks = (row.social_content_item_channels || []) as Array<{
             channel_id: string;
-            social_content_channels: { name: string } | null;
+            social_content_channels: { name: string; slug: string } | null;
           }>;
 
           const topicData = row.topic_backlog as { topic: string; tags: string[] | null } | null;
