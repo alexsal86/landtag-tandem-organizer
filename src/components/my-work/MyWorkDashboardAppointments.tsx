@@ -222,7 +222,7 @@ export const DashboardAppointments = ({ data }: Props) => {
   if (isLoading) return <div className="animate-pulse h-32 bg-muted rounded-lg" />;
 
   const HintIcon = specialDayHint?.icon
-    ? icons[specialDayHint.icon as keyof typeof icons]
+    ? getLucideIcon(specialDayHint.icon)
     : null;
 
   return (

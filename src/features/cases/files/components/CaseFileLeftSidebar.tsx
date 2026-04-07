@@ -51,8 +51,7 @@ export function CaseFileLeftSidebar({
 
   const getIconComponent = (iconName?: string | null): LucideIcon | null => {
     if (!iconName) return null;
-    const Icon = icons[iconName as keyof typeof icons] as LucideIcon;
-    return Icon || null;
+    return getLucideIcon(iconName);
   };
 
   const TypeIcon = getIconComponent(typeConfig?.icon);
