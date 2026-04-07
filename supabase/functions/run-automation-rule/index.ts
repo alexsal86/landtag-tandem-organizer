@@ -20,7 +20,7 @@ type ConditionGroup = {
 };
 
 type Action = {
-  type: "create_notification" | "update_record_status" | "create_task" | "send_push_notification" | "send_email_template" | "create_approval_request";
+  type: "create_notification" | "update_record_status" | "create_task" | "send_push_notification" | "send_email_template" | "create_approval_request" | "invoke_edge_function";
   payload?: Record<string, unknown>;
 };
 
@@ -668,6 +668,50 @@ serve(withSafeHandler("run-automation-rule", async (req) => {
 
         if (taskError) {
           throw taskError;
+        }
+      }
+
+
+      if (action.type === "invoke_edge_function") {
+        const payload = action.payload ?? {};
+        const functionName = String(payload.function_name ?? "").trim();
+        const functionPayload = (payload.body as Record<string, unknown> | undefined) ?? {};
+        const allowedFunctions = new Set(["sync-dossier-external-sources"]);
+
+        if (!functionName) {
+          await supabaseAdmin.from("automation_rule_run_steps").insert({
+            run_id: run.id,
+            tenant_id: rule.tenant_id,
+            step_order: stepOrder,
+            step_type: action.type,
+            status: "skipped",
+            input_payload: action,
+            result_payload: { reason: "missing_function_name" },
+          });
+          stepOrder += 1;
+          continue;
+        }
+
+        if (!allowedFunctions.has(functionName)) {
+          throw new Error(`Function not allowed: ${functionName}`);
+        }
+
+        const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${serviceRoleKey}`,
+            "Content-Type": "application/json",
+            "x-automation-secret": automationSecret,
+          },
+          body: JSON.stringify({
+            tenantId: rule.tenant_id,
+            ...functionPayload,
+          }),
+        });
+
+        if (!response.ok) {
+          const message = await response.text();
+          throw new Error(`invoke_edge_function failed (${response.status}): ${message}`);
         }
       }
 

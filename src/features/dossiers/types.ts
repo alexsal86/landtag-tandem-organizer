@@ -15,6 +15,7 @@ export interface Dossier {
   risks_opportunities: string | null;
   review_interval_days: number | null;
   next_review_at: string | null;
+  last_briefing_at: string | null;
 }
 
 export interface DossierEntry {
@@ -67,3 +68,19 @@ export const ENTRY_TYPE_CONFIG: Record<EntryType, { label: string; icon: string 
   email: { label: 'E-Mail', icon: '✉️' },
   zitat: { label: 'Zitat', icon: '💬' },
 };
+
+
+export interface DossierSourceWatcher {
+  id: string;
+  dossier_id: string;
+  tenant_id: string;
+  source_type: "rss" | "presse" | "verband";
+  source_name: string;
+  source_url: string;
+  keywords: string[];
+  is_active: boolean;
+  last_checked_at: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}

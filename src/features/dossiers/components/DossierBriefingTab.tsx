@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
+import { useUpdateDossier } from "../hooks/useDossiers";
 import { supabase } from "@/integrations/supabase/client";
 
 interface DossierBriefingTabProps {
@@ -16,6 +17,7 @@ interface DossierBriefingTabProps {
 
 export function DossierBriefingTab({ dossier, entries }: DossierBriefingTabProps) {
   const { data: links } = useDossierLinks(dossier.id);
+  const updateDossier = useUpdateDossier();
   const contactLinks = links?.filter((l) => l.linked_type === "contact") ?? [];
 
   // Resolve contact names
@@ -34,6 +36,7 @@ export function DossierBriefingTab({ dossier, entries }: DossierBriefingTabProps
   });
 
   const latest5 = entries?.slice(0, 5) ?? [];
+  const newSinceLastBriefing = entries?.filter((entry) => !dossier.last_briefing_at || new Date(entry.created_at) > new Date(dossier.last_briefing_at)) ?? [];
 
   const buildTextBriefing = () => {
     const lines: string[] = [];
@@ -115,6 +118,14 @@ export function DossierBriefingTab({ dossier, entries }: DossierBriefingTabProps
         <Button variant="outline" size="sm" onClick={handlePrint}>
           <Printer className="h-3.5 w-3.5" /> Drucken
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => updateDossier.mutate({ id: dossier.id, last_briefing_at: new Date().toISOString() })}
+          disabled={updateDossier.isPending}
+        >
+          Als gelesen markieren
+        </Button>
       </div>
 
       {/* Rendered Briefing */}
@@ -151,6 +162,13 @@ export function DossierBriefingTab({ dossier, entries }: DossierBriefingTabProps
           <section>
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Risiken &amp; Chancen</h3>
             <p className="text-sm whitespace-pre-wrap leading-relaxed">{dossier.risks_opportunities}</p>
+          </section>
+        )}
+
+        {newSinceLastBriefing.length > 0 && (
+          <section>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Neu seit letztem Briefing</h3>
+            <p className="text-sm"><span className="font-medium">{newSinceLastBriefing.length}</span> neue Einträge seit {dossier.last_briefing_at ? format(new Date(dossier.last_briefing_at), "dd.MM.yyyy", { locale: de }) : "Beginn"}.</p>
           </section>
         )}
 
