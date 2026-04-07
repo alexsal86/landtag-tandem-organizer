@@ -14,8 +14,9 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/components/ui/use-toast";
-import { Building2, Plus, Edit, Trash2, Users, UserPlus, RefreshCw, Copy, Check, MapPin } from "lucide-react";
+import { Building2, Plus, Edit, Trash2, Users, UserPlus, RefreshCw, Copy, Check, MapPin, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -73,6 +74,11 @@ export function SuperadminTenantManagement(): React.JSX.Element {
   const [formParty, setFormParty] = useState<string>("");
   const [formAppName, setFormAppName] = useState<string>("LandtagsOS");
   const [formAppSubtitle, setFormAppSubtitle] = useState<string>("Koordinationssystem");
+  const [formSocialInstagram, setFormSocialInstagram] = useState<string>("");
+  const [formSocialFacebook, setFormSocialFacebook] = useState<string>("");
+  const [formSocialX, setFormSocialX] = useState<string>("");
+  const [formSocialLinkedIn, setFormSocialLinkedIn] = useState<string>("");
+  const [socialSectionOpen, setSocialSectionOpen] = useState<boolean>(false);
 
   // User states
   const [allUsers, setAllUsers] = useState<UserWithTenants[]>([]);
@@ -173,6 +179,12 @@ export function SuperadminTenantManagement(): React.JSX.Element {
       city: formCity.trim(),
       state: formState,
       party: formParty.trim(),
+      social_media: {
+        instagram: formSocialInstagram.trim(),
+        facebook: formSocialFacebook.trim(),
+        x: formSocialX.trim(),
+        linkedin: formSocialLinkedIn.trim(),
+      },
     };
 
     try {
@@ -389,12 +401,26 @@ export function SuperadminTenantManagement(): React.JSX.Element {
       .select("settings")
       .eq("id", tenant.id)
       .maybeSingle();
-    const settings = (tenantData?.settings as Record<string, string>) ?? {};
-    setFormConstituency(settings.constituency || "");
-    setFormConstituencyNumber(settings.constituency_number || "");
-    setFormCity(settings.city || "");
-    setFormState(settings.state || "");
-    setFormParty(settings.party || "");
+    const settings = (tenantData?.settings as Record<string, unknown>) ?? {};
+    setFormConstituency(typeof settings.constituency === "string" ? settings.constituency : "");
+    setFormConstituencyNumber(typeof settings.constituency_number === "string" ? settings.constituency_number : "");
+    setFormCity(typeof settings.city === "string" ? settings.city : "");
+    setFormState(typeof settings.state === "string" ? settings.state : "");
+    setFormParty(typeof settings.party === "string" ? settings.party : "");
+    const socialMedia = (
+      settings.social_media &&
+      typeof settings.social_media === "object" &&
+      !Array.isArray(settings.social_media)
+    )
+      ? settings.social_media as Record<string, string>
+      : {};
+    setFormSocialInstagram(socialMedia.instagram || "");
+    setFormSocialFacebook(socialMedia.facebook || "");
+    setFormSocialX(socialMedia.x || "");
+    setFormSocialLinkedIn(socialMedia.linkedin || "");
+    setSocialSectionOpen(Boolean(
+      socialMedia.instagram || socialMedia.facebook || socialMedia.x || socialMedia.linkedin
+    ));
 
     // Load app_settings
     const { data: appSettings } = await supabase
@@ -427,6 +453,11 @@ export function SuperadminTenantManagement(): React.JSX.Element {
     setFormParty("");
     setFormAppName("LandtagsOS");
     setFormAppSubtitle("Koordinationssystem");
+    setFormSocialInstagram("");
+    setFormSocialFacebook("");
+    setFormSocialX("");
+    setFormSocialLinkedIn("");
+    setSocialSectionOpen(false);
     setEditingTenant(null);
   };
 
@@ -917,6 +948,59 @@ export function SuperadminTenantManagement(): React.JSX.Element {
                     />
                   </div>
                 </div>
+              </div>
+
+              {/* Social Media (optional) */}
+              <div className="space-y-4">
+                <Collapsible open={socialSectionOpen} onOpenChange={setSocialSectionOpen}>
+                  <CollapsibleTrigger asChild>
+                    <button
+                      type="button"
+                      className="w-full flex items-center justify-between rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted/50"
+                    >
+                      <span>Social Media (optional)</span>
+                      <ChevronDown className={`h-4 w-4 transition-transform ${socialSectionOpen ? "rotate-180" : ""}`} />
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-4 space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="grid gap-2">
+                        <Label>Instagram</Label>
+                        <Input
+                          value={formSocialInstagram}
+                          onChange={(e) => setFormSocialInstagram(e.target.value)}
+                          placeholder="@konto oder URL"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>Facebook</Label>
+                        <Input
+                          value={formSocialFacebook}
+                          onChange={(e) => setFormSocialFacebook(e.target.value)}
+                          placeholder="Seitenname oder URL"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="grid gap-2">
+                        <Label>X / Twitter</Label>
+                        <Input
+                          value={formSocialX}
+                          onChange={(e) => setFormSocialX(e.target.value)}
+                          placeholder="@konto oder URL"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>LinkedIn</Label>
+                        <Input
+                          value={formSocialLinkedIn}
+                          onChange={(e) => setFormSocialLinkedIn(e.target.value)}
+                          placeholder="Profil oder URL"
+                        />
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
 
               {/* App-Einstellungen */}
