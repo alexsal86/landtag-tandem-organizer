@@ -221,12 +221,12 @@ export function AdminSidebar({
   );
 
   return (
-    <div className={cn("w-64 border-r bg-muted/30 h-full", className)}>
+    <div className={cn("w-64 border-r bg-muted/30 h-full min-h-0", className)}>
       <div className="p-4 border-b">
         <h2 className="font-semibold text-lg">Administration</h2>
         <p className="text-xs text-muted-foreground">Systemkonfiguration</p>
       </div>
-      <ScrollArea className="h-[calc(100vh-180px)]">
+      <ScrollArea className="h-[calc(100dvh-180px)] h-[calc(100svh-180px)]">
         <div className="p-2 space-y-1">
           {visibleMenuItems.map((item) => {
             const Icon = item.icon;

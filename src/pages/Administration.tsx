@@ -436,8 +436,8 @@ export default function Administration(): React.JSX.Element | null {
   };
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] flex-col md:flex-row">
-      <div className="border-b bg-background p-3 md:hidden">
+    <div className="flex h-app-headerless flex-col md:flex-row">
+      <div className="border-b bg-background p-3 md:hidden px-safe">
         <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
           <SheetTrigger asChild>
             <Button variant="outline" size="sm" className="w-full justify-start gap-2">
@@ -445,7 +445,7 @@ export default function Administration(): React.JSX.Element | null {
               <span className="truncate">{currentSectionLabel}{currentSubSectionLabel ? ` · ${currentSubSectionLabel}` : ""}</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-[90vw] max-w-none p-0">
+          <SheetContent side="left" className="w-[90vw] max-w-none p-0 pb-safe-bottom">
             <SheetHeader className="sr-only">
               <SheetTitle>Administrations-Navigation</SheetTitle>
             </SheetHeader>

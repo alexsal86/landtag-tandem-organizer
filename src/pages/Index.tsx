@@ -155,7 +155,7 @@ const Index = (): React.JSX.Element => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
+      <div className="min-h-app bg-gradient-subtle flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
@@ -163,7 +163,7 @@ const Index = (): React.JSX.Element => {
 
   if (!user && activeSection !== 'knowledge') {
     return (
-      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center p-6">
+      <div className="min-h-app bg-gradient-subtle flex items-center justify-center p-6">
         <Card className="w-full max-w-md text-center">
           <CardHeader>
             <CardTitle>Landtag System</CardTitle>
@@ -266,8 +266,8 @@ const Index = (): React.JSX.Element => {
         Zum Hauptinhalt springen
       </a>
       
-      <div className={cn("flex min-h-screen w-full bg-background overflow-hidden", isResizing && "select-none")}>
-        <div className="hidden md:flex sticky top-0 h-screen z-30" style={{ width: navWidth }}>
+      <div className={cn("flex min-h-app h-app w-full bg-background overflow-hidden", isResizing && "select-none")}>
+        <div className="hidden md:flex sticky top-0 h-app z-30" style={{ width: navWidth }}>
           <AppNavigation 
             activeSection={activeSection} 
             onSectionChange={handleSectionChange}
@@ -281,7 +281,7 @@ const Index = (): React.JSX.Element => {
             )}
           />
         </div>
-        <div className={`flex flex-col flex-1 h-screen ${isCalendar ? "overflow-hidden min-h-0" : "overflow-y-auto"}`}>
+        <div className="flex flex-col flex-1 h-app overflow-hidden">
           {/* Header und SubNavigation fixiert am oberen Rand */}
           <div className="hidden md:block sticky top-0 z-40">
             {/* Sekundäre Navigation für aktive Gruppe */}
@@ -304,7 +304,7 @@ const Index = (): React.JSX.Element => {
               />
             ) : null}
           </div>
-          <main id="main-content" className="flex-1 min-h-0 bg-gradient-to-b from-background to-muted/20" tabIndex={-1}>
+          <main id="main-content" className={cn("flex-1 min-h-0 bg-gradient-to-b from-background to-muted/20", isCalendar ? "overflow-hidden" : "overflow-y-auto") } tabIndex={-1}>
             <ErrorBoundary>
               <Suspense fallback={
                 <div className="flex items-center justify-center h-64">

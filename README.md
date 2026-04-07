@@ -124,6 +124,12 @@ catch (error: unknown) {
 ### `typeSafety`
 Das kleine Type-Hardening-Paket in `src/utils/typeSafety.ts` bündelt Guards und Normalisierer für `unknown`-Werte, optionale Callbacks, Hook-Rückgaben und Supabase-Responses. Verbindliche Migrationsregeln stehen in `docs/type-migration-rules.md`.
 
+
+### Mobile Layout-Konvention (iOS/Android Browser)
+- Für viewportfüllende Container keine starren `100vh`/`h-screen`-Layouts mehr verwenden, sondern die Utilities aus `src/index.css` (`h-app`, `min-h-app`, `h-app-headerless`).
+- Sticky-Header bleiben außerhalb des Scrollbereichs; der eigentliche Seiten-Scroll soll im `main`/Content-Container liegen (`flex-1 min-h-0 overflow-y-auto`).
+- Mobile Header/Bottom-Bereiche immer mit Safe-Area-Utilities absichern (`pt-safe-top`, `pb-safe-bottom`, `px-safe`), damit Notch/Home-Indicator keine Inhalte überdecken.
+
 ### Multi-Tenant-System
 - Jeder Datensatz gehört zu einem `tenant_id`
 - RLS-Policies nutzen `get_user_tenant_ids(auth.uid())` für Zugriffskontrolle

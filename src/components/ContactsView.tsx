@@ -58,7 +58,7 @@ export function ContactsView() {
   const currentViewMode = s.activeTab === "contacts" ? s.viewMode : s.activeTab === "stakeholders" ? s.stakeholderViewMode : s.distributionViewMode;
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)]">
+    <div className="flex h-app-headerless">
       {/* Side Panel */}
       <ContactsSidePanel
         activeTab={s.activeTab}

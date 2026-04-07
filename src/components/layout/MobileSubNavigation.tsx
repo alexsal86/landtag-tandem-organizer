@@ -26,7 +26,7 @@ export function MobileSubNavigation({ items, activeItem, onItemChange }: MobileS
   };
 
   return (
-    <div className="sticky top-14 z-40 bg-background border-b border-border">
+    <div className="sticky top-mobile-header z-40 bg-background border-b border-border px-safe">
       <ScrollArea className="w-full">
         <div className="flex gap-1 p-2 min-w-max">
           {items.map((item) => {

@@ -899,7 +899,7 @@ export function AppNavigation({
     <TooltipProvider delayDuration={300}>
       <nav className={cn(
         "flex flex-col w-full bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-r border-border shrink-0 select-none",
-        isMobile ? "h-full" : "h-screen"
+        isMobile ? "h-full pb-safe-bottom" : "h-app"
       )}>
         {/* Logo + Workspace Name + Subtitle */}
         <div className="flex items-center gap-2.5 px-4 py-3 shrink-0">
