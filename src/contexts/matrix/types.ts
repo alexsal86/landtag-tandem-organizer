@@ -148,6 +148,7 @@ export type MatrixEventPayload = MatrixRealtimePayload | MatrixPresencePayload;
 export interface MatrixVerificationRequest {
   transactionId?: string;
   otherDeviceId?: string;
+  initiatedByMe?: boolean;
   phase: VerificationPhase;
   verifier?: Verifier;
   accept: () => Promise<void>;
