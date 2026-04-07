@@ -56,11 +56,27 @@ export function ContactListTable({
   const [splitNameMode, setSplitNameMode] = useState(() => {
     try { return localStorage.getItem("contacts-split-name") === "true"; } catch { return false; }
   });
+  const [showSalutation, setShowSalutation] = useState(() => {
+    try { return localStorage.getItem("contacts-show-salutation") === "true"; } catch { return false; }
+  });
+  const [orgColumn, setOrgColumn] = useState(() => {
+    try { return localStorage.getItem("contacts-org-column") === "true"; } catch { return false; }
+  });
 
   const toggleSplitName = () => {
     const next = !splitNameMode;
     setSplitNameMode(next);
     try { localStorage.setItem("contacts-split-name", String(next)); } catch {}
+  };
+  const toggleSalutation = () => {
+    const next = !showSalutation;
+    setShowSalutation(next);
+    try { localStorage.setItem("contacts-show-salutation", String(next)); } catch {}
+  };
+  const toggleOrgColumn = () => {
+    const next = !orgColumn;
+    setOrgColumn(next);
+    try { localStorage.setItem("contacts-org-column", String(next)); } catch {}
   };
 
   return (
@@ -72,7 +88,6 @@ export function ContactListTable({
               <TableHead className="w-10 px-2 sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80"></TableHead>
             )}
             <TableHead className="w-10 px-2 sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80"></TableHead>
-            <SortableTableHead sortKey="gender" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort} className="w-16 sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">Anrede</SortableTableHead>
             {splitNameMode ? (
               <>
                 <SortableTableHead sortKey="name" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort} className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -85,27 +100,58 @@ export function ContactListTable({
             ) : (
               <SortableTableHead sortKey="name" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort} className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">Name</SortableTableHead>
             )}
-            <SortableTableHead sortKey="organization" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort} className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">Organisation</SortableTableHead>
+            {orgColumn && (
+              <SortableTableHead sortKey="organization" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort} className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">Organisation</SortableTableHead>
+            )}
             <SortableTableHead sortKey="email" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort} className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">Kontakt</SortableTableHead>
             <SortableTableHead sortKey="address" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort} className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">Adresse</SortableTableHead>
-            <TableHead className="w-20 sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center gap-1.5 cursor-pointer" onClick={toggleSplitName}>
-                      <Switch checked={splitNameMode} className="scale-75" tabIndex={-1} />
-                      <span className="text-xs">V/N</span>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>Vor-/Nachname aufteilen</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+            <TableHead className="w-44 sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+              <div className="flex items-center gap-3">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-1 cursor-pointer" onClick={toggleSplitName}>
+                        <Switch checked={splitNameMode} className="scale-[0.6]" tabIndex={-1} />
+                        <span className="text-[10px]">V/N</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>Vor-/Nachname aufteilen</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-1 cursor-pointer" onClick={toggleSalutation}>
+                        <Switch checked={showSalutation} className="scale-[0.6]" tabIndex={-1} />
+                        <span className="text-[10px]">Hr/Fr</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>Anrede inline anzeigen</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-1 cursor-pointer" onClick={toggleOrgColumn}>
+                        <Switch checked={orgColumn} className="scale-[0.6]" tabIndex={-1} />
+                        <span className="text-[10px]">Org</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>Organisation als eigene Spalte</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
             </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {contacts.map((contact) => {
             const { firstName, lastName } = splitName(contact.name);
+            const salutationPrefix = showSalutation && contact.contact_type !== "organization"
+              ? (getGenderLabel(contact.gender ?? undefined) ? getGenderLabel(contact.gender ?? undefined) + " " : "")
+              : "";
+            const orgInline = !orgColumn && contact.contact_type !== "organization" && contact.organization;
+
             return (
               <TableRow key={contact.id} className="cursor-pointer hover:bg-muted/50 h-11" onClick={() => onContactClick(contact.id)}>
                 {isSelectionMode && (
@@ -133,21 +179,17 @@ export function ContactListTable({
                   </div>
                 </TableCell>
 
-                {/* Anrede */}
-                <TableCell className="py-1">
-                  <span className="text-xs text-muted-foreground">
-                    {contact.contact_type === "organization" ? "Org." : getGenderLabel(contact.gender ?? undefined) || "–"}
-                  </span>
-                </TableCell>
-
                 {/* Name */}
                 {splitNameMode ? (
                   <>
-                    <TableCell className="py-1"><span className="text-sm truncate block max-w-[140px]">{firstName}</span></TableCell>
+                    <TableCell className="py-1">
+                      <span className="text-sm truncate block max-w-[140px]">{salutationPrefix}{firstName}</span>
+                      {orgInline && <span className="text-xs text-muted-foreground truncate block max-w-[140px]">{contact.organization}</span>}
+                    </TableCell>
                     <TableCell className="py-1">
                       <HoverCard openDelay={200} closeDelay={100}>
                         <HoverCardTrigger asChild>
-                          <span className="text-sm font-medium truncate block max-w-[140px] underline-offset-2 hover:underline">{lastName}</span>
+                          <span className="text-sm font-semibold truncate block max-w-[140px] underline-offset-2 hover:underline">{lastName}</span>
                         </HoverCardTrigger>
                         <HoverCardContent align="start" className="w-80 space-y-3">
                           <div>
@@ -168,7 +210,10 @@ export function ContactListTable({
                   <TableCell className="py-1">
                     <HoverCard openDelay={200} closeDelay={100}>
                       <HoverCardTrigger asChild>
-                        <span className="text-sm font-medium truncate block max-w-[200px] underline-offset-2 hover:underline">{contact.name}</span>
+                        <div className="max-w-[200px]">
+                          <span className="text-sm font-semibold truncate block underline-offset-2 hover:underline">{salutationPrefix}{contact.name}</span>
+                          {orgInline && <span className="text-xs text-muted-foreground truncate block">{contact.organization}</span>}
+                        </div>
                       </HoverCardTrigger>
                       <HoverCardContent align="start" className="w-80 space-y-3">
                         <div>
@@ -186,12 +231,14 @@ export function ContactListTable({
                   </TableCell>
                 )}
 
-                {/* Organisation */}
-                <TableCell className="py-1">
-                  <span className="text-sm truncate block max-w-[160px]">
-                    {contact.contact_type === "organization" ? "–" : (contact.organization || "–")}
-                  </span>
-                </TableCell>
+                {/* Organisation (eigene Spalte, nur wenn Toggle aktiv) */}
+                {orgColumn && (
+                  <TableCell className="py-1">
+                    <span className="text-sm truncate block max-w-[160px]">
+                      {contact.contact_type === "organization" ? "–" : (contact.organization || "–")}
+                    </span>
+                  </TableCell>
+                )}
 
                 {/* Contact info */}
                 <TableCell className="py-1">
