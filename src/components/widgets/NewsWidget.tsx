@@ -160,7 +160,7 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
                         <span className="text-primary">{article.source}</span>
                         <span> • {formatDateWithoutYear(article.pub_date)}</span>
                       </div>
-                      <div className="flex shrink-0 items-center gap-0.5">
+                      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto">
                         <Button
                           variant="ghost"
                           size="sm"
