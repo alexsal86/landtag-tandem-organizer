@@ -84,9 +84,13 @@ function DayCell({
 
   const handleAddNote = useCallback(async () => {
     if (!newNoteText.trim()) return;
-    await onCreateNote(dateKey, newNoteText.trim(), newNoteColor);
-    setNewNoteText("");
-    setNoteOpen(false);
+    try {
+      await onCreateNote(dateKey, newNoteText.trim(), newNoteColor);
+      setNewNoteText("");
+      setNoteOpen(false);
+    } catch (err) {
+      console.error("Failed to create note:", err);
+    }
   }, [dateKey, newNoteColor, newNoteText, onCreateNote]);
 
   return (
