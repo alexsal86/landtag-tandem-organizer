@@ -380,7 +380,7 @@ export function AppNavigation({
         <div className="relative">
           <Icon className={cn("h-4 w-4 shrink-0", clickedItem === id && "animate-nav-bounce")} />
           {badge > 0 && (
-            <span className="absolute -top-1 -right-1.5 h-2 w-2 rounded-full bg-destructive animate-pulse-slow" />
+            <span className="absolute -top-1 -right-0.5 h-2 w-2 rounded-full bg-destructive animate-pulse-slow" />
           )}
         </div>
         <span className="truncate text-sm">{label}</span>
@@ -421,7 +421,7 @@ export function AppNavigation({
           <div className="relative">
             <group.icon className="h-4 w-4 shrink-0" />
             {badge > 0 && (
-              <span className="absolute -top-1 -right-1.5 h-2 w-2 rounded-full bg-destructive animate-pulse-slow" />
+              <span className="absolute -top-1 -right-0.5 h-2 w-2 rounded-full bg-destructive animate-pulse-slow" />
             )}
           </div>
           <span className="truncate text-sm">{group.label}</span>
