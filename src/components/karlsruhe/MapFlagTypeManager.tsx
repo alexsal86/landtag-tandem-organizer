@@ -12,6 +12,9 @@ import { Card } from '@/components/ui/card';
 import { TagIconPicker } from '@/components/contacts/TagIconPicker';
 import { icons } from 'lucide-react';
 
+const toPascalCase = (name: string): string =>
+  name.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('');
+
 const PRESET_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b'];
 
 export const MapFlagTypeManager = () => {

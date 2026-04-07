@@ -5,6 +5,9 @@ import { useMapFlagTypes } from '@/hooks/useMapFlagTypes';
 import { useMapFlags } from '@/hooks/useMapFlags';
 import { icons } from 'lucide-react';
 
+const toPascalCase = (name: string): string =>
+  name.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('');
+
 interface MapFlagLayerToggleProps {
   visibleTypes: Set<string>;
   onToggleType: (typeId: string) => void;
