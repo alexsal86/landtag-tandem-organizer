@@ -75,19 +75,33 @@ export function useDocumentsData(activeTab: string) {
   const fetchFolders = async () => {
     if (!currentTenant) return;
     try {
-      const { data, error } = await supabase
-        .from('document_folders')
-        .select('id, name, description, parent_folder_id, order_index, tenant_id, created_at, updated_at, user_id, color, icon')
-        .eq('tenant_id', currentTenant.id)
-        .order('order_index', { ascending: true });
-      if (error) throw error;
-      const foldersWithCounts = await Promise.all((data || []).map(async (folder) => {
-        const { count } = await supabase
+      const [foldersResponse, folderDocumentsResponse] = await Promise.all([
+        supabase
+          .from('document_folders')
+          .select('id, name, description, parent_folder_id, order_index, tenant_id, created_at, updated_at, user_id, color, icon')
+          .eq('tenant_id', currentTenant.id)
+          .order('order_index', { ascending: true }),
+        supabase
           .from('documents')
-          .select('id', { count: 'exact', head: true })
-          .eq('folder_id', folder.id);
-        return { ...folder, documentCount: count || 0 };
+          .select('folder_id')
+          .eq('tenant_id', currentTenant.id)
+          .not('folder_id', 'is', null),
+      ]);
+
+      if (foldersResponse.error) throw foldersResponse.error;
+      if (folderDocumentsResponse.error) throw folderDocumentsResponse.error;
+
+      const folderCounts = (folderDocumentsResponse.data || []).reduce<Record<string, number>>((acc, doc) => {
+        if (!doc.folder_id) return acc;
+        acc[doc.folder_id] = (acc[doc.folder_id] || 0) + 1;
+        return acc;
+      }, {});
+
+      const foldersWithCounts = (foldersResponse.data || []).map((folder) => ({
+        ...folder,
+        documentCount: folderCounts[folder.id] || 0,
       }));
+
       setFolders(foldersWithCounts as DocumentFolder[]);
     } catch (error: unknown) {
       debugConsole.error('Error fetching folders:', error);
