@@ -39,8 +39,10 @@ interface Props {
 
 export const PlannerPostCard = memo(function PlannerPostCard({ item, onClick }: Props) {
   const time = item.scheduled_for ? format(new Date(item.scheduled_for), "HH:mm") : null;
-  const channelSlugs = item.channel_slugs || [];
+  const channelSlugs = (item.channel_slugs || []).filter((slug, index, arr) => arr.indexOf(slug) === index);
   const imageUrl = item.image_url;
+  const hiddenChannelCount = Math.max(channelSlugs.length - 1, 0);
+  const showCollapsedChannels = channelSlugs.length > 2;
 
   return (
     <div
@@ -49,11 +51,31 @@ export const PlannerPostCard = memo(function PlannerPostCard({ item, onClick }: 
     >
       {/* Header: channel icons + time */}
       <div className="flex items-center justify-between gap-1">
-        <div className="flex items-center gap-1">
-          {channelSlugs.map((slug) => {
-            const Icon = CHANNEL_ICONS[slug];
-            return Icon ? <Icon key={slug} className="h-3.5 w-3.5 text-muted-foreground" /> : null;
-          })}
+        <div className="group relative">
+          <div className="flex items-center gap-1 rounded-md bg-muted px-1.5 py-1">
+            {showCollapsedChannels ? (
+              <>
+                {(() => {
+                  const Icon = CHANNEL_ICONS[channelSlugs[0]];
+                  return Icon ? <Icon className="h-3.5 w-3.5 text-muted-foreground" /> : null;
+                })()}
+                <span className="text-[10px] font-medium leading-none text-muted-foreground">{hiddenChannelCount}+</span>
+              </>
+            ) : (
+              channelSlugs.map((slug) => {
+                const Icon = CHANNEL_ICONS[slug];
+                return Icon ? <Icon key={slug} className="h-3.5 w-3.5 text-muted-foreground" /> : null;
+              })
+            )}
+          </div>
+          {showCollapsedChannels && (
+            <div className="pointer-events-none absolute left-0 top-0 z-10 flex items-center gap-1 rounded-md bg-muted px-1.5 py-1 opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
+              {channelSlugs.map((slug) => {
+                const Icon = CHANNEL_ICONS[slug];
+                return Icon ? <Icon key={`expanded-${slug}`} className="h-3.5 w-3.5 text-muted-foreground" /> : null;
+              })}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-1">
           <Badge
