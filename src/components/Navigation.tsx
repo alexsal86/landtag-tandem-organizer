@@ -175,6 +175,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                             )}
                           </div>
                           {!isCollapsed && <span className="text-sm">{item.label}</span>}
+                        </div>
                       </SidebarMenuButton>
                     </HoverCardTrigger>
                     <HoverCardContent side="right" className="w-80">
