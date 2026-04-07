@@ -146,7 +146,7 @@ function DayCell({
                 onClick={(e) => e.stopPropagation()}
               >
                 <FileText className="h-3.5 w-3.5" />
-                <span className="text-[13px]">Note</span>
+                <span className="text-[13px]">Notiz</span>
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-64 space-y-2" onClick={(e) => e.stopPropagation()}>
@@ -292,8 +292,8 @@ export function PlannerCalendarGrid({
               const today = isToday(d);
               return (
                 <div key={d.toISOString()} className="border-r px-2 py-2 text-center last:border-r-0">
-                  <span className="text-xs text-muted-foreground">{format(d, "EEE", { locale: de })}</span>
-                  <br />
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span className="text-xs text-muted-foreground">{format(d, "EEE", { locale: de })}</span>
                   <span
                     className={`text-sm font-semibold ${
                       today
@@ -303,6 +303,7 @@ export function PlannerCalendarGrid({
                   >
                     {format(d, "d")}
                   </span>
+                  </div>
                 </div>
               );
             })

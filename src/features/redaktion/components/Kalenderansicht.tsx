@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { CalendarDays, AlertTriangle, Clock3, ChevronLeft, ChevronRight, Tag } from "lucide-react";
 import { addMonths, addWeeks, endOfWeek, format, startOfWeek } from "date-fns";
 import { de } from "date-fns/locale";
@@ -46,9 +46,10 @@ interface Props {
   onCreateNote: (noteDate: string, content: string, color?: string) => Promise<void>;
   onUpdateNote: (id: string, patch: Partial<Pick<PlannerNote, "content" | "color" | "visible_to_all">>) => Promise<void>;
   onDeleteNote: (id: string) => Promise<void>;
+  headerActions?: ReactNode;
 }
 
-export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateAtSlot, specialDays, notes, onCreateNote, onUpdateNote, onDeleteNote }: Props) {
+export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateAtSlot, specialDays, notes, onCreateNote, onUpdateNote, onDeleteNote, headerActions }: Props) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"week" | "month">("week");
   const [inlineScheduleDates, setInlineScheduleDates] = useState<Record<string, string>>({});
@@ -105,7 +106,10 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateA
           </div>
         </div>
         <div className="xl:ml-auto xl:text-right">
-          <h4 className="text-lg font-semibold capitalize text-foreground">{rangeLabel}</h4>
+          <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+            <h4 className="text-lg font-semibold capitalize text-foreground">{rangeLabel}</h4>
+            {headerActions}
+          </div>
           <p className="text-xs text-muted-foreground">Planungskalender</p>
         </div>
       </div>

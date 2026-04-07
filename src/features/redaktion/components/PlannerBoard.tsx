@@ -1190,93 +1190,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
 
   return (
     <Card>
-      <CardHeader className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <CardTitle className="text-base">Social Planner</CardTitle>
-            <p className="text-xs text-muted-foreground">Redaktionsplanung – von Idee bis Veröffentlichung.</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => setIsCreateDialogOpen(true)}>
-              <Plus className="mr-1 h-4 w-4" />
-              Neuen Inhalt entwerfen
-            </Button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="relative">
-                  <Filter className="mr-1 h-4 w-4" />
-                  Filter
-                  {hasActiveFilters && (
-                    <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-primary" />
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 space-y-3" align="end">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Filter & Sortierung</span>
-                  {hasActiveFilters && (
-                    <Button variant="ghost" size="sm" className="h-auto px-2 py-1 text-xs" onClick={clearFilters}>
-                      Zurücksetzen
-                    </Button>
-                  )}
-                </div>
-                <Select value={channelFilter} onValueChange={setChannelFilter}>
-                  <SelectTrigger><SelectValue placeholder="Kanal" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Alle Kanäle</SelectItem>
-                    {channels.map((channel) => <SelectItem key={channel.id} value={channel.id}>{channel.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Select value={ownerFilter} onValueChange={setOwnerFilter}>
-                  <SelectTrigger><SelectValue placeholder="Verantwortlich" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Alle Verantwortlichen</SelectItem>
-                    {users.map((user) => <SelectItem key={user.id} value={user.id}>{user.display_name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Alle Status</SelectItem>
-                    {STATUS_COLUMNS.map((status) => <SelectItem key={status.id} value={status.id}>{status.title}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Select value={formatFilter} onValueChange={(value) => setFormatFilter(value as PlannerFormatFilter)}>
-                  <SelectTrigger><SelectValue placeholder="Format" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Alle Formate</SelectItem>
-                    <SelectItem value="story">Nur Stories</SelectItem>
-                    <SelectItem value="feed">Nur Feed</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={campaignFilter} onValueChange={setCampaignFilter}>
-                  <SelectTrigger><SelectValue placeholder="Kampagne" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Alle Kampagnen</SelectItem>
-                    {campaigns.map((campaign) => <SelectItem key={campaign.id} value={campaign.id}>{campaign.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Select value={pillarFilter} onValueChange={setPillarFilter}>
-                  <SelectTrigger><SelectValue placeholder="Content-Pillar" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Alle Pillars</SelectItem>
-                    {CONTENT_PILLAR_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Input value={tagSearch} onChange={(event) => setTagSearch(event.target.value)} placeholder="Thema/Tag suchen" />
-                <Select value={sortBy} onValueChange={(value) => setSortBy(value as (typeof SORT_OPTIONS)[number]["value"])}>
-                  <SelectTrigger><SelectValue placeholder="Sortierung" /></SelectTrigger>
-                  <SelectContent>
-                    {SORT_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </PopoverContent>
-            </Popover>
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent>
+      <CardContent className="pt-6">
         <Kalenderansicht
           items={filteredItems}
           onUpdateSchedule={handleCalendarScheduleUpdate}
@@ -1291,6 +1205,85 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
           onCreateNote={createNote}
           onUpdateNote={updateNote}
           onDeleteNote={deleteNote}
+          headerActions={(
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => setIsCreateDialogOpen(true)}>
+                <Plus className="mr-1 h-4 w-4" />
+                Neuen Inhalt entwerfen
+              </Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="relative">
+                    <Filter className="mr-1 h-4 w-4" />
+                    Filter
+                    {hasActiveFilters && (
+                      <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-primary" />
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 space-y-3" align="end">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Filter & Sortierung</span>
+                    {hasActiveFilters && (
+                      <Button variant="ghost" size="sm" className="h-auto px-2 py-1 text-xs" onClick={clearFilters}>
+                        Zurücksetzen
+                      </Button>
+                    )}
+                  </div>
+                  <Select value={channelFilter} onValueChange={setChannelFilter}>
+                    <SelectTrigger><SelectValue placeholder="Kanal" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Alle Kanäle</SelectItem>
+                      {channels.map((channel) => <SelectItem key={channel.id} value={channel.id}>{channel.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+                    <SelectTrigger><SelectValue placeholder="Verantwortlich" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Alle Verantwortlichen</SelectItem>
+                      {users.map((user) => <SelectItem key={user.id} value={user.id}>{user.display_name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Alle Status</SelectItem>
+                      {STATUS_COLUMNS.map((status) => <SelectItem key={status.id} value={status.id}>{status.title}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={formatFilter} onValueChange={(value) => setFormatFilter(value as PlannerFormatFilter)}>
+                    <SelectTrigger><SelectValue placeholder="Format" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Alle Formate</SelectItem>
+                      <SelectItem value="story">Nur Stories</SelectItem>
+                      <SelectItem value="feed">Nur Feed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={campaignFilter} onValueChange={setCampaignFilter}>
+                    <SelectTrigger><SelectValue placeholder="Kampagne" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Alle Kampagnen</SelectItem>
+                      {campaigns.map((campaign) => <SelectItem key={campaign.id} value={campaign.id}>{campaign.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={pillarFilter} onValueChange={setPillarFilter}>
+                    <SelectTrigger><SelectValue placeholder="Content-Pillar" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Alle Pillars</SelectItem>
+                      {CONTENT_PILLAR_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Input value={tagSearch} onChange={(event) => setTagSearch(event.target.value)} placeholder="Thema/Tag suchen" />
+                  <Select value={sortBy} onValueChange={(value) => setSortBy(value as (typeof SORT_OPTIONS)[number]["value"])}>
+                    <SelectTrigger><SelectValue placeholder="Sortierung" /></SelectTrigger>
+                    <SelectContent>
+                      {SORT_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
         />
 
         {loading && <p className="mt-3 text-xs text-muted-foreground">Lade Social-Planer…</p>}
