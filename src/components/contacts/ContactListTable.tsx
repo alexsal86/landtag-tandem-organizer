@@ -29,15 +29,21 @@ interface ContactListTableProps {
 function SortableTableHead({ children, sortKey, sortColumn, sortDirection, onSort, className = "" }: {
   children: React.ReactNode; sortKey: string; sortColumn: string | null; sortDirection: "asc" | "desc"; onSort: (col: string) => void; className?: string;
 }) {
+  const ariaSort = sortColumn === sortKey ? (sortDirection === "asc" ? "ascending" : "descending") : "none";
+
   return (
-    <TableHead className={`cursor-pointer select-none hover:bg-muted/50 transition-colors ${className}`} onClick={() => onSort(sortKey)}>
-      <div className="flex items-center gap-1">
-        {children}
-        <div className="flex flex-col gap-0">
+    <TableHead aria-sort={ariaSort} className={className}>
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className="flex w-full items-center gap-1 rounded-sm px-1 py-1 text-left text-inherit transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+      >
+        <span>{children}</span>
+        <div className="flex flex-col gap-0" aria-hidden="true">
           <ChevronUp className={`h-3 w-3 transition-colors ${sortColumn === sortKey && sortDirection === "asc" ? "text-primary" : "text-muted-foreground/40"}`} />
-          <ChevronDown className={`h-3 w-3 transition-colors -mt-0.5 ${sortColumn === sortKey && sortDirection === "desc" ? "text-primary" : "text-muted-foreground/40"}`} />
+          <ChevronDown className={`-mt-0.5 h-3 w-3 transition-colors ${sortColumn === sortKey && sortDirection === "desc" ? "text-primary" : "text-muted-foreground/40"}`} />
         </div>
-      </div>
+      </button>
     </TableHead>
   );
 }
@@ -110,10 +116,17 @@ export function ContactListTable({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="flex items-center gap-1 cursor-pointer" onClick={toggleSplitName}>
-                        <Switch checked={splitNameMode} className="scale-[0.6]" tabIndex={-1} />
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 rounded-sm px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                        onClick={toggleSplitName}
+                        role="switch"
+                        aria-checked={splitNameMode}
+                        aria-label="Vor-/Nachname aufteilen"
+                      >
+                        <Switch checked={splitNameMode} className="scale-[0.6]" tabIndex={-1} aria-hidden="true" />
                         <span className="text-[10px]">V/N</span>
-                      </div>
+                      </button>
                     </TooltipTrigger>
                     <TooltipContent>Vor-/Nachname aufteilen</TooltipContent>
                   </Tooltip>
@@ -121,10 +134,17 @@ export function ContactListTable({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="flex items-center gap-1 cursor-pointer" onClick={toggleSalutation}>
-                        <Switch checked={showSalutation} className="scale-[0.6]" tabIndex={-1} />
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 rounded-sm px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                        onClick={toggleSalutation}
+                        role="switch"
+                        aria-checked={showSalutation}
+                        aria-label="Anrede inline anzeigen"
+                      >
+                        <Switch checked={showSalutation} className="scale-[0.6]" tabIndex={-1} aria-hidden="true" />
                         <span className="text-[10px]">Hr/Fr</span>
-                      </div>
+                      </button>
                     </TooltipTrigger>
                     <TooltipContent>Anrede inline anzeigen</TooltipContent>
                   </Tooltip>
@@ -132,10 +152,17 @@ export function ContactListTable({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="flex items-center gap-1 cursor-pointer" onClick={toggleOrgColumn}>
-                        <Switch checked={orgColumn} className="scale-[0.6]" tabIndex={-1} />
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 rounded-sm px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                        onClick={toggleOrgColumn}
+                        role="switch"
+                        aria-checked={orgColumn}
+                        aria-label="Organisation als eigene Spalte"
+                      >
+                        <Switch checked={orgColumn} className="scale-[0.6]" tabIndex={-1} aria-hidden="true" />
                         <span className="text-[10px]">Org</span>
-                      </div>
+                      </button>
                     </TooltipTrigger>
                     <TooltipContent>Organisation als eigene Spalte</TooltipContent>
                   </Tooltip>

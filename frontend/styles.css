@@ -78,6 +78,12 @@ main {
   background: #2d3034;
   transition: background .15s, border-color .15s;
   line-height: 1.25;
+  color: var(--fg);
+  text-align: left;
+  font-size: inherit;
+  font-weight: 400;
+  letter-spacing: normal;
+  width: 100%;
 }
 
 .session-item:hover {
@@ -87,6 +93,11 @@ main {
 .session-item.active {
   border-color: var(--accent);
   background: #334455;
+}
+
+.session-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .session-item .small {

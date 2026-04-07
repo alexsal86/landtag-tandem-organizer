@@ -46,14 +46,17 @@ function renderSessionList() {
       return (a.legislative_period||0) - (b.legislative_period||0);
     })
     .forEach(sess => {
-      const div = document.createElement('div');
-      div.className = 'session-item';
-      div.innerHTML = `
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'session-item';
+      button.dataset.file = sess.file || '';
+      button.setAttribute('aria-current', state.currentSession === sess.file ? 'true' : 'false');
+      button.innerHTML = `
         <div><strong>${sess.legislative_period || '?'} / ${sess.number || '?'}</strong> – ${sess.date || '???'}</div>
         <div class="small">Reden: ${sess.speeches ?? '-'} | Seiten: ${sess.pages ?? '-'}</div>
       `;
-      div.addEventListener('click', () => loadSession(sess));
-      container.appendChild(div);
+      button.addEventListener('click', () => loadSession(sess));
+      container.appendChild(button);
     });
 }
 
@@ -75,11 +78,13 @@ async function loadSession(meta) {
 }
 
 function markActive(file) {
-  document.querySelectorAll('.session-item').forEach(div => {
-    if (div.innerHTML.includes(file)) { // naive
-      div.classList.add('active');
+  document.querySelectorAll('.session-item').forEach(item => {
+    const isActive = item.dataset.file === file;
+    item.classList.toggle('active', isActive);
+    if (isActive) {
+      item.setAttribute('aria-current', 'true');
     } else {
-      div.classList.remove('active');
+      item.removeAttribute('aria-current');
     }
   });
 }
