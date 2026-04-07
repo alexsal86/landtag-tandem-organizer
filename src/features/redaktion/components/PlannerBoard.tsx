@@ -554,20 +554,19 @@ function SocialPlannerEditDialog({ item, open, users, channels, tagSuggestions, 
               )}
             </div>
 
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="edit-alt-text">Alt-Text / Bildbeschreibung</Label>
-                <Textarea
-                  id="edit-alt-text"
-                  rows={2}
-                  value={altText}
-                  onChange={(event) => setAltText(event.target.value)}
-                  placeholder="Beschreibung des Bildes für Screenreader und Barrierefreiheit"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Pflichtfeld für barrierefreie Veröffentlichungen (WCAG).
-                </p>
-              </div>
-            )}
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="edit-alt-text">Alt-Text / Bildbeschreibung</Label>
+              <Textarea
+                id="edit-alt-text"
+                rows={2}
+                value={altText}
+                onChange={(event) => setAltText(event.target.value)}
+                placeholder="Beschreibung des Bildes für Screenreader und Barrierefreiheit"
+              />
+              <p className="text-xs text-muted-foreground">
+                Pflichtfeld für barrierefreie Veröffentlichungen (WCAG).
+              </p>
+            </div>
 
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="edit-notes">Interne Notizen</Label>
