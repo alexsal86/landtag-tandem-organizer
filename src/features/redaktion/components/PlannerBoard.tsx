@@ -232,6 +232,7 @@ interface SocialPlannerEditDialogProps {
 }
 
 function SocialPlannerEditDialog({ item, open, users, channels, tagSuggestions, onOpenChange, onSave }: SocialPlannerEditDialogProps) {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [selectedTemplate, setSelectedTemplate] = useState<string>("none");
   const [topic, setTopic] = useState("");
