@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { useTenantUsers } from "@/hooks/useTenantUsers";
 import { type SocialPlannerItem, PlannerWorkflowStatus, useSocialPlannerItems } from "@/features/redaktion/hooks/useSocialPlannerItems";
 import { useTopicBacklog } from "@/features/redaktion/hooks/useTopicBacklog";
+import { usePlannerNotes } from "@/features/redaktion/hooks/usePlannerNotes";
 import { useToast } from "@/hooks/use-toast";
 import type { SpecialDay } from "@/utils/dashboard/specialDays";
 
