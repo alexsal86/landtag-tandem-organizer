@@ -459,6 +459,8 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
       };
 
       const onVerificationRequestReceived = async (verificationRequest: MatrixVerificationRequest) => {
+        // Skip verification requests we initiated ourselves; requestSelfVerification handles those.
+        if (verificationRequest.initiatedByMe) return;
         matrixLogger.log('[Matrix] Incoming verification request, phase:', verificationRequest.phase);
         if (verificationRequest.phase === VerificationPhase.Requested) {
           try { await verificationRequest.accept(); matrixLogger.log('[Matrix] Verification request accepted'); } catch (e) { matrixLogger.error('[Matrix] Failed to accept verification request:', e); return; }
