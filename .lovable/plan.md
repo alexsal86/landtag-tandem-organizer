@@ -1,33 +1,49 @@
 
 
-## Plan: Badge-Anzeige reduzieren und Dot-Position auf Icon setzen
+## Plan: Tageszettel — Bug-Fix "Tag abschließen" + Verbesserungen
 
-### Problem
-1. Bei einer neuen Entscheidung leuchten drei Badges: Benachrichtigungen, Meine Arbeit, und Aufgaben (weil "Entscheidungen" ein Sub-Item von "Aufgaben" ist und der Badge zum Gruppen-Badge hochrollt)
-2. Der Badge pulsiert zu schnell (Standard `animate-pulse` = 2s)
-3. Der Badge-Dot sitzt am Ende der Zeile statt oben rechts am Icon
+### Problem 1: Zuweisungen erzeugen keine Einträge
 
-### Lösungsansatz
+**Ursache:** `persistResolvedItems()` (Zeile 450-461 in `useDaySlipStore.ts`) wird korrekt aufgerufen und enthält die richtige Insert-Logik. Allerdings gibt es **zwei kritische Probleme**:
 
-**Schritt 1: Badge-Kontext für Entscheidungen ändern (Migration)**
-- Neue Migration: `navigation_context` der Entscheidungs-Benachrichtigungen von `'decisions'` auf `'mywork'` ändern in `notification_navigation_mapping`
-- Betrifft: `task_decision_request`, `task_decision_complete`, `task_decision_completed`, `task_decision_comment_received`, `task_decision_creator_response`
-- Bestehende ungelesene Notifications mit `navigation_context = 'decisions'` auf `'mywork'` umschreiben
-- Dadurch wird der Badge nur noch bei "Meine Arbeit" angezeigt (+ Benachrichtigungen-Panel bleibt unverändert)
+1. **Keine Fehlerbehandlung mit Feedback** — Fehler werden nur geloggt (`logStoreEvent`), aber der Nutzer sieht keinen Hinweis, wenn ein Insert fehlschlägt (z. B. wegen RLS-Policies oder fehlender `tenant_id`).
 
-**Schritt 2: Langsamere Puls-Animation**
-- In `tailwind.config.ts`: Neue Animation `pulse-slow` mit 4s Dauer hinzufügen
-- Alle `animate-pulse` Badges in Navigation (`Navigation.tsx`, `AppNavigation.tsx`, `NotificationDot.tsx`) auf `animate-pulse-slow` umstellen
+2. **Keine Duplikat-Vermeidung** — Wenn der Nutzer den Tag zweimal abschließt (z. B. Panel nochmal öffnet), werden die gleichen Items erneut eingefügt. Es fehlt ein `persisted`-Flag pro `ResolvedItem`.
 
-**Schritt 3: Badge-Position auf Icon verlegen**
-- In `renderNavItem` (AppNavigation.tsx) und in `Navigation.tsx`: Den Badge-Dot von `ml-auto` am Zeilenende auf eine `absolute -top-1 -right-1` Position am Icon-Container setzen
-- Das Icon bekommt `relative` als Container, der Dot wird als absolut positioniertes Kind oben rechts am Icon platziert
-- Gleiche Anpassung für Gruppen-Header-Icons
+3. **Decision-Insert unvollständig** — `task_decisions` wird nur mit `created_by`, `title`, `description`, `status` insertet. Es fehlt `tenant_id`, was bei RLS-Policies zum stillen Fehler führen kann.
+
+**Fix:**
+
+- **`persistResolvedItems` erweitern:**
+  - `tenant_id` beim Decision-Insert mitgeben
+  - Jedes erfolgreich persistierte Item mit `persisted: true` markieren, um Duplikate zu vermeiden
+  - Fehler als Toast anzeigen (`sonner`), damit der Nutzer sieht, wenn etwas schiefgeht
+  - Erfolg ebenfalls als Toast bestätigen ("3 Einträge erstellt: 1 Notiz, 2 Aufgaben")
+
+### Problem 2: Build-Error `PlannerNoteCard.tsx`
+
+`NOTE_COLORS`-Objekte haben kein `label`-Property, aber Zeile 110 nutzt `colorOption.label` im aria-label.
+
+**Fix:** `label`-Property zu jedem Eintrag in `NOTE_COLORS` hinzufügen (z. B. "Gelb", "Orange", "Blau", etc.)
+
+### Verbesserungsvorschläge für den Tageszettel
+
+1. **Erfolgsfeedback nach Persistierung** — Toast mit Zusammenfassung ("2 Aufgaben, 1 Notiz erstellt")
+2. **Verknüpfung anzeigen** — Nach dem Erstellen die ID des erzeugten Items auf dem `ResolvedItem` speichern, damit man später darauf verlinken könnte
+3. **Snooze mit Datum** — Aktuell wird "Snoozen" nur als Label gespeichert, aber es gibt kein Zieldatum. Man könnte ein einfaches "+1 Tag" / "+3 Tage" / "Nächste Woche" Auswahlmenü anbieten
+4. **Prioritäts-Übernahme** — Items mit `!!` oder `!` Prefix könnten als "high"/"medium" Priorität in die erstellte Aufgabe übernommen werden (statt immer "medium")
+5. **Bestätigungs-Zusammenfassung** — Vor dem endgültigen Abschließen eine kompakte Zusammenfassung zeigen: "Es werden erstellt: 2 Aufgaben, 1 Notiz, 1 Entscheidung. 3 archiviert."
 
 ### Betroffene Dateien
-- Neue SQL-Migration (navigation_context update)
-- `tailwind.config.ts` — neue `pulse-slow` Animation
-- `src/components/AppNavigation.tsx` — Dot-Position und Animation
-- `src/components/Navigation.tsx` — Dot-Position und Animation
-- `src/components/NotificationDot.tsx` — Animation-Klasse
+
+| Datei | Änderung |
+|---|---|
+| `src/components/dayslip/hooks/useDaySlipStore.ts` | `persistResolvedItems` fixen: tenant_id für decisions, persisted-Flag, Toast-Feedback, Prioritäts-Übernahme |
+| `src/components/dayslip/dayslipTypes.ts` | `ResolvedItem` Type um `persisted?: boolean` erweitern |
+| `src/features/redaktion/hooks/usePlannerNotes.ts` | `label` Property zu `NOTE_COLORS` hinzufügen |
+| `src/features/redaktion/components/PlannerNoteCard.tsx` | Kein Code-Change nötig (nutzt dann das neue `label`) |
+
+### Scope-Vorschlag
+
+Für diese Iteration schlage ich vor, den **Bug-Fix** (persistieren funktioniert + Duplikat-Schutz + Feedback) und den **Build-Error** zu beheben. Die weitergehenden Verbesserungen (Snooze-Datum, Bestätigungs-Zusammenfassung) können in einem Folgeschritt umgesetzt werden.
 
