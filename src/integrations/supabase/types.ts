@@ -9437,6 +9437,7 @@ export type Database = {
           approved_by: string | null
           asset_requirements: string[]
           content_goal: string | null
+          content_pillar: string | null
           core_message: string | null
           created_at: string
           created_by: string
@@ -9468,6 +9469,7 @@ export type Database = {
           approved_by?: string | null
           asset_requirements?: string[]
           content_goal?: string | null
+          content_pillar?: string | null
           core_message?: string | null
           created_at?: string
           created_by: string
@@ -9499,6 +9501,7 @@ export type Database = {
           approved_by?: string | null
           asset_requirements?: string[]
           content_goal?: string | null
+          content_pillar?: string | null
           core_message?: string | null
           created_at?: string
           created_by?: string
@@ -9523,6 +9526,13 @@ export type Database = {
           workflow_status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "social_content_items_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "social_campaigns"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "social_content_items_approved_by_fkey"
             columns: ["approved_by"]
@@ -9556,6 +9566,76 @@ export type Database = {
             columns: ["topic_backlog_id"]
             isOneToOne: false
             referencedRelation: "topic_backlog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_campaigns: {
+        Row: {
+          created_at: string
+          created_by: string
+          end_date: string | null
+          id: string
+          message_house: string | null
+          name: string
+          objective: string | null
+          owner_id: string | null
+          start_date: string | null
+          status: string
+          target_audience: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          end_date?: string | null
+          id?: string
+          message_house?: string | null
+          name: string
+          objective?: string | null
+          owner_id?: string | null
+          start_date?: string | null
+          status?: string
+          target_audience?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          end_date?: string | null
+          id?: string
+          message_house?: string | null
+          name?: string
+          objective?: string | null
+          owner_id?: string | null
+          start_date?: string | null
+          status?: string
+          target_audience?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_campaigns_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_campaigns_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_campaigns_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -11012,7 +11092,9 @@ export type Database = {
       }
       topic_backlog: {
         Row: {
+          campaign_id: string | null
           cluster: string | null
+          content_pillar: string | null
           created_at: string
           created_by: string
           id: string
@@ -11027,7 +11109,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          campaign_id?: string | null
           cluster?: string | null
+          content_pillar?: string | null
           created_at?: string
           created_by: string
           id?: string
@@ -11042,7 +11126,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          campaign_id?: string | null
           cluster?: string | null
+          content_pillar?: string | null
           created_at?: string
           created_by?: string
           id?: string
@@ -11057,6 +11143,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "topic_backlog_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "social_campaigns"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "topic_backlog_created_by_fkey"
             columns: ["created_by"]
@@ -12260,3 +12353,6 @@ export const Constants = {
     },
   },
 } as const
+          campaign_id: string | null
+          campaign_id?: string | null
+          campaign_id?: string | null
