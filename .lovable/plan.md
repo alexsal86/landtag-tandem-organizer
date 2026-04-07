@@ -1,112 +1,29 @@
 
 
-# Redaktion: Kalenderansicht nach Planable-Vorbild umbauen
+## Plan: Update lucide-react to Latest Version
 
-## Uebersicht
+### Current State
+- `lucide-react` version: **0.544.0** (target: **latest 1.x**)
+- **191 files** import from `lucide-react` — all use standard named imports (e.g. `import { Camera } from 'lucide-react'`), which will continue to work without changes
+- **3 files** use `import { icons } from 'lucide-react'` (the icons object map) — these need verification
 
-Die aktuelle Kalenderansicht nutzt `react-big-calendar` mit Uhrzeiten-Raster. Das Ziel ist ein Planable-aehnliches Grid-Layout: Tagesfelder ohne Uhrzeiten, Post-Karten mit Vorschaubild, Social-Media-Icons pro Kanal, und eine Notiz-Funktion direkt im Kalender.
+### What Changes
 
-## Schritt 1: Kalender-Layout (Woche + Monat) ohne Uhrzeiten
+**Step 1: Update the package**
+- Update `lucide-react` to latest version in `package.json`
 
-### Neues Custom-Grid statt react-big-calendar
+**Step 2: Verify/fix `icons` object usage (3 files)**
+In lucide-react 1.x, the `icons` object keys changed from PascalCase (`MapPin`) to kebab-case (`map-pin`). These files need adjustment:
 
-`react-big-calendar` ist auf Zeitraster ausgelegt — das laesst sich nicht sinnvoll in ein uhrzeitloses Tagesfeld-Layout umbiegen. Stattdessen wird eine eigene Grid-Komponente gebaut.
+1. **`src/utils/lucideIconToSvg.ts`** — uses `icons[iconName]` to dynamically render icons. Will update key lookup to handle the new kebab-case format.
+2. **`src/components/karlsruhe/MapFlagTypeManager.tsx`** — uses `icons` for icon picker display. Will update accordingly.
+3. **`src/components/karlsruhe/MapFlagLayerToggle.tsx`** — uses `icons` for rendering dynamic icons. Will update accordingly.
 
-**Neue Datei `src/features/redaktion/components/PlannerCalendarGrid.tsx`**:
-- Gemeinsame Komponente fuer Wochen- und Monatsansicht
-- **Wochenansicht**: 7-Spalten-Grid (Mo–So), eine Zeile, Header mit Wochentag + Datum (wie im Screenshot: `Mon 6`, `Tue 7`, heute rot hervorgehoben)
-- **Monatsansicht**: 7-Spalten-Grid, 4–6 Zeilen je nach Monat, Tageszahl oben rechts in jeder Zelle, KW-Nummer am linken Rand
-- Jede Zelle ist ein scrollbarer Container, der die Post-Karten vertikal stapelt
-- Drag-and-Drop zum Umplanen bleibt erhalten (via `@hello-pangea/dnd` — bereits installiert)
-- Klick auf leere Zelle oeffnet den Erstellungsdialog (bestehende `onCreateAtSlot`-Logik)
+**Step 3: Build verification**
+- Run build to catch any other breaking import issues across all 191 files
 
-**Anpassung `Kalenderansicht.tsx`**:
-- `react-big-calendar` und `DragAndDropCalendar` werden durch `PlannerCalendarGrid` ersetzt
-- Header-Toolbar (Heute/Zurueck/Weiter, Woche/Monat-Toggle, Formatfilter) bleibt bestehen
-- Die CSS-Klassen fuer `social-planner-calendar` in `react-big-calendar.css` koennen entfernt werden
-
-### Layout-Details (aus den Screenshots abgeleitet)
-
-```text
-┌──────────┬──────────┬──────────┬──────────┬──────────┬──────────┬──────────┐
-│  Mon 6   │  Tue 7   │  Wed 8   │  Thu 9   │  Fri 10  │  Sat 11  │  Sun 12  │
-├──────────┼──────────┼──────────┼──────────┼──────────┼──────────┼──────────┤
-│ [Card]   │ [Card]   │ [Card]   │          │ [Card]   │          │          │
-│ [Card]   │          │          │          │          │          │          │
-│ [Card]   │          │          │          │          │          │          │
-└──────────┴──────────┴──────────┴──────────┴──────────┴──────────┴──────────┘
-```
-
-- Monatsansicht: Zellen haben `min-height: 120px`, vertikaler Scroll bei Ueberlauf
-- Wochenansicht: Zellen nutzen `min-height: calc(100vh - 250px)` fuer volle Hoehe
-
-## Schritt 2: Post-Karten mit Bild und Social-Media-Icons
-
-### Neue Komponente `PlannerPostCard.tsx`
-
-Jede Karte zeigt:
-1. **Header-Zeile**: Social-Media-Icons (links) + Status-Badge + Uhrzeit (rechts)
-2. **Vorschaubild**: Wenn vorhanden, als kompaktes Thumbnail (aspect-ratio, abgerundete Ecken)
-3. **Titel** (topic, fett)
-4. **Text-Vorschau** (draft_text, 1–2 Zeilen, abgeschnitten)
-5. **Approval-Badge** (z.B. gruener "Approved"-Badge, wenn `approval_state === 'approved'`)
-
-### Social-Media-Icons
-
-Mapping von Channel-Slug zu Icon (als kleine SVG-Icons oder Emoji-Badges):
-- `instagram` → Instagram-Icon
-- `facebook` → Facebook-Icon
-- `x` → X/Twitter-Icon
-- `linkedin` → LinkedIn-Icon
-- `newsletter` → Mail-Icon
-- `tiktok` → TikTok-Icon (fuer Zukunft)
-
-Die Icons werden nebeneinander in der Karten-Kopfzeile angezeigt, genau wie im Screenshot. Dazu muss der Hook die Channel-Slugs zusaetzlich zu den Namen zurueckgeben (derzeit nur `channel_names`, `channel_ids`).
-
-**Anpassung `useSocialPlannerItems.ts`**: Zusaetzlich `channel_slugs: string[]` im `SocialPlannerItem`-Interface, befuellt aus den Join-Daten.
-
-### Bild-Unterstuetzung
-
-Die DB hat noch kein `image_url`-Feld. Es wird eine Migration erstellt:
-- `ALTER TABLE social_content_items ADD COLUMN image_url text;`
-- Im Edit-Dialog wird ein Bild-Upload-Feld ergaenzt (Supabase Storage)
-- Die Post-Karte zeigt das Bild als Thumbnail an
-
-## Schritt 3: Notizen im Kalender
-
-Wie im Screenshot sichtbar (gelbe/bunte Sticky-Notes neben Posts):
-
-### Neue Tabelle `social_planner_notes`
-```sql
-CREATE TABLE social_planner_notes (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id uuid REFERENCES tenants(id) NOT NULL,
-  note_date date NOT NULL,
-  content text NOT NULL DEFAULT '',
-  color text NOT NULL DEFAULT 'yellow',
-  created_by uuid REFERENCES auth.users(id),
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
-```
-
-### UI-Integration
-- Jede Tageszelle bekommt einen "+"-Button (erscheint on hover), der ein Popover mit Farbauswahl und Textfeld oeffnet
-- Bestehende Notizen werden als kleine farbige Karten in der Zelle angezeigt
-- Farben: yellow, orange, pink, purple, blue, green (wie im Screenshot)
-- Inline-Editing per Klick auf die Notiz
-
-## Betroffene Dateien
-
-| Datei | Aenderung |
-|---|---|
-| `src/features/redaktion/components/PlannerCalendarGrid.tsx` | Neu: Custom Grid-Kalender |
-| `src/features/redaktion/components/PlannerPostCard.tsx` | Neu: Post-Karte mit Bild/Icons |
-| `src/features/redaktion/components/PlannerNoteCard.tsx` | Neu: Sticky-Note Komponente |
-| `src/features/redaktion/components/Kalenderansicht.tsx` | Umbau: react-big-calendar ersetzen |
-| `src/features/redaktion/hooks/useSocialPlannerItems.ts` | Erweitern: channel_slugs, image_url |
-| `src/features/redaktion/hooks/usePlannerNotes.ts` | Neu: CRUD fuer Notizen |
-| Migration: `add_image_url_to_social_content_items` | Neue Spalte |
-| Migration: `create_social_planner_notes` | Neue Tabelle |
-| `src/styles/react-big-calendar.css` | Social-Planner-Abschnitt entfernen |
+### Risk Assessment
+- Standard named imports (`import { X } from 'lucide-react'`) are **not affected** — these remain the same in v1.x
+- Only the dynamic `icons` object access pattern needs updating
+- No icon removals expected for the icons used in this project
 
