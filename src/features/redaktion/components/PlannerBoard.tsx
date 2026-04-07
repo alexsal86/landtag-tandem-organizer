@@ -152,6 +152,14 @@ type SocialPlannerDraftPayload = {
 };
 
 type SocialPlannerTemplateId = (typeof TEMPLATE_OPTIONS)[number]["id"];
+type PlannerFormatFilter = "all" | "story" | "feed";
+
+function inferFormatType(item: SocialPlannerItem): "story" | "feed" | "other" {
+  const normalized = [item.format, item.topic, item.draft_text].filter(Boolean).join(" ").toLowerCase();
+  if (normalized.includes("story") || normalized.includes("stories")) return "story";
+  if (normalized.includes("feed") || normalized.includes("post") || normalized.includes("carousel") || normalized.includes("reel")) return "feed";
+  return "other";
+}
 
 function applyTemplateToState(
   templateId: SocialPlannerTemplateId,
@@ -669,6 +677,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   const [channelFilter, setChannelFilter] = useState<string>("all");
   const [ownerFilter, setOwnerFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [formatFilter, setFormatFilter] = useState<PlannerFormatFilter>("all");
   const [tagSearch, setTagSearch] = useState("");
   const [sortBy, setSortBy] = useState<(typeof SORT_OPTIONS)[number]["value"]>("scheduled");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -723,6 +732,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
         if (channelFilter !== "all" && !item.channel_ids.includes(channelFilter)) return false;
         if (ownerFilter !== "all" && item.responsible_user_id !== ownerFilter) return false;
         if (statusFilter !== "all" && item.workflow_status !== statusFilter) return false;
+        if (formatFilter !== "all" && inferFormatType(item) !== formatFilter) return false;
         if (!search) return true;
 
         return (
@@ -740,7 +750,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
         const bTime = b.scheduled_for ? new Date(b.scheduled_for).getTime() : Number.MAX_SAFE_INTEGER;
         return aTime - bTime;
       });
-  }, [items, channelFilter, ownerFilter, statusFilter, tagSearch, sortBy]);
+  }, [items, channelFilter, ownerFilter, statusFilter, formatFilter, tagSearch, sortBy]);
 
   const byStatus = useMemo(
     () =>
@@ -888,6 +898,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
     setChannelFilter("all");
     setOwnerFilter("all");
     setStatusFilter("all");
+    setFormatFilter("all");
     setTagSearch("");
     setSortBy("scheduled");
   };
@@ -900,7 +911,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
     }
   }, [updateItem, toast]);
 
-  const hasActiveFilters = channelFilter !== "all" || ownerFilter !== "all" || statusFilter !== "all" || tagSearch.trim().length > 0 || sortBy !== "scheduled";
+  const hasActiveFilters = channelFilter !== "all" || ownerFilter !== "all" || statusFilter !== "all" || formatFilter !== "all" || tagSearch.trim().length > 0 || sortBy !== "scheduled";
 
   useEffect(() => {
     const highlightId = searchParams.get("highlight");
@@ -993,6 +1004,14 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
                   <SelectContent>
                     <SelectItem value="all">Alle Status</SelectItem>
                     {STATUS_COLUMNS.map((status) => <SelectItem key={status.id} value={status.id}>{status.title}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select value={formatFilter} onValueChange={(value) => setFormatFilter(value as PlannerFormatFilter)}>
+                  <SelectTrigger><SelectValue placeholder="Format" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Alle Formate</SelectItem>
+                    <SelectItem value="story">Nur Stories</SelectItem>
+                    <SelectItem value="feed">Nur Feed</SelectItem>
                   </SelectContent>
                 </Select>
                 <Input value={tagSearch} onChange={(event) => setTagSearch(event.target.value)} placeholder="Thema/Tag suchen" />

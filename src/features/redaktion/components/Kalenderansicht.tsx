@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { SocialPlannerItem, PlannerWorkflowStatus } from "@/features/redaktion/hooks/useSocialPlannerItems";
 import type { PlannerNote } from "@/features/redaktion/hooks/usePlannerNotes";
 import { type SpecialDay } from "@/utils/dashboard/specialDays";
@@ -52,19 +51,9 @@ interface Props {
 export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateAtSlot, specialDays, notes, onCreateNote, onUpdateNote, onDeleteNote }: Props) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"week" | "month">("week");
-  const [formatFilter, setFormatFilter] = useState<"all" | "story" | "feed">("all");
   const [inlineScheduleDates, setInlineScheduleDates] = useState<Record<string, string>>({});
   const [isScheduling, setIsScheduling] = useState(false);
-
-  const filteredItems = useMemo(() => {
-    return items.filter((item) => {
-      const formatType = inferFormatType(item);
-      if (formatFilter !== "all" && formatType !== formatFilter) return false;
-      return true;
-    });
-  }, [formatFilter, items]);
-
-  const unscheduled = useMemo(() => filteredItems.filter((i) => !i.scheduled_for), [filteredItems]);
+  const unscheduled = useMemo(() => items.filter((i) => !i.scheduled_for), [items]);
 
   const rangeLabel = useMemo(() => {
     if (view === "month") {
@@ -100,10 +89,10 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateA
     <div className="space-y-3">
       {/* Toolbar */}
       <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 xl:flex-row xl:items-center xl:justify-between">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center rounded-md border overflow-hidden">
-            <Button type="button" size="sm" variant={view === "week" ? "default" : "ghost"} className="rounded-none h-8 px-3" onClick={() => setView("week")}>Woche</Button>
-            <Button type="button" size="sm" variant={view === "month" ? "default" : "ghost"} className="rounded-none h-8 px-3" onClick={() => setView("month")}>Monat</Button>
+        <div className="flex flex-wrap items-center gap-3 xl:flex-1">
+          <div className="flex items-center gap-1">
+            <Button type="button" size="sm" variant={view === "week" ? "default" : "ghost"} className="h-8 px-3" onClick={() => setView("week")}>Woche</Button>
+            <Button type="button" size="sm" variant={view === "month" ? "default" : "ghost"} className="h-8 px-3" onClick={() => setView("month")}>Monat</Button>
           </div>
           <Button type="button" variant="outline" size="sm" className="h-9 px-4 text-sm font-medium" onClick={() => navigateCalendar("today")}>Heute</Button>
           <div className="flex items-center gap-0.5">
@@ -114,21 +103,10 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateA
               <ChevronRight className="h-5 w-5" />
             </Button>
           </div>
-          <div>
-            <h4 className="text-lg font-semibold capitalize text-foreground">{rangeLabel}</h4>
-            <p className="text-xs text-muted-foreground">Planungskalender</p>
-          </div>
         </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Select value={formatFilter} onValueChange={(value) => setFormatFilter(value as typeof formatFilter)}>
-            <SelectTrigger className="h-8 w-[150px]"><SelectValue placeholder="Format" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle Formate</SelectItem>
-              <SelectItem value="story">Nur Stories</SelectItem>
-              <SelectItem value="feed">Nur Feed</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="xl:ml-auto xl:text-right">
+          <h4 className="text-lg font-semibold capitalize text-foreground">{rangeLabel}</h4>
+          <p className="text-xs text-muted-foreground">Planungskalender</p>
         </div>
       </div>
 
@@ -136,7 +114,7 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateA
       <PlannerCalendarGrid
         view={view}
         currentDate={currentDate}
-        items={filteredItems}
+        items={items}
         specialDays={specialDays}
         notes={notes}
         onEditItem={onEditItem}
