@@ -588,3 +588,4 @@ export function DocumentsView() {
     </div>
   );
 }
+}

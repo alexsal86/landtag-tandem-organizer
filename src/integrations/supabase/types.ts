@@ -9254,6 +9254,76 @@ export type Database = {
         }
         Relationships: []
       }
+      social_campaigns: {
+        Row: {
+          created_at: string
+          created_by: string
+          end_date: string | null
+          id: string
+          message_house: string | null
+          name: string
+          objective: string | null
+          owner_id: string | null
+          start_date: string | null
+          status: string
+          target_audience: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          end_date?: string | null
+          id?: string
+          message_house?: string | null
+          name: string
+          objective?: string | null
+          owner_id?: string | null
+          start_date?: string | null
+          status?: string
+          target_audience?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          end_date?: string | null
+          id?: string
+          message_house?: string | null
+          name?: string
+          objective?: string | null
+          owner_id?: string | null
+          start_date?: string | null
+          status?: string
+          target_audience?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_campaigns_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_campaigns_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_campaigns_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_content_channels: {
         Row: {
           created_at: string
@@ -9351,6 +9421,151 @@ export type Database = {
           },
         ]
       }
+      social_content_items: {
+        Row: {
+          alt_text: string | null
+          approval_required: boolean
+          approval_state: string
+          approved_at: string | null
+          approved_by: string | null
+          asset_requirements: string[]
+          campaign_id: string | null
+          content_goal: string | null
+          content_pillar: string | null
+          core_message: string | null
+          created_at: string
+          created_by: string
+          cta: string | null
+          draft_text: string | null
+          format: string | null
+          format_variant: string | null
+          hashtags: string[]
+          hashtags_in_comment: boolean
+          hook: string | null
+          id: string
+          image_url: string | null
+          notes: string | null
+          performance_notes: string | null
+          publish_link: string | null
+          published_at: string | null
+          responsible_user_id: string | null
+          scheduled_for: string | null
+          tenant_id: string
+          topic_backlog_id: string
+          updated_at: string
+          workflow_status: string
+        }
+        Insert: {
+          alt_text?: string | null
+          approval_required?: boolean
+          approval_state?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          asset_requirements?: string[]
+          campaign_id?: string | null
+          content_goal?: string | null
+          content_pillar?: string | null
+          core_message?: string | null
+          created_at?: string
+          created_by: string
+          cta?: string | null
+          draft_text?: string | null
+          format?: string | null
+          format_variant?: string | null
+          hashtags?: string[]
+          hashtags_in_comment?: boolean
+          hook?: string | null
+          id?: string
+          image_url?: string | null
+          notes?: string | null
+          performance_notes?: string | null
+          publish_link?: string | null
+          published_at?: string | null
+          responsible_user_id?: string | null
+          scheduled_for?: string | null
+          tenant_id: string
+          topic_backlog_id: string
+          updated_at?: string
+          workflow_status?: string
+        }
+        Update: {
+          alt_text?: string | null
+          approval_required?: boolean
+          approval_state?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          asset_requirements?: string[]
+          campaign_id?: string | null
+          content_goal?: string | null
+          content_pillar?: string | null
+          core_message?: string | null
+          created_at?: string
+          created_by?: string
+          cta?: string | null
+          draft_text?: string | null
+          format?: string | null
+          format_variant?: string | null
+          hashtags?: string[]
+          hashtags_in_comment?: boolean
+          hook?: string | null
+          id?: string
+          image_url?: string | null
+          notes?: string | null
+          performance_notes?: string | null
+          publish_link?: string | null
+          published_at?: string | null
+          responsible_user_id?: string | null
+          scheduled_for?: string | null
+          tenant_id?: string
+          topic_backlog_id?: string
+          updated_at?: string
+          workflow_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_content_items_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_items_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "social_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_items_responsible_user_id_fkey"
+            columns: ["responsible_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_items_topic_backlog_id_fkey"
+            columns: ["topic_backlog_id"]
+            isOneToOne: false
+            referencedRelation: "topic_backlog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_content_variants: {
         Row: {
           asset_ids: string[]
@@ -9421,218 +9636,6 @@ export type Database = {
           },
           {
             foreignKeyName: "social_content_variants_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      social_content_items: {
-        Row: {
-          alt_text: string | null
-          approval_required: boolean
-          approval_state: string
-          approved_at: string | null
-          approved_by: string | null
-          asset_requirements: string[]
-          content_goal: string | null
-          content_pillar: string | null
-          core_message: string | null
-          created_at: string
-          created_by: string
-          cta: string | null
-          draft_text: string | null
-          format: string | null
-          format_variant: string | null
-          hashtags: string[]
-          hashtags_in_comment: boolean
-          hook: string | null
-          id: string
-          image_url: string | null
-          notes: string | null
-          performance_notes: string | null
-          publish_link: string | null
-          published_at: string | null
-          responsible_user_id: string | null
-          scheduled_for: string | null
-          tenant_id: string
-          topic_backlog_id: string
-          updated_at: string
-          workflow_status: string
-        }
-        Insert: {
-          alt_text?: string | null
-          approval_required?: boolean
-          approval_state?: string
-          approved_at?: string | null
-          approved_by?: string | null
-          asset_requirements?: string[]
-          content_goal?: string | null
-          content_pillar?: string | null
-          core_message?: string | null
-          created_at?: string
-          created_by: string
-          cta?: string | null
-          draft_text?: string | null
-          format?: string | null
-          format_variant?: string | null
-          hashtags?: string[]
-          hashtags_in_comment?: boolean
-          hook?: string | null
-          id?: string
-          image_url?: string | null
-          notes?: string | null
-          performance_notes?: string | null
-          publish_link?: string | null
-          published_at?: string | null
-          responsible_user_id?: string | null
-          scheduled_for?: string | null
-          tenant_id: string
-          topic_backlog_id: string
-          updated_at?: string
-          workflow_status?: string
-        }
-        Update: {
-          alt_text?: string | null
-          approval_required?: boolean
-          approval_state?: string
-          approved_at?: string | null
-          approved_by?: string | null
-          asset_requirements?: string[]
-          content_goal?: string | null
-          content_pillar?: string | null
-          core_message?: string | null
-          created_at?: string
-          created_by?: string
-          cta?: string | null
-          draft_text?: string | null
-          format?: string | null
-          format_variant?: string | null
-          hashtags?: string[]
-          hashtags_in_comment?: boolean
-          hook?: string | null
-          id?: string
-          image_url?: string | null
-          notes?: string | null
-          performance_notes?: string | null
-          publish_link?: string | null
-          published_at?: string | null
-          responsible_user_id?: string | null
-          scheduled_for?: string | null
-          tenant_id?: string
-          topic_backlog_id?: string
-          updated_at?: string
-          workflow_status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "social_content_items_campaign_id_fkey"
-            columns: ["campaign_id"]
-            isOneToOne: false
-            referencedRelation: "social_campaigns"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "social_content_items_approved_by_fkey"
-            columns: ["approved_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "social_content_items_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "social_content_items_responsible_user_id_fkey"
-            columns: ["responsible_user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "social_content_items_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "social_content_items_topic_backlog_id_fkey"
-            columns: ["topic_backlog_id"]
-            isOneToOne: false
-            referencedRelation: "topic_backlog"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      social_campaigns: {
-        Row: {
-          created_at: string
-          created_by: string
-          end_date: string | null
-          id: string
-          message_house: string | null
-          name: string
-          objective: string | null
-          owner_id: string | null
-          start_date: string | null
-          status: string
-          target_audience: string | null
-          tenant_id: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by: string
-          end_date?: string | null
-          id?: string
-          message_house?: string | null
-          name: string
-          objective?: string | null
-          owner_id?: string | null
-          start_date?: string | null
-          status?: string
-          target_audience?: string | null
-          tenant_id: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string
-          end_date?: string | null
-          id?: string
-          message_house?: string | null
-          name?: string
-          objective?: string | null
-          owner_id?: string | null
-          start_date?: string | null
-          status?: string
-          target_audience?: string | null
-          tenant_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "social_campaigns_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "social_campaigns_owner_id_fkey"
-            columns: ["owner_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "social_campaigns_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -12356,6 +12359,3 @@ export const Constants = {
     },
   },
 } as const
-          campaign_id: string | null
-          campaign_id?: string | null
-          campaign_id?: string | null
