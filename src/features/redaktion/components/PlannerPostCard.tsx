@@ -1,5 +1,6 @@
 import { memo } from "react";
-import { Instagram, Facebook, Linkedin, Mail, Twitter } from "lucide-react";
+import { Mail } from "lucide-react";
+import { Instagram, Facebook, Linkedin, Twitter } from "@/components/icons/SocialIcons";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import type { SocialPlannerItem } from "@/features/redaktion/hooks/useSocialPlannerItems";

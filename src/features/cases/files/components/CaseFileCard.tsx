@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Users, FileText, CheckSquare, Calendar, Mail, Clock, Tag } from "lucide-react";
-import { icons, LucideIcon } from "lucide-react";
+import { LucideIcon } from "lucide-react";
+import { getLucideIcon } from "@/utils/iconUtils";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -37,8 +38,7 @@ export function CaseFileCard({ caseFile, viewMode, onClick, caseFileTypes = [] }
 
   const getIconComponent = (iconName?: string | null): LucideIcon | null => {
     if (!iconName) return null;
-    const Icon = icons[iconName as keyof typeof icons] as LucideIcon;
-    return Icon || null;
+    return getLucideIcon(iconName);
   };
 
   const TypeIcon = getIconComponent(typeConfig?.icon);

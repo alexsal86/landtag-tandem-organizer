@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
 import { icons, Loader2, Plus, RotateCcw, Save, Trash2 } from 'lucide-react';
+import { getLucideIcon } from '@/utils/iconUtils';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,7 +25,7 @@ const SETTINGS_KEY = 'dashboard_special_day_hints';
 const emptyEntry = (): SpecialDay => ({ month: 1, day: 1, name: '', hint: '', icon: 'CalendarHeart' });
 
 const HintIconPreview = ({ iconName }: { iconName: string }) => {
-  const Icon = icons[iconName as keyof typeof icons];
+  const Icon = getLucideIcon(iconName);
   if (!Icon) return <span className="text-muted-foreground text-xs">–</span>;
   return <Icon className="h-4 w-4 text-foreground" />;
 };
@@ -232,7 +233,7 @@ export const DashboardHintSettings = () => {
                 </SelectTrigger>
                 <SelectContent>
                   {AVAILABLE_HINT_ICONS.map((opt) => {
-                    const OptIcon = icons[opt.name as keyof typeof icons];
+                    const OptIcon = getLucideIcon(opt.name);
                     return (
                       <SelectItem key={opt.name} value={opt.name}>
                         <span className="flex items-center gap-2">

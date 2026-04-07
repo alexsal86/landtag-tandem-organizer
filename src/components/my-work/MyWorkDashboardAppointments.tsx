@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
-import { icons, X, ChevronDown, ChevronRight, FileText, CalendarX2 } from 'lucide-react';
+import { X, ChevronDown, ChevronRight, FileText, CalendarX2 } from 'lucide-react';
+import { getLucideIcon } from '@/utils/iconUtils';
 import { Separator } from '@/components/ui/separator';
 import { AppointmentBriefingView } from '@/components/appointment-preparations/AppointmentBriefingView';
 import { generateBriefingPdf } from '@/components/appointment-preparations/briefingPdfGenerator';
@@ -221,7 +222,7 @@ export const DashboardAppointments = ({ data }: Props) => {
   if (isLoading) return <div className="animate-pulse h-32 bg-muted rounded-lg" />;
 
   const HintIcon = specialDayHint?.icon
-    ? icons[specialDayHint.icon as keyof typeof icons]
+    ? getLucideIcon(specialDayHint.icon)
     : null;
 
   return (

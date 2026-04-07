@@ -3,7 +3,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { useMapFlagTypes } from '@/hooks/useMapFlagTypes';
 import { useMapFlags } from '@/hooks/useMapFlags';
-import { icons } from 'lucide-react';
+import { getLucideIcon } from '@/utils/iconUtils';
 
 interface MapFlagLayerToggleProps {
   visibleTypes: Set<string>;
@@ -32,7 +32,7 @@ export const MapFlagLayerToggle = ({ visibleTypes, onToggleType }: MapFlagLayerT
         <Label className="text-sm font-semibold">Sichtbare Flaggen</Label>
         {flagTypes.map((type) => {
           const count = getFlagCount(type.id);
-          const Icon = icons[type.icon as keyof typeof icons];
+          const Icon = getLucideIcon(type.icon);
           
           return (
             <div key={type.id} className="flex items-center gap-2">

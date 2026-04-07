@@ -1,5 +1,6 @@
 import React from 'react';
-import { Mail, Phone, MapPin, Building, User, Calendar, Globe, ExternalLink, Tag, Linkedin, Facebook, Instagram, Hash, Euro } from 'lucide-react';
+import { Mail, Phone, MapPin, Building, User, Calendar, Globe, ExternalLink, Tag, Hash, Euro } from 'lucide-react';
+import { Linkedin, Facebook, Instagram } from '@/components/icons/SocialIcons';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { icons, LucideIcon } from 'lucide-react';
 import { Search } from 'lucide-react';
+import { getLucideIcon } from '@/utils/iconUtils';
 
 interface TagIconPickerProps {
   value?: string;
@@ -29,8 +30,7 @@ export function TagIconPicker({ value, onChange }: TagIconPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const getIconComponent = (iconName: string): LucideIcon => {
-    const Icon = icons[iconName as keyof typeof icons] as LucideIcon;
-    return Icon;
+    return (getLucideIcon(iconName) || Search) as LucideIcon;
   };
 
   const SelectedIcon = value ? getIconComponent(value) : null;

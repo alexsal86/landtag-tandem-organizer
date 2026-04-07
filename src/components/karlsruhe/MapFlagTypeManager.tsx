@@ -10,7 +10,7 @@ import { useTopics } from '@/hooks/useTopics';
 import { Settings, Plus, Trash2, Pencil } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { TagIconPicker } from '@/components/contacts/TagIconPicker';
-import { icons } from 'lucide-react';
+import { getLucideIcon } from '@/utils/iconUtils';
 
 const PRESET_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b'];
 
@@ -99,7 +99,7 @@ export const MapFlagTypeManager = () => {
             <Label>Vorhandene Flaggentypen</Label>
             <div className="grid gap-2">
               {flagTypes.map((type) => {
-                const Icon = icons[type.icon as keyof typeof icons];
+                const Icon = getLucideIcon(type.icon);
                 return (
                   <Card key={type.id} className="p-3 flex items-center justify-between">
                     <div className="flex items-center gap-3 flex-1 min-w-0">

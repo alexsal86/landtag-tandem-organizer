@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trash2, Edit, Plus, Save, X, GripVertical } from "lucide-react";
-import { icons, LucideIcon } from "lucide-react";
+import { LucideIcon } from "lucide-react";
+import { getLucideIcon } from "@/utils/iconUtils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { TagIconPicker } from "@/components/contacts/TagIconPicker";
@@ -102,8 +103,7 @@ export function DocumentCategoryAdminSettings() {
 
   const getIconComponent = (iconName?: string): LucideIcon | null => {
     if (!iconName) return null;
-    const Icon = icons[iconName as keyof typeof icons] as LucideIcon;
-    return Icon || null;
+    return getLucideIcon(iconName);
   };
 
   const deleteCategory = async (id: string) => {

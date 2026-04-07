@@ -17,7 +17,8 @@ import {
   ChevronDown,
   ChevronRight
 } from "lucide-react";
-import { icons, LucideIcon } from "lucide-react";
+import { LucideIcon } from "lucide-react";
+import { getLucideIcon } from "@/utils/iconUtils";
 import { CaseFileCreateDialog } from "@/features/cases/files/components";
 import { CaseFileCard } from "@/features/cases/files/components";
 import { CaseFileDetail } from "@/features/cases/files/components";
@@ -204,8 +205,7 @@ classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === 
 
   const getIconComponent = (iconName?: string | null): LucideIcon | null => {
     if (!iconName) return null;
-    const Icon = icons[iconName as keyof typeof icons] as LucideIcon;
-    return Icon || null;
+    return getLucideIcon(iconName);
   };
 
   if (selectedCaseFile) {

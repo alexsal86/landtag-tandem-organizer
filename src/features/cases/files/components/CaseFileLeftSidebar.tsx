@@ -8,7 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { TopicSelector } from "@/components/topics/TopicSelector";
 import { UserSelector } from "@/components/UserSelector";
-import { icons, LucideIcon } from "lucide-react";
+import { LucideIcon } from "lucide-react";
+import { getLucideIcon } from "@/utils/iconUtils";
 import {
   Users,
   Building2,
@@ -50,8 +51,7 @@ export function CaseFileLeftSidebar({
 
   const getIconComponent = (iconName?: string | null): LucideIcon | null => {
     if (!iconName) return null;
-    const Icon = icons[iconName as keyof typeof icons] as LucideIcon;
-    return Icon || null;
+    return getLucideIcon(iconName);
   };
 
   const TypeIcon = getIconComponent(typeConfig?.icon);

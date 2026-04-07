@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { GripVertical, icons } from 'lucide-react';
+import { GripVertical } from 'lucide-react';
+import { getLucideIcon } from '@/utils/iconUtils';
 import { useNavigate } from 'react-router-dom';
 
 import { getCurrentTimeSlot, getCurrentDayOfWeek, getGreeting } from '@/utils/dashboard/timeUtils';
@@ -90,7 +91,7 @@ export const DashboardGreetingSection = ({ data }: Props) => {
     const renderSpecialDay = () => {
       if (!specialDayHint) return null;
       const HintIcon = specialDayHint.icon
-        ? icons[specialDayHint.icon as keyof typeof icons]
+        ? getLucideIcon(specialDayHint.icon)
         : null;
       return (
         <span className="flex items-start gap-2 my-1">

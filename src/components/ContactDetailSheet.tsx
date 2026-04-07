@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Edit2, Trash2, Mail, Phone, MapPin, Building, User, Calendar, Globe, ExternalLink, PhoneCall, Plus, Tag, Linkedin, Facebook, Instagram, Hash, FileText, ChevronDown, Euro } from "lucide-react";
+import { Edit2, Trash2, Mail, Phone, MapPin, Building, User, Calendar, Globe, ExternalLink, PhoneCall, Plus, Tag, Hash, FileText, ChevronDown, Euro } from "lucide-react";
+import { Linkedin, Facebook, Instagram } from "@/components/icons/SocialIcons";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
