@@ -32,7 +32,7 @@ export const MapFlagLayerToggle = ({ visibleTypes, onToggleType }: MapFlagLayerT
         <Label className="text-sm font-semibold">Sichtbare Flaggen</Label>
         {flagTypes.map((type) => {
           const count = getFlagCount(type.id);
-          const Icon = icons[toPascalCase(type.icon) as keyof typeof icons];
+          const Icon = getLucideIcon(type.icon);
           
           return (
             <div key={type.id} className="flex items-center gap-2">
