@@ -543,8 +543,9 @@ function SocialPlannerEditDialog({ item, open, users, channels, tagSuggestions, 
                         const { data } = supabase.storage.from('documents').getPublicUrl(filePath);
                         setImageUrl(data.publicUrl);
                         toast({ title: "Bild hochgeladen" });
-                      } catch {
-                        toast({ title: "Upload fehlgeschlagen", variant: "destructive" });
+                      } catch (err) {
+                        console.error("Image upload error:", err);
+                        toast({ title: "Upload fehlgeschlagen", description: String(err instanceof Error ? err.message : err), variant: "destructive" });
                       } finally {
                         setUploadingImage(false);
                       }
