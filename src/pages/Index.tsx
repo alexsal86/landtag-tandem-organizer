@@ -1,4 +1,4 @@
-import { useState, useEffect, Suspense, useMemo, useCallback, startTransition } from "react";
+import React, { useState, useEffect, Suspense, useMemo, useCallback, startTransition } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
