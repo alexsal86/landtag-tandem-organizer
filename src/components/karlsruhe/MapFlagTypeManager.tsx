@@ -102,7 +102,7 @@ export const MapFlagTypeManager = () => {
             <Label>Vorhandene Flaggentypen</Label>
             <div className="grid gap-2">
               {flagTypes.map((type) => {
-                const Icon = icons[type.icon as keyof typeof icons];
+                const Icon = icons[toPascalCase(type.icon) as keyof typeof icons];
                 return (
                   <Card key={type.id} className="p-3 flex items-center justify-between">
                     <div className="flex items-center gap-3 flex-1 min-w-0">

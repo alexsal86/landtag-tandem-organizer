@@ -33,7 +33,8 @@ export function TagIconPicker({ value, onChange }: TagIconPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const getIconComponent = (iconName: string): LucideIcon => {
-    const Icon = icons[iconName as keyof typeof icons] as LucideIcon;
+    const pascalName = toPascalCase(iconName);
+    const Icon = icons[pascalName as keyof typeof icons] as LucideIcon;
     return Icon;
   };
 
