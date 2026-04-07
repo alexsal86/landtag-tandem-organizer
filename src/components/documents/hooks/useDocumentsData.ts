@@ -91,7 +91,7 @@ export function useDocumentsData(activeTab: string) {
       if (foldersResponse.error) throw foldersResponse.error;
       if (folderDocumentsResponse.error) throw folderDocumentsResponse.error;
 
-      const folderCounts = (folderDocumentsResponse.data || []).reduce<Record<string, number>>((acc, doc) => {
+      const folderCounts = (folderDocumentsResponse.data || []).reduce((acc: Record<string, number>, doc) => {
         if (!doc.folder_id) return acc;
         acc[doc.folder_id] = (acc[doc.folder_id] || 0) + 1;
         return acc;
