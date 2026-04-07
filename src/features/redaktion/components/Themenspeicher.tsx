@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSocialCampaigns } from "@/features/redaktion/hooks/useSocialCampaigns";
 
 interface TemplateDefinition {
   key: string;
@@ -51,6 +52,7 @@ export function Themenspeicher({ onContentCreated }: Props) {
   const { toast } = useToast();
   const profileId = useCurrentProfileId();
   const { createTopic: createBacklogTopic, topics, loading, channels, loadTopics, updateTopic, deleteTopic } = useTopicBacklog();
+  const { campaigns } = useSocialCampaigns();
 
   const [selectedTopic, setSelectedTopic] = useState<TopicBacklogEntry | null>(null);
   const [isCreateTopicDialogOpen, setIsCreateTopicDialogOpen] = useState(false);
@@ -61,6 +63,11 @@ export function Themenspeicher({ onContentCreated }: Props) {
   const [newTopicTags, setNewTopicTags] = useState("");
   const [newTopicStatus, setNewTopicStatus] = useState<TopicEditorialStatus>("idea");
   const [newTopicPriority, setNewTopicPriority] = useState("1");
+  const [newTopicCampaignId, setNewTopicCampaignId] = useState<string>("none");
+  const [newTopicContentPillar, setNewTopicContentPillar] = useState<string>("none");
+  const [campaignFilter, setCampaignFilter] = useState<string>("all");
+  const [pillarFilter, setPillarFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<"priority" | "campaign_phase">("priority");
   const [selectedChannelId, setSelectedChannelId] = useState<string>("none");
   const [selectedTemplateKey, setSelectedTemplateKey] = useState<string>(TEMPLATES[0].key);
   const [scheduledDate, setScheduledDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
@@ -77,6 +84,8 @@ export function Themenspeicher({ onContentCreated }: Props) {
     setNewTopicTags((editingTopic.tags || []).join(", "));
     setNewTopicStatus(editingTopic.status);
     setNewTopicPriority(String(editingTopic.priority || 1));
+    setNewTopicCampaignId(editingTopic.campaign_id || "none");
+    setNewTopicContentPillar(editingTopic.content_pillar || "none");
     setIsCreateTopicDialogOpen(true);
   }, [editingTopic]);
 
@@ -145,6 +154,8 @@ export function Themenspeicher({ onContentCreated }: Props) {
         cta: selectedTemplate.cta,
         draft_text: prefilledDraft,
         notes: `Aus Themenspeicher übernommen (${selectedTopic.topic})`,
+        campaign_id: selectedTopic.campaign_id,
+        content_pillar: selectedTopic.content_pillar,
         scheduled_for: scheduledFor,
         workflow_status: "idea",
         approval_state: "draft",
@@ -188,6 +199,8 @@ export function Themenspeicher({ onContentCreated }: Props) {
     setNewTopicTags("");
     setNewTopicStatus("idea");
     setNewTopicPriority("1");
+    setNewTopicCampaignId("none");
+    setNewTopicContentPillar("none");
     setEditingTopic(null);
   };
 
@@ -209,6 +222,8 @@ export function Themenspeicher({ onContentCreated }: Props) {
           status: newTopicStatus,
           priority: Number.isNaN(parsedPriority) ? editingTopic.priority : parsedPriority,
           short_description: newTopicDescription.trim() || null,
+          campaign_id: newTopicCampaignId === "none" ? null : newTopicCampaignId,
+          content_pillar: newTopicContentPillar === "none" ? null : newTopicContentPillar,
         });
 
         toast({ title: "Aktualisiert", description: "Thema wurde im Themenspeicher aktualisiert." });
@@ -219,6 +234,8 @@ export function Themenspeicher({ onContentCreated }: Props) {
           status: newTopicStatus,
           priority: Number.isNaN(parsedPriority) ? 1 : parsedPriority,
           short_description: newTopicDescription.trim() || null,
+          campaign_id: newTopicCampaignId === "none" ? null : newTopicCampaignId,
+          content_pillar: newTopicContentPillar === "none" ? null : newTopicContentPillar,
         });
 
         toast({ title: "Erstellt", description: "Neues Thema wurde im Themenspeicher angelegt." });
@@ -268,6 +285,31 @@ export function Themenspeicher({ onContentCreated }: Props) {
           Neues Thema
         </Button>
       </div>
+      <div className="grid gap-2 sm:grid-cols-3">
+        <Select value={campaignFilter} onValueChange={setCampaignFilter}>
+          <SelectTrigger><SelectValue placeholder="Kampagne" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Alle Kampagnen</SelectItem>
+            {campaigns.map((campaign) => <SelectItem key={campaign.id} value={campaign.id}>{campaign.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={pillarFilter} onValueChange={setPillarFilter}>
+          <SelectTrigger><SelectValue placeholder="Content-Pillar" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Alle Pillars</SelectItem>
+            <SelectItem value="informieren">Informieren</SelectItem>
+            <SelectItem value="mobilisieren">Mobilisieren</SelectItem>
+            <SelectItem value="service">Service</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sortBy} onValueChange={(value) => setSortBy(value as "priority" | "campaign_phase")}>
+          <SelectTrigger><SelectValue placeholder="Sortierung" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="priority">Priorität</SelectItem>
+            <SelectItem value="campaign_phase">Kampagnenphase</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
       {loading ? (
         <div className="text-sm text-muted-foreground">Lade Themen…</div>
@@ -275,7 +317,25 @@ export function Themenspeicher({ onContentCreated }: Props) {
         <p className="text-sm text-muted-foreground">Noch keine Themen vorhanden.</p>
       ) : (
         <div className="space-y-2">
-          {topics.map((topic) => {
+          {topics
+            .filter((topic) => campaignFilter === "all" || topic.campaign_id === campaignFilter)
+            .filter((topic) => pillarFilter === "all" || topic.content_pillar === pillarFilter)
+            .sort((a, b) => {
+              if (sortBy === "priority") return b.priority - a.priority;
+              const campaignById = new Map(campaigns.map((campaign) => [campaign.id, campaign]));
+              const today = new Date();
+              const phaseRank = (campaignId: string | null): number => {
+                const campaign = campaignId ? campaignById.get(campaignId) : null;
+                if (!campaign?.start_date || !campaign?.end_date) return 3;
+                const start = new Date(campaign.start_date);
+                const end = new Date(campaign.end_date);
+                if (today < start) return 0;
+                if (today > end) return 2;
+                return 1;
+              };
+              return phaseRank(a.campaign_id) - phaseRank(b.campaign_id);
+            })
+            .map((topic) => {
             const statusMeta = STATUS_META[topic.status] ?? STATUS_META.idea;
             return (
               <div key={topic.id} className="group rounded-md border p-3 pr-14 space-y-3 relative">
@@ -284,6 +344,8 @@ export function Themenspeicher({ onContentCreated }: Props) {
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-sm font-medium">{topic.topic}</p>
                       <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
+                      {topic.campaign_name && <Badge variant="outline">{topic.campaign_name}</Badge>}
+                      {topic.content_pillar && <Badge variant="secondary">{topic.content_pillar}</Badge>}
                     </div>
                     {topic.short_description && <p className="text-xs text-muted-foreground">{topic.short_description}</p>}
                   </div>
@@ -464,6 +526,30 @@ export function Themenspeicher({ onContentCreated }: Props) {
                   onChange={(event) => setNewTopicPriority(event.target.value)}
                   placeholder="1"
                 />
+              </div>
+              <div>
+                <Label>Kampagne</Label>
+                <Select value={newTopicCampaignId} onValueChange={setNewTopicCampaignId}>
+                  <SelectTrigger><SelectValue placeholder="Kampagne (optional)" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Keine Kampagne</SelectItem>
+                    {campaigns.map((campaign) => (
+                      <SelectItem key={campaign.id} value={campaign.id}>{campaign.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Content-Pillar</Label>
+                <Select value={newTopicContentPillar} onValueChange={setNewTopicContentPillar}>
+                  <SelectTrigger><SelectValue placeholder="Pillar (optional)" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nicht festgelegt</SelectItem>
+                    <SelectItem value="informieren">Informieren</SelectItem>
+                    <SelectItem value="mobilisieren">Mobilisieren</SelectItem>
+                    <SelectItem value="service">Service</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>

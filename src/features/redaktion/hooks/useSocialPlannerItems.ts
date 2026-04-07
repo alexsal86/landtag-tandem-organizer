@@ -12,6 +12,11 @@ export interface SocialPlannerItem {
   topic_backlog_id: string;
   topic: string;
   tags: string[];
+  campaign_id: string | null;
+  campaign_name: string | null;
+  campaign_start_date: string | null;
+  campaign_end_date: string | null;
+  content_pillar: string | null;
   workflow_status: PlannerWorkflowStatus;
   approval_state: string;
   channel_ids: string[];
@@ -122,7 +127,10 @@ export function useSocialPlannerItems() {
             hashtags_in_comment,
             alt_text,
             image_url,
-            topic_backlog:topic_backlog_id(topic, tags),
+            campaign_id,
+            content_pillar,
+            social_campaigns:campaign_id(name, start_date, end_date),
+            topic_backlog:topic_backlog_id(topic, tags, campaign_id, content_pillar),
             social_content_item_channels(channel_id, social_content_channels(name, slug))
           `)
           .eq("tenant_id", currentTenant.id)
@@ -147,13 +155,19 @@ export function useSocialPlannerItems() {
             social_content_channels: { name: string; slug: string } | null;
           }>;
 
-          const topicData = row.topic_backlog as { topic: string; tags: string[] | null } | null;
+          const topicData = row.topic_backlog as { topic: string; tags: string[] | null; campaign_id?: string | null; content_pillar?: string | null } | null;
+          const campaignData = row.social_campaigns as { name: string; start_date: string | null; end_date: string | null } | null;
 
           return {
             id: row.id,
             topic_backlog_id: row.topic_backlog_id,
             topic: topicData?.topic || "Ohne Thema",
             tags: topicData?.tags || [],
+            campaign_id: row.campaign_id || topicData?.campaign_id || null,
+            campaign_name: campaignData?.name || null,
+            campaign_start_date: campaignData?.start_date || null,
+            campaign_end_date: campaignData?.end_date || null,
+            content_pillar: row.content_pillar || topicData?.content_pillar || null,
             workflow_status: deriveUiStatus(row.workflow_status, row.approval_state),
             approval_state: row.approval_state || "draft",
             format: row.format,
@@ -207,6 +221,8 @@ export function useSocialPlannerItems() {
       draft_text?: string | null;
       notes?: string | null;
       cta?: string | null;
+      campaign_id?: string | null;
+      content_pillar?: string | null;
     }) => {
       if (!user?.id || !currentTenant?.id || !profileId) return null;
 
@@ -235,6 +251,8 @@ export function useSocialPlannerItems() {
           draft_text: payload.draft_text || null,
           notes: payload.notes || null,
           cta: payload.cta || null,
+          campaign_id: payload.campaign_id || null,
+          content_pillar: payload.content_pillar || null,
         });
 
       if (error) {
@@ -267,7 +285,7 @@ export function useSocialPlannerItems() {
 
   const updateItem = useCallback(async (
     id: string,
-    patch: Partial<Pick<SocialPlannerItem, "topic" | "tags" | "workflow_status" | "approval_state" | "responsible_user_id" | "format" | "content_goal" | "format_variant" | "asset_requirements" | "approval_required" | "publish_link" | "performance_notes" | "scheduled_for" | "hook" | "core_message" | "draft_text" | "cta" | "notes" | "channel_ids" | "hashtags" | "hashtags_in_comment" | "alt_text" | "image_url">>,
+    patch: Partial<Pick<SocialPlannerItem, "topic" | "tags" | "workflow_status" | "approval_state" | "responsible_user_id" | "format" | "content_goal" | "format_variant" | "asset_requirements" | "approval_required" | "publish_link" | "performance_notes" | "scheduled_for" | "hook" | "core_message" | "draft_text" | "cta" | "notes" | "channel_ids" | "hashtags" | "hashtags_in_comment" | "alt_text" | "image_url" | "campaign_id" | "content_pillar">>,
   ) => {
     if (!currentTenant?.id) return;
 
@@ -297,6 +315,8 @@ export function useSocialPlannerItems() {
     if (typeof patch.hashtags_in_comment !== "undefined") dbPatch.hashtags_in_comment = patch.hashtags_in_comment;
     if (typeof patch.alt_text !== "undefined") dbPatch.alt_text = patch.alt_text;
     if (typeof patch.image_url !== "undefined") dbPatch.image_url = patch.image_url;
+    if (typeof patch.campaign_id !== "undefined") dbPatch.campaign_id = patch.campaign_id;
+    if (typeof patch.content_pillar !== "undefined") dbPatch.content_pillar = patch.content_pillar;
 
     if (Object.keys(dbPatch).length > 0) {
       const { error } = await supabase
