@@ -1,11 +1,8 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
-import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-pangea/dnd";
-import { ArrowLeft, ArrowRight, CalendarDays, CheckSquare, ClipboardList, Filter, GripVertical, Image, Kanban, Pencil, Plus, Tag, Trash2, Upload, X, type LucideIcon } from "lucide-react";
+import { CalendarDays, CheckSquare, ClipboardList, Filter, Image, Pencil, Plus, Upload, X, type LucideIcon } from "lucide-react";
 import { format } from "date-fns";
 import { useSearchParams } from "react-router-dom";
-import { de } from "date-fns/locale";
 import { Kalenderansicht } from "./Kalenderansicht";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -665,7 +662,6 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   const { notes, createNote, updateNote, deleteNote } = usePlannerNotes();
   console.log("[PlannerBoard] render", { hasUsers: !!users, topicsCount: topics?.length, itemsCount: items?.length, channelsCount: channels?.length, loading });
 
-  const [viewMode, setViewMode] = useState<"calendar" | "kanban">("calendar");
   const [channelFilter, setChannelFilter] = useState<string>("all");
   const [ownerFilter, setOwnerFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -742,41 +738,10 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
       });
   }, [items, channelFilter, ownerFilter, statusFilter, tagSearch, sortBy]);
 
-  const byStatus = useMemo(
-    () =>
-      STATUS_COLUMNS.reduce<Record<PlannerWorkflowStatus, typeof filteredItems>>((acc, status) => {
-        acc[status.id] = filteredItems.filter((item) => item.workflow_status === status.id);
-        return acc;
-      }, {
-        ideas: [],
-        in_progress: [],
-        in_review: [],
-        approved: [],
-        scheduled: [],
-        published: [],
-      }),
-    [filteredItems],
-  );
-
-  const handleMove = async (itemId: string, status: PlannerWorkflowStatus) => {
-    try {
-      await updateItem(itemId, { workflow_status: status });
-    } catch {
-      toast({ title: "Statuswechsel fehlgeschlagen", variant: "destructive" });
-    }
-  };
-
   const handleSaveItem = useCallback(async (itemId: string, payload: SocialPlannerDraftPayload) => {
     await updateItem(itemId, payload);
     toast({ title: "Beitrag aktualisiert", description: "Änderungen sind im Board und Kalender sichtbar." });
   }, [toast, updateItem]);
-
-  const onDragEnd = async (result: DropResult) => {
-    if (!result.destination) return;
-    const nextStatus = result.destination.droppableId as PlannerWorkflowStatus;
-    if (nextStatus === result.source.droppableId) return;
-    await handleMove(result.draggableId, nextStatus);
-  };
 
   const resetCreateDialog = () => {
     setCreateTemplate("none");
@@ -909,7 +874,6 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
     const targetItem = items.find((item) => item.id === highlightId);
     if (!targetItem) return;
 
-    setViewMode("kanban");
     const timeout = window.setTimeout(() => {
       const element = document.querySelector(`[data-social-planner-item-id="${highlightId}"]`);
       if (element instanceof HTMLElement) {
@@ -931,26 +895,6 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
             <p className="text-xs text-muted-foreground">Redaktionsplanung – von Idee bis Veröffentlichung.</p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex rounded-md border overflow-hidden">
-              <Button
-                size="sm"
-                variant={viewMode === "calendar" ? "default" : "ghost"}
-                className="rounded-none h-8"
-                onClick={() => setViewMode("calendar")}
-              >
-                <CalendarDays className="mr-1 h-3.5 w-3.5" />
-                Kalender
-              </Button>
-              <Button
-                size="sm"
-                variant={viewMode === "kanban" ? "default" : "ghost"}
-                className="rounded-none h-8"
-                onClick={() => setViewMode("kanban")}
-              >
-                <Kanban className="mr-1 h-3.5 w-3.5" />
-                Kanban
-              </Button>
-            </div>
             <Button size="sm" variant="outline" onClick={() => setIsCreateDialogOpen(true)}>
               <Plus className="mr-1 h-4 w-4" />
               Neuen Inhalt entwerfen
@@ -1009,136 +953,21 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
       </CardHeader>
 
       <CardContent>
-        {viewMode === "calendar" ? (
-          <Kalenderansicht
-            items={filteredItems}
-            onUpdateSchedule={handleCalendarScheduleUpdate}
-            onEditItem={setEditingItemId}
-            onCreateAtSlot={(date) => {
-              resetCreateDialog();
-              setCreateScheduledDate(format(date, "yyyy-MM-dd"));
-              setIsCreateDialogOpen(true);
-            }}
-            specialDays={specialDays}
-            notes={notes}
-            onCreateNote={createNote}
-            onUpdateNote={updateNote}
-            onDeleteNote={deleteNote}
-          />
-        ) : (
-          <DragDropContext onDragEnd={onDragEnd}>
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
-              {STATUS_COLUMNS.map((column) => (
-                <Droppable key={column.id} droppableId={column.id}>
-                  {(dropProvided) => (
-                    <section ref={dropProvided.innerRef} {...dropProvided.droppableProps} className="rounded-lg border bg-muted/30 p-2">
-                      <div className="mb-2 flex items-center justify-between">
-                        <h4 className="text-sm font-semibold">{column.title}</h4>
-                        <Badge variant="secondary">{byStatus[column.id].length}</Badge>
-                      </div>
-
-                      <div className="min-h-16 space-y-2">
-                        {byStatus[column.id].map((item, index) => {
-                          const ownerName = users.find((user) => user.id === item.responsible_user_id)?.display_name || "Nicht zugewiesen";
-
-                          return (
-                            <Draggable key={item.id} draggableId={item.id} index={index}>
-                              {(dragProvided) => (
-                                <article
-                                  ref={dragProvided.innerRef}
-                                  {...dragProvided.draggableProps}
-                                  className="rounded-md border bg-card p-2 text-xs"
-                                  data-social-planner-item-id={item.id}
-                                >
-                                  <div className="mb-2 flex items-start gap-2">
-                                    <div {...dragProvided.dragHandleProps} className="mt-0.5 text-muted-foreground">
-                                      <GripVertical className="h-3.5 w-3.5" />
-                                    </div>
-                                    <button
-                                      type="button"
-                                      className="min-w-0 flex-1 text-left"
-                                      onClick={() => setEditingItemId(item.id)}
-                                    >
-                                      <p className="font-medium text-sm leading-tight">{item.topic}</p>
-                                      <p className="text-muted-foreground">Kanal: {item.channel_names.join(", ") || "-"}</p>
-                                      <p className="text-muted-foreground">Ziel: {item.content_goal || "-"}</p>
-                                      <p className="text-muted-foreground">Format: {item.format_variant || item.format || "-"}</p>
-                                      <p className="text-muted-foreground">Verantwortlich: {ownerName}</p>
-                                      <p className="text-muted-foreground">
-                                        Veröffentlichungsfenster: {item.scheduled_for ? format(new Date(item.scheduled_for), "dd.MM.yyyy HH:mm", { locale: de }) : "offen"}
-                                      </p>
-                                      <p className="text-muted-foreground">
-                                        Freigabestatus: {item.approval_required ? (APPROVAL_LABELS[item.approval_state] || item.approval_state) : "Keine Freigabe nötig"}
-                                      </p>
-                                    </button>
-                                  </div>
-
-                                  {item.asset_requirements.length > 0 && (
-                                    <div className="mb-2 flex flex-wrap gap-1">
-                                      {item.asset_requirements.slice(0, 3).map((asset) => (
-                                        <Badge variant="secondary" key={`${item.id}-${asset}`} className="text-[10px]">{asset}</Badge>
-                                      ))}
-                                    </div>
-                                  )}
-
-                                  {item.tags.length > 0 && (
-                                    <div className="mb-2 flex flex-wrap gap-1">
-                                      {item.tags.slice(0, 3).map((tag) => (
-                                        <Badge variant="outline" key={`${item.id}-${tag}`} className="text-[10px]">
-                                          <Tag className="mr-1 h-2.5 w-2.5" />{tag}
-                                        </Badge>
-                                      ))}
-                                    </div>
-                                  )}
-
-                                  <div className="flex justify-between gap-2">
-                                    <div className="flex gap-2">
-                                      <Button variant="outline" size="sm" className="h-7" onClick={() => setEditingItemId(item.id)}>
-                                        <Pencil className="mr-1 h-3 w-3" />
-                                        Bearbeiten
-                                      </Button>
-                                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteItemId(item.id)}>
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                      </Button>
-                                    </div>
-                                    <div className="flex gap-1 flex-wrap">
-                                      {(() => {
-                                        const idx = STATUS_COLUMNS.findIndex((s) => s.id === item.workflow_status);
-                                        const prev = STATUS_COLUMNS[idx - 1];
-                                        const next = STATUS_COLUMNS[idx + 1];
-                                        return (
-                                          <>
-                                            {prev && (
-                                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => void handleMove(item.id, prev.id)}>
-                                                <ArrowLeft className="h-3 w-3" />
-                                              </Button>
-                                            )}
-                                            {next && (
-                                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => void handleMove(item.id, next.id)}>
-                                                <ArrowRight className="h-3 w-3" />
-                                              </Button>
-                                            )}
-                                          </>
-                                        );
-                                      })()}
-                                    </div>
-                                  </div>
-                                </article>
-                              )}
-                            </Draggable>
-                          );
-                        })}
-
-                        {dropProvided.placeholder}
-                        {byStatus[column.id].length === 0 && <p className="py-2 text-center text-xs text-muted-foreground">Keine Beiträge</p>}
-                      </div>
-                    </section>
-                  )}
-                </Droppable>
-              ))}
-            </div>
-          </DragDropContext>
-        )}
+        <Kalenderansicht
+          items={filteredItems}
+          onUpdateSchedule={handleCalendarScheduleUpdate}
+          onEditItem={setEditingItemId}
+          onCreateAtSlot={(date) => {
+            resetCreateDialog();
+            setCreateScheduledDate(format(date, "yyyy-MM-dd"));
+            setIsCreateDialogOpen(true);
+          }}
+          specialDays={specialDays}
+          notes={notes}
+          onCreateNote={createNote}
+          onUpdateNote={updateNote}
+          onDeleteNote={deleteNote}
+        />
 
         {loading && <p className="mt-3 text-xs text-muted-foreground">Lade Social-Planer…</p>}
       </CardContent>
