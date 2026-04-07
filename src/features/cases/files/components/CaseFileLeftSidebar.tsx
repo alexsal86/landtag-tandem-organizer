@@ -8,7 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { TopicSelector } from "@/components/topics/TopicSelector";
 import { UserSelector } from "@/components/UserSelector";
-import { icons, LucideIcon } from "lucide-react";
+import { LucideIcon } from "lucide-react";
+import { getLucideIcon } from "@/utils/iconUtils";
 import {
   Users,
   Building2,
