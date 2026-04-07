@@ -412,6 +412,18 @@ export function NotificationsPage(): JSX.Element {
     return filtered;
   }, [notifications, filterStatus, searchQuery]);
 
+  const notificationsStatusText = useMemo(() => {
+    const basis = `${filteredNotifications.length} von ${notifications.length} Benachrichtigungen sichtbar.`;
+    if (searchQuery.trim()) {
+      return `${basis} Suchbegriff: ${searchQuery.trim()}.`;
+    }
+    if (filterStatus !== 'all') {
+      const filterLabel = filterStatus === 'unread' ? 'Ungelesen' : 'Gelesen';
+      return `${basis} Filter: ${filterLabel}.`;
+    }
+    return basis;
+  }, [filteredNotifications.length, notifications.length, searchQuery, filterStatus]);
+
   return (
     <div className="p-6">
       <div className="max-w-4xl mx-auto">
@@ -475,6 +487,9 @@ export function NotificationsPage(): JSX.Element {
                 </Button>
               )}
             </div>
+            <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+              {notificationsStatusText}
+            </p>
 
             {/* Notification list */}
             <Card>

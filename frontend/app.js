@@ -158,9 +158,19 @@ function copyCurrentJson() {
   if (!state.currentSessionData) return;
   const text = JSON.stringify(state.currentSessionData, null, 2);
   navigator.clipboard.writeText(text).then(() => {
-    el('#copy-json').innerText = 'Kopiert!';
-    setTimeout(() => el('#copy-json').innerText = 'Copy JSON', 1500);
+    announceStatus('JSON in die Zwischenablage kopiert.');
+  }).catch(() => {
+    announceStatus('Kopieren fehlgeschlagen.');
   });
+}
+
+function announceStatus(message) {
+  const statusEl = el('#copy-status');
+  if (!statusEl) return;
+  statusEl.textContent = message;
+  setTimeout(() => {
+    statusEl.textContent = '';
+  }, 1500);
 }
 
 function renderSpeeches() {
