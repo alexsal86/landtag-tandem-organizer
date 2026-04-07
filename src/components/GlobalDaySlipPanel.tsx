@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useRef, useState, type DragEvent, type MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
 import { $createTextNode, $getRoot } from "lexical";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import {
-  Check, ClipboardPen, Clock3, Folder, FolderArchive, ListTodo, NotebookPen,
+  Check, ChevronDown, ClipboardPen, Clock3, Folder, FolderArchive, ListTodo, NotebookPen,
   Pencil, Scale, Settings, Trash2, X,
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { WeeklyRoutineGrid } from "@/components/dayslip/WeeklyRoutineGrid";
 import { WeekPlanningBanner } from "@/components/dayslip/WeekPlanningBanner";
@@ -13,9 +14,9 @@ import { DaySlipLexicalEditor } from "@/components/dayslip/DaySlipLexicalEditor"
 import { $createDaySlipLineNode, DaySlipLineNode } from "@/components/DaySlipLineNode";
 import { useDaySlipStore } from "@/components/dayslip/hooks/useDaySlipStore";
 import {
-  type DayTemplate, type RecurringTemplate,
+  type DayTemplate, type RecurringTemplate, type ResolveTarget,
   WEEK_DAYS, WEEK_DAY_LABELS, DEFAULT_DAY_TEMPLATES,
-  STORAGE_KEY, formatDate, stripHtml, isRuleLine, formatTimeStamp, normalizeLineText,
+  STORAGE_KEY, formatDate, stripHtml, isRuleLine, formatTimeStamp, normalizeLineText, toDayKey,
 } from "@/components/dayslip/dayslipTypes";
 
 export function GlobalDaySlipPanel() {
@@ -374,26 +375,74 @@ export function GlobalDaySlipPanel() {
                     </p>
                   </div>
                   <div className="h-full space-y-2 overflow-y-auto p-4">
-                    {ds.unresolvedCount === 0 && (
-                      <p className="rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs text-emerald-800 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-200">✓ Alle offenen Punkte wurden zugewiesen. Mit dem Button unten wird der Tag abgeschlossen.</p>
-                    )}
+                    {ds.unresolvedCount === 0 && (() => {
+                      const resolved = ds.resolvedItems;
+                      const noteCount = resolved.filter(r => r.target === "note").length;
+                      const taskCount = resolved.filter(r => r.target === "task").length;
+                      const decisionCount = resolved.filter(r => r.target === "decision").length;
+                      const snoozedCount = resolved.filter(r => r.target === "snoozed").length;
+                      const archivedCount = resolved.filter(r => r.target === "archived").length;
+                      const parts: string[] = [];
+                      if (noteCount > 0) parts.push(`${noteCount} Notiz${noteCount > 1 ? "en" : ""}`);
+                      if (taskCount > 0) parts.push(`${taskCount} Aufgabe${taskCount > 1 ? "n" : ""}`);
+                      if (decisionCount > 0) parts.push(`${decisionCount} Entscheidung${decisionCount > 1 ? "en" : ""}`);
+                      if (snoozedCount > 0) parts.push(`${snoozedCount} gesnoozed`);
+                      if (archivedCount > 0) parts.push(`${archivedCount} archiviert`);
+                      const summary = parts.length > 0 ? `Es werden erstellt: ${parts.join(", ")}.` : "";
+                      return (
+                        <div className="rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs text-emerald-800 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-200">
+                          <p>✓ Alle offenen Punkte wurden zugewiesen.</p>
+                          {summary && <p className="mt-1 font-medium">{summary}</p>}
+                        </div>
+                      );
+                    })()}
                     {ds.triageEntries.map(({ id, text }) => {
                       const activeTarget = ds.resolvedByLineId.get(id);
                       const buttonClass = (target: string) => `rounded p-1 transition-colors ${activeTarget === target ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300 dark:bg-emerald-500/20 dark:text-emerald-200 dark:ring-emerald-400/50" : "hover:bg-muted"}`;
                       const stamp = ds.todayData.lineTimestamps?.[id];
                       const isHighPriority = /^!!\s*/.test(text);
                       const isPriority = !isHighPriority && /^!\s*/.test(text);
+                      const snoozeItem = ds.resolvedItems.find(r => r.lineId === id && r.target === "snoozed");
                       return (
                         <div key={id} className={cn("flex items-center justify-between gap-2 rounded-md border border-border/60 px-2 py-1.5 text-sm", isHighPriority && "bg-red-500/10 border-red-400/40", isPriority && "bg-amber-400/10 border-amber-400/40")}>
                           <div className="flex flex-1 flex-col">
                             <span className="line-clamp-1">{text}</span>
-                            <span className="text-[10px] text-muted-foreground">Erfasst {formatTimeStamp(stamp?.addedAt)} · Abgehakt {formatTimeStamp(stamp?.checkedAt)}</span>
+                            <span className="text-[10px] text-muted-foreground">
+                              Erfasst {formatTimeStamp(stamp?.addedAt)} · Abgehakt {formatTimeStamp(stamp?.checkedAt)}
+                              {snoozeItem?.snoozeUntil && <> · Snooze bis {snoozeItem.snoozeUntil}</>}
+                            </span>
                           </div>
                           <div className="flex items-center gap-1 flex-shrink-0">
                             <button type="button" title="Als Notiz" className={buttonClass("note")} onClick={() => ds.toggleResolveLine(id, text, "note")}><NotebookPen className="h-4 w-4" /></button>
                             <button type="button" title="Als Aufgabe" className={buttonClass("task")} onClick={() => ds.toggleResolveLine(id, text, "task")}><ListTodo className="h-4 w-4" /></button>
                             <button type="button" title="Als Entscheidung" className={buttonClass("decision")} onClick={() => ds.toggleResolveLine(id, text, "decision")}><Scale className="h-4 w-4" /></button>
-                            <button type="button" title="Snoozen" className={buttonClass("snoozed")} onClick={() => ds.toggleResolveLine(id, text, "snoozed")}><Clock3 className="h-4 w-4" /></button>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button type="button" title="Snoozen" className={buttonClass("snoozed")}>
+                                  <Clock3 className="h-4 w-4" />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-1" align="end" sideOffset={4}>
+                                <div className="flex flex-col">
+                                  {([
+                                    { label: "+1 Tag", days: 1 },
+                                    { label: "+3 Tage", days: 3 },
+                                    { label: "Nächste Woche", days: 7 },
+                                  ] as const).map(({ label, days }) => {
+                                    const d = new Date(); d.setDate(d.getDate() + days);
+                                    const until = toDayKey(d);
+                                    return (
+                                      <button key={days} type="button" className="rounded px-3 py-1.5 text-left text-sm hover:bg-muted" onClick={() => ds.toggleResolveLine(id, text, "snoozed", until)}>
+                                        {label} <span className="text-muted-foreground text-xs">({until})</span>
+                                      </button>
+                                    );
+                                  })}
+                                  <button type="button" className="rounded px-3 py-1.5 text-left text-sm hover:bg-muted" onClick={() => ds.toggleResolveLine(id, text, "snoozed")}>
+                                    Morgen
+                                  </button>
+                                </div>
+                              </PopoverContent>
+                            </Popover>
                             <button type="button" title="Archivieren" className={buttonClass("archived")} onClick={() => ds.toggleResolveLine(id, text, "archived")}><FolderArchive className="h-4 w-4" /></button>
                           </div>
                         </div>

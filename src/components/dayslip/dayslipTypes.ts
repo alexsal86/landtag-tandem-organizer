@@ -8,7 +8,7 @@ export interface DaySlipDayData {
   nodes?: string;
   struckLines?: string[];
   struckLineIds?: string[];
-  resolved?: Array<{ lineId: string; text: string; target: ResolveTarget }>;
+  resolved?: Array<{ lineId: string; text: string; target: ResolveTarget; snoozeUntil?: string }>;
   completedAt?: string;
   recurringInjected?: boolean;
   weekPlanInjected?: boolean;
@@ -18,7 +18,7 @@ export interface DaySlipDayData {
   dayMood?: 1 | 2 | 3 | 4 | 5;
 }
 
-export type ResolvedItem = { lineId: string; text: string; target: ResolveTarget; persisted?: boolean };
+export type ResolvedItem = { lineId: string; text: string; target: ResolveTarget; persisted?: boolean; snoozeUntil?: string };
 export type DaySlipStore = Record<string, DaySlipDayData>;
 export type DaySlipLineEntry = { id: string; text: string };
 

@@ -54,7 +54,7 @@ export interface UseDaySlipStoreReturn {
   appendLinesToToday: (lines: string[]) => void;
   insertStructuredLines: (lines: string[]) => void;
   deleteLine: (lineId: string) => void;
-  toggleResolveLine: (lineId: string, line: string, target: ResolveTarget) => void;
+  toggleResolveLine: (lineId: string, line: string, target: ResolveTarget, snoozeUntil?: string) => void;
   createFromLine: (lineText: string, target: "note" | "task") => Promise<void>;
   persistResolvedItems: () => Promise<void>;
   onEditorChange: (editorState: EditorState, editor: LexicalEditor) => void;
@@ -286,7 +286,11 @@ export function useDaySlipStore(userId?: string, tenantId?: string): UseDaySlipS
     const allLines = extractLinesFromHtml(yesterdayData?.html ?? "");
     const struck = new Set(yesterdayData?.struckLineIds ?? yesterdayData?.struckLines ?? []);
     const openUnstruck = allLines.filter((line) => !struck.has(line.id));
-    const snoozed = (yesterdayData?.resolved ?? []).filter((item) => item.target === "snoozed").map((item) => ({ lineId: item.lineId, text: item.text }));
+    const todayStr = toDayKey(new Date());
+    const snoozed = (yesterdayData?.resolved ?? [])
+      .filter((item) => item.target === "snoozed")
+      .filter((item) => !item.snoozeUntil || item.snoozeUntil <= todayStr)
+      .map((item) => ({ lineId: item.lineId, text: item.text }));
     const merged = new Map<string, DaySlipLineEntry>();
     openUnstruck.forEach((line) => merged.set(line.id, line));
     snoozed.forEach((line) => { if (!line.text.trim()) return; merged.set(line.lineId, { id: line.lineId, text: line.text.trim() }); });
@@ -421,14 +425,15 @@ export function useDaySlipStore(userId?: string, tenantId?: string): UseDaySlipS
     } catch (error: unknown) { logStoreEvent({ type: "resolve-export-sync-failed", error }); }
   }, [todayKey, userId, tenantId]);
 
-  const toggleResolveLine = useCallback((lineId: string, line: string, target: ResolveTarget) => {
+  const toggleResolveLine = useCallback((lineId: string, line: string, target: ResolveTarget, snoozeUntil?: string) => {
     setStoreAndTrack((prev) => {
       const day = prev[todayKey] ?? { html: "", plainText: "", struckLineIds: [] };
       const struck = day.struckLineIds ?? day.struckLines ?? [];
       const resolved = (day.resolved ?? []) as ResolvedItem[];
       const existing = resolved.find((item) => item.lineId === lineId);
-      const isUndo = existing?.target === target;
-      const nextResolved = isUndo ? resolved.filter((item) => item.lineId !== lineId) : [...resolved.filter((item) => item.lineId !== lineId), { lineId, text: line, target }];
+      const isUndo = existing?.target === target && !snoozeUntil;
+      const newItem: ResolvedItem = { lineId, text: line, target, ...(snoozeUntil ? { snoozeUntil } : {}) };
+      const nextResolved = isUndo ? resolved.filter((item) => item.lineId !== lineId) : [...resolved.filter((item) => item.lineId !== lineId), newItem];
       const nextStruck = isUndo ? struck.filter((id) => id !== lineId) : struck.includes(lineId) ? struck : [...struck, lineId];
       const now = new Date().toISOString();
       const lineTimestamps = { ...(day.lineTimestamps ?? {}) };
