@@ -25,7 +25,7 @@ const SETTINGS_KEY = 'dashboard_special_day_hints';
 const emptyEntry = (): SpecialDay => ({ month: 1, day: 1, name: '', hint: '', icon: 'CalendarHeart' });
 
 const HintIconPreview = ({ iconName }: { iconName: string }) => {
-  const Icon = icons[iconName as keyof typeof icons];
+  const Icon = getLucideIcon(iconName);
   if (!Icon) return <span className="text-muted-foreground text-xs">–</span>;
   return <Icon className="h-4 w-4 text-foreground" />;
 };
