@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 export interface RecentlyVisitedPage {
   id: string;
@@ -10,6 +10,7 @@ export interface RecentlyVisitedPage {
 
 const STORAGE_KEY = 'nav-recently-visited';
 const MAX_ITEMS = 8;
+const SYNC_EVENT = 'recently-visited-updated';
 
 function loadPages(): RecentlyVisitedPage[] {
   try {
@@ -37,10 +38,17 @@ export function trackPageVisit(id: string, label: string, icon: string, route: s
   const filtered = pages.filter(p => p.id !== id);
   const next = [{ id, label, icon, route, visitedAt: Date.now() }, ...filtered].slice(0, MAX_ITEMS);
   savePages(next);
+  window.dispatchEvent(new CustomEvent(SYNC_EVENT));
 }
 
 export function useRecentlyVisited() {
   const [recentPages, setRecentPages] = useState<RecentlyVisitedPage[]>(loadPages);
+
+  useEffect(() => {
+    const handler = () => setRecentPages(loadPages());
+    window.addEventListener(SYNC_EVENT, handler);
+    return () => window.removeEventListener(SYNC_EVENT, handler);
+  }, []);
 
   const trackVisit = useCallback((id: string, label: string, icon: string, route: string) => {
     setRecentPages(prev => {
