@@ -232,7 +232,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                           {!isCollapsed && <span className="text-sm">Administration</span>}
                         </div>
                         {!isCollapsed && navigationCounts['administration'] > 0 && (
-                          <span className="ml-auto h-2 w-2 rounded-full bg-destructive animate-pulse shrink-0" />
+                          <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-destructive animate-pulse-slow" />
                         )}
                       </SidebarMenuButton>
                     </HoverCardTrigger>
