@@ -18,7 +18,7 @@ export interface DaySlipDayData {
   dayMood?: 1 | 2 | 3 | 4 | 5;
 }
 
-export type ResolvedItem = { lineId: string; text: string; target: ResolveTarget; persisted?: boolean };
+export type ResolvedItem = { lineId: string; text: string; target: ResolveTarget; persisted?: boolean; snoozeUntil?: string };
 export type DaySlipStore = Record<string, DaySlipDayData>;
 export type DaySlipLineEntry = { id: string; text: string };
 
