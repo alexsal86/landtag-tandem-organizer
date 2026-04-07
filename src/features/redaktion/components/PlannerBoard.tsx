@@ -506,7 +506,54 @@ function SocialPlannerEditDialog({ item, open, users, channels, tagSuggestions, 
               </div>
             </div>
 
-            {(assetRequirements.includes("Bild nötig") || assetRequirements.includes("Grafik nötig")) && (
+            <div className="space-y-3 md:col-span-2">
+              <Label>Bild hochladen</Label>
+              {imageUrl ? (
+                <div className="relative inline-block">
+                  <img src={imageUrl} alt="Vorschau" className="max-h-40 rounded-md border object-contain" />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -top-2 -right-2 h-6 w-6"
+                    onClick={() => setImageUrl(null)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <label className="flex cursor-pointer items-center gap-2 rounded-md border border-dashed p-4 text-sm text-muted-foreground hover:bg-muted/50 transition-colors">
+                  <Upload className="h-4 w-4" />
+                  <span>{uploadingImage ? "Wird hochgeladen…" : "Bild auswählen oder hierher ziehen"}</span>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploadingImage}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setUploadingImage(true);
+                      try {
+                        const fileExt = file.name.split('.').pop();
+                        const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
+                        const filePath = `planner-images/${fileName}`;
+                        const { error: uploadError } = await supabase.storage.from('documents').upload(filePath, file);
+                        if (uploadError) throw uploadError;
+                        const { data } = supabase.storage.from('documents').getPublicUrl(filePath);
+                        setImageUrl(data.publicUrl);
+                        toast({ title: "Bild hochgeladen" });
+                      } catch {
+                        toast({ title: "Upload fehlgeschlagen", variant: "destructive" });
+                      } finally {
+                        setUploadingImage(false);
+                      }
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="edit-alt-text">Alt-Text / Bildbeschreibung</Label>
                 <Textarea
