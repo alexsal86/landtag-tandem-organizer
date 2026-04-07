@@ -450,15 +450,70 @@ export function useDaySlipStore(userId?: string, tenantId?: string): UseDaySlipS
   const persistResolvedItems = useCallback(async () => {
     if (!userId) return;
     const resolved = (store[todayKey]?.resolved ?? []) as ResolvedItem[];
-    const exportable = resolved.filter((item) => item.target === "note" || item.target === "task" || item.target === "decision");
+    const exportable = resolved.filter((item) => (item.target === "note" || item.target === "task" || item.target === "decision") && !item.persisted);
+    if (exportable.length === 0) return;
+
+    const counts = { note: 0, task: 0, decision: 0 };
+    const errors: string[] = [];
+    const persistedLineIds: string[] = [];
+
     for (const item of exportable) {
       try {
-        if (item.target === "note") await supabase.from("quick_notes").insert([{ user_id: userId, title: item.text, content: `Aus Tageszettel (${todayKey})` }]);
-        else if (item.target === "task" && tenantId) await supabase.from("tasks").insert([{ user_id: userId, tenant_id: tenantId, title: item.text, description: `Aus Tageszettel (${todayKey})`, status: "open", priority: "medium", category: "allgemein" }]);
-        else if (item.target === "decision") await supabase.from("task_decisions").insert([{ created_by: userId, title: item.text, description: `Aus Tageszettel (${todayKey})`, status: "open" }]);
-      } catch (error: unknown) { logStoreEvent({ type: "resolved-item-persist-failed", target: item.target, error }); }
+        const trimmedText = item.text.replace(/^!{1,2}\s*/, "");
+        const priority = item.text.startsWith("!!") ? "high" : item.text.startsWith("!") ? "medium" : "medium";
+
+        if (item.target === "note") {
+          const { error } = await supabase.from("quick_notes").insert([{ user_id: userId, title: trimmedText, content: `Aus Tageszettel (${todayKey})` }]);
+          if (error) throw error;
+          counts.note++;
+        } else if (item.target === "task") {
+          if (!tenantId) { errors.push("Aufgabe: Kein Tenant zugewiesen"); continue; }
+          const { error } = await supabase.from("tasks").insert([{ user_id: userId, tenant_id: tenantId, title: trimmedText, description: `Aus Tageszettel (${todayKey})`, status: "open", priority, category: "allgemein" }]);
+          if (error) throw error;
+          counts.task++;
+        } else if (item.target === "decision") {
+          const { error } = await supabase.from("task_decisions").insert([{ created_by: userId, tenant_id: tenantId || null, title: trimmedText, description: `Aus Tageszettel (${todayKey})`, status: "open" }]);
+          if (error) throw error;
+          counts.decision++;
+        }
+        persistedLineIds.push(item.lineId);
+      } catch (error: unknown) {
+        logStoreEvent({ type: "resolved-item-persist-failed", target: item.target, error });
+        const msg = error instanceof Error ? error.message : String(error);
+        errors.push(`${item.target}: ${msg}`);
+      }
     }
-  }, [userId, tenantId, store, todayKey]);
+
+    // Mark persisted items
+    if (persistedLineIds.length > 0) {
+      const idSet = new Set(persistedLineIds);
+      setStoreAndTrack((prev) => {
+        const day = prev[todayKey];
+        if (!day?.resolved) return prev;
+        return {
+          ...prev,
+          [todayKey]: {
+            ...day,
+            resolved: day.resolved.map((r) => idSet.has(r.lineId) ? { ...r, persisted: true } : r),
+          },
+        };
+      }, todayKey);
+    }
+
+    // Toast feedback
+    const { toast } = await import("sonner");
+    const parts: string[] = [];
+    if (counts.note > 0) parts.push(`${counts.note} Notiz${counts.note > 1 ? "en" : ""}`);
+    if (counts.task > 0) parts.push(`${counts.task} Aufgabe${counts.task > 1 ? "n" : ""}`);
+    if (counts.decision > 0) parts.push(`${counts.decision} Entscheidung${counts.decision > 1 ? "en" : ""}`);
+
+    if (parts.length > 0) {
+      toast.success(`${parts.join(", ")} erstellt`);
+    }
+    if (errors.length > 0) {
+      toast.error(`Fehler beim Erstellen: ${errors.join("; ")}`);
+    }
+  }, [userId, tenantId, store, todayKey, setStoreAndTrack]);
 
   const onEditorChange = useCallback((editorState: EditorState, editor: LexicalEditor) => {
     editorState.read(() => {
