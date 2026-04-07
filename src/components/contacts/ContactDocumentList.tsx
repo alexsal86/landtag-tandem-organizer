@@ -145,6 +145,8 @@ export function ContactDocumentList({ documents, type, contactTags = [], onRemov
                               size="icon"
                               variant="ghost"
                               onClick={() => handleDownload(doc)}
+                              aria-label="Dokument herunterladen"
+                              title="Dokument herunterladen"
                             >
                               <Download className="h-4 w-4" />
                             </Button>
@@ -158,6 +160,8 @@ export function ContactDocumentList({ documents, type, contactTags = [], onRemov
                               size="icon"
                               variant="ghost"
                               onClick={() => window.open(`/documents?id=${doc.id}`, '_blank')}
+                              aria-label="Dokumentdetails öffnen"
+                              title="Dokumentdetails öffnen"
                             >
                               <ExternalLink className="h-4 w-4" />
                             </Button>
@@ -172,6 +176,8 @@ export function ContactDocumentList({ documents, type, contactTags = [], onRemov
                                 size="icon"
                                 variant="ghost"
                                 onClick={() => setRemovingDocId(doc.document_contact_id)}
+                                aria-label="Dokumentverknüpfung entfernen"
+                                title="Dokumentverknüpfung entfernen"
                               >
                                 <X className="h-4 w-4" />
                               </Button>

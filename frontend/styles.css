@@ -78,6 +78,12 @@ main {
   background: #2d3034;
   transition: background .15s, border-color .15s;
   line-height: 1.25;
+  color: var(--fg);
+  text-align: left;
+  font-size: inherit;
+  font-weight: 400;
+  letter-spacing: normal;
+  width: 100%;
 }
 
 .session-item:hover {
@@ -87,6 +93,11 @@ main {
 .session-item.active {
   border-color: var(--accent);
   background: #334455;
+}
+
+.session-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .session-item .small {
@@ -120,6 +131,34 @@ main {
   z-index: 5;
 }
 
+
+.control-group {
+  margin: 0;
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.control-group legend {
+  padding: 0;
+  margin-bottom: .35rem;
+  font-size: .75rem;
+  color: var(--fg-dim);
+  letter-spacing: .5px;
+  text-transform: uppercase;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 .control-row {
   display: flex;
   flex-wrap: wrap;

@@ -29,15 +29,21 @@ interface ContactListTableProps {
 function SortableTableHead({ children, sortKey, sortColumn, sortDirection, onSort, className = "" }: {
   children: React.ReactNode; sortKey: string; sortColumn: string | null; sortDirection: "asc" | "desc"; onSort: (col: string) => void; className?: string;
 }) {
+  const ariaSort = sortColumn === sortKey ? (sortDirection === "asc" ? "ascending" : "descending") : "none";
+
   return (
-    <TableHead className={`cursor-pointer select-none hover:bg-muted/50 transition-colors ${className}`} onClick={() => onSort(sortKey)}>
-      <div className="flex items-center gap-1">
-        {children}
-        <div className="flex flex-col gap-0">
+    <TableHead aria-sort={ariaSort} className={className}>
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className="flex w-full items-center gap-1 rounded-sm px-1 py-1 text-left text-inherit transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+      >
+        <span>{children}</span>
+        <div className="flex flex-col gap-0" aria-hidden="true">
           <ChevronUp className={`h-3 w-3 transition-colors ${sortColumn === sortKey && sortDirection === "asc" ? "text-primary" : "text-muted-foreground/40"}`} />
-          <ChevronDown className={`h-3 w-3 transition-colors -mt-0.5 ${sortColumn === sortKey && sortDirection === "desc" ? "text-primary" : "text-muted-foreground/40"}`} />
+          <ChevronDown className={`-mt-0.5 h-3 w-3 transition-colors ${sortColumn === sortKey && sortDirection === "desc" ? "text-primary" : "text-muted-foreground/40"}`} />
         </div>
-      </div>
+      </button>
     </TableHead>
   );
 }
@@ -110,10 +116,17 @@ export function ContactListTable({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="flex items-center gap-1 cursor-pointer" onClick={toggleSplitName}>
-                        <Switch checked={splitNameMode} className="scale-[0.6]" tabIndex={-1} />
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 rounded-sm px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                        onClick={toggleSplitName}
+                        role="switch"
+                        aria-checked={splitNameMode}
+                        aria-label="Vor-/Nachname aufteilen"
+                      >
+                        <Switch checked={splitNameMode} className="scale-[0.6]" tabIndex={-1} aria-hidden="true" />
                         <span className="text-[10px]">V/N</span>
-                      </div>
+                      </button>
                     </TooltipTrigger>
                     <TooltipContent>Vor-/Nachname aufteilen</TooltipContent>
                   </Tooltip>
@@ -121,10 +134,17 @@ export function ContactListTable({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="flex items-center gap-1 cursor-pointer" onClick={toggleSalutation}>
-                        <Switch checked={showSalutation} className="scale-[0.6]" tabIndex={-1} />
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 rounded-sm px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                        onClick={toggleSalutation}
+                        role="switch"
+                        aria-checked={showSalutation}
+                        aria-label="Anrede inline anzeigen"
+                      >
+                        <Switch checked={showSalutation} className="scale-[0.6]" tabIndex={-1} aria-hidden="true" />
                         <span className="text-[10px]">Hr/Fr</span>
-                      </div>
+                      </button>
                     </TooltipTrigger>
                     <TooltipContent>Anrede inline anzeigen</TooltipContent>
                   </Tooltip>
@@ -132,10 +152,17 @@ export function ContactListTable({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div className="flex items-center gap-1 cursor-pointer" onClick={toggleOrgColumn}>
-                        <Switch checked={orgColumn} className="scale-[0.6]" tabIndex={-1} />
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 rounded-sm px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                        onClick={toggleOrgColumn}
+                        role="switch"
+                        aria-checked={orgColumn}
+                        aria-label="Organisation als eigene Spalte"
+                      >
+                        <Switch checked={orgColumn} className="scale-[0.6]" tabIndex={-1} aria-hidden="true" />
                         <span className="text-[10px]">Org</span>
-                      </div>
+                      </button>
                     </TooltipTrigger>
                     <TooltipContent>Organisation als eigene Spalte</TooltipContent>
                   </Tooltip>
@@ -173,6 +200,8 @@ export function ContactListTable({
                     <button
                       onClick={(e) => { e.stopPropagation(); onToggleFavorite(contact.id, !contact.is_favorite); }}
                       className="absolute -top-1 -right-1.5 p-0 rounded-full hover:scale-110 transition-transform"
+                      aria-label={contact.is_favorite ? "Favorit entfernen" : "Als Favorit markieren"}
+                      title={contact.is_favorite ? "Favorit entfernen" : "Als Favorit markieren"}
                     >
                       <Star className={`h-3 w-3 ${contact.is_favorite ? 'text-yellow-500 fill-current' : 'text-muted-foreground/40 hover:text-yellow-500'}`} />
                     </button>
@@ -245,21 +274,36 @@ export function ContactListTable({
                   <div className="flex items-center gap-2">
                     {contact.email && (
                       <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                        <button className="text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(contact.email!); toast({ title: "E-Mail kopiert" }); }}>
+                        <button
+                          className="text-muted-foreground hover:text-foreground"
+                          onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(contact.email!); toast({ title: "E-Mail kopiert" }); }}
+                          aria-label="E-Mail-Adresse kopieren"
+                          title="E-Mail-Adresse kopieren"
+                        >
                           <Mail className="h-3.5 w-3.5" />
                         </button>
                       </TooltipTrigger><TooltipContent>{contact.email}</TooltipContent></Tooltip></TooltipProvider>
                     )}
                     {contact.phone && (
                       <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                        <button className="text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(contact.phone!); toast({ title: "Telefon kopiert" }); }}>
+                        <button
+                          className="text-muted-foreground hover:text-foreground"
+                          onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(contact.phone!); toast({ title: "Telefon kopiert" }); }}
+                          aria-label="Telefonnummer kopieren"
+                          title="Telefonnummer kopieren"
+                        >
                           <Phone className="h-3.5 w-3.5" />
                         </button>
                       </TooltipTrigger><TooltipContent>{contact.phone}</TooltipContent></Tooltip></TooltipProvider>
                     )}
                     {contact.linkedin && (
                       <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                        <button className="text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(contact.linkedin!); toast({ title: "LinkedIn kopiert" }); }}>
+                        <button
+                          className="text-muted-foreground hover:text-foreground"
+                          onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(contact.linkedin!); toast({ title: "LinkedIn kopiert" }); }}
+                          aria-label="LinkedIn-Profil kopieren"
+                          title="LinkedIn-Profil kopieren"
+                        >
                           <User className="h-3.5 w-3.5" />
                         </button>
                       </TooltipTrigger><TooltipContent>{contact.linkedin}</TooltipContent></Tooltip></TooltipProvider>

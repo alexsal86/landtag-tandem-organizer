@@ -42,6 +42,33 @@
         </div>
         <div id="stats-bar" class="stats-bar" aria-live="polite" aria-atomic="true"></div>
         <div id="copy-status" class="sr-only-status" role="status" aria-live="polite" aria-atomic="true"></div>
+        <fieldset class="control-group">
+          <legend>Filter</legend>
+          <div class="control-row">
+            <label for="search" class="sr-only">Suche</label>
+            <input type="text" id="search" placeholder="Suche in Reden (Case-insensitive)" />
+            <label for="party-filter" class="sr-only">Partei</label>
+            <select id="party-filter">
+              <option value="">Partei (alle)</option>
+            </select>
+            <label for="role-filter" class="sr-only">Rolle</label>
+            <select id="role-filter">
+              <option value="">Rolle (alle)</option>
+              <option value="Präsidium">Präsidium</option>
+              <option value="Abgeordnete/r">Abgeordnete/r</option>
+              <option value="Minister">Minister</option>
+              <option value="Staatssekretär">Staatssekretär</option>
+              <option value="Staatsminister">Staatsminister</option>
+            </select>
+            <label>
+              <input type="checkbox" id="only-speaker-lines" />
+              Nur Sprecherkopf
+            </label>
+            <button id="reset-filters" class="secondary">Reset</button>
+            <button id="copy-json" class="secondary">Copy JSON</button>
+          </div>
+        </fieldset>
+        <div id="stats-bar" class="stats-bar"></div>
       </div>
       <div id="session-meta"></div>
       <div id="speeches-container" class="speeches"></div>
