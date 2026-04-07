@@ -14,9 +14,9 @@ import { DaySlipLexicalEditor } from "@/components/dayslip/DaySlipLexicalEditor"
 import { $createDaySlipLineNode, DaySlipLineNode } from "@/components/DaySlipLineNode";
 import { useDaySlipStore } from "@/components/dayslip/hooks/useDaySlipStore";
 import {
-  type DayTemplate, type RecurringTemplate,
+  type DayTemplate, type RecurringTemplate, type ResolveTarget,
   WEEK_DAYS, WEEK_DAY_LABELS, DEFAULT_DAY_TEMPLATES,
-  STORAGE_KEY, formatDate, stripHtml, isRuleLine, formatTimeStamp, normalizeLineText,
+  STORAGE_KEY, formatDate, stripHtml, isRuleLine, formatTimeStamp, normalizeLineText, toDayKey,
 } from "@/components/dayslip/dayslipTypes";
 
 export function GlobalDaySlipPanel() {
