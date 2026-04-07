@@ -3,10 +3,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { useMapFlagTypes } from '@/hooks/useMapFlagTypes';
 import { useMapFlags } from '@/hooks/useMapFlags';
-import { icons } from 'lucide-react';
-
-const toPascalCase = (name: string): string =>
-  name.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('');
+import { getLucideIcon } from '@/utils/iconUtils';
 
 interface MapFlagLayerToggleProps {
   visibleTypes: Set<string>;
