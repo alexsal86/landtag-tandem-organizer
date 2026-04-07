@@ -1,29 +1,33 @@
 
 
-## Plan: Update lucide-react to Latest Version
+## Plan: Badge-Anzeige reduzieren und Dot-Position auf Icon setzen
 
-### Current State
-- `lucide-react` version: **0.544.0** (target: **latest 1.x**)
-- **191 files** import from `lucide-react` — all use standard named imports (e.g. `import { Camera } from 'lucide-react'`), which will continue to work without changes
-- **3 files** use `import { icons } from 'lucide-react'` (the icons object map) — these need verification
+### Problem
+1. Bei einer neuen Entscheidung leuchten drei Badges: Benachrichtigungen, Meine Arbeit, und Aufgaben (weil "Entscheidungen" ein Sub-Item von "Aufgaben" ist und der Badge zum Gruppen-Badge hochrollt)
+2. Der Badge pulsiert zu schnell (Standard `animate-pulse` = 2s)
+3. Der Badge-Dot sitzt am Ende der Zeile statt oben rechts am Icon
 
-### What Changes
+### Lösungsansatz
 
-**Step 1: Update the package**
-- Update `lucide-react` to latest version in `package.json`
+**Schritt 1: Badge-Kontext für Entscheidungen ändern (Migration)**
+- Neue Migration: `navigation_context` der Entscheidungs-Benachrichtigungen von `'decisions'` auf `'mywork'` ändern in `notification_navigation_mapping`
+- Betrifft: `task_decision_request`, `task_decision_complete`, `task_decision_completed`, `task_decision_comment_received`, `task_decision_creator_response`
+- Bestehende ungelesene Notifications mit `navigation_context = 'decisions'` auf `'mywork'` umschreiben
+- Dadurch wird der Badge nur noch bei "Meine Arbeit" angezeigt (+ Benachrichtigungen-Panel bleibt unverändert)
 
-**Step 2: Verify/fix `icons` object usage (3 files)**
-In lucide-react 1.x, the `icons` object keys changed from PascalCase (`MapPin`) to kebab-case (`map-pin`). These files need adjustment:
+**Schritt 2: Langsamere Puls-Animation**
+- In `tailwind.config.ts`: Neue Animation `pulse-slow` mit 4s Dauer hinzufügen
+- Alle `animate-pulse` Badges in Navigation (`Navigation.tsx`, `AppNavigation.tsx`, `NotificationDot.tsx`) auf `animate-pulse-slow` umstellen
 
-1. **`src/utils/lucideIconToSvg.ts`** — uses `icons[iconName]` to dynamically render icons. Will update key lookup to handle the new kebab-case format.
-2. **`src/components/karlsruhe/MapFlagTypeManager.tsx`** — uses `icons` for icon picker display. Will update accordingly.
-3. **`src/components/karlsruhe/MapFlagLayerToggle.tsx`** — uses `icons` for rendering dynamic icons. Will update accordingly.
+**Schritt 3: Badge-Position auf Icon verlegen**
+- In `renderNavItem` (AppNavigation.tsx) und in `Navigation.tsx`: Den Badge-Dot von `ml-auto` am Zeilenende auf eine `absolute -top-1 -right-1` Position am Icon-Container setzen
+- Das Icon bekommt `relative` als Container, der Dot wird als absolut positioniertes Kind oben rechts am Icon platziert
+- Gleiche Anpassung für Gruppen-Header-Icons
 
-**Step 3: Build verification**
-- Run build to catch any other breaking import issues across all 191 files
-
-### Risk Assessment
-- Standard named imports (`import { X } from 'lucide-react'`) are **not affected** — these remain the same in v1.x
-- Only the dynamic `icons` object access pattern needs updating
-- No icon removals expected for the icons used in this project
+### Betroffene Dateien
+- Neue SQL-Migration (navigation_context update)
+- `tailwind.config.ts` — neue `pulse-slow` Animation
+- `src/components/AppNavigation.tsx` — Dot-Position und Animation
+- `src/components/Navigation.tsx` — Dot-Position und Animation
+- `src/components/NotificationDot.tsx` — Animation-Klasse
 
