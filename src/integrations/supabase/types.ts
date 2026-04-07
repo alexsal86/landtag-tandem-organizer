@@ -3553,18 +3553,18 @@ export type Database = {
           created_by: string
           dossier_id: string | null
           entry_type: string
+          external_published_at: string | null
           file_name: string | null
           file_path: string | null
           id: string
           is_curated: boolean
           is_pinned: boolean
-          external_published_at: string | null
           metadata: Json | null
           source_hash: string | null
           source_url: string | null
-          title_fingerprint: string | null
           tenant_id: string
           title: string | null
+          title_fingerprint: string | null
           updated_at: string
         }
         Insert: {
@@ -3573,18 +3573,18 @@ export type Database = {
           created_by: string
           dossier_id?: string | null
           entry_type?: string
+          external_published_at?: string | null
           file_name?: string | null
           file_path?: string | null
           id?: string
           is_curated?: boolean
           is_pinned?: boolean
-          external_published_at?: string | null
           metadata?: Json | null
           source_hash?: string | null
           source_url?: string | null
-          title_fingerprint?: string | null
           tenant_id: string
           title?: string | null
+          title_fingerprint?: string | null
           updated_at?: string
         }
         Update: {
@@ -3593,18 +3593,18 @@ export type Database = {
           created_by?: string
           dossier_id?: string | null
           entry_type?: string
+          external_published_at?: string | null
           file_name?: string | null
           file_path?: string | null
           id?: string
           is_curated?: boolean
           is_pinned?: boolean
-          external_published_at?: string | null
           metadata?: Json | null
           source_hash?: string | null
           source_url?: string | null
-          title_fingerprint?: string | null
           tenant_id?: string
           title?: string | null
+          title_fingerprint?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -11965,6 +11965,15 @@ export type Database = {
       delete_employee_meeting: {
         Args: { p_meeting_id: string }
         Returns: undefined
+      }
+      dossier_is_duplicate_entry: {
+        Args: {
+          p_dossier_id: string
+          p_source_hash: string
+          p_tenant_id: string
+          p_title: string
+        }
+        Returns: boolean
       }
       execute_archive_sick_days: {
         Args: { p_tenant_id: string }

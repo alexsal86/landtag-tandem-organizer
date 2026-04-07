@@ -11,7 +11,7 @@ export function NotificationDot({ visible, className }: NotificationDotProps) {
   return (
     <span
       className={cn(
-        "h-2 w-2 rounded-full bg-destructive animate-pulse",
+        "h-2 w-2 rounded-full bg-destructive animate-pulse-slow",
         className
       )}
     />

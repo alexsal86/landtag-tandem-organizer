@@ -162,20 +162,20 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                         )}>
                           <div className="relative">
                             <item.icon className="nav-icon transition-all duration-200" />
-                            {/* Matrix unread badge for collapsed sidebar */}
+                            {/* Badge on icon for collapsed sidebar */}
                             {item.id === 'chat' && matrixUnreadCount > 0 && isCollapsed && (
-                              <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-destructive animate-pulse" />
+                              <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-destructive animate-pulse-slow" />
+                            )}
+                            {/* Badge on icon for expanded sidebar */}
+                            {item.id === 'chat' && matrixUnreadCount > 0 && !isCollapsed && (
+                              <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-destructive animate-pulse-slow" />
+                            )}
+                            {item.id !== 'chat' && navigationCounts[item.id] > 0 && (
+                              <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-destructive animate-pulse-slow" />
                             )}
                           </div>
                           {!isCollapsed && <span className="text-sm">{item.label}</span>}
                         </div>
-                        {/* Matrix unread badge for expanded sidebar */}
-                        {!isCollapsed && item.id === 'chat' && matrixUnreadCount > 0 && (
-                          <span className="ml-auto h-2 w-2 rounded-full bg-destructive animate-pulse shrink-0" />
-                        )}
-                        {!isCollapsed && item.id !== 'chat' && navigationCounts[item.id] > 0 && (
-                          <span className="ml-auto h-2 w-2 rounded-full bg-destructive animate-pulse shrink-0" />
-                        )}
                       </SidebarMenuButton>
                     </HoverCardTrigger>
                     <HoverCardContent side="right" className="w-80">
@@ -229,12 +229,14 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
                           "flex items-center gap-2",
                           isCollapsed && "justify-center"
                         )}>
-                          <Shield />
+                          <div className="relative">
+                            <Shield />
+                            {navigationCounts['administration'] > 0 && (
+                              <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-destructive animate-pulse-slow" />
+                            )}
+                          </div>
                           {!isCollapsed && <span className="text-sm">Administration</span>}
                         </div>
-                        {!isCollapsed && navigationCounts['administration'] > 0 && (
-                          <span className="ml-auto h-2 w-2 rounded-full bg-destructive animate-pulse shrink-0" />
-                        )}
                       </SidebarMenuButton>
                     </HoverCardTrigger>
                     <HoverCardContent side="right" className="w-80">

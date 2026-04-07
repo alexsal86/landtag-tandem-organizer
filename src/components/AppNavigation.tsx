@@ -377,11 +377,13 @@ export function AppNavigation({
           !isActive && "text-[hsl(var(--nav-foreground))]"
         )}
       >
-        <Icon className={cn("h-4 w-4 shrink-0", clickedItem === id && "animate-nav-bounce")} />
+        <div className="relative">
+          <Icon className={cn("h-4 w-4 shrink-0", clickedItem === id && "animate-nav-bounce")} />
+          {badge > 0 && (
+            <span className="absolute -top-1 -right-1.5 h-2 w-2 rounded-full bg-destructive animate-pulse-slow" />
+          )}
+        </div>
         <span className="truncate text-sm">{label}</span>
-        {badge > 0 && (
-          <span className="ml-auto h-2 w-2 rounded-full bg-destructive animate-pulse shrink-0" />
-        )}
       </button>
     );
   };
@@ -416,15 +418,17 @@ export function AppNavigation({
             isActive && "font-medium"
           )}
         >
-          <group.icon className="h-4 w-4 shrink-0" />
+          <div className="relative">
+            <group.icon className="h-4 w-4 shrink-0" />
+            {badge > 0 && (
+              <span className="absolute -top-1 -right-1.5 h-2 w-2 rounded-full bg-destructive animate-pulse-slow" />
+            )}
+          </div>
           <span className="truncate text-sm">{group.label}</span>
-          {badge > 0 && (
-            <span className="ml-auto h-2 w-2 rounded-full bg-destructive animate-pulse shrink-0" />
-          )}
           {isExpanded ? (
-            <ChevronDown className={cn("h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))]", badge > 0 ? "" : "ml-auto")} />
+            <ChevronDown className="ml-auto h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))]" />
           ) : (
-            <ChevronRight className={cn("h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))]", badge > 0 ? "" : "ml-auto")} />
+            <ChevronRight className="ml-auto h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))]" />
           )}
         </button>
         {isExpanded && group.subItems && (
