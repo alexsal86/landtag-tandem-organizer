@@ -14,11 +14,15 @@ const preserveKnownParams = (searchParams: URLSearchParams, tab: TabValue) => {
   const nextParams = new URLSearchParams();
   nextParams.set("tab", tab);
 
-  const action = searchParams.get("action");
-  const highlight = searchParams.get("highlight");
+  const knownGlobalParams = ["action", "highlight", "scope", "period", "withAttachments", "withTasks"];
 
-  if (action) nextParams.set("action", action);
-  if (highlight) nextParams.set("highlight", highlight);
+  knownGlobalParams.forEach((param) => {
+    const value = searchParams.get(param);
+
+    if (value) {
+      nextParams.set(param, value);
+    }
+  });
 
   return nextParams;
 };
@@ -61,7 +65,7 @@ export const useMyWorkActiveTab = ({
   }, [activeTab, rawTab, searchParams, setSearchParams]);
 
   const setActiveTab = (tab: TabValue) => {
-    setSearchParams(new URLSearchParams([["tab", tab]]));
+    setSearchParams(preserveKnownParams(searchParams, tab));
   };
 
   return {
