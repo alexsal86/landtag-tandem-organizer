@@ -7,7 +7,9 @@ import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { Globe } from "lucide-react";
+import { Facebook, Instagram, Linkedin, Twitter, YouTube, TikTok, Threads, Mastodon } from "@/components/icons/SocialIcons";
 import { debugConsole } from "@/utils/debugConsole";
+import type { ReactNode } from "react";
 
 const OFFICE_SOCIAL_MEDIA_KEY = "office_social_media_channels";
 
@@ -34,15 +36,15 @@ const EMPTY_CHANNELS: SocialChannelValues = {
   mastodon: "",
 };
 
-const CHANNEL_FIELDS: Array<{ key: SocialChannelKey; label: string; placeholder: string }> = [
-  { key: "facebook", label: "Facebook", placeholder: "https://facebook.com/..." },
-  { key: "x", label: "X", placeholder: "https://x.com/..." },
-  { key: "instagram", label: "Instagram", placeholder: "https://instagram.com/..." },
-  { key: "linkedin", label: "LinkedIn", placeholder: "https://linkedin.com/company/..." },
-  { key: "youtube", label: "YouTube", placeholder: "https://youtube.com/@..." },
-  { key: "tiktok", label: "TikTok", placeholder: "https://tiktok.com/@..." },
-  { key: "threads", label: "Threads", placeholder: "https://threads.net/@..." },
-  { key: "mastodon", label: "Mastodon", placeholder: "https://mastodon.social/@..." },
+const CHANNEL_FIELDS: Array<{ key: SocialChannelKey; label: string; placeholder: string; icon: ReactNode }> = [
+  { key: "facebook", label: "Facebook", placeholder: "https://facebook.com/...", icon: <Facebook size={18} className="text-[#1877F2]" /> },
+  { key: "x", label: "X", placeholder: "https://x.com/...", icon: <Twitter size={18} className="text-foreground" /> },
+  { key: "instagram", label: "Instagram", placeholder: "https://instagram.com/...", icon: <Instagram size={18} className="text-[#E4405F]" /> },
+  { key: "linkedin", label: "LinkedIn", placeholder: "https://linkedin.com/company/...", icon: <Linkedin size={18} className="text-[#0A66C2]" /> },
+  { key: "youtube", label: "YouTube", placeholder: "https://youtube.com/@...", icon: <YouTube size={18} className="text-[#FF0000]" /> },
+  { key: "tiktok", label: "TikTok", placeholder: "https://tiktok.com/@...", icon: <TikTok size={18} className="text-foreground" /> },
+  { key: "threads", label: "Threads", placeholder: "https://threads.net/@...", icon: <Threads size={18} className="text-foreground" /> },
+  { key: "mastodon", label: "Mastodon", placeholder: "https://mastodon.social/@...", icon: <Mastodon size={18} className="text-[#6364FF]" /> },
 ];
 
 const parseChannels = (rawValue: string | null): SocialChannelValues => {
@@ -159,7 +161,10 @@ export function OfficeSocialMediaSettings() {
         <div className="grid gap-4 md:grid-cols-2">
           {CHANNEL_FIELDS.map((field) => (
             <div key={field.key} className="space-y-2">
-              <Label htmlFor={`office-social-${field.key}`}>{field.label}</Label>
+              <Label htmlFor={`office-social-${field.key}`} className="flex items-center gap-2">
+                {field.icon}
+                {field.label}
+              </Label>
               <Input
                 id={`office-social-${field.key}`}
                 value={channels[field.key]}
