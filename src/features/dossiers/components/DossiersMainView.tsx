@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { trackPageVisit } from "@/hooks/useRecentlyVisited";
 import { InboxView } from "./InboxView";
 import { DossierListView } from "./DossierListView";
 import { DossierDetailView } from "./DossierDetailView";
