@@ -9,10 +9,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { icons, LucideIcon } from 'lucide-react';
 import { Search } from 'lucide-react';
-
-// Convert kebab-case icon name to PascalCase key for icons object
-const toPascalCase = (name: string): string =>
-  name.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('');
+import { getLucideIcon } from '@/utils/iconUtils';
 
 interface TagIconPickerProps {
   value?: string;
