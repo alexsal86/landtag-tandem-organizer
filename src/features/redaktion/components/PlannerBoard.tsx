@@ -284,6 +284,7 @@ function SocialPlannerEditDialog({ item, open, users, channels, tagSuggestions, 
     setHashtags(item.hashtags || []);
     setHashtagsInComment(item.hashtags_in_comment ?? false);
     setAltText(item.alt_text || "");
+    setImageUrl(item.image_url || null);
   }, [item]);
 
   const channelOptions = useMemo(
