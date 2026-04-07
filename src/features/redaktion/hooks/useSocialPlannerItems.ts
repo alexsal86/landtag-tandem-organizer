@@ -175,6 +175,8 @@ export function useSocialPlannerItems() {
             alt_text: row.alt_text,
             channel_ids: channelLinks.map((entry) => entry.channel_id),
             channel_names: channelLinks.map((entry) => entry.social_content_channels?.name || "Unbekannter Kanal"),
+            channel_slugs: channelLinks.map((entry) => entry.social_content_channels?.slug || ""),
+            image_url: row.image_url || null,
           };
         }),
       );
