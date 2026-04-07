@@ -267,7 +267,7 @@ export function useSocialPlannerItems() {
 
   const updateItem = useCallback(async (
     id: string,
-    patch: Partial<Pick<SocialPlannerItem, "topic" | "tags" | "workflow_status" | "approval_state" | "responsible_user_id" | "format" | "content_goal" | "format_variant" | "asset_requirements" | "approval_required" | "publish_link" | "performance_notes" | "scheduled_for" | "hook" | "core_message" | "draft_text" | "cta" | "notes" | "channel_ids" | "hashtags" | "hashtags_in_comment" | "alt_text">>,
+    patch: Partial<Pick<SocialPlannerItem, "topic" | "tags" | "workflow_status" | "approval_state" | "responsible_user_id" | "format" | "content_goal" | "format_variant" | "asset_requirements" | "approval_required" | "publish_link" | "performance_notes" | "scheduled_for" | "hook" | "core_message" | "draft_text" | "cta" | "notes" | "channel_ids" | "hashtags" | "hashtags_in_comment" | "alt_text" | "image_url">>,
   ) => {
     if (!currentTenant?.id) return;
 
