@@ -9371,6 +9371,7 @@ export type Database = {
           hashtags_in_comment: boolean
           hook: string | null
           id: string
+          image_url: string | null
           notes: string | null
           performance_notes: string | null
           publish_link: string | null
@@ -9401,6 +9402,7 @@ export type Database = {
           hashtags_in_comment?: boolean
           hook?: string | null
           id?: string
+          image_url?: string | null
           notes?: string | null
           performance_notes?: string | null
           publish_link?: string | null
@@ -9431,6 +9433,7 @@ export type Database = {
           hashtags_in_comment?: boolean
           hook?: string | null
           id?: string
+          image_url?: string | null
           notes?: string | null
           performance_notes?: string | null
           publish_link?: string | null
@@ -9476,6 +9479,47 @@ export type Database = {
             columns: ["topic_backlog_id"]
             isOneToOne: false
             referencedRelation: "topic_backlog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_planner_notes: {
+        Row: {
+          color: string
+          content: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          note_date: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          color?: string
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          note_date: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          color?: string
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          note_date?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_planner_notes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
