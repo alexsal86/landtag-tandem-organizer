@@ -101,6 +101,10 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateA
       {/* Toolbar */}
       <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center rounded-md border overflow-hidden">
+            <Button type="button" size="sm" variant={view === "week" ? "default" : "ghost"} className="rounded-none h-8 px-3" onClick={() => setView("week")}>Woche</Button>
+            <Button type="button" size="sm" variant={view === "month" ? "default" : "ghost"} className="rounded-none h-8 px-3" onClick={() => setView("month")}>Monat</Button>
+          </div>
           <Button type="button" variant="outline" size="sm" className="h-9 px-4 text-sm font-medium" onClick={() => navigateCalendar("today")}>Heute</Button>
           <div className="flex items-center gap-0.5">
             <Button type="button" variant="ghost" size="icon" className="h-9 w-9" onClick={() => navigateCalendar("prev")}>
@@ -117,10 +121,6 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateA
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center rounded-md border overflow-hidden">
-            <Button type="button" size="sm" variant={view === "week" ? "default" : "ghost"} className="rounded-none h-8 px-3" onClick={() => setView("week")}>Woche</Button>
-            <Button type="button" size="sm" variant={view === "month" ? "default" : "ghost"} className="rounded-none h-8 px-3" onClick={() => setView("month")}>Monat</Button>
-          </div>
           <Select value={formatFilter} onValueChange={(value) => setFormatFilter(value as typeof formatFilter)}>
             <SelectTrigger className="h-8 w-[150px]"><SelectValue placeholder="Format" /></SelectTrigger>
             <SelectContent>
