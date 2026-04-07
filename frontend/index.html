@@ -40,7 +40,8 @@
           <button id="reset-filters" class="secondary">Reset</button>
           <button id="copy-json" class="secondary">Copy JSON</button>
         </div>
-        <div id="stats-bar" class="stats-bar"></div>
+        <div id="stats-bar" class="stats-bar" aria-live="polite" aria-atomic="true"></div>
+        <div id="copy-status" class="sr-only-status" role="status" aria-live="polite" aria-atomic="true"></div>
       </div>
       <div id="session-meta"></div>
       <div id="speeches-container" class="speeches"></div>
