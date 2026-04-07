@@ -13,7 +13,7 @@ import {
   startOfWeek,
 } from "date-fns";
 import { de } from "date-fns/locale";
-import { Plus, StickyNote } from "lucide-react";
+import { FileText, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
@@ -118,56 +118,35 @@ function DayCell({
           >
             {format(day, "d")}
           </span>
-          <Popover open={noteOpen} onOpenChange={setNoteOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-5 w-5 opacity-0 group-hover/cell:opacity-100 transition-opacity"
-              >
-                <StickyNote className="h-3 w-3" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 space-y-2" onClick={(e) => e.stopPropagation()}>
-              <Textarea
-                placeholder="Notiz…"
-                value={newNoteText}
-                onChange={(e) => setNewNoteText(e.target.value)}
-                className="min-h-[60px] text-xs"
-              />
-              <div className="flex items-center gap-1">
-                {NOTE_COLORS.map((c) => (
-                  <button
-                    key={c.value}
-                    type="button"
-                    className={`h-5 w-5 rounded-full border-2 ${c.bg} ${
-                      newNoteColor === c.value ? "ring-2 ring-primary ring-offset-1" : ""
-                    }`}
-                    onClick={() => setNewNoteColor(c.value)}
-                  />
-                ))}
-              </div>
-              <Button type="button" size="sm" className="w-full" onClick={() => void handleAddNote()}>
-                Notiz hinzufügen
-              </Button>
-            </PopoverContent>
-          </Popover>
         </div>
       )}
 
-      {/* Week view: add-note button */}
-      {view === "week" && (
-        <div className="flex justify-end px-1 pt-1">
+      <div className="px-1.5 pb-1">
+        <div className="flex gap-1.5 opacity-0 transition-opacity group-hover/cell:opacity-100">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 flex-1 gap-1.5 rounded-md border border-dashed border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            onClick={(e) => {
+              e.stopPropagation();
+              onCreateAtSlot?.(day);
+            }}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            <span className="text-[13px]">Post</span>
+          </Button>
           <Popover open={noteOpen} onOpenChange={setNoteOpen}>
             <PopoverTrigger asChild>
               <Button
                 type="button"
                 variant="ghost"
-                size="icon"
-                className="h-5 w-5 opacity-0 group-hover/cell:opacity-100 transition-opacity"
+                size="sm"
+                className="h-8 flex-1 gap-1.5 rounded-md border border-dashed border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                onClick={(e) => e.stopPropagation()}
               >
-                <StickyNote className="h-3 w-3" />
+                <FileText className="h-3.5 w-3.5" />
+                <span className="text-[13px]">Note</span>
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-64 space-y-2" onClick={(e) => e.stopPropagation()}>
@@ -195,7 +174,7 @@ function DayCell({
             </PopoverContent>
           </Popover>
         </div>
-      )}
+      </div>
 
       {/* Content area */}
       <ScrollArea className="flex-1 px-1 pb-1">
@@ -229,15 +208,6 @@ function DayCell({
             <PlannerPostCard key={item.id} item={item} onClick={() => onEditItem(item.id)} />
           ))}
 
-          {/* Empty state + button */}
-          {items.length === 0 && notes.length === 0 && specialDays.length === 0 && onCreateAtSlot && (
-            <div
-              className="flex items-center justify-center py-4 opacity-0 group-hover/cell:opacity-60 transition-opacity cursor-pointer"
-              onClick={() => onCreateAtSlot(day)}
-            >
-              <Plus className="h-5 w-5 text-muted-foreground" />
-            </div>
-          )}
         </div>
       </ScrollArea>
     </div>
