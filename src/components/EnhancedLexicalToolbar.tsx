@@ -58,6 +58,15 @@ import { TextAlignmentPlugin } from './plugins/TextAlignmentPlugin';
 import { LineHeightPlugin } from './plugins/LineHeightPlugin';
 import { ImageUploadDialog } from './plugins/ImagePlugin';
 import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { useSpeechDictation } from '@/hooks/useSpeechDictation';
 
 import { SpeechCommandsDialog } from '@/components/SpeechCommandsDialog';
@@ -84,6 +93,8 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
   const [showTableDialog, setShowTableDialog] = useState(false);
   const [tableRows, setTableRows] = useState('3');
   const [tableCols, setTableCols] = useState('3');
+  const tableButtonRef = useRef<HTMLButtonElement>(null);
+  const tableRowsInputRef = useRef<HTMLInputElement>(null);
   const {
     speechState,
     speechError,
@@ -459,7 +470,66 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
 
         {/* Insert */}
         <div className="flex gap-0.5 items-center">
-          <Button variant="ghost" size="sm" onClick={() => setShowTableDialog(true)} className="h-8 w-8 p-0" title="Tabelle"><Table className="h-4 w-4" /></Button>
+          <Dialog open={showTableDialog} onOpenChange={setShowTableDialog}>
+            <DialogTrigger asChild>
+              <Button
+                ref={tableButtonRef}
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                title="Tabelle"
+              >
+                <Table className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent
+              className="w-64"
+              onOpenAutoFocus={(event) => {
+                event.preventDefault();
+                tableRowsInputRef.current?.focus();
+              }}
+              onCloseAutoFocus={(event) => {
+                event.preventDefault();
+                tableButtonRef.current?.focus();
+              }}
+            >
+              <DialogHeader>
+                <DialogTitle className="text-sm">Tabelle einfügen</DialogTitle>
+                <DialogDescription>
+                  Wähle die Anzahl der Zeilen und Spalten für die neue Tabelle.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex gap-2 items-center">
+                <div className="flex-1">
+                  <label className="text-xs text-muted-foreground">Zeilen</label>
+                  <Input
+                    ref={tableRowsInputRef}
+                    type="number"
+                    value={tableRows}
+                    onChange={(e) => setTableRows(e.target.value)}
+                    min="1"
+                    max="20"
+                    className="h-8"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs text-muted-foreground">Spalten</label>
+                  <Input
+                    type="number"
+                    value={tableCols}
+                    onChange={(e) => setTableCols(e.target.value)}
+                    min="1"
+                    max="10"
+                    className="h-8"
+                  />
+                </div>
+              </div>
+              <DialogFooter className="gap-2 sm:justify-start sm:space-x-0">
+                <Button size="sm" onClick={insertTable}>Einfügen</Button>
+                <Button size="sm" variant="outline" onClick={() => setShowTableDialog(false)}>Abbrechen</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           <Button variant="ghost" size="sm" onClick={insertLink} className="h-8 w-8 p-0" title="Link"><Link className="h-4 w-4" /></Button>
           <Button variant="ghost" size="sm" onClick={insertHorizontalRule} className="h-8 w-8 p-0" title="Horizontale Linie"><Minus className="h-4 w-4" /></Button>
           <Button variant="ghost" size="sm" onClick={() => setShowImageDialog(true)} className="h-8 w-8 p-0" title="Bild einfügen"><Image className="h-4 w-4" /></Button>
@@ -531,29 +601,6 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
           {documentId && <VersionHistoryPlugin documentId={documentId} />}
         </div>
       </div>
-
-      {/* Table insert dialog */}
-      {showTableDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowTableDialog(false)}>
-          <div className="bg-background border rounded-lg p-4 space-y-3 w-64" onClick={(e) => e.stopPropagation()}>
-            <h4 className="font-medium text-sm">Tabelle einfügen</h4>
-            <div className="flex gap-2 items-center">
-              <div className="flex-1">
-                <label className="text-xs text-muted-foreground">Zeilen</label>
-                <Input type="number" value={tableRows} onChange={(e) => setTableRows(e.target.value)} min="1" max="20" className="h-8" />
-              </div>
-              <div className="flex-1">
-                <label className="text-xs text-muted-foreground">Spalten</label>
-                <Input type="number" value={tableCols} onChange={(e) => setTableCols(e.target.value)} min="1" max="10" className="h-8" />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button size="sm" onClick={insertTable}>Einfügen</Button>
-              <Button size="sm" variant="outline" onClick={() => setShowTableDialog(false)}>Abbrechen</Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Image insert dialog */}
       {showImageDialog && (
