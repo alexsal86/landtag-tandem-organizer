@@ -537,7 +537,7 @@ function SocialPlannerEditDialog({ item, open, users, channels, tagSuggestions, 
                       try {
                         const fileExt = file.name.split('.').pop();
                         const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
-                        const filePath = `planner-images/${fileName}`;
+                        const filePath = `${user?.id}/planner-images/${fileName}`;
                         const { error: uploadError } = await supabase.storage.from('documents').upload(filePath, file);
                         if (uploadError) throw uploadError;
                         const { data } = supabase.storage.from('documents').getPublicUrl(filePath);
