@@ -339,6 +339,7 @@ function SocialPlannerEditDialog({ item, open, users, channels, tagSuggestions, 
         hashtags,
         hashtags_in_comment: hashtagsInComment,
         alt_text: altText.trim() || null,
+        image_url: imageUrl,
       });
       onOpenChange(false);
     } catch {
