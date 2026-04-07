@@ -43,7 +43,7 @@ export function DossiersMainView() {
 
   return (
     <div className="space-y-4">
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="eingang">📥 Eingang</TabsTrigger>
           <TabsTrigger value="dossiers">📁 Dossiers</TabsTrigger>

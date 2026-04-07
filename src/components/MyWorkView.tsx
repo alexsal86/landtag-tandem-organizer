@@ -67,6 +67,19 @@ export function MyWorkView() {
   const handleTabChange = (tab: keyof typeof MY_WORK_TAB_VISIT_CONTEXTS) => {
     setActiveTab(tab);
 
+    // Track tab-specific recently visited entry
+    if (tab !== "dashboard") {
+      const tabConfig = MY_WORK_TABS.find(t => t.value === tab);
+      if (tabConfig) {
+        trackPageVisit(
+          `mywork-${tab}`,
+          `Meine Arbeit › ${tabConfig.label}`,
+          tabConfig.icon.displayName || "NotebookTabs",
+          `/mywork?tab=${tab}`
+        );
+      }
+    }
+
     const contexts = MY_WORK_TAB_VISIT_CONTEXTS[tab] || [];
     if (contexts.length === 0) return;
 
