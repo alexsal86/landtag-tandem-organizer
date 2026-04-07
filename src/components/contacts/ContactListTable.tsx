@@ -147,6 +147,11 @@ export function ContactListTable({
         <TableBody>
           {contacts.map((contact) => {
             const { firstName, lastName } = splitName(contact.name);
+            const salutationPrefix = showSalutation && contact.contact_type !== "organization"
+              ? (getGenderLabel(contact.gender ?? undefined) ? getGenderLabel(contact.gender ?? undefined) + " " : "")
+              : "";
+            const orgInline = !orgColumn && contact.contact_type !== "organization" && contact.organization;
+
             return (
               <TableRow key={contact.id} className="cursor-pointer hover:bg-muted/50 h-11" onClick={() => onContactClick(contact.id)}>
                 {isSelectionMode && (
@@ -174,21 +179,17 @@ export function ContactListTable({
                   </div>
                 </TableCell>
 
-                {/* Anrede */}
-                <TableCell className="py-1">
-                  <span className="text-xs text-muted-foreground">
-                    {contact.contact_type === "organization" ? "Org." : getGenderLabel(contact.gender ?? undefined) || "–"}
-                  </span>
-                </TableCell>
-
                 {/* Name */}
                 {splitNameMode ? (
                   <>
-                    <TableCell className="py-1"><span className="text-sm truncate block max-w-[140px]">{firstName}</span></TableCell>
+                    <TableCell className="py-1">
+                      <span className="text-sm truncate block max-w-[140px]">{salutationPrefix}{firstName}</span>
+                      {orgInline && <span className="text-xs text-muted-foreground truncate block max-w-[140px]">{contact.organization}</span>}
+                    </TableCell>
                     <TableCell className="py-1">
                       <HoverCard openDelay={200} closeDelay={100}>
                         <HoverCardTrigger asChild>
-                          <span className="text-sm font-medium truncate block max-w-[140px] underline-offset-2 hover:underline">{lastName}</span>
+                          <span className="text-sm font-semibold truncate block max-w-[140px] underline-offset-2 hover:underline">{lastName}</span>
                         </HoverCardTrigger>
                         <HoverCardContent align="start" className="w-80 space-y-3">
                           <div>
@@ -209,7 +210,10 @@ export function ContactListTable({
                   <TableCell className="py-1">
                     <HoverCard openDelay={200} closeDelay={100}>
                       <HoverCardTrigger asChild>
-                        <span className="text-sm font-medium truncate block max-w-[200px] underline-offset-2 hover:underline">{contact.name}</span>
+                        <div className="max-w-[200px]">
+                          <span className="text-sm font-semibold truncate block underline-offset-2 hover:underline">{salutationPrefix}{contact.name}</span>
+                          {orgInline && <span className="text-xs text-muted-foreground truncate block">{contact.organization}</span>}
+                        </div>
                       </HoverCardTrigger>
                       <HoverCardContent align="start" className="w-80 space-y-3">
                         <div>
@@ -227,12 +231,14 @@ export function ContactListTable({
                   </TableCell>
                 )}
 
-                {/* Organisation */}
-                <TableCell className="py-1">
-                  <span className="text-sm truncate block max-w-[160px]">
-                    {contact.contact_type === "organization" ? "–" : (contact.organization || "–")}
-                  </span>
-                </TableCell>
+                {/* Organisation (eigene Spalte, nur wenn Toggle aktiv) */}
+                {orgColumn && (
+                  <TableCell className="py-1">
+                    <span className="text-sm truncate block max-w-[160px]">
+                      {contact.contact_type === "organization" ? "–" : (contact.organization || "–")}
+                    </span>
+                  </TableCell>
+                )}
 
                 {/* Contact info */}
                 <TableCell className="py-1">
