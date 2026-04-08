@@ -8,7 +8,7 @@ import { type EntryType } from "../types";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { Save, Loader2, HelpCircle, Users, MessageSquare, ClipboardList, Scale, Link2, FileText, Mail, NotebookPen, Quote, PenLine } from "lucide-react";
-import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
+import DossierBlockEditor from "@/components/dossier-editor/DossierBlockEditor";
 
 interface DossierSummaryTabProps {
   dossier: Dossier;
