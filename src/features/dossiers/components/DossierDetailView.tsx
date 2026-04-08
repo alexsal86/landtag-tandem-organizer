@@ -7,16 +7,19 @@ import { DossierSummaryTab } from "./DossierSummaryTab";
 import { DossierBriefingTab } from "./DossierBriefingTab";
 import { DossierQualityFields } from "./DossierQualityFields";
 import { DossierSourceWatchersPanel } from "./DossierSourceWatchersPanel";
+import { DossierReviewReminder } from "./DossierReviewReminder";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
 import { ArrowLeft, Loader2, Settings2 } from "lucide-react";
 import { useState, useCallback, useEffect } from "react";
 import { trackPageVisit } from "@/hooks/useRecentlyVisited";
 import { DOSSIER_STATUS_OPTIONS, DOSSIER_PRIORITY_OPTIONS, ENTRY_TYPE_CONFIG, type EntryType } from "../types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useTenantProfiles } from "@/hooks/useTenantProfiles";
 
 interface DossierDetailViewProps {
   dossierId: string;
@@ -27,6 +30,7 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
   const { data: dossiers } = useDossiers();
   const { data: entries, isLoading } = useDossierEntries(dossierId);
   const updateDossier = useUpdateDossier();
+  const { data: tenantProfiles } = useTenantProfiles();
   const pinEntry = usePinEntry();
   const dossier = dossiers?.find((d) => d.id === dossierId);
   const [activeSection, setActiveSection] = useState("uebersicht");
@@ -42,6 +46,7 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
   const [editSummary, setEditSummary] = useState("");
   const [editStatus, setEditStatus] = useState("");
   const [editPriority, setEditPriority] = useState("");
+  const [editOwnerId, setEditOwnerId] = useState("unassigned");
 
   const entryTypes = Object.keys(ENTRY_TYPE_CONFIG) as EntryType[];
   const filteredEntries = activeEntryFilter === "alle"
@@ -56,12 +61,13 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
     setEditSummary(dossier.summary ?? "");
     setEditStatus(dossier.status);
     setEditPriority(dossier.priority);
+    setEditOwnerId(dossier.owner_id ?? "unassigned");
     setEditOpen(true);
   };
 
   const handleSaveEdit = () => {
     updateDossier.mutate(
-      { id: dossierId, title: editTitle, summary: editSummary, status: editStatus, priority: editPriority },
+      { id: dossierId, title: editTitle, summary: editSummary, status: editStatus, priority: editPriority, owner_id: editOwnerId === "unassigned" ? null : editOwnerId },
       { onSuccess: () => setEditOpen(false) }
     );
   };
@@ -111,6 +117,23 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="dossier-owner">Zuständigkeit</Label>
+                <Select value={editOwnerId} onValueChange={setEditOwnerId}>
+                  <SelectTrigger id="dossier-owner">
+                    <SelectValue placeholder="Zuständige Person" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">Nicht zugewiesen</SelectItem>
+                    {tenantProfiles.map((profile) => (
+                      <SelectItem key={profile.user_id} value={profile.user_id}>
+                        {profile.display_name || "Unbekannt"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {dossier && <DossierReviewReminder dossier={dossier} compact />}
               <Button onClick={handleSaveEdit} disabled={updateDossier.isPending || !editTitle.trim()} className="w-full">
                 {updateDossier.isPending ? <Loader2 className="animate-spin" /> : null}
                 Speichern

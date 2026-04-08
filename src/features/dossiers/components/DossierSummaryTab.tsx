@@ -5,10 +5,9 @@ import { useDossierLinks } from "../hooks/useDossierLinks";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { ENTRY_TYPE_CONFIG, type EntryType } from "../types";
-import { formatDistanceToNow, format, isPast } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
-import { Save, Loader2, HelpCircle, Users, AlertTriangle, CalendarClock, Link2, MessageSquare } from "lucide-react";
-import { DossierReviewReminder } from "./DossierReviewReminder";
+import { Save, Loader2, HelpCircle, Users, MessageSquare } from "lucide-react";
 
 interface DossierSummaryTabProps {
   dossier: Dossier;
@@ -119,9 +118,6 @@ export function DossierSummaryTab({ dossier, recentEntries }: DossierSummaryTabP
           <p className="text-xs text-muted-foreground italic">Keine offenen Fragen erfasst</p>
         )}
       </section>
-
-      {/* Review-Status (compact) */}
-      <DossierReviewReminder dossier={dossier} />
 
       {/* Letzte Aktivität */}
       {recent5.length > 0 && (
