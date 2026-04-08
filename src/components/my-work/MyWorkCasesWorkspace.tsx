@@ -78,7 +78,7 @@ const priorityOptions = [
 export function MyWorkCasesWorkspace() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { data: configuredCaseItemCategories } = useCaseItemCategories();
+  
   const tenantId = currentTenant?.id;
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
