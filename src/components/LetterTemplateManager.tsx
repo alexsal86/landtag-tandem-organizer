@@ -8,13 +8,14 @@ import { LetterTemplateSettings } from '@/components/letters/LetterTemplateSetti
 import { useLetterTemplateData } from './letter-templates/hooks/useLetterTemplateData';
 import { useTemplateFormTabs } from './letter-templates/TemplateFormTabs';
 import { TemplateGrid } from './letter-templates/TemplateGrid';
+import { CelebrationAnimationSystem } from '@/components/celebrations';
 
 const LetterTemplateManager: React.FC = () => {
   const data = useLetterTemplateData();
   const {
     templates, loading, editingTemplate, showCreateDialog, setShowCreateDialog,
     activeTab, setActiveTab, showPreview, setShowPreview, showSettings, setShowSettings,
-    formData, senderInfos, infoBlocks, currentTenant, toast,
+    formData, senderInfos, infoBlocks, currentTenant, toast, showSuccessAnimation, setShowSuccessAnimation,
     handleCreateTemplate, handleUpdateTemplate, handleDeleteTemplate,
     resetForm, startEditing, cancelEditing, getBlockItems, setBlockItems, setFormData,
   } = data;
@@ -91,6 +92,11 @@ const LetterTemplateManager: React.FC = () => {
           <p className="text-sm">Erstellen Sie Ihr erstes Template.</p>
         </div>
       )}
+
+      <CelebrationAnimationSystem
+        isVisible={showSuccessAnimation}
+        onAnimationComplete={() => setShowSuccessAnimation(false)}
+      />
     </div>
   );
 };
