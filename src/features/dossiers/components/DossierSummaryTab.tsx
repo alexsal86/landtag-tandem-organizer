@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import type { Dossier, DossierEntry } from "../types";
 import { useUpdateDossier } from "../hooks/useDossiers";
 import { useDossierLinks } from "../hooks/useDossierLinks";
