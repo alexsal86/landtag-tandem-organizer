@@ -104,12 +104,12 @@ export function MyWorkCasesWorkspace() {
   const [filters, setFilters] = useState<CaseWorkspaceFilters>({ itemQuery: "", fileQuery: "" });
 
   const categoryOptions = useMemo(() => {
-    const configured = (configuredCaseItemCategories ?? [])
-      .map((category) => category.label?.trim() || category.name?.trim())
-      .filter((label): label is string => Boolean(label));
-
-    return configured.length > 0 ? configured : [...DEFAULT_CASE_ITEM_CATEGORIES];
-  }, [configuredCaseItemCategories]);
+    const active = caseFileTypes.filter((t) => t.is_active);
+    const labels = active
+      .map((t) => t.label?.trim() || t.name?.trim())
+      .filter((l): l is string => Boolean(l));
+    return labels.length > 0 ? labels : ["Allgemein"];
+  }, [caseFileTypes]);
 
   const [isCaseItemDialogOpen, setIsCaseItemDialogOpen] = useState(false);
   const [isCaseFileDialogOpen, setIsCaseFileDialogOpen] = useState(false);

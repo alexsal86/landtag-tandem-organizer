@@ -45,7 +45,7 @@ const TENANT_SCOPED_TABLES = [
   'appointment_statuses',
   'appointment_locations',
   'case_file_processing_statuses',
-  'case_item_categories',
+  
 ] as const;
 
 const isTenantScopedTable = (tableName: ConfigurableTypeSettingsProps['tableName']) =>
