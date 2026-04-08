@@ -4,12 +4,14 @@ import { useTenant } from "@/hooks/useTenant";
 import { useCurrentProfileId } from "@/hooks/useCurrentProfileId";
 import { toast } from "sonner";
 import type { Dossier } from "../types";
+import { useEffect } from "react";
 
 export function useDossiers() {
   const { currentTenant } = useTenant();
   const tenantId = currentTenant?.id;
+  const profileId = useCurrentProfileId();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ["dossiers", tenantId],
     enabled: !!tenantId,
     queryFn: async () => {
@@ -22,6 +24,59 @@ export function useDossiers() {
       return data as Dossier[];
     },
   });
+
+  useEffect(() => {
+    const ensureReviewTasks = async () => {
+      if (!tenantId || !profileId || !query.data?.length) return;
+
+      const nowIso = new Date().toISOString();
+      const dueDossiers = query.data.filter((dossier) =>
+        dossier.owner_id &&
+        dossier.next_review_at &&
+        dossier.next_review_at <= nowIso
+      );
+
+      if (dueDossiers.length === 0) return;
+
+      const dossierIds = dueDossiers.map((dossier) => dossier.id);
+      const { data: existingTasks, error: taskFetchError } = await supabase
+        .from("tasks")
+        .select("id, source_id, due_date")
+        .eq("tenant_id", tenantId)
+        .eq("source_type", "dossier_review")
+        .in("source_id", dossierIds);
+
+      if (taskFetchError) return;
+
+      const existingKeys = new Set(
+        (existingTasks ?? []).map((task) => `${task.source_id ?? ""}::${task.due_date ?? ""}`)
+      );
+
+      const tasksToCreate = dueDossiers
+        .filter((dossier) => !existingKeys.has(`${dossier.id}::${dossier.next_review_at}`))
+        .map((dossier) => ({
+          tenant_id: tenantId,
+          user_id: profileId,
+          assigned_to: dossier.owner_id,
+          title: `Dossier-Review fällig: ${dossier.title}`,
+          description: `Bitte Dossier „${dossier.title}“ prüfen.`,
+          due_date: dossier.next_review_at,
+          priority: "medium",
+          status: "todo",
+          category: "dossier",
+          source_type: "dossier_review",
+          source_id: dossier.id,
+        }));
+
+      if (tasksToCreate.length === 0) return;
+
+      await supabase.from("tasks").insert(tasksToCreate);
+    };
+
+    void ensureReviewTasks();
+  }, [profileId, query.data, tenantId]);
+
+  return query;
 }
 
 export function useCreateDossier() {
@@ -72,6 +127,7 @@ export function useUpdateDossier() {
       review_interval_days?: number | null;
       next_review_at?: string | null;
       last_briefing_at?: string | null;
+      owner_id?: string | null;
     }) => {
       const { id, ...updates } = input;
       const payload: Record<string, unknown> = { ...updates, updated_at: new Date().toISOString() };
