@@ -277,13 +277,17 @@ span[data-lexical-mention="true"] {
   position: relative;
 }
 
+.dossier-block-editor-content {
+  position: relative;
+}
+
 .dossier-block-editor-input {
-  @apply p-4 pl-10 text-sm leading-relaxed focus:outline-none w-full border-0 outline-none;
+  @apply p-4 pl-12 text-sm leading-relaxed focus:outline-none w-full border-0 outline-none;
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 .dossier-block-editor-placeholder {
-  @apply absolute top-4 left-10 text-muted-foreground/50 text-sm pointer-events-none select-none;
+  @apply absolute top-4 left-12 text-muted-foreground/50 text-sm pointer-events-none select-none;
 }
 
 /* ===== Component Picker (Slash Commands) ===== */
@@ -346,16 +350,34 @@ span[data-lexical-mention="true"] {
   font-weight: 500;
 }
 
-/* ===== Draggable Block Plugin ===== */
+.component-picker-search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 0;
+  outline: none;
+  font-size: 14px;
+  border-radius: 8px 8px 0 0;
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+/* ===== Draggable Block Plugin (Playground-style) ===== */
 .draggable-block-menu {
-  position: absolute;
-  left: 2px;
-  top: 0;
+  border-radius: 4px;
+  padding: 2px 1px;
   cursor: grab;
   opacity: 0;
-  transition: opacity 0.15s ease;
-  padding: 2px;
-  border-radius: 4px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform, opacity;
+  display: flex;
+  gap: 2px;
+  transition:
+    transform 140ms ease-in-out,
+    opacity 160ms ease-in-out;
   z-index: 10;
 }
 
@@ -382,24 +404,32 @@ span[data-lexical-mention="true"] {
   transition: all 0.15s ease;
 }
 
+.draggable-block-menu-icon.icon-plus {
+  cursor: pointer;
+}
+
 .draggable-block-menu-icon:hover {
   background: hsl(var(--accent));
   color: hsl(var(--accent-foreground));
 }
 
-.dossier-block-editor:hover .draggable-block-menu {
+.dossier-block-editor-content:hover .draggable-block-menu {
   opacity: 0.4;
 }
 
 .draggable-block-target-line {
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  height: 3px;
-  background: hsl(var(--primary));
-  border-radius: 2px;
   pointer-events: none;
-  z-index: 10;
+  background: deepskyblue;
+  height: 4px;
+  position: absolute;
+  left: 0;
+  top: 0;
   opacity: 0;
-  transition: opacity 0.1s ease;
+  will-change: transform;
+  z-index: 10;
+}
+
+/* Draggable block component picker popover */
+.draggable-block-component-picker {
+  max-width: 260px;
 }
