@@ -11,7 +11,6 @@ import { StatusAdminSettings } from "@/components/StatusAdminSettings";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Clock, MapPin, Building, Users } from "lucide-react";
-import { TenantCollaboration } from "@/components/TenantCollaboration";
 import { DecisionEmailTemplates } from "@/components/task-decisions/DecisionEmailTemplates";
 import { DefaultGuestsAdmin } from "@/components/DefaultGuestsAdmin";
 import AppointmentPreparationTemplateAdmin from "@/components/AppointmentPreparationTemplateAdmin";
@@ -254,7 +253,6 @@ export default function Administration(): React.JSX.Element | null {
         case "usercolors":
           if (!isSuperAdmin) return null;
           return <UserColorManager />;
-        case "collaboration": return <TenantCollaboration />;
         case "matrix": return <MatrixSettings />;
         case "office-social-media": return <OfficeSocialMediaSettings />;
         case "vacation-checklist": return <VacationChecklistAdmin />;
