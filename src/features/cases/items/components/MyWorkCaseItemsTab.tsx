@@ -73,7 +73,7 @@ const normalize = (value: string | null | undefined) => value?.trim().toLowerCas
 export function MyWorkCaseItemsTab() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { data: configuredCaseItemCategories } = useCaseItemCategories();
+  const { caseFileTypes } = useCaseFileTypes();
   const { toast } = useToast();
   const navigate = useNavigate();
 
