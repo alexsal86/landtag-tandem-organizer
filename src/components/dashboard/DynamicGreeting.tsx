@@ -3,6 +3,7 @@ import { TypewriterText } from './TypewriterText';
 import { getCurrentTimeSlot, getCurrentDayOfWeek, getGreeting } from '@/utils/dashboard/timeUtils';
 import { selectMessage } from '@/utils/dashboard/messageGenerator';
 import type { DashboardContext } from '@/utils/dashboard/messageGenerator';
+import { useDashboardMessages } from '@/hooks/useDashboardMessages';
 
 interface DynamicGreetingProps {
   appointmentsCount: number;
@@ -11,6 +12,8 @@ interface DynamicGreetingProps {
 }
 
 export const DynamicGreeting = ({ appointmentsCount, tasksCount, completedTasksCount }: DynamicGreetingProps) => {
+  const { messages } = useDashboardMessages();
+
   const message = useMemo(() => {
     const now = new Date();
     const context: DashboardContext = {
@@ -23,8 +26,8 @@ export const DynamicGreeting = ({ appointmentsCount, tasksCount, completedTasksC
       month: now.getMonth() + 1
     };
     
-    return selectMessage(context);
-  }, [appointmentsCount, tasksCount, completedTasksCount]);
+    return selectMessage(context, messages);
+  }, [appointmentsCount, tasksCount, completedTasksCount, messages]);
   
   const greeting = getGreeting(getCurrentTimeSlot());
   const fullMessage = `${greeting}! ${message.text}`;

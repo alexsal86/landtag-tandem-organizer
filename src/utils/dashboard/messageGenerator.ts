@@ -34,6 +34,8 @@ export interface DashboardContext {
   multipleSessions?: boolean;
 }
 
+export const DASHBOARD_MESSAGES_SETTING_KEY = 'dashboard_motivational_messages_v1';
+
 export const messages: DashboardMessage[] = [
   // NEUE NACHRICHTEN: Plenum-Sitzungen (Priorität: 120)
   {
@@ -538,8 +540,29 @@ export const messages: DashboardMessage[] = [
   }
 ];
 
-export const selectMessage = (context: DashboardContext): DashboardMessage => {
-  const matchingMessages = messages.filter(msg => {
+const isValidDashboardMessage = (value: unknown): value is DashboardMessage => {
+  if (!value || typeof value !== 'object') return false;
+  const msg = value as Partial<DashboardMessage>;
+  return typeof msg.id === 'string'
+    && typeof msg.text === 'string'
+    && typeof msg.priority === 'number'
+    && typeof msg.timeSlot === 'string';
+};
+
+export const parseDashboardMessagesSetting = (raw: string | null | undefined): DashboardMessage[] | null => {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return null;
+    const normalized = parsed.filter(isValidDashboardMessage);
+    return normalized.length > 0 ? normalized : null;
+  } catch {
+    return null;
+  }
+};
+
+export const selectMessage = (context: DashboardContext, sourceMessages: DashboardMessage[] = messages): DashboardMessage => {
+  const matchingMessages = sourceMessages.filter(msg => {
     // Zeitfenster prüfen
     if (msg.timeSlot !== context.timeSlot) return false;
 
@@ -602,5 +625,5 @@ export const selectMessage = (context: DashboardContext): DashboardMessage => {
   matchingMessages.sort((a, b) => b.priority - a.priority);
 
   // Höchste Priorität zurückgeben oder Standard-Morgen-Nachricht
-  return matchingMessages[0] || messages.find(m => m.id === 'standard-morning')!;
+  return matchingMessages[0] || sourceMessages.find(m => m.id === 'standard-morning') || messages.find(m => m.id === 'standard-morning')!;
 };

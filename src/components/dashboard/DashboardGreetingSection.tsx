@@ -8,6 +8,7 @@ import { selectMessage } from '@/utils/dashboard/messageGenerator';
 import { getWeatherHint, WeatherToggle } from '@/components/dashboard/DashboardWeather';
 import { getSpecialDayHint, type SpecialDayHint } from '@/utils/dashboard/specialDays';
 import { type DashboardData } from '@/hooks/useDashboardData';
+import { useDashboardMessages } from '@/hooks/useDashboardMessages';
 import { Separator } from '@/components/ui/separator';
 import { DashboardAppointmentList } from '@/components/dashboard/DashboardAppointmentList';
 
@@ -17,6 +18,7 @@ interface Props {
 
 export const DashboardGreetingSection = ({ data }: Props) => {
   const navigate = useNavigate();
+  const { messages } = useDashboardMessages();
   const {
     userName, userRole, appointments, isShowingTomorrow,
     openTasksCount, completedTasksToday, openTaskTitles,
@@ -63,7 +65,7 @@ export const DashboardGreetingSection = ({ data }: Props) => {
       hasPlenum,
       hasCommittee,
       multipleSessions,
-    });
+    }, messages);
 
     let text = `${greeting}, ${userName}!\n\n`;
     text += `${message.text}\n\n`;
@@ -76,7 +78,7 @@ export const DashboardGreetingSection = ({ data }: Props) => {
     text += isShowingTomorrow ? '\n📅 **Deine Termine morgen:**\n' : '\n📅 **Deine Termine heute:**\n';
     text += '{{APPOINTMENTS_PLACEHOLDER}}\n';
     return text;
-  }, [isLoading, userName, userRole, appointments, isShowingTomorrow, openTasksCount, completedTasksToday, specialDayHint]);
+  }, [isLoading, userName, userRole, appointments, isShowingTomorrow, openTasksCount, completedTasksToday, specialDayHint, messages]);
 
   const parsedContent = useMemo(() => {
     const parseTextSection = (text: string) => {
