@@ -487,8 +487,23 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
         if (verificationRequest.phase === VerificationPhase.Cancelled || verificationRequest.phase === VerificationPhase.Done) return;
 
         // Use the verifier the SDK set up when the requester sent m.key.verification.start
-        const verifier = verificationRequest.verifier;
-        if (!verifier) { matrixLogger.error('[Matrix] No verifier after Started phase — aborting'); return; }
+        let verifier = verificationRequest.verifier;
+        if (!verifier) {
+          // SDK may populate verifier asynchronously; try startVerification as acceptor —
+          // the Rust SDK should return the existing verifier for the incoming start rather
+          // than sending a new m.key.verification.start.
+          matrixLogger.warn('[Matrix] verifier null after Started phase — calling startVerification as acceptor fallback');
+          try {
+            verifier = await verificationRequest.startVerification?.('m.sas.v1');
+          } catch (e) {
+            matrixLogger.error('[Matrix] Failed to get verifier as acceptor:', e);
+          }
+          if (!verifier) {
+            matrixLogger.error('[Matrix] No verifier obtainable — aborting incoming verification');
+            setLastVerificationError('Eingehende Verifizierung konnte nicht verarbeitet werden (kein Verifier).');
+            return;
+          }
+        }
 
         try {
           const cleanupVerifierListeners = setupVerifierListeners(verifier, verificationRequest, setActiveSasVerification, setLastVerificationError);
@@ -881,13 +896,29 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
     }
 
     let verifier: Verifier;
-    try { verifier = await verificationRequest.startVerification('m.sas.v1'); } catch (error) {
-      const reason = describeError(error);
-      const isUnknownDevice = Boolean(trimmedDeviceId) && /other device is unknown/i.test(reason);
-      if (!isUnknownDevice) throw error;
-      setLastVerificationError(`Device ${trimmedDeviceId} nicht gefunden. Erneuter Versuch ohne feste Device-ID.`);
-      verificationRequest = await crypto.requestOwnUserVerification();
-      verifier = await verificationRequest.startVerification('m.sas.v1');
+    if (verificationRequest.phase === VerificationPhase.Started) {
+      // The other device (e.g. Element Mobile) already sent m.key.verification.start before us.
+      // Do NOT call startVerification again — that would send a competing start message and may
+      // cause each side to compute SAS from a different context, leading to m.mismatched_sas.
+      // Instead, use the verifier the Rust SDK already created from their start message.
+      const existingVerifier = (verificationRequest as unknown as MatrixVerificationRequest).verifier;
+      if (existingVerifier) {
+        verifier = existingVerifier;
+      } else {
+        // Fallback: SDK verifier not yet set (shouldn't normally happen); try startVerification
+        // so the SDK can return the acceptor verifier for the incoming start.
+        try { verifier = await verificationRequest.startVerification('m.sas.v1'); } catch (error) { throw error; }
+      }
+    } else {
+      // Phase is Ready — we are the SAS initiator; send m.key.verification.start normally.
+      try { verifier = await verificationRequest.startVerification('m.sas.v1'); } catch (error) {
+        const reason = describeError(error);
+        const isUnknownDevice = Boolean(trimmedDeviceId) && /other device is unknown/i.test(reason);
+        if (!isUnknownDevice) throw error;
+        setLastVerificationError(`Device ${trimmedDeviceId} nicht gefunden. Erneuter Versuch ohne feste Device-ID.`);
+        verificationRequest = await crypto.requestOwnUserVerification();
+        verifier = await verificationRequest.startVerification('m.sas.v1');
+      }
     }
 
     const cleanupVerifierListeners = setupVerifierListeners(verifier, verificationRequest as unknown as MatrixVerificationRequest, setActiveSasVerification, setLastVerificationError, describeError);
