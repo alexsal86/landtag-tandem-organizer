@@ -47,6 +47,7 @@ import {
   Network,
   ClipboardCheck,
   Globe2,
+  Sparkles,
 } from "lucide-react";
 
 export interface AdminMenuItem {
@@ -139,6 +140,7 @@ export const adminMenuItems: AdminMenuItem[] = [
       { id: "plannings", label: "Planungs-Templates", icon: Layout },
       { id: "emails", label: "E-Mail-Vorlagen", icon: Newspaper },
       { id: "event-emails", label: "Veranstaltungs-Mails", icon: Mail },
+      { id: "celebrations", label: "Erfolgsanimation", icon: Sparkles },
     ],
   },
   {
