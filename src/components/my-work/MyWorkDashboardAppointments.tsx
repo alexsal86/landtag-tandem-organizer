@@ -12,6 +12,7 @@ import { getCurrentTimeSlot, getCurrentDayOfWeek } from '@/utils/dashboard/timeU
 import { selectMessage } from '@/utils/dashboard/messageGenerator';
 import { getSpecialDayHint } from '@/utils/dashboard/specialDays';
 import { type DashboardData } from '@/hooks/useDashboardData';
+import { useDashboardMessages } from '@/hooks/useDashboardMessages';
 import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -121,6 +122,7 @@ export const DashboardAppointments = ({ data }: Props) => {
 
   const [preparations, setPreparations] = useState<Map<string, AppointmentPreparation>>(new Map());
   const [expandedBriefingId, setExpandedBriefingId] = useState<string | null>(null);
+  const { messages } = useDashboardMessages();
 
 
   // Fetch preparations for today's appointments
@@ -178,8 +180,8 @@ export const DashboardAppointments = ({ data }: Props) => {
       hasPlenum,
       hasCommittee,
       multipleSessions: (hasPlenum && hasCommittee),
-    });
-  }, [appointments, openTasksCount, completedTasksToday, userRole, hasPlenum, hasCommittee, timeSlot]);
+    }, messages);
+  }, [appointments, openTasksCount, completedTasksToday, userRole, hasPlenum, hasCommittee, timeSlot, messages]);
 
   const specialDayHint = useMemo(() => getSpecialDayHint(new Date(), specialDays), [specialDays]);
   const [isSpecialDayHintVisible, setIsSpecialDayHintVisible] = useState(true);
