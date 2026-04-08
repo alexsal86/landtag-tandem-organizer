@@ -19,7 +19,6 @@ import {
   Archive,
   Activity,
   Palette,
-  Users,
   MessageSquare,
   CalendarCheck,
   FileCheck,
@@ -93,7 +92,6 @@ export const adminMenuItems: AdminMenuItem[] = [
     children: [
       { id: "status", label: "Status", icon: Activity },
       { id: "usercolors", label: "Benutzerfarben", icon: Palette, superAdminOnly: true },
-      { id: "collaboration", label: "Kollaboration", icon: Users },
       { id: "matrix", label: "Matrix-Chat", icon: MessageSquare },
       { id: "office-social-media", label: "Büro-Social-Media", icon: Globe2 },
       { id: "vacation-checklist", label: "Urlaubs-Checkliste", icon: ClipboardCheck },
