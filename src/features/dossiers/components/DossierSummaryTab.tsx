@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import type { Dossier, DossierEntry } from "../types";
 import { useUpdateDossier } from "../hooks/useDossiers";
 import { useDossierLinks } from "../hooks/useDossierLinks";
@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { type EntryType } from "../types";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
-import { Save, Loader2, HelpCircle, Users, MessageSquare, ClipboardList, Scale, Link2, FileText, Mail, NotebookPen, Quote } from "lucide-react";
+import { Save, Loader2, HelpCircle, Users, MessageSquare, ClipboardList, Scale, Link2, FileText, Mail, NotebookPen, Quote, PenLine } from "lucide-react";
+import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 
 interface DossierSummaryTabProps {
   dossier: Dossier;
@@ -23,6 +24,16 @@ export function DossierSummaryTab({ dossier, recentEntries }: DossierSummaryTabP
   const [questions, setQuestions] = useState(dossier.open_questions ?? "");
   const [editingPositions, setEditingPositions] = useState(false);
   const [positions, setPositions] = useState(dossier.positions ?? "");
+  const [notesHtml, setNotesHtml] = useState(dossier.notes_html ?? "");
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleNotesChange = useCallback((html: string) => {
+    setNotesHtml(html);
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      updateDossier.mutate({ id: dossier.id, notes_html: html });
+    }, 1500);
+  }, [dossier.id, updateDossier]);
 
   const handleSaveSummary = () => {
     updateDossier.mutate(
@@ -177,29 +188,51 @@ export function DossierSummaryTab({ dossier, recentEntries }: DossierSummaryTabP
         </section>
       </div>
 
-      {/* Letzte Aktivität */}
-      {recent5.length > 0 && (
+      {/* Notizen + Letzte Einträge — 50/50 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Notizen (Lexical Editor) */}
         <section>
-            <h3 className="text-sm font-semibold flex items-center gap-1.5 mb-2">
-              <MessageSquare className="h-4 w-4" /> Letzte Einträge
-            </h3>
-          <div className="space-y-1.5">
-            {recent5.map((entry) => {
-              const iconKey = entry.entry_type as EntryType;
-              const EntryIcon = recentEntryIcons[iconKey] ?? FileText;
-              return (
-                <div key={entry.id} className="flex items-center gap-2 text-sm rounded-md px-2 py-1.5 bg-muted/30">
-                  <EntryIcon className="h-4 w-4 text-muted-foreground" />
-                  <span className="truncate flex-1 text-foreground">{entry.title || "Ohne Titel"}</span>
-                  <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-                    {formatDistanceToNow(new Date(entry.created_at), { addSuffix: true, locale: de })}
-                  </span>
-                </div>
-              );
-            })}
+          <h3 className="text-sm font-semibold flex items-center gap-1.5 mb-2">
+            <PenLine className="h-4 w-4 text-primary" /> Notizen
+          </h3>
+          <div className="rounded-md border border-border bg-background">
+            <SimpleRichTextEditor
+              key={dossier.id}
+              initialContent={notesHtml}
+              contentVersion={dossier.id}
+              onChange={handleNotesChange}
+              placeholder="Notizen zum Dossier …"
+              minHeight="200px"
+            />
           </div>
         </section>
-      )}
+
+        {/* Letzte Einträge */}
+        <section>
+          <h3 className="text-sm font-semibold flex items-center gap-1.5 mb-2">
+            <MessageSquare className="h-4 w-4" /> Letzte Einträge
+          </h3>
+          {recent5.length > 0 ? (
+            <div className="space-y-1.5">
+              {recent5.map((entry) => {
+                const iconKey = entry.entry_type as EntryType;
+                const EntryIcon = recentEntryIcons[iconKey] ?? FileText;
+                return (
+                  <div key={entry.id} className="flex items-center gap-2 text-sm rounded-md px-2 py-1.5 bg-muted/30">
+                    <EntryIcon className="h-4 w-4 text-muted-foreground" />
+                    <span className="truncate flex-1 text-foreground">{entry.title || "Ohne Titel"}</span>
+                    <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                      {formatDistanceToNow(new Date(entry.created_at), { addSuffix: true, locale: de })}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">Noch keine Einträge vorhanden</p>
+          )}
+        </section>
+      </div>
 
       {/* Verknüpfte Kontakte (preview) */}
       {contactLinks.length > 0 && (

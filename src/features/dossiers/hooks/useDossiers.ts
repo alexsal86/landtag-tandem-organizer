@@ -124,6 +124,7 @@ export function useUpdateDossier() {
       open_questions?: string;
       positions?: string;
       risks_opportunities?: string;
+      notes_html?: string;
       review_interval_days?: number | null;
       next_review_at?: string | null;
       last_briefing_at?: string | null;

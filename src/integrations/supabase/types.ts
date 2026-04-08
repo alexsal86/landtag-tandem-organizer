@@ -3737,6 +3737,7 @@ export type Database = {
           id: string
           last_briefing_at: string | null
           next_review_at: string | null
+          notes_html: string | null
           open_questions: string | null
           owner_id: string | null
           positions: string | null
@@ -3756,6 +3757,7 @@ export type Database = {
           id?: string
           last_briefing_at?: string | null
           next_review_at?: string | null
+          notes_html?: string | null
           open_questions?: string | null
           owner_id?: string | null
           positions?: string | null
@@ -3775,6 +3777,7 @@ export type Database = {
           id?: string
           last_briefing_at?: string | null
           next_review_at?: string | null
+          notes_html?: string | null
           open_questions?: string | null
           owner_id?: string | null
           positions?: string | null
