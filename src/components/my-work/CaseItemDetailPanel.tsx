@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { AlertCircle, Archive, CheckCircle2, ChevronDown, Clock, Download, ExternalLink, FileEdit, FileText, Gavel, Globe, Loader2, Mail, MessageSquare, Phone, Search, Trash2, Users, Vote } from "lucide-react";
+import { AlertCircle, Archive, CheckCircle2, ChevronDown, Clock, Download, ExternalLink, FileEdit, FileText, Gavel, Globe, Link2, Loader2, Mail, MessageSquare, Phone, Search, Trash2, Users, Vote } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,6 @@ import { debugConsole } from "@/utils/debugConsole";
 import { TaskDecisionDetails } from "@/components/task-decisions/TaskDecisionDetails";
 import { DecisionFileUpload } from "@/components/task-decisions/DecisionFileUpload";
 import type { CaseItemInteractionDocument, EditableCaseItem, TimelineInteractionType, TimelineDocumentAttachment } from "@/components/my-work/hooks/useCaseItemEdit";
-import { LinkedValueChip } from "@/components/my-work/LinkedValueChip";
 import { stripHtml } from "@/utils/textDiff";
 
 type TimelineEntry = {
@@ -323,36 +322,37 @@ export function CaseItemDetailPanel({
     <div className="mx-2 mb-3 space-y-4">
       <div className="grid gap-4 lg:grid-cols-[minmax(230px,1fr)_minmax(0,2.8fr)]">
         <div className="space-y-3">
-          <div className="space-y-2 rounded-md border bg-background p-3 text-sm">
+          <div className="space-y-3 rounded-md border bg-background p-3 text-sm">
             <Label className="font-bold" htmlFor="detail-contact-name">Von / Gesprächspartner</Label>
-            <div className="relative" ref={searchContainerRef}>
-              {selectedContactId ? (
-                <LinkedValueChip
-                  label="Verknüpfter Kontakt"
-                  value={contactPerson || contactDisplay}
-                  onRemove={handleClearContact}
-                  className="w-full justify-between"
-                />
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs font-semibold text-muted-foreground shrink-0 w-14" htmlFor="detail-contact-name">Name</Label>
-                  <div className="relative flex-1">
-                    <Input
-                      id="detail-contact-name"
-                      value={contactPerson}
-                      placeholder={contactDisplay || "Suchen…"}
-                      onChange={(event) => {
-                        onContactPersonChange(event.target.value);
-                        if (selectedContactId) handleClearContact();
-                      }}
-                      onFocus={() => { if (contactSearchResults.length > 0) setShowSearchResults(true); }}
-                      className="pr-8 h-8"
-                    />
-                    {searchingContacts && <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
-                    {!searchingContacts && !selectedContactId && contactPerson.length >= 2 && <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
-                  </div>
+            <div className="relative pt-1" ref={searchContainerRef}>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs font-semibold text-muted-foreground shrink-0 w-14" htmlFor="detail-contact-name">Name</Label>
+                <div className="relative flex-1">
+                  <Input
+                    id="detail-contact-name"
+                    value={contactPerson}
+                    placeholder={contactDisplay || "Suchen…"}
+                    onChange={(event) => {
+                      onContactPersonChange(event.target.value);
+                      if (selectedContactId) handleClearContact();
+                    }}
+                    onFocus={() => { if (contactSearchResults.length > 0) setShowSearchResults(true); }}
+                    className={cn("h-8", selectedContactId ? "pr-16" : "pr-8")}
+                  />
+                  {searchingContacts && <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+                  {!searchingContacts && !selectedContactId && contactPerson.length >= 2 && <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
+                  {selectedContactId && !searchingContacts && (
+                    <button
+                      type="button"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center rounded p-1 text-muted-foreground hover:text-foreground"
+                      onClick={handleClearContact}
+                      aria-label="Kontaktverknüpfung entfernen"
+                    >
+                      <Link2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
-              )}
+              </div>
               {showSearchResults && contactSearchResults.length > 0 && (
                 <div className="absolute left-14 right-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-md border bg-popover shadow-lg">
                   {contactSearchResults.map((result) => (
@@ -373,35 +373,33 @@ export function CaseItemDetailPanel({
             </div>
             <div className="flex items-center gap-2">
               <Label className="text-xs font-semibold text-muted-foreground shrink-0 w-14" htmlFor="detail-contact-email">E-Mail</Label>
-              <div className="flex-1">
-                {selectedContactId && contactEmail ? (
-                  <LinkedValueChip label="E-Mail" value={contactEmail} onRemove={() => onContactEmailChange("")} className="w-full justify-between" />
-                ) : (
-                  <Input
-                    id="detail-contact-email"
-                    type="email"
-                    value={contactEmail}
-                    placeholder="name@beispiel.de"
-                    onChange={(event) => onContactEmailChange(event.target.value)}
-                    className="h-8"
-                  />
+              <div className="relative flex-1">
+                <Input
+                  id="detail-contact-email"
+                  type="email"
+                  value={contactEmail}
+                  placeholder="name@beispiel.de"
+                  onChange={(event) => onContactEmailChange(event.target.value)}
+                  className={cn("h-8", selectedContactId ? "pr-10" : undefined)}
+                />
+                {selectedContactId && (
+                  <Link2 className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 )}
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Label className="text-xs font-semibold text-muted-foreground shrink-0 w-14" htmlFor="detail-contact-phone">Telefon</Label>
-              <div className="flex-1">
-                {selectedContactId && contactPhone ? (
-                  <LinkedValueChip label="Telefon" value={contactPhone} onRemove={() => onContactPhoneChange("")} className="w-full justify-between" />
-                ) : (
-                  <Input
-                    id="detail-contact-phone"
-                    type="tel"
-                    value={contactPhone}
-                    placeholder="+49 …"
-                    onChange={(event) => onContactPhoneChange(event.target.value)}
-                    className="h-8"
-                  />
+              <div className="relative flex-1">
+                <Input
+                  id="detail-contact-phone"
+                  type="tel"
+                  value={contactPhone}
+                  placeholder="+49 …"
+                  onChange={(event) => onContactPhoneChange(event.target.value)}
+                  className={cn("h-8", selectedContactId ? "pr-10" : undefined)}
+                />
+                {selectedContactId && (
+                  <Link2 className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 )}
               </div>
             </div>
