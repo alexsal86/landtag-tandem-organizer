@@ -85,7 +85,6 @@ export const adminMenuItems: AdminMenuItem[] = [
       { id: "login", label: "Login-Anpassung", icon: LogIn },
       { id: "expense", label: "Verwaltung", icon: CreditCard },
       { id: "auditlogs", label: "Audit-Logs", icon: History },
-      { id: "archiving", label: "Archivierung", icon: Archive },
     ],
   },
   {
@@ -122,6 +121,7 @@ export const adminMenuItems: AdminMenuItem[] = [
       { id: "tasks", label: "Aufgaben", icon: CheckSquare },
       { id: "todos", label: "ToDos", icon: ListTodo },
       { id: "decisions", label: "Entscheidungen", icon: Gavel },
+      { id: "archiving", label: "Archivierung", icon: Archive },
       { id: "documents", label: "Dokumenttypen", icon: File },
       { id: "casefiles", label: "Fallakten-Typen", icon: Briefcase },
       { id: "case-items", label: "Vorgänge", icon: Briefcase },
