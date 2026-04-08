@@ -51,6 +51,34 @@ import {
 
 const MatrixClientContext = createContext<MatrixClientContextType>(defaultMatrixClientContext);
 
+/**
+ * Waits for verificationRequest.verifier to be populated by the SDK (via the 'change' event).
+ * Returns the verifier as soon as it appears, or null if timeoutMs elapses first.
+ */
+async function awaitVerifierFromRequest(
+  req: MatrixVerificationRequest,
+  timeoutMs: number,
+): Promise<Verifier | null> {
+  const existing = req.verifier;
+  if (existing) return existing;
+  return new Promise<Verifier | null>((resolve) => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const check = () => {
+      const v = req.verifier;
+      if (v) {
+        clearTimeout(timeoutId);
+        req.off?.('change', check);
+        resolve(v);
+      }
+    };
+    req.on?.('change', check);
+    timeoutId = setTimeout(() => {
+      req.off?.('change', check);
+      resolve(null);
+    }, timeoutMs);
+  });
+}
+
 export function MatrixClientProvider({ children }: MatrixClientProviderProps): React.JSX.Element {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
@@ -486,23 +514,13 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
 
         if (verificationRequest.phase === VerificationPhase.Cancelled || verificationRequest.phase === VerificationPhase.Done) return;
 
-        // Use the verifier the SDK set up when the requester sent m.key.verification.start
-        let verifier = verificationRequest.verifier;
+        // Use the verifier the SDK set up when the requester sent m.key.verification.start.
+        // Wait up to 2 s via the change event in case the SDK sets it asynchronously.
+        const verifier = await awaitVerifierFromRequest(verificationRequest, 2000);
         if (!verifier) {
-          // SDK may populate verifier asynchronously; try startVerification as acceptor —
-          // the Rust SDK should return the existing verifier for the incoming start rather
-          // than sending a new m.key.verification.start.
-          matrixLogger.warn('[Matrix] verifier null after Started phase — calling startVerification as acceptor fallback');
-          try {
-            verifier = await verificationRequest.startVerification?.('m.sas.v1');
-          } catch (e) {
-            matrixLogger.error('[Matrix] Failed to get verifier as acceptor:', e);
-          }
-          if (!verifier) {
-            matrixLogger.error('[Matrix] No verifier obtainable — aborting incoming verification');
-            setLastVerificationError('Eingehende Verifizierung konnte nicht verarbeitet werden (kein Verifier).');
-            return;
-          }
+          matrixLogger.error('[Matrix] No verifier obtainable after Started phase — aborting incoming verification');
+          setLastVerificationError('Eingehende Verifizierung konnte nicht verarbeitet werden (kein Verifier).');
+          return;
         }
 
         try {
@@ -881,6 +899,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
       ? await crypto.requestDeviceVerification(userId, trimmedDeviceId)
       : await crypto.requestOwnUserVerification();
 
+    // Step 1: wait for the phone to accept (Ready) or to have already started (Started).
     if (verificationRequest.phase !== VerificationPhase.Started) {
       await new Promise<void>((resolve, reject) => {
         let timeoutId: ReturnType<typeof setTimeout>;
@@ -895,22 +914,49 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
       });
     }
 
+    // Step 2: if phone has only sent Ready (not Started yet), give it up to 300 ms to also
+    // send m.key.verification.start. Element Mobile sends its start immediately after accepting.
+    // If we rush to call startVerification while the phone's start is in-flight, both sides
+    // send competing starts. Rust SDK resolves the conflict, but the browser's verifier may
+    // retain INITIATOR mode even when the phone's start wins — causing the browser's MAC to
+    // use the wrong role parameters → m.mismatched_sas when the browser confirms first.
+    if (verificationRequest.phase === VerificationPhase.Ready) {
+      await new Promise<void>((resolve) => {
+        let delayId: ReturnType<typeof setTimeout>;
+        const checkStarted = () => {
+          const phase = verificationRequest.phase;
+          if (phase !== VerificationPhase.Ready) {
+            clearTimeout(delayId);
+            (verificationRequest as unknown as MatrixVerificationRequest).off?.('change', checkStarted);
+            resolve();
+          }
+        };
+        (verificationRequest as unknown as MatrixVerificationRequest).on?.('change', checkStarted);
+        delayId = setTimeout(() => {
+          (verificationRequest as unknown as MatrixVerificationRequest).off?.('change', checkStarted);
+          resolve();
+        }, 300);
+      });
+    }
+
+    // Step 3: acquire the correct verifier based on current phase.
     let verifier: Verifier;
     if (verificationRequest.phase === VerificationPhase.Started) {
-      // The other device (e.g. Element Mobile) already sent m.key.verification.start before us.
-      // Do NOT call startVerification again — that would send a competing start message and may
-      // cause each side to compute SAS from a different context, leading to m.mismatched_sas.
-      // Instead, use the verifier the Rust SDK already created from their start message.
-      const existingVerifier = (verificationRequest as unknown as MatrixVerificationRequest).verifier;
-      if (existingVerifier) {
-        verifier = existingVerifier;
+      // Phone sent m.key.verification.start — browser is the SAS ACCEPTOR.
+      // Get the acceptor verifier the SDK created; wait up to 2 s for it to be set.
+      const acceptorVerifier = await awaitVerifierFromRequest(
+        verificationRequest as unknown as MatrixVerificationRequest,
+        2000,
+      );
+      if (acceptorVerifier) {
+        verifier = acceptorVerifier;
       } else {
-        // Fallback: SDK verifier not yet set (shouldn't normally happen); try startVerification
-        // so the SDK can return the acceptor verifier for the incoming start.
+        // SDK did not expose the acceptor verifier within 2 s — last-resort fallback.
         try { verifier = await verificationRequest.startVerification('m.sas.v1'); } catch (error) { throw error; }
       }
     } else {
-      // Phase is Ready — we are the SAS initiator; send m.key.verification.start normally.
+      // Phase is still Ready — phone did not send a start within the grace period.
+      // Browser is the SAS INITIATOR; call startVerification normally.
       try { verifier = await verificationRequest.startVerification('m.sas.v1'); } catch (error) {
         const reason = describeError(error);
         const isUnknownDevice = Boolean(trimmedDeviceId) && /other device is unknown/i.test(reason);
