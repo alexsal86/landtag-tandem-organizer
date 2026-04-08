@@ -241,16 +241,6 @@ export default function Administration(): React.JSX.Element | null {
           return <UserRolesManager />;
         case "tenants": return <SuperadminTenantManagement />;
         case "auditlogs": return <AuditLogViewer />;
-        case "archiving":
-          return (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5" />Entscheidungsarchivierung</CardTitle>
-                <CardDescription>Verwalten Sie die automatische Archivierung von Entscheidungsanfragen</CardDescription>
-              </CardHeader>
-              <CardContent><DecisionArchiveSettings /></CardContent>
-            </Card>
-          );
         case "expense": return <ExpenseManagement />;
         default: return <GeneralSettings />;
       }
@@ -304,6 +294,16 @@ export default function Administration(): React.JSX.Element | null {
         case "todos":
           return <ConfigurableTypeSettings title="ToDo-Kategorien" tableName="todo_categories" entityName="Kategorie" hasIcon={true} hasColor={true} defaultIcon="ListTodo" defaultColor="#10b981" deleteWarning="Sind Sie sicher, dass Sie diese Kategorie löschen möchten?" />;
         case "decisions": return <DecisionEmailTemplates />;
+        case "archiving":
+          return (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5" />Entscheidungsarchivierung</CardTitle>
+                <CardDescription>Verwalten Sie die automatische Archivierung von Entscheidungsanfragen</CardDescription>
+              </CardHeader>
+              <CardContent><DecisionArchiveSettings /></CardContent>
+            </Card>
+          );
         case "documents":
           return <ConfigurableTypeSettings title="Dokumenten-Kategorien" tableName="document_categories" entityName="Kategorie" hasIcon={true} hasColor={true} defaultIcon="FileText" defaultColor="#6366f1" deleteWarning="Sind Sie sicher, dass Sie diese Kategorie löschen möchten?" />;
         case "casefiles":
