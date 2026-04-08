@@ -91,7 +91,6 @@ const INTERNAL_ROUTES = [
   
   // Admin
   { value: '/administration', label: 'Administration', category: 'Admin', icon: 'Settings' },
-  { value: '/drucksachen', label: 'Drucksachen', category: 'Admin', icon: 'FileText' },
 ];
 
 const ROUTE_CATEGORIES = ['Hauptbereiche', 'Erstellen', 'Import', 'Admin'];

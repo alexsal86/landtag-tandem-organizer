@@ -12,7 +12,6 @@ import {
   CalendarPlus,
   Vote,
   FileText,
-  Archive,
   Calculator,
 } from "lucide-react";
 
@@ -73,7 +72,6 @@ export const navigationGroups: NavGroup[] = [
     subItems: [
       { id: "casefiles", label: "Fallakten", icon: Briefcase },
       { id: "documents", label: "Dokumente", icon: FileText },
-      { id: "drucksachen", label: "Drucksachen", icon: Archive },
       { id: "dossiers", label: "Wissen", icon: Database },
     ]
   },
