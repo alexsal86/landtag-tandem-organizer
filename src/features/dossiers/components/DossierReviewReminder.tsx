@@ -10,6 +10,7 @@ import { de } from "date-fns/locale";
 
 interface DossierReviewReminderProps {
   dossier: Dossier;
+  compact?: boolean;
 }
 
 const INTERVAL_OPTIONS = [
@@ -21,7 +22,7 @@ const INTERVAL_OPTIONS = [
   { value: "180", label: "Halbjährlich" },
 ];
 
-export function DossierReviewReminder({ dossier }: DossierReviewReminderProps) {
+export function DossierReviewReminder({ dossier, compact = false }: DossierReviewReminderProps) {
   const updateDossier = useUpdateDossier();
   const [interval, setInterval] = useState(
     String(dossier.review_interval_days ?? 0)
@@ -48,7 +49,7 @@ export function DossierReviewReminder({ dossier }: DossierReviewReminderProps) {
   };
 
   return (
-    <Card className={isOverdue ? "border-destructive/50 bg-destructive/5" : "border-border"}>
+    <Card className={compact ? "border-dashed" : isOverdue ? "border-destructive/50 bg-destructive/5" : "border-border"}>
       <CardHeader className="p-4 pb-2">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <CalendarClock className={`h-4 w-4 ${isOverdue ? "text-destructive" : "text-muted-foreground"}`} />
@@ -61,6 +62,9 @@ export function DossierReviewReminder({ dossier }: DossierReviewReminderProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="p-4 pt-0 space-y-3">
+        <p className="text-xs text-muted-foreground">
+          Wird ein Review fällig, wird eine Aufgabe für die zuständige Person angelegt.
+        </p>
         <Select value={interval} onValueChange={handleIntervalChange}>
           <SelectTrigger className="h-9 text-sm">
             <SelectValue />
