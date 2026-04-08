@@ -1,69 +1,64 @@
-import { useState, useCallback } from "react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useState, useCallback, Suspense } from "react";
 import { trackPageVisit } from "@/hooks/useRecentlyVisited";
 import { InboxView } from "./InboxView";
 import { DossierListView } from "./DossierListView";
 import { DossierDetailView } from "./DossierDetailView";
+import { DossiersSidePanel } from "./DossiersSidePanel";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
-import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
 
 const KnowledgeBaseView = lazyWithRetry(() => import("@/components/KnowledgeBaseView"));
 
+type DossierTab = "eingang" | "dossiers" | "artikel";
+
+const DOSSIER_TAB_LABELS: Record<DossierTab, string> = {
+  eingang: "Eingang",
+  dossiers: "Dossiers",
+  artikel: "Artikel",
+};
+
 export function DossiersMainView() {
-  const [activeTab, setActiveTab] = useState("eingang");
-
-  const DOSSIER_TAB_LABELS: Record<string, string> = {
-    eingang: "Eingang",
-    dossiers: "Dossiers",
-    artikel: "Artikel",
-  };
-
-  const handleTabChange = useCallback((tab: string) => {
-    setActiveTab(tab);
-    const label = DOSSIER_TAB_LABELS[tab];
-    if (label) {
-      trackPageVisit(`dossiers-${tab}`, `Wissen › ${label}`, "Database", `/dossiers?tab=${tab}`);
-    }
-  }, []);
+  const [activeTab, setActiveTab] = useState<DossierTab>("eingang");
   const [selectedDossierId, setSelectedDossierId] = useState<string | null>(null);
+
+  const handleTabChange = useCallback((tab: DossierTab) => {
+    setActiveTab(tab);
+    setSelectedDossierId(null);
+    const label = DOSSIER_TAB_LABELS[tab];
+    trackPageVisit(`dossiers-${tab}`, `Wissen › ${label}`, "Database", `/dossiers?tab=${tab}`);
+  }, []);
 
   const handleSelectDossier = (id: string) => {
     setSelectedDossierId(id);
+    setActiveTab("dossiers");
   };
 
   const handleBack = () => {
     setSelectedDossierId(null);
   };
 
-  // If a dossier is selected, show its detail view
-  if (selectedDossierId) {
-    return <DossierDetailView dossierId={selectedDossierId} onBack={handleBack} />;
-  }
-
   return (
-    <div className="space-y-4">
-      <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList>
-          <TabsTrigger value="eingang">📥 Eingang</TabsTrigger>
-          <TabsTrigger value="dossiers">📁 Dossiers</TabsTrigger>
-          <TabsTrigger value="artikel">📄 Artikel</TabsTrigger>
-        </TabsList>
+    <div className="flex h-[calc(100vh-3.5rem)]">
+      <DossiersSidePanel
+        activeTab={activeTab}
+        setActiveTab={handleTabChange}
+        selectedDossierId={selectedDossierId}
+        onSelectDossier={handleSelectDossier}
+      />
 
-        <TabsContent value="eingang">
+      <div className="flex-1 overflow-auto">
+        {selectedDossierId ? (
+          <DossierDetailView dossierId={selectedDossierId} onBack={handleBack} />
+        ) : activeTab === "eingang" ? (
           <InboxView />
-        </TabsContent>
-
-        <TabsContent value="dossiers">
+        ) : activeTab === "dossiers" ? (
           <DossierListView onSelect={handleSelectDossier} />
-        </TabsContent>
-
-        <TabsContent value="artikel">
+        ) : (
           <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="animate-spin h-6 w-6 text-muted-foreground" /></div>}>
             <KnowledgeBaseView />
           </Suspense>
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
     </div>
   );
 }
