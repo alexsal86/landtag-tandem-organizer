@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 import { useCaseItems } from "@/features/cases/items/hooks";
 import type { CaseItemListEntry, EscalationSuggestion } from "@/features/cases/items/types";
 import { debugConsole } from "@/utils/debugConsole";
-import { DEFAULT_CASE_ITEM_CATEGORIES, useCaseItemCategories } from "@/hooks/useCaseItemCategories";
+import { useCaseFileTypes } from "@/features/cases/files/hooks/useCaseFileTypes";
 
 type SortBy = "updated_desc" | "due_asc" | "priority_desc";
 
