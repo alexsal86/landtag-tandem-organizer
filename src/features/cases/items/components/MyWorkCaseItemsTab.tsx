@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 import { useCaseItems } from "@/features/cases/items/hooks";
 import type { CaseItemListEntry, EscalationSuggestion } from "@/features/cases/items/types";
 import { debugConsole } from "@/utils/debugConsole";
-import { DEFAULT_CASE_ITEM_CATEGORIES, useCaseItemCategories } from "@/hooks/useCaseItemCategories";
+import { useCaseFileTypes } from "@/features/cases/files/hooks/useCaseFileTypes";
 
 type SortBy = "updated_desc" | "due_asc" | "priority_desc";
 
@@ -73,7 +73,7 @@ const normalize = (value: string | null | undefined) => value?.trim().toLowerCas
 export function MyWorkCaseItemsTab() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { data: configuredCaseItemCategories } = useCaseItemCategories();
+  const { caseFileTypes } = useCaseFileTypes();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -103,12 +103,12 @@ export function MyWorkCaseItemsTab() {
   const { createCaseItem } = useCaseItems();
 
   const categoryOptions = useMemo(() => {
-    const configured = (configuredCaseItemCategories ?? [])
-      .map((category) => category.label?.trim() || category.name?.trim())
-      .filter((label): label is string => Boolean(label));
-
-    return configured.length > 0 ? configured : [...DEFAULT_CASE_ITEM_CATEGORIES];
-  }, [configuredCaseItemCategories]);
+    const active = caseFileTypes.filter((t) => t.is_active);
+    const labels = active
+      .map((t) => t.label?.trim() || t.name?.trim())
+      .filter((l): l is string => Boolean(l));
+    return labels.length > 0 ? labels : ["Allgemein"];
+  }, [caseFileTypes]);
 
   const loadCaseItems = useCallback(async () => {
     if (!user || !currentTenant?.id) return;

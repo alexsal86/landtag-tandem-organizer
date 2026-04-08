@@ -312,8 +312,6 @@ export default function Administration(): React.JSX.Element | null {
               <ConfigurableTypeSettings title="Bearbeitungsstatus" tableName="case_file_processing_statuses" entityName="Status" hasIcon={true} hasColor={true} defaultIcon="Circle" defaultColor="#6b7280" deleteWarning="Sind Sie sicher, dass Sie diesen Status löschen möchten?" />
             </div>
           );
-        case "case-items":
-          return <ConfigurableTypeSettings title="Vorgangs-Kategorien" tableName="case_item_categories" entityName="Kategorie" hasIcon={false} hasColor={false} deleteWarning="Sind Sie sicher, dass Sie diese Kategorie löschen möchten?" />;
         case "stakeholder-network-tags": return <StakeholderNetworkTagSettings />;
         default: return <TopicSettings />;
       }

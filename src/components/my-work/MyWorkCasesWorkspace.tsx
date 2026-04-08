@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { debugConsole } from "@/utils/debugConsole";
 import { useCaseWorkspaceData, type CaseFile, type CaseItem } from "@/components/my-work/hooks/useCaseWorkspaceData";
 import { useCaseItemEdit, type CaseItemInteractionDocument, type TimelineEvent, type TimelineInteractionType, type TimelineDocumentAttachment } from "@/components/my-work/hooks/useCaseItemEdit";
-import { DEFAULT_CASE_ITEM_CATEGORIES, useCaseItemCategories } from "@/hooks/useCaseItemCategories";
+
 import { toEditorHtml } from "@/components/my-work/utils/editorContent";
 import { CaseItemList, type CaseItemSortKey, type SortDirection } from "@/components/my-work/cases/workspace/CaseItemList";
 import { CaseFileList } from "@/components/my-work/cases/workspace/CaseFileList";
@@ -78,7 +78,7 @@ const priorityOptions = [
 export function MyWorkCasesWorkspace() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { data: configuredCaseItemCategories } = useCaseItemCategories();
+  
   const tenantId = currentTenant?.id;
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -104,12 +104,12 @@ export function MyWorkCasesWorkspace() {
   const [filters, setFilters] = useState<CaseWorkspaceFilters>({ itemQuery: "", fileQuery: "" });
 
   const categoryOptions = useMemo(() => {
-    const configured = (configuredCaseItemCategories ?? [])
-      .map((category) => category.label?.trim() || category.name?.trim())
-      .filter((label): label is string => Boolean(label));
-
-    return configured.length > 0 ? configured : [...DEFAULT_CASE_ITEM_CATEGORIES];
-  }, [configuredCaseItemCategories]);
+    const active = caseFileTypes.filter((t) => t.is_active);
+    const labels = active
+      .map((t) => t.label?.trim() || t.name?.trim())
+      .filter((l): l is string => Boolean(l));
+    return labels.length > 0 ? labels : ["Allgemein"];
+  }, [caseFileTypes]);
 
   const [isCaseItemDialogOpen, setIsCaseItemDialogOpen] = useState(false);
   const [isCaseFileDialogOpen, setIsCaseFileDialogOpen] = useState(false);

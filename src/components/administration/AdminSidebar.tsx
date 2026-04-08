@@ -121,7 +121,7 @@ export const adminMenuItems: AdminMenuItem[] = [
       { id: "archiving", label: "Archivierung", icon: Archive },
       { id: "documents", label: "Dokumenttypen", icon: File },
       { id: "casefiles", label: "Fallakten-Typen", icon: Briefcase },
-      { id: "case-items", label: "Vorgänge", icon: Briefcase },
+      
       { id: "stakeholder-network-tags", label: "Stakeholder-Netzwerk", icon: Network },
     ],
   },
@@ -134,7 +134,7 @@ export const adminMenuItems: AdminMenuItem[] = [
       { id: "occasions", label: "Brief-Anlässe", icon: File },
       { id: "press-templates", label: "Pressevorlagen", icon: Newspaper },
       { id: "press-occasions", label: "Presse-Anlässe", icon: Megaphone },
-      { id: "meetings", label: "Meeting-Templates", icon: Users },
+      { id: "meetings", label: "Meeting-Templates", icon: Users2 },
       { id: "plannings", label: "Planungs-Templates", icon: Layout },
       { id: "emails", label: "E-Mail-Vorlagen", icon: Newspaper },
       { id: "event-emails", label: "Veranstaltungs-Mails", icon: Mail },
