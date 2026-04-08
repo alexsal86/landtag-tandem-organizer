@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Loader2, Settings2 } from "lucide-react";
+import { ArrowLeft, BookOpenText, FileText, Link2, Loader2, NotebookPen, Settings2, Sparkles } from "lucide-react";
 import { useState, useCallback, useEffect } from "react";
 import { trackPageVisit } from "@/hooks/useRecentlyVisited";
 import { DOSSIER_STATUS_OPTIONS, DOSSIER_PRIORITY_OPTIONS, ENTRY_TYPE_CONFIG, type EntryType } from "../types";
@@ -49,6 +49,13 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
   const [editOwnerId, setEditOwnerId] = useState("unassigned");
 
   const entryTypes = Object.keys(ENTRY_TYPE_CONFIG) as EntryType[];
+  const entryTypeIcons: Record<EntryType, typeof NotebookPen> = {
+    notiz: NotebookPen,
+    datei: FileText,
+    link: Link2,
+    email: FileText,
+    zitat: BookOpenText,
+  };
   const filteredEntries = activeEntryFilter === "alle"
     ? entries
     : activeEntryFilter === "neu_seit_briefing"
@@ -146,10 +153,18 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
       {/* Section tabs */}
       <Tabs value={activeSection} onValueChange={setActiveSection}>
         <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="uebersicht">📋 Übersicht</TabsTrigger>
-          <TabsTrigger value="eintraege">📝 Einträge</TabsTrigger>
-          <TabsTrigger value="verknuepfungen">🔗 Verknüpfungen</TabsTrigger>
-          <TabsTrigger value="briefing">📄 Briefing</TabsTrigger>
+          <TabsTrigger value="uebersicht" className="gap-1.5">
+            <BookOpenText className="h-4 w-4" /> Übersicht
+          </TabsTrigger>
+          <TabsTrigger value="eintraege" className="gap-1.5">
+            <NotebookPen className="h-4 w-4" /> Einträge
+          </TabsTrigger>
+          <TabsTrigger value="verknuepfungen" className="gap-1.5">
+            <Link2 className="h-4 w-4" /> Verknüpfungen
+          </TabsTrigger>
+          <TabsTrigger value="briefing" className="gap-1.5">
+            <FileText className="h-4 w-4" /> Briefing
+          </TabsTrigger>
         </TabsList>
 
         {/* Übersicht (default) */}
@@ -163,14 +178,20 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
 
           {/* Entry type filter tabs */}
           <Tabs value={activeEntryFilter} onValueChange={setActiveEntryFilter}>
-            <TabsList className="flex-wrap h-auto gap-1">
-              <TabsTrigger value="alle">Alle</TabsTrigger>
-              {entryTypes.map((t) => (
-                <TabsTrigger key={t} value={t}>
-                  {ENTRY_TYPE_CONFIG[t].icon} {ENTRY_TYPE_CONFIG[t].label}
-                </TabsTrigger>
-              ))}
-              <TabsTrigger value="neu_seit_briefing">🆕 Neu seit letztem Briefing</TabsTrigger>
+              <TabsList className="flex-wrap h-auto gap-1">
+                <TabsTrigger value="alle">Alle</TabsTrigger>
+              {entryTypes.map((t) => {
+                const EntryIcon = entryTypeIcons[t];
+                return (
+                  <TabsTrigger key={t} value={t} className="gap-1.5">
+                    <EntryIcon className="h-4 w-4" />
+                    {ENTRY_TYPE_CONFIG[t].label}
+                  </TabsTrigger>
+                );
+              })}
+              <TabsTrigger value="neu_seit_briefing" className="gap-1.5">
+                <Sparkles className="h-4 w-4" /> Neu seit letztem Briefing
+              </TabsTrigger>
             </TabsList>
           </Tabs>
 
