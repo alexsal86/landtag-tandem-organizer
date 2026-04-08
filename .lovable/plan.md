@@ -1,62 +1,42 @@
 
 
-## Revidierter Plan: Notion-like Block Editor mit offiziellen Lexical-Plugins
+## Plan: Toolbar + verbessertes Drag-Handle für DossierBlockEditor
 
-### Was sich ändert gegenüber dem alten Plan
-Statt Custom-Plugins nutzen wir die **offiziellen Lexical-Bausteine**, die auch das Playground verwendet:
+### Änderungen
 
-- `DraggableBlockPlugin_EXPERIMENTAL` aus `@lexical/react` (bereits installiert in v0.40.0)
-- `LexicalTypeaheadMenuPlugin` aus `@lexical/react` als Basis für Slash-Commands
-
----
-
-### Neue Dateien
-
-**1. `src/components/plugins/ComponentPickerPlugin.tsx`**
-- Adaptiert vom [offiziellen Playground-Code](https://github.com/facebook/lexical/blob/main/packages/lexical-playground/src/plugins/ComponentPickerPlugin/index.tsx)
-- Nutzt `LexicalTypeaheadMenuPlugin` + `useBasicTypeaheadTriggerMatch` aus `@lexical/react`
-- Trigger: `/` am Zeilenanfang
-- Block-Optionen: Heading 1–3, Bullet List, Numbered List, Checklist, Quote, Code Block, Horizontal Rule
-- Filterbar durch Tippen nach `/`
+**1. `src/components/dossier-editor/DossierBlockEditor.tsx`**
+- `EnhancedLexicalToolbar` importieren und als feste Toolbar oberhalb des Editors einbinden (innerhalb des `LexicalComposer`, vor dem ContentEditable-Bereich)
+- Die Toolbar bekommt keine `showFloatingToolbar`-Prop (Standard = false → volle Toolbar)
+- Kein `documentId`, `defaultFontSize`, `defaultFontFamily` — nur Basis-Toolbar
+- `FloatingTextFormatToolbar` entfernen (redundant mit fester Toolbar)
+- Zusätzliche Nodes registrieren, die die Toolbar benötigt: `TableNode`, `TableCellNode`, `TableRowNode`, `CodeHighlightNode`, `HashtagNode`, `ImageNode`, `MentionNode`
+- `TablePlugin`, `LinkPlugin`, `AutoLinkPlugin` hinzufügen
+- Container-Klasse anpassen: `border rounded-lg overflow-hidden` für korrektes Toolbar-Layout
 
 **2. `src/components/plugins/DraggableBlockPlugin.tsx`**
-- Wrapper um `DraggableBlockPlugin_EXPERIMENTAL` aus `@lexical/react/LexicalDraggableBlockPlugin`
-- Eigenes UI: Drag-Handle (Grip-Icon) + Plus-Button der den ComponentPicker öffnet
-- Target-Line beim Drag als visueller Indikator
+- Umbauen nach dem offiziellen Playground-Vorbild:
+  - `onElementChanged`-Callback nutzen, um das aktuell gehoverte Element zu tracken
+  - Plus-Button (⊕) neben dem Grip-Handle hinzufügen, der den ComponentPicker als Popover öffnet
+  - ComponentPicker-Popover: Suchfeld + Block-Optionen, positioniert neben dem Menü
+  - Einfügen eines neuen Blocks vor/nach dem gehoverten Element (Alt/Ctrl-Klick → davor)
+  - Keyboard-Navigation (Arrow Up/Down, Enter, Escape) im Picker
+  - Click-Outside schließt den Picker
 
-**3. `src/components/dossier-editor/DossierBlockEditor.tsx`**
-- Neue Editor-Wrapper-Komponente mit:
-  - `RichTextPlugin`, `HistoryPlugin`, `ListPlugin`, `CheckListPlugin`, `LinkPlugin`, `HorizontalRulePlugin`, `MarkdownShortcutPlugin`, `TabIndentationPlugin`
-  - `FloatingTextFormatToolbar` (bestehend)
-  - `ComponentPickerPlugin` (neu)
-  - `DraggableBlockPlugin` (neu)
-- Keine feste Toolbar — alles über Slash-Commands + Floating-Toolbar
-- Props: `initialContent`, `contentVersion`, `onChange`, `placeholder`, `minHeight`
+**3. `src/styles/lexical-editor.css`**
+- Drag-Handle: `will-change: transform, opacity` für flüssige Transitions (wie Playground)
+- Target-Line: `will-change: transform`, `background: deepskyblue`, `height: 4px` — exakt wie Playground
+- Plus-Button Styling neben dem Grip-Icon
+- Component-Picker-Popover im Drag-Kontext (`draggable-block-component-picker`)
 
----
+**4. `src/components/plugins/ComponentPickerPlugin.tsx`**
+- Exports ergänzen: `getBaseOptions`, `ComponentPickerOption`, `ComponentPickerMenuItem` als named exports, damit der DraggableBlockPlugin sie wiederverwenden kann (wie im Playground)
 
-### Geänderte Dateien
+### Betroffene Dateien
 
-**`src/features/dossiers/components/DossierSummaryTab.tsx`**
-- `SimpleRichTextEditor` ersetzen durch `DossierBlockEditor`
-- Auto-Save-Logik bleibt identisch
-
-**`src/styles/lexical-editor.css`**
-- Styles für Slash-Command-Dropdown (Popover, Items, selected-State)
-- Drag-Handle Styling (Opacity-Transition, Positionierung)
-- Target-Line beim Drag (farbiger Balken)
-
----
-
-### Technische Details
-
-| Offizielles Package | Verwendung |
+| Datei | Änderung |
 |---|---|
-| `@lexical/react/LexicalDraggableBlockPlugin` | `DraggableBlockPlugin_EXPERIMENTAL` — Drag & Drop von Blöcken |
-| `@lexical/react/LexicalTypeaheadMenuPlugin` | `LexicalTypeaheadMenuPlugin` + `useBasicTypeaheadTriggerMatch` — Slash-Command-Menü |
-| `@lexical/react/LexicalHorizontalRulePlugin` | Bereits verwendet |
-| `@lexical/list` | `ListPlugin`, `CheckListPlugin` — Listen-Support |
-| `@lexical/code` | `$createCodeNode` — Code-Blöcke via Slash-Command |
-
-Alle Packages sind bereits in v0.40.0 installiert — keine neuen Dependencies nötig.
+| `src/components/dossier-editor/DossierBlockEditor.tsx` | Toolbar einbinden, FloatingToolbar entfernen, Nodes erweitern |
+| `src/components/plugins/DraggableBlockPlugin.tsx` | Playground-getreuer Umbau mit Plus-Button + Picker |
+| `src/components/plugins/ComponentPickerPlugin.tsx` | Named Exports für Wiederverwendung |
+| `src/styles/lexical-editor.css` | Target-Line + Plus-Button Styles |
 
