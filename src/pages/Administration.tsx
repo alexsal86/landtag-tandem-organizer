@@ -53,6 +53,7 @@ import { MeetingTemplateManager } from "@/components/administration/MeetingTempl
 import { PlanningTemplateManager } from "@/components/administration/PlanningTemplateManager";
 import { UserRolesManager } from "@/components/administration/UserRolesManager";
 import { OfficeSocialMediaSettings } from "@/components/administration/OfficeSocialMediaSettings";
+import { CelebrationSettingsCard } from "@/components/administration/CelebrationSettingsCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -347,6 +348,8 @@ export default function Administration(): React.JSX.Element | null {
               <EventEmailTemplateManager />
             </div>
           );
+        case "celebrations":
+          return <CelebrationSettingsCard />;
         default: return null;
       }
     }

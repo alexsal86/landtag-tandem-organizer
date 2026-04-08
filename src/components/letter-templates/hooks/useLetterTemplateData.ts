@@ -41,7 +41,6 @@ export function useLetterTemplateData() {
   const [showSettings, setShowSettings] = useState(false);
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
   const [galleryLoading, setGalleryLoading] = useState(false);
-  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const galleryBlobUrlsRef = useRef<Map<string, string>>(new Map());
   const [formData, setFormData] = useState<TemplateFormData>({
     name: '',
@@ -151,7 +150,6 @@ export function useLetterTemplateData() {
       const { error } = await supabase.from('letter_templates').insert(insertData as typeof insertData & { name: string; letterhead_html: string; letterhead_css: string; response_time_days: number; tenant_id: string; created_by: string });
       if (error) throw error;
       toast({ title: "Template erstellt" });
-      setShowSuccessAnimation(true);
       setShowCreateDialog(false);
       setActiveTab('canvas-designer');
       resetForm();
@@ -179,7 +177,6 @@ export function useLetterTemplateData() {
       const { error } = await supabase.from('letter_templates').update(updateData as typeof updateData & { name: string }).eq('id', editingTemplate.id);
       if (error) throw error;
       toast({ title: "Template aktualisiert" });
-      setShowSuccessAnimation(true);
       setEditingTemplate(null); resetForm(); fetchTemplates();
     } catch (error) {
       handleAppError(error, { context: 'handleUpdateTemplate', toast: { fn: toast, title: 'Fehler', description: 'Template konnte nicht aktualisiert werden.' } });
@@ -289,7 +286,6 @@ export function useLetterTemplateData() {
     showSettings, setShowSettings,
     galleryImages, setGalleryImages,
     galleryLoading, setGalleryLoading,
-    showSuccessAnimation, setShowSuccessAnimation,
     galleryBlobUrlsRef,
     formData, setFormData,
     currentTenant, user, toast,
