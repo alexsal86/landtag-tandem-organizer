@@ -270,3 +270,136 @@ span[data-lexical-mention="true"] {
   background-color: hsl(217 91% 60% / 0.25);
   color: hsl(217 91% 70%);
 }
+
+/* ===== Dossier Block Editor ===== */
+.dossier-block-editor {
+  @apply rounded-lg border border-border bg-background overflow-hidden;
+  position: relative;
+}
+
+.dossier-block-editor-input {
+  @apply p-4 pl-10 text-sm leading-relaxed focus:outline-none w-full border-0 outline-none;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.dossier-block-editor-placeholder {
+  @apply absolute top-4 left-10 text-muted-foreground/50 text-sm pointer-events-none select-none;
+}
+
+/* ===== Component Picker (Slash Commands) ===== */
+.component-picker-menu {
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  max-height: 280px;
+  overflow-y: auto;
+  z-index: 80;
+  min-width: 220px;
+  padding: 4px 0;
+}
+
+.component-picker-menu ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.component-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background-color 0.1s ease;
+  border-radius: 4px;
+  margin: 0 4px;
+}
+
+.component-picker-item.selected,
+.component-picker-item:hover {
+  background: hsl(var(--accent));
+}
+
+.component-picker-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  flex-shrink: 0;
+}
+
+.component-picker-item.selected .component-picker-item-icon,
+.component-picker-item:hover .component-picker-item-icon {
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+}
+
+.component-picker-item-text {
+  flex: 1;
+  font-weight: 500;
+}
+
+/* ===== Draggable Block Plugin ===== */
+.draggable-block-menu {
+  position: absolute;
+  left: 2px;
+  top: 0;
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  padding: 2px;
+  border-radius: 4px;
+  z-index: 10;
+}
+
+.draggable-block-menu:hover,
+.draggable-block-menu:active {
+  opacity: 1 !important;
+}
+
+.draggable-block-menu:active {
+  cursor: grabbing;
+}
+
+.draggable-block-menu-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  color: hsl(var(--muted-foreground));
+  background: transparent;
+  border: none;
+  cursor: grab;
+  transition: all 0.15s ease;
+}
+
+.draggable-block-menu-icon:hover {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.dossier-block-editor:hover .draggable-block-menu {
+  opacity: 0.4;
+}
+
+.draggable-block-target-line {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  height: 3px;
+  background: hsl(var(--primary));
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
