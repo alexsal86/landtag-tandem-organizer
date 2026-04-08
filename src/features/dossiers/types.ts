@@ -13,6 +13,7 @@ export interface Dossier {
   open_questions: string | null;
   positions: string | null;
   risks_opportunities: string | null;
+  notes_html: string | null;
   review_interval_days: number | null;
   next_review_at: string | null;
   last_briefing_at: string | null;

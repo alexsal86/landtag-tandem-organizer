@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { type EntryType } from "../types";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
-import { Save, Loader2, HelpCircle, Users, MessageSquare, ClipboardList, Scale, Link2, FileText, Mail, NotebookPen, Quote } from "lucide-react";
+import { Save, Loader2, HelpCircle, Users, MessageSquare, ClipboardList, Scale, Link2, FileText, Mail, NotebookPen, Quote, PenLine } from "lucide-react";
+import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 
 interface DossierSummaryTabProps {
   dossier: Dossier;
