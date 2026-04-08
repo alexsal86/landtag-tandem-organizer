@@ -4,10 +4,10 @@ import { useUpdateDossier } from "../hooks/useDossiers";
 import { useDossierLinks } from "../hooks/useDossierLinks";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { ENTRY_TYPE_CONFIG, type EntryType } from "../types";
+import { type EntryType } from "../types";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
-import { Save, Loader2, HelpCircle, Users, MessageSquare } from "lucide-react";
+import { Save, Loader2, HelpCircle, Users, MessageSquare, ClipboardList, Scale, Link2, FileText, Mail, NotebookPen, Quote } from "lucide-react";
 
 interface DossierSummaryTabProps {
   dossier: Dossier;
@@ -21,6 +21,8 @@ export function DossierSummaryTab({ dossier, recentEntries }: DossierSummaryTabP
   const [summary, setSummary] = useState(dossier.summary ?? "");
   const [editingQuestions, setEditingQuestions] = useState(false);
   const [questions, setQuestions] = useState(dossier.open_questions ?? "");
+  const [editingPositions, setEditingPositions] = useState(false);
+  const [positions, setPositions] = useState(dossier.positions ?? "");
 
   const handleSaveSummary = () => {
     updateDossier.mutate(
@@ -36,16 +38,31 @@ export function DossierSummaryTab({ dossier, recentEntries }: DossierSummaryTabP
     );
   };
 
+  const handleSavePositions = () => {
+    updateDossier.mutate(
+      { id: dossier.id, positions },
+      { onSuccess: () => setEditingPositions(false) }
+    );
+  };
+
   const recent5 = recentEntries?.slice(0, 5) ?? [];
   const contactLinks = links?.filter((l) => l.linked_type === "contact") ?? [];
+  const recentEntryIcons: Record<EntryType, typeof NotebookPen> = {
+    notiz: NotebookPen,
+    datei: FileText,
+    link: Link2,
+    email: Mail,
+    zitat: Quote,
+  };
 
   return (
     <div className="space-y-5">
-      {/* Kurzlage */}
-      <section>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Kurzlage */}
+        <section>
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-semibold flex items-center gap-1.5">
-            📋 Kurzlage
+            <ClipboardList className="h-4 w-4 text-primary" /> Kurzlage
           </h3>
           {!editingSummary && (
             <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setEditingSummary(true)}>
@@ -77,10 +94,10 @@ export function DossierSummaryTab({ dossier, recentEntries }: DossierSummaryTabP
             {dossier.summary || 'Noch keine Zusammenfassung. Klicke "Bearbeiten", um die aktuelle Lage zu beschreiben.'}
           </p>
         )}
-      </section>
+        </section>
 
-      {/* Offene Fragen */}
-      <section>
+        {/* Offene Fragen */}
+        <section>
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-semibold flex items-center gap-1.5">
             <HelpCircle className="h-4 w-4 text-warning" /> Offene Fragen
@@ -117,20 +134,62 @@ export function DossierSummaryTab({ dossier, recentEntries }: DossierSummaryTabP
         ) : (
           <p className="text-xs text-muted-foreground italic">Keine offenen Fragen erfasst</p>
         )}
-      </section>
+        </section>
+
+        {/* Positionen */}
+        <section>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold flex items-center gap-1.5">
+              <Scale className="h-4 w-4 text-blue-600" /> Positionen
+            </h3>
+            {!editingPositions && (
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setEditingPositions(true)}>
+                Bearbeiten
+              </Button>
+            )}
+          </div>
+          {editingPositions ? (
+            <div className="space-y-2">
+              <Textarea
+                value={positions}
+                onChange={(e) => setPositions(e.target.value)}
+                placeholder="Welche Positionen/Standpunkte gibt es?"
+                className="min-h-[80px] text-sm"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleSavePositions} disabled={updateDossier.isPending}>
+                  {updateDossier.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                  Speichern
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => { setEditingPositions(false); setPositions(dossier.positions ?? ""); }}>
+                  Abbrechen
+                </Button>
+              </div>
+            </div>
+          ) : dossier.positions?.trim() ? (
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed rounded-md bg-blue-50/60 border border-blue-200/70 p-3">
+              {dossier.positions}
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">Keine Positionen erfasst</p>
+          )}
+        </section>
+      </div>
 
       {/* Letzte Aktivität */}
       {recent5.length > 0 && (
         <section>
-          <h3 className="text-sm font-semibold flex items-center gap-1.5 mb-2">
-            <MessageSquare className="h-4 w-4" /> Letzte Einträge
-          </h3>
+            <h3 className="text-sm font-semibold flex items-center gap-1.5 mb-2">
+              <MessageSquare className="h-4 w-4" /> Letzte Einträge
+            </h3>
           <div className="space-y-1.5">
             {recent5.map((entry) => {
-              const config = ENTRY_TYPE_CONFIG[entry.entry_type as EntryType] ?? { label: entry.entry_type, icon: "📄" };
+              const iconKey = entry.entry_type as EntryType;
+              const EntryIcon = recentEntryIcons[iconKey] ?? FileText;
               return (
                 <div key={entry.id} className="flex items-center gap-2 text-sm rounded-md px-2 py-1.5 bg-muted/30">
-                  <span className="text-xs">{config.icon}</span>
+                  <EntryIcon className="h-4 w-4 text-muted-foreground" />
                   <span className="truncate flex-1 text-foreground">{entry.title || "Ohne Titel"}</span>
                   <span className="text-[11px] text-muted-foreground whitespace-nowrap">
                     {formatDistanceToNow(new Date(entry.created_at), { addSuffix: true, locale: de })}
