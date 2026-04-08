@@ -24,6 +24,16 @@ export function DossierSummaryTab({ dossier, recentEntries }: DossierSummaryTabP
   const [questions, setQuestions] = useState(dossier.open_questions ?? "");
   const [editingPositions, setEditingPositions] = useState(false);
   const [positions, setPositions] = useState(dossier.positions ?? "");
+  const [notesHtml, setNotesHtml] = useState(dossier.notes_html ?? "");
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleNotesChange = useCallback((html: string) => {
+    setNotesHtml(html);
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      updateDossier.mutate({ id: dossier.id, notes_html: html });
+    }, 1500);
+  }, [dossier.id, updateDossier]);
 
   const handleSaveSummary = () => {
     updateDossier.mutate(
