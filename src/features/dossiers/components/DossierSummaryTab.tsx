@@ -8,7 +8,7 @@ import { type EntryType } from "../types";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { Save, Loader2, HelpCircle, Users, MessageSquare, ClipboardList, Scale, Link2, FileText, Mail, NotebookPen, Quote, PenLine } from "lucide-react";
-import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
+import DossierBlockEditor from "@/components/dossier-editor/DossierBlockEditor";
 
 interface DossierSummaryTabProps {
   dossier: Dossier;
@@ -195,16 +195,14 @@ export function DossierSummaryTab({ dossier, recentEntries }: DossierSummaryTabP
           <h3 className="text-sm font-semibold flex items-center gap-1.5 mb-2">
             <PenLine className="h-4 w-4 text-primary" /> Notizen
           </h3>
-          <div className="rounded-md border border-border bg-background">
-            <SimpleRichTextEditor
-              key={dossier.id}
-              initialContent={notesHtml}
-              contentVersion={dossier.id}
-              onChange={handleNotesChange}
-              placeholder="Notizen zum Dossier …"
-              minHeight="200px"
-            />
-          </div>
+          <DossierBlockEditor
+            key={dossier.id}
+            initialContent={notesHtml}
+            contentVersion={dossier.id}
+            onChange={handleNotesChange}
+            placeholder="Schreibe '/' für Befehle …"
+            minHeight="200px"
+          />
         </section>
 
         {/* Letzte Einträge */}
