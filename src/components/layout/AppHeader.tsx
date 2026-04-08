@@ -43,7 +43,6 @@ const sectionConfig: Record<string, { label: string; quickAction?: { label: stri
   casefiles: { label: 'Fallakten', quickAction: { label: 'Neue Akte', action: 'create-casefile' } },
   dossiers: { label: 'Dossiers', quickAction: { label: 'Neues Dossier', action: 'create-dossier' } },
   documents: { label: 'Dokumente', quickAction: { label: 'Neues Dokument', action: 'create-document' } },
-  drucksachen: { label: 'Drucksachen', quickAction: { label: 'Neue Drucksache', action: 'create-drucksache' } },
   knowledge: { label: 'Wissen', quickAction: { label: 'Neuer Artikel', action: 'create-article' } },
   karten: { label: 'Karten' },
   chat: { label: 'Chat' },

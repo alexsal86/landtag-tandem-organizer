@@ -1,4 +1,4 @@
-import { Calendar, Users, CheckSquare, Home, FileText, MessageSquare, MessageSquareText, Contact, Database, Clock, CalendarPlus, Shield, Vote, MapPin, Archive, Briefcase } from "lucide-react";
+import { Calendar, Users, CheckSquare, Home, FileText, MessageSquare, MessageSquareText, Contact, Database, Clock, CalendarPlus, Shield, Vote, MapPin, Briefcase } from "lucide-react";
 import { useMatrixUnread } from "@/contexts/MatrixUnreadContext";
 
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
@@ -61,7 +61,6 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     { id: "eventplanning", label: "Planungen", icon: CalendarPlus },
     { id: "karten", label: "Karten", icon: MapPin },
     { id: "documents", label: "Dokumente", icon: FileText },
-    ...(isAdminClaim ? [{ id: "drucksachen", label: "Drucksachen", icon: Archive }] : []),
     { id: "time", label: "Zeiterfassung", icon: Clock, adminOnly: false },
     { id: "employee", label: "Mitarbeiter", icon: Users },
     { id: "chat", label: "Chat", icon: MessageSquareText },

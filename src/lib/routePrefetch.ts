@@ -21,7 +21,6 @@ const prefetchMap: Record<string, ImportFn> = {
   eventplanning: () => import("@/components/EventPlanningView"),
   casefiles: () => import("@/components/CaseFilesView"),
   daten: () => import("@/components/DataView"),
-  drucksachen: () => import("@/components/DrucksachenView"),
   chat: () => import("@/components/chat/MatrixChatView"),
   administration: () => import("@/pages/Administration"),
 };
