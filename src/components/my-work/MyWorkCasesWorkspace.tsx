@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { debugConsole } from "@/utils/debugConsole";
 import { useCaseWorkspaceData, type CaseFile, type CaseItem } from "@/components/my-work/hooks/useCaseWorkspaceData";
 import { useCaseItemEdit, type CaseItemInteractionDocument, type TimelineEvent, type TimelineInteractionType, type TimelineDocumentAttachment } from "@/components/my-work/hooks/useCaseItemEdit";
-import { DEFAULT_CASE_ITEM_CATEGORIES, useCaseItemCategories } from "@/hooks/useCaseItemCategories";
+
 import { toEditorHtml } from "@/components/my-work/utils/editorContent";
 import { CaseItemList, type CaseItemSortKey, type SortDirection } from "@/components/my-work/cases/workspace/CaseItemList";
 import { CaseFileList } from "@/components/my-work/cases/workspace/CaseFileList";
