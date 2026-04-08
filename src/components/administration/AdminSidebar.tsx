@@ -14,7 +14,6 @@ import {
   Workflow,
   ChevronRight,
   Settings,
-  LogIn,
   UserCheck,
   History,
   Archive,
@@ -82,7 +81,6 @@ export const adminMenuItems: AdminMenuItem[] = [
     icon: Shield,
     children: [
       { id: "general", label: "Allgemein", icon: Settings },
-      { id: "login", label: "Login-Anpassung", icon: LogIn },
       { id: "expense", label: "Verwaltung", icon: CreditCard },
       { id: "auditlogs", label: "Audit-Logs", icon: History },
       { id: "archiving", label: "Archivierung", icon: Archive },
@@ -168,6 +166,7 @@ export const adminMenuItems: AdminMenuItem[] = [
       { id: "mapping", label: "Wahlkreis-Zuordnung", icon: Building2 },
       { id: "geo-import", label: "Geo-Datenimport", icon: Globe },
       { id: "map-layers", label: "Karten-Layer", icon: MapPin },
+      { id: "login", label: "Login-Anpassung", icon: Settings },
       { id: "mywork-overview", label: "Meine Arbeit Übersicht", icon: PanelTop },
       { id: "dashboard-hints", label: "Dashboard-Hinweise", icon: PanelTop },
       { id: "motivational-messages", label: "Motivationssprüche", icon: PanelTop },

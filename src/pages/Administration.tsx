@@ -236,7 +236,6 @@ export default function Administration(): React.JSX.Element | null {
     if (activeSection === "security") {
       switch (activeSubSection) {
         case "general": return <GeneralSettings />;
-        case "login": return <LoginCustomization />;
         case "roles":
           if (!isSuperAdmin) return null;
           return <UserRolesManager />;
@@ -411,6 +410,7 @@ export default function Administration(): React.JSX.Element | null {
           );
         case "geo-import": return <GeoDataImport />;
         case "map-layers": return <MapLayerAdmin />;
+        case "login": return <LoginCustomization />;
         case "mywork-overview": return <MyWorkSystemOverview />;
         case "dashboard-hints": return <DashboardHintSettings />;
         case "motivational-messages": return <MotivationalMessagesOverview />;
