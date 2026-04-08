@@ -188,29 +188,51 @@ export function DossierSummaryTab({ dossier, recentEntries }: DossierSummaryTabP
         </section>
       </div>
 
-      {/* Letzte Aktivität */}
-      {recent5.length > 0 && (
+      {/* Notizen + Letzte Einträge — 50/50 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Notizen (Lexical Editor) */}
         <section>
-            <h3 className="text-sm font-semibold flex items-center gap-1.5 mb-2">
-              <MessageSquare className="h-4 w-4" /> Letzte Einträge
-            </h3>
-          <div className="space-y-1.5">
-            {recent5.map((entry) => {
-              const iconKey = entry.entry_type as EntryType;
-              const EntryIcon = recentEntryIcons[iconKey] ?? FileText;
-              return (
-                <div key={entry.id} className="flex items-center gap-2 text-sm rounded-md px-2 py-1.5 bg-muted/30">
-                  <EntryIcon className="h-4 w-4 text-muted-foreground" />
-                  <span className="truncate flex-1 text-foreground">{entry.title || "Ohne Titel"}</span>
-                  <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-                    {formatDistanceToNow(new Date(entry.created_at), { addSuffix: true, locale: de })}
-                  </span>
-                </div>
-              );
-            })}
+          <h3 className="text-sm font-semibold flex items-center gap-1.5 mb-2">
+            <PenLine className="h-4 w-4 text-primary" /> Notizen
+          </h3>
+          <div className="rounded-md border border-border bg-background">
+            <SimpleRichTextEditor
+              key={dossier.id}
+              initialContent={notesHtml}
+              contentVersion={dossier.id}
+              onChange={handleNotesChange}
+              placeholder="Notizen zum Dossier …"
+              minHeight="200px"
+            />
           </div>
         </section>
-      )}
+
+        {/* Letzte Einträge */}
+        <section>
+          <h3 className="text-sm font-semibold flex items-center gap-1.5 mb-2">
+            <MessageSquare className="h-4 w-4" /> Letzte Einträge
+          </h3>
+          {recent5.length > 0 ? (
+            <div className="space-y-1.5">
+              {recent5.map((entry) => {
+                const iconKey = entry.entry_type as EntryType;
+                const EntryIcon = recentEntryIcons[iconKey] ?? FileText;
+                return (
+                  <div key={entry.id} className="flex items-center gap-2 text-sm rounded-md px-2 py-1.5 bg-muted/30">
+                    <EntryIcon className="h-4 w-4 text-muted-foreground" />
+                    <span className="truncate flex-1 text-foreground">{entry.title || "Ohne Titel"}</span>
+                    <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                      {formatDistanceToNow(new Date(entry.created_at), { addSuffix: true, locale: de })}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">Noch keine Einträge vorhanden</p>
+          )}
+        </section>
+      </div>
 
       {/* Verknüpfte Kontakte (preview) */}
       {contactLinks.length > 0 && (
