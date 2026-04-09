@@ -119,6 +119,7 @@ export function MyWorkCasesWorkspace() {
   const [isCaseItemDialogOpen, setIsCaseItemDialogOpen] = useState(false);
   const [isCaseFileDialogOpen, setIsCaseFileDialogOpen] = useState(false);
   const [pendingCaseItemLinkId, setPendingCaseItemLinkId] = useState<string | null>(null);
+  const [hasHydratedDetailFromUrl, setHasHydratedDetailFromUrl] = useState(false);
 
   const [detailItemId, setDetailItemId] = useState<string | null>(null);
   const [detailFileId, setDetailFileId] = useState<string | null>(null);
@@ -577,13 +578,7 @@ export function MyWorkCasesWorkspace() {
     runAsync(() => handleQuickLinkToFile(item, caseFileId));
   };
 
-  const handleSelectCaseItem = (item: CaseItem) => {
-    if (detailItemId === item.id) {
-      setDetailItemId(null);
-      setEditableCaseItem(null);
-      return;
-    }
-
+  const openCaseItemDetail = useCallback((item: CaseItem) => {
     setDetailItemId(item.id);
     setDetailFileId(null);
     setDetailTab("overview");
@@ -610,7 +605,75 @@ export function MyWorkCasesWorkspace() {
       contactPhone: (item.intake_payload as Record<string, unknown>)?.contact_phone as string || "",
       selectedContactId: ((item.intake_payload as Record<string, unknown>)?.matched_contact_id as string) || (item as Record<string, unknown>).contact_id as string || null,
     });
+  }, [getAssigneeIds, getCategory, setEditableCaseItem]);
+
+  const handleSelectCaseItem = (item: CaseItem) => {
+    if (detailItemId === item.id) {
+      setDetailItemId(null);
+      setEditableCaseItem(null);
+      return;
+    }
+
+    openCaseItemDetail(item);
   };
+
+  useEffect(() => {
+    if (hasHydratedDetailFromUrl) return;
+
+    const caseItemIdFromUrl = searchParams.get("caseItemId");
+    if (caseItemIdFromUrl) {
+      const matchedItem = caseItems.find((item) => item.id === caseItemIdFromUrl);
+      if (matchedItem) {
+        openCaseItemDetail(matchedItem);
+      }
+      if (matchedItem || !loading) {
+        setHasHydratedDetailFromUrl(true);
+      }
+      return;
+    }
+
+    const caseFileIdFromUrl = searchParams.get("caseFileId");
+    if (caseFileIdFromUrl) {
+      const matchedCaseFile = allCaseFiles.find((caseFile) => caseFile.id === caseFileIdFromUrl);
+      if (matchedCaseFile) {
+        setDetailFileId(matchedCaseFile.id);
+        setDetailItemId(null);
+      }
+      if (matchedCaseFile || !loading) {
+        setHasHydratedDetailFromUrl(true);
+      }
+      return;
+    }
+
+    setHasHydratedDetailFromUrl(true);
+  }, [allCaseFiles, caseItems, hasHydratedDetailFromUrl, loading, openCaseItemDetail, searchParams]);
+
+  useEffect(() => {
+    if (!hasHydratedDetailFromUrl) return;
+
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      const currentCaseItemId = next.get("caseItemId");
+      const currentCaseFileId = next.get("caseFileId");
+      const nextCaseItemId = detailItemId;
+      const nextCaseFileId = detailItemId ? null : detailFileId;
+
+      if (nextCaseItemId) {
+        next.set("caseItemId", nextCaseItemId);
+      } else {
+        next.delete("caseItemId");
+      }
+
+      if (nextCaseFileId) {
+        next.set("caseFileId", nextCaseFileId);
+      } else {
+        next.delete("caseFileId");
+      }
+
+      const changed = currentCaseItemId !== nextCaseItemId || currentCaseFileId !== nextCaseFileId;
+      return changed ? next : prev;
+    }, { replace: true });
+  }, [detailFileId, detailItemId, hasHydratedDetailFromUrl, setSearchParams]);
 
   useEffect(() => {
     setFocusedItemIndex((prev) => {
