@@ -154,13 +154,13 @@ export function CaseItemList(props: CaseItemListProps) {
 
                                   {/* Row 2: Description */}
                                   {props.getItemDescription(item) && (
-                                    <p className="mt-1 line-clamp-1 pl-[18px] text-sm text-muted-foreground">
+                                    <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">
                                       {props.getItemDescription(item)}
                                     </p>
                                   )}
 
                                   {/* Row 3: Date + status */}
-                                  <div className="mt-3 flex items-center justify-between gap-2 pl-[18px]">
+                                  <div className="mt-3 flex items-center justify-between gap-2">
                                     <span className="text-xs text-muted-foreground">
                                       Fällig: {formatDateSafe(item.due_at, "dd.MM.yy", "–", { locale: de })}
                                     </span>
