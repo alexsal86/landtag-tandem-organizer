@@ -183,6 +183,7 @@ export function MyWorkCasesWorkspace() {
   const [isItemArchiveOpen, setIsItemArchiveOpen] = useState(false);
   const [isFileArchiveOpen, setIsFileArchiveOpen] = useState(false);
   const [deleteConfirmCaseFileId, setDeleteConfirmCaseFileId] = useState<string | null>(null);
+  const [caseFileSheetOpen, setCaseFileSheetOpen] = useState(false);
 
   const handleDeleteCaseItem = useCallback(async () => {
     if (!deleteConfirmItemId) return;
