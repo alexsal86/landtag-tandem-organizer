@@ -7,7 +7,7 @@ import { CaseItemDetailView } from "@/components/my-work/cases/workspace/CaseIte
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { de } from "date-fns/locale";
-import { Briefcase, CheckCircle2, Clock, FileText, Filter, FolderOpen, Gavel, Inbox, Mail, MessageSquare, Phone, Search, Timer, UserRound, Users } from "lucide-react";
+import { Briefcase, CheckCircle2, Clock, FileText, FolderOpen, Gavel, Inbox, Mail, MessageSquare, Phone, Timer, UserRound, Users } from "lucide-react";
 import type { DropResult } from "@hello-pangea/dnd";
 import { CaseFileDetail } from "@/features/cases/files/components";
 import { useCaseFileTypes } from "@/features/cases/files/hooks/useCaseFileTypes";
@@ -122,6 +122,7 @@ export function MyWorkCasesWorkspace() {
 
   const [detailItemId, setDetailItemId] = useState<string | null>(null);
   const [detailFileId, setDetailFileId] = useState<string | null>(null);
+  const [detailTab, setDetailTab] = useState<"overview" | "timeline" | "documents">("overview");
   const { editableCaseItem, setEditableCaseItem, updateEdit, appendTimelineEvent, deleteTimelineEvent } = useCaseItemEdit();
   const [itemSort, setItemSort] = useState<CaseWorkspaceSort>({
     primary: { key: "received", direction: "desc" },
@@ -585,6 +586,7 @@ export function MyWorkCasesWorkspace() {
 
     setDetailItemId(item.id);
     setDetailFileId(null);
+    setDetailTab("overview");
     setEditableCaseItem({
       subject: item.subject || "",
       summary: item.summary || item.resolution_summary || "",
@@ -1041,39 +1043,14 @@ export function MyWorkCasesWorkspace() {
         </div>
       ) : (
         <>
-          <div className="mb-4 rounded-3xl border bg-card/95 p-4 shadow-sm">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="space-y-1">
-                <h2 className="text-3xl font-semibold tracking-tight">Vorgänge</h2>
-              </div>
-
-              <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto lg:min-w-[640px] lg:justify-end">
-                <div className="relative flex-1 lg:max-w-sm">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={filters.itemQuery}
-                    onChange={(event) => setFilters((prev) => ({ ...prev, itemQuery: event.target.value }))}
-                    placeholder="Vorgänge durchsuchen..."
-                    className="h-11 rounded-full pl-9"
-                  />
-                </div>
-                <Button type="button" variant="outline" className="h-11 rounded-full px-5" onClick={() => setIsItemArchiveOpen(true)}>
-                  <Filter className="mr-2 h-4 w-4" />
-                  Filter
-                </Button>
-                <Button type="button" className="h-11 rounded-full px-5" onClick={handleCreateCaseItem}>
-                  + Neuer Vorgang
-                </Button>
-              </div>
-            </div>
-          </div>
-
           <CasesWorkspaceShell
             onDragEnd={handleDragEnd}
             left={
               <CaseItemList
                 onCreateCaseItem={handleCreateCaseItem}
                 onOpenArchive={() => setIsItemArchiveOpen(true)}
+                itemQuery={filters.itemQuery}
+                onItemQueryChange={(itemQuery) => setFilters((prev) => ({ ...prev, itemQuery }))}
                 helperText="Vorgänge per Drag & Drop auf eine Fallakte ziehen zum Verknüpfen"
                 sortedCaseItems={sortedCaseItems}
                 caseFilesById={caseFilesById}
@@ -1123,6 +1100,8 @@ export function MyWorkCasesWorkspace() {
               detailItem && editableCaseItem ? (
                 <CaseItemDetailView
                   title={getItemSubject(detailItem)}
+                  activeTab={detailTab}
+                  onTabChange={setDetailTab}
                   statusBadge={
                     <Badge variant="outline" className={cn("text-xs", getStatusMeta(detailItem.status).badgeClass)}>
                       {getStatusMeta(detailItem.status).label}
@@ -1156,6 +1135,7 @@ export function MyWorkCasesWorkspace() {
                       caseFilesById={caseFilesById}
                       onUpdate={updateEdit}
                       onSave={() => runAsync(handleCaseItemSave)}
+                      activeTab={detailTab}
                       onDecisionRequest={handleRequestDecision}
                       onDecisionReceived={handleDecisionReceived}
                       onAddInteraction={handleAddInteraction}

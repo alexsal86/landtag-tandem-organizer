@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuTrigger } from "@/components/ui/context-menu";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type { CaseFile, CaseItem, TeamUser } from "@/components/my-work/hooks/useCaseWorkspaceData";
@@ -21,6 +22,8 @@ type PriorityOption = { value: string; label: string; color: string };
 type CaseItemListProps = {
   onCreateCaseItem: () => void;
   onOpenArchive: () => void;
+  itemQuery: string;
+  onItemQueryChange: (value: string) => void;
   helperText: string;
   sortedCaseItems: CaseItem[];
   caseFilesById: Record<string, CaseFile>;
@@ -80,6 +83,17 @@ export function CaseItemList(props: CaseItemListProps) {
             Archiv
           </Button>
         </div>
+        <div className="flex items-center gap-2">
+          <Input
+            value={props.itemQuery}
+            onChange={(event) => props.onItemQueryChange(event.target.value)}
+            placeholder="Suchen..."
+            className="h-9"
+          />
+          <Button type="button" size="sm" onClick={props.onCreateCaseItem}>
+            + Neu
+          </Button>
+        </div>
       </div>
 
       {/* Card list */}
@@ -89,7 +103,7 @@ export function CaseItemList(props: CaseItemListProps) {
             <div
               ref={provided.innerRef}
               {...provided.droppableProps}
-              className="p-1.5 space-y-0.5"
+              className="space-y-2 p-2"
               tabIndex={0}
               onKeyDown={props.onListKeyDown}
             >
@@ -102,8 +116,6 @@ export function CaseItemList(props: CaseItemListProps) {
                 props.sortedCaseItems.map((item, index) => {
                   const isActive = props.detailItemId === item.id;
                   const statusMeta = props.getStatusMeta(item.status);
-                  const shortId = `#${item.id.slice(0, 6)}`;
-
                   return (
                     <Draggable key={item.id} draggableId={item.id} index={index}>
                       {(dragProvided, dragSnapshot) => (
@@ -133,32 +145,29 @@ export function CaseItemList(props: CaseItemListProps) {
                               >
                                 <div {...dragProvided.dragHandleProps}>
                                   {/* Row 1: Marker + title */}
-                                  <div className="flex items-start gap-3">
-                                    <Circle className={cn("mt-2 h-3.5 w-3.5 shrink-0 fill-current", props.priorityMeta(item.priority).color)} />
-                                    <p className="min-w-0 flex-1 text-base font-semibold leading-snug line-clamp-1">
+                                  <div className="flex items-center gap-3">
+                                    <Circle className={cn("h-[10px] w-[10px] shrink-0 fill-current", props.priorityMeta(item.priority).color)} />
+                                    <p className="min-w-0 flex-1 text-sm font-bold leading-snug line-clamp-1">
                                       {props.getItemSubject(item)}
                                     </p>
-                                    <span className="rounded-full bg-muted px-2.5 py-1 text-sm font-medium text-muted-foreground">
-                                      {shortId}
-                                    </span>
                                   </div>
 
                                   {/* Row 2: Description */}
                                   {props.getItemDescription(item) && (
-                                    <p className="mt-1.5 line-clamp-1 pl-6 text-sm text-muted-foreground">
+                                    <p className="mt-1 line-clamp-1 pl-[22px] text-sm text-muted-foreground">
                                       {props.getItemDescription(item)}
                                     </p>
                                   )}
 
                                   {/* Row 3: Date + status */}
-                                  <div className="mt-3 flex items-center justify-between gap-2 pl-6">
+                                  <div className="mt-2 flex items-center justify-between gap-2 pl-[22px]">
                                     <span className="text-xs text-muted-foreground">
                                       Fällig: {formatDateSafe(item.due_at, "dd.MM.yy", "–", { locale: de })}
                                     </span>
                                     <Badge
                                       variant="outline"
                                       className={cn(
-                                        "h-auto rounded-full border px-2 py-0.5 text-xs font-medium",
+                                        "h-auto rounded-full border px-2 py-0.5 text-xs font-bold",
                                         statusMeta.badgeClass,
                                       )}
                                     >
