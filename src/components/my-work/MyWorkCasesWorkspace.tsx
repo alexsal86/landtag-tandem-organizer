@@ -1,4 +1,7 @@
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
+import { CaseItemDetailView } from "@/components/my-work/cases/workspace/CaseItemDetailView";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { de } from "date-fns/locale";
