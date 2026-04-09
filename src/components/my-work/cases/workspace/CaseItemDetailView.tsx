@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { FileText, FolderOpen, Globe } from "lucide-react";
+import { FolderOpen, Globe } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
@@ -37,14 +37,7 @@ export function CaseItemDetailView({
         <div className="px-6 pb-4 pt-5">
           <div className="space-y-4">
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <FileText className="h-3.5 w-3.5" />
-                <span className="text-sm">Vorgang</span>
-              </div>
-              <h2 className="text-2xl font-bold leading-tight text-foreground lg:text-3xl">{title}</h2>
-              <p className="text-sm text-muted-foreground">
-                Alle Kerninformationen an einem Ort.
-              </p>
+              <h2 className="text-2xl font-bold leading-tight text-foreground lg:text-2xl">{title}</h2>
               <div className="flex flex-wrap items-center gap-2.5 pt-1">
                 {isPublic && (
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
@@ -66,17 +59,17 @@ export function CaseItemDetailView({
             </div>
 
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <div className="rounded-2xl border bg-muted/20 px-4 py-3">
+              <div className="rounded-2xl border bg-gray-50 px-4 py-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fälligkeit</p>
-                <div className="pt-1 text-sm font-semibold text-foreground">{dueBadge ?? "–"}</div>
+                <div className="pt-1 text-sm font-bold text-foreground">{dueBadge ?? "–"}</div>
               </div>
-              <div className="rounded-2xl border bg-muted/20 px-4 py-3">
+              <div className="rounded-2xl border bg-gray-50 px-4 py-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</p>
-                <div className="pt-1">{statusBadge}</div>
+                <div className="pt-1 text-sm font-bold text-foreground">{statusBadge}</div>
               </div>
-              <div className="rounded-2xl border bg-muted/20 px-4 py-3">
+              <div className="rounded-2xl border bg-gray-50 px-4 py-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Kontakt</p>
-                <div className="pt-1 text-sm font-semibold text-foreground">{contactDisplay || "–"}</div>
+                <div className="pt-1 text-sm font-bold text-foreground">{contactDisplay || "–"}</div>
               </div>
             </div>
           </div>

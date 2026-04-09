@@ -1166,14 +1166,14 @@ export function MyWorkCasesWorkspace() {
                   activeTab={detailTab}
                   onTabChange={setDetailTab}
                   statusBadge={
-                    <Badge variant="outline" className={cn("text-xs", getStatusMeta(detailItem.status).badgeClass)}>
+                    <Badge variant="outline" className={cn("text-xs font-bold", getStatusMeta(detailItem.status).badgeClass)}>
                       {getStatusMeta(detailItem.status).label}
                     </Badge>
                   }
                   dueBadge={detailItem.due_at ? (
                     <span>{formatDateSafe(detailItem.due_at, "dd.MM.yyyy", "–", { locale: de })}</span>
                   ) : undefined}
-                  contactDisplay={[getContactName(detailItem.intake_payload), getContactDetail(detailItem.intake_payload)].filter(Boolean).join(" · ")}
+                  contactDisplay={getContactName(detailItem.intake_payload)}
                   linkedFileName={detailItem.case_file_id ? caseFilesById[detailItem.case_file_id]?.title : null}
                   isPublic={Boolean(detailItem.visible_to_all)}
                   onOpenCaseFiles={() => {
