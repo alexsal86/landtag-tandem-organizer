@@ -1,4 +1,7 @@
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
+import { CaseItemDetailView } from "@/components/my-work/cases/workspace/CaseItemDetailView";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { de } from "date-fns/locale";
@@ -180,6 +183,7 @@ export function MyWorkCasesWorkspace() {
   const [isItemArchiveOpen, setIsItemArchiveOpen] = useState(false);
   const [isFileArchiveOpen, setIsFileArchiveOpen] = useState(false);
   const [deleteConfirmCaseFileId, setDeleteConfirmCaseFileId] = useState<string | null>(null);
+  const [caseFileSheetOpen, setCaseFileSheetOpen] = useState(false);
 
   const handleDeleteCaseItem = useCallback(async () => {
     if (!deleteConfirmItemId) return;
@@ -1023,51 +1027,11 @@ export function MyWorkCasesWorkspace() {
     return <div className="p-4 text-sm text-muted-foreground">Lade Fallbearbeitung…</div>;
   }
 
-  const detailPanelForItem = (item: CaseItem, contactDisplay: string) => (
-    <div className={cn("grid transition-all duration-300 ease-in-out", detailItemId === item.id && editableCaseItem ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}><div className="overflow-hidden">{detailItemId === item.id && editableCaseItem ? (
-      <CaseItemDetailPanel
-        itemId={item.id}
-        itemCaseFileId={item.case_file_id}
-        editableCaseItem={editableCaseItem}
-        statusOptions={statusOptions.map(({ value, label }) => ({ value, label }))}
-        categoryOptions={categoryOptions}
-        teamUsers={teamUsers}
-        currentUserId={user?.id || null}
-        linkedDecisions={linkedDecisions[item.id] || []}
-        loadingDecisions={loadingDecisions}
-        timelineEntries={timelineEntries}
-        toEditorHtml={toEditorHtml}
-        caseFilesById={caseFilesById}
-        onUpdate={updateEdit}
-        onSave={() => runAsync(handleCaseItemSave)}
-        onDecisionRequest={handleRequestDecision}
-        onDecisionReceived={handleDecisionReceived}
-        onAddInteraction={handleAddInteraction}
-        onDownloadDocument={handleDownloadInteractionDocument}
-        onRenameDocument={handleRenameInteractionDocument}
-        onDeleteDocument={handleDeleteInteractionDocument}
-        onUpdateDocumentMeta={handleUpdateInteractionDocumentMeta}
-        onCreateCaseFile={handleCreateCaseFile}
-        onNavigateToCaseFile={(caseFileId) => navigate(`/casefiles?caseFileId=${caseFileId}`)}
-        contactDisplay={contactDisplay}
-        onContactPersonChange={(value) => updateEdit({ contactPerson: value })}
-        contactPerson={editableCaseItem.contactPerson}
-        contactEmail={editableCaseItem.contactEmail}
-        contactPhone={editableCaseItem.contactPhone}
-        selectedContactId={editableCaseItem.selectedContactId}
-        onContactEmailChange={(value) => updateEdit({ contactEmail: value })}
-        onContactPhoneChange={(value) => updateEdit({ contactPhone: value })}
-        onContactSelected={(contact) => updateEdit({ selectedContactId: contact?.id || null })}
-        onArchive={() => runAsync(() => handleArchiveCaseItem(item))}
-        archiveLabel={item.status === "archiviert" ? "Wiederherstellen" : "Archivieren"}
-        onDelete={() => setDeleteConfirmItemId(item.id)}
-      />
-    ) : null}</div></div>
-  );
-
+  // detailPanelForItem removed — detail is now rendered in the right column
   return (
     <>
-      {detailFileId ? (
+      {/* Case file detail as full page when directly opened */}
+      {detailFileId && !detailItemId ? (
         <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
           <div className="pt-6 px-6 pb-6">
             <CaseFileDetail caseFileId={detailFileId} onBack={() => setDetailFileId(null)} />
@@ -1123,32 +1087,112 @@ export function MyWorkCasesWorkspace() {
                 openMeetingSelector={(itemId) => { setMeetingSelectorItemId(itemId); setIsMeetingSelectorOpen(true); }}
                 handleArchiveCaseItem={handleArchiveCaseItem}
                 onDeleteCaseItem={setDeleteConfirmItemId}
-                detailPanelForItem={detailPanelForItem}
                 hasMoreItems={hasMoreItems}
                 loadingMoreItems={loadingMoreItems}
                 loadMoreItems={loadMoreItems}
               />
             }
             right={
-              <CaseFileList
-                fileFilterQuery={filters.fileQuery}
-                onFileFilterQueryChange={(fileQuery) => setFilters((prev) => ({ ...prev, fileQuery }))}
-                onCreateCaseFile={() => handleCreateCaseFile()}
-                onOpenArchive={() => setIsFileArchiveOpen(true)}
-                filteredCaseFiles={filteredCaseFiles}
-                recentCaseFiles={recentCaseFiles}
-                groupedCaseFiles={groupedCaseFiles}
-                linkedItemsCountByFile={linkedItemsCountByFile}
-                onSelectCaseFile={handleSelectCaseFile}
-                onArchiveCaseFile={(cf) => runAsync(() => handleArchiveCaseFile(cf))}
-                onDeleteCaseFile={(cf) => setDeleteConfirmCaseFileId(cf.id)}
-                caseFileTypes={caseFileTypes}
-                hasMoreFiles={hasMoreFiles}
-                loadingMoreFiles={loadingMoreFiles}
-                onLoadMoreFiles={() => runAsync(loadMoreFiles)}
-              />
+              detailItem && editableCaseItem ? (
+                <CaseItemDetailView
+                  title={getItemSubject(detailItem)}
+                  statusBadge={
+                    <Badge variant="outline" className={cn("text-[10px]", getStatusMeta(detailItem.status).badgeClass)}>
+                      {getStatusMeta(detailItem.status).label}
+                    </Badge>
+                  }
+                  dueBadge={detailItem.due_at ? (
+                    <span className="text-xs text-muted-foreground">
+                      Fällig: {formatDateSafe(detailItem.due_at, "dd.MM.yyyy", "–", { locale: de })}
+                    </span>
+                  ) : undefined}
+                  contactDisplay={[getContactName(detailItem.intake_payload), getContactDetail(detailItem.intake_payload)].filter(Boolean).join(" · ")}
+                  linkedFileName={detailItem.case_file_id ? caseFilesById[detailItem.case_file_id]?.title : null}
+                  onOpenCaseFiles={() => {
+                    if (detailItem.case_file_id) {
+                      setDetailFileId(detailItem.case_file_id);
+                    }
+                    setCaseFileSheetOpen(true);
+                  }}
+                  detailPanel={
+                    <CaseItemDetailPanel
+                      itemId={detailItem.id}
+                      itemCaseFileId={detailItem.case_file_id}
+                      editableCaseItem={editableCaseItem}
+                      statusOptions={statusOptions.map(({ value, label }) => ({ value, label }))}
+                      categoryOptions={categoryOptions}
+                      teamUsers={teamUsers}
+                      currentUserId={user?.id || null}
+                      linkedDecisions={linkedDecisions[detailItem.id] || []}
+                      loadingDecisions={loadingDecisions}
+                      timelineEntries={timelineEntries}
+                      toEditorHtml={toEditorHtml}
+                      caseFilesById={caseFilesById}
+                      onUpdate={updateEdit}
+                      onSave={() => runAsync(handleCaseItemSave)}
+                      onDecisionRequest={handleRequestDecision}
+                      onDecisionReceived={handleDecisionReceived}
+                      onAddInteraction={handleAddInteraction}
+                      onDownloadDocument={handleDownloadInteractionDocument}
+                      onRenameDocument={handleRenameInteractionDocument}
+                      onDeleteDocument={handleDeleteInteractionDocument}
+                      onUpdateDocumentMeta={handleUpdateInteractionDocumentMeta}
+                      onCreateCaseFile={handleCreateCaseFile}
+                      onNavigateToCaseFile={(caseFileId) => navigate(`/casefiles?caseFileId=${caseFileId}`)}
+                      contactDisplay={[getContactName(detailItem.intake_payload), getContactDetail(detailItem.intake_payload)].filter(Boolean).join(" · ")}
+                      onContactPersonChange={(value) => updateEdit({ contactPerson: value })}
+                      contactPerson={editableCaseItem.contactPerson}
+                      contactEmail={editableCaseItem.contactEmail}
+                      contactPhone={editableCaseItem.contactPhone}
+                      selectedContactId={editableCaseItem.selectedContactId}
+                      onContactEmailChange={(value) => updateEdit({ contactEmail: value })}
+                      onContactPhoneChange={(value) => updateEdit({ contactPhone: value })}
+                      onContactSelected={(contact) => updateEdit({ selectedContactId: contact?.id || null })}
+                      onArchive={() => runAsync(() => handleArchiveCaseItem(detailItem))}
+                      archiveLabel={detailItem.status === "archiviert" ? "Wiederherstellen" : "Archivieren"}
+                      onDelete={() => setDeleteConfirmItemId(detailItem.id)}
+                    />
+                  }
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full text-sm text-muted-foreground border-l">
+                  <p>Vorgang auswählen, um Details anzuzeigen</p>
+                </div>
+              )
             }
           />
+
+          {/* Case Files Slide-In Sheet */}
+          <Sheet open={caseFileSheetOpen} onOpenChange={setCaseFileSheetOpen}>
+            <SheetContent side="right" className="w-[400px] sm:max-w-[400px] p-0">
+              <SheetHeader className="px-4 pt-4 pb-2">
+                <SheetTitle>Fallakten</SheetTitle>
+              </SheetHeader>
+              <div className="px-4 pb-4 overflow-y-auto h-[calc(100%-60px)]">
+                {detailFileId ? (
+                  <CaseFileDetail caseFileId={detailFileId} onBack={() => setDetailFileId(null)} />
+                ) : (
+                  <CaseFileList
+                    fileFilterQuery={filters.fileQuery}
+                    onFileFilterQueryChange={(fileQuery) => setFilters((prev) => ({ ...prev, fileQuery }))}
+                    onCreateCaseFile={() => handleCreateCaseFile()}
+                    onOpenArchive={() => setIsFileArchiveOpen(true)}
+                    filteredCaseFiles={filteredCaseFiles}
+                    recentCaseFiles={recentCaseFiles}
+                    groupedCaseFiles={groupedCaseFiles}
+                    linkedItemsCountByFile={linkedItemsCountByFile}
+                    onSelectCaseFile={(cf) => setDetailFileId(cf.id)}
+                    onArchiveCaseFile={(cf) => runAsync(() => handleArchiveCaseFile(cf))}
+                    onDeleteCaseFile={(cf) => setDeleteConfirmCaseFileId(cf.id)}
+                    caseFileTypes={caseFileTypes}
+                    hasMoreFiles={hasMoreFiles}
+                    loadingMoreFiles={loadingMoreFiles}
+                    onLoadMoreFiles={() => runAsync(loadMoreFiles)}
+                  />
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
 
           <CaseWorkspaceDialogs
             isCaseItemDialogOpen={isCaseItemDialogOpen}
