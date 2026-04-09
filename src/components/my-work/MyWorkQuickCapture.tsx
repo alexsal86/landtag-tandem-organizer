@@ -162,7 +162,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
             initialContent={toEditorHtml(content)}
             onChange={setContent}
             onKeyDown={handleEditorKeyDown}
-            placeholder="Notiz, Idee oder Gedanke..."
+            placeholder="Was möchtest du festhalten? (z. B. Idee, To-Do, Gespräch…)"
             minHeight="100px"
           />
         </div>
