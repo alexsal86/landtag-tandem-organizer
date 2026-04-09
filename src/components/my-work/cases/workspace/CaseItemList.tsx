@@ -136,7 +136,7 @@ export function CaseItemList(props: CaseItemListProps) {
                               <button
                                 type="button"
                                 className={cn(
-                                  "group w-full rounded-3xl border bg-card px-5 py-5 text-left transition-colors hover:bg-muted/30",
+                                  "group w-full rounded-2xl border bg-card px-4 py-4 text-left transition-colors hover:bg-muted/30",
                                   isActive && "border-primary/60 bg-primary/5 shadow-sm",
                                   !isActive && "border-border",
                                   props.focusedItemIndex >= 0 && props.focusedItemIndex === index && "ring-1 ring-primary/40",
@@ -145,7 +145,7 @@ export function CaseItemList(props: CaseItemListProps) {
                               >
                                 <div {...dragProvided.dragHandleProps}>
                                   {/* Row 1: Marker + title */}
-                                  <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-2">
                                     <Circle className={cn("h-[10px] w-[10px] shrink-0 fill-current", props.priorityMeta(item.priority).color)} />
                                     <p className="min-w-0 flex-1 text-sm font-bold leading-snug line-clamp-1">
                                       {props.getItemSubject(item)}
@@ -154,13 +154,13 @@ export function CaseItemList(props: CaseItemListProps) {
 
                                   {/* Row 2: Description */}
                                   {props.getItemDescription(item) && (
-                                    <p className="mt-1 line-clamp-1 pl-[22px] text-sm text-muted-foreground">
+                                    <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">
                                       {props.getItemDescription(item)}
                                     </p>
                                   )}
 
                                   {/* Row 3: Date + status */}
-                                  <div className="mt-2 flex items-center justify-between gap-2 pl-[22px]">
+                                  <div className="mt-3 flex items-center justify-between gap-2">
                                     <span className="text-xs text-muted-foreground">
                                       Fällig: {formatDateSafe(item.due_at, "dd.MM.yy", "–", { locale: de })}
                                     </span>
