@@ -519,11 +519,11 @@ export function MyWorkCaseItemsTab() {
                   <ContextMenuTrigger asChild>
                     <div
                       className={cn(
-                        "rounded-lg border bg-card p-3 transition-colors hover:bg-muted/40",
+                        "rounded-md border bg-card px-4 py-4 transition-colors hover:bg-muted/40",
                         highlightedItemId === item.id && "border-primary bg-primary/10"
                       )}
                     >
-                      <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 space-y-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="truncate text-sm font-semibold">{item.title}</p>
@@ -546,7 +546,7 @@ export function MyWorkCaseItemsTab() {
                             <p className="line-clamp-2 text-xs text-muted-foreground">{item.description}</p>
                           )}
 
-                          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                          <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                             {dueDate && (
                               <span className={cn("inline-flex items-center gap-1", isOverdue && "text-destructive font-medium")}>
                                 <CalendarClock className="h-3 w-3" />
