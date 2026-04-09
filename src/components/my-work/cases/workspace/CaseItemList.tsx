@@ -9,7 +9,6 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator,
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type { CaseFile, CaseItem, TeamUser } from "@/components/my-work/hooks/useCaseWorkspaceData";
-import { CasesWorkspaceToolbar } from "./CasesWorkspaceToolbar";
 import { formatDateSafe } from "./utils/dateFormatting";
 
 export type CaseItemSortKey = "channel" | "subject" | "description" | "status" | "received" | "due" | "category" | "priority" | "assignee";
@@ -20,8 +19,6 @@ type StatusOption = { value: string; label: string; dotColor: string; badgeClass
 type PriorityOption = { value: string; label: string; color: string };
 
 type CaseItemListProps = {
-  itemFilterQuery: string;
-  onItemFilterQueryChange: (value: string) => void;
   onCreateCaseItem: () => void;
   onOpenArchive: () => void;
   helperText: string;
@@ -74,22 +71,18 @@ export function CaseItemList(props: CaseItemListProps) {
     <div className="flex flex-col h-full min-h-0 border-r bg-muted/30">
       {/* Header */}
       <div className="shrink-0 p-3 border-b space-y-2">
-        <div className="flex items-center gap-2 text-sm font-semibold">
-          <FileText className="h-4 w-4" />
-          <span>Vorgänge</span>
-          <span className="text-xs font-normal text-muted-foreground ml-auto">
-            {props.sortedCaseItems.length}
-          </span>
+        <div className="flex items-center gap-2">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <FileText className="h-4 w-4" />
+              <span>Vorgangsliste</span>
+            </div>
+            <p className="text-xs text-muted-foreground">Übersicht und schneller Zugriff</p>
+          </div>
+          <Button variant="outline" size="sm" className="ml-auto" onClick={props.onOpenArchive}>
+            Archiv
+          </Button>
         </div>
-        <CasesWorkspaceToolbar
-          title=""
-          searchValue={props.itemFilterQuery}
-          onSearchChange={props.onItemFilterQueryChange}
-          searchPlaceholder="Filtern…"
-          onCreate={props.onCreateCaseItem}
-          createLabel="Neu"
-          onOpenArchive={props.onOpenArchive}
-        />
       </div>
 
       {/* Compact card list */}

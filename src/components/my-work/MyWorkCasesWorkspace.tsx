@@ -1,11 +1,13 @@
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { CaseItemDetailView } from "@/components/my-work/cases/workspace/CaseItemDetailView";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { de } from "date-fns/locale";
-import { Briefcase, CheckCircle2, Clock, FileText, FolderOpen, Gavel, Inbox, Mail, MessageSquare, Phone, Timer, UserRound, Users } from "lucide-react";
+import { Briefcase, CheckCircle2, Clock, FileText, Filter, FolderOpen, Gavel, Inbox, Mail, MessageSquare, Phone, Search, Timer, UserRound, Users } from "lucide-react";
 import type { DropResult } from "@hello-pangea/dnd";
 import { CaseFileDetail } from "@/features/cases/files/components";
 import { useCaseFileTypes } from "@/features/cases/files/hooks/useCaseFileTypes";
@@ -1039,12 +1041,38 @@ export function MyWorkCasesWorkspace() {
         </div>
       ) : (
         <>
+          <div className="mb-4 rounded-3xl border bg-card/95 p-4 shadow-sm">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Redesign · Master-Detail Layout</p>
+                <h2 className="text-3xl font-semibold tracking-tight">Vorgänge</h2>
+              </div>
+
+              <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto lg:min-w-[640px] lg:justify-end">
+                <div className="relative flex-1 lg:max-w-sm">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={filters.itemQuery}
+                    onChange={(event) => setFilters((prev) => ({ ...prev, itemQuery: event.target.value }))}
+                    placeholder="Vorgänge durchsuchen..."
+                    className="h-11 rounded-full pl-9"
+                  />
+                </div>
+                <Button type="button" variant="outline" className="h-11 rounded-full px-5" onClick={() => setIsItemArchiveOpen(true)}>
+                  <Filter className="mr-2 h-4 w-4" />
+                  Filter
+                </Button>
+                <Button type="button" className="h-11 rounded-full px-5" onClick={handleCreateCaseItem}>
+                  + Neuer Vorgang
+                </Button>
+              </div>
+            </div>
+          </div>
+
           <CasesWorkspaceShell
             onDragEnd={handleDragEnd}
             left={
               <CaseItemList
-                itemFilterQuery={filters.itemQuery}
-                onItemFilterQueryChange={(itemQuery) => setFilters((prev) => ({ ...prev, itemQuery }))}
                 onCreateCaseItem={handleCreateCaseItem}
                 onOpenArchive={() => setIsItemArchiveOpen(true)}
                 helperText="Vorgänge per Drag & Drop auf eine Fallakte ziehen zum Verknüpfen"
