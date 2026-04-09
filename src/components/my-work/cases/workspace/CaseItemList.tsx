@@ -103,7 +103,7 @@ export function CaseItemList(props: CaseItemListProps) {
             <div
               ref={provided.innerRef}
               {...provided.droppableProps}
-              className="space-y-2 p-2"
+              className="space-y-3 p-4"
               tabIndex={0}
               onKeyDown={props.onListKeyDown}
             >
