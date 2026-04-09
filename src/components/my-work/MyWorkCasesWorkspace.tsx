@@ -1027,48 +1027,7 @@ export function MyWorkCasesWorkspace() {
     return <div className="p-4 text-sm text-muted-foreground">Lade Fallbearbeitung…</div>;
   }
 
-  const detailPanelForItem = (item: CaseItem, contactDisplay: string) => (
-    <div className={cn("grid transition-all duration-300 ease-in-out", detailItemId === item.id && editableCaseItem ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}><div className="overflow-hidden">{detailItemId === item.id && editableCaseItem ? (
-      <CaseItemDetailPanel
-        itemId={item.id}
-        itemCaseFileId={item.case_file_id}
-        editableCaseItem={editableCaseItem}
-        statusOptions={statusOptions.map(({ value, label }) => ({ value, label }))}
-        categoryOptions={categoryOptions}
-        teamUsers={teamUsers}
-        currentUserId={user?.id || null}
-        linkedDecisions={linkedDecisions[item.id] || []}
-        loadingDecisions={loadingDecisions}
-        timelineEntries={timelineEntries}
-        toEditorHtml={toEditorHtml}
-        caseFilesById={caseFilesById}
-        onUpdate={updateEdit}
-        onSave={() => runAsync(handleCaseItemSave)}
-        onDecisionRequest={handleRequestDecision}
-        onDecisionReceived={handleDecisionReceived}
-        onAddInteraction={handleAddInteraction}
-        onDownloadDocument={handleDownloadInteractionDocument}
-        onRenameDocument={handleRenameInteractionDocument}
-        onDeleteDocument={handleDeleteInteractionDocument}
-        onUpdateDocumentMeta={handleUpdateInteractionDocumentMeta}
-        onCreateCaseFile={handleCreateCaseFile}
-        onNavigateToCaseFile={(caseFileId) => navigate(`/casefiles?caseFileId=${caseFileId}`)}
-        contactDisplay={contactDisplay}
-        onContactPersonChange={(value) => updateEdit({ contactPerson: value })}
-        contactPerson={editableCaseItem.contactPerson}
-        contactEmail={editableCaseItem.contactEmail}
-        contactPhone={editableCaseItem.contactPhone}
-        selectedContactId={editableCaseItem.selectedContactId}
-        onContactEmailChange={(value) => updateEdit({ contactEmail: value })}
-        onContactPhoneChange={(value) => updateEdit({ contactPhone: value })}
-        onContactSelected={(contact) => updateEdit({ selectedContactId: contact?.id || null })}
-        onArchive={() => runAsync(() => handleArchiveCaseItem(item))}
-        archiveLabel={item.status === "archiviert" ? "Wiederherstellen" : "Archivieren"}
-        onDelete={() => setDeleteConfirmItemId(item.id)}
-      />
-    ) : null}</div></div>
-  );
-
+  // detailPanelForItem removed — detail is now rendered in the right column
   return (
     <>
       {/* Case file detail as full page when directly opened */}
