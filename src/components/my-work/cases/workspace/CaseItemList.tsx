@@ -67,28 +67,16 @@ type CaseItemListProps = {
 };
 
 export function CaseItemList(props: CaseItemListProps) {
-  const formatListReference = (item: CaseItem): string => {
-    if (item.due_at) {
-      return `#${formatDateSafe(item.due_at, "ddMMyy", "------", { locale: de })}`;
-    }
-
-    if (item.source_received_at) {
-      return `#${formatDateSafe(item.source_received_at, "ddMMyy", "------", { locale: de })}`;
-    }
-
-    return `#${item.id.slice(0, 6).toUpperCase()}`;
-  };
-
   return (
     <div className="flex h-full min-h-0 flex-col border-r bg-muted/30">
       {/* Header */}
       <div className="shrink-0 space-y-2 border-b p-4">
         <div className="flex items-center gap-2">
           <div>
-            <h3 className="text-3xl font-semibold tracking-tight text-primary">Vorgangsliste</h3>
-            <p className="text-xl text-muted-foreground">Übersicht und schneller Zugriff</p>
+            <h3 className="text-lg font-semibold tracking-tight text-primary">Vorgangsliste</h3>
+            <p className="text-sm text-muted-foreground">Übersicht und schneller Zugriff</p>
           </div>
-          <Button variant="outline" size="lg" className="ml-auto rounded-2xl px-6" onClick={props.onOpenArchive}>
+          <Button variant="outline" size="sm" className="ml-auto" onClick={props.onOpenArchive}>
             Archiv
           </Button>
         </div>
@@ -147,33 +135,30 @@ export function CaseItemList(props: CaseItemListProps) {
                                 onClick={() => props.handleSelectCaseItem(item)}
                               >
                                 <div {...dragProvided.dragHandleProps}>
-                                  {/* Row 1: Marker + title + reference */}
+                                  {/* Row 1: Marker + title */}
                                   <div className="flex items-start gap-3">
                                     <Circle className={cn("mt-2 h-3.5 w-3.5 shrink-0 fill-current", props.priorityMeta(item.priority).color)} />
-                                    <p className="min-w-0 flex-1 text-3xl font-semibold leading-tight line-clamp-1">
+                                    <p className="min-w-0 flex-1 text-base font-semibold leading-snug line-clamp-1">
                                       {props.getItemSubject(item)}
                                     </p>
-                                    <span className="rounded-full bg-muted px-3 py-1 text-2xl text-muted-foreground">
-                                      {formatListReference(item)}
-                                    </span>
                                   </div>
 
                                   {/* Row 2: Description */}
                                   {props.getItemDescription(item) && (
-                                    <p className="mt-2 line-clamp-1 pl-6 text-2xl text-muted-foreground">
+                                    <p className="mt-1.5 line-clamp-1 pl-6 text-sm text-muted-foreground">
                                       {props.getItemDescription(item)}
                                     </p>
                                   )}
 
                                   {/* Row 3: Date + status */}
-                                  <div className="mt-4 flex items-center justify-between gap-2 pl-6">
-                                    <span className="text-xl text-muted-foreground">
+                                  <div className="mt-3 flex items-center justify-between gap-2 pl-6">
+                                    <span className="text-xs text-muted-foreground">
                                       Fällig: {formatDateSafe(item.due_at, "dd.MM.yy", "–", { locale: de })}
                                     </span>
                                     <Badge
                                       variant="outline"
                                       className={cn(
-                                        "h-auto rounded-full border-2 px-3 py-1 text-xl font-semibold",
+                                        "h-auto rounded-full border px-2 py-0.5 text-xs font-medium",
                                         statusMeta.badgeClass,
                                       )}
                                     >
