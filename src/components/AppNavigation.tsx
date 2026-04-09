@@ -11,6 +11,7 @@ import {
   Search,
   ChevronRight,
   ChevronDown,
+  ChevronLeft,
   Plus,
   X,
   Star,
@@ -151,6 +152,7 @@ export function AppNavigation({
   const [quickAccessPopoverOpen, setQuickAccessPopoverOpen] = useState(false);
   const [quickAccessAddCategory, setQuickAccessAddCategory] = useState<QuickAccessAddCategory | null>(null);
   const [notificationFilter, setNotificationFilter] = useState<NotificationFilter>('unread');
+  const [quickAccessPageIndex, setQuickAccessPageIndex] = useState(0);
   
   // User profile
   const [userProfile, setUserProfile] = useState<{ display_name?: string | null; avatar_url?: string | null } | null>(null);
@@ -450,6 +452,13 @@ export function AppNavigation({
 
   const statusDisplay = currentStatus ? getStatusDisplay(currentStatus) : null;
 
+  useEffect(() => {
+    const maxPageIndex = Math.max(0, Math.ceil(quickAccessPages.length / 8) - 1);
+    if (quickAccessPageIndex > maxPageIndex) {
+      setQuickAccessPageIndex(maxPageIndex);
+    }
+  }, [quickAccessPages.length, quickAccessPageIndex]);
+
   // Skeleton loader
   if (isRoleLoading) {
     return (
@@ -576,6 +585,7 @@ export function AppNavigation({
           </div>
           {recentPages.slice(0, 5).map(page => {
             const hasTabRoute = page.route.includes('?');
+            const quickAccessActive = isInQuickAccess(page.id);
             const handleClick = () => {
               if (hasTabRoute) {
                 navigate(page.route);
@@ -587,18 +597,37 @@ export function AppNavigation({
               }
             };
             return (
-              <button
-                key={page.id}
-                onClick={handleClick}
-                className={cn(
-                  "flex items-center gap-2 w-full py-1 px-2 rounded-md text-[12px] transition-colors truncate",
-                  "hover:bg-[hsl(var(--nav-hover))]",
-                  activeSection === page.id && "bg-[hsl(var(--nav-active-bg))] font-medium"
-                )}
-              >
-                <Clock className="h-3 w-3 text-[hsl(var(--nav-muted))] shrink-0" />
-                <span className="truncate">{page.label}</span>
-              </button>
+              <div key={page.id} className="group flex items-center">
+                <button
+                  onClick={handleClick}
+                  className={cn(
+                    "flex-1 flex items-center gap-2 py-1 px-2 rounded-md text-[12px] transition-colors truncate",
+                    "hover:bg-[hsl(var(--nav-hover))]",
+                    activeSection === page.id && "bg-[hsl(var(--nav-active-bg))] font-medium"
+                  )}
+                >
+                  <Clock className="h-3 w-3 text-[hsl(var(--nav-muted))] shrink-0" />
+                  <span className="truncate">{page.label}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    if (quickAccessActive) {
+                      removePage(page.id);
+                    } else {
+                      addPage({ id: page.id, label: page.label, icon: page.icon, route: page.route });
+                    }
+                  }}
+                  className={cn(
+                    "h-5 w-5 rounded flex items-center justify-center transition-all shrink-0",
+                    quickAccessActive
+                      ? "opacity-100"
+                      : "opacity-0 group-hover:opacity-100 hover:bg-[hsl(var(--nav-hover))]"
+                  )}
+                  aria-label={quickAccessActive ? "Aus Schnellzugriff entfernen" : "Zum Schnellzugriff hinzufügen"}
+                >
+                  <Star className={cn("h-3 w-3", quickAccessActive ? "fill-current text-amber-500" : "text-[hsl(var(--nav-muted))]")} />
+                </button>
+              </div>
             );
           })}
         </div>
@@ -606,14 +635,42 @@ export function AppNavigation({
 
       {/* Quick Access / Favoriten */}
       <div className="px-2 py-2 border-t border-border">
+        {(() => {
+          const QUICK_ACCESS_PAGE_SIZE = 8;
+          const quickAccessPageCount = Math.max(1, Math.ceil(quickAccessPages.length / QUICK_ACCESS_PAGE_SIZE));
+          const paginatedQuickAccessPages = quickAccessPages.slice(
+            quickAccessPageIndex * QUICK_ACCESS_PAGE_SIZE,
+            (quickAccessPageIndex + 1) * QUICK_ACCESS_PAGE_SIZE
+          );
+
+          return (
+            <>
         <div className="flex items-center justify-between px-2 mb-1">
           <span className="text-[11px] font-medium text-[hsl(var(--nav-muted))] uppercase tracking-wider">
             Schnellzugriff
           </span>
-          <Popover open={quickAccessPopoverOpen} onOpenChange={(open) => {
-            setQuickAccessPopoverOpen(open);
-            if (!open) setQuickAccessAddCategory(null);
-          }}>
+          <div className="flex items-center gap-1">
+            {quickAccessPageCount > 1 && (
+              <>
+                <button
+                  onClick={() => setQuickAccessPageIndex((index) => Math.max(0, index - 1))}
+                  disabled={quickAccessPageIndex === 0}
+                  className="h-5 w-5 rounded flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  aria-label="Vorherige Schnellzugriffe"
+                >
+                  <ChevronLeft className="h-3 w-3 text-[hsl(var(--nav-muted))]" />
+                </button>
+                <button
+                  onClick={() => setQuickAccessPageIndex((index) => Math.min(quickAccessPageCount - 1, index + 1))}
+                  disabled={quickAccessPageIndex >= quickAccessPageCount - 1}
+                  className="h-5 w-5 rounded flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  aria-label="Nächste Schnellzugriffe"
+                >
+                  <ChevronRight className="h-3 w-3 text-[hsl(var(--nav-muted))]" />
+                </button>
+              </>
+            )}
+          <Popover open={quickAccessPopoverOpen} onOpenChange={setQuickAccessPopoverOpen}>
             <PopoverTrigger asChild>
               <button className="h-5 w-5 rounded flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors">
                 <Plus className="h-3 w-3 text-[hsl(var(--nav-muted))]" />
@@ -758,8 +815,9 @@ export function AppNavigation({
               )}
             </PopoverContent>
           </Popover>
+          </div>
         </div>
-        {quickAccessPages.map(page => (
+        {paginatedQuickAccessPages.map(page => (
           <div key={page.id} className="group flex items-center">
             <button
               onClick={() => {
@@ -796,6 +854,14 @@ export function AppNavigation({
             Noch keine Favoriten
           </div>
         )}
+        {quickAccessPages.length > 0 && quickAccessPageCount > 1 && (
+          <div className="px-2 pt-1 text-[10px] text-[hsl(var(--nav-muted))]">
+            Seite {quickAccessPageIndex + 1} von {quickAccessPageCount}
+          </div>
+        )}
+            </>
+          );
+        })()}
       </div>
 
     </>
