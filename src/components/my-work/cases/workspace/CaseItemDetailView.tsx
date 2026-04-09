@@ -31,7 +31,7 @@ export function CaseItemDetailView({
   isPublic,
 }: CaseItemDetailViewProps) {
   return (
-    <div className="flex flex-col h-full min-h-0 border-l bg-background">
+    <div className="flex flex-col h-full min-h-0 bg-card">
       {/* Header */}
       <div className="shrink-0 border-b">
         <div className="px-6 pb-4 pt-5">
