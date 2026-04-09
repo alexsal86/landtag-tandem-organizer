@@ -33,6 +33,8 @@ type TimelineEntry = {
   onDelete?: () => void;
 };
 
+type DetailTab = "overview" | "timeline" | "documents";
+
 type CaseFile = {
   id: string;
   title: string;
@@ -81,6 +83,7 @@ export function CaseItemDetailPanel({
   caseFilesById,
   onUpdate,
   onSave,
+  activeTab,
   onDecisionRequest,
   onDecisionReceived,
   onAddInteraction,
@@ -117,6 +120,7 @@ export function CaseItemDetailPanel({
   caseFilesById: Record<string, CaseFile>;
   onUpdate: (patch: Partial<EditableCaseItem>) => void;
   onSave: () => void;
+  activeTab: DetailTab;
   onDecisionRequest: () => void;
   onDecisionReceived: () => void;
   onAddInteraction: (files?: File[]) => void;
@@ -405,14 +409,15 @@ export function CaseItemDetailPanel({
             </div>
           </div>
 
-          <div className="rounded-md border bg-background p-3">
-            <p className="font-bold mb-3">Zeitstrahl</p>
-            <div className="relative space-y-4 pl-8">
-              {timelineEntries.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Noch keine Einträge im Zeitstrahl.</p>
-              ) : (
-                <>
-                  {timelineEntries.map((entry, index) => {
+          {activeTab === "timeline" && (
+            <div className="rounded-md border bg-background p-3">
+              <p className="mb-3 font-bold">Zeitstrahl</p>
+              <div className="relative space-y-4 pl-8">
+                {timelineEntries.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Noch keine Einträge im Zeitstrahl.</p>
+                ) : (
+                  <>
+                    {timelineEntries.map((entry, index) => {
                     const isLastEntry = index === timelineEntries.length - 1;
                     const isFrist = entry.title === "Frist";
 
@@ -556,27 +561,23 @@ export function CaseItemDetailPanel({
                         </div>
                       </div>
                     );
-                  })}
-                </>
-              )}
+                    })}
+                  </>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
-          <Collapsible defaultOpen={false} className="rounded-md border bg-background">
-            <CollapsibleTrigger asChild>
-              <Button type="button" variant="ghost" className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left">
-                <span className="text-sm font-semibold">Dokumente ({sortedInteractionDocuments.length})</span>
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-2 px-3 pb-3">
+          {activeTab === "documents" && (
+            <div className="space-y-2 rounded-md border bg-background p-3">
+              <p className="text-sm font-semibold">Dokumente ({sortedInteractionDocuments.length})</p>
               {sortedInteractionDocuments.length === 0 ? (
                 <p className="text-xs text-muted-foreground">Noch keine Dokumente vorhanden.</p>
               ) : (
                 sortedInteractionDocuments.map((document) => {
                   const isEditing = editingDocumentId === document.id;
                   return (
-                    <div key={document.id} className="rounded-md border p-2 space-y-2">
+                    <div key={document.id} className="space-y-2 rounded-md border p-2">
                       <div className="flex items-center gap-2">
                         {isEditing ? (
                           <>
@@ -587,12 +588,12 @@ export function CaseItemDetailPanel({
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <button type="button" className="truncate text-sm font-medium text-left" onClick={() => onDownloadDocument(document)}>
+                                <button type="button" className="truncate text-left text-sm font-medium" onClick={() => onDownloadDocument(document)}>
                                   {document.title}
                                 </button>
                               </TooltipTrigger>
                               <TooltipContent className="max-w-sm text-xs">
-                                <p>Hochgeladen von: {document.uploadedByName || 'Unbekannt'}</p>
+                                <p>Hochgeladen von: {document.uploadedByName || "Unbekannt"}</p>
                                 <p>Upload: {formatTimelineDateOnly(document.uploadedAt)} {formatTimelineTimeOnly(document.uploadedAt)} Uhr</p>
                                 {document.documentDate && <p>Dokumentdatum: {formatTimelineDateOnly(document.documentDate)}</p>}
                                 {document.shortText && <p>Kurztext: {stripHtml(document.shortText)}</p>}
@@ -609,11 +610,11 @@ export function CaseItemDetailPanel({
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                         <Input
                           type="date"
-                          value={document.documentDate ? format(new Date(document.documentDate), 'yyyy-MM-dd') : ''}
+                          value={document.documentDate ? format(new Date(document.documentDate), "yyyy-MM-dd") : ""}
                           onChange={(event) => onUpdateDocumentMeta(document.id, { documentDate: event.target.value ? new Date(`${event.target.value}T12:00:00`).toISOString() : null })}
                         />
                         <Input
-                          value={document.shortText || ''}
+                          value={document.shortText || ""}
                           placeholder="Kurztext"
                           onChange={(event) => onUpdateDocumentMeta(document.id, { shortText: event.target.value })}
                         />
@@ -622,8 +623,8 @@ export function CaseItemDetailPanel({
                   );
                 })
               )}
-            </CollapsibleContent>
-          </Collapsible>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label className="font-bold" htmlFor="detail-due">Fällig am</Label>
