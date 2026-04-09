@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type ElementType } from "react";
+import { useState, useEffect, useCallback, useMemo, type ElementType } from "react";
 import { NavDossierCapture } from "./NavDossierCapture";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -24,6 +24,9 @@ import {
   Settings,
   LogOut,
   User,
+  FileText,
+  CalendarPlus,
+  ArrowLeft,
 } from "lucide-react";
 import { useMatrixUnread } from "@/contexts/MatrixUnreadContext";
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
@@ -79,6 +82,7 @@ export { getNavigationGroups };
 
 type ActivePanel = 'home' | 'notifications' | 'casefiles' | 'appointments';
 type NotificationFilter = 'unread' | 'all';
+type QuickAccessAddCategory = 'pages' | 'case-items' | 'documents' | 'event-plannings';
 
 interface NavigationProps {
   activeSection: string;
@@ -146,6 +150,7 @@ export function AppNavigation({
   const [newBadgeItems, setNewBadgeItems] = useState<Set<string>>(new Set());
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
   const [quickAccessPopoverOpen, setQuickAccessPopoverOpen] = useState(false);
+  const [quickAccessAddCategory, setQuickAccessAddCategory] = useState<QuickAccessAddCategory | null>(null);
   const [notificationFilter, setNotificationFilter] = useState<NotificationFilter>('unread');
   const [quickAccessPageIndex, setQuickAccessPageIndex] = useState(0);
   
@@ -224,6 +229,116 @@ export function AppNavigation({
     enabled: !!currentTenant?.id && !!user?.id && activePanel === 'casefiles',
     staleTime: 2 * 60 * 1000,
   });
+
+
+
+  const { data: quickAccessCaseItems = [], isLoading: isCaseItemsLoading } = useQuery({
+    queryKey: ['quick-access-case-items', currentTenant?.id, user?.id],
+    queryFn: async () => {
+      if (!currentTenant?.id || !user?.id) return [];
+      const { data, error } = await supabase
+        .from('case_items')
+        .select('id, subject, updated_at, user_id, owner_user_id, status')
+        .eq('tenant_id', currentTenant.id)
+        .neq('status', 'archiviert')
+        .order('updated_at', { ascending: false })
+        .limit(40);
+
+      if (error) throw error;
+
+      return (data || [])
+        .map((item) => ({
+          id: item.id,
+          label: item.subject?.trim() || 'Vorgang ohne Betreff',
+          preferred: item.owner_user_id === user.id || item.user_id === user.id,
+          updatedAt: item.updated_at,
+        }))
+        .sort((a, b) => {
+          if (a.preferred !== b.preferred) return a.preferred ? -1 : 1;
+          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+        });
+    },
+    enabled: !!quickAccessPopoverOpen && quickAccessAddCategory === 'case-items' && !!currentTenant?.id && !!user?.id,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const { data: quickAccessDocuments = [], isLoading: isDocumentsLoading } = useQuery({
+    queryKey: ['quick-access-documents', currentTenant?.id, user?.id],
+    queryFn: async () => {
+      if (!currentTenant?.id || !user?.id) return [];
+      const { data, error } = await supabase
+        .from('documents')
+        .select('id, title, updated_at, user_id')
+        .eq('tenant_id', currentTenant.id)
+        .order('updated_at', { ascending: false })
+        .limit(40);
+
+      if (error) throw error;
+
+      return (data || [])
+        .map((item) => ({
+          id: item.id,
+          label: item.title?.trim() || 'Dokument ohne Titel',
+          preferred: item.user_id === user.id,
+          updatedAt: item.updated_at,
+        }))
+        .sort((a, b) => {
+          if (a.preferred !== b.preferred) return a.preferred ? -1 : 1;
+          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+        });
+    },
+    enabled: !!quickAccessPopoverOpen && quickAccessAddCategory === 'documents' && !!currentTenant?.id && !!user?.id,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const { data: quickAccessEventPlannings = [], isLoading: isEventPlanningsLoading } = useQuery({
+    queryKey: ['quick-access-event-plannings', currentTenant?.id, user?.id],
+    queryFn: async () => {
+      if (!currentTenant?.id || !user?.id) return [];
+
+      const [planningsResult, collaboratorsResult] = await Promise.all([
+        supabase
+          .from('event_plannings')
+          .select('id, title, updated_at, user_id, is_archived')
+          .eq('tenant_id', currentTenant.id)
+          .or('is_archived.is.null,is_archived.eq.false')
+          .order('updated_at', { ascending: false })
+          .limit(40),
+        supabase
+          .from('event_planning_collaborators')
+          .select('event_planning_id')
+          .eq('user_id', user.id),
+      ]);
+
+      if (planningsResult.error) throw planningsResult.error;
+      if (collaboratorsResult.error) throw collaboratorsResult.error;
+
+      const collaboratorIds = new Set((collaboratorsResult.data || []).map((entry) => entry.event_planning_id));
+
+      return (planningsResult.data || [])
+        .map((planning) => ({
+          id: planning.id,
+          label: planning.title?.trim() || 'Planung ohne Titel',
+          preferred: planning.user_id === user.id || collaboratorIds.has(planning.id),
+          updatedAt: planning.updated_at,
+        }))
+        .sort((a, b) => {
+          if (a.preferred !== b.preferred) return a.preferred ? -1 : 1;
+          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+        });
+    },
+    enabled: !!quickAccessPopoverOpen && quickAccessAddCategory === 'event-plannings' && !!currentTenant?.id && !!user?.id,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const quickAccessPageOptions = useMemo(() => {
+    return availableQuickPages
+      .map((page) => ({
+        page,
+        isAdded: quickAccessPages.some((quickPage) => quickPage.id === page.id),
+      }))
+      .sort((a, b) => Number(a.isAdded) - Number(b.isAdded));
+  }, [quickAccessPages]);
 
   // Auto-expand the group containing the active section
   useEffect(() => {
@@ -561,22 +676,142 @@ export function AppNavigation({
                 <Plus className="h-3 w-3 text-[hsl(var(--nav-muted))]" />
               </button>
             </PopoverTrigger>
-            <PopoverContent side="right" align="start" className="w-48 p-1">
-              <div className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">Seite hinzufügen</div>
-              {availableQuickPages
-                .filter(p => !quickAccessPages.some(qp => qp.id === p.id))
-                .map(page => (
+            <PopoverContent side="right" align="start" className="w-64 p-1.5">
+              {!quickAccessAddCategory ? (
+                <>
+                  <div className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">Hinzufügen</div>
                   <button
-                    key={page.id}
-                    onClick={() => { addPage(page); setQuickAccessPopoverOpen(false); }}
-                    className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors"
+                    onClick={() => setQuickAccessAddCategory('pages')}
+                    className="flex items-center justify-between gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors"
                   >
-                    <Star className="h-3.5 w-3.5 text-muted-foreground" />
-                    {page.label}
+                    <span>Seite hinzufügen</span>
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                   </button>
-                ))}
-              {availableQuickPages.filter(p => !quickAccessPages.some(qp => qp.id === p.id)).length === 0 && (
-                <div className="px-2 py-1.5 text-xs text-muted-foreground">Alle Seiten hinzugefügt</div>
+                  <button
+                    onClick={() => setQuickAccessAddCategory('case-items')}
+                    className="flex items-center justify-between gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors"
+                  >
+                    <span>Vorgang hinzufügen</span>
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                  <button
+                    onClick={() => setQuickAccessAddCategory('documents')}
+                    className="flex items-center justify-between gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors"
+                  >
+                    <span>Dokument hinzufügen</span>
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                  <button
+                    onClick={() => setQuickAccessAddCategory('event-plannings')}
+                    className="flex items-center justify-between gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors"
+                  >
+                    <span>Veranstaltungs-/Terminplanung hinzufügen</span>
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setQuickAccessAddCategory(null)}
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    Zurück
+                  </button>
+
+                  {quickAccessAddCategory === 'pages' && (
+                    <>
+                      <div className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">Seite hinzufügen</div>
+                      {quickAccessPageOptions.map(({ page, isAdded }) => (
+                        <button
+                          key={page.id}
+                          onClick={() => {
+                            if (isAdded) return;
+                            addPage(page);
+                            setQuickAccessPopoverOpen(false);
+                            setQuickAccessAddCategory(null);
+                          }}
+                          className={cn(
+                            "flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded transition-colors",
+                            isAdded ? "text-muted-foreground cursor-not-allowed" : "hover:bg-accent"
+                          )}
+                        >
+                          {isAdded ? <Check className="h-3.5 w-3.5" /> : <Star className="h-3.5 w-3.5 text-muted-foreground" />}
+                          <span className="truncate">{page.label}</span>
+                        </button>
+                      ))}
+                    </>
+                  )}
+
+                  {quickAccessAddCategory === 'case-items' && (
+                    <>
+                      <div className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">Vorgang hinzufügen</div>
+                      {isCaseItemsLoading && <div className="px-2 py-1.5 text-xs text-muted-foreground">Lade Vorgänge…</div>}
+                      {!isCaseItemsLoading && quickAccessCaseItems.map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            addPage({ id: `case-item-${item.id}`, label: item.label, icon: 'Briefcase', route: `/mywork?tab=cases&highlight=${item.id}`, type: 'item' });
+                            setQuickAccessPopoverOpen(false);
+                            setQuickAccessAddCategory(null);
+                          }}
+                          className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors"
+                        >
+                          <Briefcase className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="truncate">{item.label}</span>
+                          {item.preferred && <span className="ml-auto text-[10px] text-primary">Meine</span>}
+                        </button>
+                      ))}
+                      {!isCaseItemsLoading && quickAccessCaseItems.length === 0 && <div className="px-2 py-1.5 text-xs text-muted-foreground">Keine Vorgänge gefunden</div>}
+                    </>
+                  )}
+
+                  {quickAccessAddCategory === 'documents' && (
+                    <>
+                      <div className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">Dokument hinzufügen</div>
+                      {isDocumentsLoading && <div className="px-2 py-1.5 text-xs text-muted-foreground">Lade Dokumente…</div>}
+                      {!isDocumentsLoading && quickAccessDocuments.map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            addPage({ id: `document-${item.id}`, label: item.label, icon: 'FileText', route: `/?section=documents&document=${item.id}&highlight=${item.id}`, type: 'item' });
+                            setQuickAccessPopoverOpen(false);
+                            setQuickAccessAddCategory(null);
+                          }}
+                          className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors"
+                        >
+                          <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="truncate">{item.label}</span>
+                          {item.preferred && <span className="ml-auto text-[10px] text-primary">Meine</span>}
+                        </button>
+                      ))}
+                      {!isDocumentsLoading && quickAccessDocuments.length === 0 && <div className="px-2 py-1.5 text-xs text-muted-foreground">Keine Dokumente gefunden</div>}
+                    </>
+                  )}
+
+                  {quickAccessAddCategory === 'event-plannings' && (
+                    <>
+                      <div className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">Veranstaltungs-/Terminplanung hinzufügen</div>
+                      {isEventPlanningsLoading && <div className="px-2 py-1.5 text-xs text-muted-foreground">Lade Planungen…</div>}
+                      {!isEventPlanningsLoading && quickAccessEventPlannings.map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            addPage({ id: `event-planning-${item.id}`, label: item.label, icon: 'CalendarPlus', route: `/eventplanning/${item.id}?highlight=${item.id}`, type: 'item' });
+                            setQuickAccessPopoverOpen(false);
+                            setQuickAccessAddCategory(null);
+                          }}
+                          className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors"
+                        >
+                          <CalendarPlus className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="truncate">{item.label}</span>
+                          {item.preferred && <span className="ml-auto text-[10px] text-primary">Meine</span>}
+                        </button>
+                      ))}
+                      {!isEventPlanningsLoading && quickAccessEventPlannings.length === 0 && <div className="px-2 py-1.5 text-xs text-muted-foreground">Keine Planungen gefunden</div>}
+                    </>
+                  )}
+                </>
               )}
             </PopoverContent>
           </Popover>

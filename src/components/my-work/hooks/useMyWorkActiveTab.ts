@@ -14,7 +14,7 @@ const preserveKnownParams = (searchParams: URLSearchParams, tab: TabValue) => {
   const nextParams = new URLSearchParams();
   nextParams.set("tab", tab);
 
-  const knownGlobalParams = ["action", "highlight", "scope", "period", "withAttachments", "withTasks"];
+  const knownGlobalParams = ["action", "highlight", "scope", "period", "withAttachments", "withTasks", "caseItemId", "caseFileId"];
 
   knownGlobalParams.forEach((param) => {
     const value = searchParams.get(param);
