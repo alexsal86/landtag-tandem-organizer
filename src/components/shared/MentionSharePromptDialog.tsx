@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,15 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
+import { useState } from "react";
 
 interface MentionedUser {
   id: string;
@@ -36,26 +27,15 @@ export const MentionSharePromptDialog = ({
   users,
   onConfirm,
 }: MentionSharePromptDialogProps) => {
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [permission, setPermission] = useState<"view" | "edit">("edit");
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    setSelectedIds(users.map((user) => user.id));
-    setPermission("edit");
-  }, [open, users]);
-
-  const handleToggle = (userId: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
-    );
-  };
 
   const handleConfirm = async () => {
     setSubmitting(true);
     try {
-      await onConfirm(selectedIds, permission);
+      await onConfirm(
+        users.map((u) => u.id),
+        "edit"
+      );
     } finally {
       setSubmitting(false);
       onOpenChange(false);
@@ -68,46 +48,21 @@ export const MentionSharePromptDialog = ({
         <DialogHeader>
           <DialogTitle>Erwähnte Personen freigeben?</DialogTitle>
           <DialogDescription>
-            Du hast Personen in der Notiz erwähnt. Möchtest du die Notiz direkt für sie
-            freigeben?
+            Du hast folgende Personen erwähnt. Möchtest du die Notiz direkt für sie freigeben?
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
-          <div className="space-y-2">
-            {users.map((user) => (
-              <div key={user.id} className="flex items-center gap-2">
-                <Checkbox
-                  checked={selectedIds.includes(user.id)}
-                  onCheckedChange={() => handleToggle(user.id)}
-                />
-                <span className="text-sm">{user.displayName}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Berechtigung</Label>
-            <Select
-              value={permission}
-              onValueChange={(value) => setPermission(value as "view" | "edit")}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="edit">Bearbeiten</SelectItem>
-                <SelectItem value="view">Ansicht</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        <ul className="list-disc pl-5 space-y-1 text-sm">
+          {users.map((user) => (
+            <li key={user.id}>{user.displayName}</li>
+          ))}
+        </ul>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
             Nicht freigeben
           </Button>
-          <Button onClick={handleConfirm} disabled={submitting || selectedIds.length === 0}>
+          <Button onClick={handleConfirm} disabled={submitting}>
             Freigeben
           </Button>
         </DialogFooter>
