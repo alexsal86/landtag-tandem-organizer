@@ -1,6 +1,6 @@
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 import { Draggable, Droppable } from "@hello-pangea/dnd";
-import { Archive, Briefcase, CalendarDays, Circle, FolderOpen, Globe, Link2, Trash2, Vote, ArchiveRestore, Phone } from "lucide-react";
+import { Archive, CalendarDays, Circle, FolderOpen, Globe, Link2, Trash2, Vote, ArchiveRestore, Phone } from "lucide-react";
 import { de } from "date-fns/locale";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -101,11 +101,8 @@ export function CaseItemList(props: CaseItemListProps) {
               ) : (
                 props.sortedCaseItems.map((item, index) => {
                   const isActive = props.detailItemId === item.id;
-                  const linkedFile = item.case_file_id ? props.caseFilesById[item.case_file_id] : null;
-                  const channel = item.source_channel ? props.sourceChannelMeta[item.source_channel] : null;
-                  const ChannelIcon = channel?.icon ?? Briefcase;
                   const statusMeta = props.getStatusMeta(item.status);
-                  const contactName = props.getContactName(item.intake_payload);
+                  const shortId = `#${item.id.slice(0, 6)}`;
 
                   return (
                     <Draggable key={item.id} draggableId={item.id} index={index}>
@@ -141,6 +138,9 @@ export function CaseItemList(props: CaseItemListProps) {
                                     <p className="min-w-0 flex-1 text-base font-semibold leading-snug line-clamp-1">
                                       {props.getItemSubject(item)}
                                     </p>
+                                    <span className="rounded-full bg-muted px-2.5 py-1 text-sm font-medium text-muted-foreground">
+                                      {shortId}
+                                    </span>
                                   </div>
 
                                   {/* Row 2: Description */}
@@ -166,16 +166,6 @@ export function CaseItemList(props: CaseItemListProps) {
                                     </Badge>
                                   </div>
 
-                                  {/* Auxiliary meta */}
-                                  <div className="mt-2 flex items-center gap-2 pl-6 text-sm text-muted-foreground">
-                                    <span className="inline-flex items-center gap-1">
-                                      <ChannelIcon className="h-3.5 w-3.5" />
-                                      {channel?.label ?? "Vorgang"}
-                                    </span>
-                                    {contactName && <span>• {contactName}</span>}
-                                    {linkedFile && <Link2 className="h-3.5 w-3.5" />}
-                                    {item.visible_to_all && <Globe className="h-3.5 w-3.5 text-blue-500" />}
-                                  </div>
                                 </div>
                               </button>
                             </ContextMenuTrigger>

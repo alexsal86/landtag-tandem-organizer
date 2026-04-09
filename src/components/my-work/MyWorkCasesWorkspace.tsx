@@ -1124,17 +1124,16 @@ export function MyWorkCasesWorkspace() {
                 <CaseItemDetailView
                   title={getItemSubject(detailItem)}
                   statusBadge={
-                    <Badge variant="outline" className={cn("text-[10px]", getStatusMeta(detailItem.status).badgeClass)}>
+                    <Badge variant="outline" className={cn("text-xs", getStatusMeta(detailItem.status).badgeClass)}>
                       {getStatusMeta(detailItem.status).label}
                     </Badge>
                   }
                   dueBadge={detailItem.due_at ? (
-                    <span className="text-xs text-muted-foreground">
-                      Fällig: {formatDateSafe(detailItem.due_at, "dd.MM.yyyy", "–", { locale: de })}
-                    </span>
+                    <span>{formatDateSafe(detailItem.due_at, "dd.MM.yyyy", "–", { locale: de })}</span>
                   ) : undefined}
                   contactDisplay={[getContactName(detailItem.intake_payload), getContactDetail(detailItem.intake_payload)].filter(Boolean).join(" · ")}
                   linkedFileName={detailItem.case_file_id ? caseFilesById[detailItem.case_file_id]?.title : null}
+                  isPublic={Boolean(detailItem.visible_to_all)}
                   onOpenCaseFiles={() => {
                     if (detailItem.case_file_id) {
                       setDetailFileId(detailItem.case_file_id);
