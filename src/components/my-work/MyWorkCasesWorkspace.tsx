@@ -1044,7 +1044,6 @@ export function MyWorkCasesWorkspace() {
           <div className="mb-4 rounded-3xl border bg-card/95 p-4 shadow-sm">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Redesign · Master-Detail Layout</p>
                 <h2 className="text-3xl font-semibold tracking-tight">Vorgänge</h2>
               </div>
 
