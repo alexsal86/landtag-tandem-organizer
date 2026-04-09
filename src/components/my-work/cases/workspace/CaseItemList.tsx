@@ -1,6 +1,6 @@
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 import { Draggable, Droppable } from "@hello-pangea/dnd";
-import { Archive, Briefcase, CalendarDays, Circle, Clock, FileText, FolderOpen, Globe, GripVertical, Inbox, Link2, Mail, Phone, Plus, Trash2, Vote, ArchiveRestore } from "lucide-react";
+import { Archive, Briefcase, CalendarDays, Circle, FolderOpen, Globe, Link2, Trash2, Vote, ArchiveRestore, Phone } from "lucide-react";
 import { de } from "date-fns/locale";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -67,25 +67,34 @@ type CaseItemListProps = {
 };
 
 export function CaseItemList(props: CaseItemListProps) {
+  const formatListReference = (item: CaseItem): string => {
+    if (item.due_at) {
+      return `#${formatDateSafe(item.due_at, "ddMMyy", "------", { locale: de })}`;
+    }
+
+    if (item.source_received_at) {
+      return `#${formatDateSafe(item.source_received_at, "ddMMyy", "------", { locale: de })}`;
+    }
+
+    return `#${item.id.slice(0, 6).toUpperCase()}`;
+  };
+
   return (
-    <div className="flex flex-col h-full min-h-0 border-r bg-muted/30">
+    <div className="flex h-full min-h-0 flex-col border-r bg-muted/30">
       {/* Header */}
-      <div className="shrink-0 p-3 border-b space-y-2">
+      <div className="shrink-0 space-y-2 border-b p-4">
         <div className="flex items-center gap-2">
           <div>
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <FileText className="h-4 w-4" />
-              <span>Vorgangsliste</span>
-            </div>
-            <p className="text-xs text-muted-foreground">Übersicht und schneller Zugriff</p>
+            <h3 className="text-3xl font-semibold tracking-tight text-primary">Vorgangsliste</h3>
+            <p className="text-xl text-muted-foreground">Übersicht und schneller Zugriff</p>
           </div>
-          <Button variant="outline" size="sm" className="ml-auto" onClick={props.onOpenArchive}>
+          <Button variant="outline" size="lg" className="ml-auto rounded-2xl px-6" onClick={props.onOpenArchive}>
             Archiv
           </Button>
         </div>
       </div>
 
-      {/* Compact card list */}
+      {/* Card list */}
       <ScrollArea className="flex-1 min-h-0">
         <Droppable droppableId="case-items-list" isDropDisabled>
           {(provided) => (
@@ -130,62 +139,58 @@ export function CaseItemList(props: CaseItemListProps) {
                               <button
                                 type="button"
                                 className={cn(
-                                  "w-full text-left rounded-md px-2.5 py-2 transition-colors hover:bg-muted/60 group",
-                                  isActive && "bg-primary/8 border-l-2 border-primary",
-                                  !isActive && "border-l-2 border-transparent",
+                                  "group w-full rounded-3xl border bg-card px-5 py-5 text-left transition-colors hover:bg-muted/30",
+                                  isActive && "border-primary/60 bg-primary/5 shadow-sm",
+                                  !isActive && "border-border",
                                   props.focusedItemIndex >= 0 && props.focusedItemIndex === index && "ring-1 ring-primary/40",
                                 )}
                                 onClick={() => props.handleSelectCaseItem(item)}
                               >
-                                {/* Row 1: Channel icon + Title */}
-                                <div className="flex items-start gap-2">
-                                  <span
-                                    {...dragProvided.dragHandleProps}
-                                    className="mt-0.5 inline-flex items-center justify-center cursor-grab text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <GripVertical className="h-3.5 w-3.5" />
-                                  </span>
-                                  <span className="flex h-5 w-5 items-center justify-center rounded bg-muted text-muted-foreground shrink-0 mt-0.5">
-                                    <ChannelIcon className="h-3 w-3" />
-                                  </span>
-                                  <p className="text-sm font-medium line-clamp-1 flex-1 min-w-0">
-                                    {props.getItemSubject(item)}
-                                  </p>
-                                  <Circle className={cn("h-2.5 w-2.5 fill-current shrink-0 mt-1", props.priorityMeta(item.priority).color)} />
-                                </div>
+                                <div {...dragProvided.dragHandleProps}>
+                                  {/* Row 1: Marker + title + reference */}
+                                  <div className="flex items-start gap-3">
+                                    <Circle className={cn("mt-2 h-3.5 w-3.5 shrink-0 fill-current", props.priorityMeta(item.priority).color)} />
+                                    <p className="min-w-0 flex-1 text-3xl font-semibold leading-tight line-clamp-1">
+                                      {props.getItemSubject(item)}
+                                    </p>
+                                    <span className="rounded-full bg-muted px-3 py-1 text-2xl text-muted-foreground">
+                                      {formatListReference(item)}
+                                    </span>
+                                  </div>
 
-                                {/* Row 2: Description */}
-                                {props.getItemDescription(item) && (
-                                  <p className="text-xs text-muted-foreground line-clamp-1 ml-[38px] mt-0.5">
-                                    {props.getItemDescription(item)}
-                                  </p>
-                                )}
+                                  {/* Row 2: Description */}
+                                  {props.getItemDescription(item) && (
+                                    <p className="mt-2 line-clamp-1 pl-6 text-2xl text-muted-foreground">
+                                      {props.getItemDescription(item)}
+                                    </p>
+                                  )}
 
-                                {/* Row 3: Metadata chips */}
-                                <div className="flex items-center gap-1.5 mt-1.5 ml-[38px] flex-wrap">
-                                  <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-4", statusMeta.badgeClass)}>
-                                    {statusMeta.label}
-                                  </Badge>
-                                  {item.due_at && (
-                                    <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5">
-                                      <Clock className="h-2.5 w-2.5" />
-                                      {formatDateSafe(item.due_at, "dd.MM.", "–", { locale: de })}
+                                  {/* Row 3: Date + status */}
+                                  <div className="mt-4 flex items-center justify-between gap-2 pl-6">
+                                    <span className="text-xl text-muted-foreground">
+                                      Fällig: {formatDateSafe(item.due_at, "dd.MM.yy", "–", { locale: de })}
                                     </span>
-                                  )}
-                                  {contactName && (
-                                    <span className="text-[10px] text-muted-foreground truncate max-w-[100px]">
-                                      👤 {contactName}
+                                    <Badge
+                                      variant="outline"
+                                      className={cn(
+                                        "h-auto rounded-full border-2 px-3 py-1 text-xl font-semibold",
+                                        statusMeta.badgeClass,
+                                      )}
+                                    >
+                                      {statusMeta.label}
+                                    </Badge>
+                                  </div>
+
+                                  {/* Auxiliary meta */}
+                                  <div className="mt-2 flex items-center gap-2 pl-6 text-sm text-muted-foreground">
+                                    <span className="inline-flex items-center gap-1">
+                                      <ChannelIcon className="h-3.5 w-3.5" />
+                                      {channel?.label ?? "Vorgang"}
                                     </span>
-                                  )}
-                                  {linkedFile && (
-                                    <span className="text-[10px] text-muted-foreground inline-flex items-center gap-0.5">
-                                      <Link2 className="h-2.5 w-2.5" />
-                                    </span>
-                                  )}
-                                  {item.visible_to_all && (
-                                    <Globe className="h-2.5 w-2.5 text-blue-500" />
-                                  )}
+                                    {contactName && <span>• {contactName}</span>}
+                                    {linkedFile && <Link2 className="h-3.5 w-3.5" />}
+                                    {item.visible_to_all && <Globe className="h-3.5 w-3.5 text-blue-500" />}
+                                  </div>
                                 </div>
                               </button>
                             </ContextMenuTrigger>
