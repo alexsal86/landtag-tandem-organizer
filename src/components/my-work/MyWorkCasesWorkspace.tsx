@@ -1162,7 +1162,8 @@ export function MyWorkCasesWorkspace() {
             right={
               detailItem && editableCaseItem ? (
                 <CaseItemDetailView
-                  title={getItemSubject(detailItem)}
+                  title={editableCaseItem.subject}
+                  onTitleChange={(value) => updateEdit({ subject: value })}
                   activeTab={detailTab}
                   onTabChange={setDetailTab}
                   statusBadge={
@@ -1170,10 +1171,8 @@ export function MyWorkCasesWorkspace() {
                       {getStatusMeta(detailItem.status).label}
                     </Badge>
                   }
-                  dueBadge={detailItem.due_at ? (
-                    <span>{formatDateSafe(detailItem.due_at, "dd.MM.yyyy", "–", { locale: de })}</span>
-                  ) : undefined}
-                  contactDisplay={getContactName(detailItem.intake_payload)}
+                  dueDateValue={editableCaseItem.dueAt}
+                  onDueDateChange={(value) => updateEdit({ dueAt: value })}
                   linkedFileName={detailItem.case_file_id ? caseFilesById[detailItem.case_file_id]?.title : null}
                   isPublic={Boolean(detailItem.visible_to_all)}
                   onOpenCaseFiles={() => {

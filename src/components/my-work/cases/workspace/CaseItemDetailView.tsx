@@ -7,9 +7,10 @@ type DetailTab = "overview" | "timeline" | "documents";
 
 type CaseItemDetailViewProps = {
   title: string;
+  onTitleChange: (value: string) => void;
   statusBadge: ReactNode;
-  dueBadge?: ReactNode;
-  contactDisplay?: string;
+  dueDateValue: string;
+  onDueDateChange: (value: string) => void;
   detailPanel: ReactNode;
   activeTab: DetailTab;
   onTabChange: (tab: DetailTab) => void;
@@ -20,9 +21,10 @@ type CaseItemDetailViewProps = {
 
 export function CaseItemDetailView({
   title,
+  onTitleChange,
   statusBadge,
-  dueBadge,
-  contactDisplay,
+  dueDateValue,
+  onDueDateChange,
   detailPanel,
   activeTab,
   onTabChange,
@@ -37,7 +39,12 @@ export function CaseItemDetailView({
         <div className="px-6 pb-4 pt-5">
           <div className="space-y-4">
             <div className="space-y-2">
-              <h2 className="text-2xl font-bold leading-tight text-foreground lg:text-2xl">{title}</h2>
+              <input
+                value={title}
+                onChange={(event) => onTitleChange(event.target.value)}
+                className="w-full border-0 bg-transparent p-0 text-2xl font-bold leading-tight text-foreground outline-none ring-0 focus-visible:outline-none focus-visible:ring-0 lg:text-2xl"
+                placeholder="Titel"
+              />
               <div className="flex flex-wrap items-center gap-2.5 pt-1">
                 {isPublic && (
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
@@ -58,18 +65,21 @@ export function CaseItemDetailView({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <div className="rounded-2xl border bg-gray-50 px-4 py-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fälligkeit</p>
-                <div className="pt-1 text-sm font-bold text-foreground">{dueBadge ?? "–"}</div>
+                <div className="pt-1">
+                  <input
+                    type="date"
+                    value={dueDateValue}
+                    onChange={(event) => onDueDateChange(event.target.value)}
+                    className="h-8 w-full rounded-md border bg-background px-2 text-sm font-bold text-foreground"
+                  />
+                </div>
               </div>
               <div className="rounded-2xl border bg-gray-50 px-4 py-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</p>
                 <div className="pt-1 text-sm font-bold text-foreground">{statusBadge}</div>
-              </div>
-              <div className="rounded-2xl border bg-gray-50 px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Kontakt</p>
-                <div className="pt-1 text-sm font-bold text-foreground">{contactDisplay || "–"}</div>
               </div>
             </div>
           </div>
