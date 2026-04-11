@@ -1,4 +1,5 @@
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { de } from "date-fns/locale";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -644,8 +645,8 @@ export function MyWorkCasesWorkspace() {
 
     if (!loading && caseItems.length > 0) {
       const latestItem = [...caseItems].sort((a, b) => {
-        const aTs = new Date(a.source_received_at || a.created_at || 0).getTime();
-        const bTs = new Date(b.source_received_at || b.created_at || 0).getTime();
+        const aTs = new Date(a.source_received_at || a.updated_at || 0).getTime();
+        const bTs = new Date(b.source_received_at || b.updated_at || 0).getTime();
         return bTs - aTs;
       })[0];
       if (latestItem) openCaseItemDetail(latestItem);
@@ -1225,8 +1226,9 @@ export function MyWorkCasesWorkspace() {
                       onContactSelected={(contact) => updateEdit({ selectedContactId: contact?.id || null })}
                       onArchive={() => runAsync(() => handleArchiveCaseItem(detailItem))}
                       archiveLabel={detailItem.status === "archiviert" ? "Wiederherstellen" : "Archivieren"}
-                      onDelete={() => setDeleteConfirmItemId(detailItem.id)}
-                    />
+                       onDelete={() => setDeleteConfirmItemId(detailItem.id)}
+                       teamUsers={teamUsers}
+                     />
                   }
                 />
               ) : (
