@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { debugConsole } from '@/utils/debugConsole';
 
@@ -32,15 +31,16 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
   const [directDocuments, setDirectDocuments] = useState<DirectDocument[]>([]);
   const [taggedDocuments, setTaggedDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(false);
-  const { user } = useAuth();
   const { currentTenant } = useTenant();
 
-  const fetchDocuments = async () => {
+  const normalizedContactTags = useMemo(() => contactTags ?? [], [contactTags]);
+  const contactTagsKey = useMemo(() => normalizedContactTags.join(','), [normalizedContactTags]);
+
+  const fetchDocuments = useCallback(async () => {
     if (!contactId || !currentTenant?.id) return;
 
     setLoading(true);
     try {
-      // Fetch directly linked documents via document_contacts
       const { data: directData, error: directError } = await supabase
         .from('document_contacts')
         .select(`
@@ -73,8 +73,8 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
       }
 
       const directDocs: DirectDocument[] = (directData || [])
-        .filter(item => item.document)
-        .map(item => ({
+        .filter((item) => item.document)
+        .map((item) => ({
           ...(item.document as Document),
           relationship_type: item.relationship_type,
           relationship_notes: item.notes || undefined,
@@ -83,30 +83,26 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
 
       setDirectDocuments(directDocs);
 
-      // Get IDs of directly linked documents to exclude them from tag-based search
-      const directDocIds = directDocs.map(doc => doc.id);
+      const directDocIds = directDocs.map((doc) => doc.id);
 
-      // Fetch tag-based documents (documents that share at least one tag with contact)
-      if (contactTags && contactTags.length > 0) {
+      if (normalizedContactTags.length > 0) {
         let query = supabase
           .from('documents')
           .select('id, title, description, file_name, file_path, file_type, file_size, category, tags, status, folder_id, created_at, updated_at, user_id, tenant_id')
           .eq('tenant_id', currentTenant.id)
-          .overlaps('tags', contactTags);
-        
-        // Only exclude direct docs if there are any
+          .overlaps('tags', normalizedContactTags);
+
         if (directDocIds.length > 0) {
           query = query.not('id', 'in', `(${directDocIds.join(',')})`);
         }
-        
-        const { data: taggedData, error: taggedError } = await query
-          .order('created_at', { ascending: false });
+
+        const { data: taggedData, error: taggedError } = await query.order('created_at', { ascending: false });
 
         if (taggedError) {
           debugConsole.error('Error fetching tagged documents:', taggedError);
           throw taggedError;
         }
-        
+
         setTaggedDocuments((taggedData || []) as Document[]);
       } else {
         setTaggedDocuments([]);
@@ -116,7 +112,13 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
     } finally {
       setLoading(false);
     }
-  };
+  }, [contactId, currentTenant?.id, normalizedContactTags]);
+
+  const fetchDocumentsRef = useRef(fetchDocuments);
+
+  useEffect(() => {
+    fetchDocumentsRef.current = fetchDocuments;
+  }, [fetchDocuments]);
 
   const removeDocumentLink = async (documentContactId: string) => {
     try {
@@ -126,7 +128,7 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
         .eq('id', documentContactId);
 
       if (error) throw error;
-      await fetchDocuments();
+      await fetchDocumentsRef.current();
     } catch (error: unknown) {
       debugConsole.error('Error removing document link:', error);
       throw error;
@@ -134,15 +136,14 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
   };
 
   useEffect(() => {
-    fetchDocuments();
-  }, [contactId, currentTenant, contactTags?.join(',')]);
+    void fetchDocuments();
+  }, [fetchDocuments, contactTagsKey]);
 
-  // Real-time updates for document_contacts
   useEffect(() => {
     if (!contactId) return;
 
     const channel = supabase
-      .channel(`contact-documents-${contactId}`)
+      .channel(`contact-documents-${contactId}-${crypto.randomUUID()}`)
       .on(
         'postgres_changes',
         {
@@ -152,7 +153,7 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
           filter: `contact_id=eq.${contactId}`,
         },
         () => {
-          fetchDocuments();
+          void fetchDocumentsRef.current();
         }
       )
       .on(
@@ -163,13 +164,13 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
           table: 'documents',
         },
         () => {
-          fetchDocuments();
+          void fetchDocumentsRef.current();
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel);
     };
   }, [contactId]);
 
