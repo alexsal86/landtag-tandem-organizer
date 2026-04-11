@@ -83,7 +83,7 @@ export function CalendarSidebarSources({
 }: CalendarSidebarSourcesProps) {
   const { currentTenant } = useTenant();
   const queryClient = useQueryClient();
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
 
   const { data: calendarSources = [], isLoading } = useQuery({
@@ -214,11 +214,11 @@ export function CalendarSidebarSources({
         className="h-auto w-full justify-between px-1 py-1 text-left hover:bg-transparent"
         onClick={() => setExpanded((prev) => !prev)}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           <CalendarClock className="h-4 w-4 text-primary" />
-          <div>
-            <p className="text-sm font-semibold">Kalender</p>
-            <p className="text-xs text-muted-foreground">Ein- und ausblenden sowie Farben anpassen</p>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">Kalender</p>
+            <p className="truncate text-xs text-muted-foreground">Ein- und ausblenden sowie Farben anpassen</p>
           </div>
         </div>
         {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
