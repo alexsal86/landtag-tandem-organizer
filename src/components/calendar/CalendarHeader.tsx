@@ -88,12 +88,12 @@ export function CalendarHeader({
             nav: "hidden",
             month_grid: "w-full border-collapse space-y-0",
             weekdays: "flex",
-            weekday: "text-muted-foreground w-7 font-normal text-[0.7rem]",
+            weekday: "text-muted-foreground w-6 font-normal text-[0.7rem]",
             week: "flex w-full mt-0",
-            day: "h-7 w-7 text-center text-xs p-0 relative focus-within:relative focus-within:z-20",
-            day_button: "h-7 w-7 p-0 font-normal text-xs aria-selected:opacity-100",
-            week_number: "h-7 w-7 bg-muted text-[0.65rem] font-normal text-muted-foreground flex items-center justify-center",
-            week_number_header: "h-7 w-7 bg-muted text-[0.65rem] font-normal text-muted-foreground",
+            day: "h-6 w-6 text-center text-xs p-0 relative focus-within:relative focus-within:z-20",
+            day_button: "h-6 w-6 p-0 font-normal text-xs aria-selected:opacity-100",
+            week_number: "h-6 w-6 bg-muted text-[0.65rem] font-normal text-muted-foreground flex items-center justify-center",
+            week_number_header: "h-6 w-6 bg-muted text-[0.65rem] font-normal text-muted-foreground",
           }}
           className="w-full p-0"
         />
