@@ -90,6 +90,15 @@ interface NavigationProps {
   isMobile?: boolean;
 }
 
+type UpcomingAppointmentItem = {
+  id: string;
+  title: string;
+  start_time: string;
+  end_time: string | null;
+  location: string | null;
+  is_all_day: boolean;
+};
+
 // Available pages for quick access
 const availableQuickPages: QuickAccessPage[] = [
   { id: "mywork", label: "Meine Arbeit", icon: "NotebookTabs", route: "/mywork" },
@@ -179,16 +188,50 @@ export function AppNavigation({
     queryKey: ['nav-upcoming-appointments', currentTenant?.id],
     queryFn: async () => {
       if (!currentTenant?.id || !user?.id) return [];
-      const { data } = await supabase
-        .from('appointments')
-        .select('id, title, start_time, end_time, location, category, is_all_day')
-        .eq('tenant_id', currentTenant.id)
-        .eq('user_id', user.id)
-        .gte('start_time', new Date().toISOString())
-        .lte('start_time', endDate.toISOString())
-        .order('start_time', { ascending: true })
-        .limit(20);
-      return data || [];
+      const nowIso = new Date().toISOString();
+
+      const [appointmentsResult, externalEventsResult] = await Promise.all([
+        supabase
+          .from('appointments')
+          .select('id, title, start_time, end_time, location, is_all_day')
+          .eq('tenant_id', currentTenant.id)
+          .eq('user_id', user.id)
+          .gte('start_time', nowIso)
+          .lte('start_time', endDate.toISOString())
+          .order('start_time', { ascending: true })
+          .limit(20),
+        supabase
+          .from('external_events')
+          .select('id, title, start_time, end_time, location, all_day, external_calendars!inner(user_id, tenant_id)')
+          .eq('external_calendars.tenant_id', currentTenant.id)
+          .eq('external_calendars.user_id', user.id)
+          .gte('start_time', nowIso)
+          .lte('start_time', endDate.toISOString())
+          .order('start_time', { ascending: true })
+          .limit(20),
+      ]);
+
+      const internalAppointments: UpcomingAppointmentItem[] = (appointmentsResult.data || []).map((appointment) => ({
+        id: appointment.id,
+        title: appointment.title,
+        start_time: appointment.start_time,
+        end_time: appointment.end_time,
+        location: appointment.location,
+        is_all_day: appointment.is_all_day ?? false,
+      }));
+
+      const externalAppointments: UpcomingAppointmentItem[] = (externalEventsResult.data || []).map((event) => ({
+        id: event.id,
+        title: event.title,
+        start_time: event.start_time,
+        end_time: event.end_time,
+        location: event.location,
+        is_all_day: event.all_day ?? false,
+      }));
+
+      return [...internalAppointments, ...externalAppointments]
+        .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+        .slice(0, 20);
     },
     enabled: !!currentTenant?.id && !!user?.id && activePanel === 'appointments',
     staleTime: 2 * 60 * 1000,
@@ -1092,7 +1135,9 @@ export function AppNavigation({
                           <p className="text-[11px] text-[hsl(var(--nav-muted))]">
                             {apt.is_all_day
                               ? 'Ganztägig'
-                              : `${format(new Date(apt.start_time), 'HH:mm')} – ${format(new Date(apt.end_time), 'HH:mm')}`}
+                              : apt.end_time
+                                ? `${format(new Date(apt.start_time), 'HH:mm')} – ${format(new Date(apt.end_time), 'HH:mm')}`
+                                : format(new Date(apt.start_time), 'HH:mm')}
                           </p>
                           {apt.location && (
                             <p className="text-[10px] text-[hsl(var(--nav-muted))] truncate">{apt.location}</p>
