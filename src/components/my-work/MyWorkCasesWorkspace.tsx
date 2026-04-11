@@ -1,12 +1,10 @@
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CaseItemDetailView } from "@/components/my-work/cases/workspace/CaseItemDetailView";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
-import { de } from "date-fns/locale";
 import { Briefcase, CheckCircle2, Clock, FileText, FolderOpen, Gavel, Inbox, Mail, MessageSquare, Phone, Timer, UserRound, Users } from "lucide-react";
 import type { DropResult } from "@hello-pangea/dnd";
 import { CaseFileDetail } from "@/features/cases/files/components";
@@ -85,7 +83,6 @@ export function MyWorkCasesWorkspace() {
   const { currentTenant } = useTenant();
   
   const tenantId = currentTenant?.id;
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { createCaseItem, deleteCaseItem } = useCaseItems();
   const { caseFileTypes } = useCaseFileTypes();
@@ -645,6 +642,14 @@ export function MyWorkCasesWorkspace() {
       return;
     }
 
+    if (!loading && caseItems.length > 0) {
+      const latestItem = [...caseItems].sort((a, b) => {
+        const aTs = new Date(a.source_received_at || a.created_at || 0).getTime();
+        const bTs = new Date(b.source_received_at || b.created_at || 0).getTime();
+        return bTs - aTs;
+      })[0];
+      if (latestItem) openCaseItemDetail(latestItem);
+    }
     setHasHydratedDetailFromUrl(true);
   }, [allCaseFiles, caseItems, hasHydratedDetailFromUrl, loading, openCaseItemDetail, searchParams]);
 
@@ -1166,15 +1171,24 @@ export function MyWorkCasesWorkspace() {
                   onTitleChange={(value) => updateEdit({ subject: value })}
                   activeTab={detailTab}
                   onTabChange={setDetailTab}
-                  statusBadge={
-                    <Badge variant="outline" className={cn("text-xs font-bold", getStatusMeta(detailItem.status).badgeClass)}>
-                      {getStatusMeta(detailItem.status).label}
-                    </Badge>
-                  }
+                  status={editableCaseItem.status}
+                  onStatusChange={(value) => updateEdit({ status: value })}
+                  statusOptions={statusOptions.map(({ value, label }) => ({ value, label }))}
                   dueDateValue={editableCaseItem.dueAt}
                   onDueDateChange={(value) => updateEdit({ dueAt: value })}
+                  sourceReceivedAt={editableCaseItem.sourceReceivedAt}
+                  onSourceReceivedAtChange={(value) => updateEdit({ sourceReceivedAt: value })}
+                  assigneeId={editableCaseItem.assigneeIds[0] || ""}
+                  onAssigneeChange={(value) => updateEdit({ assigneeIds: value ? [value] : [] })}
+                  assigneeOptions={teamUsers}
+                  category={editableCaseItem.category}
+                  onCategoryChange={(value) => updateEdit({ category: value })}
+                  categoryOptions={categoryOptions}
+                  priority={editableCaseItem.priority}
+                  onPriorityChange={(value) => updateEdit({ priority: value })}
                   linkedFileName={detailItem.case_file_id ? caseFilesById[detailItem.case_file_id]?.title : null}
-                  isPublic={Boolean(detailItem.visible_to_all)}
+                  isPublic={editableCaseItem.visibleToAll}
+                  onPublicChange={(value) => updateEdit({ visibleToAll: value })}
                   onOpenCaseFiles={() => {
                     if (detailItem.case_file_id) {
                       setDetailFileId(detailItem.case_file_id);
@@ -1184,17 +1198,12 @@ export function MyWorkCasesWorkspace() {
                   detailPanel={
                     <CaseItemDetailPanel
                       itemId={detailItem.id}
-                      itemCaseFileId={detailItem.case_file_id}
                       editableCaseItem={editableCaseItem}
-                      statusOptions={statusOptions.map(({ value, label }) => ({ value, label }))}
-                      categoryOptions={categoryOptions}
-                      teamUsers={teamUsers}
                       currentUserId={user?.id || null}
                       linkedDecisions={linkedDecisions[detailItem.id] || []}
                       loadingDecisions={loadingDecisions}
                       timelineEntries={timelineEntries}
                       toEditorHtml={toEditorHtml}
-                      caseFilesById={caseFilesById}
                       onUpdate={updateEdit}
                       onSave={() => runAsync(handleCaseItemSave)}
                       activeTab={detailTab}
@@ -1205,8 +1214,6 @@ export function MyWorkCasesWorkspace() {
                       onRenameDocument={handleRenameInteractionDocument}
                       onDeleteDocument={handleDeleteInteractionDocument}
                       onUpdateDocumentMeta={handleUpdateInteractionDocumentMeta}
-                      onCreateCaseFile={handleCreateCaseFile}
-                      onNavigateToCaseFile={(caseFileId) => navigate(`/casefiles?caseFileId=${caseFileId}`)}
                       contactDisplay={[getContactName(detailItem.intake_payload), getContactDetail(detailItem.intake_payload)].filter(Boolean).join(" · ")}
                       onContactPersonChange={(value) => updateEdit({ contactPerson: value })}
                       contactPerson={editableCaseItem.contactPerson}
