@@ -644,8 +644,8 @@ export function MyWorkCasesWorkspace() {
 
     if (!loading && caseItems.length > 0) {
       const latestItem = [...caseItems].sort((a, b) => {
-        const aTs = new Date(a.source_received_at || a.created_at || 0).getTime();
-        const bTs = new Date(b.source_received_at || b.created_at || 0).getTime();
+        const aTs = new Date(a.source_received_at || a.updated_at || 0).getTime();
+        const bTs = new Date(b.source_received_at || b.updated_at || 0).getTime();
         return bTs - aTs;
       })[0];
       if (latestItem) openCaseItemDetail(latestItem);

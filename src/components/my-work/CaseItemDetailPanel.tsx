@@ -86,6 +86,7 @@ export function CaseItemDetailPanel({
   onArchive,
   archiveLabel,
   onDelete,
+  teamUsers = [],
 }: {
   itemId: string;
   editableCaseItem: EditableCaseItem;
@@ -116,6 +117,7 @@ export function CaseItemDetailPanel({
   onArchive?: () => void;
   archiveLabel?: string;
   onDelete?: () => void;
+  teamUsers?: Array<{ id: string; name: string; avatarUrl: string | null }>;
 }) {
   const [activeSection, setActiveSection] = useState<"sachlage" | TimelineInteractionType | "entscheidung">("sachlage");
   const [interactionFiles, setInteractionFiles] = useState<File[]>([]);
