@@ -557,89 +557,6 @@ export function CaseItemDetailPanel({
     <div className="mx-2 mb-3 space-y-4">
       <div className="grid gap-4 lg:grid-cols-[minmax(230px,1fr)_minmax(0,2.8fr)]">
         <div className="space-y-3">
-          <div className="space-y-3 rounded-md border bg-background p-3 text-sm">
-            <Label className="font-bold" htmlFor="detail-contact-name">Von / Gesprächspartner</Label>
-            <div className="relative pt-1" ref={searchContainerRef}>
-              <div className="flex items-center gap-2">
-                <Label className="text-xs font-semibold text-muted-foreground shrink-0 w-14" htmlFor="detail-contact-name">Name</Label>
-                <div className="relative flex-1">
-                  <Input
-                    id="detail-contact-name"
-                    value={contactPerson}
-                    placeholder={contactDisplay || "Suchen…"}
-                    onChange={(event) => {
-                      onContactPersonChange(event.target.value);
-                      if (selectedContactId) handleClearContact();
-                    }}
-                    onFocus={() => { if (contactSearchResults.length > 0) setShowSearchResults(true); }}
-                    className={cn("h-8", selectedContactId ? "pr-16" : "pr-8")}
-                  />
-                  {searchingContacts && <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
-                  {!searchingContacts && !selectedContactId && contactPerson.length >= 2 && <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
-                  {selectedContactId && !searchingContacts && (
-                    <button
-                      type="button"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center rounded p-1 text-muted-foreground hover:text-foreground"
-                      onClick={handleClearContact}
-                      aria-label="Kontaktverknüpfung entfernen"
-                    >
-                      <Link2 className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
-              {showSearchResults && contactSearchResults.length > 0 && (
-                <div className="absolute left-14 right-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-md border bg-popover shadow-lg">
-                  {contactSearchResults.map((result) => (
-                    <button
-                      key={result.id}
-                      type="button"
-                      className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-sm hover:bg-accent transition-colors"
-                      onClick={() => handleSelectContact(result)}
-                    >
-                      <span className="font-medium">{result.name}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {[result.organization, result.email, result.phone].filter(Boolean).join(" · ")}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <Label className="text-xs font-semibold text-muted-foreground shrink-0 w-14" htmlFor="detail-contact-email">E-Mail</Label>
-              <div className="relative flex-1">
-                <Input
-                  id="detail-contact-email"
-                  type="email"
-                  value={contactEmail}
-                  placeholder="name@beispiel.de"
-                  onChange={(event) => onContactEmailChange(event.target.value)}
-                  className={cn("h-8", selectedContactId ? "pr-10" : undefined)}
-                />
-                {selectedContactId && (
-                  <Link2 className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Label className="text-xs font-semibold text-muted-foreground shrink-0 w-14" htmlFor="detail-contact-phone">Telefon</Label>
-              <div className="relative flex-1">
-                <Input
-                  id="detail-contact-phone"
-                  type="tel"
-                  value={contactPhone}
-                  placeholder="+49 …"
-                  onChange={(event) => onContactPhoneChange(event.target.value)}
-                  className={cn("h-8", selectedContactId ? "pr-10" : undefined)}
-                />
-                {selectedContactId && (
-                  <Link2 className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                )}
-              </div>
-            </div>
-          </div>
-
           {activeTab === "timeline" && (
             <div className="rounded-md border bg-background p-3">
               <p className="mb-3 font-bold">Zeitstrahl</p>
@@ -857,11 +774,6 @@ export function CaseItemDetailPanel({
             </div>
           )}
 
-          <div className="space-y-1.5">
-            <Label className="font-bold" htmlFor="detail-due">Fällig am</Label>
-            <Input id="detail-due" type="date" value={editableCaseItem.dueAt} onChange={(event) => onUpdate({ dueAt: event.target.value })} />
-          </div>
-
           <Collapsible open={showMetaFields} onOpenChange={setShowMetaFields} className="rounded-md border bg-background">
             <CollapsibleTrigger asChild>
               <Button type="button" variant="ghost" className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left">
@@ -994,6 +906,89 @@ export function CaseItemDetailPanel({
         </div>
 
         <div className="space-y-3">
+          <div className="space-y-2 rounded-md border bg-background p-3">
+            <Label className="font-bold" htmlFor="detail-contact-name">Von / Gesprächspartner</Label>
+            <div className="grid gap-2 lg:grid-cols-3">
+              <div className="rounded-2xl border bg-muted/40 px-4 py-3">
+                <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" htmlFor="detail-contact-name">Name</Label>
+                <div className="relative mt-2" ref={searchContainerRef}>
+                  <Input
+                    id="detail-contact-name"
+                    value={contactPerson}
+                    placeholder={contactDisplay || "Suchen…"}
+                    onChange={(event) => {
+                      onContactPersonChange(event.target.value);
+                      if (selectedContactId) handleClearContact();
+                    }}
+                    onFocus={() => { if (contactSearchResults.length > 0) setShowSearchResults(true); }}
+                    className={cn("h-9 bg-background", selectedContactId ? "pr-16" : "pr-8")}
+                  />
+                  {searchingContacts && <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+                  {!searchingContacts && !selectedContactId && contactPerson.length >= 2 && <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
+                  {selectedContactId && !searchingContacts && (
+                    <button
+                      type="button"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center rounded p-1 text-muted-foreground hover:text-foreground"
+                      onClick={handleClearContact}
+                      aria-label="Kontaktverknüpfung entfernen"
+                    >
+                      <Link2 className="h-4 w-4" />
+                    </button>
+                  )}
+                  {showSearchResults && contactSearchResults.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-md border bg-popover shadow-lg">
+                      {contactSearchResults.map((result) => (
+                        <button
+                          key={result.id}
+                          type="button"
+                          className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-sm hover:bg-accent transition-colors"
+                          onClick={() => handleSelectContact(result)}
+                        >
+                          <span className="font-medium">{result.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {[result.organization, result.email, result.phone].filter(Boolean).join(" · ")}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="rounded-2xl border bg-muted/40 px-4 py-3">
+                <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" htmlFor="detail-contact-email">E-Mail</Label>
+                <div className="relative mt-2">
+                  <Input
+                    id="detail-contact-email"
+                    type="email"
+                    value={contactEmail}
+                    placeholder="name@beispiel.de"
+                    onChange={(event) => onContactEmailChange(event.target.value)}
+                    className={cn("h-9 bg-background", selectedContactId ? "pr-10" : undefined)}
+                  />
+                  {selectedContactId && (
+                    <Link2 className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  )}
+                </div>
+              </div>
+              <div className="rounded-2xl border bg-muted/40 px-4 py-3">
+                <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" htmlFor="detail-contact-phone">Telefon</Label>
+                <div className="relative mt-2">
+                  <Input
+                    id="detail-contact-phone"
+                    type="tel"
+                    value={contactPhone}
+                    placeholder="+49 …"
+                    onChange={(event) => onContactPhoneChange(event.target.value)}
+                    className={cn("h-9 bg-background", selectedContactId ? "pr-10" : undefined)}
+                  />
+                  {selectedContactId && (
+                    <Link2 className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="rounded-md border bg-background p-3">
             <p className="font-bold mb-2">Interaktion erfassen</p>
             <div className="grid grid-cols-[auto_1fr] gap-3">
@@ -1067,10 +1062,6 @@ export function CaseItemDetailPanel({
               <div className="space-y-2 min-w-0">
                 {activeSection === "sachlage" && (
                   <>
-                    <div className="space-y-1.5">
-                      <Label className="font-bold" htmlFor="detail-subject">Betreff</Label>
-                      <Input id="detail-subject" value={editableCaseItem.subject} onChange={(event) => onUpdate({ subject: event.target.value })} />
-                    </div>
                     <div className="space-y-1.5">
                       <Label className="font-bold" htmlFor="detail-summary">Beschreibung</Label>
                       <SimpleRichTextEditor
