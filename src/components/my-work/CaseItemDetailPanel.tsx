@@ -1,17 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { AlertCircle, Archive, CheckCircle2, ChevronDown, Clock, Download, ExternalLink, FileEdit, FileText, Gavel, Globe, Link2, Loader2, Mail, MessageSquare, Phone, Search, Trash2, Users, Vote } from "lucide-react";
+import { Archive, CheckCircle2, Clock, Download, FileEdit, FileText, Gavel, Link2, Loader2, Mail, MessageSquare, Phone, Search, Trash2, Users, Vote } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Switch } from "@/components/ui/switch";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { cn } from "@/lib/utils";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
@@ -34,15 +31,6 @@ type TimelineEntry = {
 };
 
 type DetailTab = "overview" | "timeline" | "documents";
-
-type CaseFile = {
-  id: string;
-  title: string;
-  status: string;
-  reference_number: string | null;
-  current_status_note: string | null;
-  case_type: string | null;
-};
 
 type LinkedDecision = {
   id: string;
@@ -70,17 +58,12 @@ const interactionTypeOptions: Array<{ value: TimelineInteractionType | "entschei
 
 export function CaseItemDetailPanel({
   itemId,
-  itemCaseFileId,
   editableCaseItem,
-  statusOptions,
-  categoryOptions,
-  teamUsers,
   currentUserId,
   linkedDecisions,
   loadingDecisions,
   timelineEntries,
   toEditorHtml,
-  caseFilesById,
   onUpdate,
   onSave,
   activeTab,
@@ -91,8 +74,6 @@ export function CaseItemDetailPanel({
   onRenameDocument,
   onDeleteDocument,
   onUpdateDocumentMeta,
-  onCreateCaseFile,
-  onNavigateToCaseFile,
   contactDisplay,
   contactPerson,
   contactEmail,
@@ -107,17 +88,12 @@ export function CaseItemDetailPanel({
   onDelete,
 }: {
   itemId: string;
-  itemCaseFileId: string | null;
   editableCaseItem: EditableCaseItem;
-  statusOptions: Array<{ value: string; label: string }>;
-  categoryOptions: readonly string[];
-  teamUsers: Array<{ id: string; name: string; avatarUrl: string | null }>;
   currentUserId: string | null;
   linkedDecisions: LinkedDecision[];
   loadingDecisions: boolean;
   timelineEntries: TimelineEntry[];
   toEditorHtml: (value: string | null | undefined) => string;
-  caseFilesById: Record<string, CaseFile>;
   onUpdate: (patch: Partial<EditableCaseItem>) => void;
   onSave: () => void;
   activeTab: DetailTab;
@@ -128,8 +104,6 @@ export function CaseItemDetailPanel({
   onRenameDocument: (documentId: string, title: string) => Promise<void> | void;
   onDeleteDocument: (documentId: string) => Promise<void> | void;
   onUpdateDocumentMeta: (documentId: string, patch: { shortText?: string | null; documentDate?: string | null }) => Promise<void> | void;
-  onCreateCaseFile: (itemId: string) => void;
-  onNavigateToCaseFile: (caseFileId: string) => void;
   contactDisplay: string;
   contactPerson: string;
   contactEmail: string;
@@ -143,7 +117,6 @@ export function CaseItemDetailPanel({
   archiveLabel?: string;
   onDelete?: () => void;
 }) {
-  const [showMetaFields, setShowMetaFields] = useState(false);
   const [activeSection, setActiveSection] = useState<"sachlage" | TimelineInteractionType | "entscheidung">("sachlage");
   const [interactionFiles, setInteractionFiles] = useState<File[]>([]);
   const [editingDocumentId, setEditingDocumentId] = useState<string | null>(null);
@@ -557,122 +530,6 @@ export function CaseItemDetailPanel({
     <div className="mx-2 mb-3 space-y-4">
       <div className="grid gap-4 lg:grid-cols-[minmax(230px,1fr)_minmax(0,2.8fr)]">
         <div className="space-y-3">
-          <Collapsible open={showMetaFields} onOpenChange={setShowMetaFields} className="rounded-md border bg-background">
-            <CollapsibleTrigger asChild>
-              <Button type="button" variant="ghost" className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left">
-                <span className="text-sm font-semibold">Erweiterte Angaben</span>
-                <ChevronDown className={cn("h-4 w-4 transition-transform", showMetaFields && "rotate-180")} />
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-3 px-3 pb-3">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label className="font-bold" htmlFor="detail-received">Eingangsdatum</Label>
-                  <Input id="detail-received" type="date" value={editableCaseItem.sourceReceivedAt} onChange={(event) => onUpdate({ sourceReceivedAt: event.target.value })} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="font-bold">Kategorie *</Label>
-                  <Select value={editableCaseItem.category} onValueChange={(value) => onUpdate({ category: value })}>
-                    <SelectTrigger><SelectValue placeholder="Kategorie wählen" /></SelectTrigger>
-                    <SelectContent>
-                      {categoryOptions.map((categoryOption) => (
-                        <SelectItem key={categoryOption} value={categoryOption}>{categoryOption}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label className="font-bold">Status</Label>
-                  <Select value={editableCaseItem.status} onValueChange={(value) => onUpdate({ status: value })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {statusOptions.map((statusOption) => (
-                        <SelectItem key={statusOption.value} value={statusOption.value}>{statusOption.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="font-bold">Priorität</Label>
-                  <Select value={editableCaseItem.priority} onValueChange={(value) => onUpdate({ priority: value })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Niedrig</SelectItem>
-                      <SelectItem value="medium">Mittel</SelectItem>
-                      <SelectItem value="high">Hoch</SelectItem>
-                      <SelectItem value="urgent">Dringend</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="font-bold">Öffentlich</Label>
-                <div className="flex items-center justify-between rounded-md border p-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Globe className="h-4 w-4 text-emerald-600" />
-                    <span>{editableCaseItem.visibleToAll ? "Öffentlich" : "Nicht öffentlich"}</span>
-                  </div>
-                  <Switch checked={editableCaseItem.visibleToAll} onCheckedChange={(checked) => onUpdate({ visibleToAll: checked })} />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="font-bold">Bearbeiter</Label>
-                <div className="flex flex-wrap gap-2 rounded-md border p-2">
-                  {teamUsers.map((member) => {
-                    const selected = editableCaseItem.assigneeIds.includes(member.id);
-                    return (
-                      <Button
-                        key={member.id}
-                        type="button"
-                        size="sm"
-                        variant={selected ? "default" : "outline"}
-                        onClick={() => {
-                          const next = selected
-                            ? editableCaseItem.assigneeIds.filter((id) => id !== member.id)
-                            : [...editableCaseItem.assigneeIds, member.id];
-                          onUpdate({ assigneeIds: next });
-                        }}
-                      >
-                        {member.name}
-                      </Button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Verknüpfte Fallakte */}
-              {itemCaseFileId && caseFilesById[itemCaseFileId] ? (
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Verknüpfte Fallakte</p>
-                  <div className="rounded-md border bg-background p-3 text-sm">
-                    <p className="font-semibold">{caseFilesById[itemCaseFileId].title}</p>
-                    <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-                      <li>• Status: {caseFilesById[itemCaseFileId].status || "offen"}</li>
-                      {caseFilesById[itemCaseFileId].reference_number && <li>• Aktenzeichen: {caseFilesById[itemCaseFileId].reference_number}</li>}
-                      {caseFilesById[itemCaseFileId].case_type && <li>• Typ: {caseFilesById[itemCaseFileId].case_type}</li>}
-                      {caseFilesById[itemCaseFileId].current_status_note && <li>• Hinweis: {caseFilesById[itemCaseFileId].current_status_note}</li>}
-                    </ul>
-                  </div>
-                  <Button size="sm" variant="outline" onClick={() => onNavigateToCaseFile(itemCaseFileId)}>
-                    <ExternalLink className="mr-1 h-3.5 w-3.5" />
-                    Vollansicht
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-3 rounded-md border border-dashed bg-background p-4 text-sm text-muted-foreground">
-                  <AlertCircle className="h-4 w-4" />
-                  <p>Keine Akte verknüpft.</p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button size="sm" onClick={() => onCreateCaseFile(itemId)}>Neue Akte anlegen</Button>
-                  </div>
-                </div>
-              )}
-            </CollapsibleContent>
-          </Collapsible>
-
           {editableCaseItem.status === "erledigt" && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
