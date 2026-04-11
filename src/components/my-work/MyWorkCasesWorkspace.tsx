@@ -1226,8 +1226,9 @@ export function MyWorkCasesWorkspace() {
                       onContactSelected={(contact) => updateEdit({ selectedContactId: contact?.id || null })}
                       onArchive={() => runAsync(() => handleArchiveCaseItem(detailItem))}
                       archiveLabel={detailItem.status === "archiviert" ? "Wiederherstellen" : "Archivieren"}
-                      onDelete={() => setDeleteConfirmItemId(detailItem.id)}
-                    />
+                       onDelete={() => setDeleteConfirmItemId(detailItem.id)}
+                       teamUsers={teamUsers}
+                     />
                   }
                 />
               ) : (
