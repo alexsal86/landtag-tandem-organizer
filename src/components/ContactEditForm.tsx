@@ -263,8 +263,8 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       }
 
       // Clean date fields - convert empty strings to null for database
-      const cleanedUpdateData: Record<string, any> = { ...updateData };
-      const dateFields = ['birthday', 'founding_date'];
+      const cleanedUpdateData: Record<string, unknown> = { ...updateData };
+      const dateFields = ['birthday'];
       
       dateFields.forEach(field => {
         if (cleanedUpdateData[field] === '' || cleanedUpdateData[field] === undefined) {
