@@ -154,7 +154,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
       const { data, error } = await supabase
         .from('call_logs')
         .select('id, contact_id, caller_name, caller_phone, call_type, duration_minutes, call_date, notes, follow_up_required, follow_up_date, follow_up_completed, completion_notes, priority, created_at, created_by_name')
-        .or(`contact_id.eq.${contactId},caller_phone.ilike.%${contact?.phone || ''}%`)
+        .or(contact?.phone ? `contact_id.eq.${contactId},caller_phone.ilike.%${contact.phone}%` : `contact_id.eq.${contactId}`)
         .order('call_date', { ascending: false });
 
       if (error) throw error;
