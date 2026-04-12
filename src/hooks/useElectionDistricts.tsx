@@ -26,6 +26,7 @@ interface ElectionRepresentative {
   phone?: string;
   office_address?: string;
   bio?: string;
+  legislature_period?: string;
 }
 
 export interface ElectionDistrict {
@@ -93,6 +94,7 @@ export function useElectionDistricts() {
       phone: typeof value.phone === "string" ? value.phone : undefined,
       office_address: typeof value.office_address === "string" ? value.office_address : undefined,
       bio: typeof value.bio === "string" ? value.bio : undefined,
+      legislature_period: typeof value.legislature_period === "string" ? value.legislature_period : undefined,
     };
   };
 
@@ -150,7 +152,7 @@ export function useElectionDistricts() {
       .select(`
         *,
         representatives:election_representatives(
-          id, name, party, mandate_type, order_index, email, phone, office_address, bio
+          id, name, party, mandate_type, order_index, email, phone, office_address, bio, legislature_period
         )
       `)
       .order("district_number");
