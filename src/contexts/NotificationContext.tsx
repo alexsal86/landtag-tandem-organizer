@@ -1,6 +1,6 @@
 // @refresh reset
 import { createContext, useContext } from 'react';
-import type { PropsWithChildren } from 'react';
+import type { PropsWithChildren, JSX } from 'react';
 import { useNotifications as useNotificationsHook } from '@/hooks/useNotifications';
 import type { Notification } from '@/hooks/useNotifications';
 

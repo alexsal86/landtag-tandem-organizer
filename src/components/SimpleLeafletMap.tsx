@@ -131,6 +131,11 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !districtLayerRef.current || !markerLayerRef.current) return;
+
+    // Clear existing layers
+    districtLayerRef.current.clearLayers();
+    markerLayerRef.current.clearLayers();
+
     if (!districts.length && !showPartyAssociations) return;
 
     // Clear existing layers
@@ -426,15 +431,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       // If only party associations are shown, center on Baden-Württemberg
       map.setView([48.7758, 9.1829], 8);
     }
-  }, [districts, selectedDistrict, onDistrictClick, showPartyAssociations, associations, zoomLevel]);
-  
-  if (!districts.length && !showPartyAssociations) {
-    return (
-      <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] bg-card rounded-lg overflow-hidden border border-border flex items-center justify-center">
-        <p className="text-muted-foreground">Keine Wahlkreisdaten verfügbar</p>
-      </div>
-    );
-  }
+  }, [districts, selectedDistrict, onDistrictClick, showPartyAssociations, associations]);
 
   return (
     <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] bg-card rounded-lg overflow-hidden border border-border z-0">
@@ -447,10 +444,18 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
             <span className="font-medium text-foreground">Baden-Württemberg Wahlkreise</span>
           </div>
           <div className="space-y-1">
-            <div className="flex items-center gap-1">
-              <Square className="h-3 w-3" />
-              <span>{districts.length} Wahlkreise</span>
-            </div>
+            {districts.filter(d => d.district_type !== 'verwaltungsgrenze').length > 0 && (
+              <div className="flex items-center gap-1">
+                <Square className="h-3 w-3" />
+                <span>{districts.filter(d => d.district_type !== 'verwaltungsgrenze').length} Wahlkreise</span>
+              </div>
+            )}
+            {districts.filter(d => d.district_type === 'verwaltungsgrenze').length > 0 && (
+              <div className="flex items-center gap-1">
+                <Square className="h-3 w-3 text-purple-500" />
+                <span>{districts.filter(d => d.district_type === 'verwaltungsgrenze').length} Verwaltungsgrenzen</span>
+              </div>
+            )}
             <div className="flex items-center gap-1">
               <Users className="h-3 w-3" />
               <span>Klicken für Details</span>
