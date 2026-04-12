@@ -186,34 +186,49 @@ export const ElectionDistrictsView = () => {
                     <span className="font-semibold">{selectedDistrict.district_name}</span>
                   </div>
                   
-                  {selectedDistrict.representatives && selectedDistrict.representatives.length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="font-semibold text-sm flex items-center gap-1">
-                        <Crown className="h-4 w-4" />
-                        Abgeordnete
-                      </h4>
-                      {selectedDistrict.representatives.map((rep) => (
-                        <div key={rep.id} className="flex items-center gap-2 text-sm">
-                          {rep.mandate_type === 'direct' && <Award className="h-3 w-3 text-yellow-600" />}
-                          <span className="font-medium">{rep.name}</span>
-                          <Badge 
-                            variant="outline" 
-                            className="text-xs"
-                            style={{ 
-                              backgroundColor: getPartyColor(rep.party), 
-                              color: '#fff',
-                              border: 'none'
-                            }}
-                          >
-                            {rep.party}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            ({rep.mandate_type === 'direct' ? 'Direkt' : 'Liste'})
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  {selectedDistrict.representatives && selectedDistrict.representatives.length > 0 && (() => {
+                    // Group representatives by legislature period
+                    const byLegislature = selectedDistrict.representatives.reduce<Record<string, typeof selectedDistrict.representatives>>((acc, rep) => {
+                      const period = rep.legislature_period || '18. Legislaturperiode';
+                      if (!acc[period]) acc[period] = [];
+                      acc[period].push(rep);
+                      return acc;
+                    }, {});
+                    const periods = Object.keys(byLegislature).sort().reverse();
+
+                    return (
+                      <div className="space-y-3">
+                        {periods.map(period => (
+                          <div key={period} className="space-y-2">
+                            <h4 className="font-semibold text-sm flex items-center gap-1">
+                              <Crown className="h-4 w-4" />
+                              {period}
+                            </h4>
+                            {byLegislature[period].map((rep) => (
+                              <div key={rep.id} className="flex items-center gap-2 text-sm">
+                                {rep.mandate_type === 'direct' && <Award className="h-3 w-3 text-yellow-600" />}
+                                <span className="font-medium">{rep.name}</span>
+                                <Badge 
+                                  variant="outline" 
+                                  className="text-xs"
+                                  style={{ 
+                                    backgroundColor: getPartyColor(rep.party), 
+                                    color: '#fff',
+                                    border: 'none'
+                                  }}
+                                >
+                                  {rep.party}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  ({rep.mandate_type === 'direct' ? 'Direkt' : 'Liste'})
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                   
                   {selectedDistrict.population && (
                     <div className="flex items-center gap-2 text-sm">
@@ -269,10 +284,24 @@ export const ElectionDistrictsView = () => {
                 </>
               )}
               {hasAdministrativeData && (
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Verwaltungsgrenzen:</span>
-                  <Badge variant="outline">{administrativeBoundaries.length}</Badge>
-                </div>
+                <>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Verwaltungsgrenzen:</span>
+                    <Badge variant="outline">{administrativeBoundaries.length}</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Bevölkerung (Verwaltung):</span>
+                    <Badge variant="outline">
+                      {administrativeBoundaries.reduce((sum, d) => sum + (d.population || 0), 0).toLocaleString()}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Fläche (Verwaltung):</span>
+                    <Badge variant="outline">
+                      ca. {administrativeBoundaries.reduce((sum, d) => sum + (d.area_km2 || 0), 0).toLocaleString()} km²
+                    </Badge>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>

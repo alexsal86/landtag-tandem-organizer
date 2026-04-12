@@ -3980,6 +3980,7 @@ export type Database = {
           district_id: string | null
           email: string | null
           id: string
+          legislature_period: string | null
           mandate_type: string
           name: string
           office_address: string | null
@@ -3994,6 +3995,7 @@ export type Database = {
           district_id?: string | null
           email?: string | null
           id?: string
+          legislature_period?: string | null
           mandate_type: string
           name: string
           office_address?: string | null
@@ -4008,6 +4010,7 @@ export type Database = {
           district_id?: string | null
           email?: string | null
           id?: string
+          legislature_period?: string | null
           mandate_type?: string
           name?: string
           office_address?: string | null
