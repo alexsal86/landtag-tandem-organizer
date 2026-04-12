@@ -138,10 +138,6 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 
     if (!districts.length && !showPartyAssociations) return;
 
-    // Clear existing layers
-    districtLayerRef.current.clearLayers();
-    markerLayerRef.current.clearLayers();
-
     let renderedBounds: L.LatLngBounds | null = null;
 
     // Collect all districts to render (normal districts + party association boundaries)
