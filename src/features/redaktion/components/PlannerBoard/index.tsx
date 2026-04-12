@@ -1,0 +1,792 @@
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { CalendarDays, CheckSquare, ClipboardList, Filter, Pencil, Plus } from "lucide-react";
+import { format } from "date-fns";
+import { useSearchParams } from "react-router-dom";
+import { Kalenderansicht } from "../Kalenderansicht";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { MultiSelect } from "@/components/ui/multi-select-simple";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useTenantUsers } from "@/hooks/useTenantUsers";
+import { useToast } from "@/hooks/use-toast";
+import {
+  type SocialContentMediaType,
+  type SocialContentPlatformStatus,
+  type SocialContentVariant,
+  type SocialPlannerItem,
+  PlannerWorkflowStatus,
+  useSocialPlannerItems,
+} from "@/features/redaktion/hooks/useSocialPlannerItems";
+import { useTopicBacklog } from "@/features/redaktion/hooks/useTopicBacklog";
+import { usePlannerNotes } from "@/features/redaktion/hooks/usePlannerNotes";
+import { useSocialCampaigns } from "@/features/redaktion/hooks/useSocialCampaigns";
+import type { SpecialDay } from "@/utils/dashboard/specialDays";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
+import { debugConsole } from "@/utils/debugConsole";
+import {
+  APPROVAL_LABELS,
+  ASSET_OPTIONS,
+  CONTENT_GOAL_OPTIONS,
+  CONTENT_PILLAR_OPTIONS,
+  FORMAT_VARIANT_OPTIONS,
+  PLATFORM_STATUS_OPTIONS,
+  SORT_OPTIONS,
+  STATUS_COLUMNS,
+  TEMPLATE_OPTIONS,
+  VARIANT_MEDIA_TYPES,
+} from "./constants";
+import type { PlannerFormatFilter, SocialPlannerDraftPayload, SocialPlannerTemplateId } from "./types";
+import { applyTemplateToState, inferFormatType, validateVariant } from "./utils";
+import { BriefingGroup } from "./BriefingGroup";
+
+const SocialPlannerEditDialog = lazyWithRetry(
+  () => import("./SocialPlannerEditDialog"),
+);
+
+interface PlannerBoardProps {
+  specialDays?: SpecialDay[];
+}
+
+export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
+  const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const { users } = useTenantUsers();
+  const { topics, createTopic } = useTopicBacklog();
+  const { campaigns } = useSocialCampaigns();
+  const { items, channels, loading, updateItem, createItem, deleteItem } = useSocialPlannerItems();
+  const { notes, createNote, updateNote, deleteNote } = usePlannerNotes();
+  debugConsole.log("[PlannerBoard] render", { hasUsers: !!users, topicsCount: topics?.length, itemsCount: items?.length, channelsCount: channels?.length, loading });
+
+  const [channelFilter, setChannelFilter] = useState<string>("all");
+  const [ownerFilter, setOwnerFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [formatFilter, setFormatFilter] = useState<PlannerFormatFilter>("all");
+  const [campaignFilter, setCampaignFilter] = useState<string>("all");
+  const [pillarFilter, setPillarFilter] = useState<string>("all");
+  const [tagSearch, setTagSearch] = useState("");
+  const [sortBy, setSortBy] = useState<(typeof SORT_OPTIONS)[number]["value"]>("scheduled");
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
+  const [createTemplate, setCreateTemplate] = useState<string>("none");
+  const [createTopicId, setCreateTopicId] = useState<string>("none");
+  const [createTopicTitle, setCreateTopicTitle] = useState("");
+  const [createChannelIds, setCreateChannelIds] = useState<string[]>([]);
+  const [createFormat, setCreateFormat] = useState("");
+  const [createContentGoal, setCreateContentGoal] = useState("");
+  const [createFormatVariant, setCreateFormatVariant] = useState("");
+  const [createAssetRequirements, setCreateAssetRequirements] = useState<string[]>([]);
+  const [createApprovalRequired, setCreateApprovalRequired] = useState(true);
+  const [createPublishLink, setCreatePublishLink] = useState("");
+  const [createPerformanceNotes, setCreatePerformanceNotes] = useState("");
+  const [createHook, setCreateHook] = useState("");
+  const [createCoreMessage, setCreateCoreMessage] = useState("");
+  const [createDraftText, setCreateDraftText] = useState("");
+  const [createCta, setCreateCta] = useState("");
+  const [createNotes, setCreateNotes] = useState("");
+  const [createResponsibleUserId, setCreateResponsibleUserId] = useState<string>("none");
+  const [createApprovalState, setCreateApprovalState] = useState("draft");
+  const [createWorkflowStatus, setCreateWorkflowStatus] = useState<PlannerWorkflowStatus>("ideas");
+  const [createScheduledDate, setCreateScheduledDate] = useState("");
+  const [createVariantsByChannel, setCreateVariantsByChannel] = useState<Record<string, SocialContentVariant>>({});
+  const [createActiveVariantChannelId, setCreateActiveVariantChannelId] = useState<string>("");
+  const [isCreatingDraft, setIsCreatingDraft] = useState(false);
+  const [createCampaignId, setCreateCampaignId] = useState<string>("none");
+  const [createContentPillar, setCreateContentPillar] = useState<string>("none");
+
+  // Track whether edit dialog was ever opened to keep it mounted after first load
+  const [editDialogEverOpened, setEditDialogEverOpened] = useState(false);
+
+  const editingItem = useMemo(
+    () => items.find((item) => item.id === editingItemId) || null,
+    [editingItemId, items],
+  );
+  const deleteCandidate = useMemo(
+    () => items.find((item) => item.id === deleteItemId) || null,
+    [deleteItemId, items],
+  );
+
+  const channelOptions = useMemo(
+    () => channels.map((channel) => ({ value: channel.id, label: channel.name })),
+    [channels],
+  );
+
+  const allTagSuggestions = useMemo(
+    () => [...new Set(items.flatMap((item) => item.tags))].sort(),
+    [items],
+  );
+
+  // Lazy-load edit dialog chunk on first open
+  useEffect(() => {
+    if (editingItem !== null && !editDialogEverOpened) {
+      setEditDialogEverOpened(true);
+    }
+  }, [editingItem, editDialogEverOpened]);
+
+  const filteredItems = useMemo(() => {
+    const search = tagSearch.trim().toLowerCase();
+
+    return items
+      .filter((item) => {
+        if (channelFilter !== "all" && !item.channel_ids.includes(channelFilter)) return false;
+        if (ownerFilter !== "all" && item.responsible_user_id !== ownerFilter) return false;
+        if (statusFilter !== "all" && item.workflow_status !== statusFilter) return false;
+        if (formatFilter !== "all" && inferFormatType(item) !== formatFilter) return false;
+        if (campaignFilter !== "all" && item.campaign_id !== campaignFilter) return false;
+        if (pillarFilter !== "all" && item.content_pillar !== pillarFilter) return false;
+        if (!search) return true;
+
+        return (
+          item.topic.toLowerCase().includes(search) ||
+          item.tags.some((tag) => tag.toLowerCase().includes(search)) ||
+          item.content_goal?.toLowerCase().includes(search) ||
+          item.format_variant?.toLowerCase().includes(search)
+        );
+      })
+      .sort((a, b) => {
+        if (sortBy === "topic") return a.topic.localeCompare(b.topic);
+        if (sortBy === "status") return a.workflow_status.localeCompare(b.workflow_status);
+        if (sortBy === "campaign_phase") {
+          const getPhaseRank = (item: SocialPlannerItem) => {
+            if (!item.campaign_start_date || !item.campaign_end_date) return 3;
+            const now = new Date();
+            const start = new Date(item.campaign_start_date);
+            const end = new Date(item.campaign_end_date);
+            if (now < start) return 0;
+            if (now > end) return 2;
+            return 1;
+          };
+          return getPhaseRank(a) - getPhaseRank(b);
+        }
+
+        const aTime = a.scheduled_for ? new Date(a.scheduled_for).getTime() : Number.MAX_SAFE_INTEGER;
+        const bTime = b.scheduled_for ? new Date(b.scheduled_for).getTime() : Number.MAX_SAFE_INTEGER;
+        return aTime - bTime;
+      });
+  }, [items, channelFilter, ownerFilter, statusFilter, formatFilter, campaignFilter, pillarFilter, tagSearch, sortBy]);
+
+  const handleSaveItem = useCallback(async (itemId: string, payload: SocialPlannerDraftPayload) => {
+    await updateItem(itemId, payload);
+    toast({ title: "Beitrag aktualisiert", description: "Änderungen sind im Board und Kalender sichtbar." });
+  }, [toast, updateItem]);
+
+  const resetCreateDialog = () => {
+    setCreateTemplate("none");
+    setCreateTopicId("none");
+    setCreateTopicTitle("");
+    setCreateChannelIds([]);
+    setCreateFormat("");
+    setCreateContentGoal("");
+    setCreateFormatVariant("");
+    setCreateAssetRequirements([]);
+    setCreateApprovalRequired(true);
+    setCreatePublishLink("");
+    setCreatePerformanceNotes("");
+    setCreateHook("");
+    setCreateCoreMessage("");
+    setCreateDraftText("");
+    setCreateCta("");
+    setCreateNotes("");
+    setCreateResponsibleUserId("none");
+    setCreateApprovalState("draft");
+    setCreateWorkflowStatus("ideas");
+    setCreateScheduledDate("");
+    setCreateVariantsByChannel({});
+    setCreateActiveVariantChannelId("");
+    setCreateCampaignId("none");
+    setCreateContentPillar("none");
+  };
+
+  const handleCreateTemplateChange = (value: string) => {
+    setCreateTemplate(value);
+    if (value === "none") return;
+
+    applyTemplateToState(value as SocialPlannerTemplateId, {
+      setFormat: setCreateFormat,
+      setContentGoal: setCreateContentGoal,
+      setFormatVariant: setCreateFormatVariant,
+      setHook: setCreateHook,
+      setCta: setCreateCta,
+      setAssetRequirements: setCreateAssetRequirements,
+    });
+  };
+
+  useEffect(() => {
+    setCreateVariantsByChannel((current) => {
+      const next: Record<string, SocialContentVariant> = {};
+      createChannelIds.forEach((channelId) => {
+        next[channelId] = current[channelId] || {
+          channel_id: channelId,
+          caption: createDraftText,
+          first_comment: "",
+          media_type: "",
+          asset_ids: [],
+          platform_metadata: {},
+          platform_status: "draft",
+        };
+      });
+      return next;
+    });
+    setCreateActiveVariantChannelId((current) => (createChannelIds.includes(current) ? current : (createChannelIds[0] || "")));
+  }, [createChannelIds, createDraftText]);
+
+  const createDraft = async () => {
+    const trimmedTopicTitle = createTopicTitle.trim();
+    if (createTopicId === "none" && !trimmedTopicTitle) {
+      toast({ title: "Bitte Thema auswählen oder neu eingeben", variant: "destructive" });
+      return;
+    }
+
+    const createVariantErrors = createChannelIds.flatMap((channelId) => {
+      const slug = channels.find((channel) => channel.id === channelId)?.slug || "";
+      return validateVariant(createVariantsByChannel[channelId], slug);
+    });
+    if (createVariantErrors.length > 0) {
+      toast({ title: "Kanalvarianten prüfen", description: createVariantErrors[0], variant: "destructive" });
+      return;
+    }
+
+    try {
+      setIsCreatingDraft(true);
+
+      let topicBacklogId = createTopicId;
+      if (topicBacklogId === "none") {
+        const createdTopic = await createTopic({
+          topic: trimmedTopicTitle,
+          status: "idea",
+        });
+
+        if (!createdTopic?.id) {
+          throw new Error("topic-create-failed");
+        }
+
+        topicBacklogId = createdTopic.id;
+      }
+
+      await createItem({
+        topic_backlog_id: topicBacklogId,
+        workflow_status: createWorkflowStatus,
+        approval_state: createApprovalState,
+        format: createFormat.trim() || null,
+        content_goal: createContentGoal.trim() || null,
+        format_variant: createFormatVariant.trim() || null,
+        asset_requirements: createAssetRequirements,
+        approval_required: createApprovalRequired,
+        publish_link: createPublishLink.trim() || null,
+        performance_notes: createPerformanceNotes.trim() || null,
+        hook: createHook.trim() || null,
+        core_message: createCoreMessage.trim() || null,
+        draft_text: createDraftText.trim() || null,
+        cta: createCta.trim() || null,
+        notes: createNotes.trim() || null,
+        campaign_id: createCampaignId === "none" ? null : createCampaignId,
+        content_pillar: createContentPillar === "none" ? null : createContentPillar,
+        responsible_user_id: createResponsibleUserId === "none" ? null : createResponsibleUserId,
+        scheduled_for: createScheduledDate ? new Date(`${createScheduledDate}T09:00:00`).toISOString() : null,
+        channel_ids: createChannelIds,
+        variants: createChannelIds.map((channelId) => createVariantsByChannel[channelId]).filter(Boolean),
+      });
+
+      toast({ title: "Entwurf erstellt", description: "Der Beitrag wurde mit Briefing-Feldern im Social Planner angelegt." });
+      setIsCreateDialogOpen(false);
+      resetCreateDialog();
+    } catch {
+      toast({ title: "Entwurf konnte nicht erstellt werden", variant: "destructive" });
+    } finally {
+      setIsCreatingDraft(false);
+    }
+  };
+
+  const handleDeleteItem = useCallback(async () => {
+    if (!deleteItemId) return;
+
+    try {
+      await deleteItem(deleteItemId);
+      if (editingItemId === deleteItemId) setEditingItemId(null);
+      setDeleteItemId(null);
+      toast({ title: "Beitrag gelöscht", description: "Der Social-Media-Entwurf wurde aus dem Planner entfernt." });
+    } catch {
+      toast({ title: "Beitrag konnte nicht gelöscht werden", variant: "destructive" });
+    }
+  }, [deleteItem, deleteItemId, editingItemId, toast]);
+
+  const clearFilters = () => {
+    setChannelFilter("all");
+    setOwnerFilter("all");
+    setStatusFilter("all");
+    setFormatFilter("all");
+    setCampaignFilter("all");
+    setPillarFilter("all");
+    setTagSearch("");
+    setSortBy("scheduled");
+  };
+
+  const handleCalendarScheduleUpdate = useCallback(async (itemId: string, isoDate: string) => {
+    try {
+      await updateItem(itemId, { scheduled_for: isoDate } as Parameters<typeof updateItem>[1]);
+    } catch {
+      toast({ title: "Zeitpunkt konnte nicht geändert werden", variant: "destructive" });
+    }
+  }, [updateItem, toast]);
+
+  const hasActiveFilters = channelFilter !== "all" || ownerFilter !== "all" || statusFilter !== "all" || formatFilter !== "all" || campaignFilter !== "all" || pillarFilter !== "all" || tagSearch.trim().length > 0 || sortBy !== "scheduled";
+
+  useEffect(() => {
+    const highlightId = searchParams.get("highlight");
+    if (!highlightId || items.length === 0) return;
+
+    const targetItem = items.find((item) => item.id === highlightId);
+    if (!targetItem) return;
+
+    const timeout = window.setTimeout(() => {
+      const element = document.querySelector(`[data-social-planner-item-id="${highlightId}"]`);
+      if (element instanceof HTMLElement) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+        element.classList.add("notification-highlight");
+        window.setTimeout(() => element.classList.remove("notification-highlight"), 2200);
+      }
+    }, 150);
+
+    return () => window.clearTimeout(timeout);
+  }, [items, searchParams]);
+
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <Kalenderansicht
+          items={filteredItems}
+          onUpdateSchedule={handleCalendarScheduleUpdate}
+          onEditItem={setEditingItemId}
+          onCreateAtSlot={(date) => {
+            resetCreateDialog();
+            setCreateScheduledDate(format(date, "yyyy-MM-dd"));
+            setIsCreateDialogOpen(true);
+          }}
+          specialDays={specialDays}
+          notes={notes}
+          onCreateNote={createNote}
+          onUpdateNote={updateNote}
+          onDeleteNote={deleteNote}
+          headerActions={(
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => setIsCreateDialogOpen(true)}>
+                <Plus className="mr-1 h-4 w-4" />
+                Neuen Inhalt entwerfen
+              </Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="relative">
+                    <Filter className="mr-1 h-4 w-4" />
+                    Filter
+                    {hasActiveFilters && (
+                      <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-primary" />
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 space-y-3" align="end">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Filter & Sortierung</span>
+                    {hasActiveFilters && (
+                      <Button variant="ghost" size="sm" className="h-auto px-2 py-1 text-xs" onClick={clearFilters}>
+                        Zurücksetzen
+                      </Button>
+                    )}
+                  </div>
+                  <Select value={channelFilter} onValueChange={setChannelFilter}>
+                    <SelectTrigger><SelectValue placeholder="Kanal" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Alle Kanäle</SelectItem>
+                      {channels.map((channel) => <SelectItem key={channel.id} value={channel.id}>{channel.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+                    <SelectTrigger><SelectValue placeholder="Verantwortlich" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Alle Verantwortlichen</SelectItem>
+                      {users.map((user) => <SelectItem key={user.id} value={user.id}>{user.display_name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Alle Status</SelectItem>
+                      {STATUS_COLUMNS.map((status) => <SelectItem key={status.id} value={status.id}>{status.title}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={formatFilter} onValueChange={(value) => setFormatFilter(value as PlannerFormatFilter)}>
+                    <SelectTrigger><SelectValue placeholder="Format" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Alle Formate</SelectItem>
+                      <SelectItem value="story">Nur Stories</SelectItem>
+                      <SelectItem value="feed">Nur Feed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={campaignFilter} onValueChange={setCampaignFilter}>
+                    <SelectTrigger><SelectValue placeholder="Kampagne" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Alle Kampagnen</SelectItem>
+                      {campaigns.map((campaign) => <SelectItem key={campaign.id} value={campaign.id}>{campaign.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={pillarFilter} onValueChange={setPillarFilter}>
+                    <SelectTrigger><SelectValue placeholder="Content-Pillar" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Alle Pillars</SelectItem>
+                      {CONTENT_PILLAR_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Input value={tagSearch} onChange={(event) => setTagSearch(event.target.value)} placeholder="Thema/Tag suchen" />
+                  <Select value={sortBy} onValueChange={(value) => setSortBy(value as (typeof SORT_OPTIONS)[number]["value"])}>
+                    <SelectTrigger><SelectValue placeholder="Sortierung" /></SelectTrigger>
+                    <SelectContent>
+                      {SORT_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
+        />
+
+        {loading && <p className="mt-3 text-xs text-muted-foreground">Lade Social-Planer…</p>}
+      </CardContent>
+
+      {editDialogEverOpened && (
+        <Suspense fallback={null}>
+          <SocialPlannerEditDialog
+            item={editingItem}
+            open={editingItem !== null}
+            users={users}
+            channels={channels}
+            campaigns={campaigns}
+            tagSuggestions={allTagSuggestions}
+            onOpenChange={(open) => {
+              if (!open) setEditingItemId(null);
+            }}
+            onSave={handleSaveItem}
+          />
+        </Suspense>
+      )}
+
+      <AlertDialog open={!!deleteCandidate} onOpenChange={(open) => { if (!open) setDeleteItemId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Beitrag löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{deleteCandidate?.topic}" wird aus dem Social Planner entfernt. Diese Aktion kann nicht rückgängig gemacht werden.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void handleDeleteItem()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
+        setIsCreateDialogOpen(open);
+        if (!open) resetCreateDialog();
+      }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Neuen Social-Media-Inhalt entwerfen</DialogTitle>
+            <DialogDescription>
+              Lege direkt aus dem Planner einen neuen Entwurf an – inklusive redaktionellem Briefing und Vorlagen.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2 md:col-span-2">
+                <Label>Vorlage</Label>
+                <Select value={createTemplate} onValueChange={handleCreateTemplateChange}>
+                  <SelectTrigger><SelectValue placeholder="Vorlage auswählen" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Keine Vorlage</SelectItem>
+                    {TEMPLATE_OPTIONS.map((template) => (
+                      <SelectItem key={template.id} value={template.id}>{template.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Thema</Label>
+                <Select value={createTopicId} onValueChange={setCreateTopicId}>
+                  <SelectTrigger><SelectValue placeholder="Thema wählen" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Bitte wählen</SelectItem>
+                    {topics.map((topic) => (
+                      <SelectItem key={topic.id} value={topic.id}>{topic.topic}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="create-topic-title">Oder neues Thema</Label>
+                <Input
+                  id="create-topic-title"
+                  value={createTopicTitle}
+                  onChange={(event) => setCreateTopicTitle(event.target.value)}
+                  placeholder="z. B. Verkehrssicherheit in Karlsruhe"
+                />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label>Kanäle</Label>
+                <MultiSelect options={channelOptions} selected={createChannelIds} onChange={setCreateChannelIds} placeholder="Kanäle auswählen" />
+              </div>
+
+              {createChannelIds.length > 0 && (
+                <div className="space-y-2 md:col-span-2 rounded-md border p-3">
+                  <Label>Kanalvariante bearbeiten</Label>
+                  <Select value={createActiveVariantChannelId} onValueChange={setCreateActiveVariantChannelId}>
+                    <SelectTrigger><SelectValue placeholder="Kanalvariante wählen" /></SelectTrigger>
+                    <SelectContent>
+                      {createChannelIds.map((channelId) => {
+                        const channel = channels.find((entry) => entry.id === channelId);
+                        return <SelectItem key={channelId} value={channelId}>{channel?.name || channelId}</SelectItem>;
+                      })}
+                    </SelectContent>
+                  </Select>
+                  {createActiveVariantChannelId && (
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="space-y-2 md:col-span-2">
+                        <Label>Caption</Label>
+                        <Textarea
+                          rows={3}
+                          value={createVariantsByChannel[createActiveVariantChannelId]?.caption || ""}
+                          onChange={(event) => setCreateVariantsByChannel((current) => ({
+                            ...current,
+                            [createActiveVariantChannelId]: { ...current[createActiveVariantChannelId], caption: event.target.value },
+                          }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Media Type</Label>
+                        <Select
+                          value={createVariantsByChannel[createActiveVariantChannelId]?.media_type || "none"}
+                          onValueChange={(value) => setCreateVariantsByChannel((current) => ({
+                            ...current,
+                            [createActiveVariantChannelId]: { ...current[createActiveVariantChannelId], media_type: value === "none" ? "" : value as SocialContentMediaType },
+                          }))}
+                        >
+                          <SelectTrigger><SelectValue placeholder="Medium" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Bitte wählen</SelectItem>
+                            {VARIANT_MEDIA_TYPES.map((entry) => <SelectItem key={entry.value} value={entry.value}>{entry.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Platform Status</Label>
+                        <Select
+                          value={createVariantsByChannel[createActiveVariantChannelId]?.platform_status || "draft"}
+                          onValueChange={(value) => setCreateVariantsByChannel((current) => ({
+                            ...current,
+                            [createActiveVariantChannelId]: { ...current[createActiveVariantChannelId], platform_status: value as SocialContentPlatformStatus },
+                          }))}
+                        >
+                          <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+                          <SelectContent>
+                            {PLATFORM_STATUS_OPTIONS.map((entry) => <SelectItem key={entry.value} value={entry.value}>{entry.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="md:col-span-2 space-y-1">
+                        {validateVariant(
+                          createVariantsByChannel[createActiveVariantChannelId],
+                          channels.find((channel) => channel.id === createActiveVariantChannelId)?.slug || "",
+                        ).map((error) => (
+                          <p key={error} className="text-xs text-destructive">{error}</p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label>Kampagne</Label>
+                <Select value={createCampaignId} onValueChange={setCreateCampaignId}>
+                  <SelectTrigger><SelectValue placeholder="Kampagne (optional)" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Keine Kampagne</SelectItem>
+                    {campaigns.map((campaign) => (
+                      <SelectItem key={campaign.id} value={campaign.id}>{campaign.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Content-Pillar</Label>
+                <Select value={createContentPillar} onValueChange={setCreateContentPillar}>
+                  <SelectTrigger><SelectValue placeholder="Pillar (optional)" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nicht festgelegt</SelectItem>
+                    {CONTENT_PILLAR_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <BriefingGroup title="Wofür ist der Beitrag?" description="Vorlagen füllen Hook/CTA an, du kannst sie hier weiter schärfen." icon={ClipboardList}>
+              <div className="space-y-2">
+                <Label>Beitragsziel</Label>
+                <Select value={createContentGoal || "none"} onValueChange={(value) => setCreateContentGoal(value === "none" ? "" : value)}>
+                  <SelectTrigger><SelectValue placeholder="Ziel wählen" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nicht festgelegt</SelectItem>
+                    {CONTENT_GOAL_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="create-hook">Hook</Label>
+                <Input id="create-hook" value={createHook} onChange={(event) => setCreateHook(event.target.value)} placeholder="Aufhänger für den Post" />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="create-core-message">Kernaussage</Label>
+                <Input id="create-core-message" value={createCoreMessage} onChange={(event) => setCreateCoreMessage(event.target.value)} placeholder="Was soll hängen bleiben?" />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="create-cta">CTA</Label>
+                <Input id="create-cta" value={createCta} onChange={(event) => setCreateCta(event.target.value)} placeholder="Handlungsaufforderung" />
+              </div>
+            </BriefingGroup>
+
+            <BriefingGroup title="Welches Format ist geplant?" description="Plane direkt mit Format- und Kanalentscheidungen für den Entwurf." icon={Pencil}>
+              <div className="space-y-2">
+                <Label htmlFor="create-format">Format</Label>
+                <Input id="create-format" value={createFormat} onChange={(event) => setCreateFormat(event.target.value)} placeholder="z. B. Carousel" />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Formatvariante</Label>
+                <Select value={createFormatVariant || "none"} onValueChange={(value) => setCreateFormatVariant(value === "none" ? "" : value)}>
+                  <SelectTrigger><SelectValue placeholder="Formatvariante wählen" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nicht festgelegt</SelectItem>
+                    {FORMAT_VARIANT_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="create-draft-text">Entwurfstext</Label>
+                <Textarea id="create-draft-text" value={createDraftText} onChange={(event) => setCreateDraftText(event.target.value)} placeholder="Textentwurf..." rows={4} />
+              </div>
+            </BriefingGroup>
+
+            <BriefingGroup title="Welche Assets werden gebraucht?" description="Die Vorlagen setzen passende Checklisten für politische Standardfälle." icon={CheckSquare}>
+              <div className="space-y-3 md:col-span-2">
+                <Label>Asset-Checkliste</Label>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {ASSET_OPTIONS.map((asset) => {
+                    const checked = createAssetRequirements.includes(asset);
+                    return (
+                      <label key={asset} className="flex items-center gap-3 rounded-md border p-3 text-sm">
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(nextChecked) => {
+                            setCreateAssetRequirements((current) => nextChecked ? [...current, asset] : current.filter((entry) => entry !== asset));
+                          }}
+                        />
+                        <span>{asset}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="create-notes">Interne Notizen</Label>
+                <Textarea id="create-notes" value={createNotes} onChange={(event) => setCreateNotes(event.target.value)} placeholder="Offene Punkte, Asset-Briefing, Abstimmungshinweise" rows={3} />
+              </div>
+            </BriefingGroup>
+
+            <BriefingGroup title="Was fehlt noch bis zur Veröffentlichung?" description="Organisiere Freigabe, Veröffentlichung und spätere Learnings direkt beim Anlegen." icon={CalendarDays}>
+              <div className="flex items-center justify-between gap-4 rounded-md border p-3 md:col-span-2">
+                <div>
+                  <Label htmlFor="create-approval-required">Freigabe erforderlich</Label>
+                  <p className="text-xs text-muted-foreground">Vor Aktivierung von „geplant" oder „veröffentlicht" kann hier eine interne Freigabe eingefordert werden.</p>
+                </div>
+                <Switch id="create-approval-required" checked={createApprovalRequired} onCheckedChange={setCreateApprovalRequired} />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Freigabestatus</Label>
+                <Select value={createApprovalState} onValueChange={setCreateApprovalState}>
+                  <SelectTrigger><SelectValue placeholder="Freigabestatus wählen" /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(APPROVAL_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Status im Board</Label>
+                <Select value={createWorkflowStatus} onValueChange={(value) => setCreateWorkflowStatus(value as PlannerWorkflowStatus)}>
+                  <SelectTrigger><SelectValue placeholder="Status wählen" /></SelectTrigger>
+                  <SelectContent>
+                    {STATUS_COLUMNS.map((status) => (
+                      <SelectItem key={status.id} value={status.id}>{status.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Verantwortliche Person</Label>
+                <Select value={createResponsibleUserId} onValueChange={setCreateResponsibleUserId}>
+                  <SelectTrigger><SelectValue placeholder="Person auswählen" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nicht zugewiesen</SelectItem>
+                    {users.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>{user.display_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="create-scheduled-date">Veröffentlichungsdatum</Label>
+                <Input id="create-scheduled-date" type="date" value={createScheduledDate} onChange={(event) => setCreateScheduledDate(event.target.value)} />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="create-publish-link">Publish-Link</Label>
+                <Input id="create-publish-link" value={createPublishLink} onChange={(event) => setCreatePublishLink(event.target.value)} placeholder="https://…" />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="create-performance-notes">Performance-Notizen</Label>
+                <Textarea id="create-performance-notes" value={createPerformanceNotes} onChange={(event) => setCreatePerformanceNotes(event.target.value)} placeholder="Learnings, Benchmarks oder Erwartungen festhalten" rows={3} />
+              </div>
+            </BriefingGroup>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Abbrechen</Button>
+            <Button onClick={() => void createDraft()} disabled={isCreatingDraft || (createTopicId === "none" && createTopicTitle.trim().length === 0)}>Entwurf erstellen</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
