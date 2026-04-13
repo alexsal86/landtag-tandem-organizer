@@ -163,7 +163,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }): React
       const { data, error } = result;
       if (error) {
         debugConsole.error("Error loading initial session:", error);
-        setAuthError(error.message ?? "Fehler beim Laden der Sitzung");
+        setAuthError((error as { message?: string })?.message ?? "Fehler beim Laden der Sitzung");
         setSession(null);
         setUser(null);
         setLoading(false);
