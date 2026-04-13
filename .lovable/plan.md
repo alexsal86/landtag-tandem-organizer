@@ -1,79 +1,44 @@
 
 
-## Plan: Fix Karten-Ansicht (6 Issues + Build Errors)
+## Plan: Fix Entscheidungen nicht geladen — supabase-fix.d.ts bricht Typen
 
-### Issues Identified
+### Root Cause
 
-1. **Map resets zoom when interacting** — In `SimpleLeafletMap.tsx` (line 429), `zoomLevel` is a dependency of the main rendering effect. Every zoom triggers `setZoomLevel`, which re-runs the effect that calls `fitBounds`, resetting the view.
+Die Datei `src/supabase-fix.d.ts` deklariert das gesamte `@supabase/supabase-js` Modul neu — aber enthält nur `createClient`, `SupabaseClient` und ein paar Utility-Typen. **Alle anderen Exports werden dadurch unsichtbar**: `User`, `Session`, `RealtimePostgresChangesPayload`, `RealtimeChannel`.
 
-2. **Popup/info hidden behind polygons** — The Leaflet popup z-index is being overridden. The `leaflet-overrides.css` sets aggressive z-index values but the popup pane still gets clipped by polygon layers.
+Diese werden in 15+ Dateien importiert (`useAuth.tsx`, `useNotifications.tsx`, `useNavigationNotifications.tsx`, etc.). Das führt zu Build-Fehlern, die den gesamten App-Build brechen — einschließlich der Entscheidungen.
 
-3. **Map disappears when no layer selected** — In `SimpleLeafletMap.tsx` lines 431-436, when `!districts.length && !showPartyAssociations`, the component returns a "no data" placeholder instead of showing the empty map. When both checkboxes are unchecked, `displayedDistricts` is empty.
+### Fix
 
-4. **Show old representatives per legislature** — The `election_representatives` table has no `legislature_period` column. Need to add it and update the UI to show historical mandate holders.
+**Datei: `src/supabase-fix.d.ts`** — Alle fehlenden Typen hinzufügen, die im Projekt verwendet werden:
 
-5. **Verwaltungsgrenzen count mixed with Wahlkreise** — In `ElectionDistrictsView.tsx` line 86-89, filtering is correct, but in `SimpleLeafletMap.tsx` line 452, the info overlay shows `districts.length` which includes both types when both are displayed. The statistics card in `ElectionDistrictsView.tsx` correctly separates them, but the map overlay text is wrong.
+```typescript
+declare module '@supabase/supabase-js' {
+  export function createClient<Database = any, SchemaName extends string & keyof Database = 'public' extends keyof Database ? 'public' : string & keyof Database>(
+    supabaseUrl: string,
+    supabaseKey: string,
+    options?: any,
+  ): any;
 
-6. **Verwaltungsgrenzen missing population/area data** — All 44 Verwaltungsgrenzen have `NULL` for population and area_km2. Need to populate with real data for all 44 BW Landkreise/Stadtkreise.
+  export class SupabaseClient<Database = any, SchemaName extends string = string> {}
+  export type SupabaseClientOptions<SchemaName extends string = string> = Record<string, any>;
+  export type QueryResult<T> = T extends PromiseLike<infer U> ? U : never;
+  export type QueryData<T> = T extends PromiseLike<{ data: infer U }> ? NonNullable<U> : never;
+  export type QueryError = any;
 
-### Build Errors (pre-existing, unrelated to map)
-- `JSX` namespace errors in 4 files — need explicit React JSX import
-- `PreparationDataCards.tsx` type error — cast unknown to ReactNode
-- Edge function parse errors — pre-existing, separate from this task
+  // Missing types that are imported throughout the project:
+  export interface User { id: string; email?: string; [key: string]: any; }
+  export interface Session { access_token: string; user: User; [key: string]: any; }
+  export type RealtimePostgresChangesPayload<T = any> = any;
+  export type RealtimeChannel = any;
+  export type AuthChangeEvent = string;
+}
+```
 
----
-
-### Implementation Steps
-
-#### Step 1: Fix zoom reset (Issue 1)
-**File: `src/components/SimpleLeafletMap.tsx`**
-- Remove `zoomLevel` from the main rendering effect's dependency array (line 429)
-- Only call `fitBounds` on initial render or when districts data actually changes (not on zoom)
-- Move marker size updates to a separate effect that only updates marker icons without clearing/re-adding all layers
-
-#### Step 2: Fix popup z-index (Issue 2)
-**File: `src/styles/leaflet-overrides.css`**
-- Ensure `.leaflet-popup-pane` z-index is higher than `.leaflet-overlay-pane` (polygon pane)
-- Add `.leaflet-overlay-pane { z-index: 2 !important; }` to keep polygons below popups
-
-#### Step 3: Keep map visible when no layers selected (Issue 3)
-**File: `src/components/SimpleLeafletMap.tsx`**
-- Remove the early return at lines 431-436 that hides the map when no districts
-- Instead, just show the empty map (tiles only) when no layers are active
-- In the rendering effect (line 133-134), skip clearing/rendering if no data, but don't prevent map display
-
-#### Step 4: Add legislature period support (Issue 4)
-**Database migration:**
-- Add `legislature_period` column (text, e.g. "17. Legislatur", "18. Legislatur") to `election_representatives`
-- Default existing records to current legislature
-
-**File: `src/hooks/useElectionDistricts.tsx`**
-- Include `legislature_period` in representative type and query
-
-**File: `src/components/ElectionDistrictsView.tsx`**
-- Group representatives by legislature period in the sidebar info card
-- Show current and historical mandate holders
-
-#### Step 5: Separate Verwaltungsgrenzen statistics (Issue 5)
-**File: `src/components/SimpleLeafletMap.tsx`**
-- Update the overlay text (lines 449-453) to show election districts and Verwaltungsgrenzen counts separately
-- Only count `district_type !== 'verwaltungsgrenze'` for the "Wahlkreise" label
-
-**File: `src/components/ElectionDistrictsView.tsx`**
-- Add separate statistics for Verwaltungsgrenzen (population, area) in the Statistics card
-
-#### Step 6: Populate Verwaltungsgrenzen data (Issue 6)
-- Use the Supabase insert tool to UPDATE all 44 Verwaltungsgrenzen with real population and area_km2 data from official BW statistics (Statistisches Landesamt BW, Stand 2023):
-  - e.g., Stuttgart: 632,743 Einwohner, 207.35 km²
-  - Karlsruhe Stadt: 313,092 Einwohner, 173.46 km²
-  - All 44 Landkreise/Stadtkreise
-
-#### Step 7: Fix build errors
-- Add `import type { JSX } from 'react'` to `FloatingTextFormatToolbar.tsx`, `ComponentPickerPlugin.tsx`, `DraggableBlockPlugin.tsx`, `NotificationContext.tsx`
-- Fix type cast in `PreparationDataCards.tsx`
+This single change should unblock the build and restore the Entscheidungen view.
 
 ### Technical Notes
-- The zoom-reset bug is the most impactful UX issue — caused by `zoomLevel` state triggering full layer re-render
-- Population/area data for BW Landkreise will be sourced from Statistisches Landesamt Baden-Württemberg (2023 figures)
-- Legislature period feature requires a DB migration
+- The root issue is that TypeScript `declare module` **replaces** the entire module's type surface — it doesn't augment it
+- A proper long-term fix would be to resolve the Bun symlink issue instead of shimming types, but this shim is the quickest path forward
+- All 18 files importing from `@supabase/supabase-js` will work again after this fix
 
