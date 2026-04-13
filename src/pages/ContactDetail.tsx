@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Edit, Trash2, Mail, Phone, MapPin, Building } from "lucide-react";
+import { ArrowLeft, Trash2, Mail, Phone, MapPin, Building, Star } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -222,27 +222,41 @@ export default function ContactDetail() {
     navigate(`/contacts/${id}/edit`);
   };
 
+  const detailLineParts = [contact.role, contact.organization].filter(
+    (value): value is string => Boolean(value && value.trim()),
+  );
+  const detailLine = detailLineParts.length > 0 ? detailLineParts.join(" • ") : "Keine Rolle • Keine Organisation";
+
   return (
-    <main id="main-content" className="min-h-screen bg-gradient-subtle p-6" tabIndex={-1}>
-      <div className="max-w-4xl mx-auto">
+    <main id="main-content" className="min-h-screen bg-gradient-subtle p-6 md:p-8" tabIndex={-1}>
+      <div className="max-w-6xl mx-auto">
         {/* Header with Back Button */}
-        <div className="flex items-center justify-between mb-6">
-          <Button 
-            variant="outline" 
+        <div className="flex items-center justify-between mb-10">
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => navigate(-1)}
+            aria-label="Zurück"
+            className="h-11 w-11"
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Zurück
+            <ArrowLeft className="h-7 w-7" />
           </Button>
           
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleEdit}>
-              <Edit className="h-4 w-4 mr-2" />
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" aria-label="Favorisieren" className="h-11 w-11">
+              <Star className="h-6 w-6" />
+            </Button>
+            <Button onClick={handleEdit} className="h-11 rounded-full px-8 text-lg">
               Bearbeiten
             </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              <Trash2 className="h-4 w-4 mr-2" />
-              Löschen
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleDelete}
+              aria-label="Löschen"
+              className="h-11 w-11 text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="h-6 w-6" />
             </Button>
           </div>
         </div>
@@ -256,26 +270,26 @@ export default function ContactDetail() {
 
           <TabsContent value="details">
             <Card className={`bg-card shadow-elegant border-border ${getPriorityColor(contact.priority)}`}>
-              <CardHeader className="pb-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-4">
-                    <Avatar className="h-16 w-16">
+              <CardHeader className="pb-8">
+                <div className="flex flex-col md:flex-row md:items-center gap-6 md:gap-8">
+                  <div className="shrink-0">
+                    <Avatar className="h-32 w-32 md:h-40 md:w-40">
                       <AvatarImage src={contact.avatar_url ?? undefined} />
-                      <AvatarFallback className="bg-primary text-primary-foreground text-xl">
+                      <AvatarFallback className="bg-primary text-primary-foreground text-4xl">
                         {getInitials(contact.name)}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
-                      <CardTitle className="text-2xl mb-2">{contact.name}</CardTitle>
-                      <p className="text-lg text-muted-foreground mb-2">{contact.role || "Keine Rolle"}</p>
-                      <div className="flex gap-2">
-                        <Badge className={getCategoryColor(contact.category)}>
-                          {getCategoryLabel(contact.category)}
-                        </Badge>
-                        <Badge variant="outline">
-                          Priorität: {getPriorityLabel(contact.priority)}
-                        </Badge>
-                      </div>
+                  </div>
+                  <div className="space-y-3">
+                    <CardTitle className="text-3xl md:text-5xl leading-tight">{contact.name}</CardTitle>
+                    <p className="text-xl md:text-3xl text-muted-foreground">{detailLine}</p>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <Badge className={getCategoryColor(contact.category)}>
+                        {getCategoryLabel(contact.category)}
+                      </Badge>
+                      <Badge variant="outline">
+                        Priorität: {getPriorityLabel(contact.priority)}
+                      </Badge>
                     </div>
                   </div>
                 </div>
