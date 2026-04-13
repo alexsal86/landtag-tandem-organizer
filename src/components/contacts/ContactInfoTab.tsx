@@ -106,6 +106,14 @@ export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ conta
     } : null,
   ].filter((item): item is NonNullable<typeof item> => Boolean(item));
 
+  const socialProfiles = [
+    { key: 'linkedin', icon: <Linkedin className="h-4 w-4 text-blue-600" />, label: 'LinkedIn', value: contact.linkedin },
+    { key: 'twitter', icon: <Hash className="h-4 w-4 text-foreground" />, label: 'X', value: contact.twitter },
+    { key: 'facebook', icon: <Facebook className="h-4 w-4 text-blue-600" />, label: 'Facebook', value: contact.facebook },
+    { key: 'instagram', icon: <Instagram className="h-4 w-4 text-pink-500" />, label: 'Instagram', value: contact.instagram },
+    { key: 'xing', icon: <User className="h-4 w-4 text-green-600" />, label: 'XING', value: contact.xing },
+  ].filter((social) => Boolean(social.value));
+
   return (
     <div className="space-y-4">
       {/* Classification */}
@@ -162,7 +170,7 @@ export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ conta
             <div className="flex items-center gap-2 mb-3"><MapPin className="h-4 w-4 text-primary" /><h3 className="font-semibold">Geschäftsadresse</h3></div>
             <div className="space-y-2 text-sm">
               {contact.business_street && (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div><p className="text-muted-foreground text-xs">Straße</p><p className="font-medium">{contact.business_street} {contact.business_house_number}</p></div>
                   <div><p className="text-muted-foreground text-xs">PLZ / Ort</p><p className="font-medium">{contact.business_postal_code} {contact.business_city}</p></div>
                 </div>
@@ -175,22 +183,29 @@ export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ conta
       )}
 
       {/* Social Media */}
-      {(contact.linkedin || contact.twitter || contact.facebook || contact.instagram || contact.xing) && (
+      {socialProfiles.length > 0 && (
         <Card>
           <CardContent className="p-4">
             <h3 className="font-semibold mb-3">Social Media</h3>
-            <div className="space-y-2">
-              {[
-                { key: 'linkedin', icon: <Linkedin className="h-4 w-4 text-blue-600" />, label: 'LinkedIn', value: contact.linkedin },
-                { key: 'twitter', icon: <Hash className="h-4 w-4 text-foreground" />, label: 'X', value: contact.twitter },
-                { key: 'facebook', icon: <Facebook className="h-4 w-4 text-blue-600" />, label: 'Facebook', value: contact.facebook },
-                { key: 'instagram', icon: <Instagram className="h-4 w-4 text-pink-500" />, label: 'Instagram', value: contact.instagram },
-                { key: 'xing', icon: <User className="h-4 w-4 text-green-600" />, label: 'XING', value: contact.xing },
-              ].filter(s => s.value).map(social => (
-                <div key={social.key} className="flex items-center gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {socialProfiles.map(social => (
+                <div key={social.key} className="flex items-center gap-2.5 rounded-lg border bg-muted/20 px-2.5 py-2">
                   {social.icon}
-                  <div className="flex-1 min-w-0"><p className="text-sm font-medium">{social.label}</p><p className="text-xs text-muted-foreground truncate">@{cleanUsername(social.value!)}</p></div>
-                  <Button size="sm" variant="outline" asChild><a href={generateSocialMediaUrl(social.key, social.value!)} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-3.5 w-3.5" /></a></Button>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium leading-none">{social.label}</p>
+                    <p className="text-xs text-muted-foreground truncate mt-1">@{cleanUsername(social.value!)}</p>
+                  </div>
+                  <Button size="icon" variant="ghost" asChild className="h-7 w-7 shrink-0">
+                    <a
+                      href={generateSocialMediaUrl(social.key, social.value!)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`${social.label} öffnen`}
+                      title={`${social.label} öffnen`}
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  </Button>
                 </div>
               ))}
             </div>
