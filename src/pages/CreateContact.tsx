@@ -201,7 +201,7 @@ export function CreateContact() {
     // Zod-Validierung: ersetzt die manuellen Pflichtfeld- und E-Mail-Checks
     const validation = createContactSchema.safeParse(formData);
     if (!validation.success) {
-      const firstError = validation.error.errors[0];
+      const firstError = validation.error.issues[0];
       toast({
         title: "Fehler",
         description: firstError?.message ?? "Bitte füllen Sie alle Pflichtfelder aus.",
