@@ -65,6 +65,13 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
   const mapRef = useRef<L.Map | null>(null);
   const districtLayerRef = useRef<L.LayerGroup | null>(null);
   const markerLayerRef = useRef<L.LayerGroup | null>(null);
+  const onDistrictClickRef = useRef(onDistrictClick);
+  const hasFittedBoundsRef = useRef(false);
+
+  // Keep callback ref in sync without triggering effects
+  useEffect(() => {
+    onDistrictClickRef.current = onDistrictClick;
+  });
 
   // Initialize map once
   useEffect(() => {
