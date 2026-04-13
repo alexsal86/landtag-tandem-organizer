@@ -231,7 +231,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
               fillOpacity: isSelected ? 0.7 : (isPartyBoundary ? 0.4 : (isAdministrative ? 0.3 : 0.25))
             });
           });
-          layer.on('click', () => onDistrictClick(district));
+          layer.on('click', () => onDistrictClickRef.current(district));
 
           let popupContent = `
             <div class="p-2 min-w-[200px]">
@@ -423,18 +423,19 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       });
     }
 
-    // Fit bounds without maxZoom constraint for best fit
-    if (renderedBounds && renderedBounds.isValid()) {
+    // Fit bounds only on first data load
+    if (!hasFittedBoundsRef.current && renderedBounds && renderedBounds.isValid()) {
+      hasFittedBoundsRef.current = true;
       const paddingValue = window.innerWidth < 768 ? 10 : 20;
       map.fitBounds(renderedBounds, {
         padding: [paddingValue, paddingValue] as [number, number],
         maxZoom: 12,
       });
-    } else if (showPartyAssociations && associations.length > 0 && !districts.length) {
-      // If only party associations are shown, center on Baden-Württemberg
+    } else if (!hasFittedBoundsRef.current && showPartyAssociations && associations.length > 0 && !districts.length) {
+      hasFittedBoundsRef.current = true;
       map.setView([48.7758, 9.1829], 8);
     }
-  }, [districts, selectedDistrict, onDistrictClick, showPartyAssociations, associations]);
+  }, [districts, selectedDistrict, showPartyAssociations, associations]);
 
   return (
     <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] bg-card rounded-lg overflow-hidden border border-border z-0">
