@@ -66,80 +66,44 @@ export function useMyWorkDecisionsData(userId?: string) {
     }
 
     try {
-      const [participantResult, creatorResult, publicResult] = await Promise.all([
-        supabase
-          .from("task_decision_participants")
-          .select(`
-            id,
-            decision_id,
-            task_decisions!inner (
-              id, title, description, response_deadline, status, created_at, created_by, visible_to_all, response_options, priority,
-              task_decision_attachments (id, file_name, file_path)
-            ),
-            task_decision_responses (id, response_type)
-          `)
-          .eq("user_id", userId)
-          .in("task_decisions.status", ["active", "open"]),
-        supabase
-          .from("task_decisions")
-          .select(`
-            id, title, description, response_deadline, status, created_at, created_by, visible_to_all, response_options, priority,
-            task_decision_participants (id, user_id, task_decision_responses (id, response_type)),
-            task_decision_attachments (id, file_name, file_path)
-          `)
-          .eq("created_by", userId)
-          .in("status", ["active", "open"]),
-        supabase
-          .from("task_decisions")
-          .select(`
-            id, title, description, response_deadline, status, created_at, created_by, visible_to_all, response_options, priority,
-            task_decision_participants (id, user_id, task_decision_responses (id, response_type)),
-            task_decision_attachments (id, file_name, file_path)
-          `)
-          .eq("visible_to_all", true)
-          .in("status", ["active", "open"])
-          .neq("created_by", userId),
-      ]);
+      // Einzel-RPC ersetzt 5-6 separate DB-Roundtrips (3x Basis + 2x Enrichment + Profiles)
+      const { data: rpcData, error: rpcError } = await supabase
+        .rpc('get_my_work_decisions', { p_user_id: userId });
 
       if (!isCurrentRequest()) return;
+      if (rpcError) throw rpcError;
 
-      if (participantResult.error) throw participantResult.error;
-      if (creatorResult.error) throw creatorResult.error;
-      if (publicResult.error) throw publicResult.error;
+      type RpcDecision = {
+        id: string; title: string; description: string | null; response_deadline: string | null;
+        status: string; created_at: string; created_by: string; visible_to_all: boolean;
+        response_options: unknown; priority: number | null;
+        participant_id: string | null; is_participant: boolean; is_creator: boolean; is_public: boolean;
+        task_decision_attachments: DecisionAttachment[];
+        task_decision_participants: Array<{
+          id: string; user_id: string;
+          task_decision_responses: Array<{
+            id: string; response_type: string; comment: string | null; creator_response: string | null;
+            parent_response_id: string | null; created_at: string; updated_at: string;
+          }>;
+        }>;
+        topic_ids: string[];
+      };
+      type RpcProfile = { user_id: string; display_name: string | null; badge_color: string | null; avatar_url: string | null };
+      type RpcResult = { decisions: RpcDecision[]; profiles: RpcProfile[] };
 
-      const participantData = participantResult.data || [];
-      const creatorData = creatorResult.data || [];
-      const publicData = publicResult.data || [];
+      const { decisions: rawDecisions, profiles: rawProfiles } = (rpcData as RpcResult) ?? { decisions: [], profiles: [] };
+      const profileMap = new Map<string, RpcProfile>((rawProfiles ?? []).map((p) => [p.user_id, p]));
 
-      const participantDecisions: MyWorkDecision[] = participantData.map((item) => {
-        const attInfo = computeAttachmentInfo(item.task_decisions.task_decision_attachments);
-        return {
-          id: item.task_decisions.id,
-          title: item.task_decisions.title,
-          description: item.task_decisions.description,
-          response_deadline: item.task_decisions.response_deadline,
-          status: item.task_decisions.status,
-          created_at: item.task_decisions.created_at,
-          created_by: item.task_decisions.created_by,
-          participant_id: item.id,
-          hasResponded: item.task_decision_responses.length > 0,
-          isCreator: item.task_decisions.created_by === userId,
-          isParticipant: true,
-          pendingCount: 0,
-          responseType: item.task_decision_responses[0]?.response_type || null,
-          visible_to_all: item.task_decisions.visible_to_all,
-          priority: item.task_decisions.priority ?? 0,
-          ...attInfo,
-          response_options: Array.isArray(item.task_decisions.response_options) ? item.task_decisions.response_options as unknown as ResponseOption[] : undefined,
-        };
-      });
+      // Deduplizierung: Bei UNION können Beschlüsse mehrfach erscheinen (z.B. Ersteller + Teilnehmer)
+      const allDecisionsMap = new Map<string, MyWorkDecision>();
 
-      const creatorDecisions: MyWorkDecision[] = creatorData.map((item) => {
-        const participants = item.task_decision_participants || [];
+      for (const item of rawDecisions ?? []) {
+        const attInfo = computeAttachmentInfo(item.task_decision_attachments ?? []);
+        const participants = item.task_decision_participants ?? [];
         const pendingCount = participants.filter((p) => !p.task_decision_responses || p.task_decision_responses.length === 0).length;
-        const attInfo = computeAttachmentInfo(item.task_decision_attachments);
+        const userParticipant = participants.find((p) => p.user_id === userId);
 
-        return {
+        const decision: MyWorkDecision = {
           id: item.id,
           title: item.title,
           description: item.description,
@@ -147,118 +111,29 @@ export function useMyWorkDecisionsData(userId?: string) {
           status: item.status,
           created_at: item.created_at,
           created_by: item.created_by,
-          participant_id: null,
-          hasResponded: true,
-          isCreator: true,
-          isParticipant: false,
+          participant_id: item.participant_id ?? userParticipant?.id ?? null,
+          hasResponded: item.is_participant
+            ? (userParticipant ? userParticipant.task_decision_responses.length > 0 : false)
+            : true,
+          isCreator: item.is_creator,
+          isParticipant: item.is_participant,
+          isPublic: item.is_public,
           pendingCount,
+          responseType: userParticipant?.task_decision_responses[0]?.response_type ?? null,
           visible_to_all: item.visible_to_all,
           priority: item.priority ?? 0,
           ...attInfo,
           response_options: Array.isArray(item.response_options) ? item.response_options as unknown as ResponseOption[] : undefined,
-        };
-      });
-
-      const participantDecisionIds = new Set(participantDecisions.map((d) => d.id));
-      const publicDecisions: MyWorkDecision[] = publicData
-        .filter((item) => !participantDecisionIds.has(item.id))
-        .map((item) => {
-          const participants = item.task_decision_participants || [];
-          const userParticipant = participants.find((p) => p.user_id === userId);
-          const pendingCount = participants.filter((p) => !p.task_decision_responses || p.task_decision_responses.length === 0).length;
-          const attInfo = computeAttachmentInfo(item.task_decision_attachments);
-
-          return {
-            id: item.id,
-            title: item.title,
-            description: item.description,
-            response_deadline: item.response_deadline,
-            status: item.status,
-            created_at: item.created_at,
-            created_by: item.created_by,
-            participant_id: userParticipant?.id || null,
-            hasResponded: userParticipant ? userParticipant.task_decision_responses.length > 0 : true,
-            isCreator: false,
-            isParticipant: !!userParticipant,
-            pendingCount,
-            isPublic: true,
-            visible_to_all: true,
-            priority: item.priority ?? 0,
-            ...attInfo,
-            response_options: Array.isArray(item.response_options) ? item.response_options as unknown as ResponseOption[] : undefined,
-          };
-        });
-
-      const allDecisionsMap = new Map<string, MyWorkDecision>();
-      participantDecisions.forEach((d) => allDecisionsMap.set(d.id, d));
-      creatorDecisions.forEach((d) => {
-        if (!allDecisionsMap.has(d.id)) {
-          allDecisionsMap.set(d.id, d);
-        } else {
-          const existing = allDecisionsMap.get(d.id)!;
-          existing.pendingCount = d.pendingCount;
-          existing.isCreator = true;
-        }
-      });
-      publicDecisions.forEach((d) => {
-        if (!allDecisionsMap.has(d.id)) allDecisionsMap.set(d.id, d);
-      });
-
-      const allDecisionsList = Array.from(allDecisionsMap.values());
-      const allDecisionIds = allDecisionsList.map((d) => d.id);
-
-      if (allDecisionIds.length > 0) {
-        const [participantsResult, topicsResult] = await Promise.all([
-          supabase
-            .from("task_decision_participants")
-            .select(`
-              id, user_id, decision_id,
-              task_decision_responses (id, response_type, comment, creator_response, parent_response_id, created_at, updated_at)
-            `)
-            .in("decision_id", allDecisionIds),
-          supabase.from("task_decision_topics").select("decision_id, topic_id").in("decision_id", allDecisionIds),
-        ]);
-
-        if (!isCurrentRequest()) return;
-
-        if (participantsResult.error) throw participantsResult.error;
-        if (topicsResult.error) throw topicsResult.error;
-
-        const participantsWithProfiles = participantsResult.data || [];
-        const topicsData = topicsResult.data || [];
-
-        const allUserIds = [...new Set([...participantsWithProfiles.map((p) => p.user_id), ...allDecisionsList.map((d) => d.created_by)])];
-
-        type ProfileRow = { user_id: string; display_name: string | null; badge_color: string | null; avatar_url: string | null };
-        const { data: profiles, error: profilesError } =
-          allUserIds.length > 0
-            ? await supabase.from("profiles").select("user_id, display_name, badge_color, avatar_url").in("user_id", allUserIds)
-            : { data: [] as ProfileRow[], error: null };
-
-        if (!isCurrentRequest()) return;
-
-        if (profilesError) throw profilesError;
-
-        const profileMap = new Map<string, ProfileRow>((profiles ?? []).map((p) => [p.user_id, p] as [string, ProfileRow]));
-
-        const topicsByDecision = new Map<string, string[]>();
-        topicsData.forEach((t) => {
-          if (!topicsByDecision.has(t.decision_id)) topicsByDecision.set(t.decision_id, []);
-          topicsByDecision.get(t.decision_id)!.push(t.topic_id);
-        });
-
-        const participantsByDecision = new Map<string, NonNullable<MyWorkDecision['participants']>[number][]>();
-        participantsWithProfiles.forEach((p) => {
-          if (!participantsByDecision.has(p.decision_id)) participantsByDecision.set(p.decision_id, []);
-          participantsByDecision.get(p.decision_id)!.push({
+          topicIds: item.topic_ids ?? [],
+          participants: participants.map((p) => ({
             id: p.id,
             user_id: p.user_id,
             profile: {
-              display_name: profileMap.get(p.user_id)?.display_name || null,
-              badge_color: profileMap.get(p.user_id)?.badge_color || null,
-              avatar_url: profileMap.get(p.user_id)?.avatar_url || null,
+              display_name: profileMap.get(p.user_id)?.display_name ?? null,
+              badge_color: profileMap.get(p.user_id)?.badge_color ?? null,
+              avatar_url: profileMap.get(p.user_id)?.avatar_url ?? null,
             },
-            responses: (p.task_decision_responses || [])
+            responses: (p.task_decision_responses ?? [])
               .sort((a, b) => {
                 const aIsChild = !!a.parent_response_id;
                 const bIsChild = !!b.parent_response_id;
@@ -266,21 +141,28 @@ export function useMyWorkDecisionsData(userId?: string) {
                 return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
               })
               .map((r) => ({ ...r, response_type: r.response_type as string })),
-          });
-        });
+          })),
+        };
 
-        allDecisionsList.forEach((d) => {
-          d.participants = participantsByDecision.get(d.id) || [];
-          d.topicIds = topicsByDecision.get(d.id) || [];
-          const cp = profileMap.get(d.created_by);
-          d.creator = {
-            user_id: d.created_by,
-            display_name: cp?.display_name || null,
-            badge_color: cp?.badge_color || null,
-            avatar_url: cp?.avatar_url || null,
-          };
-        });
+        const cp = profileMap.get(item.created_by);
+        decision.creator = {
+          user_id: item.created_by,
+          display_name: cp?.display_name ?? null,
+          badge_color: cp?.badge_color ?? null,
+          avatar_url: cp?.avatar_url ?? null,
+        };
+
+        // Bei Duplikaten: is_creator und pendingCount zusammenführen
+        if (allDecisionsMap.has(item.id)) {
+          const existing = allDecisionsMap.get(item.id)!;
+          if (item.is_creator) existing.isCreator = true;
+          if (pendingCount > 0) existing.pendingCount = pendingCount;
+        } else {
+          allDecisionsMap.set(item.id, decision);
+        }
       }
+
+      const allDecisionsList = Array.from(allDecisionsMap.values());
 
       allDecisionsList.sort((a, b) => {
         const priorityA = a.priority ?? 0;

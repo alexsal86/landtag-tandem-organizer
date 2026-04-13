@@ -47,32 +47,34 @@ export const useContactDocumentCounts = (contactIds: string[]) => {
           .in('id', contactIds);
 
         const taggedCounts: Record<string, number> = {};
-        
-        // Batch tag queries to avoid too many individual requests
+
         const contactsWithTags = (contactsData || []).filter(c => c.tags && c.tags.length > 0);
-        
+
         if (contactsWithTags.length > 0) {
-          // Get all unique tags
-          const allTags = Array.from(new Set(contactsWithTags.flatMap(c => c.tags)));
-          
-          // Fetch all documents with any of these tags in one query
-          const { data: taggedDocs } = await supabase
+          // Alle einzigartigen Tags aller Kontakte ermitteln
+          const allContactTags = Array.from(new Set(contactsWithTags.flatMap(c => c.tags as string[])));
+
+          // Nur Dokumente laden, deren Tags sich mit einem der Kontakt-Tags überschneiden (DB-seitig)
+          const { data: taggedDocs, error: taggedError } = await supabase
             .from('documents')
             .select('id, tags')
             .eq('tenant_id', currentTenant.id)
-            .not('tags', 'is', null);
+            .overlaps('tags', allContactTags);
 
-          // Count matches for each contact
+          if (taggedError) throw taggedError;
+
+          // Treffer pro Kontakt zählen (bereits stark reduziertes Ergebnis-Set)
           contactsWithTags.forEach(contact => {
-            const matchingDocs = taggedDocs?.filter(doc => 
-              doc.tags && doc.tags.some((tag: string) => contact.tags?.includes(tag))
+            const contactTags = contact.tags as string[];
+            const matchingDocs = taggedDocs?.filter(doc =>
+              doc.tags && (doc.tags as string[]).some(tag => contactTags.includes(tag))
             ) || [];
-            
-            // Exclude documents already counted in direct links
-            const uniqueMatches = matchingDocs.filter(doc => 
+
+            // Dokumente ausschließen, die bereits über directData gezählt wurden
+            const uniqueMatches = matchingDocs.filter(doc =>
               !directData?.some(dc => dc.document_id === doc.id && dc.contact_id === contact.id)
             );
-            
+
             taggedCounts[contact.id] = uniqueMatches.length;
           });
         }

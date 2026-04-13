@@ -9,6 +9,7 @@ import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
 import { getCoiCapabilityStatus } from '@/lib/coiRuntime';
 import type { MatrixCreateRoomOptions, MatrixMessage, MatrixReactionSummary } from '@/types/matrix';
+import { safeGetItem, safeSetItem, safeRemoveItem } from '@/utils/storage';
 
 import type {
   MatrixCredentials,
@@ -190,7 +191,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
           .maybeSingle();
 
         if (profile?.matrix_user_id && profile?.matrix_access_token) {
-          const storedDeviceId = localStorage.getItem(`matrix_device_id:${profile.matrix_user_id}`) || undefined;
+          const storedDeviceId = safeGetItem(`matrix_device_id:${profile.matrix_user_id}`) || undefined;
           setCredentials({
             userId: profile.matrix_user_id,
             accessToken: profile.matrix_access_token,
@@ -218,7 +219,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
       const resolveDeviceId = async (opts?: { ignoreCached?: boolean }) => {
         const cachedDeviceId = opts?.ignoreCached
           ? undefined
-          : (creds.deviceId || localStorage.getItem(deviceStorageKey) || undefined);
+          : (creds.deviceId || safeGetItem(deviceStorageKey) || undefined);
         if (cachedDeviceId) return cachedDeviceId;
 
         let whoamiBody: { user_id?: string; device_id?: string };
@@ -238,7 +239,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
 
         const resolvedDeviceId = whoamiBody.device_id;
         if (!resolvedDeviceId) throw new Error('Matrix-Connect abgebrochen: whoami lieferte keine device_id und lokal ist keine deviceId gespeichert.');
-        localStorage.setItem(deviceStorageKey, resolvedDeviceId);
+        safeSetItem(deviceStorageKey, resolvedDeviceId);
         return resolvedDeviceId;
       };
 
@@ -247,7 +248,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
       authPasswordRef.current = uiaPassword;
 
       const getSecretStorageKey = async ({ keys }: { keys: Record<string, unknown> }) => {
-        const recoveryKey = localStorage.getItem(`matrix_recovery_key:${creds.userId}`)?.trim();
+        const recoveryKey = safeGetItem(`matrix_recovery_key:${creds.userId}`)?.trim();
         if (!recoveryKey) return null;
         const keyId = Object.keys(keys)[0];
         if (!keyId) return null;
@@ -281,7 +282,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
           const resp = await fetch(`${creds.homeserverUrl}/_matrix/client/v3/devices/${localDeviceId}`, { headers: { Authorization: `Bearer ${creds.accessToken}` } });
           if (!resp.ok) {
             matrixLogger.warn('Stored device no longer exists on server, creating new device');
-            localStorage.removeItem(`matrix_device_id:${creds.userId}`);
+            safeRemoveItem(`matrix_device_id:${creds.userId}`);
             await clearLocalCryptoStores(creds.userId);
             localDeviceId = await resolveDeviceId({ ignoreCached: true });
             matrixClient = sdk.createClient({ baseUrl: creds.homeserverUrl, accessToken: creds.accessToken, userId: creds.userId, deviceId: localDeviceId, cryptoCallbacks: { getSecretStorageKey } });
@@ -335,7 +336,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
 
       const bootstrapCryptoSecrets = async (cryptoApi: ReturnType<typeof matrixClient.getCrypto>, userId: string, password?: string) => {
         if (!cryptoApi) return;
-        const existingKey = localStorage.getItem(`matrix_recovery_key:${userId}`);
+        const existingKey = safeGetItem(`matrix_recovery_key:${userId}`);
         try {
           const isReady = await cryptoApi.isSecretStorageReady();
           if (!isReady) {
@@ -346,7 +347,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
                     try { const privateKey = decodeRecoveryKey(existingKey.trim()); return { privateKey, encodedPrivateKey: existingKey.trim() }; } catch {}
                   }
                   const newKey = await cryptoApi.createRecoveryKeyFromPassphrase(undefined);
-                  localStorage.setItem(`matrix_recovery_key:${userId}`, newKey.encodedPrivateKey ?? '');
+                  safeSetItem(`matrix_recovery_key:${userId}`, newKey.encodedPrivateKey ?? '');
                   matrixLogger.log('Generated and stored new Matrix recovery key');
                   return newKey;
                 },
@@ -387,7 +388,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
             if (!keyBackupActivatedRef.current) {
               keyBackupActivatedRef.current = true;
               const cryptoApi = matrixClient.getCrypto();
-              if (cryptoApi) cryptoApi.checkKeyBackupAndEnable().catch(() => {});
+              if (cryptoApi) cryptoApi.checkKeyBackupAndEnable().catch((e: unknown) => { matrixLogger.warn('[Matrix] checkKeyBackupAndEnable failed (non-critical):', e); });
             }
           }
         } else if (state === 'RECONNECTING') {
@@ -567,7 +568,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
         matrixLogger.warn('[Matrix] Auto-recovering from OTK collision: clearing crypto stores and reconnecting...');
         matrixClient.stopClient();
         await clearLocalCryptoStores(creds.userId);
-        localStorage.removeItem(`matrix_device_id:${creds.userId}`);
+        safeRemoveItem(`matrix_device_id:${creds.userId}`);
         localDeviceId = await resolveDeviceId({ ignoreCached: true });
         matrixClient = sdk.createClient({ baseUrl: creds.homeserverUrl, accessToken: creds.accessToken, userId: creds.userId, deviceId: localDeviceId, cryptoCallbacks: { getSecretStorageKey } });
         clientRef.current = matrixClient;
@@ -610,7 +611,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
       updateRuntimeDiagnostics(lastCryptoError, { secretStorageReady, crossSigningReady, keyBackupEnabled });
 
       const finalDeviceId = matrixClient.getDeviceId() || localDeviceId || '';
-      if (finalDeviceId) localStorage.setItem(`matrix_device_id:${creds.userId}`, finalDeviceId);
+      if (finalDeviceId) safeSetItem(`matrix_device_id:${creds.userId}`, finalDeviceId);
 
       setClient(matrixClient);
       setCredentials({ ...creds, deviceId: finalDeviceId || undefined });
@@ -1011,7 +1012,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
     }
 
     const userId = credentials?.userId || '';
-    if (userId) localStorage.removeItem(`matrix_device_id:${userId}`);
+    if (userId) safeRemoveItem(`matrix_device_id:${userId}`);
 
     if (credentials) {
       await new Promise(r => setTimeout(r, 500));

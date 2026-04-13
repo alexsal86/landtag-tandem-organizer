@@ -3,6 +3,7 @@ import type { Database, Json } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { debugConsole } from "@/utils/debugConsole";
+import { safeGetItem, safeSetItem, safeRemoveItem } from "@/utils/storage";
 
 export type Tenant = Database["public"]["Tables"]["tenants"]["Row"] & {
   settings: Json;
@@ -77,8 +78,8 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
       debugConsole.log("🏢 Fetching tenant memberships for user:", user.id);
 
       const legacyKey = "currentTenantId";
-      if (localStorage.getItem(legacyKey)) {
-        localStorage.removeItem(legacyKey);
+      if (safeGetItem(legacyKey)) {
+        safeRemoveItem(legacyKey);
         debugConsole.log("🧹 Cleaned up legacy tenant storage key");
       }
 
@@ -114,7 +115,7 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
       setTenants(tenantsData);
       debugConsole.log("🏢 Available tenants for user:", tenantsData.map((tenant) => tenant.name));
 
-      const savedTenantId = localStorage.getItem(tenantStorageKey);
+      const savedTenantId = safeGetItem(tenantStorageKey);
       let currentTenantToSet: Tenant | null = null;
 
       if (savedTenantId) {
@@ -124,7 +125,7 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
           debugConsole.log("🏢 Restored tenant from localStorage:", currentTenantToSet.name);
         } else {
           debugConsole.warn("⚠️ Stored tenant not accessible for this user, clearing localStorage");
-          localStorage.removeItem(tenantStorageKey);
+          safeRemoveItem(tenantStorageKey);
         }
       }
 
@@ -137,11 +138,11 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
 
       setCurrentTenant(currentTenantToSet);
       if (currentTenantToSet) {
-        localStorage.setItem(tenantStorageKey, currentTenantToSet.id);
+        safeSetItem(tenantStorageKey, currentTenantToSet.id);
         debugConsole.log("🏢 Current tenant set to:", currentTenantToSet.name);
       } else {
         debugConsole.warn("⚠️ No tenant available for user - user may need tenant assignment");
-        localStorage.removeItem(tenantStorageKey);
+        safeRemoveItem(tenantStorageKey);
       }
     } catch (error: unknown) {
       debugConsole.error("Error in fetchTenants:", error);
@@ -164,7 +165,7 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
     }
 
     setCurrentTenant(tenant);
-    localStorage.setItem(`currentTenantId_${user.id}`, tenantId);
+    safeSetItem(`currentTenantId_${user.id}`, tenantId);
     debugConsole.log("🏢 Switched to tenant:", tenant.name);
   };
 

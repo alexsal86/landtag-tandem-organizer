@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef, Re
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
+import { safeGetItem, safeSetItem } from '@/utils/storage';
 
 interface MatrixUnreadContextType {
   totalUnreadCount: number;
@@ -24,7 +25,7 @@ export function MatrixUnreadProvider({ children }: { children: ReactNode }) {
   const { currentTenant } = useTenant();
 
   const [totalUnreadCount, setTotalUnreadCount] = useState(() => {
-    const cached = localStorage.getItem(STORAGE_KEY);
+    const cached = safeGetItem(STORAGE_KEY);
     return cached ? parseInt(cached, 10) || 0 : 0;
   });
   const [hasCredentials, setHasCredentials] = useState(false);
@@ -108,7 +109,7 @@ export function MatrixUnreadProvider({ children }: { children: ReactNode }) {
       }
 
       setTotalUnreadCount(total);
-      localStorage.setItem(STORAGE_KEY, String(total));
+      safeSetItem(STORAGE_KEY, String(total));
     } catch {
       // Silently fail - polling is best-effort
     }
