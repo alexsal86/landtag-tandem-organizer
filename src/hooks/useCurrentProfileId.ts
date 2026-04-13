@@ -25,7 +25,11 @@ export function useCurrentProfileId() {
       .eq("user_id", user.id)
       .eq("tenant_id", currentTenant.id)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('[useCurrentProfileId]', error.message);
+          return;
+        }
         setProfileId(data?.id ?? null);
       });
   }, [user?.id, currentTenant?.id]);

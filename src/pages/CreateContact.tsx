@@ -26,6 +26,7 @@ import {
 import { DuplicateWarning } from "@/components/DuplicateWarning";
 import { TagInput } from "@/components/ui/tag-input";
 import type { ContactCategory, ContactDuplicateCandidate, ContactPriority, EditableContact } from "@/types/contact";
+import { createContactSchema } from "@/features/contacts/schemas/contact.schema";
 
 type ContactFormData = {
   contact_type: Exclude<import("@/types/contact").ContactType, "archive">;
@@ -197,33 +198,20 @@ export function CreateContact() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
 
-    const requiredFields: Array<keyof ContactFormData> = [
-      "name",
-      "category",
-      "priority",
-    ];
-    const missingFields = requiredFields.filter((field) => !formData[field]);
-
-    if (missingFields.length > 0) {
+    // Zod-Validierung: ersetzt die manuellen Pflichtfeld- und E-Mail-Checks
+    const validation = createContactSchema.safeParse(formData);
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
       toast({
         title: "Fehler",
-        description: "Bitte füllen Sie alle Pflichtfelder aus.",
+        description: firstError?.message ?? "Bitte füllen Sie alle Pflichtfelder aus.",
         variant: "destructive",
       });
+      if (firstError?.path[0] === 'email') {
+        setEmailValidationError(firstError.message);
+      }
       return;
     }
-
-    if (!formData.email && !formData.phone) {
-      toast({
-        title: "Fehlende Kontaktdaten",
-        description:
-          "Bitte hinterlegen Sie mindestens E-Mail oder Telefonnummer.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (formData.email && !validateEmail(formData.email)) return;
 
     const duplicates = checkForDuplicates({
       name: formData.name,

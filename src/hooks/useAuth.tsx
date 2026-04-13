@@ -7,11 +7,13 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { logAuditEvent, AuditActions } from "@/hooks/useAuditLog";
 import { debugConsole } from "@/utils/debugConsole";
+import { safeRemoveItem } from "@/utils/storage";
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  authError: string | null;
   signOut: () => Promise<void>;
 }
 
@@ -125,6 +127,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }): React
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect((): (() => void) => {
     let previousUserId: string | null = null;
@@ -160,6 +163,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }): React
       const { data, error } = result;
       if (error) {
         debugConsole.error("Error loading initial session:", error);
+        setAuthError(error.message ?? "Fehler beim Laden der Sitzung");
         setSession(null);
         setUser(null);
         setLoading(false);
@@ -196,9 +200,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }): React
       });
     }
 
-    localStorage.removeItem("currentTenantId");
+    safeRemoveItem("currentTenantId");
     if (activeUser?.id) {
-      localStorage.removeItem(`currentTenantId_${activeUser.id}`);
+      safeRemoveItem(`currentTenantId_${activeUser.id}`);
     }
 
     if (activeUser?.id) {
@@ -227,6 +231,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }): React
     user,
     session,
     loading,
+    authError,
     signOut,
   };
 

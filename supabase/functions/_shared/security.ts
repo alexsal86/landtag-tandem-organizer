@@ -1,12 +1,41 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// ─── CORS ─────────────────────────────────────────────────────────────────────
+
+const ALLOWED_ORIGINS = [
+  "https://app.landtag-tandem.de",
+  "http://localhost:5173",
+  "http://localhost:3000",
+];
+
+const ALLOW_HEADERS =
+  "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version";
+
 /**
- * Shared CORS headers for all edge functions.
+ * Returns origin-specific CORS headers.
+ * If the request origin is in the allowlist it is echoed back; otherwise the
+ * primary production origin is used. The `Vary: Origin` header prevents
+ * incorrect caching of responses for different origins.
+ */
+export function getCorsHeaders(req: Request): HeadersInit {
+  const origin = req.headers.get("Origin");
+  const allowed =
+    origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowed,
+    "Access-Control-Allow-Headers": ALLOW_HEADERS,
+    "Vary": "Origin",
+  };
+}
+
+/**
+ * @deprecated Use getCorsHeaders(req) for origin-aware CORS.
+ * Kept for functions that define their own corsHeaders locally — those are
+ * overridden automatically by withSafeHandler.
  */
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers": ALLOW_HEADERS,
 };
 
 export type SafeErrorCode =
@@ -134,14 +163,29 @@ export function withSafeHandler(
   handler: (req: Request) => Promise<Response>,
 ): (req: Request) => Promise<Response> {
   return async (req: Request): Promise<Response> => {
+    const corseHdrs = getCorsHeaders(req);
+
     if (req.method === "OPTIONS") {
-      return new Response(null, { headers: corsHeaders });
+      return new Response(null, { headers: corseHdrs });
+    }
+
+    /** Overwrite any locally-set CORS headers with origin-specific values. */
+    function patchCors(resp: Response): Response {
+      const headers = new Headers(resp.headers);
+      for (const [key, value] of Object.entries(corseHdrs)) {
+        headers.set(key, value);
+      }
+      return new Response(resp.body, {
+        status: resp.status,
+        statusText: resp.statusText,
+        headers,
+      });
     }
 
     try {
-      return await handler(req);
+      return patchCors(await handler(req));
     } catch (err: unknown) {
-      return safeErrorResponse(err, functionName);
+      return patchCors(safeErrorResponse(err, functionName));
     }
   };
 }

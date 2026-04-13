@@ -55,7 +55,7 @@ export function useDossierEntryCounts(dossierId: string | null) {
   return useQuery({
     queryKey: ["dossier-entry-counts", dossierId, tenantId],
     enabled: !!tenantId && !!dossierId,
-    staleTime: 30_000,
+    staleTime: 2 * 60_000,
     queryFn: async () => {
       const { count, error } = await supabase
         .from("dossier_entries")

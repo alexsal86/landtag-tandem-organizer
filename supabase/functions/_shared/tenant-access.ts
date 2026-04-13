@@ -1,4 +1,5 @@
 import { createClient, type User } from "https://esm.sh/@supabase/supabase-js@2";
+import { getCorsHeaders } from "./security.ts";
 
 interface RequireTenantAccessOptions {
   req: Request;
@@ -20,11 +21,6 @@ interface TenantAccessSuccess {
 interface TenantAccessFailure {
   response: Response;
 }
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
 
 function securityLog(functionName: string, userId: string | null, requestedTenantId: string | null, allowed: boolean, reason?: string) {
   console.log(JSON.stringify({
@@ -58,7 +54,7 @@ export async function requireTenantAccess(
     return {
       response: new Response(JSON.stringify({ error: "Missing bearer token" }), {
         status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       }),
     };
   }
@@ -71,7 +67,7 @@ export async function requireTenantAccess(
     return {
       response: new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       }),
     };
   }
@@ -97,7 +93,7 @@ export async function requireTenantAccess(
     return {
       response: new Response(JSON.stringify({ error: "Forbidden: no active membership for tenant" }), {
         status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       }),
     };
   }

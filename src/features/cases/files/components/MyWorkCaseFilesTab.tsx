@@ -63,7 +63,7 @@ export function MyWorkCaseFilesTab() {
     const channelName = `my-work-casefiles-${currentTenant.id}-${user.id}-${crypto.randomUUID()}`;
     const channel = supabase
       .channel(channelName)
-      .on("postgres_changes", { event: "*", schema: "public", table: "case_files" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "case_files", filter: `tenant_id=eq.${currentTenant.id}` }, scheduleRefresh)
       .subscribe();
     return () => {
       if (timeout) clearTimeout(timeout);
