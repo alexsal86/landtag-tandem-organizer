@@ -16,7 +16,7 @@ interface DecisionParticipant {
     response_type: string;
     comment: string | null;
     creator_response: string | null;
-    parent_response_id: string | null;
+    parent_response_id?: string | null;
     created_at: string;
     updated_at?: string | null;
   }>;
