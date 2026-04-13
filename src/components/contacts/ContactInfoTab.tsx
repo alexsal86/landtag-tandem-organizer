@@ -1,11 +1,12 @@
 import React from 'react';
-import { Mail, Phone, MapPin, Building, User, Calendar, Globe, ExternalLink, Tag, Hash, Euro } from 'lucide-react';
+import { Mail, Phone, MapPin, Building, User, Calendar, Globe, ExternalLink, Tag, Hash } from 'lucide-react';
 import { Linkedin, Facebook, Instagram } from '@/components/icons/SocialIcons';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatGermanDate } from '@/lib/utils';
 import type { Contact } from '@/types/contact';
+import type { LucideIcon } from 'lucide-react';
 
 interface ContactInfoTabProps {
   contact: Contact;
@@ -46,14 +47,72 @@ const categoryLabels: Record<string, string> = {
   citizen: 'Bürger', colleague: 'Kollege', business: 'Wirtschaft', media: 'Medien', lobbyist: 'Lobbyist',
 };
 
+interface InfoRowProps {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  actionHref?: string;
+  actionLabel?: string;
+  actionExternal?: boolean;
+}
+
+const InfoRow: React.FC<InfoRowProps> = ({ icon: Icon, label, value, actionHref, actionLabel, actionExternal = false }) => (
+  <div className="flex items-center gap-3 p-2.5 bg-muted/30 rounded-lg">
+    <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+    <div className="flex-1 min-w-0">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-sm font-medium truncate">{value}</p>
+    </div>
+    {actionHref && (
+      <Button size="sm" variant="outline" asChild>
+        <a
+          href={actionHref}
+          target={actionExternal ? "_blank" : undefined}
+          rel={actionExternal ? "noopener noreferrer" : undefined}
+          aria-label={actionLabel ?? label}
+          title={actionLabel ?? label}
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+        </a>
+      </Button>
+    )}
+  </div>
+);
+
 export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ contact, allTags }) => {
+  const contactInfoRows = [
+    contact.email ? {
+      icon: Mail, label: 'E-Mail', value: contact.email, actionHref: `mailto:${contact.email}`, actionLabel: 'E-Mail verfassen',
+    } : null,
+    contact.phone ? {
+      icon: Phone, label: 'Telefon', value: contact.phone, actionHref: `tel:${contact.phone}`, actionLabel: 'Anrufen',
+    } : null,
+    contact.contact_type === "person" && contact.organization ? {
+      icon: Building, label: 'Organisation', value: contact.organization,
+    } : null,
+    contact.birthday ? {
+      icon: Calendar, label: 'Geburtstag', value: formatGermanDate(contact.birthday),
+    } : null,
+    contact.website ? {
+      icon: Globe,
+      label: 'Website',
+      value: contact.website,
+      actionHref: contact.website.startsWith('http') ? contact.website : `https://${contact.website}`,
+      actionExternal: true,
+      actionLabel: 'Website öffnen',
+    } : null,
+    contact.last_contact ? {
+      icon: Calendar, label: 'Letzter Kontakt', value: contact.last_contact,
+    } : null,
+  ].filter((item): item is NonNullable<typeof item> => Boolean(item));
+
   return (
     <div className="space-y-4">
       {/* Classification */}
       <Card className="border-l-4 border-l-primary">
         <CardContent className="p-4">
           <div className="flex items-center gap-2 mb-3"><Tag className="h-4 w-4 text-primary" /><h3 className="font-semibold">Klassifizierung</h3></div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <p className="text-xs text-muted-foreground mb-1">Kategorie</p>
               <Badge className={getCategoryColor(contact.category ?? undefined)}>{categoryLabels[contact.category || ''] || 'Keine'}</Badge>
@@ -78,40 +137,20 @@ export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ conta
       <Card>
         <CardContent className="p-4 space-y-3">
           <div className="flex items-center gap-2 mb-2"><Phone className="h-4 w-4 text-primary" /><h3 className="font-semibold">Kontaktinformationen</h3></div>
-          {contact.email && (
-            <div className="flex items-center gap-3 p-2.5 bg-muted/30 rounded-lg">
-              <Mail className="h-4 w-4 text-muted-foreground" />
-              <div className="flex-1 min-w-0"><p className="text-xs text-muted-foreground">E-Mail</p><p className="text-sm font-medium truncate">{contact.email}</p></div>
-              <Button size="sm" variant="outline" asChild><a href={`mailto:${contact.email}`}><Mail className="h-3.5 w-3.5" /></a></Button>
-            </div>
-          )}
-          {contact.phone && (
-            <div className="flex items-center gap-3 p-2.5 bg-muted/30 rounded-lg">
-              <Phone className="h-4 w-4 text-muted-foreground" />
-              <div className="flex-1 min-w-0"><p className="text-xs text-muted-foreground">Telefon</p><p className="text-sm font-medium">{contact.phone}</p></div>
-              <Button size="sm" variant="outline" asChild><a href={`tel:${contact.phone}`}><Phone className="h-3.5 w-3.5" /></a></Button>
-            </div>
-          )}
-          {contact.contact_type === "person" && contact.organization && (
-            <div className="flex items-center gap-3 p-2.5 bg-muted/30 rounded-lg">
-              <Building className="h-4 w-4 text-muted-foreground" />
-              <div><p className="text-xs text-muted-foreground">Organisation</p><p className="text-sm font-medium">{contact.organization}</p></div>
-            </div>
-          )}
-          {contact.birthday && (
-            <div className="flex items-center gap-3 p-2.5 bg-muted/30 rounded-lg">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <div><p className="text-xs text-muted-foreground">Geburtstag</p><p className="text-sm font-medium">{formatGermanDate(contact.birthday)}</p></div>
-            </div>
-          )}
-          {contact.website && (
-            <div className="flex items-center gap-3 p-2.5 bg-muted/30 rounded-lg">
-              <Globe className="h-4 w-4 text-muted-foreground" />
-              <div className="flex-1 min-w-0"><p className="text-xs text-muted-foreground">Website</p><p className="text-sm font-medium truncate">{contact.website}</p></div>
-              <Button size="sm" variant="outline" asChild>
-                <a href={contact.website.startsWith('http') ? contact.website : `https://${contact.website}`} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-3.5 w-3.5" /></a>
-              </Button>
-            </div>
+          {contactInfoRows.length > 0 ? (
+            contactInfoRows.map((row) => (
+              <InfoRow
+                key={`${row.label}-${row.value}`}
+                icon={row.icon}
+                label={row.label}
+                value={row.value}
+                actionHref={row.actionHref}
+                actionExternal={row.actionExternal}
+                actionLabel={row.actionLabel}
+              />
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground">Keine Kontaktinformationen vorhanden.</p>
           )}
         </CardContent>
       </Card>
@@ -177,8 +216,6 @@ export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ conta
       )}
 
       {contact.notes && (<Card><CardContent className="p-4"><h3 className="font-semibold mb-2">Notizen</h3><p className="text-sm text-muted-foreground whitespace-pre-wrap">{contact.notes}</p></CardContent></Card>)}
-      {contact.last_contact && (<Card><CardContent className="p-4"><h3 className="font-semibold mb-2">Letzter Kontakt</h3><p className="text-sm text-muted-foreground">{contact.last_contact}</p></CardContent></Card>)}
-      {contact.last_contact && (<Card><CardContent className="p-4"><h3 className="font-semibold mb-2">Letzter Kontakt</h3><p className="text-sm text-muted-foreground">{contact.last_contact}</p></CardContent></Card>)}
     </div>
   );
 });
