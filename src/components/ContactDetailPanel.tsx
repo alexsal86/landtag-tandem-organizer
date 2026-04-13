@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Edit2, Trash2, PhoneCall, Plus, FileText, ChevronDown, Euro, ArrowLeft } from "lucide-react";
+import { Trash2, PhoneCall, Plus, FileText, ChevronDown, Euro, ArrowLeft, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -103,6 +103,13 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
   const handleEditSuccess = () => { setIsEditing(false); fetchContact(); fetchCallLogs(); onContactUpdate(); };
   const getCallTypeIcon = (type: 'outgoing' | 'incoming' | 'missed') => <PhoneCall className={`h-4 w-4 ${type === 'outgoing' ? 'text-green-500' : type === 'incoming' ? 'text-blue-500' : 'text-red-500'}`} />;
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const detailLineParts =
+    contact?.contact_type === "organization"
+      ? [contact.legal_form, contact.industry || contact.main_contact_person]
+      : [contact?.role, contact?.organization];
+  const detailLine = detailLineParts
+    .filter((value): value is string => Boolean(value && value.trim()))
+    .join(" • ");
 
   if (!contactId) return null;
   if (isEditing && contact) return (
@@ -117,17 +124,33 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
   return (
     <div className="h-full overflow-y-auto">
       <div className="p-6 space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0"><ArrowLeft className="h-5 w-5" /></Button>
-          <Avatar className="h-14 w-14 shrink-0"><AvatarImage src={contact.avatar_url} /><AvatarFallback className="bg-primary text-primary-foreground text-lg">{getInitials(contact.name)}</AvatarFallback></Avatar>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-bold truncate">{contact.name}</h2>
-            <p className="text-sm text-muted-foreground truncate">{contact.contact_type === "organization" ? `${contact.legal_form ? contact.legal_form + " • " : ""}${contact.industry || contact.main_contact_person || ""}` : contact.role}</p>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 shrink-0" aria-label="Zurück">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="h-10 w-10" aria-label="Favorisieren">
+                <Star className="h-5 w-5" />
+              </Button>
+              <Button onClick={() => setIsEditing(true)} size="sm" className="rounded-full px-5">
+                Bearbeiten
+              </Button>
+              <Button variant="ghost" size="icon" onClick={handleDelete} className="h-10 w-10 text-muted-foreground hover:text-destructive" aria-label="Löschen">
+                <Trash2 className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={() => setIsEditing(true)} className="flex-1" size="sm"><Edit2 className="h-4 w-4 mr-2" />Bearbeiten</Button>
-          <Button variant="destructive" size="sm" onClick={handleDelete}><Trash2 className="h-4 w-4 mr-2" />Löschen</Button>
+          <div className="flex items-center gap-4">
+            <Avatar className="h-20 w-20 shrink-0">
+              <AvatarImage src={contact.avatar_url} />
+              <AvatarFallback className="bg-primary text-primary-foreground text-xl">{getInitials(contact.name)}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-3xl font-bold leading-tight">{contact.name}</h2>
+              {detailLine && <p className="text-base text-muted-foreground mt-1 line-clamp-2">{detailLine}</p>}
+            </div>
+          </div>
         </div>
         <Separator />
 
