@@ -1,48 +1,35 @@
 
-Ziel: Die leere Ansicht in "Meine Arbeit → Entscheidungen" gezielt beheben. Nach Sichtung des Codes ist die wahrscheinlichste Ursache nicht mehr der Type-Shim, sondern die neue Datenquelle selbst.
 
-1. Wahrscheinliche Root Cause beheben
-- `MyWorkDecisionsTab` lädt Daten ausschließlich über `useMyWorkDecisionsData`.
-- Dieser Hook nutzt nur noch das RPC `get_my_work_decisions`.
-- Das alte Laden in `useDecisionOverviewData` hatte zusätzlich eine Sichtbarkeit über `tasks.assigned_to`.
-- Das neue RPC berücksichtigt aktuell nur:
-  - Ersteller
-  - explizite Teilnehmer
-  - `visible_to_all`
-- Dadurch verschwinden task-gebundene Entscheidungen für Nutzer, die über die Aufgabenzuweisung Zugriff hatten, aber nicht als Teilnehmer eingetragen sind.
+## Plan: Tenant-Kontext-Verlust und Benachrichtigungsfehler beheben
 
-2. RPC und Frontend angleichen
-- `get_my_work_decisions` erweitern, damit auch Entscheidungen für zugewiesene Aufgaben zurückkommen, wie es der alte Code gemacht hat.
-- Dabei die bestehende Logik aus `useDecisionOverviewData` als Referenz verwenden, damit "Meine Arbeit" und die alte Entscheidungen-Ansicht dieselben Zugriffsregeln haben.
-- Falls nötig zusätzlich `task_id` bzw. aufgabenbezogene Infos im RPC mitgeben, damit die UI später dieselbe Filterlogik sauber anwenden kann.
+### Problem 1: "Kein Zugriff" nach einiger Zeit auf der Kontakte-Seite
 
-3. Robuste ID-/Sichtbarkeitsprüfung machen
-- Prüfen und korrigieren, ob `created_by` und Teilnehmer-IDs überall mit demselben Identitätsmodell verglichen werden.
-- Falls die Daten inzwischen teils auf Profil-IDs und teils auf `auth.users.id` basieren, die Vergleiche im Hook/RPC vereinheitlichen.
-- Dabei besonders `isCreator`, `isParticipant`, `hasResponded` und `pendingCount` absichern.
+**Root Cause**: Der `useTenant`-Hook wird bei jedem `user`-Objekt-Wechsel neu ausgeführt (Zeile 173: `useEffect` mit `[user]` dependency). Bei einem Supabase Token-Refresh erzeugt `useAuth` ein neues `user`-Objekt (gleiche ID, neue Referenz). Das löst `fetchTenants()` erneut aus, welches **sofort `setLoading(true)` setzt** — und während der Netzwerkanfrage ist `currentTenant` kurzzeitig `null`. Wenn die Anfrage fehlschlägt (z.B. kurzer Netzwerkfehler, RLS-Problem), bleibt `currentTenant = null` und die "Kein Zugriff"-Meldung erscheint.
 
-4. Leere Liste besser absichern
-- Wenn das RPC fehlschlägt oder wegen RLS leer bleibt, soll die UI nicht stillschweigend nur "keine Entscheidungen" zeigen.
-- Stattdessen eine sichtbare Fehler-/Hinweisbehandlung für den Datenladefall ergänzen, damit echte Ladeprobleme von einer wirklich leeren Liste unterscheidbar sind.
+Zusätzlich setzt der `catch`-Block (Zeile 148-151) destruktiv alle States auf leer, statt die vorherigen Werte beizubehalten.
 
-5. Datenbank-/RLS-Check
-- Die bestehende RLS auf `task_decisions`, `task_decision_participants`, `profiles` gegen das neue RPC prüfen.
-- Falls das RPC zusätzliche Tabellenpfade nutzt, die durch RLS eingeschränkt sind, gezielt anpassen statt die Policies allgemein zu öffnen.
-- Besonders wichtig: tenant-basierte Sichtbarkeit und `visible_to_all` innerhalb desselben Tenants beibehalten.
+**Fix**:
+1. **`useTenant.tsx`**: `useEffect`-Dependency auf `user?.id` statt `user` ändern, damit Token-Refreshes keinen Re-Fetch auslösen
+2. **`useTenant.tsx`**: Im `catch`-Block die vorherigen Tenant-Daten beibehalten statt destruktiv zu löschen — nur bei echtem User-Wechsel zurücksetzen
+3. **`useTenant.tsx`**: Beim Re-Fetch (gleicher User) den `loading`-State nicht auf `true` setzen, wenn bereits Daten vorhanden sind (stale-while-revalidate Muster)
 
-6. Verifikation
-- Nach Umsetzung gezielt testen mit mindestens diesen Fällen:
-  - Nutzer ist Ersteller
-  - Nutzer ist Teilnehmer
-  - Nutzer sieht öffentliche Entscheidung
-  - Nutzer sieht Entscheidung nur über zugewiesene Aufgabe
-  - Nutzer ohne Zugriff sieht die Entscheidung nicht
-- Zusätzlich prüfen, dass im Tab nicht mehr nur der Leerzustand erscheint.
+### Problem 2: Benachrichtigungen laden nicht / Toast-Fehler
 
-Technische Notizen
-- Betroffene Hauptdateien:
-  - `src/hooks/useMyWorkDecisionsData.ts`
-  - `supabase/migrations/20260413120000_get_my_work_decisions_rpc.sql`
-  - ggf. `src/components/my-work/MyWorkDecisionsTab.tsx`
-- Stärkster Hinweis aus dem Code: Der alte Loader filtert explizit über `tasks.assigned_to`, das neue RPC aber nicht.
-- Ihr aktuelles Symptom "Leere Liste" passt exakt zu so einem Sichtbarkeitsverlust ohne Runtime-Fehler.
+**Root Cause**: Gleicher Effekt — der `loadNotifications` Callback hat `[user, toast]` als Dependencies. Bei Token-Refresh ändert sich die `user`-Referenz, was den Realtime-Channel neu aufbaut (Zeile 731: `[user, toast, loadNotifications]`). Wenn dabei der Supabase-Client kurzzeitig keinen gültigen Token hat, schlägt die Abfrage fehl und zeigt den destruktiven Toast "Benachrichtigungen konnten nicht geladen werden."
+
+**Fix**:
+1. **`useNotifications.tsx`**: `loadNotifications` Dependency auf `user?.id` statt `user` stabilisieren
+2. **`useNotifications.tsx`**: Realtime-Subscription useEffect ebenfalls auf `user?.id` stabilisieren, damit Token-Refreshes nicht den Channel neu aufbauen
+3. **`useNotifications.tsx`**: Bei Fehlern im `loadNotifications` die vorherigen Notifications beibehalten (stale data > no data)
+
+### Problem 3: Build-Fehler in ContactDetailPanel.tsx
+
+**Root Cause**: Der Type-Guard `channel is ContactChannel` ist nicht kompatibel mit den Array-Elementen, weil die Lucide-Icons und die Custom-Social-Icons unterschiedliche Signatur-Typen haben.
+
+**Fix**: Die `.filter()` einfach mit `Boolean` tippen statt mit einem inkompatiblen Type-Predicate.
+
+### Betroffene Dateien
+- `src/hooks/useTenant.tsx` — Stabilisierung gegen Token-Refresh
+- `src/hooks/useNotifications.tsx` — Stabilisierung gegen Token-Refresh
+- `src/components/ContactDetailPanel.tsx` — Build-Fehler beheben
+
