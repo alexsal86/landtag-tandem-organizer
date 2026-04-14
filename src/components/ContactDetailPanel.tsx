@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Trash2, PhoneCall, Plus, FileText, ChevronDown, Euro, ArrowLeft, Star, Mail, Phone, Globe, Linkedin, Twitter, Facebook, Instagram, Briefcase } from "lucide-react";
+import { useState, useEffect, type ComponentType } from "react";
+import { Trash2, PhoneCall, Plus, FileText, ChevronDown, Euro, ArrowLeft, Star, Mail, Phone, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -19,6 +19,7 @@ import { FundingDialog } from "./contacts/FundingDialog";
 import { ContactFundingsList } from "./contacts/ContactFundingsList";
 import { useContactFundings } from "@/hooks/useContactFundings";
 import { ContactInfoTab } from "./contacts/ContactInfoTab";
+import { Facebook, Instagram, Linkedin, Twitter } from "@/components/icons/SocialIcons";
 import { User, Calendar, Tag } from "lucide-react";
 
 interface CallLog {
@@ -47,6 +48,14 @@ interface ContactDetailPanelProps {
   onClose: () => void;
   onContactUpdate: () => void;
 }
+
+interface ContactChannel {
+  key: string;
+  href: string;
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+}
+
 
 export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: ContactDetailPanelProps) {
   const [contact, setContact] = useState<Contact | null>(null);
@@ -121,8 +130,8 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
     contact?.twitter ? { key: "twitter", href: contact.twitter.startsWith("http") ? contact.twitter : `https://${contact.twitter}`, label: "Twitter/X", icon: Twitter } : null,
     contact?.facebook ? { key: "facebook", href: contact.facebook.startsWith("http") ? contact.facebook : `https://${contact.facebook}`, label: "Facebook", icon: Facebook } : null,
     contact?.instagram ? { key: "instagram", href: contact.instagram.startsWith("http") ? contact.instagram : `https://${contact.instagram}`, label: "Instagram", icon: Instagram } : null,
-    contact?.xing ? { key: "xing", href: contact.xing.startsWith("http") ? contact.xing : `https://${contact.xing}`, label: "Xing", icon: Briefcase } : null,
-  ].filter((channel): channel is { key: string; href: string; label: string; icon: typeof Mail } => Boolean(channel));
+    contact?.xing ? { key: "xing", href: contact.xing.startsWith("http") ? contact.xing : `https://${contact.xing}`, label: "Xing", icon: Globe } : null,
+  ].filter((channel): channel is ContactChannel => Boolean(channel));
 
   if (!contactId) return null;
   if (isEditing && contact) return (
