@@ -185,7 +185,7 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 shrink-0" aria-label="Zurück">
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="flex items-center gap-2">
               <Button
@@ -197,7 +197,7 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
                 aria-label={contact.is_favorite ? "Favorit entfernen" : "Als Favorit markieren"}
                 title={contact.is_favorite ? "Favorit entfernen" : "Als Favorit markieren"}
               >
-                <Star className={`h-5 w-5 ${contact.is_favorite ? "text-yellow-500 fill-current" : "text-muted-foreground"}`} />
+                <Star className={`h-4 w-4 ${contact.is_favorite ? "text-yellow-500 fill-current" : "text-muted-foreground"}`} />
               </Button>
               <Button onClick={() => setIsEditing(true)} size="sm" className="rounded-full px-5">
                 Bearbeiten
@@ -209,7 +209,7 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
                 className="h-10 w-10 text-muted-foreground hover:text-destructive"
                 aria-label="Löschen"
               >
-                <Trash2 className="h-5 w-5" />
+                <Trash2 className="h-4 w-4" />
               </Button>
             </div>
           </div>
