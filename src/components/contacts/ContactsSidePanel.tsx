@@ -46,7 +46,7 @@ export function ContactsSidePanel({
 }: ContactsSidePanelProps) {
   if (selectedContactId) {
     return (
-      <div className="w-[420px] min-w-[420px] border-r border-border bg-background overflow-hidden flex flex-col">
+      <div className="w-[40%] min-w-[420px] border-r border-border bg-background overflow-hidden flex flex-col">
         <ContactDetailPanel
           contactId={selectedContactId}
           onClose={() => setSelectedContactId(null)}
