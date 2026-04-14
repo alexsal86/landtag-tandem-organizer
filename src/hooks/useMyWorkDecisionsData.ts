@@ -64,6 +64,7 @@ export function useMyWorkDecisionsData(userId?: string) {
 
     if (!silent) {
       setLoading(true);
+      setError(null);
     }
 
     try {
