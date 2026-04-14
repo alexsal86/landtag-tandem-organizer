@@ -65,6 +65,37 @@ interface ContactChannel {
   icon: ComponentType<{ className?: string }>;
 }
 
+const cleanSocialUsername = (input: string): string => {
+  if (!input) return "";
+  return input
+    .replace(/^https?:\/\//, "")
+    .replace(/^(www\.)?/, "")
+    .replace(/^(linkedin\.com\/in\/|x\.com\/|twitter\.com\/|facebook\.com\/|instagram\.com\/|xing\.com\/profile\/)/, "")
+    .replace(/^@/, "")
+    .replace(/\/$/, "")
+    .trim();
+};
+
+const generateSocialMediaUrl = (platform: string, value: string): string => {
+  if (value.startsWith("http://") || value.startsWith("https://")) return value;
+
+  const username = cleanSocialUsername(value);
+  switch (platform) {
+    case "linkedin":
+      return `https://www.linkedin.com/in/${username}`;
+    case "twitter":
+      return `https://x.com/${username}`;
+    case "facebook":
+      return `https://www.facebook.com/${username}`;
+    case "instagram":
+      return `https://www.instagram.com/${username}`;
+    case "xing":
+      return `https://www.xing.com/profile/${username}`;
+    default:
+      return `https://${value}`;
+  }
+};
+
 
 export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: ContactDetailPanelProps) {
   const [contact, setContact] = useState<Contact | null>(null);
@@ -136,7 +167,6 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
           ? "Kontakt zu Favoriten hinzugefügt"
           : "Kontakt aus Favoriten entfernt",
       });
-      onContactUpdate();
     } catch (error) {
       debugConsole.error("Error toggling favorite:", error);
       toast({ title: "Fehler", description: "Favorit konnte nicht aktualisiert werden.", variant: "destructive" });
@@ -162,11 +192,11 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
     contact?.email ? { key: "email", href: `mailto:${contact.email}`, label: "E-Mail", icon: Mail } : null,
     contact?.phone ? { key: "phone", href: `tel:${contact.phone}`, label: "Telefon", icon: Phone } : null,
     contact?.website ? { key: "website", href: contact.website.startsWith("http") ? contact.website : `https://${contact.website}`, label: "Website", icon: Globe } : null,
-    contact?.linkedin ? { key: "linkedin", href: contact.linkedin.startsWith("http") ? contact.linkedin : `https://${contact.linkedin}`, label: "LinkedIn", icon: Linkedin } : null,
-    contact?.twitter ? { key: "twitter", href: contact.twitter.startsWith("http") ? contact.twitter : `https://${contact.twitter}`, label: "Twitter/X", icon: Twitter } : null,
-    contact?.facebook ? { key: "facebook", href: contact.facebook.startsWith("http") ? contact.facebook : `https://${contact.facebook}`, label: "Facebook", icon: Facebook } : null,
-    contact?.instagram ? { key: "instagram", href: contact.instagram.startsWith("http") ? contact.instagram : `https://${contact.instagram}`, label: "Instagram", icon: Instagram } : null,
-    contact?.xing ? { key: "xing", href: contact.xing.startsWith("http") ? contact.xing : `https://${contact.xing}`, label: "Xing", icon: Globe } : null,
+    contact?.linkedin ? { key: "linkedin", href: generateSocialMediaUrl("linkedin", contact.linkedin), label: "LinkedIn", icon: Linkedin } : null,
+    contact?.twitter ? { key: "twitter", href: generateSocialMediaUrl("twitter", contact.twitter), label: "Twitter/X", icon: Twitter } : null,
+    contact?.facebook ? { key: "facebook", href: generateSocialMediaUrl("facebook", contact.facebook), label: "Facebook", icon: Facebook } : null,
+    contact?.instagram ? { key: "instagram", href: generateSocialMediaUrl("instagram", contact.instagram), label: "Instagram", icon: Instagram } : null,
+    contact?.xing ? { key: "xing", href: generateSocialMediaUrl("xing", contact.xing), label: "Xing", icon: Globe } : null,
   ].filter(Boolean) as ContactChannel[];
 
   if (!contactId) return null;

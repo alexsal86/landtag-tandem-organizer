@@ -1,6 +1,5 @@
 import React from 'react';
-import { Mail, Phone, MapPin, Building, User, Calendar, Globe, ExternalLink, Tag, Hash } from 'lucide-react';
-import { Linkedin, Facebook, Instagram } from '@/components/icons/SocialIcons';
+import { Mail, Phone, MapPin, Building, Calendar, Globe, ExternalLink, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,25 +11,6 @@ interface ContactInfoTabProps {
   contact: Contact;
   allTags: { direct: string[]; inherited: string[] };
 }
-
-const cleanUsername = (input: string): string => {
-  if (!input) return '';
-  return input.replace(/^https?:\/\//, '').replace(/^(www\.)?/, '')
-    .replace(/^(linkedin\.com\/in\/|x\.com\/|facebook\.com\/|instagram\.com\/|xing\.com\/profile\/)/, '')
-    .replace(/^@/, '').replace(/\/$/, '').trim();
-};
-
-const generateSocialMediaUrl = (platform: string, username: string): string => {
-  const c = cleanUsername(username);
-  switch (platform) {
-    case 'linkedin': return `https://www.linkedin.com/in/${c}`;
-    case 'twitter': return `https://x.com/${c}`;
-    case 'facebook': return `https://www.facebook.com/${c}`;
-    case 'instagram': return `https://www.instagram.com/${c}`;
-    case 'xing': return `https://www.xing.com/profile/${c}`;
-    default: return `https://${c}`;
-  }
-};
 
 const getCategoryColor = (category?: string) => {
   switch (category) {
@@ -106,14 +86,6 @@ export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ conta
     } : null,
   ].filter((item): item is NonNullable<typeof item> => Boolean(item));
 
-  const socialProfiles = [
-    { key: 'linkedin', icon: <Linkedin className="h-4 w-4 text-blue-600" />, label: 'LinkedIn', value: contact.linkedin },
-    { key: 'twitter', icon: <Hash className="h-4 w-4 text-foreground" />, label: 'X', value: contact.twitter },
-    { key: 'facebook', icon: <Facebook className="h-4 w-4 text-blue-600" />, label: 'Facebook', value: contact.facebook },
-    { key: 'instagram', icon: <Instagram className="h-4 w-4 text-pink-500" />, label: 'Instagram', value: contact.instagram },
-    { key: 'xing', icon: <User className="h-4 w-4 text-green-600" />, label: 'XING', value: contact.xing },
-  ].filter((social) => Boolean(social.value));
-
   return (
     <div className="space-y-4">
       {/* Classification */}
@@ -181,38 +153,6 @@ export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ conta
           </CardContent>
         </Card>
       )}
-
-      {/* Social Media */}
-      {socialProfiles.length > 0 && (
-        <Card>
-          <CardContent className="p-4">
-            <h3 className="font-semibold mb-3">Social Media</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {socialProfiles.map(social => (
-                <div key={social.key} className="flex items-center gap-2.5 rounded-lg border bg-muted/20 px-2.5 py-2">
-                  {social.icon}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium leading-none">{social.label}</p>
-                    <p className="text-xs text-muted-foreground truncate mt-1">@{cleanUsername(social.value!)}</p>
-                  </div>
-                  <Button size="icon" variant="ghost" asChild className="h-7 w-7 shrink-0">
-                    <a
-                      href={generateSocialMediaUrl(social.key, social.value!)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={`${social.label} öffnen`}
-                      title={`${social.label} öffnen`}
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
 
       {(allTags.direct.length > 0 || allTags.inherited.length > 0) && (
         <Card>
