@@ -248,9 +248,9 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
               <AvatarImage src={contact.avatar_url} />
               <AvatarFallback className="bg-primary text-primary-foreground text-xl">{getInitials(contact.name)}</AvatarFallback>
             </Avatar>
-            <div className="flex-1 min-w-0 space-y-3">
+            <div className="flex-1 min-w-0 space-y-1.5">
               <h2 className="text-3xl font-bold leading-tight">{contact.name}</h2>
-              {detailLine && <p className="text-base text-muted-foreground mt-1 line-clamp-2">{detailLine}</p>}
+              {detailLine && <p className="text-base text-muted-foreground line-clamp-2">{detailLine}</p>}
               {socialChannels.length > 0 && (
                 <div className="flex flex-wrap items-center gap-3">
                   {socialChannels.map((channel) => {
@@ -261,11 +261,11 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
                         href={channel.href}
                         target={channel.key === "email" || channel.key === "phone" ? undefined : "_blank"}
                         rel={channel.key === "email" || channel.key === "phone" ? undefined : "noreferrer"}
-                        className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-muted/30 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                        className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-muted/30 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
                         aria-label={channel.label}
                         title={channel.label}
                       >
-                        <Icon className="h-5 w-5" />
+                        <Icon className="h-4 w-4" />
                       </a>
                     );
                   })}
