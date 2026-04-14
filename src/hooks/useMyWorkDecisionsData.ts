@@ -40,6 +40,7 @@ interface LoadDecisionsOptions {
 export function useMyWorkDecisionsData(userId?: string) {
   const [decisions, setDecisions] = useState<MyWorkDecision[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const latestLoadRequestRef = useRef(0);
   const mountedRef = useRef(true);
 
@@ -63,6 +64,7 @@ export function useMyWorkDecisionsData(userId?: string) {
 
     if (!silent) {
       setLoading(true);
+      setError(null);
     }
 
     try {
@@ -188,6 +190,8 @@ export function useMyWorkDecisionsData(userId?: string) {
       }
     } catch (error) {
       if (isCurrentRequest()) {
+        const msg = error instanceof Error ? error.message : String(error);
+        setError(msg);
         handleAppError(error, { context: 'useMyWorkDecisionsData.loadDecisions' });
       }
     } finally {
@@ -248,7 +252,7 @@ export function useMyWorkDecisionsData(userId?: string) {
     setDecisions,
     isLoading: loading,
     loading,
-    error: null,
+    error,
     refetch: loadDecisions,
     loadDecisions,
   };

@@ -43,7 +43,7 @@ export function MyWorkDecisionsTab() {
   const [highlightResponseId, setHighlightResponseId] = useState<string | null>(null);
   const [defaultParticipantsOpen, setDefaultParticipantsOpen] = useState(false);
   const { users: tenantUsers } = useTenantUsers();
-  const { decisions, setDecisions, loading, loadDecisions } = useMyWorkDecisionsData(user?.id);
+  const { decisions, setDecisions, loading, error, loadDecisions } = useMyWorkDecisionsData(user?.id);
   const { isHighlighted, highlightRef } = useNotificationHighlight();
   const { scheduleRefresh: scheduleDecisionsRefresh } = useDecisionRefreshScheduler(() =>
     loadDecisions({ silent: true }),
@@ -133,6 +133,18 @@ export function MyWorkDecisionsTab() {
         {[1, 2, 3].map((item) => (
           <div key={item} className="h-20 animate-pulse rounded-md bg-muted" />
         ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 text-center">
+        <p className="text-sm text-destructive mb-2">Fehler beim Laden der Entscheidungen</p>
+        <p className="text-xs text-muted-foreground mb-3">{error}</p>
+        <Button variant="outline" size="sm" onClick={() => loadDecisions()}>
+          Erneut versuchen
+        </Button>
       </div>
     );
   }
