@@ -65,13 +65,18 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
   const [memberships, setMemberships] = useState<UserTenantMembership[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  const fetchTenants = async (): Promise<void> => {
+  const fetchTenants = async (isBackgroundRefresh = false): Promise<void> => {
     if (!user?.id) {
       setTenants([]);
       setCurrentTenant(null);
       setMemberships([]);
       setLoading(false);
       return;
+    }
+
+    // Only show loading spinner if we have no data yet (stale-while-revalidate)
+    if (!isBackgroundRefresh) {
+      setLoading(true);
     }
 
     try {
@@ -146,9 +151,7 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
       }
     } catch (error: unknown) {
       debugConsole.error("Error in fetchTenants:", error);
-      setTenants([]);
-      setCurrentTenant(null);
-      setMemberships([]);
+      // Preserve existing data on error — only clear on genuine user change (handled by the effect)
     } finally {
       setLoading(false);
     }
@@ -171,12 +174,15 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
 
   const refreshTenants = async (): Promise<void> => {
     setLoading(true);
-    await fetchTenants();
+    await fetchTenants(false);
   };
 
   useEffect((): void => {
-    void fetchTenants();
-  }, [user]);
+    // Background refresh if we already have data (same user, token refresh)
+    const hasExistingData = tenants.length > 0;
+    void fetchTenants(hasExistingData);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const value: TenantContextType = {
     tenants,
