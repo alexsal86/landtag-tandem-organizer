@@ -96,6 +96,30 @@ const generateSocialMediaUrl = (platform: string, value: string): string => {
   }
 };
 
+const getPriorityLabel = (priority?: Contact["priority"]): string => {
+  switch (priority) {
+    case "high":
+      return "🔴 Hoch";
+    case "medium":
+      return "🟡 Mittel";
+    case "low":
+      return "🟢 Niedrig";
+    default:
+      return "Keine Priorität";
+  }
+};
+
+const getPriorityBadgeClass = (priority?: Contact["priority"]): string => {
+  switch (priority) {
+    case "high":
+      return "border-destructive text-destructive";
+    case "medium":
+      return "border-yellow-500 text-yellow-600";
+    default:
+      return "border-muted-foreground text-muted-foreground";
+  }
+};
+
 
 export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: ContactDetailPanelProps) {
   const [contact, setContact] = useState<Contact | null>(null);
@@ -218,6 +242,9 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="flex items-center gap-2">
+              <Badge variant="outline" className={getPriorityBadgeClass(contact.priority)}>
+                {getPriorityLabel(contact.priority)}
+              </Badge>
               <Button
                 variant="ghost"
                 size="icon"

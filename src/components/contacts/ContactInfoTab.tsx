@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mail, Phone, MapPin, Building, Calendar, Globe, ExternalLink, Tag } from 'lucide-react';
+import { Mail, Phone, MapPin, Calendar, ExternalLink, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -67,19 +67,8 @@ export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ conta
     contact.phone ? {
       icon: Phone, label: 'Telefon', value: contact.phone, actionHref: `tel:${contact.phone}`, actionLabel: 'Anrufen',
     } : null,
-    contact.contact_type === "person" && contact.organization ? {
-      icon: Building, label: 'Organisation', value: contact.organization,
-    } : null,
     contact.birthday ? {
       icon: Calendar, label: 'Geburtstag', value: formatGermanDate(contact.birthday),
-    } : null,
-    contact.website ? {
-      icon: Globe,
-      label: 'Website',
-      value: contact.website,
-      actionHref: contact.website.startsWith('http') ? contact.website : `https://${contact.website}`,
-      actionExternal: true,
-      actionLabel: 'Website öffnen',
     } : null,
     contact.last_contact ? {
       icon: Calendar, label: 'Letzter Kontakt', value: contact.last_contact,
@@ -88,35 +77,15 @@ export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ conta
 
   return (
     <div className="space-y-4">
-      {/* Classification */}
-      <Card className="border-l-4 border-l-primary">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 mb-3"><Tag className="h-4 w-4 text-primary" /><h3 className="font-semibold">Klassifizierung</h3></div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Kategorie</p>
-              <Badge className={getCategoryColor(contact.category ?? undefined)}>{categoryLabels[contact.category || ''] || 'Keine'}</Badge>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Priorität</p>
-              <Badge variant="outline" className={
-                contact.priority === 'high' ? 'border-destructive text-destructive' :
-                contact.priority === 'medium' ? 'border-yellow-500 text-yellow-600' : 'border-muted-foreground text-muted-foreground'
-              }>
-                {contact.priority === 'high' && '🔴 Hoch'}
-                {contact.priority === 'medium' && '🟡 Mittel'}
-                {contact.priority === 'low' && '🟢 Niedrig'}
-                {!contact.priority && 'Keine'}
-              </Badge>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Contact Info */}
       <Card>
         <CardContent className="p-4 space-y-3">
           <div className="flex items-center gap-2 mb-2"><Phone className="h-4 w-4 text-primary" /><h3 className="font-semibold">Kontaktinformationen</h3></div>
+          <div className="flex items-center gap-2 mb-1">
+            <Tag className="h-4 w-4 text-primary" />
+            <p className="text-xs text-muted-foreground">Kategorie</p>
+            <Badge className={getCategoryColor(contact.category ?? undefined)}>{categoryLabels[contact.category || ''] || 'Keine'}</Badge>
+          </div>
           {contactInfoRows.length > 0 ? (
             contactInfoRows.map((row) => (
               <InfoRow
@@ -131,6 +100,12 @@ export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ conta
             ))
           ) : (
             <p className="text-sm text-muted-foreground">Keine Kontaktinformationen vorhanden.</p>
+          )}
+          {contact.notes && (
+            <div className="pt-2 border-t border-border/60">
+              <h4 className="font-medium mb-1.5">Notizen</h4>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{contact.notes}</p>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -169,8 +144,6 @@ export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ conta
           </CardContent>
         </Card>
       )}
-
-      {contact.notes && (<Card><CardContent className="p-4"><h3 className="font-semibold mb-2">Notizen</h3><p className="text-sm text-muted-foreground whitespace-pre-wrap">{contact.notes}</p></CardContent></Card>)}
     </div>
   );
 });
