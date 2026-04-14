@@ -43,7 +43,7 @@ export function MyWorkDecisionsTab() {
   const [highlightResponseId, setHighlightResponseId] = useState<string | null>(null);
   const [defaultParticipantsOpen, setDefaultParticipantsOpen] = useState(false);
   const { users: tenantUsers } = useTenantUsers();
-  const { decisions, setDecisions, loading, loadDecisions } = useMyWorkDecisionsData(user?.id);
+  const { decisions, setDecisions, loading, error, loadDecisions } = useMyWorkDecisionsData(user?.id);
   const { isHighlighted, highlightRef } = useNotificationHighlight();
   const { scheduleRefresh: scheduleDecisionsRefresh } = useDecisionRefreshScheduler(() =>
     loadDecisions({ silent: true }),
