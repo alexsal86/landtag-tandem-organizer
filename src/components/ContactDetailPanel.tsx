@@ -5,6 +5,16 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
@@ -71,6 +81,8 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
   const [showTaggedDocs, setShowTaggedDocs] = useState(true);
   const [fundingDialogOpen, setFundingDialogOpen] = useState(false);
   const [fundingsExpanded, setFundingsExpanded] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [favoriteUpdating, setFavoriteUpdating] = useState(false);
   const { toast } = useToast();
 
   const { directDocuments, taggedDocuments, loading: documentsLoading, removeDocumentLink } = useContactDocuments(contactId || undefined, [...(allTags.direct || []), ...(allTags.inherited || [])]);
@@ -107,6 +119,31 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
   const handleDelete = async () => {
     if (!contact) return;
     try { const { error } = await supabase.from('contacts').delete().eq('id', contact.id); if (error) throw error; toast({ title: "Kontakt gelöscht", description: `${contact.name} wurde erfolgreich gelöscht.` }); onContactUpdate(); onClose(); } catch (error) { debugConsole.error('Error deleting contact:', error); toast({ title: "Fehler", description: "Kontakt konnte nicht gelöscht werden.", variant: "destructive" }); }
+  };
+  const handleToggleFavorite = async () => {
+    if (!contact || favoriteUpdating) return;
+    const nextFavorite = !contact.is_favorite;
+    try {
+      setFavoriteUpdating(true);
+      const { error } = await supabase
+        .from("contacts")
+        .update({ is_favorite: nextFavorite })
+        .eq("id", contact.id);
+      if (error) throw error;
+      setContact((prev) => (prev ? { ...prev, is_favorite: nextFavorite } : prev));
+      toast({
+        title: "Erfolg",
+        description: nextFavorite
+          ? "Kontakt zu Favoriten hinzugefügt"
+          : "Kontakt aus Favoriten entfernt",
+      });
+      onContactUpdate();
+    } catch (error) {
+      debugConsole.error("Error toggling favorite:", error);
+      toast({ title: "Fehler", description: "Favorit konnte nicht aktualisiert werden.", variant: "destructive" });
+    } finally {
+      setFavoriteUpdating(false);
+    }
   };
 
   const getInitials = (name: string) => name.split(" ").map(n => n[0]).join("").toUpperCase();
@@ -152,13 +189,27 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="h-10 w-10" aria-label="Favorisieren">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10"
+                onClick={handleToggleFavorite}
+                disabled={favoriteUpdating}
+                aria-label={contact.is_favorite ? "Favorit entfernen" : "Als Favorit markieren"}
+                title={contact.is_favorite ? "Favorit entfernen" : "Als Favorit markieren"}
+              >
                 <Star className={`h-5 w-5 ${contact.is_favorite ? "text-yellow-500 fill-current" : "text-muted-foreground"}`} />
               </Button>
               <Button onClick={() => setIsEditing(true)} size="sm" className="rounded-full px-5">
                 Bearbeiten
               </Button>
-              <Button variant="ghost" size="icon" onClick={handleDelete} className="h-10 w-10 text-muted-foreground hover:text-destructive" aria-label="Löschen">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setDeleteDialogOpen(true)}
+                className="h-10 w-10 text-muted-foreground hover:text-destructive"
+                aria-label="Löschen"
+              >
                 <Trash2 className="h-5 w-5" />
               </Button>
             </div>
@@ -267,6 +318,25 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
         </Tabs>
       </div>
       {contactId && <FundingDialog open={fundingDialogOpen} onOpenChange={setFundingDialogOpen} initialContactId={contactId} />}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Kontakt löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sind Sie sicher, dass Sie "{contact.name}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void handleDelete()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
