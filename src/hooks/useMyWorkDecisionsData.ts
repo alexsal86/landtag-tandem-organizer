@@ -252,7 +252,7 @@ export function useMyWorkDecisionsData(userId?: string) {
     setDecisions,
     isLoading: loading,
     loading,
-    error: null,
+    error,
     refetch: loadDecisions,
     loadDecisions,
   };
