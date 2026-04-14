@@ -35,6 +35,7 @@ interface Contact {
   website?: string; linkedin?: string; twitter?: string; facebook?: string; instagram?: string; xing?: string;
   category?: "citizen" | "colleague" | "lobbyist" | "media" | "business";
   priority?: "low" | "medium" | "high"; last_contact?: string; avatar_url?: string; notes?: string;
+  is_favorite?: boolean;
   additional_info?: string; legal_form?: string; industry?: string; main_contact_person?: string;
   business_description?: string; tags?: string[]; inherited_tags?: string[];
   business_street?: string; business_house_number?: string; business_postal_code?: string;
@@ -152,7 +153,7 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
             </Button>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" className="h-10 w-10" aria-label="Favorisieren">
-                <Star className="h-5 w-5" />
+                <Star className={`h-5 w-5 ${contact.is_favorite ? "text-yellow-500 fill-current" : "text-muted-foreground"}`} />
               </Button>
               <Button onClick={() => setIsEditing(true)} size="sm" className="rounded-full px-5">
                 Bearbeiten
