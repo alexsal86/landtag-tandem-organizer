@@ -40,6 +40,7 @@ interface LoadDecisionsOptions {
 export function useMyWorkDecisionsData(userId?: string) {
   const [decisions, setDecisions] = useState<MyWorkDecision[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const latestLoadRequestRef = useRef(0);
   const mountedRef = useRef(true);
 
