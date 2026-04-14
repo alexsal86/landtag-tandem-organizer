@@ -12080,6 +12080,7 @@ export type Database = {
         Args: { p_include_team?: boolean; p_user_id: string }
         Returns: Json
       }
+      get_my_work_decisions: { Args: { p_user_id: string }; Returns: Json }
       get_my_work_new_counts: {
         Args: { p_contexts?: string[]; p_user_id: string }
         Returns: Json
