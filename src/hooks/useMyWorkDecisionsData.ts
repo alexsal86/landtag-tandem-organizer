@@ -190,6 +190,8 @@ export function useMyWorkDecisionsData(userId?: string) {
       }
     } catch (error) {
       if (isCurrentRequest()) {
+        const msg = error instanceof Error ? error.message : String(error);
+        setError(msg);
         handleAppError(error, { context: 'useMyWorkDecisionsData.loadDecisions' });
       }
     } finally {
