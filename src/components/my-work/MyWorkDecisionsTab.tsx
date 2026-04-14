@@ -137,6 +137,18 @@ export function MyWorkDecisionsTab() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="p-4 text-center">
+        <p className="text-sm text-destructive mb-2">Fehler beim Laden der Entscheidungen</p>
+        <p className="text-xs text-muted-foreground mb-3">{error}</p>
+        <Button variant="outline" size="sm" onClick={() => loadDecisions()}>
+          Erneut versuchen
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="space-y-3 p-4">
