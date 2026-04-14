@@ -168,7 +168,7 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
     contact?.facebook ? { key: "facebook", href: contact.facebook.startsWith("http") ? contact.facebook : `https://${contact.facebook}`, label: "Facebook", icon: Facebook } : null,
     contact?.instagram ? { key: "instagram", href: contact.instagram.startsWith("http") ? contact.instagram : `https://${contact.instagram}`, label: "Instagram", icon: Instagram } : null,
     contact?.xing ? { key: "xing", href: contact.xing.startsWith("http") ? contact.xing : `https://${contact.xing}`, label: "Xing", icon: Globe } : null,
-  ].filter((channel): channel is ContactChannel => Boolean(channel));
+  ].filter(Boolean) as ContactChannel[];
 
   if (!contactId) return null;
   if (isEditing && contact) return (

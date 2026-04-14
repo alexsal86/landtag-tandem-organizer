@@ -207,15 +207,20 @@ export const useNotifications = () => {
       setUnreadCount(mappedNotifications.filter((notification: Notification) => !notification.is_read).length);
     } catch (error: unknown) {
       debugConsole.error('Error loading notifications:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Benachrichtigungen konnten nicht geladen werden.',
-        variant: 'destructive',
-      });
+      // Preserve existing notifications (stale data > no data)
+      // Only show toast if we have no data at all
+      if (notifications.length === 0) {
+        toast({
+          title: 'Fehler',
+          description: 'Benachrichtigungen konnten nicht geladen werden.',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setLoading(false);
     }
-  }, [user, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, toast]);
 
   const markAsRead = useCallback(async (notificationId: string): Promise<void> => {
     if (!user) {
@@ -728,7 +733,8 @@ export const useNotifications = () => {
       }
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, [user, toast, loadNotifications]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, toast]);
 
   useEffect(() => {
     void loadNotifications();
