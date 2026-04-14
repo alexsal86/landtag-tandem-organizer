@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Trash2, PhoneCall, Plus, FileText, ChevronDown, Euro, ArrowLeft, Star } from "lucide-react";
+import { Trash2, PhoneCall, Plus, FileText, ChevronDown, Euro, ArrowLeft, Star, Mail, Phone, Globe, Linkedin, Twitter, Facebook, Instagram, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -19,7 +19,7 @@ import { FundingDialog } from "./contacts/FundingDialog";
 import { ContactFundingsList } from "./contacts/ContactFundingsList";
 import { useContactFundings } from "@/hooks/useContactFundings";
 import { ContactInfoTab } from "./contacts/ContactInfoTab";
-import { User, Calendar, Phone, Tag } from "lucide-react";
+import { User, Calendar, Tag } from "lucide-react";
 
 interface CallLog {
   id: string; contact_id?: string; caller_name?: string; caller_phone?: string;
@@ -111,6 +111,18 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
     .filter((value): value is string => Boolean(value && value.trim()))
     .join(" • ");
 
+
+  const socialChannels = [
+    contact?.email ? { key: "email", href: `mailto:${contact.email}`, label: "E-Mail", icon: Mail } : null,
+    contact?.phone ? { key: "phone", href: `tel:${contact.phone}`, label: "Telefon", icon: Phone } : null,
+    contact?.website ? { key: "website", href: contact.website.startsWith("http") ? contact.website : `https://${contact.website}`, label: "Website", icon: Globe } : null,
+    contact?.linkedin ? { key: "linkedin", href: contact.linkedin.startsWith("http") ? contact.linkedin : `https://${contact.linkedin}`, label: "LinkedIn", icon: Linkedin } : null,
+    contact?.twitter ? { key: "twitter", href: contact.twitter.startsWith("http") ? contact.twitter : `https://${contact.twitter}`, label: "Twitter/X", icon: Twitter } : null,
+    contact?.facebook ? { key: "facebook", href: contact.facebook.startsWith("http") ? contact.facebook : `https://${contact.facebook}`, label: "Facebook", icon: Facebook } : null,
+    contact?.instagram ? { key: "instagram", href: contact.instagram.startsWith("http") ? contact.instagram : `https://${contact.instagram}`, label: "Instagram", icon: Instagram } : null,
+    contact?.xing ? { key: "xing", href: contact.xing.startsWith("http") ? contact.xing : `https://${contact.xing}`, label: "Xing", icon: Briefcase } : null,
+  ].filter((channel): channel is { key: string; href: string; label: string; icon: typeof Mail } => Boolean(channel));
+
   if (!contactId) return null;
   if (isEditing && contact) return (
     <div className="p-6 overflow-y-auto h-full">
@@ -153,6 +165,27 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
           </div>
         </div>
         <Separator />
+
+        {socialChannels.length > 0 && (
+          <div className="flex flex-wrap items-center gap-3">
+            {socialChannels.map((channel) => {
+              const Icon = channel.icon;
+              return (
+                <a
+                  key={channel.key}
+                  href={channel.href}
+                  target={channel.key === "email" || channel.key === "phone" ? undefined : "_blank"}
+                  rel={channel.key === "email" || channel.key === "phone" ? undefined : "noreferrer"}
+                  className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-muted/30 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                  aria-label={channel.label}
+                  title={channel.label}
+                >
+                  <Icon className="h-5 w-5" />
+                </a>
+              );
+            })}
+          </div>
+        )}
 
         <Tabs defaultValue="details" className="w-full">
           <div className="border-b border-border mb-4">
