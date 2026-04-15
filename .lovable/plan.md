@@ -1,49 +1,78 @@
 
 
-## Plan: Build-Fehler beheben + PostgREST-Egress analysieren
+## Plan: Alle verbleibenden `select('*')` durch explizite Spaltenauswahl ersetzen
 
-### Kontext: Egress am 14. April
-Das Bild zeigt klar: **2.931 GB PostgREST Egress (99.5%)** — fast ausschließlich Datenbankabfragen. Auth, Storage, Realtime und Functions sind vernachlässigbar. Das deutet auf häufige/große `.select('*')`-Abfragen oder fehlende Query-Caching hin.
+### Umfang
 
----
+17 Dateien enthalten insgesamt ~30 `select('*')`-Aufrufe bei **Lese-Abfragen** (nicht nach Mutations). Jede wird durch eine explizite Spaltenliste ersetzt, basierend auf den tatsächlich verwendeten Feldern im Code.
 
-### Teil 1: Build-Fehler beheben (5 Probleme)
+### Dateien und Änderungen
 
-**1a) 4 Edge Functions mit Parse-Error** (`matrix-decision-handler`, `matrix-bot-handler`, `send-matrix-morning-greeting`, `sync-external-calendar`)
-- Diese nutzen das alte `serve()` von `deno.land/std`. Das erzeugt Parse-Konflikte mit dem Deno-Checker.
-- Fix: `import { serve }` entfernen und `serve(` durch `Deno.serve(` ersetzen (wie bei den funktionierenden Functions).
+**1. `src/components/ContactDetailPanel.tsx`** (1 Stelle)
+- `call_logs.select('*')` → explizite Spalten: `id, call_date, call_type, caller_name, caller_phone, contact_id, duration_minutes, notes, priority, follow_up_required, follow_up_date, follow_up_completed, completion_notes, created_by_name, user_id`
 
-**1b) `respond-public-event-invitation` — TS2589 + TS2322**
-- Die `index.ts` hat ein "excessively deep" Type-Problem wegen des `withSafeHandler`-Wrappers um `handleRespondPublicEventInvitation`.
-- Die `.test.ts` hat ein Typ-Mismatch: `provider: "turnstile"` wird als `string` inferiert statt als Literal.
-- Fix index.ts: Expliziter Return-Type-Cast oder `as` Assertion.
-- Fix test.ts: `provider: "turnstile" as const` im Mock.
+**2. `src/components/task-detail/useTaskDetailData.ts`** (5 Stellen)
+- Subtasks: `tasks.select('*')` → `id, title, description, status, assigned_to, due_date, parent_task_id, created_at, updated_at, user_id, progress`
+- Task-Dokumente: `task_documents.select('*')` → `id, task_id, file_name, file_path, file_size, file_type, created_at`
+- Task-Kommentare: `task_comments.select('*')` → `id, task_id, user_id, content, created_at, updated_at`
+- 2x Refresh nach Save: `tasks.select('*')` → `id, title` (nur zur Verifikation genutzt)
 
-**1c) `ContactInfoTab.tsx` — Property `actionExternal` fehlt**
-- Die `contactInfoRows`-Array-Items haben kein `actionExternal`-Feld, aber es wird an `InfoRow` übergeben.
-- Fix: `actionExternal: true` bei den E-Mail/Telefon-Einträgen ergänzen, oder das Feld optional in der Übergabe machen (nur übergeben wenn vorhanden).
+**3. `src/components/tasks/hooks/useTaskOperations.ts`** (1 Stelle)
+- Refresh nach Statuswechsel: `tasks.select('*')` → `id, title, description, status, priority, category, assigned_to, due_date, progress, updated_at, user_id, tenant_id`
 
----
+**4. `src/components/event-planning/hooks/useChecklistOperations.ts`** (2 Stellen)
+- Refresh nach Netzwerkfehler: `event_planning_checklist_items.select('*')` → `id, event_planning_id, title, is_completed, order_index, sub_items, assigned_to, due_date, category, notes, is_system_item, system_type, created_at`
 
-### Teil 2: Egress-Ursachen identifizieren
+**5. `src/hooks/useQuickNotes.ts`** (1 Stelle)
+- Versionshistorie: `quick_note_versions.select('*')` → `id, note_id, title, content, created_at, created_by`
 
-Nach Behebung der Build-Fehler werde ich gezielt die häufigsten Egress-Verursacher im Code suchen:
+**6. `src/components/meetings/hooks/useMeetingSidebarData.ts`** (1 Stelle)
+- Quick Notes für Meeting: `quick_notes.select('*')` → `id, title, content, user_id, meeting_id, created_at, updated_at, is_pinned, color, color_full_card, category, tags, priority_level, follow_up_date, is_archived, decision_id, task_id, case_item_id, meeting_result, pending_for_jour_fixe`
 
-1. **Alle `.select('*')` Aufrufe finden** — diese laden komplette Zeilen inkl. großer Text-/JSON-Felder
-2. **Hooks ohne `staleTime` prüfen** — fehlende Cache-Zeiten erzeugen bei jedem Mount einen neuen Netzwerk-Request
-3. **Realtime-Subscriptions ohne Filter prüfen** — ungefilterte Subscriptions auf große Tabellen
-4. **Besonders große Tabellen identifizieren** (Kontakte, Aufgaben, Benachrichtigungen) und deren Abfragemuster prüfen
+**7. `src/hooks/usePartyAssociations.tsx`** (2 Stellen)
+- `party_associations.select('*')` → `id, name, party_name, party_type, email, phone, website, address_street, address_number, address_postal_code, address_city, full_address, administrative_boundaries, coverage_areas, social_media, contact_info, tenant_id`
+- `election_districts.select('*')` → `id, district_name, district_type, region, geometry`
 
-Die Ergebnisse werden als Bericht zusammengefasst, damit wir gezielt die Top-Verursacher optimieren können.
+**8. `src/components/PartyAssociationsAdmin.tsx`** (1 Stelle)
+- `party_associations.select('*')` → gleiche Spalten wie oben
 
----
+**9. `src/hooks/useMapLayers.ts`** (1 Stelle)
+- `map_layers.select('*')` → `id, tenant_id, layer_name, group_name, source_type, source_url, geojson_file, style_config, is_active, sort_order, created_at`
 
-### Betroffene Dateien
-- `supabase/functions/matrix-decision-handler/index.ts`
-- `supabase/functions/matrix-bot-handler/index.ts`
-- `supabase/functions/send-matrix-morning-greeting/index.ts`
-- `supabase/functions/sync-external-calendar/index.ts`
-- `supabase/functions/respond-public-event-invitation/index.ts`
-- `supabase/functions/respond-public-event-invitation/respond-public-event-invitation.test.ts`
-- `src/components/contacts/ContactInfoTab.tsx`
+**10. `src/hooks/useCaseFileProcessingStatuses.tsx`** (1 Stelle)
+- `case_file_processing_statuses.select('*')` → `id, name, label, icon, color, order_index, is_active`
+
+**11. `src/components/administration/RSSSettingsManager.tsx`** (1 Stelle)
+- `rss_settings.select('*')` → `id, tenant_id, feed_url, is_active, auto_publish, default_category, default_tags, fetch_interval_minutes`
+
+**12. `src/components/employees/EmployeeAdminTable.tsx`** (1 Stelle)
+- `employee_settings_history.select('*')` → `id, user_id, valid_from, valid_to, weekly_hours, work_days_per_week, created_at`
+
+**13. `src/components/widgets/PomodoroWidget.tsx`** (1 Stelle)
+- `pomodoro_sessions.select('*')` → `id, user_id, session_type, duration_minutes, is_completed, started_at, ended_at, task_id`
+
+**14. `src/components/press/hooks/usePressReleaseEditor.ts`** (1 Stelle)
+- `press_releases.select('*')` → `id, title, content, content_html, content_nodes, slug, excerpt, feature_image_url, status, tags, category, author_id, tenant_id, created_at, updated_at, published_at, ghost_id`
+
+**15. `src/features/redaktion/hooks/usePlannerNotes.ts`** (1 Stelle)
+- `social_planner_notes.select('*')` → `id, tenant_id, date, content, platform, status, created_by, created_at, updated_at`
+
+**16. `src/features/dossiers/hooks/useDossierLinks.ts`** (1 Stelle)
+- `dossier_links.select('*')` → `id, dossier_id, linked_type, linked_id, created_at`
+
+**17. `src/features/cases/files/hooks/useCaseFileDetails.tsx`** (1 Stelle)
+- `case_item_interactions.select('*')` → `id, case_file_id, interaction_type, subject, content, contact_name, contact_email, direction, created_by, created_at`
+
+**18. `src/features/dossiers/hooks/useDossierSourceWatchers.ts`** (1 Stelle)
+- `dossier_source_watchers.select('*')` → `id, dossier_id, source_name, source_url, source_type, keywords, last_synced_at, created_at`
+
+### Edge Functions (Supabase)
+- `supabase/functions/send-checklist-email/index.ts`: `event_planning_item_actions.select('*')` → nur benötigte Spalten
+
+### Nicht geändert
+- `select()` nach `.insert()`, `.update()`, `.delete()` -- diese geben nur die betroffene Zeile zurück und sind korrekt
+
+### Erwartete Wirkung
+- Reduziert Payload-Größe pro Abfrage um 20-60% je nach Tabelle (besonders bei `quick_notes` mit 28 Spalten, `tasks` mit 20 Spalten, `press_releases` mit großen JSON-Feldern)
+- Keine funktionalen Änderungen
 
