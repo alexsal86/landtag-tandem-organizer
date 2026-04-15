@@ -103,7 +103,7 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
       const today = new Date().toISOString().split('T')[0];
       const { data, error } = await supabase
         .from('pomodoro_sessions')
-        .select('id, user_id, session_type, duration_minutes, is_completed, started_at, ended_at, task_id')
+        .select('id, user_id, session_type, duration_minutes, is_completed, started_at, completed_at, task_id')
         .eq('user_id', user.id)
         .gte('started_at', today)
         .order('started_at', { ascending: false });

@@ -39,7 +39,7 @@ export function usePlannerNotes() {
     if (!user?.id || !currentTenant?.id) return;
     const { data, error } = await supabase
       .from("social_planner_notes")
-      .select("id, tenant_id, date, content, platform, status, created_by, created_at, updated_at, color")
+      .select("id, tenant_id, note_date, content, color, visible_to_all, created_by, created_at, updated_at")
       .eq("tenant_id", currentTenant.id)
       .order("created_at", { ascending: true });
     if (error) {
