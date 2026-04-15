@@ -216,7 +216,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       // Fetch meeting without profile joins (FK points to auth.users, not profiles)
       const { data: meetingData, error: meetingError } = await supabase
         .from("employee_meetings")
-        .select("*")
+        .select("id, employee_id, conducted_by, tenant_id, meeting_date, next_meeting_due, meeting_type, status, protocol, employee_notes, supervisor_notes, action_items, created_at, updated_at, employee_preparation, supervisor_preparation, shared_during_meeting, protocol_data, cancellation_reason, reschedule_request_reason, completed_at")
         .eq("id", meetingId)
         .maybeSingle();
 
@@ -267,7 +267,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
 
       const { data: actionData, error: actionError } = await supabase
         .from("employee_meeting_action_items")
-        .select("*")
+        .select("id, meeting_id, tenant_id, description, owner, assigned_to, due_date, status, completed_at, notes, created_at, updated_at, task_id")
         .eq("meeting_id", meetingId)
         .order("created_at", { ascending: false });
 
