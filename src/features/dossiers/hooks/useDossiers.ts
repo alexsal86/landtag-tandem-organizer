@@ -17,7 +17,7 @@ export function useDossiers() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("dossiers")
-        .select("*")
+        .select("id, title, summary, status, priority, owner_id, topic_id, tenant_id, created_by, created_at, updated_at, open_questions, positions, risks_opportunities, review_interval_days, next_review_at, last_briefing_at, notes_html")
         .eq("tenant_id", tenantId!)
         .order("updated_at", { ascending: false });
       if (error) throw error;
