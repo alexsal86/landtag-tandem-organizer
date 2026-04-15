@@ -43,6 +43,9 @@ self.addEventListener('fetch', function (e) {
     url.searchParams.has('t');
   if (isViteDevRequest) return;
 
+  // Skip cross-origin requests — let browser handle CORS natively
+  if (url.origin !== self.location.origin) return;
+
   // Determine if we should add COOP/COEP headers
   const secFetchDest = r.headers.get('Sec-Fetch-Dest');
   const secFetchSite = r.headers.get('Sec-Fetch-Site');
