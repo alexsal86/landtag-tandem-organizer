@@ -280,7 +280,7 @@ Deno.serve(withSafeHandler("send-matrix-morning-greeting", async (req) => {
       },
     );
   }
-});
+}));
 
 async function generateGreeting(
   supabaseAdmin: any,

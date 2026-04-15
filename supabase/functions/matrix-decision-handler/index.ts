@@ -107,7 +107,7 @@ Deno.serve(withSafeHandler("matrix-decision-handler", async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
-});
+}));
 
 async function handleMatrixMessage(
   message: MatrixIncomingMessage,
