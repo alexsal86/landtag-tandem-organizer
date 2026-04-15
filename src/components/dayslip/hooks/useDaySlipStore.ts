@@ -648,10 +648,10 @@ export function useDaySlipStore(userId?: string, tenantId?: string): UseDaySlipS
 
   // Realtime: auto-strike deadlines when completed
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !tenantId) return;
 
     const channel = supabase.channel(`dayslip-deadline-sync-${userId}`)
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "tasks" }, (payload) => {
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "tasks", filter: `tenant_id=eq.${tenantId}` }, (payload) => {
         const newRow = payload.new as { id?: string; status?: string };
         if (newRow.status === "completed" && newRow.id) {
           const sourceKey = `task:${newRow.id}`;
@@ -660,7 +660,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string): UseDaySlipS
           if (lineId) toggleStrike(lineId);
         }
       })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "case_items" }, (payload) => {
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "case_items", filter: `tenant_id=eq.${tenantId}` }, (payload) => {
         const newRow = payload.new as { id?: string; status?: string };
         if (newRow.status === "erledigt" && newRow.id) {
           const sourceKey = `case:${newRow.id}`;
@@ -669,7 +669,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string): UseDaySlipS
           if (lineId) toggleStrike(lineId);
         }
       })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "task_decisions" }, (payload) => {
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "task_decisions", filter: `tenant_id=eq.${tenantId}` }, (payload) => {
         const newRow = payload.new as { id?: string; status?: string };
         if (newRow.status === "resolved" && newRow.id) {
           const sourceKey = `decision:${newRow.id}`;
@@ -681,7 +681,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string): UseDaySlipS
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [userId, todayKey, toggleStrike]);
+  }, [userId, tenantId, todayKey, toggleStrike]);
 
   // Week plan injection
   useEffect(() => {
