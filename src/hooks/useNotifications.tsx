@@ -206,7 +206,8 @@ export const useNotifications = () => {
       setNotifications(mappedNotifications);
       setUnreadCount(mappedNotifications.filter((notification: Notification) => !notification.is_read).length);
     } catch (error: unknown) {
-      debugConsole.error('Error loading notifications:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      debugConsole.error('Error loading notifications:', errorMessage, error);
       // Preserve existing notifications (stale data > no data)
       // Only show toast if we have no data at all
       if (notifications.length === 0) {
