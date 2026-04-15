@@ -206,7 +206,8 @@ export const useNotifications = () => {
       setNotifications(mappedNotifications);
       setUnreadCount(mappedNotifications.filter((notification: Notification) => !notification.is_read).length);
     } catch (error: unknown) {
-      debugConsole.error('Error loading notifications:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      debugConsole.error('Error loading notifications:', errorMessage, error);
       // Preserve existing notifications (stale data > no data)
       // Only show toast if we have no data at all
       if (notifications.length === 0) {
@@ -385,13 +386,32 @@ export const useNotifications = () => {
     return outputArray;
   };
 
-  const subscribeToPush = useCallback(async (): Promise<void> => {
+  const getPushRegistration = useCallback(async (): Promise<PushManagerRegistration> => {
+    const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/push/' });
+    // Wait for the SW to become active
+    if (!registration.active) {
+      await new Promise<void>((resolve) => {
+        const sw = registration.installing ?? registration.waiting;
+        if (!sw) {
+          resolve();
+          return;
+        }
+        sw.addEventListener('statechange', () => {
+          if (sw.state === 'activated') resolve();
+        });
+      });
+    }
+    return registration as PushManagerRegistration;
+  }, []);
+
+  const subscribeToPush = useCallback(async (options?: { silent?: boolean }): Promise<void> => {
+    const silent = options?.silent ?? false;
     if (!user || !pushSupported || pushPermission !== 'granted') {
       return;
     }
 
     try {
-      const registration = (await navigator.serviceWorker.ready) as PushManagerRegistration;
+      const registration = await getPushRegistration();
       const pushManager = registration.pushManager;
 
       if (!pushManager) {
@@ -484,21 +504,25 @@ export const useNotifications = () => {
           throw error;
         }
 
-        toast({
-          title: 'Erfolgreich',
-          description: 'Push-Benachrichtigungen wurden aktiviert.',
-        });
+        if (!silent) {
+          toast({
+            title: 'Erfolgreich',
+            description: 'Push-Benachrichtigungen wurden aktiviert.',
+          });
+        }
       }
     } catch (error: unknown) {
       debugConsole.error('❌ Error subscribing to push:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Push-Benachrichtigungen konnten nicht aktiviert werden.',
-        variant: 'destructive',
-      });
+      if (!silent) {
+        toast({
+          title: 'Fehler',
+          description: 'Push-Benachrichtigungen konnten nicht aktiviert werden.',
+          variant: 'destructive',
+        });
+      }
       throw error;
     }
-  }, [user, pushSupported, pushPermission, toast]);
+  }, [user, pushSupported, pushPermission, toast, getPushRegistration]);
 
   const requestPushPermission = useCallback(async (): Promise<boolean> => {
     if (!pushSupported) {
@@ -747,7 +771,7 @@ export const useNotifications = () => {
 
     const checkAndRenewSubscription = async (): Promise<void> => {
       try {
-        const registration = (await navigator.serviceWorker.ready) as PushManagerRegistration | undefined;
+        const registration = await getPushRegistration();
         const currentSubscription = registration?.pushManager
           ? await registration.pushManager.getSubscription()
           : null;
@@ -758,13 +782,12 @@ export const useNotifications = () => {
         if (isLegacyEndpoint && currentSubscription) {
           debugConsole.log('🔄 Legacy FCM endpoint detected, forcing re-subscription...', { endpoint: currentEndpoint });
           await currentSubscription.unsubscribe();
-          // Also deactivate the old DB record
           await supabase
             .from('push_subscriptions')
             .update({ is_active: false })
             .eq('user_id', user.id)
             .eq('endpoint', currentEndpoint);
-          await subscribeToPush();
+          await subscribeToPush({ silent: true });
           return;
         }
 
@@ -776,8 +799,6 @@ export const useNotifications = () => {
           .limit(1);
 
         const dbEndpoint = data?.[0]?.endpoint ?? null;
-
-        // Also check if DB endpoint is legacy
         const isDbLegacy = dbEndpoint?.includes('fcm.googleapis.com/fcm/send/');
 
         if (!data || data.length === 0 || isDbLegacy || (currentEndpoint && dbEndpoint && currentEndpoint !== dbEndpoint)) {
@@ -796,7 +817,7 @@ export const useNotifications = () => {
               .eq('user_id', user.id)
               .eq('endpoint', dbEndpoint);
           }
-          await subscribeToPush();
+          await subscribeToPush({ silent: true });
         }
       } catch (error: unknown) {
         debugConsole.error('Error checking/renewing push subscription:', error);
@@ -804,7 +825,7 @@ export const useNotifications = () => {
     };
 
     void checkAndRenewSubscription();
-  }, [user, pushSupported, pushPermission, subscribeToPush]);
+  }, [user, pushSupported, pushPermission, subscribeToPush, getPushRegistration]);
 
   return {
     notifications,
