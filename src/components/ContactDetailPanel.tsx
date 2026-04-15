@@ -158,7 +158,7 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
     if (!contactId) return;
     try {
       setLoading(true);
-      const { data, error } = await supabase.from('contacts').select('*').eq('id', contactId).single();
+      const { data, error } = await supabase.from('contacts').select('id, user_id, name, email, phone, notes, role, organization, category, priority, last_contact, avatar_url, address, birthday, website, linkedin, twitter, facebook, instagram, xing, contact_type, organization_id, tags, tenant_id, first_name, last_name, title, department, position, business_street, business_house_number, business_postal_code, business_city, business_country, business_phone, mobile_phone, email_2, email_3, is_favorite, coordinates, gender').eq('id', contactId).single();
       if (error) throw error;
       setContact({ ...data, contact_type: data.contact_type as "person" | "organization", category: data.category as Contact["category"], priority: data.priority as Contact["priority"], tags: data.tags || [], coordinates: data.coordinates as { lat: number; lng: number } | undefined } as Contact);
       let inheritedTags: string[] = [];
