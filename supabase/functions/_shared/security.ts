@@ -8,6 +8,19 @@ const ALLOWED_ORIGINS = [
   "http://localhost:3000",
 ];
 
+/** Checks whether an origin matches the static list or known Lovable host patterns. */
+function isAllowedOrigin(origin: string): boolean {
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  try {
+    const { hostname } = new URL(origin);
+    if (hostname.endsWith(".lovableproject.com")) return true;
+    if (hostname.endsWith(".lovable.app")) return true;
+  } catch {
+    // malformed origin
+  }
+  return false;
+}
+
 const ALLOW_HEADERS =
   "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version";
 
@@ -20,7 +33,7 @@ const ALLOW_HEADERS =
 export function getCorsHeaders(req: Request): HeadersInit {
   const origin = req.headers.get("Origin");
   const allowed =
-    origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+    origin && isAllowedOrigin(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
     "Access-Control-Allow-Origin": allowed,
     "Access-Control-Allow-Headers": ALLOW_HEADERS,

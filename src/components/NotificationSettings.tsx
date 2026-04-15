@@ -473,10 +473,10 @@ export const NotificationSettings = (): JSX.Element => {
   const enablePushNotifications = useCallback(async (): Promise<void> => {
     const success = await requestPushPermission();
     if (success) {
-      await subscribeToPush();
+      // requestPushPermission already calls subscribeToPush on success
       await checkActiveSubscription();
     }
-  }, [checkActiveSubscription, requestPushPermission, subscribeToPush]);
+  }, [checkActiveSubscription, requestPushPermission]);
 
   const renewPushSubscription = useCallback(async (): Promise<void> => {
     try {
