@@ -116,7 +116,7 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
   const loadPressRelease = async (id: string) => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.from("press_releases").select("id, title, content, content_html, content_nodes, slug, excerpt, feature_image_url, status, tags, category, author_id, tenant_id, created_at, updated_at, published_at, ghost_id, meta_title, meta_description, published_by, email_sent_by").eq("id", id).single();
+      const { data, error } = await supabase.from("press_releases").select("id, title, content, content_html, content_nodes, slug, excerpt, feature_image_url, status, tags, tenant_id, created_at, updated_at, published_at, meta_title, meta_description, published_by, email_sent_by, email_sent_at, ghost_post_id, ghost_post_url, created_by").eq("id", id).single();
       if (error) throw error;
 
       setPressRelease(data);
