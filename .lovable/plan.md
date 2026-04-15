@@ -1,73 +1,34 @@
 
-Do I know what the issue is? Ja — deutlich genauer als vorher.
 
-### Wahrscheinlicher tatsächlicher Fehler
-Der Fehler ist sehr wahrscheinlich jetzt **nicht mehr primär CORS**, denn die Logs zeigen, dass `send-push-notification` per `GET` noch aufgerufen wird. Der Bruch passiert also **danach**.
+## Plan: SW-Interception für Cross-Origin Requests deaktivieren
 
-Der kritischste Bug sitzt aktuell im Frontend-Flow in `src/hooks/useNotifications.tsx`:
+### Ursache
+Der Service Worker (`public/sw.js`) fängt **alle** Fetch-Requests ab — auch die cross-origin Requests an die Supabase Edge Function. Dabei wird:
 
-- Wenn Browser-Subscription und Datenbankstatus nicht zusammenpassen, wird die **bestehende Browser-Subscription sofort abgemeldet**:
-  - in `subscribeToPush()`
-  - und zusätzlich automatisch in `checkAndRenewSubscription()`
-- Erst **danach** wird versucht, eine neue Subscription zu erzeugen.
-- Wenn dieser zweite Schritt fehlschlägt (z. B. ungültiger VAPID-Key, `pushManager.subscribe()`-Fehler oder DB-Upsert-Fehler), ist die vorher funktionierende Subscription schon weg.
+1. Die Original-Response (Typ `cors`) in eine `new Response()` umgewandelt (Typ `default`)
+2. Das Hauptdokument wird mit `Cross-Origin-Embedder-Policy: require-corp` ausgeliefert
+3. Der Browser blockiert die umgewandelte Response, weil sie unter COEP nicht als gültige CORS-Response erkannt wird
 
-Das passt exakt zu deinem Verlauf:
-- bis ca. 23 Uhr lief es,
-- dann gab es offenbar einen Mismatch/Fehler,
-- der Auto-Renew-Flow hat die alte Subscription zerstört,
-- seitdem kann sie nicht sauber repariert werden.
+Der VAPID-Key-Request an `send-push-notification` scheitert deshalb im Browser, obwohl der Server korrekt antwortet (verifiziert per curl mit Origin-Header).
 
-### Umsetzung
-1. **Renew-/Repair-Logik nicht-destruktiv umbauen**
-   - Datei: `src/hooks/useNotifications.tsx`
-   - Wenn `pushManager.getSubscription()` bereits eine Subscription liefert:
-     - **nicht** sofort `unsubscribe()`
-     - stattdessen die vorhandene Browser-Subscription direkt in `push_subscriptions` **reparieren/upserten**
-   - Nur wenn im Browser **gar keine** Subscription existiert, darf `pushManager.subscribe()` aufgerufen werden.
+### Lösung
 
-2. **Auto-Renew sicher machen**
-   - Datei: `src/hooks/useNotifications.tsx`
-   - `checkAndRenewSubscription()` darf bei DB-Mismatch nicht mehr zuerst die Browser-Subscription löschen.
-   - Stattdessen:
-     - vorhandene Browser-Subscription bevorzugen,
-     - DB-Eintrag darauf synchronisieren,
-     - alte/stale DB-Endpunkte erst **nach erfolgreicher Reparatur** deaktivieren.
+**`public/sw.js` — Cross-Origin Requests überspringen**
 
-3. **Fehlerursache sichtbar machen**
-   - Datei: `src/hooks/useNotifications.tsx`
-   - Den generischen Fehler in konkrete Schritte aufteilen:
-     - Service Worker Registrierung
-     - VAPID-Key Abruf
-     - `pushManager.subscribe()`
-     - DB-Upsert `push_subscriptions`
-   - So sieht man sofort, ob das Problem aktuell ein kaputter VAPID-Key oder ein Frontend-/DB-Repair-Fehler ist.
+Im `fetch`-Event-Handler eine Prüfung ergänzen: Wenn die Request-URL einen anderen Origin hat als der SW selbst, wird der Request **nicht** interceptiert (kein `e.respondWith()`). Der Browser handled den Request dann nativ mit korrekter CORS-Validierung.
 
-4. **VAPID-Health explizit prüfen**
-   - Dateien:
-     - `src/hooks/useNotifications.tsx`
-     - optional `supabase/functions/send-push-notification/index.ts`
-   - GET-Antwort robuster prüfen:
-     - `publicKey` vorhanden
-     - plausibles Format
-   - Falls nötig zusätzlich eine kleine Health-Response ergänzen, damit fehlende/kaputte Secrets sofort erkennbar sind.
+```javascript
+// Direkt nach den Vite-Dev-Checks:
+if (url.origin !== self.location.origin) return;
+```
 
-5. **Bestehende kaputte Zustände bereinigen**
-   - Nach der Code-Anpassung:
-     - vorhandene Browser-Subscription wiederverwenden, wenn sie noch existiert
-     - nur veraltete DB-Zeilen deaktivieren
-     - keinen “unsubscribe first”-Flow mehr
+Da `skipIsolation` für diese Requests sowieso `true` wäre (keine Header-Änderung nötig), gehen keine Funktionen verloren. Nur die Response-Typ-Konversion, die das Problem verursacht, entfällt.
 
 ### Betroffene Dateien
-- `src/hooks/useNotifications.tsx` — Hauptfix
-- optional `supabase/functions/send-push-notification/index.ts` — bessere VAPID-Diagnose
-- optional `src/components/NotificationSettings.tsx` — präzisere UI-Fehlermeldung
+- `public/sw.js` — eine Zeile hinzufügen
 
 ### Erwartetes Ergebnis
-- Die Erneuerung zerstört nicht mehr zuerst die funktionierende Subscription
-- Ein DB-Mismatch führt zu einer **Reparatur**, nicht zu einem Totalausfall
-- Push lässt sich wieder aktivieren/erneuern
-- Falls danach noch etwas scheitert, ist der exakte Fehler eindeutig sichtbar statt nur „konnte nicht aktiviert werden“
+- VAPID-Key-Request an Supabase wird nicht mehr vom SW umgewandelt
+- Push-Aktivierung funktioniert wieder
+- COI-Headers werden weiterhin korrekt auf das Hauptdokument angewendet
 
-### Technische Kurzbegründung
-Die Logs sprechen gegen einen reinen CORS-Blocker, weil der VAPID-Endpoint noch erreicht wird. Der gefährlichste reale Fehler im aktuellen Code ist das **vorzeitige `unsubscribe()`**. Das ist genau die Art Bug, die aus einem kleinen Inkonsistenzproblem innerhalb weniger Minuten einen dauerhaften Push-Ausfall macht.
