@@ -387,7 +387,7 @@ export const useNotifications = () => {
   };
 
   const getPushRegistration = useCallback(async (): Promise<PushManagerRegistration> => {
-    const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/push/' });
+    const registration = await navigator.serviceWorker.register('/sw.js');
     // Wait for the SW to become active
     if (!registration.active) {
       await new Promise<void>((resolve) => {
