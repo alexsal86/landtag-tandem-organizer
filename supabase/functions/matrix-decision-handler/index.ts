@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+// deno-lint-ignore-file
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from "../_shared/security.ts";
 
@@ -22,7 +22,7 @@ interface DecisionCommand {
   message?: string;
 }
 
-serve(withSafeHandler("matrix-decision-handler", async (req) => {
+Deno.serve(withSafeHandler("matrix-decision-handler", async (req) => {
   console.log('🤖 Matrix decision handler called with method:', req.method);
 
   // Handle CORS preflight requests

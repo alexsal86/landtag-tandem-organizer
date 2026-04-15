@@ -260,8 +260,8 @@ describe("respond-public-event-invitation", () => {
         verifyCaptcha: vi.fn(async () => ({
           verified: true,
           required: false,
-          provider: "turnstile",
-          siteKey: null,
+          provider: "turnstile" as const,
+          siteKey: null as string | null,
         })),
       },
     );

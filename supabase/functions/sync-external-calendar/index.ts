@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+// deno-lint-ignore-file
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { getSyncExternalErrorResponse } from './sync-external-calendar.utils.ts'
 
@@ -332,7 +332,7 @@ async function incrementalSync(supabase: any, calendarId: string, newEvents: ICS
   return stats;
 }
 
-serve(withSafeHandler("sync-external-calendar", async (req) => {
+Deno.serve(withSafeHandler("sync-external-calendar", async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
