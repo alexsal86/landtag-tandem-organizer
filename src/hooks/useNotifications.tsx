@@ -770,7 +770,7 @@ export const useNotifications = () => {
 
     const checkAndRenewSubscription = async (): Promise<void> => {
       try {
-        const registration = (await navigator.serviceWorker.ready) as PushManagerRegistration | undefined;
+        const registration = await getPushRegistration();
         const currentSubscription = registration?.pushManager
           ? await registration.pushManager.getSubscription()
           : null;
@@ -781,13 +781,12 @@ export const useNotifications = () => {
         if (isLegacyEndpoint && currentSubscription) {
           debugConsole.log('🔄 Legacy FCM endpoint detected, forcing re-subscription...', { endpoint: currentEndpoint });
           await currentSubscription.unsubscribe();
-          // Also deactivate the old DB record
           await supabase
             .from('push_subscriptions')
             .update({ is_active: false })
             .eq('user_id', user.id)
             .eq('endpoint', currentEndpoint);
-          await subscribeToPush();
+          await subscribeToPush({ silent: true });
           return;
         }
 
@@ -799,8 +798,6 @@ export const useNotifications = () => {
           .limit(1);
 
         const dbEndpoint = data?.[0]?.endpoint ?? null;
-
-        // Also check if DB endpoint is legacy
         const isDbLegacy = dbEndpoint?.includes('fcm.googleapis.com/fcm/send/');
 
         if (!data || data.length === 0 || isDbLegacy || (currentEndpoint && dbEndpoint && currentEndpoint !== dbEndpoint)) {
@@ -819,7 +816,7 @@ export const useNotifications = () => {
               .eq('user_id', user.id)
               .eq('endpoint', dbEndpoint);
           }
-          await subscribeToPush();
+          await subscribeToPush({ silent: true });
         }
       } catch (error: unknown) {
         debugConsole.error('Error checking/renewing push subscription:', error);
