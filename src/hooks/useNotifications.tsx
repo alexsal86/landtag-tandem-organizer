@@ -503,21 +503,25 @@ export const useNotifications = () => {
           throw error;
         }
 
-        toast({
-          title: 'Erfolgreich',
-          description: 'Push-Benachrichtigungen wurden aktiviert.',
-        });
+        if (!silent) {
+          toast({
+            title: 'Erfolgreich',
+            description: 'Push-Benachrichtigungen wurden aktiviert.',
+          });
+        }
       }
     } catch (error: unknown) {
       debugConsole.error('❌ Error subscribing to push:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Push-Benachrichtigungen konnten nicht aktiviert werden.',
-        variant: 'destructive',
-      });
+      if (!silent) {
+        toast({
+          title: 'Fehler',
+          description: 'Push-Benachrichtigungen konnten nicht aktiviert werden.',
+          variant: 'destructive',
+        });
+      }
       throw error;
     }
-  }, [user, pushSupported, pushPermission, toast]);
+  }, [user, pushSupported, pushPermission, toast, getPushRegistration]);
 
   const requestPushPermission = useCallback(async (): Promise<boolean> => {
     if (!pushSupported) {
