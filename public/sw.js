@@ -1,5 +1,8 @@
-// Service Worker for Push Notifications
+// Unified Service Worker: Push Notifications + Cross-Origin Isolation
 const CACHE_NAME = 'notification-cache-v1';
+
+// ── COI Configuration ──
+let coepCredentialless = false;
 
 // Install event
 self.addEventListener('install', (event) => {
@@ -13,10 +16,79 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-// Push event handler
+// Message handler (COI deregister + credentialless toggle)
+self.addEventListener('message', (e) => {
+  if (!e.data) return;
+  if (e.data.type === 'deregister') {
+    self.registration.unregister().then(() => self.clients.matchAll()).then((clients) => {
+      clients.forEach((c) => c.navigate(c.url));
+    });
+  } else if (e.data.type === 'coepCredentialless') {
+    coepCredentialless = e.data.value;
+  }
+});
+
+// ── Fetch handler: COI header injection ──
+self.addEventListener('fetch', function (e) {
+  const r = e.request;
+  if (r.cache === 'only-if-cached' && r.mode !== 'same-origin') return;
+
+  // Skip Vite dev requests
+  const url = new URL(r.url);
+  const isViteDevRequest =
+    url.pathname.includes('node_modules/.vite/') ||
+    url.pathname.includes('/@vite/') ||
+    url.pathname.includes('/@react-refresh') ||
+    url.pathname.startsWith('/src/') ||
+    url.searchParams.has('t');
+  if (isViteDevRequest) return;
+
+  // Determine if we should add COOP/COEP headers
+  const secFetchDest = r.headers.get('Sec-Fetch-Dest');
+  const secFetchSite = r.headers.get('Sec-Fetch-Site');
+
+  const isIframeNavigation = secFetchDest === 'iframe' || secFetchDest === 'frame';
+  const isTopLevelUserNav = r.mode === 'navigate'
+    && secFetchDest === 'document'
+    && secFetchSite === 'none';
+  const skipIsolation = isIframeNavigation || !isTopLevelUserNav;
+
+  const s = coepCredentialless && r.mode === 'no-cors'
+    ? new Request(r, { credentials: 'omit' })
+    : r;
+
+  e.respondWith(
+    fetch(s).then(function (response) {
+      if (response.status === 0) return response;
+
+      const headers = new Headers(response.headers);
+
+      if (!skipIsolation) {
+        headers.set('Cross-Origin-Embedder-Policy',
+          coepCredentialless ? 'credentialless' : 'require-corp');
+        if (!coepCredentialless) {
+          headers.set('Cross-Origin-Resource-Policy', 'cross-origin');
+        }
+        headers.set('Cross-Origin-Opener-Policy', 'same-origin');
+      }
+
+      const noBody = [101, 204, 205, 304].includes(response.status);
+      return new Response(noBody ? null : response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: headers,
+      });
+    }).catch(function (err) {
+      console.error('[SW] fetch error:', err);
+      return Response.error();
+    })
+  );
+});
+
+// ── Push notification handler ──
 self.addEventListener('push', (event) => {
   console.log('Push received:', event);
-  
+
   if (!event.data) {
     console.log('Push event has no data');
     return;
@@ -34,14 +106,8 @@ self.addEventListener('push', (event) => {
       tag: data.tag || 'default',
       requireInteraction: data.requireInteraction || data.priority === 'urgent' || data.priority === 'high',
       actions: [
-        {
-          action: 'view',
-          title: 'Anzeigen'
-        },
-        {
-          action: 'dismiss',
-          title: 'Schließen'
-        }
+        { action: 'view', title: 'Anzeigen' },
+        { action: 'dismiss', title: 'Schließen' }
       ]
     };
 
@@ -52,61 +118,42 @@ self.addEventListener('push', (event) => {
     );
   } catch (error) {
     console.error('Error parsing push data:', error);
-    
-    // Fallback notification
+
     event.waitUntil(
       self.registration.showNotification('Neue Benachrichtigung', {
         body: 'Sie haben eine neue Benachrichtigung erhalten.',
         icon: '/favicon.ico',
         badge: '/favicon.ico',
-        actions: [
-          {
-            action: 'view',
-            title: 'Anzeigen'
-          }
-        ]
+        actions: [{ action: 'view', title: 'Anzeigen' }]
       })
     );
   }
 });
 
-// Notification click handler
+// ── Notification click handler ──
 self.addEventListener('notificationclick', (event) => {
   console.log('Notification clicked:', event);
-  
+
   event.notification.close();
-  
+
   const action = event.action;
   const data = event.notification.data || {};
-  
-  if (action === 'dismiss') {
-    return;
-  }
-  
-  // Default action or 'view' action
+
+  if (action === 'dismiss') return;
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Check if app is already open
       for (const client of clientList) {
         if (client.url.includes(self.location.origin) && 'focus' in client) {
-          // Focus existing window and navigate if needed
           client.focus();
-          
-          // Send message to client to handle notification
-          client.postMessage({
-            type: 'NOTIFICATION_CLICKED',
-            data: data
-          });
-          
+          client.postMessage({ type: 'NOTIFICATION_CLICKED', data });
           return;
         }
       }
-      
-      // Open new window if app is not open
+
       if (clients.openWindow) {
         let url = self.location.origin;
-        
-        // Navigate to specific page based on notification type
+
         if (data.type) {
           switch (data.type) {
             case 'task_created':
@@ -123,17 +170,17 @@ self.addEventListener('notificationclick', (event) => {
               url += '#/';
           }
         }
-        
+
         return clients.openWindow(url);
       }
     })
   );
 });
 
-// Background sync (future enhancement)
+// Background sync
 self.addEventListener('sync', (event) => {
   console.log('Background sync:', event.tag);
-  
+
   if (event.tag === 'notification-sync') {
     event.waitUntil(syncNotifications());
   }
@@ -141,9 +188,7 @@ self.addEventListener('sync', (event) => {
 
 async function syncNotifications() {
   try {
-    // Sync offline notifications when back online
     console.log('Syncing notifications...');
-    // Implementation for offline sync
   } catch (error) {
     console.error('Error syncing notifications:', error);
   }
