@@ -851,15 +851,33 @@ export const useNotifications = () => {
         const dbEndpoint = data?.[0]?.endpoint ?? null;
         const isDbLegacy = dbEndpoint?.includes('fcm.googleapis.com/fcm/send/');
 
-        if (!data || data.length === 0 || isDbLegacy || (currentEndpoint && dbEndpoint && currentEndpoint !== dbEndpoint)) {
-          debugConsole.log('🔄 Push subscription mismatch, missing, or legacy endpoint — auto-renewing...', {
-            hasDbRecord: Boolean(data?.length),
-            endpointMatch: currentEndpoint === dbEndpoint,
-            isDbLegacy,
-          });
-          if (currentSubscription) {
-            await currentSubscription.unsubscribe();
+        // If browser has a valid subscription, ALWAYS prefer repairing the DB
+        // instead of destroying the browser subscription
+        if (currentSubscription && !isLegacyEndpoint) {
+          const endpointMatchesDb = currentEndpoint === dbEndpoint;
+          if (!endpointMatchesDb || !data || data.length === 0 || isDbLegacy) {
+            debugConsole.log('🔧 Repairing DB record from existing browser subscription...', {
+              hasDbRecord: Boolean(data?.length),
+              endpointMatch: endpointMatchesDb,
+              isDbLegacy,
+            });
+            // Deactivate stale legacy DB entries
+            if (isDbLegacy && dbEndpoint) {
+              await supabase
+                .from('push_subscriptions')
+                .update({ is_active: false })
+                .eq('user_id', user.id)
+                .eq('endpoint', dbEndpoint);
+            }
+            // Repair by calling subscribeToPush which now preserves existing subscriptions
+            await subscribeToPush({ silent: true });
           }
+          return;
+        }
+
+        // No browser subscription exists — create a fresh one
+        if (!currentSubscription) {
+          debugConsole.log('🔄 No browser subscription found — creating new one...');
           if (isDbLegacy && dbEndpoint) {
             await supabase
               .from('push_subscriptions')
