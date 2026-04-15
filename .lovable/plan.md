@@ -1,79 +1,73 @@
 
-Ich kenne die wahrscheinliche Ursache jetzt deutlich genauer:
+Do I know what the issue is? Ja — deutlich genauer als vorher.
 
-### Wahrscheinlichstes Problem
-Der Fehler liegt sehr wahrscheinlich nicht mehr primär am Service Worker, sondern am Abruf des VAPID Public Keys beim Aktivieren von Push.
+### Wahrscheinlicher tatsächlicher Fehler
+Der Fehler ist sehr wahrscheinlich jetzt **nicht mehr primär CORS**, denn die Logs zeigen, dass `send-push-notification` per `GET` noch aufgerufen wird. Der Bruch passiert also **danach**.
 
-In `src/hooks/useNotifications.tsx` wird der Key per direktem Browser-`fetch()` von  
-`https://wawofclbehbkebjivdte.supabase.co/functions/v1/send-push-notification` geladen.
+Der kritischste Bug sitzt aktuell im Frontend-Flow in `src/hooks/useNotifications.tsx`:
 
-Diese Edge Function läuft durch `withSafeHandler()` aus `supabase/functions/_shared/security.ts`. Dort sind aber aktuell nur diese Origins erlaubt:
+- Wenn Browser-Subscription und Datenbankstatus nicht zusammenpassen, wird die **bestehende Browser-Subscription sofort abgemeldet**:
+  - in `subscribeToPush()`
+  - und zusätzlich automatisch in `checkAndRenewSubscription()`
+- Erst **danach** wird versucht, eine neue Subscription zu erzeugen.
+- Wenn dieser zweite Schritt fehlschlägt (z. B. ungültiger VAPID-Key, `pushManager.subscribe()`-Fehler oder DB-Upsert-Fehler), ist die vorher funktionierende Subscription schon weg.
 
-- `https://app.landtag-tandem.de`
-- `http://localhost:5173`
-- `http://localhost:3000`
-
-Nicht erlaubt sind die aktuell genutzten Lovable-Domains wie z. B.:
-
-- `https://7d09a65d-5cbe-421b-a580-38a4fe244277.lovableproject.com`
-- `https://id-preview--...lovable.app`
-
-Wenn du also die App in einem normalen Browserfenster auf der `lovableproject.com`-Domain öffnest, ist das zwar kein iframe-Problem mehr, aber weiterhin ein CORS-Problem. Dann schlägt genau der VAPID-Key-Request beim Aktivieren fehl und `subscribeToPush()` endet mit dem generischen Fehler „Push-Benachrichtigungen konnten nicht aktiviert werden“.
-
-### Zusätzliche Schwachstelle
-Es gibt noch eine zweite unnötige Fehlerquelle:
-- `requestPushPermission()` ruft intern schon `subscribeToPush()` auf
-- `NotificationSettings.tsx` ruft danach bei Erfolg nochmal `subscribeToPush()` auf
-
-Das ist doppelt und macht die Fehlerdiagnose unnötig unklar.
+Das passt exakt zu deinem Verlauf:
+- bis ca. 23 Uhr lief es,
+- dann gab es offenbar einen Mismatch/Fehler,
+- der Auto-Renew-Flow hat die alte Subscription zerstört,
+- seitdem kann sie nicht sauber repariert werden.
 
 ### Umsetzung
-1. **CORS für Edge Functions korrigieren**
-   - Datei: `supabase/functions/_shared/security.ts`
-   - Die Origin-Prüfung so erweitern, dass auch die aktuellen Lovable-Hosts akzeptiert werden:
-     - `*.lovableproject.com`
-     - `*.lovable.app`
-   - Dabei keine pauschale `*`-Freigabe, sondern kontrollierte Host-Regeln.
-
-2. **VAPID-Key-Abruf im Frontend robuster machen**
+1. **Renew-/Repair-Logik nicht-destruktiv umbauen**
    - Datei: `src/hooks/useNotifications.tsx`
-   - Den hart codierten Supabase-Function-URL-String entfernen.
-   - Stattdessen die URL aus `VITE_SUPABASE_URL` ableiten.
-   - Keine hartcodierten Keys im Frontend mehr verwenden.
-   - Den Fehlertext beim VAPID-Abruf präziser loggen, damit klar ist, ob es ein CORS-, HTTP-, SW- oder Subscription-Fehler ist.
+   - Wenn `pushManager.getSubscription()` bereits eine Subscription liefert:
+     - **nicht** sofort `unsubscribe()`
+     - stattdessen die vorhandene Browser-Subscription direkt in `push_subscriptions` **reparieren/upserten**
+   - Nur wenn im Browser **gar keine** Subscription existiert, darf `pushManager.subscribe()` aufgerufen werden.
 
-3. **Doppelten Subscribe-Flow bereinigen**
+2. **Auto-Renew sicher machen**
+   - Datei: `src/hooks/useNotifications.tsx`
+   - `checkAndRenewSubscription()` darf bei DB-Mismatch nicht mehr zuerst die Browser-Subscription löschen.
+   - Stattdessen:
+     - vorhandene Browser-Subscription bevorzugen,
+     - DB-Eintrag darauf synchronisieren,
+     - alte/stale DB-Endpunkte erst **nach erfolgreicher Reparatur** deaktivieren.
+
+3. **Fehlerursache sichtbar machen**
+   - Datei: `src/hooks/useNotifications.tsx`
+   - Den generischen Fehler in konkrete Schritte aufteilen:
+     - Service Worker Registrierung
+     - VAPID-Key Abruf
+     - `pushManager.subscribe()`
+     - DB-Upsert `push_subscriptions`
+   - So sieht man sofort, ob das Problem aktuell ein kaputter VAPID-Key oder ein Frontend-/DB-Repair-Fehler ist.
+
+4. **VAPID-Health explizit prüfen**
    - Dateien:
      - `src/hooks/useNotifications.tsx`
-     - `src/components/NotificationSettings.tsx`
-   - Entweder:
-     - `requestPushPermission()` kümmert sich nur um die Berechtigung
-     - und `NotificationSettings` startet danach genau einmal `subscribeToPush()`
-   - oder umgekehrt, aber nicht beides doppelt.
+     - optional `supabase/functions/send-push-notification/index.ts`
+   - GET-Antwort robuster prüfen:
+     - `publicKey` vorhanden
+     - plausibles Format
+   - Falls nötig zusätzlich eine kleine Health-Response ergänzen, damit fehlende/kaputte Secrets sofort erkennbar sind.
 
-4. **Service-Worker-Registrierung konsistent machen**
-   - Dateien:
-     - `src/main.tsx`
-     - `src/hooks/useNotifications.tsx`
-   - Beide Stellen sollen dieselbe `sw.js`-URL verwenden (aktuell einmal mit Query-String, einmal ohne), damit keine unnötigen Re-Registrierungen oder inkonsistenten Zustände entstehen.
-
-5. **Diagnose für wiederkehrende Fehler verbessern**
-   - Datei: `src/hooks/useNotifications.tsx`
-   - Im Catch-Block den konkreten Schritt unterscheiden:
-     - SW-Registrierung fehlgeschlagen
-     - VAPID-Key-Request fehlgeschlagen
-     - `pushManager.subscribe()` fehlgeschlagen
-     - DB-Upsert fehlgeschlagen
+5. **Bestehende kaputte Zustände bereinigen**
+   - Nach der Code-Anpassung:
+     - vorhandene Browser-Subscription wiederverwenden, wenn sie noch existiert
+     - nur veraltete DB-Zeilen deaktivieren
+     - keinen “unsubscribe first”-Flow mehr
 
 ### Betroffene Dateien
-- `supabase/functions/_shared/security.ts`
-- `src/hooks/useNotifications.tsx`
-- `src/components/NotificationSettings.tsx`
-- `src/main.tsx`
-- optional: `src/components/VapidKeyTest.tsx` zur gleichen URL-/CORS-Logik
+- `src/hooks/useNotifications.tsx` — Hauptfix
+- optional `supabase/functions/send-push-notification/index.ts` — bessere VAPID-Diagnose
+- optional `src/components/NotificationSettings.tsx` — präzisere UI-Fehlermeldung
 
 ### Erwartetes Ergebnis
-- Push-Aktivierung funktioniert wieder in normalen Browserfenstern auf der Lovable-Domain
-- Kein CORS-Fehler mehr beim Abrufen des VAPID-Keys
-- Klarere Fehlerdiagnose, falls danach noch ein echter Subscription- oder DB-Fehler bleibt
-- Kein doppelter Aktivierungsversuch mehr
+- Die Erneuerung zerstört nicht mehr zuerst die funktionierende Subscription
+- Ein DB-Mismatch führt zu einer **Reparatur**, nicht zu einem Totalausfall
+- Push lässt sich wieder aktivieren/erneuern
+- Falls danach noch etwas scheitert, ist der exakte Fehler eindeutig sichtbar statt nur „konnte nicht aktiviert werden“
+
+### Technische Kurzbegründung
+Die Logs sprechen gegen einen reinen CORS-Blocker, weil der VAPID-Endpoint noch erreicht wird. Der gefährlichste reale Fehler im aktuellen Code ist das **vorzeitige `unsubscribe()`**. Das ist genau die Art Bug, die aus einem kleinen Inkonsistenzproblem innerhalb weniger Minuten einen dauerhaften Push-Ausfall macht.
