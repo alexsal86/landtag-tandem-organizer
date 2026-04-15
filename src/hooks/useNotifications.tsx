@@ -385,13 +385,32 @@ export const useNotifications = () => {
     return outputArray;
   };
 
-  const subscribeToPush = useCallback(async (): Promise<void> => {
+  const getPushRegistration = useCallback(async (): Promise<PushManagerRegistration> => {
+    const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/push/' });
+    // Wait for the SW to become active
+    if (!registration.active) {
+      await new Promise<void>((resolve) => {
+        const sw = registration.installing ?? registration.waiting;
+        if (!sw) {
+          resolve();
+          return;
+        }
+        sw.addEventListener('statechange', () => {
+          if (sw.state === 'activated') resolve();
+        });
+      });
+    }
+    return registration as PushManagerRegistration;
+  }, []);
+
+  const subscribeToPush = useCallback(async (options?: { silent?: boolean }): Promise<void> => {
+    const silent = options?.silent ?? false;
     if (!user || !pushSupported || pushPermission !== 'granted') {
       return;
     }
 
     try {
-      const registration = (await navigator.serviceWorker.ready) as PushManagerRegistration;
+      const registration = await getPushRegistration();
       const pushManager = registration.pushManager;
 
       if (!pushManager) {
