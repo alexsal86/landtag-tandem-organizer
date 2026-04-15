@@ -427,7 +427,7 @@ export const useCaseItems = () => {
     if (!user || !currentTenant) return;
 
     const channel = supabase
-      .channel("case-items-changes")
+      .channel(`case-items-changes-${currentTenant.id}-${crypto.randomUUID()}`)
       .on(
         "postgres_changes",
         {

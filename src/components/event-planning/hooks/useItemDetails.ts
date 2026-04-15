@@ -92,7 +92,7 @@ export function useItemDetails({
 
   const loadItemComments = async (itemId: string) => {
     try {
-      const { data: comments, error } = await supabase.from('planning_item_comments').select('*').eq('planning_item_id', itemId).order('created_at', { ascending: true });
+      const { data: comments, error } = await supabase.from('planning_item_comments').select('id, planning_item_id, user_id, content, created_at').eq('planning_item_id', itemId).order('created_at', { ascending: true });
       if (error) throw error;
       const userIds = [...new Set(comments?.map(c => c.user_id) || [])];
       let profiles: Array<{ user_id: string; display_name: string | null; avatar_url: string | null }> = [];
@@ -107,7 +107,7 @@ export function useItemDetails({
 
   const loadItemSubtasks = async (itemId: string) => {
     try {
-      const { data, error } = await supabase.from('planning_item_subtasks').select('*').eq('planning_item_id', itemId).order('order_index', { ascending: true });
+      const { data, error } = await supabase.from('planning_item_subtasks').select('id, planning_item_id, title, is_completed, order_index, created_at').eq('planning_item_id', itemId).order('order_index', { ascending: true });
       if (error) throw error;
       setItemSubtasks(prev => ({ ...prev, [itemId]: (data || []) as PlanningSubtask[] }));
     } catch (error) { handleAppError(error, { context: 'loadItemSubtasks' }); }
@@ -115,7 +115,7 @@ export function useItemDetails({
 
   const loadItemDocuments = async (itemId: string) => {
     try {
-      const { data, error } = await supabase.from('planning_item_documents').select('*').eq('planning_item_id', itemId).order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('planning_item_documents').select('id, planning_item_id, user_id, file_name, file_path, file_type, file_size, created_at').eq('planning_item_id', itemId).order('created_at', { ascending: false });
       if (error) throw error;
       setItemDocuments(prev => ({ ...prev, [itemId]: (data || []) as PlanningDocument[] }));
     } catch (error) { handleAppError(error, { context: 'loadItemDocuments' }); }
