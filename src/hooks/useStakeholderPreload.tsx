@@ -147,7 +147,7 @@ export const useStakeholderPreload = (searchTerm?: string) => {
     if (!user || !currentTenant) return;
 
     const channel = supabase
-      .channel("stakeholder-changes")
+      .channel(`stakeholder-changes-${currentTenant.id}-${crypto.randomUUID()}`)
       .on(
         "postgres_changes",
         {
