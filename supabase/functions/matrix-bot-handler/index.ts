@@ -665,7 +665,7 @@ Deno.serve(withSafeHandler("matrix-bot-handler", async (req) => {
       },
     );
   }
-});
+}));
 
 async function sendDecisionMessages(
   body: any,
