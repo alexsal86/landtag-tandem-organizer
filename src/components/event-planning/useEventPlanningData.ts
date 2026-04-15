@@ -123,10 +123,10 @@ export function useEventPlanningData() {
 
   // ── Fetch details (needed by sub-hooks) ──
   const fetchPlanningDetails = useCallback(async (planningId: string) => {
-    const { data: dates } = await supabase.from("event_planning_dates").select("*").eq("event_planning_id", planningId).order("date_time");
+    const { data: dates } = await supabase.from("event_planning_dates").select("id, event_planning_id, date_time, is_confirmed, appointment_id, created_at").eq("event_planning_id", planningId).order("date_time");
     setPlanningDates(dates || []);
 
-    const { data: items } = await supabase.from("event_planning_checklist_items").select("*").eq("event_planning_id", planningId).order("order_index", { ascending: true });
+    const { data: items } = await supabase.from("event_planning_checklist_items").select("id, event_planning_id, title, is_completed, order_index, created_at, updated_at, sub_items, type, relative_due_days, color").eq("event_planning_id", planningId).order("order_index", { ascending: true });
     const transformedItems = (items || []).map(item => ({
       ...item,
       sub_items: Array.isArray(item.sub_items) ? item.sub_items : (item.sub_items ? JSON.parse(item.sub_items as string) : [])
@@ -137,7 +137,7 @@ export function useEventPlanningData() {
       itemDetails.loadAllItemCounts(transformedItems);
     }
 
-    const { data: collabs } = await supabase.from("event_planning_collaborators").select("*").eq("event_planning_id", planningId);
+    const { data: collabs } = await supabase.from("event_planning_collaborators").select("id, event_planning_id, user_id, can_edit, created_at").eq("event_planning_id", planningId);
     if (collabs) {
       const collabsWithProfiles = await Promise.all(
         collabs.map(async (collab) => {
@@ -150,15 +150,15 @@ export function useEventPlanningData() {
       setCollaborators([]);
     }
 
-    const { data: contactsData } = await supabase.from("event_planning_contacts").select("*").eq("event_planning_id", planningId).order("created_at");
+    const { data: contactsData } = await supabase.from("event_planning_contacts").select("id, event_planning_id, name, email, phone, role, created_at, updated_at").eq("event_planning_id", planningId).order("created_at");
     setContacts(contactsData || []);
 
-    const { data: speakersData } = await supabase.from("event_planning_speakers").select("*").eq("event_planning_id", planningId).order("order_index");
+    const { data: speakersData } = await supabase.from("event_planning_speakers").select("id, event_planning_id, name, email, phone, bio, topic, order_index, created_at, updated_at").eq("event_planning_id", planningId).order("order_index");
     setSpeakers(speakersData || []);
 
     const { data: timelineData } = await supabase
       .from("event_planning_timeline_assignments")
-      .select("*")
+      .select("id, event_planning_id, checklist_item_id, due_date, notes, created_at, updated_at")
       .eq("event_planning_id", planningId)
       .order("due_date", { ascending: true });
     setTimelineAssignments(timelineData || []);
@@ -280,7 +280,7 @@ export function useEventPlanningData() {
   // ── Queries ──
   const fetchPlanningTemplates = async () => {
     if (!user) return;
-    const { data, error } = await supabase.from("planning_templates").select("*").order("name");
+    const { data, error } = await supabase.from("planning_templates").select("id, name, description, template_data, is_default, created_at").order("name");
     if (error) { debugConsole.error("Error fetching planning templates:", error); return; }
     setPlanningTemplates((data ?? []) as ReadonlyArray<PlanningTemplateDto>);
   };
@@ -293,7 +293,7 @@ export function useEventPlanningData() {
     try {
       setLoading(true);
       const timeoutId = setTimeout(() => { debugConsole.error('Supabase query timeout'); setLoading(false); }, 10000);
-      const { data, error } = await supabase.from("event_plannings").select("*").eq("tenant_id", currentTenant.id).or("is_archived.is.null,is_archived.eq.false").order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("event_plannings").select("id, user_id, title, description, location, contact_person, background_info, confirmed_date, is_private, created_at, updated_at, template_id, tenant_id, is_digital, digital_platform, digital_link, digital_access_info, is_archived, archived_at, is_completed, completed_at").eq("tenant_id", currentTenant.id).or("is_archived.is.null,is_archived.eq.false").order("created_at", { ascending: false });
       clearTimeout(timeoutId);
       if (error) {
         debugConsole.error('Error fetching plannings:', error);
@@ -317,14 +317,14 @@ export function useEventPlanningData() {
   const fetchArchivedPlannings = async () => {
     if (!user || !currentTenant?.id) return;
     try {
-      const { data, error } = await supabase.from("event_plannings").select("*").eq("tenant_id", currentTenant.id).eq("is_archived", true).order("archived_at", { ascending: false });
+      const { data, error } = await supabase.from("event_plannings").select("id, user_id, title, description, location, contact_person, background_info, confirmed_date, is_private, created_at, updated_at, template_id, tenant_id, is_digital, digital_platform, digital_link, digital_access_info, is_archived, archived_at, is_completed, completed_at").eq("tenant_id", currentTenant.id).eq("is_archived", true).order("archived_at", { ascending: false });
       if (error) throw error;
       setArchivedPlannings([...(data ?? [])] as EventPlanning[]);
     } catch (error) { handleAppError(error, { context: 'fetchArchivedPlannings' }); }
   };
 
   const fetchAllCollaborators = async (planningIds: string[]) => {
-    const { data: collabs } = await supabase.from("event_planning_collaborators").select("*").in("event_planning_id", planningIds);
+    const { data: collabs } = await supabase.from("event_planning_collaborators").select("id, event_planning_id, user_id, can_edit, created_at").in("event_planning_id", planningIds);
     if (collabs) {
       const collabsWithProfiles = await Promise.all(
         collabs.map(async (collab) => {
@@ -359,10 +359,10 @@ export function useEventPlanningData() {
   const fetchAppointmentPreparations = async () => {
     if (!user) return;
     try {
-      const { data: activeData, error: activeError } = await supabase.from("appointment_preparations").select("*").eq("is_archived", false).order("created_at", { ascending: false });
+      const { data: activeData, error: activeError } = await supabase.from("appointment_preparations").select("id, appointment_id, title, status, is_archived, archived_at, created_at, updated_at, created_by, tenant_id, template_id, notes, checklist_items").eq("is_archived", false).order("created_at", { ascending: false });
       if (activeError) debugConsole.error("Error fetching active preparations:", activeError);
 
-      const { data: archivedData, error: archivedError } = await supabase.from("appointment_preparations").select("*").eq("is_archived", true).order("archived_at", { ascending: false });
+      const { data: archivedData, error: archivedError } = await supabase.from("appointment_preparations").select("id, appointment_id, title, status, is_archived, archived_at, created_at, updated_at, created_by, tenant_id, template_id, notes, checklist_items").eq("is_archived", true).order("archived_at", { ascending: false });
       if (archivedError) debugConsole.error("Error fetching archived preparations:", archivedError);
 
       // Sync titles with current appointment titles
