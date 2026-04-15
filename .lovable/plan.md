@@ -1,35 +1,79 @@
 
+Ich kenne die wahrscheinliche Ursache jetzt deutlich genauer:
 
-## Plan: Push-Notification Service Worker Konflikt beheben
+### Wahrscheinlichstes Problem
+Der Fehler liegt sehr wahrscheinlich nicht mehr primär am Service Worker, sondern am Abruf des VAPID Public Keys beim Aktivieren von Push.
 
-### Ursache
-Das Problem ist ein **Service-Worker-Scope-Konflikt**: `main.tsx` registriert `coi-serviceworker.js` mit dem Default-Scope `/`. Die letzte Änderung registriert `sw.js` (Push-Worker) mit Scope `/push/`. Obwohl Push-Events theoretisch unabhängig vom Scope zugestellt werden, verursacht die doppelte Registrierung Probleme — insbesondere, weil `sw.js` mit einem eingeschränkten Scope registriert wird, was in manchen Browsern die Push-Subscription scheitern lässt.
+In `src/hooks/useNotifications.tsx` wird der Key per direktem Browser-`fetch()` von  
+`https://wawofclbehbkebjivdte.supabase.co/functions/v1/send-push-notification` geladen.
 
-### Lösung
+Diese Edge Function läuft durch `withSafeHandler()` aus `supabase/functions/_shared/security.ts`. Dort sind aber aktuell nur diese Origins erlaubt:
 
-**1. `src/hooks/useNotifications.tsx` — `getPushRegistration` korrigieren**
-- `scope: '/push/'` entfernen → stattdessen ohne Scope registrieren (Default = `/`)
-- Das überschreibt zwar den COI-SW, aber:
-  - COI wird nur für SharedArrayBuffer/WASM benötigt (in dieser App nicht verwendet)
-  - Der Push-SW (`sw.js`) übernimmt die Push-Event-Handler korrekt
+- `https://app.landtag-tandem.de`
+- `http://localhost:5173`
+- `http://localhost:3000`
 
-**2. `public/sw.js` — COI-Header-Injection nachrüsten**
-- `fetch`-Event-Listener hinzufügen, der die gleichen COOP/COEP-Header setzt wie der bisherige COI-SW
-- Damit bleibt Cross-Origin Isolation erhalten, auch wenn der Push-SW den COI-SW ersetzt
+Nicht erlaubt sind die aktuell genutzten Lovable-Domains wie z. B.:
 
-**3. `src/main.tsx` — Doppelregistrierung vermeiden**
-- Die COI-SW-Registrierung (`coi-serviceworker.js`) durch `/sw.js`-Registrierung ersetzen
-- So gibt es nur noch einen SW mit beiden Funktionen (Push + COI-Headers)
-- Logik für Iframe-Erkennung (Lovable Preview) bleibt unverändert
+- `https://7d09a65d-5cbe-421b-a580-38a4fe244277.lovableproject.com`
+- `https://id-preview--...lovable.app`
+
+Wenn du also die App in einem normalen Browserfenster auf der `lovableproject.com`-Domain öffnest, ist das zwar kein iframe-Problem mehr, aber weiterhin ein CORS-Problem. Dann schlägt genau der VAPID-Key-Request beim Aktivieren fehl und `subscribeToPush()` endet mit dem generischen Fehler „Push-Benachrichtigungen konnten nicht aktiviert werden“.
+
+### Zusätzliche Schwachstelle
+Es gibt noch eine zweite unnötige Fehlerquelle:
+- `requestPushPermission()` ruft intern schon `subscribeToPush()` auf
+- `NotificationSettings.tsx` ruft danach bei Erfolg nochmal `subscribeToPush()` auf
+
+Das ist doppelt und macht die Fehlerdiagnose unnötig unklar.
+
+### Umsetzung
+1. **CORS für Edge Functions korrigieren**
+   - Datei: `supabase/functions/_shared/security.ts`
+   - Die Origin-Prüfung so erweitern, dass auch die aktuellen Lovable-Hosts akzeptiert werden:
+     - `*.lovableproject.com`
+     - `*.lovable.app`
+   - Dabei keine pauschale `*`-Freigabe, sondern kontrollierte Host-Regeln.
+
+2. **VAPID-Key-Abruf im Frontend robuster machen**
+   - Datei: `src/hooks/useNotifications.tsx`
+   - Den hart codierten Supabase-Function-URL-String entfernen.
+   - Stattdessen die URL aus `VITE_SUPABASE_URL` ableiten.
+   - Keine hartcodierten Keys im Frontend mehr verwenden.
+   - Den Fehlertext beim VAPID-Abruf präziser loggen, damit klar ist, ob es ein CORS-, HTTP-, SW- oder Subscription-Fehler ist.
+
+3. **Doppelten Subscribe-Flow bereinigen**
+   - Dateien:
+     - `src/hooks/useNotifications.tsx`
+     - `src/components/NotificationSettings.tsx`
+   - Entweder:
+     - `requestPushPermission()` kümmert sich nur um die Berechtigung
+     - und `NotificationSettings` startet danach genau einmal `subscribeToPush()`
+   - oder umgekehrt, aber nicht beides doppelt.
+
+4. **Service-Worker-Registrierung konsistent machen**
+   - Dateien:
+     - `src/main.tsx`
+     - `src/hooks/useNotifications.tsx`
+   - Beide Stellen sollen dieselbe `sw.js`-URL verwenden (aktuell einmal mit Query-String, einmal ohne), damit keine unnötigen Re-Registrierungen oder inkonsistenten Zustände entstehen.
+
+5. **Diagnose für wiederkehrende Fehler verbessern**
+   - Datei: `src/hooks/useNotifications.tsx`
+   - Im Catch-Block den konkreten Schritt unterscheiden:
+     - SW-Registrierung fehlgeschlagen
+     - VAPID-Key-Request fehlgeschlagen
+     - `pushManager.subscribe()` fehlgeschlagen
+     - DB-Upsert fehlgeschlagen
 
 ### Betroffene Dateien
-- `src/hooks/useNotifications.tsx` — Scope entfernen aus `getPushRegistration`
-- `public/sw.js` — COI-Header-Injection im fetch-Handler ergänzen
-- `src/main.tsx` — `coi-serviceworker.js` durch `sw.js` ersetzen
+- `supabase/functions/_shared/security.ts`
+- `src/hooks/useNotifications.tsx`
+- `src/components/NotificationSettings.tsx`
+- `src/main.tsx`
+- optional: `src/components/VapidKeyTest.tsx` zur gleichen URL-/CORS-Logik
 
 ### Erwartetes Ergebnis
-- Ein einziger Service Worker für Push und COI
-- Kein Scope-Konflikt mehr
-- Push-Subscriptions funktionieren korrekt
-- COI-Isolation bleibt erhalten
-
+- Push-Aktivierung funktioniert wieder in normalen Browserfenstern auf der Lovable-Domain
+- Kein CORS-Fehler mehr beim Abrufen des VAPID-Keys
+- Klarere Fehlerdiagnose, falls danach noch ein echter Subscription- oder DB-Fehler bleibt
+- Kein doppelter Aktivierungsversuch mehr
