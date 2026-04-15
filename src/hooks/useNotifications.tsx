@@ -386,8 +386,10 @@ export const useNotifications = () => {
     return outputArray;
   };
 
+  const SW_URL = '/sw.js?v=2026-04-15-v1';
+
   const getPushRegistration = useCallback(async (): Promise<PushManagerRegistration> => {
-    const registration = await navigator.serviceWorker.register('/sw.js');
+    const registration = await navigator.serviceWorker.register(SW_URL);
     // Wait for the SW to become active
     if (!registration.active) {
       await new Promise<void>((resolve) => {
@@ -437,36 +439,44 @@ export const useNotifications = () => {
       }
 
       if (needNewSubscription) {
+        // Step 1: Fetch VAPID public key
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+        const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+        const vapidUrl = `${supabaseUrl}/functions/v1/send-push-notification`;
+
+        let vapidData: VapidResponse;
         try {
-          const vapidResponse = await fetch(
-            'https://wawofclbehbkebjivdte.supabase.co/functions/v1/send-push-notification',
-            {
-              method: 'GET',
-              headers: {
-                Authorization:
-                  'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indhd29mY2xiZWhia2Viaml2ZHRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwOTMxNTEsImV4cCI6MjA2ODY2OTE1MX0.Bc5Jf1Uyvl_i8ooX-IK2kYNJMxpdCT1mKCwfFPVTI50',
-                apikey:
-                  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indhd29mY2xiZWhia2Viaml2ZHRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwOTMxNTEsImV4cCI6MjA2ODY2OTE1MX0.Bc5Jf1Uyvl_i8ooX-IK2kYNJMxpdCT1mKCwfFPVTI50',
-                'Content-Type': 'application/json',
-              },
+          const vapidResponse = await fetch(vapidUrl, {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${anonKey}`,
+              apikey: anonKey,
+              'Content-Type': 'application/json',
             },
-          );
+          });
 
           if (!vapidResponse.ok) {
-            throw new Error(`HTTP error! status: ${vapidResponse.status}`);
+            const body = await vapidResponse.text().catch(() => '');
+            throw new Error(`VAPID-Key-Request fehlgeschlagen (HTTP ${vapidResponse.status}): ${body}`);
           }
 
-          const vapidData: VapidResponse = (await vapidResponse.json()) as VapidResponse;
+          vapidData = (await vapidResponse.json()) as VapidResponse;
           if (!vapidData.success || !vapidData.publicKey) {
-            throw new Error(`Failed to fetch VAPID public key: ${vapidData.error ?? 'Unknown error'}`);
+            throw new Error(`VAPID-Key ungültig: ${vapidData.error ?? 'Kein publicKey in Antwort'}`);
           }
+        } catch (error: unknown) {
+          debugConsole.error('❌ VAPID-Key-Abruf fehlgeschlagen:', error);
+          throw error;
+        }
 
+        // Step 2: Create push subscription
+        try {
           subscription = await pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(vapidData.publicKey) as BufferSource,
           });
         } catch (error: unknown) {
-          debugConsole.error('❌ Failed to get VAPID key or create subscription:', error);
+          debugConsole.error('❌ pushManager.subscribe() fehlgeschlagen:', error);
           throw error;
         }
       }
