@@ -1,34 +1,35 @@
 
 
-## Plan: Push-Benachrichtigungs-Fehler beheben
+## Plan: Push-Notification Service Worker Konflikt beheben
 
 ### Ursache
-
-Das Problem hat zwei Teile:
-
-1. **`sw.js` (Push Service Worker) wird nirgends registriert.** `main.tsx` registriert nur `coi-serviceworker.js` (für Cross-Origin Isolation). Der Push-SW in `public/sw.js` mit den Push-Event-Handlern wird nie geladen.
-
-2. **Auto-Renewal zeigt Fehler-Toast bei jedem Seitenaufruf.** Wenn der User zuvor Push-Berechtigung erteilt hat (`permission === 'granted'`), läuft `checkAndRenewSubscription` automatisch (Zeile 806). Dieser versucht über `navigator.serviceWorker.ready` eine Push-Subscription zu erneuern — bekommt aber den COI-SW statt eines Push-SW. Wenn das fehlschlägt, zeigt `subscribeToPush()` den Toast "Push-Benachrichtigungen konnten nicht aktiviert werden." bei **jedem** Seitenaufruf.
+Das Problem ist ein **Service-Worker-Scope-Konflikt**: `main.tsx` registriert `coi-serviceworker.js` mit dem Default-Scope `/`. Die letzte Änderung registriert `sw.js` (Push-Worker) mit Scope `/push/`. Obwohl Push-Events theoretisch unabhängig vom Scope zugestellt werden, verursacht die doppelte Registrierung Probleme — insbesondere, weil `sw.js` mit einem eingeschränkten Scope registriert wird, was in manchen Browsern die Push-Subscription scheitern lässt.
 
 ### Lösung
 
-**1. Push-SW separat registrieren** (`src/hooks/useNotifications.tsx`)
-- Statt `navigator.serviceWorker.ready` (gibt den COI-SW zurück) wird `sw.js` explizit mit eigenem Scope registriert: `navigator.serviceWorker.register('/sw.js', { scope: '/push/' })`
-- Eine Helper-Funktion `getPushRegistration()` kapselt die Registrierung und wird in `subscribeToPush` und `checkAndRenewSubscription` verwendet
+**1. `src/hooks/useNotifications.tsx` — `getPushRegistration` korrigieren**
+- `scope: '/push/'` entfernen → stattdessen ohne Scope registrieren (Default = `/`)
+- Das überschreibt zwar den COI-SW, aber:
+  - COI wird nur für SharedArrayBuffer/WASM benötigt (in dieser App nicht verwendet)
+  - Der Push-SW (`sw.js`) übernimmt die Push-Event-Handler korrekt
 
-**2. Fehler-Toast nur bei expliziter User-Aktion** (`src/hooks/useNotifications.tsx`)
-- `subscribeToPush` bekommt einen optionalen Parameter `silent?: boolean`
-- `checkAndRenewSubscription` ruft `subscribeToPush({ silent: true })` auf → kein Toast bei Auto-Renewal-Fehler, nur `debugConsole.error`
-- `requestPushPermission` (explizite User-Aktion) ruft weiterhin `subscribeToPush()` mit Toast auf
+**2. `public/sw.js` — COI-Header-Injection nachrüsten**
+- `fetch`-Event-Listener hinzufügen, der die gleichen COOP/COEP-Header setzt wie der bisherige COI-SW
+- Damit bleibt Cross-Origin Isolation erhalten, auch wenn der Push-SW den COI-SW ersetzt
 
-**3. `loadNotifications`-Fehler prüfen** (`src/hooks/useNotifications.tsx`)
-- Zusätzlich den Fehler im `catch` loggen, damit bei künftigen Problemen die genaue Fehlermeldung sichtbar ist (aktuell wird nur "Error loading notifications:" geloggt, aber der Toast gibt keine Details)
+**3. `src/main.tsx` — Doppelregistrierung vermeiden**
+- Die COI-SW-Registrierung (`coi-serviceworker.js`) durch `/sw.js`-Registrierung ersetzen
+- So gibt es nur noch einen SW mit beiden Funktionen (Push + COI-Headers)
+- Logik für Iframe-Erkennung (Lovable Preview) bleibt unverändert
 
 ### Betroffene Dateien
-- `src/hooks/useNotifications.tsx` — Push-SW-Registrierung, silent-Parameter, besseres Error-Logging
+- `src/hooks/useNotifications.tsx` — Scope entfernen aus `getPushRegistration`
+- `public/sw.js` — COI-Header-Injection im fetch-Handler ergänzen
+- `src/main.tsx` — `coi-serviceworker.js` durch `sw.js` ersetzen
 
 ### Erwartetes Ergebnis
-- Kein Fehler-Toast mehr bei jedem Seitenaufruf
-- Push-Notifications nutzen den korrekten Service Worker mit Push-Event-Handlern
-- Auto-Renewal läuft still im Hintergrund, Fehler nur in der Console
+- Ein einziger Service Worker für Push und COI
+- Kein Scope-Konflikt mehr
+- Push-Subscriptions funktionieren korrekt
+- COI-Isolation bleibt erhalten
 
