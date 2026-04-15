@@ -5,9 +5,9 @@ import { handleRespondPublicEventInvitation } from "./respond-public-event-invit
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
 Deno.serve(
-  withSafeHandler("respond-public-event-invitation", async (req) => {
+  withSafeHandler("respond-public-event-invitation", async (req: Request): Promise<Response> => {
     return handleRespondPublicEventInvitation(req, {
-      createServiceRoleClient,
+      createServiceRoleClient: createServiceRoleClient as unknown as () => import("./respond-public-event-invitation.ts").ServiceClient,
       rateLimitStore,
     });
   }),

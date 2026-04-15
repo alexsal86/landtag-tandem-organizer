@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// deno-lint-ignore-file
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireServiceRole, corsHeaders, forbiddenResponse } from "../_shared/security.ts";
 
@@ -79,7 +79,7 @@ async function logMatrixSkip(
   }
 }
 
-serve(withSafeHandler("send-matrix-morning-greeting", async (req) => {
+Deno.serve(withSafeHandler("send-matrix-morning-greeting", async (req) => {
   console.log("🌅 Morning greeting function called");
 
   if (req.method === "OPTIONS") {

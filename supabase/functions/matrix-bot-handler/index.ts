@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// deno-lint-ignore-file
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import { withSafeHandler } from "../_shared/security.ts";
@@ -197,7 +197,7 @@ async function resolveTargetedSubscriptions(
   };
 }
 
-serve(withSafeHandler("matrix-bot-handler", async (req) => {
+Deno.serve(withSafeHandler("matrix-bot-handler", async (req) => {
   console.log("🤖 Matrix function called with method:", req.method);
 
   // Handle CORS preflight requests

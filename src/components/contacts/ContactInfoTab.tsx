@@ -93,9 +93,8 @@ export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ conta
                 icon={row.icon}
                 label={row.label}
                 value={row.value}
-                actionHref={row.actionHref}
-                actionExternal={row.actionExternal}
-                actionLabel={row.actionLabel}
+                actionHref={'actionHref' in row ? row.actionHref : undefined}
+                actionLabel={'actionLabel' in row ? row.actionLabel : undefined}
               />
             ))
           ) : (
