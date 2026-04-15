@@ -84,7 +84,7 @@ export function useTaskOperations({
         const isNetworkError = error.message?.includes("Failed to fetch") || error.message?.includes("NetworkError");
         if (isNetworkError) {
           setTimeout(async () => {
-            const { data: freshTask } = await supabase.from("tasks").select("*").eq("id", taskId).single();
+            const { data: freshTask } = await supabase.from("tasks").select("id, title, description, status, priority, category, assigned_to, due_date, progress, updated_at, user_id, tenant_id").eq("id", taskId).single();
             if (!freshTask) {
               setTasks(prev => prev.filter(t => t.id !== taskId));
               setShowCelebration(true);

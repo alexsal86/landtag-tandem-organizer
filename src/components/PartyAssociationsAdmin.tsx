@@ -66,7 +66,7 @@ export const PartyAssociationsAdmin: React.FC = () => {
     setLoading(true);
     try {
       const [associationsRes, districtsRes] = await Promise.all([
-        supabase.from('party_associations').select('*').order('name'),
+        supabase.from('party_associations').select('id, name, party_name, party_type, email, phone, website, address_street, address_number, address_postal_code, address_city, full_address, administrative_boundaries, coverage_areas, social_media, contact_info, tenant_id, created_at, updated_at').order('name'),
         supabase.from('election_districts').select('id, district_name, district_type, region').order('district_name')
       ]);
 

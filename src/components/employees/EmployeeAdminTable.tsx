@@ -41,7 +41,7 @@ function EmployeeHistoryPopover({ userId }: { userId: string }) {
     if (loading || history.length > 0) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase.from('employee_settings_history').select('*').eq('user_id', userId).order('valid_from', { ascending: false });
+      const { data, error } = await supabase.from('employee_settings_history').select('id, user_id, hours_per_week, valid_from, valid_until, change_reason, created_at').eq('user_id', userId).order('valid_from', { ascending: false });
       if (error) throw error;
       setHistory(data || []);
     } catch (error) { debugConsole.error('Error loading history:', error); } finally { setLoading(false); }

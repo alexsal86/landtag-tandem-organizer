@@ -76,7 +76,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
       try {
         const { data, error } = await supabase
           .from("quick_notes")
-          .select("*")
+          .select("id, title, content, user_id, meeting_id, created_at, updated_at, is_pinned, color, color_full_card, category, tags, priority_level, follow_up_date, is_archived, decision_id, task_id, case_item_id, meeting_result, pending_for_jour_fixe")
           .eq("meeting_id", meetingId)
           .order("created_at", { ascending: false });
         if (error) {

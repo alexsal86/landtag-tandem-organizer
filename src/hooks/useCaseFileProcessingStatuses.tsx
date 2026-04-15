@@ -22,7 +22,7 @@ export const useCaseFileProcessingStatuses = () => {
       try {
         const { data, error } = await supabase
           .from('case_file_processing_statuses')
-          .select('*')
+          .select('id, name, label, icon, color, order_index, is_active')
           .eq('is_active', true)
           .order('order_index');
 

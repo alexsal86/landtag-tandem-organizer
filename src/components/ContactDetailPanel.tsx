@@ -146,7 +146,7 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
 
   const fetchCallLogs = async () => {
     if (!contactId) return;
-    try { setLoadingCallLogs(true); const filter = contact?.phone ? `contact_id.eq.${contactId},caller_phone.ilike.%${contact.phone}%` : `contact_id.eq.${contactId}`; const { data, error } = await supabase.from('call_logs').select('*').or(filter).order('call_date', { ascending: false }); if (error) throw error; setCallLogs((data || []) as CallLog[]); } catch (error) { debugConsole.error('Error fetching call logs:', error); } finally { setLoadingCallLogs(false); }
+    try { setLoadingCallLogs(true); const filter = contact?.phone ? `contact_id.eq.${contactId},caller_phone.ilike.%${contact.phone}%` : `contact_id.eq.${contactId}`; const { data, error } = await supabase.from('call_logs').select('id, call_date, call_type, caller_name, caller_phone, contact_id, duration_minutes, notes, priority, follow_up_required, follow_up_date, follow_up_completed, completion_notes, created_by_name, user_id, created_at').or(filter).order('call_date', { ascending: false }); if (error) throw error; setCallLogs((data || []) as CallLog[]); } catch (error) { debugConsole.error('Error fetching call logs:', error); } finally { setLoadingCallLogs(false); }
   };
 
   const fetchActivities = async () => {

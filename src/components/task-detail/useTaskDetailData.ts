@@ -52,7 +52,7 @@ export function useTaskDetailData(task: Task | null) {
     try {
       const { data, error } = await supabase
         .from("tasks")
-        .select("*")
+        .select("id, title, description, status, assigned_to, due_date, parent_task_id, created_at, updated_at, user_id, progress")
         .eq("parent_task_id", taskId)
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -79,7 +79,7 @@ export function useTaskDetailData(task: Task | null) {
 
   const loadTaskDocuments = async (taskId: string) => {
     try {
-      const { data, error } = await supabase.from("task_documents").select("*").eq("task_id", taskId).order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("task_documents").select("id, task_id, file_name, file_path, file_size, file_type, created_at").eq("task_id", taskId).order("created_at", { ascending: false });
       if (error) throw error;
       setTaskDocuments((data ?? []).map((document: TaskDocumentRow) => ({ ...document, file_size: document.file_size ?? undefined, file_type: document.file_type ?? undefined })));
     } catch (e) {
@@ -99,7 +99,7 @@ export function useTaskDetailData(task: Task | null) {
 
   const loadTaskComments = async (taskId: string) => {
     try {
-      const { data: commentsData, error } = await supabase.from("task_comments").select("*").eq("task_id", taskId).order("created_at", { ascending: true });
+      const { data: commentsData, error } = await supabase.from("task_comments").select("id, task_id, user_id, content, created_at").eq("task_id", taskId).order("created_at", { ascending: true });
       if (error) throw error;
       const userIds = [...new Set((commentsData ?? []).map((comment: TaskCommentRow) => comment.user_id))];
       let profiles: ProfileRow[] = [];
@@ -149,7 +149,7 @@ export function useTaskDetailData(task: Task | null) {
         const isNetwork = error.message?.includes("Failed to fetch") || error.message?.includes("NetworkError") || error.message?.includes("TypeError");
         if (isNetwork) {
           setTimeout(async () => {
-            const { data: fresh } = await supabase.from("tasks").select("*").eq("id", task.id).single();
+const { data: fresh } = await supabase.from("tasks").select("id, title").eq("id", task.id).single();
             if (fresh && fresh.title === editFormData.title) {
               toast({ title: "Aufgabe gespeichert", description: "Die Änderungen wurden erfolgreich gespeichert." });
               const updated = { ...task, ...(editFormData as Task) };
@@ -172,8 +172,8 @@ export function useTaskDetailData(task: Task | null) {
       const isNetwork = msg?.includes("Failed to fetch") || msg?.includes("NetworkError") || msg?.includes("TypeError");
       if (isNetwork) {
         setTimeout(async () => {
-          const { data: fresh } = await supabase.from("tasks").select("*").eq("id", task.id).single();
-          if (fresh && fresh.title === editFormData.title) {
+const { data: fresh } = await supabase.from("tasks").select("id, title").eq("id", task.id).single();
+           if (fresh && fresh.title === editFormData.title) {
             toast({ title: "Aufgabe gespeichert", description: "Die Änderungen wurden erfolgreich gespeichert." });
             const updated = { ...task, ...(editFormData as Task) };
             setEditFormData(updated);
