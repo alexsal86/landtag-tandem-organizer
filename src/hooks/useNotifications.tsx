@@ -825,7 +825,7 @@ export const useNotifications = () => {
     };
 
     void checkAndRenewSubscription();
-  }, [user, pushSupported, pushPermission, subscribeToPush]);
+  }, [user, pushSupported, pushPermission, subscribeToPush, getPushRegistration]);
 
   return {
     notifications,
