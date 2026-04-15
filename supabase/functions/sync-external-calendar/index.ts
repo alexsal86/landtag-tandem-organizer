@@ -522,4 +522,4 @@ Deno.serve(withSafeHandler("sync-external-calendar", async (req) => {
       { status: errorResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-});
+}));
