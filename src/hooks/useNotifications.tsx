@@ -412,7 +412,10 @@ export const useNotifications = () => {
       return;
     }
 
+    let step = 'init';
     try {
+      // Step 1: Get service worker registration
+      step = 'sw-registration';
       const registration = await getPushRegistration();
       const pushManager = registration.pushManager;
 
@@ -420,68 +423,98 @@ export const useNotifications = () => {
         throw new Error('PushManager is not available on the active service worker registration');
       }
 
+      // Step 2: Check for existing browser subscription
+      step = 'get-subscription';
       let subscription = await pushManager.getSubscription();
-      let needNewSubscription = subscription === null;
 
+      // If we have an existing browser subscription, try to REPAIR the DB record
+      // instead of destroying the subscription first
       if (subscription) {
-        const { data: dbSubscription } = await supabase
-          .from('push_subscriptions')
-          .select('is_active')
-          .eq('user_id', user.id)
-          .eq('endpoint', subscription.endpoint)
-          .single();
+        step = 'repair-db';
+        const p256dh = subscription.getKey('p256dh');
+        const auth = subscription.getKey('auth');
 
-        if (!dbSubscription || dbSubscription.is_active !== true) {
-          await subscription.unsubscribe();
-          subscription = null;
-          needNewSubscription = true;
-        }
-      }
+        if (p256dh && auth) {
+          const p256dhBase64 = btoa(String.fromCharCode(...new Uint8Array(p256dh)));
+          const authBase64 = btoa(String.fromCharCode(...new Uint8Array(auth)));
 
-      if (needNewSubscription) {
-        // Step 1: Fetch VAPID public key
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-        const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
-        const vapidUrl = `${supabaseUrl}/functions/v1/send-push-notification`;
+          const { error } = await supabase
+            .from('push_subscriptions')
+            .upsert(
+              {
+                user_id: user.id,
+                endpoint: subscription.endpoint,
+                p256dh_key: p256dhBase64,
+                auth_key: authBase64,
+                user_agent: navigator.userAgent,
+                is_active: true,
+              },
+              {
+                onConflict: 'user_id,endpoint',
+              },
+            );
 
-        let vapidData: VapidResponse;
-        try {
-          const vapidResponse = await fetch(vapidUrl, {
-            method: 'GET',
-            headers: {
-              Authorization: `Bearer ${anonKey}`,
-              apikey: anonKey,
-              'Content-Type': 'application/json',
-            },
-          });
-
-          if (!vapidResponse.ok) {
-            const body = await vapidResponse.text().catch(() => '');
-            throw new Error(`VAPID-Key-Request fehlgeschlagen (HTTP ${vapidResponse.status}): ${body}`);
+          if (error) {
+            debugConsole.error('❌ DB repair error:', error);
+            throw error;
           }
 
-          vapidData = (await vapidResponse.json()) as VapidResponse;
-          if (!vapidData.success || !vapidData.publicKey) {
-            throw new Error(`VAPID-Key ungültig: ${vapidData.error ?? 'Kein publicKey in Antwort'}`);
+          if (!silent) {
+            toast({
+              title: 'Erfolgreich',
+              description: 'Push-Benachrichtigungen wurden aktiviert.',
+            });
           }
-        } catch (error: unknown) {
-          debugConsole.error('❌ VAPID-Key-Abruf fehlgeschlagen:', error);
-          throw error;
+          return; // Successfully repaired — done
         }
 
-        // Step 2: Create push subscription
-        try {
-          subscription = await pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(vapidData.publicKey) as BufferSource,
-          });
-        } catch (error: unknown) {
-          debugConsole.error('❌ pushManager.subscribe() fehlgeschlagen:', error);
-          throw error;
-        }
+        // Keys missing on existing subscription — need a fresh one
+        debugConsole.log('⚠️ Existing subscription has missing keys, creating new one...');
+        await subscription.unsubscribe();
+        subscription = null;
       }
 
+      // Step 3: No browser subscription exists — create a new one
+      // Fetch VAPID public key
+      step = 'vapid-fetch';
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+      const vapidUrl = `${supabaseUrl}/functions/v1/send-push-notification`;
+
+      let vapidData: VapidResponse;
+      const vapidResponse = await fetch(vapidUrl, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${anonKey}`,
+          apikey: anonKey,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!vapidResponse.ok) {
+        const body = await vapidResponse.text().catch(() => '');
+        throw new Error(`VAPID-Key-Request fehlgeschlagen (HTTP ${vapidResponse.status}): ${body}`);
+      }
+
+      vapidData = (await vapidResponse.json()) as VapidResponse;
+      if (!vapidData.success || !vapidData.publicKey) {
+        throw new Error(`VAPID-Key ungültig: ${vapidData.error ?? 'Kein publicKey in Antwort'}`);
+      }
+
+      // Validate VAPID key format (should be base64url, 65 bytes decoded = ~88 chars)
+      if (vapidData.publicKey.length < 80 || vapidData.publicKey.length > 100) {
+        throw new Error(`VAPID-Key hat unerwartete Länge: ${vapidData.publicKey.length} Zeichen`);
+      }
+
+      // Step 4: Create push subscription
+      step = 'pushManager-subscribe';
+      subscription = await pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidData.publicKey) as BufferSource,
+      });
+
       if (subscription) {
+        step = 'db-upsert';
         const p256dh = subscription.getKey('p256dh');
         const auth = subscription.getKey('auth');
 
@@ -522,11 +555,18 @@ export const useNotifications = () => {
         }
       }
     } catch (error: unknown) {
-      debugConsole.error('❌ Error subscribing to push:', error);
+      debugConsole.error(`❌ Push subscription failed at step "${step}":`, error);
       if (!silent) {
+        const stepLabels: Record<string, string> = {
+          'sw-registration': 'Service Worker konnte nicht registriert werden',
+          'vapid-fetch': 'VAPID-Schlüssel konnte nicht abgerufen werden',
+          'pushManager-subscribe': 'Browser-Push-Abo konnte nicht erstellt werden',
+          'db-upsert': 'Abo konnte nicht in der Datenbank gespeichert werden',
+          'repair-db': 'Bestehendes Abo konnte nicht repariert werden',
+        };
         toast({
           title: 'Fehler',
-          description: 'Push-Benachrichtigungen konnten nicht aktiviert werden.',
+          description: stepLabels[step] ?? 'Push-Benachrichtigungen konnten nicht aktiviert werden.',
           variant: 'destructive',
         });
       }
@@ -811,15 +851,33 @@ export const useNotifications = () => {
         const dbEndpoint = data?.[0]?.endpoint ?? null;
         const isDbLegacy = dbEndpoint?.includes('fcm.googleapis.com/fcm/send/');
 
-        if (!data || data.length === 0 || isDbLegacy || (currentEndpoint && dbEndpoint && currentEndpoint !== dbEndpoint)) {
-          debugConsole.log('🔄 Push subscription mismatch, missing, or legacy endpoint — auto-renewing...', {
-            hasDbRecord: Boolean(data?.length),
-            endpointMatch: currentEndpoint === dbEndpoint,
-            isDbLegacy,
-          });
-          if (currentSubscription) {
-            await currentSubscription.unsubscribe();
+        // If browser has a valid subscription, ALWAYS prefer repairing the DB
+        // instead of destroying the browser subscription
+        if (currentSubscription && !isLegacyEndpoint) {
+          const endpointMatchesDb = currentEndpoint === dbEndpoint;
+          if (!endpointMatchesDb || !data || data.length === 0 || isDbLegacy) {
+            debugConsole.log('🔧 Repairing DB record from existing browser subscription...', {
+              hasDbRecord: Boolean(data?.length),
+              endpointMatch: endpointMatchesDb,
+              isDbLegacy,
+            });
+            // Deactivate stale legacy DB entries
+            if (isDbLegacy && dbEndpoint) {
+              await supabase
+                .from('push_subscriptions')
+                .update({ is_active: false })
+                .eq('user_id', user.id)
+                .eq('endpoint', dbEndpoint);
+            }
+            // Repair by calling subscribeToPush which now preserves existing subscriptions
+            await subscribeToPush({ silent: true });
           }
+          return;
+        }
+
+        // No browser subscription exists — create a fresh one
+        if (!currentSubscription) {
+          debugConsole.log('🔄 No browser subscription found — creating new one...');
           if (isDbLegacy && dbEndpoint) {
             await supabase
               .from('push_subscriptions')
