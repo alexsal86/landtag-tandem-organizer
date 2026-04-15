@@ -90,7 +90,7 @@ export function usePartyAssociations() {
       setLoading(true);
       const { data, error } = await supabase
         .from('party_associations')
-        .select('*')
+        .select('id, name, party_name, party_type, email, phone, website, address_street, address_number, address_postal_code, address_city, full_address, administrative_boundaries, coverage_areas, social_media, contact_info, tenant_id, created_at, updated_at')
         .order('name');
 
       if (error) {
@@ -109,7 +109,7 @@ export function usePartyAssociations() {
           if (boundaries && Array.isArray(boundaries) && boundaries.length > 0) {
             const { data: boundaryDistricts, error: boundaryError } = await supabase
               .from('election_districts')
-              .select('*')
+              .select('id, district_name, district_type, region')
               .in('id', boundaries);
 
             if (boundaryError) {

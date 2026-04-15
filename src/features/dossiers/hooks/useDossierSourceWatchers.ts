@@ -12,7 +12,7 @@ export function useDossierSourceWatchers(dossierId: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("dossier_source_watchers")
-        .select("*")
+        .select("id, dossier_id, source_name, source_url, source_type, keywords, last_synced_at, created_at, tenant_id, created_by")
         .eq("dossier_id", dossierId!)
         .order("created_at", { ascending: false });
       if (error) throw error;

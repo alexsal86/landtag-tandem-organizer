@@ -128,33 +128,33 @@ export function useChecklistOperations({
           debugConsole.warn("Network interruption detected, verifying server state...", error);
           setTimeout(async () => {
             if (selectedPlanningId) {
-              const { data: freshItems } = await supabase.from("event_planning_checklist_items").select("*").eq("event_planning_id", selectedPlanningId).order("order_index", { ascending: true });
-              if (freshItems) setChecklistItems(freshItems.map(item => ({ ...item, sub_items: (item.sub_items || []) as { title: string; is_completed: boolean }[] })) as ChecklistItem[]);
-            }
-          }, 500);
-          return;
-        }
-        debugConsole.error("Checklist update error:", error);
-        setChecklistItems(previousItems);
-        toast({ title: "Fehler", description: "Checkliste konnte nicht aktualisiert werden.", variant: "destructive" });
-        return;
-      }
+const { data: freshItems } = await supabase.from("event_planning_checklist_items").select("id, event_planning_id, title, is_completed, order_index, sub_items, assigned_to, due_date, category, notes, is_system_item, system_type, created_at, color, type, relative_due_days").eq("event_planning_id", selectedPlanningId).order("order_index", { ascending: true });
+               if (freshItems) setChecklistItems(freshItems.map(item => ({ ...item, sub_items: (item.sub_items || []) as { title: string; is_completed: boolean }[] })) as ChecklistItem[]);
+             }
+           }, 500);
+           return;
+         }
+         debugConsole.error("Checklist update error:", error);
+         setChecklistItems(previousItems);
+         toast({ title: "Fehler", description: "Checkliste konnte nicht aktualisiert werden.", variant: "destructive" });
+         return;
+       }
 
-      const emailAction = itemEmailActions[itemId];
-      if (newCompletedState && emailAction?.is_enabled) {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            await supabase.functions.invoke("send-checklist-email", { body: { actionId: emailAction.id, checklistItemId: itemId } });
-            toast({ title: "E-Mail versendet", description: "Benachrichtigung wurde automatisch versendet." });
-          }
-        } catch (emailError) { debugConsole.error("Error sending email:", emailError); }
-      }
-    } catch (fetchError) {
-      debugConsole.warn("Network error during checklist update, verifying state...", fetchError);
-      setTimeout(async () => {
-        if (selectedPlanningId) {
-          const { data: freshItems } = await supabase.from("event_planning_checklist_items").select("*").eq("event_planning_id", selectedPlanningId).order("order_index", { ascending: true });
+       const emailAction = itemEmailActions[itemId];
+       if (newCompletedState && emailAction?.is_enabled) {
+         try {
+           const { data: { session } } = await supabase.auth.getSession();
+           if (session) {
+             await supabase.functions.invoke("send-checklist-email", { body: { actionId: emailAction.id, checklistItemId: itemId } });
+             toast({ title: "E-Mail versendet", description: "Benachrichtigung wurde automatisch versendet." });
+           }
+         } catch (emailError) { debugConsole.error("Error sending email:", emailError); }
+       }
+     } catch (fetchError) {
+       debugConsole.warn("Network error during checklist update, verifying state...", fetchError);
+       setTimeout(async () => {
+         if (selectedPlanningId) {
+           const { data: freshItems } = await supabase.from("event_planning_checklist_items").select("id, event_planning_id, title, is_completed, order_index, sub_items, assigned_to, due_date, category, notes, is_system_item, system_type, created_at, color, type, relative_due_days").eq("event_planning_id", selectedPlanningId).order("order_index", { ascending: true });
           if (freshItems) setChecklistItems(freshItems.map(item => ({ ...item, sub_items: (item.sub_items || []) as { title: string; is_completed: boolean }[] })) as ChecklistItem[]);
         }
       }, 500);

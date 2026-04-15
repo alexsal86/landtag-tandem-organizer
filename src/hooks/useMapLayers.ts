@@ -40,7 +40,7 @@ export function useMapLayers() {
       if (!currentTenant?.id) return [];
       const { data, error } = await supabase
         .from('map_layers')
-        .select('*')
+        .select('id, tenant_id, name, description, group_name, source_type, source_path, source_table, stroke_color, fill_color, fill_opacity, stroke_width, stroke_dash_array, icon, visible_by_default, sort_order, is_active, label_property, created_at, updated_at')
         .eq('tenant_id', currentTenant.id)
         .order('group_name')
         .order('sort_order');

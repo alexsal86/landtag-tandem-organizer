@@ -51,7 +51,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Fetch action configuration
     const { data: action, error: actionError } = await supabase
       .from("event_planning_item_actions")
-      .select("*")
+      .select("id, action_type, action_config, is_enabled")
       .eq("id", actionId)
       .eq("is_enabled", true)
       .single();

@@ -325,7 +325,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     if (!caseFileId) return;
     const { data, error } = await supabase
       .from("case_item_interactions")
-      .select("*")
+      .select("id, case_file_id, case_item_id, interaction_type, subject, summary, details, direction, interaction_at, source_type, source_id, is_resolution, created_by, created_at, updated_at, visibility, payload, tenant_id")
       .eq("case_file_id", caseFileId)
       .order("created_at", { ascending: false });
 

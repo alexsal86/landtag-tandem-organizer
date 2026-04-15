@@ -44,7 +44,7 @@ export function RSSSettingsManager() {
     setLoading(true);
     const { data, error } = await supabase
       .from("rss_settings")
-      .select("*")
+      .select("id, tenant_id, articles_per_feed, total_articles_limit, refresh_interval_minutes, timeout_seconds")
       .eq("tenant_id", currentTenant.id)
       .single();
 

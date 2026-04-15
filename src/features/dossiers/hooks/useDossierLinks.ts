@@ -10,7 +10,7 @@ export function useDossierLinks(dossierId: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("dossier_links")
-        .select("*")
+        .select("id, dossier_id, linked_type, linked_id, created_at")
         .eq("dossier_id", dossierId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
