@@ -1,66 +1,47 @@
 
-Ziel: Nicht weiter “herumdoktern”, sondern den funktionierenden Stand von vor heute Abend wiederherstellen und erst danach gezielt neu prüfen.
 
-1. Sofortmaßnahme: auf den letzten funktionierenden Stand vor den heutigen Push-Änderungen zurückgehen
-- Kein weiterer manueller Gegenfix auf dem aktuellen Stand.
-- Stattdessen den Projektstand über den Verlauf/History auf den Zustand zurücksetzen, als Push noch funktionierte.
-- Das ist hier der sicherste Weg, weil heute Abend mehrere miteinander verkoppelte Stellen geändert wurden.
+## Problem
+Im Preview-Fenster (rechts) erscheint dauerhaft nur "Laden ...". Die wahrscheinliche Ursache ist die bekannte Lovable-Stack-Overflow-Pattern: **Auth-/Daten-Fetch im Preview-iframe scheitert**, während es auf der Published-URL funktionieren würde.
 
-2. Was heute Abend sehr wahrscheinlich zusammen kaputt gemacht wurde
-- `src/main.tsx`
-  - Registrierung wurde auf den unified Worker `/sw.js?v=2026-04-15-v1` umgestellt.
-- `public/sw.js`
-  - wurde zum kombinierten COI- und Push-Service-Worker gemacht.
-- `src/hooks/useNotifications.tsx`
-  - VAPID-Abruf, Repair-/Renew-Logik und SW-Registrierung wurden mehrfach geändert.
-- `supabase/functions/_shared/security.ts`
-  - CORS-/Origin-Logik wurde erweitert.
-- Zusätzlich existieren Test-/Diagnose-Komponenten mit hart codierter Push-URL (`src/components/VapidKeyTest.tsx`), die leicht für Verwirrung sorgen.
+## Analyse — Hypothesen (priorisiert)
 
-3. Warum ich einen echten Rollback empfehle statt noch eines Fixes
-- Der aktuelle Fehler ist nicht mehr nur ein einzelner Bug.
-- Es wurden heute gleichzeitig geändert:
-  - Service-Worker-Architektur
-  - Push-Registrierung
-  - VAPID-Key-Fetch
-  - Auto-Renew-/Repair-Logik
-  - Edge-Function-CORS
-- Wenn dein Ziel ausdrücklich “Stand wie vorher” ist, ist History-Revert sauberer und risikoärmer als ein weiterer Schätzwert-Fix.
+1. **Supabase egress-quota gesperrt (HTTP 402)**
+   Aus dem vorherigen Verlauf bekannt: Das Projekt liefert auf Edge Functions HTTP 402 (`exceed_egress_quota`). Wenn auch PostgREST/REST-Aufrufe oder Auth davon betroffen sind, hängt die App im Initial-Loading.
 
-4. Recovery-Plan nach dem Rollback
-- Schritt A: auf den letzten funktionierenden Stand vor heute Abend zurücksetzen
-- Schritt B: Push-Aktivierung einmal unverändert testen
-- Schritt C: nur wenn dann wirklich noch nötig, genau eine minimale Änderung neu einführen
-  - nicht mehrere gleichzeitig
-  - nach jeder Einzeländerung direkt testen
+2. **Iframe-Cookies / Third-Party-Cookies blockiert**
+   Safari oder strikte Browser blockieren Supabase-Auth-Cookies im Lovable-Preview-iframe. Die App wartet ewig auf Session.
 
-5. Falls wir nach dem Rollback erneut an Push arbeiten
-Nur in dieser Reihenfolge, einzeln:
-- zuerst nur Diagnose des tatsächlichen Fehlers
-- dann höchstens eine gezielte Änderung
-- keine gleichzeitige Änderung an:
-  - `main.tsx`
-  - `public/sw.js`
-  - `useNotifications.tsx`
-  - Edge-Function-CORS
+3. **COI-Service-Worker stört Initial-Requests**
+   Der unified `sw.js` aus den heutigen Änderungen registriert sich auch im Preview-iframe und kann Top-Level-Requests modifizieren.
 
-Technische Einordnung
-- Der größte Rückschritts-Kandidat ist der Wechsel von einem getrennten, iframe-aware COI-Worker zu einem global registrierten unified `sw.js`.
-- Dazu kommt die neue direkte VAPID-GET-Logik in `useNotifications.tsx`.
-- Der aktuelle Zustand ist also nicht “ein kleiner Defekt”, sondern ein veränderter Push-Stack.
+4. **Loading-Guard ohne Timeout**
+   Komponente zeigt "Laden …", solange `loading === true`. Wenn ein einzelner Fetch hängt, bleibt der Spinner für immer.
 
-Konkreter Umsetzungsplan nach deiner Freigabe
-1. Über History auf den letzten Stand vor den heutigen Push-Änderungen zurückgehen.
-2. Danach nur die push-relevanten Dateien prüfen:
-   - `src/main.tsx`
-   - `public/sw.js`
-   - `src/hooks/useNotifications.tsx`
-   - `supabase/functions/_shared/security.ts`
-3. Push erneut testen.
-4. Erst wenn der alte Stand wider Erwarten auch nicht mehr funktioniert, eine minimal-invasive Ursacheanalyse machen.
-5. Danach maximal eine isolierte Korrektur umsetzen und wieder testen.
+## Plan — diagnostisch, ohne Code-Änderung
 
-Erwartetes Ergebnis
-- Schnellster Weg zurück zu einem bekannten funktionierenden Zustand
-- Kein weiteres Verschlimmbessern durch zusätzliche Gegenänderungen
-- Saubere Basis, von der aus man echte Ursachen wieder getrennt prüfen kann
+Ich werde **nur lesen und prüfen**, keine Patches:
+
+1. **Root-Cause verifizieren**: 
+   - Edge-Function-Status (HTTP 402 noch aktiv?) per `supabase--curl_edge_functions`
+   - Browser-Network-Logs aus dem Preview per `code--read_network_requests` (Filter: supabase, 402, 401)
+   - Console-Logs nach echten Fehlern durchsuchen
+
+2. **Welche Komponente "Laden …" rendert** finden:
+   - Suche im Code nach `"Laden..."` / `"Laden …"` im MyWork-Dashboard-Pfad
+   - Prüfen, an welchem Loading-State sie hängt (Auth? Profile? Tasks?)
+
+3. **Iframe-Verhalten prüfen**:
+   - Ist `coiRuntime` aktiv? Welche Headers liegen an?
+   - SW-Registrierungs-Verhalten im iframe
+
+## Erwartetes Ergebnis der Diagnose
+
+Eines von drei klaren Resultaten:
+- **A)** Egress-Sperre noch aktiv → keine Code-Lösung möglich, Supabase-Billing muss bereinigt werden.
+- **B)** Auth-/Cookie-Problem nur im Preview-iframe → Test auf Published-URL erwartbar erfolgreich; Empfehlung: Published-URL nutzen.
+- **C)** Konkreter Code-Bug (hängender Fetch ohne Timeout, fehlerhafte Loading-Bedingung) → minimaler, gezielter Einzelfix.
+
+## Danach
+
+Erst nach klarer Diagnose schlage ich genau **eine** isolierte Änderung vor — kein "Herumdoktern" mehr.
+
