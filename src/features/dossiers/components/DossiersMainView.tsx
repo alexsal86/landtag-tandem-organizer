@@ -53,6 +53,8 @@ export function DossiersMainView() {
           <DossierDetailView dossierId={selectedDossierId} onBack={handleBack} />
         ) : activeTab === "eingang" ? (
           <InboxView />
+        ) : activeTab === "radar" ? (
+          <MeinRadarView onSelectDossier={handleSelectDossier} />
         ) : activeTab === "dossiers" ? (
           <DossierListView onSelect={handleSelectDossier} />
         ) : (

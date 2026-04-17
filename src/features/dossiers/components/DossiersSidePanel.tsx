@@ -29,6 +29,7 @@ export function DossiersSidePanel({
 
   const tabs = [
     { key: "eingang" as DossierTab, label: "Eingang", icon: Inbox, count: inboxCount },
+    { key: "radar" as DossierTab, label: "Mein Radar", icon: Radio, count: null },
     { key: "dossiers" as DossierTab, label: "Dossiers", icon: FolderOpen, count: dossiersCount },
     { key: "artikel" as DossierTab, label: "Artikel", icon: FileText, count: null },
   ];
