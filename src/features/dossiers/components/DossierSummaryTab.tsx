@@ -57,6 +57,12 @@ export function DossierSummaryTab({ dossier, recentEntries }: DossierSummaryTabP
   };
 
   const recent5 = recentEntries?.slice(0, 5) ?? [];
+  const quotes = (recentEntries ?? []).filter((e) => e.entry_type === "zitat").slice(0, 8);
+  const tagCounts = (() => {
+    const map = new Map<string, number>();
+    (recentEntries ?? []).forEach((e) => e.tags.forEach((t) => map.set(t, (map.get(t) ?? 0) + 1)));
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]).slice(0, 20);
+  })();
   const contactLinks = links?.filter((l) => l.linked_type === "contact") ?? [];
   const recentEntryIcons: Record<EntryType, typeof NotebookPen> = {
     notiz: NotebookPen,
