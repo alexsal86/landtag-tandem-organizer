@@ -5,6 +5,16 @@ import { useCurrentProfileId } from "@/hooks/useCurrentProfileId";
 import { toast } from "sonner";
 import type { DossierEntry } from "../types";
 
+/** Map raw row to DossierEntry with safe defaults */
+function mapEntry(d: Record<string, unknown>): DossierEntry {
+  return {
+    ...d,
+    is_pinned: (d.is_pinned as boolean | undefined) ?? false,
+    metadata: (d.metadata as Record<string, unknown> | undefined) ?? {},
+    tags: (d.tags as string[] | undefined) ?? [],
+  } as DossierEntry;
+}
+
 /** Inbox entries (dossier_id IS NULL) */
 export function useInboxEntries() {
   const { currentTenant } = useTenant();
@@ -21,7 +31,7 @@ export function useInboxEntries() {
         .is("dossier_id", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []).map((d) => ({ ...d, is_pinned: (d as Record<string, unknown>).is_pinned ?? false, metadata: d.metadata ?? {} })) as DossierEntry[];
+      return (data ?? []).map(mapEntry);
     },
   });
 }
@@ -42,7 +52,57 @@ export function useDossierEntries(dossierId: string | null) {
         .eq("dossier_id", dossierId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []).map((d) => ({ ...d, is_pinned: (d as Record<string, unknown>).is_pinned ?? false, metadata: d.metadata ?? {} })) as DossierEntry[];
+      return (data ?? []).map(mapEntry);
+    },
+  });
+}
+
+/** Recent entries across all dossiers (D: Mein Radar) */
+export function useRecentEntriesAcrossDossiers(daysBack: number = 7) {
+  const { currentTenant } = useTenant();
+  const tenantId = currentTenant?.id;
+
+  return useQuery({
+    queryKey: ["dossier-entries", "radar", tenantId, daysBack],
+    enabled: !!tenantId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const since = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from("dossier_entries")
+        .select("*")
+        .eq("tenant_id", tenantId!)
+        .not("dossier_id", "is", null)
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return (data ?? []).map(mapEntry);
+    },
+  });
+}
+
+/** Global full-text search across all dossier entries (A) */
+export function useGlobalEntrySearch(searchTerm: string) {
+  const { currentTenant } = useTenant();
+  const tenantId = currentTenant?.id;
+  const trimmed = searchTerm.trim();
+
+  return useQuery({
+    queryKey: ["dossier-entries", "global-search", tenantId, trimmed],
+    enabled: !!tenantId && trimmed.length >= 2,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const pattern = `%${trimmed.replace(/[%_]/g, (m) => `\\${m}`)}%`;
+      const { data, error } = await supabase
+        .from("dossier_entries")
+        .select("*")
+        .eq("tenant_id", tenantId!)
+        .or(`title.ilike.${pattern},content.ilike.${pattern}`)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return (data ?? []).map(mapEntry);
     },
   });
 }
