@@ -47,6 +47,9 @@ export function DossiersSidePanel({
           {/* Quick Capture */}
           <QuickCapture />
 
+          {/* Globale Eintragssuche (A) */}
+          <GlobalEntrySearch onSelectDossier={onSelectDossier} />
+
           <Separator />
 
           {/* Navigation */}
