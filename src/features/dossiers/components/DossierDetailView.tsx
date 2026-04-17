@@ -41,12 +41,18 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
     }
   }, [dossierId, dossier?.title]);
   const [activeEntryFilter, setActiveEntryFilter] = useState("alle");
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editSummary, setEditSummary] = useState("");
   const [editStatus, setEditStatus] = useState("");
   const [editPriority, setEditPriority] = useState("");
   const [editOwnerId, setEditOwnerId] = useState("unassigned");
+
+  const handleTagClick = useCallback((tag: string) => {
+    setTagFilter((curr) => (curr === tag ? null : tag));
+    setActiveSection("eintraege");
+  }, []);
 
   const entryTypes = Object.keys(ENTRY_TYPE_CONFIG) as EntryType[];
   const entryTypeIcons: Record<EntryType, typeof NotebookPen> = {
