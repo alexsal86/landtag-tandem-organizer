@@ -231,3 +231,21 @@ export function usePinEntry() {
     onError: (err) => toast.error(`Fehler: ${err.message}`),
   });
 }
+
+export function useUpdateEntryTags() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ entryId, tags }: { entryId: string; tags: string[] }) => {
+      const { error } = await supabase
+        .from("dossier_entries")
+        .update({ tags } as never)
+        .eq("id", entryId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["dossier-entries"] });
+    },
+    onError: (err) => toast.error(`Fehler: ${err.message}`),
+  });
+}
