@@ -206,7 +206,12 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
               <Loader2 className="animate-spin h-6 w-6 text-muted-foreground" />
             </div>
           ) : (
-            <EntryTimeline entries={filteredEntries ?? []} onPin={handlePin} />
+            <EntryTimeline
+              entries={filteredEntries ?? []}
+              onPin={handlePin}
+              tagFilter={tagFilter}
+              onTagClick={handleTagClick}
+            />
           )}
         </TabsContent>
 
