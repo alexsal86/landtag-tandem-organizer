@@ -57,6 +57,12 @@ export function DossierSummaryTab({ dossier, recentEntries }: DossierSummaryTabP
   };
 
   const recent5 = recentEntries?.slice(0, 5) ?? [];
+  const quotes = (recentEntries ?? []).filter((e) => e.entry_type === "zitat").slice(0, 8);
+  const tagCounts = (() => {
+    const map = new Map<string, number>();
+    (recentEntries ?? []).forEach((e) => e.tags.forEach((t) => map.set(t, (map.get(t) ?? 0) + 1)));
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]).slice(0, 20);
+  })();
   const contactLinks = links?.filter((l) => l.linked_type === "contact") ?? [];
   const recentEntryIcons: Record<EntryType, typeof NotebookPen> = {
     notiz: NotebookPen,
@@ -205,7 +211,7 @@ export function DossierSummaryTab({ dossier, recentEntries }: DossierSummaryTabP
           />
         </section>
 
-        {/* Letzte Einträge */}
+        {/* Letzte Einträge — mit Snippets (B) */}
         <section>
           <h3 className="text-sm font-semibold flex items-center gap-1.5 mb-2">
             <MessageSquare className="h-4 w-4" /> Letzte Einträge
@@ -215,13 +221,33 @@ export function DossierSummaryTab({ dossier, recentEntries }: DossierSummaryTabP
               {recent5.map((entry) => {
                 const iconKey = entry.entry_type as EntryType;
                 const EntryIcon = recentEntryIcons[iconKey] ?? FileText;
+                const preview = (entry.content ?? "").trim().slice(0, 140);
                 return (
-                  <div key={entry.id} className="flex items-center gap-2 text-sm rounded-md px-2 py-1.5 bg-muted/30">
-                    <EntryIcon className="h-4 w-4 text-muted-foreground" />
-                    <span className="truncate flex-1 text-foreground">{entry.title || "Ohne Titel"}</span>
-                    <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-                      {formatDistanceToNow(new Date(entry.created_at), { addSuffix: true, locale: de })}
-                    </span>
+                  <div key={entry.id} className="rounded-md px-2.5 py-2 bg-muted/30 hover:bg-muted/50 transition-colors space-y-0.5">
+                    <div className="flex items-center gap-2 text-sm">
+                      <EntryIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="truncate flex-1 text-foreground font-medium">{entry.title || "Ohne Titel"}</span>
+                      <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                        {formatDistanceToNow(new Date(entry.created_at), { addSuffix: true, locale: de })}
+                      </span>
+                    </div>
+                    {preview && (
+                      <p className="text-[12px] text-muted-foreground line-clamp-2 pl-6">
+                        {preview}{entry.content && entry.content.length > 140 ? "…" : ""}
+                      </p>
+                    )}
+                    {entry.source_url && (
+                      <a
+                        href={entry.source_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline pl-6 truncate max-w-full"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Link2 className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{entry.source_url}</span>
+                      </a>
+                    )}
                   </div>
                 );
               })}
@@ -231,6 +257,44 @@ export function DossierSummaryTab({ dossier, recentEntries }: DossierSummaryTabP
           )}
         </section>
       </div>
+
+      {/* Tag-Cloud (E) */}
+      {tagCounts.length > 0 && (
+        <section>
+          <h3 className="text-sm font-semibold flex items-center gap-1.5 mb-2">
+            <Quote className="h-4 w-4" /> Schlagwörter
+          </h3>
+          <div className="flex flex-wrap gap-1.5">
+            {tagCounts.map(([tag, count]) => (
+              <span key={tag} className="text-[11px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                #{tag} <span className="text-[10px] opacity-60">{count}</span>
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Zitat-Brett (F) */}
+      {quotes.length > 0 && (
+        <section>
+          <h3 className="text-sm font-semibold flex items-center gap-1.5 mb-2">
+            <Quote className="h-4 w-4 text-primary" /> Zitate
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {quotes.map((q) => (
+              <blockquote
+                key={q.id}
+                className="rounded-md border-l-2 border-primary bg-primary/5 px-3 py-2 text-sm text-foreground"
+              >
+                <p className="italic line-clamp-4 whitespace-pre-wrap">„{q.content || q.title || "—"}"</p>
+                {q.title && q.content && (
+                  <footer className="text-[11px] text-muted-foreground mt-1 not-italic">— {q.title}</footer>
+                )}
+              </blockquote>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Verknüpfte Kontakte (preview) */}
       {contactLinks.length > 0 && (

@@ -3,25 +3,44 @@ import { ENTRY_TYPE_CONFIG } from "../types";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { useDossiers } from "../hooks/useDossiers";
-import { useAssignEntryToDossier, useDeleteEntry } from "../hooks/useDossierEntries";
+import { useAssignEntryToDossier, useDeleteEntry, useUpdateEntryTags } from "../hooks/useDossierEntries";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, FolderInput, Check, Pin, PinOff } from "lucide-react";
-import { useState } from "react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Trash2, FolderInput, Check, Pin, PinOff, Tag, X, ExternalLink } from "lucide-react";
+import { useState, KeyboardEvent } from "react";
 
 interface EntryCardProps {
   entry: DossierEntry;
   showAssign?: boolean;
   onPin?: (entryId: string, pinned: boolean) => void;
+  /** Optional: highlight matching text in title/content (A: global search) */
+  highlight?: string;
+  /** Optional: click handler on tag chip (E: tag filter) */
+  onTagClick?: (tag: string) => void;
 }
 
-export function EntryCard({ entry, showAssign = false, onPin }: EntryCardProps) {
+function highlightText(text: string, term: string) {
+  if (!term || term.length < 2) return text;
+  const safe = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const parts = text.split(new RegExp(`(${safe})`, "gi"));
+  return parts.map((p, i) =>
+    p.toLowerCase() === term.toLowerCase()
+      ? <mark key={i} className="bg-primary/20 text-foreground rounded px-0.5">{p}</mark>
+      : <span key={i}>{p}</span>
+  );
+}
+
+export function EntryCard({ entry, onPin, highlight, onTagClick }: EntryCardProps) {
   const config = ENTRY_TYPE_CONFIG[entry.entry_type as EntryType] ?? { label: entry.entry_type, icon: '📄' };
   const { data: dossiers } = useDossiers();
   const assignEntry = useAssignEntryToDossier();
   const deleteEntry = useDeleteEntry();
+  const updateTags = useUpdateEntryTags();
   const [assigning, setAssigning] = useState(false);
   const [selectedDossier, setSelectedDossier] = useState<string>("");
+  const [tagInput, setTagInput] = useState("");
 
   const isInbox = entry.dossier_id === null;
   const emailMeta = entry.entry_type === "email" && entry.metadata
@@ -36,12 +55,34 @@ export function EntryCard({ entry, showAssign = false, onPin }: EntryCardProps) 
     );
   };
 
+  const addTag = (raw: string) => {
+    const t = raw.trim().toLowerCase().replace(/^#/, "");
+    if (!t || entry.tags.includes(t)) return;
+    updateTags.mutate({ entryId: entry.id, tags: [...entry.tags, t] });
+    setTagInput("");
+  };
+
+  const removeTag = (t: string) => {
+    updateTags.mutate({ entryId: entry.id, tags: entry.tags.filter((x) => x !== t) });
+  };
+
+  const handleTagKey = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      addTag(tagInput);
+    } else if (e.key === "Backspace" && !tagInput && entry.tags.length) {
+      removeTag(entry.tags[entry.tags.length - 1]);
+    }
+  };
+
   return (
     <div className={`rounded-md border border-border bg-card p-3 space-y-1.5 group ${entry.is_pinned ? "ring-1 ring-primary/20 bg-primary/[0.02]" : ""}`}>
       <div className="flex items-center gap-2 text-sm">
         <span>{config.icon}</span>
         {entry.is_pinned && <Pin className="h-3 w-3 text-primary shrink-0" />}
-        <span className="font-medium truncate flex-1">{entry.title || 'Ohne Titel'}</span>
+        <span className="font-medium truncate flex-1">
+          {entry.title ? highlightText(entry.title, highlight ?? "") : 'Ohne Titel'}
+        </span>
         {!entry.is_curated && (
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-warning/10 text-warning shrink-0">roh</span>
         )}
@@ -60,20 +101,43 @@ export function EntryCard({ entry, showAssign = false, onPin }: EntryCardProps) 
       )}
 
       {entry.content && (
-        <p className="text-sm text-muted-foreground line-clamp-3 pl-6">{entry.content}</p>
+        <p className="text-sm text-muted-foreground line-clamp-3 pl-6 whitespace-pre-wrap">
+          {highlightText(entry.content, highlight ?? "")}
+        </p>
       )}
       {entry.source_url && (
         <a
           href={entry.source_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs text-primary hover:underline truncate block pl-6"
+          className="text-xs text-primary hover:underline truncate flex items-center gap-1 pl-6"
         >
-          {entry.source_url}
+          <ExternalLink className="h-3 w-3 shrink-0" />
+          <span className="truncate">{entry.source_url}</span>
         </a>
       )}
       {entry.file_name && (
         <p className="text-xs text-muted-foreground pl-6">📎 {entry.file_name}</p>
+      )}
+
+      {/* Tags */}
+      {entry.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1 pl-6">
+          {entry.tags.map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => onTagClick?.(t)}
+              className="group/tag inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+            >
+              <span>#{t}</span>
+              <X
+                className="h-2.5 w-2.5 opacity-0 group-hover/tag:opacity-60 hover:opacity-100"
+                onClick={(e) => { e.stopPropagation(); removeTag(t); }}
+              />
+            </button>
+          ))}
+        </div>
       )}
 
       {/* Actions */}
@@ -89,6 +153,28 @@ export function EntryCard({ entry, showAssign = false, onPin }: EntryCardProps) 
             {entry.is_pinned ? "Lösen" : "Anpinnen"}
           </Button>
         )}
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">
+              <Tag className="h-3 w-3" /> Tag
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-2" side="bottom" align="start">
+            <Input
+              autoFocus
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={handleTagKey}
+              placeholder="Tag eingeben, Enter …"
+              className="h-8 text-xs"
+            />
+            <p className="text-[10px] text-muted-foreground mt-1.5 px-1">
+              Enter speichert · Komma trennt · Backspace entfernt letzten
+            </p>
+          </PopoverContent>
+        </Popover>
+
         {isInbox && !assigning && (
           <Button
             variant="ghost"

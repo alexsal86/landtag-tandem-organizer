@@ -4,15 +4,17 @@ import { InboxView } from "./InboxView";
 import { DossierListView } from "./DossierListView";
 import { DossierDetailView } from "./DossierDetailView";
 import { DossiersSidePanel } from "./DossiersSidePanel";
+import { MeinRadarView } from "./MeinRadarView";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { Loader2 } from "lucide-react";
 
 const KnowledgeBaseView = lazyWithRetry(() => import("@/components/KnowledgeBaseView"));
 
-type DossierTab = "eingang" | "dossiers" | "artikel";
+type DossierTab = "eingang" | "radar" | "dossiers" | "artikel";
 
 const DOSSIER_TAB_LABELS: Record<DossierTab, string> = {
   eingang: "Eingang",
+  radar: "Mein Radar",
   dossiers: "Dossiers",
   artikel: "Artikel",
 };
@@ -51,6 +53,8 @@ export function DossiersMainView() {
           <DossierDetailView dossierId={selectedDossierId} onBack={handleBack} />
         ) : activeTab === "eingang" ? (
           <InboxView />
+        ) : activeTab === "radar" ? (
+          <MeinRadarView onSelectDossier={handleSelectDossier} />
         ) : activeTab === "dossiers" ? (
           <DossierListView onSelect={handleSelectDossier} />
         ) : (
