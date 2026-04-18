@@ -548,12 +548,15 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
             <div className="space-y-2 md:col-span-2">
               <div className="flex items-center justify-between">
                 <Label>Hashtags</Label>
-                <span className={cn(
-                  "text-xs tabular-nums",
-                  hashtags.length > 30 ? "text-destructive font-medium" : "text-muted-foreground",
-                )}>
-                  {hashtags.length} / 30 (Instagram-Limit)
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={cn(
+                    "text-xs tabular-nums",
+                    hashtags.length > 30 ? "text-destructive font-medium" : "text-muted-foreground",
+                  )}>
+                    {hashtags.length} / 30 (Instagram-Limit)
+                  </span>
+                  <HashtagSetPicker currentHashtags={hashtags} onApply={setHashtags} />
+                </div>
               </div>
               <TagInput
                 tags={hashtags}
