@@ -291,6 +291,7 @@ export function useSocialPlannerItems() {
       variants?: SocialContentVariant[];
       campaign_id?: string | null;
       content_pillar?: string | null;
+      appointment_id?: string | null;
     }) => {
       if (!user?.id || !currentTenant?.id || !profileId) return null;
 
