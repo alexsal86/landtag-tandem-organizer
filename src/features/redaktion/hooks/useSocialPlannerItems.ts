@@ -41,6 +41,9 @@ export interface SocialPlannerItem {
   hashtags_in_comment: boolean;
   alt_text: string | null;
   variants: Record<string, SocialContentVariant>;
+  appointment_id: string | null;
+  published_at: string | null;
+  reminder_sent_at: string | null;
 }
 
 export interface PlannerChannel {
@@ -62,6 +65,8 @@ export interface SocialContentVariant {
   asset_ids: string[];
   platform_metadata: Record<string, unknown>;
   platform_status: SocialContentPlatformStatus;
+  publish_link?: string | null;
+  published_at?: string | null;
 }
 
 // DB workflow_status values: idea, draft, approval, scheduled, published
@@ -149,6 +154,9 @@ export function useSocialPlannerItems() {
             image_url,
             campaign_id,
             content_pillar,
+            appointment_id,
+            published_at,
+            reminder_sent_at,
             social_campaigns:campaign_id(name, start_date, end_date),
             topic_backlog:topic_backlog_id(topic, tags, campaign_id, content_pillar),
             social_content_item_channels(channel_id, social_content_channels(name, slug))
@@ -163,7 +171,7 @@ export function useSocialPlannerItems() {
           .order("sort_order", { ascending: true }),
         supabase
           .from("social_content_variants")
-          .select("id, content_item_id, channel_id, caption, first_comment, media_type, asset_ids, platform_metadata, platform_status")
+          .select("id, content_item_id, channel_id, caption, first_comment, media_type, asset_ids, platform_metadata, platform_status, publish_link, published_at")
           .eq("tenant_id", currentTenant.id),
       ]);
 
@@ -183,6 +191,8 @@ export function useSocialPlannerItems() {
         asset_ids: string[] | null;
         platform_metadata: Record<string, unknown> | null;
         platform_status: SocialContentPlatformStatus | null;
+        publish_link: string | null;
+        published_at: string | null;
       }>).forEach((variant) => {
         const byChannel = groupedVariants.get(variant.content_item_id) || {};
         byChannel[variant.channel_id] = {
@@ -195,6 +205,8 @@ export function useSocialPlannerItems() {
           asset_ids: variant.asset_ids || [],
           platform_metadata: variant.platform_metadata || {},
           platform_status: variant.platform_status || "draft",
+          publish_link: variant.publish_link ?? null,
+          published_at: variant.published_at ?? null,
         };
         groupedVariants.set(variant.content_item_id, byChannel);
       });
@@ -243,6 +255,9 @@ export function useSocialPlannerItems() {
             channel_slugs: channelLinks.map((entry) => entry.social_content_channels?.slug || ""),
             image_url: row.image_url || null,
             variants: groupedVariants.get(row.id) || {},
+            appointment_id: (row as { appointment_id?: string | null }).appointment_id ?? null,
+            published_at: (row as { published_at?: string | null }).published_at ?? null,
+            reminder_sent_at: (row as { reminder_sent_at?: string | null }).reminder_sent_at ?? null,
           };
         }),
       );
@@ -276,6 +291,7 @@ export function useSocialPlannerItems() {
       variants?: SocialContentVariant[];
       campaign_id?: string | null;
       content_pillar?: string | null;
+      appointment_id?: string | null;
     }) => {
       if (!user?.id || !currentTenant?.id || !profileId) return null;
 
@@ -306,6 +322,7 @@ export function useSocialPlannerItems() {
           cta: payload.cta || null,
           campaign_id: payload.campaign_id || null,
           content_pillar: payload.content_pillar || null,
+          appointment_id: payload.appointment_id || null,
         });
 
       if (error) {
@@ -357,7 +374,7 @@ export function useSocialPlannerItems() {
 
   const updateItem = useCallback(async (
     id: string,
-    patch: Partial<Pick<SocialPlannerItem, "topic" | "tags" | "workflow_status" | "approval_state" | "responsible_user_id" | "format" | "content_goal" | "format_variant" | "asset_requirements" | "approval_required" | "publish_link" | "performance_notes" | "scheduled_for" | "hook" | "core_message" | "draft_text" | "cta" | "notes" | "channel_ids" | "hashtags" | "hashtags_in_comment" | "alt_text" | "image_url" | "variants" | "campaign_id" | "content_pillar">>,
+    patch: Partial<Pick<SocialPlannerItem, "topic" | "tags" | "workflow_status" | "approval_state" | "responsible_user_id" | "format" | "content_goal" | "format_variant" | "asset_requirements" | "approval_required" | "publish_link" | "performance_notes" | "scheduled_for" | "hook" | "core_message" | "draft_text" | "cta" | "notes" | "channel_ids" | "hashtags" | "hashtags_in_comment" | "alt_text" | "image_url" | "variants" | "campaign_id" | "content_pillar" | "appointment_id" | "published_at">>,
   ) => {
     if (!currentTenant?.id) return;
 
@@ -389,6 +406,8 @@ export function useSocialPlannerItems() {
     if (typeof patch.image_url !== "undefined") dbPatch.image_url = patch.image_url;
     if (typeof patch.campaign_id !== "undefined") dbPatch.campaign_id = patch.campaign_id;
     if (typeof patch.content_pillar !== "undefined") dbPatch.content_pillar = patch.content_pillar;
+    if (typeof patch.appointment_id !== "undefined") dbPatch.appointment_id = patch.appointment_id;
+    if (typeof patch.published_at !== "undefined") dbPatch.published_at = patch.published_at;
 
     if (Object.keys(dbPatch).length > 0) {
       const { error } = await supabase
@@ -468,6 +487,8 @@ export function useSocialPlannerItems() {
             asset_ids: variant.asset_ids || [],
             platform_metadata: variant.platform_metadata || {},
             platform_status: variant.platform_status || "draft",
+            publish_link: variant.publish_link ?? null,
+            published_at: variant.published_at ?? null,
           })),
           { onConflict: "content_item_id,channel_id" },
         );
