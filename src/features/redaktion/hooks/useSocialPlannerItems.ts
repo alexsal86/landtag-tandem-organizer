@@ -255,6 +255,9 @@ export function useSocialPlannerItems() {
             channel_slugs: channelLinks.map((entry) => entry.social_content_channels?.slug || ""),
             image_url: row.image_url || null,
             variants: groupedVariants.get(row.id) || {},
+            appointment_id: (row as { appointment_id?: string | null }).appointment_id ?? null,
+            published_at: (row as { published_at?: string | null }).published_at ?? null,
+            reminder_sent_at: (row as { reminder_sent_at?: string | null }).reminder_sent_at ?? null,
           };
         }),
       );
