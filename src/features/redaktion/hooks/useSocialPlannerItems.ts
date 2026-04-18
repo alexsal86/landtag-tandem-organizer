@@ -485,6 +485,8 @@ export function useSocialPlannerItems() {
             asset_ids: variant.asset_ids || [],
             platform_metadata: variant.platform_metadata || {},
             platform_status: variant.platform_status || "draft",
+            publish_link: variant.publish_link ?? null,
+            published_at: variant.published_at ?? null,
           })),
           { onConflict: "content_item_id,channel_id" },
         );
