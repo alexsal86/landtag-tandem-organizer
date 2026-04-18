@@ -85,6 +85,8 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
   const [activeVariantChannelId, setActiveVariantChannelId] = useState<string>("");
   const [variantsByChannel, setVariantsByChannel] = useState<Record<string, SocialContentVariant>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
+  const [markPublishedOpen, setMarkPublishedOpen] = useState(false);
 
   useEffect(() => {
     if (!item) return;
