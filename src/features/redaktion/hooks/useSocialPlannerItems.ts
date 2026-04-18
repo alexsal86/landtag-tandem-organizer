@@ -154,6 +154,9 @@ export function useSocialPlannerItems() {
             image_url,
             campaign_id,
             content_pillar,
+            appointment_id,
+            published_at,
+            reminder_sent_at,
             social_campaigns:campaign_id(name, start_date, end_date),
             topic_backlog:topic_backlog_id(topic, tags, campaign_id, content_pillar),
             social_content_item_channels(channel_id, social_content_channels(name, slug))
@@ -168,7 +171,7 @@ export function useSocialPlannerItems() {
           .order("sort_order", { ascending: true }),
         supabase
           .from("social_content_variants")
-          .select("id, content_item_id, channel_id, caption, first_comment, media_type, asset_ids, platform_metadata, platform_status")
+          .select("id, content_item_id, channel_id, caption, first_comment, media_type, asset_ids, platform_metadata, platform_status, publish_link, published_at")
           .eq("tenant_id", currentTenant.id),
       ]);
 
