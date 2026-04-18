@@ -322,6 +322,7 @@ export function useSocialPlannerItems() {
           cta: payload.cta || null,
           campaign_id: payload.campaign_id || null,
           content_pillar: payload.content_pillar || null,
+          appointment_id: payload.appointment_id || null,
         });
 
       if (error) {
