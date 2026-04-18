@@ -41,6 +41,9 @@ export interface SocialPlannerItem {
   hashtags_in_comment: boolean;
   alt_text: string | null;
   variants: Record<string, SocialContentVariant>;
+  appointment_id: string | null;
+  published_at: string | null;
+  reminder_sent_at: string | null;
 }
 
 export interface PlannerChannel {
