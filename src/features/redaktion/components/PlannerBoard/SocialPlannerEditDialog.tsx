@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarDays, CheckSquare, ClipboardList, Image, Pencil, Upload, X } from "lucide-react";
+import { CalendarDays, CheckCircle2, CheckSquare, ClipboardList, Eye, Image, Pencil, Scissors, Send, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -34,9 +34,12 @@ import {
   VARIANT_MEDIA_TYPES,
 } from "./constants";
 import type { SocialPlannerDraftPayload, SocialPlannerTemplateId } from "./types";
-import { validateVariant, applyTemplateToState } from "./utils";
+import { getChannelRules, validateVariant, applyTemplateToState } from "./utils";
 import { BriefingGroup } from "./BriefingGroup";
 import { CharCounter } from "./CharCounter";
+import { ChannelPreview } from "./ChannelPreview";
+import { HashtagSetPicker } from "./HashtagSetPicker";
+import { MarkPublishedDialog } from "./MarkPublishedDialog";
 
 export interface SocialPlannerEditDialogProps {
   item: SocialPlannerItem | null;
