@@ -731,11 +731,71 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
           </BriefingGroup>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="gap-2 sm:gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setMarkPublishedOpen(true)}
+            disabled={isSaving}
+            className="mr-auto"
+          >
+            <CheckCircle2 className="h-4 w-4 mr-1" />
+            Als veröffentlicht markieren
+          </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>Abbrechen</Button>
           <Button onClick={() => void handleSave()} disabled={isSaving}>Speichern</Button>
         </DialogFooter>
       </DialogContent>
+      <MarkPublishedDialog
+        item={item}
+        channels={channels}
+        open={markPublishedOpen}
+        onOpenChange={setMarkPublishedOpen}
+        onConfirm={async ({ publishedAt, perChannelLinks }) => {
+          if (!item) return;
+          const nextVariants: Record<string, SocialContentVariant> = { ...variantsByChannel };
+          Object.entries(perChannelLinks).forEach(([channelId, link]) => {
+            if (nextVariants[channelId]) {
+              nextVariants[channelId] = {
+                ...nextVariants[channelId],
+                publish_link: link || null,
+                published_at: publishedAt,
+                platform_status: "published",
+              };
+            }
+          });
+          setVariantsByChannel(nextVariants);
+          setWorkflowStatus("published");
+          await onSave(item.id, {
+            topic: topic.trim(),
+            tags: tagsValue,
+            channel_ids: selectedChannels,
+            format: formatValue.trim() || null,
+            content_goal: contentGoal.trim() || null,
+            format_variant: formatVariant.trim() || null,
+            asset_requirements: assetRequirements,
+            approval_required: approvalRequired,
+            publish_link: (perChannelLinks[selectedChannels[0]] || publishLink || "").trim() || null,
+            performance_notes: performanceNotes.trim() || null,
+            hook: hookValue.trim() || null,
+            core_message: coreMessage.trim() || null,
+            draft_text: draftText.trim() || null,
+            cta: ctaValue.trim() || null,
+            notes: notesValue.trim() || null,
+            responsible_user_id: responsibleUserId === "none" ? null : responsibleUserId,
+            scheduled_for: scheduledDate ? new Date(scheduledDate).toISOString() : null,
+            approval_state: approvalState,
+            workflow_status: "published",
+            hashtags,
+            hashtags_in_comment: hashtagsInComment,
+            alt_text: altText.trim() || null,
+            image_url: imageUrl,
+            variants: nextVariants,
+            campaign_id: campaignId === "none" ? null : campaignId,
+            content_pillar: contentPillar === "none" ? null : contentPillar,
+          });
+        }}
+      />
     </Dialog>
   );
 }
