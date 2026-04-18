@@ -404,6 +404,8 @@ export function useSocialPlannerItems() {
     if (typeof patch.image_url !== "undefined") dbPatch.image_url = patch.image_url;
     if (typeof patch.campaign_id !== "undefined") dbPatch.campaign_id = patch.campaign_id;
     if (typeof patch.content_pillar !== "undefined") dbPatch.content_pillar = patch.content_pillar;
+    if (typeof patch.appointment_id !== "undefined") dbPatch.appointment_id = patch.appointment_id;
+    if (typeof patch.published_at !== "undefined") dbPatch.published_at = patch.published_at;
 
     if (Object.keys(dbPatch).length > 0) {
       const { error } = await supabase
