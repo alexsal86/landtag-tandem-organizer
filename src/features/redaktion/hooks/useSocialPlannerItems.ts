@@ -65,6 +65,8 @@ export interface SocialContentVariant {
   asset_ids: string[];
   platform_metadata: Record<string, unknown>;
   platform_status: SocialContentPlatformStatus;
+  publish_link?: string | null;
+  published_at?: string | null;
 }
 
 // DB workflow_status values: idea, draft, approval, scheduled, published
