@@ -28,6 +28,8 @@ export type SocialPlannerDraftPayload = {
   variants: Record<string, SocialContentVariant>;
   campaign_id: string | null;
   content_pillar: string | null;
+  appointment_id?: string | null;
+  published_at?: string | null;
 };
 
 export type SocialPlannerTemplateId = (typeof TEMPLATE_OPTIONS)[number]["id"];
