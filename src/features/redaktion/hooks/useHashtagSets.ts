@@ -35,7 +35,7 @@ export function useHashtagSets() {
     }
     try {
       setLoading(true);
-      // @ts-expect-error social_hashtag_sets ist neu, types werden noch generiert
+
       const { data, error } = await supabase
         .from("social_hashtag_sets")
         .select("id, name, description, hashtags, channel_slug")
@@ -61,7 +61,7 @@ export function useHashtagSets() {
   const createSet = useCallback(
     async (input: { name: string; hashtags: string[]; description?: string | null; channel_slug?: string | null }) => {
       if (!currentTenant?.id || !profileId) return;
-      // @ts-expect-error neue Tabelle, types folgen
+
       const { error } = await supabase.from("social_hashtag_sets").insert({
         tenant_id: currentTenant.id,
         created_by: profileId,
@@ -79,7 +79,7 @@ export function useHashtagSets() {
   const deleteSet = useCallback(
     async (id: string) => {
       if (!currentTenant?.id) return;
-      // @ts-expect-error neue Tabelle, types folgen
+
       const { error } = await supabase.from("social_hashtag_sets").delete().eq("id", id).eq("tenant_id", currentTenant.id);
       if (error) throw new Error(getErrorMessage(error));
       await load();
