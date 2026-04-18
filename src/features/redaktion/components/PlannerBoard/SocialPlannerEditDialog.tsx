@@ -256,7 +256,20 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
 
             {selectedChannels.length > 0 && (
               <div className="space-y-2 md:col-span-2 rounded-md border p-3">
-                <Label>Kanalvariante bearbeiten</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="m-0">Kanalvariante bearbeiten</Label>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowPreview((v) => !v)}
+                    >
+                      <Eye className="h-3.5 w-3.5 mr-1" />
+                      {showPreview ? "Vorschau aus" : "Vorschau an"}
+                    </Button>
+                  </div>
+                </div>
                 <Select value={activeVariantChannelId} onValueChange={setActiveVariantChannelId}>
                   <SelectTrigger><SelectValue placeholder="Kanalvariante wählen" /></SelectTrigger>
                   <SelectContent>
@@ -266,34 +279,89 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
                     })}
                   </SelectContent>
                 </Select>
-                {activeVariantChannelId && (
+                {activeVariantChannelId && (() => {
+                  const activeChannel = channels.find((c) => c.id === activeVariantChannelId);
+                  const activeSlug = activeChannel?.slug || "";
+                  const rules = getChannelRules(activeSlug);
+                  const variant = variantsByChannel[activeVariantChannelId];
+                  return (
                   <div className="grid gap-3 md:grid-cols-2">
-                    <div className="space-y-2 md:col-span-2">
-                      <Label>Caption</Label>
+                    <div className={cn("space-y-3", showPreview ? "md:col-span-1" : "md:col-span-2") }>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label>Caption</Label>
+                        <CharCounter text={variant?.caption || ""} limit={rules.captionMax} />
+                      </div>
                       <Textarea
                         rows={4}
-                        value={variantsByChannel[activeVariantChannelId]?.caption || ""}
+                        value={variant?.caption || ""}
                         onChange={(event) => setVariantsByChannel((current) => ({
                           ...current,
                           [activeVariantChannelId]: { ...current[activeVariantChannelId], caption: event.target.value },
                         }))}
                       />
+                      <div className="flex flex-wrap gap-1">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => {
+                            const baseCaption = variant?.caption || "";
+                            if (!baseCaption.trim()) {
+                              toast({ title: "Caption ist leer", variant: "destructive" });
+                              return;
+                            }
+                            setVariantsByChannel((current) => {
+                              const next = { ...current };
+                              selectedChannels.forEach((cid) => {
+                                if (cid !== activeVariantChannelId) {
+                                  next[cid] = { ...next[cid], caption: baseCaption };
+                                }
+                              });
+                              return next;
+                            });
+                            toast({ title: "Caption auf alle Kanäle übernommen" });
+                          }}
+                        >
+                          <Send className="h-3 w-3 mr-1" />Auf alle Kanäle
+                        </Button>
+                        {(activeSlug === "x" || activeSlug === "twitter") && (variant?.caption.length || 0) > 280 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => {
+                              const cap = variant?.caption || "";
+                              const trimmed = cap.length > 280 ? `${cap.slice(0, 279)}…` : cap;
+                              setVariantsByChannel((current) => ({
+                                ...current,
+                                [activeVariantChannelId]: { ...current[activeVariantChannelId], caption: trimmed },
+                              }));
+                            }}
+                          >
+                            <Scissors className="h-3 w-3 mr-1" />Auf 280 kürzen
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    <div className="space-y-2 md:col-span-2">
+                    <div className="space-y-2">
                       <Label>First Comment</Label>
                       <Textarea
                         rows={3}
-                        value={variantsByChannel[activeVariantChannelId]?.first_comment || ""}
+                        value={variant?.first_comment || ""}
                         onChange={(event) => setVariantsByChannel((current) => ({
                           ...current,
                           [activeVariantChannelId]: { ...current[activeVariantChannelId], first_comment: event.target.value },
                         }))}
                       />
                     </div>
+                    <div className="grid gap-3 grid-cols-2">
                     <div className="space-y-2">
                       <Label>Media Type</Label>
                       <Select
-                        value={variantsByChannel[activeVariantChannelId]?.media_type || "none"}
+                        value={variant?.media_type || "none"}
                         onValueChange={(value) => setVariantsByChannel((current) => ({
                           ...current,
                           [activeVariantChannelId]: { ...current[activeVariantChannelId], media_type: value === "none" ? "" : value as SocialContentMediaType },
@@ -309,7 +377,7 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
                     <div className="space-y-2">
                       <Label>Platform Status</Label>
                       <Select
-                        value={variantsByChannel[activeVariantChannelId]?.platform_status || "draft"}
+                        value={variant?.platform_status || "draft"}
                         onValueChange={(value) => setVariantsByChannel((current) => ({
                           ...current,
                           [activeVariantChannelId]: { ...current[activeVariantChannelId], platform_status: value as SocialContentPlatformStatus },
@@ -321,10 +389,22 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2 md:col-span-2">
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Publish-Link für diesen Kanal</Label>
+                      <Input
+                        placeholder="https://…"
+                        value={variant?.publish_link || ""}
+                        onChange={(event) => setVariantsByChannel((current) => ({
+                          ...current,
+                          [activeVariantChannelId]: { ...current[activeVariantChannelId], publish_link: event.target.value },
+                        }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
                       <Label>Asset IDs (Komma-getrennt)</Label>
                       <Input
-                        value={(variantsByChannel[activeVariantChannelId]?.asset_ids || []).join(", ")}
+                        value={(variant?.asset_ids || []).join(", ")}
                         onChange={(event) => setVariantsByChannel((current) => ({
                           ...current,
                           [activeVariantChannelId]: {
@@ -334,11 +414,11 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
                         }))}
                       />
                     </div>
-                    <div className="space-y-2 md:col-span-2">
+                    <div className="space-y-2">
                       <Label>Platform Metadata (JSON)</Label>
                       <Textarea
                         rows={3}
-                        value={JSON.stringify(variantsByChannel[activeVariantChannelId]?.platform_metadata || {}, null, 2)}
+                        value={JSON.stringify(variant?.platform_metadata || {}, null, 2)}
                         onChange={(event) => {
                           try {
                             const parsed = JSON.parse(event.target.value) as Record<string, unknown>;
@@ -352,16 +432,29 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
                         }}
                       />
                     </div>
-                    <div className="md:col-span-2 space-y-1">
-                      {validateVariant(
-                        variantsByChannel[activeVariantChannelId],
-                        channels.find((channel) => channel.id === activeVariantChannelId)?.slug || "",
-                      ).map((error) => (
+                    <div className="space-y-1">
+                      {validateVariant(variant, activeSlug).map((error) => (
                         <p key={error} className="text-xs text-destructive">{error}</p>
                       ))}
                     </div>
+                    </div>
+                    {showPreview && (
+                      <div className="md:col-span-1 space-y-2">
+                        <Label className="text-xs uppercase tracking-wide text-muted-foreground">Vorschau</Label>
+                        <ChannelPreview
+                          channelSlug={activeSlug}
+                          channelName={activeChannel?.name || ""}
+                          caption={variant?.caption || ""}
+                          firstComment={variant?.first_comment}
+                          hashtags={hashtags}
+                          hashtagsInComment={hashtagsInComment}
+                          imageUrl={imageUrl}
+                        />
+                      </div>
+                    )}
                   </div>
-                )}
+                  );
+                })()}
               </div>
             )}
 
