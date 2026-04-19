@@ -292,6 +292,11 @@ export function useSocialPlannerItems() {
       campaign_id?: string | null;
       content_pillar?: string | null;
       appointment_id?: string | null;
+      image_url?: string | null;
+      hashtags?: string[];
+      hashtags_in_comment?: boolean;
+      recurrence_group_id?: string | null;
+      recurrence_rule?: Record<string, unknown> | null;
     }) => {
       if (!user?.id || !currentTenant?.id || !profileId) return null;
 
@@ -323,6 +328,11 @@ export function useSocialPlannerItems() {
           campaign_id: payload.campaign_id || null,
           content_pillar: payload.content_pillar || null,
           appointment_id: payload.appointment_id || null,
+          image_url: payload.image_url || null,
+          hashtags: payload.hashtags || [],
+          hashtags_in_comment: payload.hashtags_in_comment ?? false,
+          recurrence_group_id: payload.recurrence_group_id || null,
+          recurrence_rule: payload.recurrence_rule ?? null,
         });
 
       if (error) {
