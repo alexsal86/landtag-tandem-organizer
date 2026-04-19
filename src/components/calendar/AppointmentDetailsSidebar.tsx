@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { debugConsole } from '@/utils/debugConsole';
-import { X, Edit, Trash2, MapPin, Clock, Users, Calendar as CalendarIcon, Save, Mail, UserPlus, Check, XIcon, ListTodo, CheckCircle2, FileText, CheckSquare } from "lucide-react";
+import { X, Edit, Trash2, MapPin, Clock, Users, Calendar as CalendarIcon, Save, Mail, UserPlus, Check, XIcon, ListTodo, CheckCircle2, FileText, CheckSquare, Megaphone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -215,6 +215,26 @@ export function AppointmentDetailsSidebar({
       location: appointment.location || ''
     });
     navigate(`/appointment-preparation?${params.toString()}`);
+  };
+
+  const handleSocialPostCreate = (mode: "announcement" | "recap") => {
+    if (!appointment) return;
+    // Ankündigung: 1 Tag vorher um 09:00. Rückblick: 1 Tag danach um 09:00.
+    const base = new Date(appointment.date);
+    base.setDate(base.getDate() + (mode === "announcement" ? -1 : 1));
+    const yyyy = base.getFullYear();
+    const mm = String(base.getMonth() + 1).padStart(2, "0");
+    const dd = String(base.getDate()).padStart(2, "0");
+
+    const titlePrefix = mode === "announcement" ? "Ankündigung" : "Rückblick";
+    const params = new URLSearchParams({
+      tab: "redaktion",
+      socialAppointmentId: appointment.id,
+      socialTopic: `${titlePrefix}: ${appointment.title}`,
+      socialScheduledDate: `${yyyy}-${mm}-${dd}`,
+      socialMode: mode,
+    });
+    navigate(`/mywork?${params.toString()}`);
   };
 
   const handleSave = async () => {
@@ -930,6 +950,30 @@ export function AppointmentDetailsSidebar({
                     <ListTodo className="h-4 w-4" />
                     Planung
                   </Button>
+                )}
+
+                {/* Social-Post Buttons */}
+                {appointment.id && !appointment.id.startsWith('blocked-') && !appointment.id.startsWith('external-') && appointment.id !== 'no-id' && (
+                  <>
+                    <Button
+                      className="flex-1 gap-2"
+                      variant="outline"
+                      onClick={() => handleSocialPostCreate("announcement")}
+                      title="Ankündigung 1 Tag vor dem Termin"
+                    >
+                      <Megaphone className="h-4 w-4" />
+                      Ankündigung
+                    </Button>
+                    <Button
+                      className="flex-1 gap-2"
+                      variant="outline"
+                      onClick={() => handleSocialPostCreate("recap")}
+                      title="Rückblick 1 Tag nach dem Termin"
+                    >
+                      <Megaphone className="h-4 w-4" />
+                      Rückblick
+                    </Button>
+                  </>
                 )}
                 
                 <Button 

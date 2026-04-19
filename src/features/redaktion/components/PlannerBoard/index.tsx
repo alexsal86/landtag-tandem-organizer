@@ -101,6 +101,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   const [isCreatingDraft, setIsCreatingDraft] = useState(false);
   const [createCampaignId, setCreateCampaignId] = useState<string>("none");
   const [createContentPillar, setCreateContentPillar] = useState<string>("none");
+  const [createAppointmentId, setCreateAppointmentId] = useState<string | null>(null);
 
   // Track whether edit dialog was ever opened to keep it mounted after first load
   const [editDialogEverOpened, setEditDialogEverOpened] = useState(false);
@@ -203,6 +204,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
     setCreateActiveVariantChannelId("");
     setCreateCampaignId("none");
     setCreateContentPillar("none");
+    setCreateAppointmentId(null);
   };
 
   const handleCreateTemplateChange = (value: string) => {
@@ -293,6 +295,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
         scheduled_for: createScheduledDate ? new Date(`${createScheduledDate}T09:00:00`).toISOString() : null,
         channel_ids: createChannelIds,
         variants: createChannelIds.map((channelId) => createVariantsByChannel[channelId]).filter(Boolean),
+        appointment_id: createAppointmentId,
       });
 
       toast({ title: "Entwurf erstellt", description: "Der Beitrag wurde mit Briefing-Feldern im Social Planner angelegt." });
@@ -357,6 +360,22 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
 
     return () => window.clearTimeout(timeout);
   }, [items, searchParams]);
+
+  // Prefill Create-Dialog when navigated from an Appointment ("Ankündigung" / "Rückblick")
+  useEffect(() => {
+    const apptId = searchParams.get("socialAppointmentId");
+    if (!apptId) return;
+    const topicTitle = searchParams.get("socialTopic") || "";
+    const scheduledDate = searchParams.get("socialScheduledDate") || "";
+
+    resetCreateDialog();
+    setCreateAppointmentId(apptId);
+    if (topicTitle) setCreateTopicTitle(topicTitle);
+    if (scheduledDate) setCreateScheduledDate(scheduledDate);
+    setIsCreateDialogOpen(true);
+    // We intentionally only react to changes of the appointment id
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams.get("socialAppointmentId")]);
 
   return (
     <Card>
