@@ -229,8 +229,17 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "content" | "approval")}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="content">Inhalt</TabsTrigger>
+            <TabsTrigger value="approval">
+              <MessageSquare className="h-3.5 w-3.5 mr-1" /> Freigabe
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="content" className="space-y-4 mt-4">
+          <div className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="edit-topic">Thema</Label>
               <Input id="edit-topic" value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="Thema des Beitrags" />
