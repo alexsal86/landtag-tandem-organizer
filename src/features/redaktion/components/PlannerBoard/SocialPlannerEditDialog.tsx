@@ -743,7 +743,17 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
               <Textarea id="edit-performance-notes" rows={3} value={performanceNotes} onChange={(event) => setPerformanceNotes(event.target.value)} placeholder="z. B. starke Reichweite bei Carousel, CTA im ersten Slide gut funktioniert" />
             </div>
           </BriefingGroup>
-        </div>
+          </div>
+          </TabsContent>
+
+          <TabsContent value="approval" className="mt-4">
+            <ApprovalCommentsTab
+              contentItemId={item?.id ?? null}
+              responsibleUserId={responsibleUserId === "none" ? null : responsibleUserId}
+              topicTitle={topic}
+            />
+          </TabsContent>
+        </Tabs>
 
         <DialogFooter className="gap-2 sm:gap-2">
           <Button
