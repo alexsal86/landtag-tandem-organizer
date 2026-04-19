@@ -183,6 +183,32 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
 
     try {
       setIsSaving(true);
+
+      // Hashtag auto-placement per channel: appended to caption OR moved to first comment
+      const hashtagBlock = hashtags.length > 0 ? hashtags.map((t) => (t.startsWith("#") ? t : `#${t}`)).join(" ") : "";
+      const variantsForSave: Record<string, SocialContentVariant> = {};
+      Object.entries(variantsByChannel).forEach(([channelId, variant]) => {
+        if (!variant) return;
+        const channel = channels.find((c) => c.id === channelId);
+        const slug = channel?.slug || "";
+        // Instagram strategy: hashtags in first comment when toggle on
+        const useFirstComment = hashtagsInComment && (slug === "instagram");
+        let nextCaption = variant.caption || "";
+        let nextFirstComment = variant.first_comment || "";
+        if (hashtagBlock) {
+          const captionHasTags = nextCaption.includes(hashtagBlock);
+          const fcHasTags = nextFirstComment.includes(hashtagBlock);
+          if (useFirstComment) {
+            if (captionHasTags) nextCaption = nextCaption.replace(hashtagBlock, "").trimEnd();
+            if (!fcHasTags) nextFirstComment = (nextFirstComment ? `${nextFirstComment}\n\n` : "") + hashtagBlock;
+          } else {
+            if (fcHasTags) nextFirstComment = nextFirstComment.replace(hashtagBlock, "").trimEnd();
+            if (!captionHasTags) nextCaption = (nextCaption ? `${nextCaption}\n\n` : "") + hashtagBlock;
+          }
+        }
+        variantsForSave[channelId] = { ...variant, caption: nextCaption, first_comment: nextFirstComment };
+      });
+
       await onSave(item.id, {
         topic: topic.trim(),
         tags: tagsValue,
@@ -207,7 +233,7 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
         hashtags_in_comment: hashtagsInComment,
         alt_text: altText.trim() || null,
         image_url: imageUrl,
-        variants: variantsByChannel,
+        variants: variantsForSave,
         campaign_id: campaignId === "none" ? null : campaignId,
         content_pillar: contentPillar === "none" ? null : contentPillar,
       });
