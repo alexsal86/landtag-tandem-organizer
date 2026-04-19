@@ -46,6 +46,7 @@ import {
 import type { PlannerFormatFilter, SocialPlannerDraftPayload, SocialPlannerTemplateId } from "./types";
 import { applyTemplateToState, inferFormatType, validateVariant } from "./utils";
 import { BriefingGroup } from "./BriefingGroup";
+import { RecurrenceForm, DEFAULT_RECURRENCE, expandRecurrence, type RecurrenceState } from "./RecurrenceForm";
 
 const SocialPlannerEditDialog = lazyWithRetry(
   () => import("./SocialPlannerEditDialog"),
@@ -102,6 +103,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   const [createCampaignId, setCreateCampaignId] = useState<string>("none");
   const [createContentPillar, setCreateContentPillar] = useState<string>("none");
   const [createAppointmentId, setCreateAppointmentId] = useState<string | null>(null);
+  const [createRecurrence, setCreateRecurrence] = useState<RecurrenceState>(DEFAULT_RECURRENCE);
 
   // Track whether edit dialog was ever opened to keep it mounted after first load
   const [editDialogEverOpened, setEditDialogEverOpened] = useState(false);
@@ -205,6 +207,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
     setCreateCampaignId("none");
     setCreateContentPillar("none");
     setCreateAppointmentId(null);
+    setCreateRecurrence(DEFAULT_RECURRENCE);
   };
 
   const handleCreateTemplateChange = (value: string) => {
