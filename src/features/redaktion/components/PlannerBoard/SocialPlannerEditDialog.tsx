@@ -857,6 +857,11 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
           });
         }}
       />
+      <AssetLibraryDialog
+        open={assetLibraryOpen}
+        onOpenChange={setAssetLibraryOpen}
+        onSelect={(url) => setImageUrl(url)}
+      />
     </Dialog>
   );
 }
