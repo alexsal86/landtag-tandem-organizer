@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarDays, CheckCircle2, CheckSquare, ClipboardList, Eye, Image, Pencil, Scissors, Send, Upload, X } from "lucide-react";
+import { CalendarDays, CheckCircle2, CheckSquare, ClipboardList, Eye, Image as ImageIcon, MessageSquare, Pencil, Scissors, Send, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { TagInput } from "@/components/ui/tag-input";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,8 @@ import { CharCounter } from "./CharCounter";
 import { ChannelPreview } from "./ChannelPreview";
 import { HashtagSetPicker } from "./HashtagSetPicker";
 import { MarkPublishedDialog } from "./MarkPublishedDialog";
+import { AssetLibraryDialog } from "./AssetLibraryDialog";
+import { ApprovalCommentsTab } from "./ApprovalCommentsTab";
 
 export interface SocialPlannerEditDialogProps {
   item: SocialPlannerItem | null;
@@ -87,6 +90,8 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
   const [isSaving, setIsSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
   const [markPublishedOpen, setMarkPublishedOpen] = useState(false);
+  const [assetLibraryOpen, setAssetLibraryOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"content" | "approval">("content");
 
   useEffect(() => {
     if (!item) return;
@@ -178,6 +183,32 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
 
     try {
       setIsSaving(true);
+
+      // Hashtag auto-placement per channel: appended to caption OR moved to first comment
+      const hashtagBlock = hashtags.length > 0 ? hashtags.map((t) => (t.startsWith("#") ? t : `#${t}`)).join(" ") : "";
+      const variantsForSave: Record<string, SocialContentVariant> = {};
+      Object.entries(variantsByChannel).forEach(([channelId, variant]) => {
+        if (!variant) return;
+        const channel = channels.find((c) => c.id === channelId);
+        const slug = channel?.slug || "";
+        // Instagram strategy: hashtags in first comment when toggle on
+        const useFirstComment = hashtagsInComment && (slug === "instagram");
+        let nextCaption = variant.caption || "";
+        let nextFirstComment = variant.first_comment || "";
+        if (hashtagBlock) {
+          const captionHasTags = nextCaption.includes(hashtagBlock);
+          const fcHasTags = nextFirstComment.includes(hashtagBlock);
+          if (useFirstComment) {
+            if (captionHasTags) nextCaption = nextCaption.replace(hashtagBlock, "").trimEnd();
+            if (!fcHasTags) nextFirstComment = (nextFirstComment ? `${nextFirstComment}\n\n` : "") + hashtagBlock;
+          } else {
+            if (fcHasTags) nextFirstComment = nextFirstComment.replace(hashtagBlock, "").trimEnd();
+            if (!captionHasTags) nextCaption = (nextCaption ? `${nextCaption}\n\n` : "") + hashtagBlock;
+          }
+        }
+        variantsForSave[channelId] = { ...variant, caption: nextCaption, first_comment: nextFirstComment };
+      });
+
       await onSave(item.id, {
         topic: topic.trim(),
         tags: tagsValue,
@@ -202,7 +233,7 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
         hashtags_in_comment: hashtagsInComment,
         alt_text: altText.trim() || null,
         image_url: imageUrl,
-        variants: variantsByChannel,
+        variants: variantsForSave,
         campaign_id: campaignId === "none" ? null : campaignId,
         content_pillar: contentPillar === "none" ? null : contentPillar,
       });
@@ -224,8 +255,17 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "content" | "approval")}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="content">Inhalt</TabsTrigger>
+            <TabsTrigger value="approval">
+              <MessageSquare className="h-3.5 w-3.5 mr-1" /> Freigabe
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="content" className="space-y-4 mt-4">
+          <div className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="edit-topic">Thema</Label>
               <Input id="edit-topic" value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="Thema des Beitrags" />
@@ -598,7 +638,18 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
             </div>
 
             <div className="space-y-3 md:col-span-2">
-              <Label>Bild hochladen</Label>
+              <div className="flex items-center justify-between">
+                <Label>Bild</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setAssetLibraryOpen(true)}
+                >
+                  <ImageIcon className="h-3.5 w-3.5 mr-1" /> Aus Bibliothek wählen
+                </Button>
+              </div>
               {imageUrl ? (
                 <div className="relative inline-block">
                   <img src={imageUrl} alt="Vorschau" className="max-h-40 rounded-md border object-contain" />
@@ -729,7 +780,17 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
               <Textarea id="edit-performance-notes" rows={3} value={performanceNotes} onChange={(event) => setPerformanceNotes(event.target.value)} placeholder="z. B. starke Reichweite bei Carousel, CTA im ersten Slide gut funktioniert" />
             </div>
           </BriefingGroup>
-        </div>
+          </div>
+          </TabsContent>
+
+          <TabsContent value="approval" className="mt-4">
+            <ApprovalCommentsTab
+              contentItemId={item?.id ?? null}
+              responsibleUserId={responsibleUserId === "none" ? null : responsibleUserId}
+              topicTitle={topic}
+            />
+          </TabsContent>
+        </Tabs>
 
         <DialogFooter className="gap-2 sm:gap-2">
           <Button
@@ -795,6 +856,11 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
             content_pillar: contentPillar === "none" ? null : contentPillar,
           });
         }}
+      />
+      <AssetLibraryDialog
+        open={assetLibraryOpen}
+        onOpenChange={setAssetLibraryOpen}
+        onSelect={(url) => setImageUrl(url)}
       />
     </Dialog>
   );

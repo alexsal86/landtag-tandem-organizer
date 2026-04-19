@@ -46,6 +46,7 @@ import {
 import type { PlannerFormatFilter, SocialPlannerDraftPayload, SocialPlannerTemplateId } from "./types";
 import { applyTemplateToState, inferFormatType, validateVariant } from "./utils";
 import { BriefingGroup } from "./BriefingGroup";
+import { RecurrenceForm, DEFAULT_RECURRENCE, expandRecurrence, type RecurrenceState } from "./RecurrenceForm";
 
 const SocialPlannerEditDialog = lazyWithRetry(
   () => import("./SocialPlannerEditDialog"),
@@ -102,6 +103,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   const [createCampaignId, setCreateCampaignId] = useState<string>("none");
   const [createContentPillar, setCreateContentPillar] = useState<string>("none");
   const [createAppointmentId, setCreateAppointmentId] = useState<string | null>(null);
+  const [createRecurrence, setCreateRecurrence] = useState<RecurrenceState>(DEFAULT_RECURRENCE);
 
   // Track whether edit dialog was ever opened to keep it mounted after first load
   const [editDialogEverOpened, setEditDialogEverOpened] = useState(false);
@@ -205,6 +207,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
     setCreateCampaignId("none");
     setCreateContentPillar("none");
     setCreateAppointmentId(null);
+    setCreateRecurrence(DEFAULT_RECURRENCE);
   };
 
   const handleCreateTemplateChange = (value: string) => {
@@ -273,32 +276,54 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
         topicBacklogId = createdTopic.id;
       }
 
-      await createItem({
-        topic_backlog_id: topicBacklogId,
-        workflow_status: createWorkflowStatus,
-        approval_state: createApprovalState,
-        format: createFormat.trim() || null,
-        content_goal: createContentGoal.trim() || null,
-        format_variant: createFormatVariant.trim() || null,
-        asset_requirements: createAssetRequirements,
-        approval_required: createApprovalRequired,
-        publish_link: createPublishLink.trim() || null,
-        performance_notes: createPerformanceNotes.trim() || null,
-        hook: createHook.trim() || null,
-        core_message: createCoreMessage.trim() || null,
-        draft_text: createDraftText.trim() || null,
-        cta: createCta.trim() || null,
-        notes: createNotes.trim() || null,
-        campaign_id: createCampaignId === "none" ? null : createCampaignId,
-        content_pillar: createContentPillar === "none" ? null : createContentPillar,
-        responsible_user_id: createResponsibleUserId === "none" ? null : createResponsibleUserId,
-        scheduled_for: createScheduledDate ? new Date(`${createScheduledDate}T09:00:00`).toISOString() : null,
-        channel_ids: createChannelIds,
-        variants: createChannelIds.map((channelId) => createVariantsByChannel[channelId]).filter(Boolean),
-        appointment_id: createAppointmentId,
-      });
+      const baseScheduledIso = createScheduledDate ? new Date(`${createScheduledDate}T09:00:00`).toISOString() : null;
+      const occurrences = createRecurrence.enabled && createScheduledDate
+        ? expandRecurrence(createRecurrence, createScheduledDate)
+        : [baseScheduledIso];
 
-      toast({ title: "Entwurf erstellt", description: "Der Beitrag wurde mit Briefing-Feldern im Social Planner angelegt." });
+      const groupId = createRecurrence.enabled && occurrences.length > 1 ? crypto.randomUUID() : null;
+      const recurrenceRule = createRecurrence.enabled ? {
+        frequency: createRecurrence.frequency,
+        weekday: createRecurrence.weekday,
+        count: createRecurrence.count,
+        time: createRecurrence.time,
+      } : null;
+
+      for (const scheduledIso of occurrences) {
+        await createItem({
+          topic_backlog_id: topicBacklogId,
+          workflow_status: createWorkflowStatus,
+          approval_state: createApprovalState,
+          format: createFormat.trim() || null,
+          content_goal: createContentGoal.trim() || null,
+          format_variant: createFormatVariant.trim() || null,
+          asset_requirements: createAssetRequirements,
+          approval_required: createApprovalRequired,
+          publish_link: createPublishLink.trim() || null,
+          performance_notes: createPerformanceNotes.trim() || null,
+          hook: createHook.trim() || null,
+          core_message: createCoreMessage.trim() || null,
+          draft_text: createDraftText.trim() || null,
+          cta: createCta.trim() || null,
+          notes: createNotes.trim() || null,
+          campaign_id: createCampaignId === "none" ? null : createCampaignId,
+          content_pillar: createContentPillar === "none" ? null : createContentPillar,
+          responsible_user_id: createResponsibleUserId === "none" ? null : createResponsibleUserId,
+          scheduled_for: scheduledIso,
+          channel_ids: createChannelIds,
+          variants: createChannelIds.map((channelId) => createVariantsByChannel[channelId]).filter(Boolean),
+          appointment_id: createAppointmentId,
+          recurrence_group_id: groupId,
+          recurrence_rule: recurrenceRule,
+        });
+      }
+
+      toast({
+        title: occurrences.length > 1 ? `${occurrences.length} Entwürfe erstellt` : "Entwurf erstellt",
+        description: occurrences.length > 1
+          ? "Verknüpfte Serie wurde im Social Planner angelegt."
+          : "Der Beitrag wurde mit Briefing-Feldern im Social Planner angelegt.",
+      });
       setIsCreateDialogOpen(false);
       resetCreateDialog();
     } catch {
@@ -796,6 +821,10 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="create-performance-notes">Performance-Notizen</Label>
                 <Textarea id="create-performance-notes" value={createPerformanceNotes} onChange={(event) => setCreatePerformanceNotes(event.target.value)} placeholder="Learnings, Benchmarks oder Erwartungen festhalten" rows={3} />
+              </div>
+
+              <div className="md:col-span-2">
+                <RecurrenceForm value={createRecurrence} onChange={setCreateRecurrence} baseDate={createScheduledDate} />
               </div>
             </BriefingGroup>
           </div>

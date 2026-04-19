@@ -44,6 +44,8 @@ export interface SocialPlannerItem {
   appointment_id: string | null;
   published_at: string | null;
   reminder_sent_at: string | null;
+  recurrence_group_id: string | null;
+  recurrence_rule: Record<string, unknown> | null;
 }
 
 export interface PlannerChannel {
@@ -157,6 +159,8 @@ export function useSocialPlannerItems() {
             appointment_id,
             published_at,
             reminder_sent_at,
+            recurrence_group_id,
+            recurrence_rule,
             social_campaigns:campaign_id(name, start_date, end_date),
             topic_backlog:topic_backlog_id(topic, tags, campaign_id, content_pillar),
             social_content_item_channels(channel_id, social_content_channels(name, slug))
@@ -258,6 +262,8 @@ export function useSocialPlannerItems() {
             appointment_id: (row as { appointment_id?: string | null }).appointment_id ?? null,
             published_at: (row as { published_at?: string | null }).published_at ?? null,
             reminder_sent_at: (row as { reminder_sent_at?: string | null }).reminder_sent_at ?? null,
+            recurrence_group_id: (row as { recurrence_group_id?: string | null }).recurrence_group_id ?? null,
+            recurrence_rule: (row as { recurrence_rule?: Record<string, unknown> | null }).recurrence_rule ?? null,
           };
         }),
       );
@@ -292,6 +298,11 @@ export function useSocialPlannerItems() {
       campaign_id?: string | null;
       content_pillar?: string | null;
       appointment_id?: string | null;
+      image_url?: string | null;
+      hashtags?: string[];
+      hashtags_in_comment?: boolean;
+      recurrence_group_id?: string | null;
+      recurrence_rule?: Record<string, unknown> | null;
     }) => {
       if (!user?.id || !currentTenant?.id || !profileId) return null;
 
@@ -323,6 +334,11 @@ export function useSocialPlannerItems() {
           campaign_id: payload.campaign_id || null,
           content_pillar: payload.content_pillar || null,
           appointment_id: payload.appointment_id || null,
+          image_url: payload.image_url || null,
+          hashtags: payload.hashtags || [],
+          hashtags_in_comment: payload.hashtags_in_comment ?? false,
+          recurrence_group_id: payload.recurrence_group_id || null,
+          recurrence_rule: payload.recurrence_rule ?? null,
         });
 
       if (error) {

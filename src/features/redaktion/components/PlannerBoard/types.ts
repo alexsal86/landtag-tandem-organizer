@@ -30,6 +30,8 @@ export type SocialPlannerDraftPayload = {
   content_pillar: string | null;
   appointment_id?: string | null;
   published_at?: string | null;
+  recurrence_group_id?: string | null;
+  recurrence_rule?: Record<string, unknown> | null;
 };
 
 export type SocialPlannerTemplateId = (typeof TEMPLATE_OPTIONS)[number]["id"];
