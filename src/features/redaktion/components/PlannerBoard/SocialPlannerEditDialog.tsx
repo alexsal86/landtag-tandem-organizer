@@ -612,7 +612,18 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
             </div>
 
             <div className="space-y-3 md:col-span-2">
-              <Label>Bild hochladen</Label>
+              <div className="flex items-center justify-between">
+                <Label>Bild</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setAssetLibraryOpen(true)}
+                >
+                  <ImageIcon className="h-3.5 w-3.5 mr-1" /> Aus Bibliothek wählen
+                </Button>
+              </div>
               {imageUrl ? (
                 <div className="relative inline-block">
                   <img src={imageUrl} alt="Vorschau" className="max-h-40 rounded-md border object-contain" />
