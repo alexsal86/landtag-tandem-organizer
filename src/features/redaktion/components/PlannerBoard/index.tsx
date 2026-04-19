@@ -101,6 +101,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   const [isCreatingDraft, setIsCreatingDraft] = useState(false);
   const [createCampaignId, setCreateCampaignId] = useState<string>("none");
   const [createContentPillar, setCreateContentPillar] = useState<string>("none");
+  const [createAppointmentId, setCreateAppointmentId] = useState<string | null>(null);
 
   // Track whether edit dialog was ever opened to keep it mounted after first load
   const [editDialogEverOpened, setEditDialogEverOpened] = useState(false);
@@ -203,6 +204,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
     setCreateActiveVariantChannelId("");
     setCreateCampaignId("none");
     setCreateContentPillar("none");
+    setCreateAppointmentId(null);
   };
 
   const handleCreateTemplateChange = (value: string) => {
@@ -293,6 +295,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
         scheduled_for: createScheduledDate ? new Date(`${createScheduledDate}T09:00:00`).toISOString() : null,
         channel_ids: createChannelIds,
         variants: createChannelIds.map((channelId) => createVariantsByChannel[channelId]).filter(Boolean),
+        appointment_id: createAppointmentId,
       });
 
       toast({ title: "Entwurf erstellt", description: "Der Beitrag wurde mit Briefing-Feldern im Social Planner angelegt." });
