@@ -361,6 +361,22 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
     return () => window.clearTimeout(timeout);
   }, [items, searchParams]);
 
+  // Prefill Create-Dialog when navigated from an Appointment ("Ankündigung" / "Rückblick")
+  useEffect(() => {
+    const apptId = searchParams.get("socialAppointmentId");
+    if (!apptId) return;
+    const topicTitle = searchParams.get("socialTopic") || "";
+    const scheduledDate = searchParams.get("socialScheduledDate") || "";
+
+    resetCreateDialog();
+    setCreateAppointmentId(apptId);
+    if (topicTitle) setCreateTopicTitle(topicTitle);
+    if (scheduledDate) setCreateScheduledDate(scheduledDate);
+    setIsCreateDialogOpen(true);
+    // We intentionally only react to changes of the appointment id
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams.get("socialAppointmentId")]);
+
   return (
     <Card>
       <CardContent className="pt-6">
