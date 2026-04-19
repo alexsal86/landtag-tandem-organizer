@@ -90,6 +90,8 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
   const [isSaving, setIsSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
   const [markPublishedOpen, setMarkPublishedOpen] = useState(false);
+  const [assetLibraryOpen, setAssetLibraryOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"content" | "approval">("content");
 
   useEffect(() => {
     if (!item) return;
