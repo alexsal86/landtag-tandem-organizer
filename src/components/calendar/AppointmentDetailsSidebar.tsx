@@ -951,6 +951,30 @@ export function AppointmentDetailsSidebar({
                     Planung
                   </Button>
                 )}
+
+                {/* Social-Post Buttons */}
+                {appointment.id && !appointment.id.startsWith('blocked-') && !appointment.id.startsWith('external-') && appointment.id !== 'no-id' && (
+                  <>
+                    <Button
+                      className="flex-1 gap-2"
+                      variant="outline"
+                      onClick={() => handleSocialPostCreate("announcement")}
+                      title="Ankündigung 1 Tag vor dem Termin"
+                    >
+                      <Megaphone className="h-4 w-4" />
+                      Ankündigung
+                    </Button>
+                    <Button
+                      className="flex-1 gap-2"
+                      variant="outline"
+                      onClick={() => handleSocialPostCreate("recap")}
+                      title="Rückblick 1 Tag nach dem Termin"
+                    >
+                      <Megaphone className="h-4 w-4" />
+                      Rückblick
+                    </Button>
+                  </>
+                )}
                 
                 <Button 
                   className="flex-1 gap-2"
