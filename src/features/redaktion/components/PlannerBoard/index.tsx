@@ -822,6 +822,10 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
                 <Label htmlFor="create-performance-notes">Performance-Notizen</Label>
                 <Textarea id="create-performance-notes" value={createPerformanceNotes} onChange={(event) => setCreatePerformanceNotes(event.target.value)} placeholder="Learnings, Benchmarks oder Erwartungen festhalten" rows={3} />
               </div>
+
+              <div className="md:col-span-2">
+                <RecurrenceForm value={createRecurrence} onChange={setCreateRecurrence} baseDate={createScheduledDate} />
+              </div>
             </BriefingGroup>
           </div>
 
