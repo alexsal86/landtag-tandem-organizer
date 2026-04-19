@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarDays, CheckCircle2, CheckSquare, ClipboardList, Eye, Image, Pencil, Scissors, Send, Upload, X } from "lucide-react";
+import { CalendarDays, CheckCircle2, CheckSquare, ClipboardList, Eye, Image as ImageIcon, MessageSquare, Pencil, Scissors, Send, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { TagInput } from "@/components/ui/tag-input";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,8 @@ import { CharCounter } from "./CharCounter";
 import { ChannelPreview } from "./ChannelPreview";
 import { HashtagSetPicker } from "./HashtagSetPicker";
 import { MarkPublishedDialog } from "./MarkPublishedDialog";
+import { AssetLibraryDialog } from "./AssetLibraryDialog";
+import { ApprovalCommentsTab } from "./ApprovalCommentsTab";
 
 export interface SocialPlannerEditDialogProps {
   item: SocialPlannerItem | null;
