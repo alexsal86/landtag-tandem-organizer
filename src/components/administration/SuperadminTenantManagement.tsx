@@ -929,12 +929,24 @@ export function SuperadminTenantManagement(): React.JSX.Element {
                       placeholder="z.B. Büro Mustermann"
                     />
                   </div>
-                  <div className="flex items-center justify-between md:justify-end gap-3">
-                    <Label>Aktiv</Label>
-                    <Switch
-                      checked={formIsActive}
-                      onCheckedChange={setFormIsActive}
-                    />
+                  <div className="flex flex-col gap-3 md:items-end">
+                    <div className="flex items-center gap-3">
+                      <Label>Aktiv</Label>
+                      <Switch
+                        checked={formIsActive}
+                        onCheckedChange={setFormIsActive}
+                      />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Label className="flex items-center gap-1.5">
+                        <Sparkles className="h-3.5 w-3.5 text-primary" />
+                        Als Vorlage
+                      </Label>
+                      <Switch
+                        checked={formIsTemplate}
+                        onCheckedChange={setFormIsTemplate}
+                      />
+                    </div>
                   </div>
                 </div>
                 <div className="grid gap-2">
@@ -1138,6 +1150,25 @@ export function SuperadminTenantManagement(): React.JSX.Element {
           </DialogContent>
         </Dialog>
       </CardContent>
+
+      <TenantProvisioningWizard
+        open={wizardOpen}
+        onOpenChange={setWizardOpen}
+        templateTenants={tenants.map((t) => ({ id: t.id, name: t.name, is_template: t.is_template }))}
+        onCreated={() => {
+          loadTenants();
+          loadAllUsers();
+          setHealthRefreshKey((k) => k + 1);
+        }}
+      />
+
+      <CloneDataDrawer
+        open={cloneDrawerOpen}
+        onOpenChange={setCloneDrawerOpen}
+        targetTenant={cloneTarget}
+        availableSources={tenants.map((t) => ({ id: t.id, name: t.name }))}
+        onDone={() => setHealthRefreshKey((k) => k + 1)}
+      />
     </Card>
   );
 }
