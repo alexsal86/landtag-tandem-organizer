@@ -16,9 +16,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/components/ui/use-toast";
-import { Building2, Plus, Edit, Trash2, Users, UserPlus, RefreshCw, Copy, Check, MapPin, ChevronDown } from "lucide-react";
+import { Building2, Plus, Edit, Trash2, Users, UserPlus, RefreshCw, Copy, Check, MapPin, ChevronDown, Sparkles } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { TenantProvisioningWizard } from "./tenant-wizard/TenantProvisioningWizard";
+import { TenantHealthBadges } from "./tenant-wizard/TenantHealthBadges";
+import { CloneDataDrawer } from "./tenant-wizard/CloneDataDrawer";
 
 const BUNDESLAENDER = [
   "Baden-Württemberg", "Bayern", "Berlin", "Brandenburg", "Bremen",
@@ -33,6 +36,7 @@ interface TenantWithStats {
   description: string | null;
   is_active: boolean;
   created_at: string;
+  is_template?: boolean;
 }
 
 interface UserWithTenants {
@@ -79,6 +83,13 @@ export function SuperadminTenantManagement(): React.JSX.Element {
   const [formSocialX, setFormSocialX] = useState<string>("");
   const [formSocialLinkedIn, setFormSocialLinkedIn] = useState<string>("");
   const [socialSectionOpen, setSocialSectionOpen] = useState<boolean>(false);
+  const [formIsTemplate, setFormIsTemplate] = useState<boolean>(false);
+
+  // Wizard / clone drawer
+  const [wizardOpen, setWizardOpen] = useState<boolean>(false);
+  const [cloneDrawerOpen, setCloneDrawerOpen] = useState<boolean>(false);
+  const [cloneTarget, setCloneTarget] = useState<{ id: string; name: string } | null>(null);
+  const [healthRefreshKey, setHealthRefreshKey] = useState<number>(0);
 
   // User states
   const [allUsers, setAllUsers] = useState<UserWithTenants[]>([]);
@@ -125,10 +136,20 @@ export function SuperadminTenantManagement(): React.JSX.Element {
   const loadTenants = async (): Promise<void> => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      // Try to fetch is_template; gracefully fall back if column doesn't exist yet.
+      let { data, error } = await supabase
         .from("tenants")
-        .select(`id, name, description, is_active, created_at`)
+        .select(`id, name, description, is_active, created_at, is_template`)
         .order("name");
+
+      if (error && /column .*is_template.* does not exist/i.test(error.message ?? "")) {
+        const fallback = await supabase
+          .from("tenants")
+          .select(`id, name, description, is_active, created_at`)
+          .order("name");
+        data = fallback.data as typeof data;
+        error = fallback.error;
+      }
 
       if (error) throw error;
 
@@ -189,16 +210,25 @@ export function SuperadminTenantManagement(): React.JSX.Element {
 
     try {
       if (editingTenant) {
-        const { error } = await supabase
+        const updatePayload: Record<string, unknown> = {
+          name: formName.trim(),
+          description: formDescription.trim() || null,
+          is_active: formIsActive,
+          settings: settingsData,
+          updated_at: new Date().toISOString(),
+        };
+        // Try with is_template first; fall back if column missing.
+        let { error } = await supabase
           .from("tenants")
-          .update({
-            name: formName.trim(),
-            description: formDescription.trim() || null,
-            is_active: formIsActive,
-            settings: settingsData,
-            updated_at: new Date().toISOString(),
-          })
+          .update({ ...updatePayload, is_template: formIsTemplate })
           .eq("id", editingTenant.id);
+        if (error && /column .*is_template.* does not exist/i.test(error.message ?? "")) {
+          const fallback = await supabase
+            .from("tenants")
+            .update(updatePayload)
+            .eq("id", editingTenant.id);
+          error = fallback.error;
+        }
 
         if (error) throw error;
 
@@ -384,9 +414,8 @@ export function SuperadminTenantManagement(): React.JSX.Element {
   };
 
   const openCreateTenantDialog = (): void => {
-    setEditingTenant(null);
-    resetTenantForm();
-    setDialogOpen(true);
+    // The classic dialog stays for editing; new tenants now go through the wizard.
+    setWizardOpen(true);
   };
 
   const openEditTenantDialog = async (tenant: TenantWithStats): Promise<void> => {
@@ -394,6 +423,7 @@ export function SuperadminTenantManagement(): React.JSX.Element {
     setFormName(tenant.name);
     setFormDescription(tenant.description || "");
     setFormIsActive(tenant.is_active);
+    setFormIsTemplate(Boolean(tenant.is_template));
 
     // Load settings from tenant
     const { data: tenantData } = await supabase
@@ -458,6 +488,7 @@ export function SuperadminTenantManagement(): React.JSX.Element {
     setFormSocialX("");
     setFormSocialLinkedIn("");
     setSocialSectionOpen(false);
+    setFormIsTemplate(false);
     setEditingTenant(null);
   };
 
@@ -552,6 +583,7 @@ export function SuperadminTenantManagement(): React.JSX.Element {
                     <TableHead>Beschreibung</TableHead>
                     <TableHead className="text-center">Benutzer</TableHead>
                     <TableHead>Zugeordnete Benutzer</TableHead>
+                    <TableHead>Health</TableHead>
                     <TableHead className="text-center">Status</TableHead>
                     <TableHead>Erstellt</TableHead>
                     <TableHead className="text-right">Aktionen</TableHead>
@@ -560,7 +592,14 @@ export function SuperadminTenantManagement(): React.JSX.Element {
                 <TableBody>
                   {tenants.map((tenant) => (
                     <TableRow key={tenant.id}>
-                      <TableCell className="font-medium">{tenant.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {tenant.name}
+                          {tenant.is_template && (
+                            <Sparkles className="h-3.5 w-3.5 text-primary" aria-label="Vorlage" />
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-muted-foreground max-w-xs truncate">
                         {tenant.description || "—"}
                       </TableCell>
@@ -583,6 +622,9 @@ export function SuperadminTenantManagement(): React.JSX.Element {
                           <span className="text-sm text-muted-foreground">Keine Benutzer zugewiesen</span>
                         )}
                       </TableCell>
+                      <TableCell>
+                        <TenantHealthBadges tenantId={tenant.id} reloadKey={healthRefreshKey} />
+                      </TableCell>
                       <TableCell className="text-center">
                         <Badge variant={tenant.is_active ? "default" : "outline"}>
                           {tenant.is_active ? "Aktiv" : "Inaktiv"}
@@ -597,8 +639,20 @@ export function SuperadminTenantManagement(): React.JSX.Element {
                             variant="ghost"
                             size="icon"
                             onClick={() => openEditTenantDialog(tenant)}
+                            title="Bearbeiten"
                           >
                             <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setCloneTarget({ id: tenant.id, name: tenant.name });
+                              setCloneDrawerOpen(true);
+                            }}
+                            title="Daten aus anderem Tenant nachladen"
+                          >
+                            <Copy className="h-4 w-4" />
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -635,7 +689,7 @@ export function SuperadminTenantManagement(): React.JSX.Element {
                   ))}
                   {tenants.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                         Keine Tenants vorhanden
                       </TableCell>
                     </TableRow>
@@ -875,12 +929,24 @@ export function SuperadminTenantManagement(): React.JSX.Element {
                       placeholder="z.B. Büro Mustermann"
                     />
                   </div>
-                  <div className="flex items-center justify-between md:justify-end gap-3">
-                    <Label>Aktiv</Label>
-                    <Switch
-                      checked={formIsActive}
-                      onCheckedChange={setFormIsActive}
-                    />
+                  <div className="flex flex-col gap-3 md:items-end">
+                    <div className="flex items-center gap-3">
+                      <Label>Aktiv</Label>
+                      <Switch
+                        checked={formIsActive}
+                        onCheckedChange={setFormIsActive}
+                      />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Label className="flex items-center gap-1.5">
+                        <Sparkles className="h-3.5 w-3.5 text-primary" />
+                        Als Vorlage
+                      </Label>
+                      <Switch
+                        checked={formIsTemplate}
+                        onCheckedChange={setFormIsTemplate}
+                      />
+                    </div>
                   </div>
                 </div>
                 <div className="grid gap-2">
@@ -1084,6 +1150,25 @@ export function SuperadminTenantManagement(): React.JSX.Element {
           </DialogContent>
         </Dialog>
       </CardContent>
+
+      <TenantProvisioningWizard
+        open={wizardOpen}
+        onOpenChange={setWizardOpen}
+        templateTenants={tenants.map((t) => ({ id: t.id, name: t.name, is_template: t.is_template }))}
+        onCreated={() => {
+          loadTenants();
+          loadAllUsers();
+          setHealthRefreshKey((k) => k + 1);
+        }}
+      />
+
+      <CloneDataDrawer
+        open={cloneDrawerOpen}
+        onOpenChange={setCloneDrawerOpen}
+        targetTenant={cloneTarget}
+        availableSources={tenants.map((t) => ({ id: t.id, name: t.name }))}
+        onDone={() => setHealthRefreshKey((k) => k + 1)}
+      />
     </Card>
   );
 }
