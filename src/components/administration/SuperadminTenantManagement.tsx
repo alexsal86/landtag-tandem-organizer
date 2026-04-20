@@ -639,8 +639,20 @@ export function SuperadminTenantManagement(): React.JSX.Element {
                             variant="ghost"
                             size="icon"
                             onClick={() => openEditTenantDialog(tenant)}
+                            title="Bearbeiten"
                           >
                             <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setCloneTarget({ id: tenant.id, name: tenant.name });
+                              setCloneDrawerOpen(true);
+                            }}
+                            title="Daten aus anderem Tenant nachladen"
+                          >
+                            <Copy className="h-4 w-4" />
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -677,7 +689,7 @@ export function SuperadminTenantManagement(): React.JSX.Element {
                   ))}
                   {tenants.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                         Keine Tenants vorhanden
                       </TableCell>
                     </TableRow>
