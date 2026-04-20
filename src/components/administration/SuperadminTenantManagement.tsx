@@ -83,6 +83,13 @@ export function SuperadminTenantManagement(): React.JSX.Element {
   const [formSocialX, setFormSocialX] = useState<string>("");
   const [formSocialLinkedIn, setFormSocialLinkedIn] = useState<string>("");
   const [socialSectionOpen, setSocialSectionOpen] = useState<boolean>(false);
+  const [formIsTemplate, setFormIsTemplate] = useState<boolean>(false);
+
+  // Wizard / clone drawer
+  const [wizardOpen, setWizardOpen] = useState<boolean>(false);
+  const [cloneDrawerOpen, setCloneDrawerOpen] = useState<boolean>(false);
+  const [cloneTarget, setCloneTarget] = useState<{ id: string; name: string } | null>(null);
+  const [healthRefreshKey, setHealthRefreshKey] = useState<number>(0);
 
   // User states
   const [allUsers, setAllUsers] = useState<UserWithTenants[]>([]);
@@ -129,10 +136,20 @@ export function SuperadminTenantManagement(): React.JSX.Element {
   const loadTenants = async (): Promise<void> => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      // Try to fetch is_template; gracefully fall back if column doesn't exist yet.
+      let { data, error } = await supabase
         .from("tenants")
-        .select(`id, name, description, is_active, created_at`)
+        .select(`id, name, description, is_active, created_at, is_template`)
         .order("name");
+
+      if (error && /column .*is_template.* does not exist/i.test(error.message ?? "")) {
+        const fallback = await supabase
+          .from("tenants")
+          .select(`id, name, description, is_active, created_at`)
+          .order("name");
+        data = fallback.data as typeof data;
+        error = fallback.error;
+      }
 
       if (error) throw error;
 
