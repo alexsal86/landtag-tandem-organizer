@@ -523,6 +523,190 @@ serve(withSafeHandler("manage-tenant-user", async (req) => {
         });
       }
 
+      case 'provisionTenant': {
+        if (!isPlatformAdmin) {
+          throw new HttpError(403, 'Only superadmin can provision tenants');
+        }
+
+        const {
+          name,
+          description,
+          settings,
+          appName,
+          appSubtitle,
+          seedMode,
+          cloneFromTenantId,
+          adminUser,
+        } = body as {
+          name?: string;
+          description?: string | null;
+          settings?: Record<string, unknown>;
+          appName?: string;
+          appSubtitle?: string;
+          seedMode?: 'standard' | 'clone' | 'empty';
+          cloneFromTenantId?: string;
+          adminUser?: { email: string; displayName: string };
+        };
+
+        if (!name || !name.trim()) {
+          throw new HttpError(400, 'Tenant name is required');
+        }
+        if (seedMode === 'clone' && !cloneFromTenantId) {
+          throw new HttpError(400, 'cloneFromTenantId is required when seedMode = clone');
+        }
+
+        // 1) Insert tenant
+        const { data: newTenant, error: tenantError } = await supabaseAdmin
+          .from('tenants')
+          .insert({
+            name: name.trim(),
+            description: description?.toString().trim() || null,
+            is_active: true,
+            settings: settings ?? {},
+          })
+          .select('id')
+          .single();
+
+        if (tenantError || !newTenant) {
+          console.error('Provision tenant error:', tenantError);
+          throw new Error(tenantError?.message ?? 'Failed to create tenant');
+        }
+
+        const tenantId = newTenant.id;
+
+        // 2) Seed default data
+        let report;
+        if (seedMode === 'clone' && cloneFromTenantId) {
+          // Insert the standard app_settings first so the cloned ones can override.
+          await supabaseAdmin
+            .from('app_settings')
+            .insert(buildStandardAppSettings(tenantId, { appName, appSubtitle }));
+          report = await cloneTenantData(supabaseAdmin, cloneFromTenantId, tenantId);
+        } else if (seedMode === 'empty') {
+          await supabaseAdmin
+            .from('app_settings')
+            .insert(buildStandardAppSettings(tenantId, { appName, appSubtitle }));
+          report = {
+            app_settings: 5,
+            case_file_types: 0,
+            notification_types: 0,
+            letter_occasions: 0,
+            meeting_templates: 0,
+            planning_templates: 0,
+            errors: [],
+          };
+        } else {
+          report = await seedStandardData(supabaseAdmin, tenantId, {
+            appName,
+            appSubtitle,
+          });
+        }
+
+        // 3) Optional admin user
+        let adminPassword: string | undefined;
+        let adminEmail: string | undefined;
+        if (adminUser?.email && adminUser?.displayName) {
+          adminPassword = generatePassword();
+          adminEmail = adminUser.email;
+
+          const { data: createdUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+            email: adminUser.email,
+            password: adminPassword,
+            user_metadata: { display_name: adminUser.displayName },
+            email_confirm: true,
+          });
+
+          if (createError || !createdUser?.user) {
+            console.error('Admin user creation failed:', createError);
+            (report as any).errors?.push(`admin user: ${createError?.message ?? 'unknown'}`);
+          } else {
+            const newUserId = createdUser.user.id;
+            await supabaseAdmin.from('profiles').insert({
+              user_id: newUserId,
+              display_name: adminUser.displayName,
+              tenant_id: tenantId,
+            });
+            await supabaseAdmin.from('user_tenant_memberships').insert({
+              user_id: newUserId,
+              tenant_id: tenantId,
+              role: 'abgeordneter',
+              is_active: true,
+            });
+            await supabaseAdmin.from('user_roles').insert({
+              user_id: newUserId,
+              role: 'abgeordneter',
+            });
+            await supabaseAdmin.from('user_status').insert({
+              user_id: newUserId,
+              status_type: 'online',
+              notifications_enabled: true,
+              tenant_id: tenantId,
+            });
+          }
+        }
+
+        await logAdminAction(
+          supabaseAdmin,
+          user.id,
+          user.email,
+          'platform_admin.provision_tenant',
+          { tenant_id: tenantId, seed_mode: seedMode, has_admin: Boolean(adminUser) },
+          tenantId,
+        );
+
+        return new Response(JSON.stringify({
+          success: true,
+          tenantId,
+          report,
+          adminPassword,
+          adminEmail,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      case 'cloneTenantData': {
+        if (!isPlatformAdmin) {
+          throw new HttpError(403, 'Only superadmin can clone tenant data');
+        }
+        const { sourceTenantId, targetTenantId } = body;
+        if (!sourceTenantId || !targetTenantId) {
+          throw new HttpError(400, 'sourceTenantId and targetTenantId are required');
+        }
+        if (sourceTenantId === targetTenantId) {
+          throw new HttpError(400, 'source and target must differ');
+        }
+
+        const report = await cloneTenantData(supabaseAdmin, sourceTenantId, targetTenantId);
+
+        await logAdminAction(
+          supabaseAdmin,
+          user.id,
+          user.email,
+          'platform_admin.clone_tenant_data',
+          { source: sourceTenantId, target: targetTenantId },
+          targetTenantId,
+        );
+
+        return new Response(JSON.stringify({ success: true, report }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      case 'getTenantHealth': {
+        if (!isPlatformAdmin) {
+          throw new HttpError(403, 'Only superadmin can read tenant health');
+        }
+        const { tenantId } = body;
+        if (!tenantId) {
+          throw new HttpError(400, 'tenantId is required');
+        }
+        const health = await getTenantHealth(supabaseAdmin, tenantId);
+        return new Response(JSON.stringify({ success: true, health }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       default:
         throw new Error(`Unknown action: ${action}`);
     }
