@@ -16,9 +16,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/components/ui/use-toast";
-import { Building2, Plus, Edit, Trash2, Users, UserPlus, RefreshCw, Copy, Check, MapPin, ChevronDown } from "lucide-react";
+import { Building2, Plus, Edit, Trash2, Users, UserPlus, RefreshCw, Copy, Check, MapPin, ChevronDown, Sparkles } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { TenantProvisioningWizard } from "./tenant-wizard/TenantProvisioningWizard";
+import { TenantHealthBadges } from "./tenant-wizard/TenantHealthBadges";
+import { CloneDataDrawer } from "./tenant-wizard/CloneDataDrawer";
 
 const BUNDESLAENDER = [
   "Baden-Württemberg", "Bayern", "Berlin", "Brandenburg", "Bremen",
@@ -33,6 +36,7 @@ interface TenantWithStats {
   description: string | null;
   is_active: boolean;
   created_at: string;
+  is_template?: boolean;
 }
 
 interface UserWithTenants {
