@@ -210,16 +210,25 @@ export function SuperadminTenantManagement(): React.JSX.Element {
 
     try {
       if (editingTenant) {
-        const { error } = await supabase
+        const updatePayload: Record<string, unknown> = {
+          name: formName.trim(),
+          description: formDescription.trim() || null,
+          is_active: formIsActive,
+          settings: settingsData,
+          updated_at: new Date().toISOString(),
+        };
+        // Try with is_template first; fall back if column missing.
+        let { error } = await supabase
           .from("tenants")
-          .update({
-            name: formName.trim(),
-            description: formDescription.trim() || null,
-            is_active: formIsActive,
-            settings: settingsData,
-            updated_at: new Date().toISOString(),
-          })
+          .update({ ...updatePayload, is_template: formIsTemplate })
           .eq("id", editingTenant.id);
+        if (error && /column .*is_template.* does not exist/i.test(error.message ?? "")) {
+          const fallback = await supabase
+            .from("tenants")
+            .update(updatePayload)
+            .eq("id", editingTenant.id);
+          error = fallback.error;
+        }
 
         if (error) throw error;
 
@@ -405,9 +414,8 @@ export function SuperadminTenantManagement(): React.JSX.Element {
   };
 
   const openCreateTenantDialog = (): void => {
-    setEditingTenant(null);
-    resetTenantForm();
-    setDialogOpen(true);
+    // The classic dialog stays for editing; new tenants now go through the wizard.
+    setWizardOpen(true);
   };
 
   const openEditTenantDialog = async (tenant: TenantWithStats): Promise<void> => {
@@ -415,6 +423,7 @@ export function SuperadminTenantManagement(): React.JSX.Element {
     setFormName(tenant.name);
     setFormDescription(tenant.description || "");
     setFormIsActive(tenant.is_active);
+    setFormIsTemplate(Boolean(tenant.is_template));
 
     // Load settings from tenant
     const { data: tenantData } = await supabase
@@ -479,6 +488,7 @@ export function SuperadminTenantManagement(): React.JSX.Element {
     setFormSocialX("");
     setFormSocialLinkedIn("");
     setSocialSectionOpen(false);
+    setFormIsTemplate(false);
     setEditingTenant(null);
   };
 
