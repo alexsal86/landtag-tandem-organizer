@@ -583,6 +583,7 @@ export function SuperadminTenantManagement(): React.JSX.Element {
                     <TableHead>Beschreibung</TableHead>
                     <TableHead className="text-center">Benutzer</TableHead>
                     <TableHead>Zugeordnete Benutzer</TableHead>
+                    <TableHead>Health</TableHead>
                     <TableHead className="text-center">Status</TableHead>
                     <TableHead>Erstellt</TableHead>
                     <TableHead className="text-right">Aktionen</TableHead>
@@ -591,7 +592,14 @@ export function SuperadminTenantManagement(): React.JSX.Element {
                 <TableBody>
                   {tenants.map((tenant) => (
                     <TableRow key={tenant.id}>
-                      <TableCell className="font-medium">{tenant.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {tenant.name}
+                          {tenant.is_template && (
+                            <Sparkles className="h-3.5 w-3.5 text-primary" aria-label="Vorlage" />
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-muted-foreground max-w-xs truncate">
                         {tenant.description || "—"}
                       </TableCell>
@@ -613,6 +621,9 @@ export function SuperadminTenantManagement(): React.JSX.Element {
                         ) : (
                           <span className="text-sm text-muted-foreground">Keine Benutzer zugewiesen</span>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <TenantHealthBadges tenantId={tenant.id} reloadKey={healthRefreshKey} />
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge variant={tenant.is_active ? "default" : "outline"}>
