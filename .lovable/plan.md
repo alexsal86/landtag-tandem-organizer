@@ -1,80 +1,145 @@
 
 
-## Tenant-Provisioning als SaaS-Workflow
+## Dossiers für Abgeordnetenbüros: nächste Ausbaustufe
 
-Ziel: Als Super-Admin lege ich in **einem geführten Wizard** einen neuen Tenant an, der **sofort produktiv nutzbar** ist – mit Standard-Templates, Kategorien, Notification-Typen, Wahlkreis-Daten und einem fertig eingerichteten Admin-User. Optional als Klon eines bestehenden „Master"-Tenants.
+### Kurze Antwort zur xWiki-Frage
 
-### Was heute fehlt
-- Neue Tenants starten leer: 0 case_file_types, 0 letter_templates, 0 meeting_templates, 0 letter_occasions, 0 planning_templates, 0 notification_types, 0 sender_information.
-- `initializeTenant` setzt nur 5 app_settings.
-- Tenant-Anlage und User-Anlage sind zwei getrennte Schritte – kein "fertig in 60 Sekunden"-Erlebnis.
-- Kein Klonen aus Vorlage-Tenant, keine Health-Anzeige (was fehlt diesem Tenant?).
+**xWiki ist das falsche Vorbild.** Es ist ein generisches Enterprise-Wiki (Page-Tree, Wiki-Syntax, Makros, Berechtigungen). Was es gut macht, hast du im Kern schon: Lexical-Block-Editor (≈ strukturierte Seiten), Verknüpfungen, Tags, Volltext (`GlobalEntrySearch`), Tenant-/Rollen-RLS.
 
-### Lösung – 4 Bausteine
+Was Abgeordnetenbüros wirklich brauchen, **kann xWiki nicht**: Bezug zu Wahlkreis, Stakeholdern, parlamentarischen Vorgängen, Pressestand, Positionierung gegenüber Fraktion, Briefing-zu-Termin-Anbindung. Genau hier setzen wir an – nicht bei „mehr Wiki", sondern bei **politischer Arbeitslogik**.
 
-**1) Tenant-Vorlagen (DB)**
-Neue Spalte `tenants.is_template boolean default false`. Ein Tenant kann als „Master-Vorlage" markiert werden. Beim Erstellen eines neuen Tenants kann der Super-Admin entweder:
-- **„Standard-Setup"** wählen (ein hartkodiertes Seed-Set in der Edge-Function), oder
-- **„Aus Vorlage klonen"** + einen Template-Tenant auswählen → kopiert dessen Templates 1:1.
+Übernehmenswert aus xWiki ist genau **eine** Idee: **hierarchische Eltern-Kind-Dossiers** (Mobilität → Mobilität/ÖPNV → Mobilität/ÖPNV/Streckenausbau X). Das fehlt heute.
 
-**2) Erweiterte Edge-Function `manage-tenant-user` – neue Actions**
-- `provisionTenant` (ersetzt/erweitert `initializeTenant`): legt Tenant + Default-Daten + optional Admin-User in **einem Aufruf** an. Body:
-  ```
-  { name, description, settings:{constituency,city,state,party,...},
-    appName, appSubtitle,
-    seedMode: 'standard' | 'clone' | 'empty',
-    cloneFromTenantId?, 
-    adminUser?: { email, displayName } }
-  ```
-  Schritte: tenant insert → app_settings seed → seedDefaultData(seedMode) → optional createUser(role=abgeordneter) → return {tenantId, adminPassword?, seedReport}.
-- `cloneTenantData`: kopiert für einen bestehenden Tenant Daten aus einem anderen Tenant (nachträgliches Aufstocken).
-- `getTenantHealth`: liefert pro Tenant {users, case_file_types, letter_templates, meeting_templates, notification_types, sender_information, last_activity} → für die neue Health-Spalte in der Übersicht.
+---
 
-**3) Seed-Module in der Edge-Function (ein zentraler Helper)**
-Ein neues File `supabase/functions/_shared/tenant-seed.ts` mit:
-- `STANDARD_CASE_FILE_TYPES` (≈ 8 sinnvolle Defaults: Bürgeranfrage, Beschwerde, Anfrage Behörde, …)
-- `STANDARD_NOTIFICATION_TYPES` (alle bekannten `name`-Keys aus dem Code, inkl. `social_post_change_requested`, `social_post_reminder`, Aufgaben-, Termin-, Brief-Events)
-- `STANDARD_LETTER_OCCASIONS` (Geburtstag, Kondolenz, Glückwunsch, …)
-- `STANDARD_MEETING_TEMPLATES` (Jour Fixe, Wahlkreis-Termin)
-- `STANDARD_PLANNING_TEMPLATES` (Veranstaltungsplanung)
-- `STANDARD_APP_SETTINGS` (erweitert um Branding-Defaults)
-- `cloneTenantData(sourceId, targetId)`: kopiert die o. g. Tabellen + `letter_templates`, `letter_occasions`, `sender_information`, `appointment_preparation_templates`, `event_email_templates`, `news_email_templates`, `vacation_checklist_templates` per `INSERT … SELECT` mit `tenant_id`-Rewrite und neuen UUIDs.
+### Lücken im heutigen Dossier-System
 
-**4) UI – Neuer „Tenant Provisioning Wizard" + Health-Übersicht**
-In `SuperadminTenantManagement.tsx` ersetzt ein **3-Schritt-Wizard** den heutigen Erstell-Dialog:
+Heute vorhanden: Übersicht, Notizen (Lexical), Einträge (Inbox-Typen), Verknüpfungen, Briefing, Quality-Fields (offene Fragen, Positionen, Risiken), Quellen-Watcher, Review-Reminder, globale Suche.
 
-```text
-Schritt 1: Stammdaten        Schritt 2: Setup-Quelle       Schritt 3: Admin-User
-─────────────────────        ──────────────────────         ────────────────────
-• Name, Beschreibung          ( ) Standard-Setup              ☑ Admin gleich anlegen
-• Wahlkreis, Stadt, Land      ( ) Aus Vorlage klonen ▼          E-Mail, Name
-• Partei                      ( ) Leer (manuell befüllen)       Rolle: abgeordneter
-• App-Name, Subtitle          
-• Social Links                Vorschau: "wird 8 Falltypen,
-                              7 Briefanlässe, 24 Notif-
-                              Typen, 2 Meeting-Templates
-                              anlegen"
+Was für MdB-Arbeit fehlt:
+
+1. **Hierarchie/Struktur** – Themen sind verschachtelt (Klima > Energie > Wasserstoff). Heute flach.
+2. **Stakeholder-Mapping** – Wer ist „pro/contra/neutral", welche Forderungen, letzte Berührung? Heute nur lose Kontakt-Links.
+3. **Positionsentwicklung über Zeit** – `positions` ist ein Freitextfeld. Es fehlt die Versionierung („Wie hieß unsere Linie im März?").
+4. **Parlamentarischer Kontext** – Drucksachen, Anfragen, Reden, Abstimmungen, Ausschuss-Sitzungen zum Thema. Heute nicht abbildbar.
+5. **Sprechzettel/Q&A** – Briefing erzeugt heute nur Lagebild; Mitarbeitende brauchen schnell „3 Kernbotschaften + 5 kritische Fragen mit Antwort".
+6. **Wahlkreis-Bezug** – „Was bedeutet das Thema *konkret* für meinen Wahlkreis?" (betroffene Orte, Zahlen, lokale Akteure).
+7. **Anliegen/Fallakten-Aggregation** – Wenn 12 Bürger:innen zum gleichen Thema schreiben, sollte das Dossier das spiegeln (heute nur 1:1-Verknüpfung).
+8. **Wiedervorlage je Eintrag** – Heute nur Review-Intervall fürs ganze Dossier.
+
+---
+
+### Vorschlag – 6 Bausteine, MVP-tauglich, baut auf bestehendem auf
+
+**1) Eltern-Kind-Hierarchie (xWiki-Idee, schlank umgesetzt)**
+- Spalte `dossiers.parent_id uuid null` + Breadcrumb in `DossierDetailView`-Header.
+- Sidepanel zeigt Dossier-Liste als Tree (collapsible), max. 3 Ebenen sinnvoll.
+- Beim Anlegen: optional „Unter-Dossier von …".
+
+**2) Stakeholder-Mapping (eigener Tab)**
+- Neue Tabelle `dossier_stakeholders`: `dossier_id`, `contact_id`, `stance` ('pro'|'contra'|'neutral'|'unklar'), `influence` (1–5), `last_touch_at`, `note`.
+- Neuer Tab **„Akteure"** im Detail: Matrix (Einfluss × Position) als kleines Quadranten-Diagramm + Liste mit Stance-Badge.
+- Jeder Akteur verlinkt auf `Contact` → letzte Interaktion aus Kontakthistorie wird inline gezeigt.
+
+**3) Positions-Verlauf (Versionierung)**
+- Neue Tabelle `dossier_position_versions`: `dossier_id`, `content_html`, `valid_from`, `created_by`, `change_reason`.
+- Im Quality-Fields-Block: „Position aktualisieren" → speichert alte Fassung, behält Audit-Spur. Anzeige als kompakter Verlauf („Stand 12.03., geändert wegen Fraktionsbeschluss X").
+
+**4) Parlamentarischer Kontext (eigener Eintragstyp)**
+- `EntryType` um 4 Werte erweitern: `drucksache`, `anfrage`, `rede`, `abstimmung`.
+- `EntryCard` zeigt typ-spezifisches Icon + strukturierte Felder aus `metadata` (z. B. Drucksachen-Nr., Datum, Ausschuss, Abstimmungsergebnis ja/nein/enth.).
+- Im Briefing-Tab eigene Sektion „Parlamentarischer Stand" zieht diese Einträge automatisch chronologisch.
+
+**5) Sprechzettel-Generator (Erweiterung Briefing-Tab)**
+- Im bestehenden `DossierBriefingTab`: zusätzlicher Modus **„Sprechzettel"** neben Lagebild.
+- Strukturierte Felder: 3 Kernbotschaften, 5 kritische Fragen + Antworten, „Was nicht sagen", Quellenfußnoten.
+- Speicherung in `dossier_talking_points` (`dossier_id`, `for_appointment_id` optional, `content_jsonb`, `valid_until`). Termin-Sidebar bekommt Button „Sprechzettel aus Dossier ziehen".
+
+**6) Wahlkreis- und Anliegen-Aggregation**
+- `dossiers.constituency_relevance` (text, Markdown) + `dossiers.affected_locations` (text[]).
+- Auf Übersichts-Tab eine Kachel **„Anliegen aus dem Wahlkreis"**: zählt Fallakten/Vorgänge mit gleichem `topic_id` oder via neuer Tag-Heuristik, zeigt Trend (letzte 30 Tage) und Top-3-Anfragen mit Deep-Link.
+
+**Plus: Wiedervorlage pro Eintrag**
+- `dossier_entries.followup_at timestamptz null`. „Mein Radar"-View bekommt Sektion „Fällige Eintragsfollowups". Minimaler Aufwand, hoher Nutzen.
+
+---
+
+### Was wir bewusst NICHT bauen (um Fokus zu halten)
+
+- Echte Wiki-Hierarchie mit Wiki-Syntax/Makros (overkill, Lexical reicht).
+- KI-Auto-Zusammenfassung – existiert als Out-of-Scope im Umsetzungsplan, kommt später.
+- Externe Drucksachen-API-Anbindung (Bundestag-OpenData) – erst wenn manuelle Erfassung im Alltag ankommt.
+- Komplexe Berechtigungsmatrix pro Dossier – Tenant-RLS reicht.
+
+---
+
+### Migration (ein Schritt)
+
+```sql
+ALTER TABLE dossiers
+  ADD COLUMN parent_id uuid REFERENCES dossiers(id) ON DELETE SET NULL,
+  ADD COLUMN constituency_relevance text,
+  ADD COLUMN affected_locations text[] DEFAULT '{}';
+
+ALTER TABLE dossier_entries
+  ADD COLUMN followup_at timestamptz;
+
+CREATE TABLE dossier_stakeholders (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  dossier_id uuid NOT NULL REFERENCES dossiers(id) ON DELETE CASCADE,
+  contact_id uuid NOT NULL,
+  tenant_id uuid NOT NULL,
+  stance text NOT NULL DEFAULT 'unklar',
+  influence smallint NOT NULL DEFAULT 3,
+  last_touch_at timestamptz,
+  note text,
+  created_by uuid NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (dossier_id, contact_id)
+);
+
+CREATE TABLE dossier_position_versions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  dossier_id uuid NOT NULL REFERENCES dossiers(id) ON DELETE CASCADE,
+  tenant_id uuid NOT NULL,
+  content_html text,
+  valid_from timestamptz NOT NULL DEFAULT now(),
+  change_reason text,
+  created_by uuid NOT NULL
+);
+
+CREATE TABLE dossier_talking_points (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  dossier_id uuid NOT NULL REFERENCES dossiers(id) ON DELETE CASCADE,
+  tenant_id uuid NOT NULL,
+  for_appointment_id uuid,
+  content jsonb NOT NULL,
+  valid_until timestamptz,
+  created_by uuid NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
 ```
+RLS analog zu `dossiers` (tenant-basiert).
 
-Nach „Anlegen" zeigt ein Erfolgs-Screen: Tenant-ID, Seed-Report (was wurde angelegt), generiertes Admin-Passwort mit Copy-Button, Direkt-Link „Jetzt als Admin einloggen".
+---
 
-In der Tenant-Tabelle kommt eine neue **„Health"-Spalte**: kleine Badges (Users · Templates · Notif) mit Ampel-Farbe (rot wenn 0). Klick öffnet ein Drawer mit „Daten aus anderem Tenant nachladen" (`cloneTenantData`).
+### Files (geplante Änderungen)
 
-Außerdem: Toggle „Als Vorlage markieren" (`is_template`) im Edit-Dialog.
+- **Edit** `src/features/dossiers/types.ts` – neue Typen, EntryType erweitern.
+- **Edit** `src/features/dossiers/components/DossiersSidePanel.tsx` – Tree-Darstellung mit `parent_id`.
+- **Edit** `src/features/dossiers/components/DossierDetailView.tsx` – Tabs „Akteure", „Sprechzettel"; Breadcrumb.
+- **Edit** `src/features/dossiers/components/DossierSummaryTab.tsx` – Kachel „Anliegen aus Wahlkreis".
+- **Edit** `src/features/dossiers/components/DossierBriefingTab.tsx` – Sprechzettel-Modus.
+- **Edit** `src/features/dossiers/components/DossierQualityFields.tsx` – „Position aktualisieren" mit Verlauf.
+- **Edit** `src/features/dossiers/components/EntryCard.tsx` – Drucksache/Rede/Abstimmung-Rendering, Followup-Datum.
+- **Edit** `src/features/dossiers/components/MeinRadarView.tsx` – Sektion „Eintragsfollowups".
+- **Neu** `src/features/dossiers/components/DossierStakeholdersTab.tsx` (+ Quadranten-Visual).
+- **Neu** `src/features/dossiers/components/DossierTalkingPoints.tsx`.
+- **Neu** `src/features/dossiers/hooks/useDossierStakeholders.ts`, `usePositionVersions.ts`, `useTalkingPoints.ts`.
+- **Edit** `src/components/calendar/AppointmentDetailsSidebar.tsx` – Button „Sprechzettel aus Dossier ziehen".
 
-### Migration (SQL)
-- `ALTER TABLE tenants ADD COLUMN is_template boolean NOT NULL DEFAULT false;`
-- Idempotente Inserts in der Seed-Function nutzen `ON CONFLICT DO NOTHING` (auf passenden Unique-Keys).
+### Rollout in 2 Sprints
 
-### Files
-- **Neu**: `supabase/functions/_shared/tenant-seed.ts` (Seeds + cloneTenantData)
-- **Neu**: `src/components/administration/tenant-wizard/TenantProvisioningWizard.tsx` (3-Step UI)
-- **Neu**: `src/components/administration/tenant-wizard/TenantHealthBadges.tsx`
-- **Neu**: `src/components/administration/tenant-wizard/CloneDataDrawer.tsx`
-- **Edit**: `supabase/functions/manage-tenant-user/index.ts` (Actions `provisionTenant`, `cloneTenantData`, `getTenantHealth`)
-- **Edit**: `src/components/administration/SuperadminTenantManagement.tsx` (Wizard einhängen, Health-Spalte, is_template-Toggle)
-
-### Out of Scope (bewusst)
-- Self-Service-Signup für externe Kunden (bleibt Super-Admin-only).
-- Billing/Subscription-Tabellen – kommt erst, wenn Onboarding rund läuft.
+- **Sprint 1**: Migration + Hierarchie (1) + Stakeholder-Tab (2) + Followup-Felder.
+- **Sprint 2**: Positions-Versionierung (3) + parlamentarische Eintragstypen (4) + Sprechzettel (5) + Wahlkreis-Aggregation (6).
 
