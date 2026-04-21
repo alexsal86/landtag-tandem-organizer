@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Trash2, FolderInput, Check, Pin, PinOff, Tag, X, ExternalLink } from "lucide-react";
+import { Trash2, FolderInput, Check, Pin, PinOff, Tag, X, ExternalLink, CalendarClock } from "lucide-react";
 import { useState, KeyboardEvent } from "react";
+import { useUpdateEntryFollowup } from "../hooks/useEntryFollowups";
+import { format } from "date-fns";
 
 interface EntryCardProps {
   entry: DossierEntry;
