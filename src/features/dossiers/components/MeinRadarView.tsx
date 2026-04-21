@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import { useRecentEntriesAcrossDossiers } from "../hooks/useDossierEntries";
 import { useDossiers } from "../hooks/useDossiers";
+import { useEntryFollowups } from "../hooks/useEntryFollowups";
 import { ENTRY_TYPE_CONFIG, type EntryType } from "../types";
-import { formatDistanceToNow, format } from "date-fns";
+import { formatDistanceToNow, format, isPast, isToday } from "date-fns";
 import { de } from "date-fns/locale";
-import { Loader2, Radio, FolderOpen, ExternalLink } from "lucide-react";
+import { Loader2, Radio, FolderOpen, ExternalLink, CalendarClock } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface MeinRadarViewProps {
