@@ -90,6 +90,21 @@ export function EntryCard({ entry, onPin, highlight, onTagClick }: EntryCardProp
         <span className="font-medium truncate flex-1">
           {entry.title ? highlightText(entry.title, highlight ?? "") : 'Ohne Titel'}
         </span>
+        {entry.followup_at && (
+          <span
+            className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded shrink-0 ${
+              isPast(new Date(entry.followup_at)) && !isToday(new Date(entry.followup_at))
+                ? "bg-destructive/15 text-destructive"
+                : isToday(new Date(entry.followup_at))
+                ? "bg-warning/15 text-warning"
+                : "bg-primary/10 text-primary"
+            }`}
+            title="Wiedervorlage"
+          >
+            <CalendarClock className="h-2.5 w-2.5" />
+            {format(new Date(entry.followup_at), "dd.MM.")}
+          </span>
+        )}
         {!entry.is_curated && (
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-warning/10 text-warning shrink-0">roh</span>
         )}
