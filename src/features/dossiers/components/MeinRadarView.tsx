@@ -24,6 +24,7 @@ export function MeinRadarView({ onSelectDossier }: MeinRadarViewProps) {
   const days = Number(range);
   const { data: entries, isLoading } = useRecentEntriesAcrossDossiers(days);
   const { data: dossiers } = useDossiers();
+  const { data: followups } = useEntryFollowups(14);
 
   const dossierMap = useMemo(() => {
     const m = new Map<string, string>();
