@@ -123,6 +123,19 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1 min-w-0">
+          {parentDossier && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground mb-0.5">
+              <button
+                type="button"
+                onClick={() => onSelectDossier?.(parentDossier.id)}
+                className="hover:text-primary truncate max-w-[160px]"
+              >
+                {parentDossier.title}
+              </button>
+              <ChevronRight className="h-3 w-3 shrink-0" />
+              <span className="truncate font-medium text-foreground">{dossier?.title}</span>
+            </div>
+          )}
           <h2 className="text-lg font-semibold truncate">{dossier?.title ?? "Dossier"}</h2>
           {dossier?.summary && <p className="text-sm text-muted-foreground line-clamp-1">{dossier.summary}</p>}
         </div>
