@@ -206,6 +206,12 @@ export function DossierDetailView({ dossierId, onBack, onSelectDossier }: Dossie
           <TabsTrigger value="eintraege" className="gap-1.5">
             <NotebookPen className="h-4 w-4" /> Einträge
           </TabsTrigger>
+          <TabsTrigger value="akteure" className="gap-1.5">
+            <Users className="h-4 w-4" /> Akteure
+          </TabsTrigger>
+          <TabsTrigger value="sprechzettel" className="gap-1.5">
+            <Mic className="h-4 w-4" /> Sprechzettel
+          </TabsTrigger>
           <TabsTrigger value="verknuepfungen" className="gap-1.5">
             <Link2 className="h-4 w-4" /> Verknüpfungen
           </TabsTrigger>
@@ -213,6 +219,66 @@ export function DossierDetailView({ dossierId, onBack, onSelectDossier }: Dossie
             <FileText className="h-4 w-4" /> Briefing
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="uebersicht" className="space-y-4">
+          {dossier && <DossierSummaryTab dossier={dossier} recentEntries={entries} />}
+        </TabsContent>
+
+        <TabsContent value="eintraege" className="space-y-4">
+          <SmartCapture dossierId={dossierId} />
+          <Tabs value={activeEntryFilter} onValueChange={setActiveEntryFilter}>
+            <TabsList className="flex-wrap h-auto gap-1">
+              <TabsTrigger value="alle">Alle</TabsTrigger>
+              {entryTypes.map((t) => {
+                const EntryIcon = entryTypeIcons[t];
+                return (
+                  <TabsTrigger key={t} value={t} className="gap-1.5">
+                    <EntryIcon className="h-4 w-4" />
+                    {ENTRY_TYPE_CONFIG[t].label}
+                  </TabsTrigger>
+                );
+              })}
+              <TabsTrigger value="neu_seit_briefing" className="gap-1.5">
+                <Sparkles className="h-4 w-4" /> Neu seit letztem Briefing
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="animate-spin h-6 w-6 text-muted-foreground" />
+            </div>
+          ) : (
+            <EntryTimeline
+              entries={filteredEntries ?? []}
+              onPin={handlePin}
+              tagFilter={tagFilter}
+              onTagClick={handleTagClick}
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="akteure" className="space-y-4">
+          <DossierStakeholdersTab dossierId={dossierId} />
+        </TabsContent>
+
+        <TabsContent value="sprechzettel" className="space-y-4">
+          {dossier && <DossierTalkingPoints dossierId={dossierId} dossierTitle={dossier.title} />}
+        </TabsContent>
+
+        <TabsContent value="verknuepfungen" className="space-y-4">
+          <DossierLinksView dossierId={dossierId} />
+          <DossierSourceWatchersPanel dossierId={dossierId} />
+          {dossier && <DossierQualityFields dossier={dossier} />}
+        </TabsContent>
+
+        <TabsContent value="briefing" className="space-y-4">
+          {dossier && <DossierBriefingTab dossier={dossier} entries={entries} />}
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
 
         {/* Übersicht (default) */}
         <TabsContent value="uebersicht" className="space-y-4">
