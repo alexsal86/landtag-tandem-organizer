@@ -37,6 +37,10 @@ export function DossierBriefingTab({ dossier, entries }: DossierBriefingTabProps
 
   const latest5 = entries?.slice(0, 5) ?? [];
   const newSinceLastBriefing = entries?.filter((entry) => !dossier.last_briefing_at || new Date(entry.created_at) > new Date(dossier.last_briefing_at)) ?? [];
+  const parliamentaryEntries = (entries ?? [])
+    .filter((e) => PARLIAMENTARY_ENTRY_TYPES.includes(e.entry_type as EntryType))
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 10);
 
   const buildTextBriefing = () => {
     const lines: string[] = [];
