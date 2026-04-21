@@ -70,6 +70,10 @@ export function DossierSummaryTab({ dossier, recentEntries }: DossierSummaryTabP
     link: Link2,
     email: Mail,
     zitat: Quote,
+    drucksache: Scroll,
+    anfrage: HelpCircle,
+    rede: Mic,
+    abstimmung: Vote,
   };
 
   return (

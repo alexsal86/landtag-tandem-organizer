@@ -61,6 +61,10 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
     link: Link2,
     email: FileText,
     zitat: BookOpenText,
+    drucksache: Scroll,
+    anfrage: HelpCircle,
+    rede: Mic,
+    abstimmung: Vote,
   };
   const filteredEntries = activeEntryFilter === "alle"
     ? entries
