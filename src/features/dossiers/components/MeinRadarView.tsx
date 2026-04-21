@@ -65,6 +65,52 @@ export function MeinRadarView({ onSelectDossier }: MeinRadarViewProps) {
         </Select>
       </div>
 
+      {followups && followups.length > 0 && (
+        <section className="rounded-md border border-border bg-card p-3 space-y-2">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <CalendarClock className="h-3.5 w-3.5 text-warning" />
+            Fällige Eintragsfollowups
+            <span className="ml-1 font-normal normal-case tracking-normal">· {followups.length}</span>
+          </h3>
+          <div className="space-y-1">
+            {followups.map((f) => {
+              const cfg = ENTRY_TYPE_CONFIG[f.entry_type as EntryType] ?? { label: f.entry_type, icon: "📄" };
+              const due = new Date(f.followup_at!);
+              const overdue = isPast(due) && !isToday(due);
+              const dossierTitle = f.dossier_id ? dossierMap.get(f.dossier_id) : null;
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => f.dossier_id && onSelectDossier(f.dossier_id)}
+                  className="w-full text-left rounded-md hover:bg-muted/40 transition-colors p-2 flex items-center gap-2 text-sm"
+                >
+                  <span>{cfg.icon}</span>
+                  <span className="font-medium truncate flex-1">{f.title || "Ohne Titel"}</span>
+                  {dossierTitle && (
+                    <span className="text-[11px] text-primary inline-flex items-center gap-1">
+                      <FolderOpen className="h-3 w-3" /> {dossierTitle}
+                    </span>
+                  )}
+                  <span
+                    className={`text-[11px] px-1.5 py-0.5 rounded shrink-0 ${
+                      overdue
+                        ? "bg-destructive/15 text-destructive"
+                        : isToday(due)
+                        ? "bg-warning/15 text-warning"
+                        : "bg-primary/10 text-primary"
+                    }`}
+                  >
+                    {overdue ? "überfällig · " : isToday(due) ? "heute · " : ""}
+                    {format(due, "dd.MM.")}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {isLoading ? (
         <div className="flex justify-center py-8">
           <Loader2 className="animate-spin h-6 w-6 text-muted-foreground" />
