@@ -197,6 +197,47 @@ export function EntryCard({ entry, onPin, highlight, onTagClick }: EntryCardProp
           </PopoverContent>
         </Popover>
 
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">
+              <CalendarClock className="h-3 w-3" /> {entry.followup_at ? "Wiedervorlage" : "Followup"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-2 space-y-2" side="bottom" align="start">
+            <DateInput
+              type="date"
+              value={followupInput}
+              onChange={(e) => setFollowupInput(e.target.value)}
+              className="h-8 text-xs"
+            />
+            <div className="flex items-center justify-between gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs"
+                disabled={!entry.followup_at && !followupInput}
+                onClick={() => {
+                  setFollowupInput("");
+                  updateFollowup.mutate({ entryId: entry.id, followupAt: null });
+                }}
+              >
+                Entfernen
+              </Button>
+              <Button
+                size="sm"
+                className="h-7 text-xs"
+                disabled={!followupInput}
+                onClick={() => {
+                  const iso = new Date(followupInput + "T09:00:00").toISOString();
+                  updateFollowup.mutate({ entryId: entry.id, followupAt: iso });
+                }}
+              >
+                Speichern
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
+
         {isInbox && !assigning && (
           <Button
             variant="ghost"
