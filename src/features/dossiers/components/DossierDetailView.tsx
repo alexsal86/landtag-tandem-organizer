@@ -50,6 +50,9 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
   const [editStatus, setEditStatus] = useState("");
   const [editPriority, setEditPriority] = useState("");
   const [editOwnerId, setEditOwnerId] = useState("unassigned");
+  const [editParentId, setEditParentId] = useState<string>("none");
+  const [editConstituency, setEditConstituency] = useState<string>("");
+  const [editLocations, setEditLocations] = useState<string>("");
 
   const handleTagClick = useCallback((tag: string) => {
     setTagFilter((curr) => (curr === tag ? null : tag));
@@ -81,12 +84,29 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
     setEditStatus(dossier.status);
     setEditPriority(dossier.priority);
     setEditOwnerId(dossier.owner_id ?? "unassigned");
+    setEditParentId(dossier.parent_id ?? "none");
+    setEditConstituency(dossier.constituency_relevance ?? "");
+    setEditLocations((dossier.affected_locations ?? []).join(", "));
     setEditOpen(true);
   };
 
   const handleSaveEdit = () => {
+    const locations = editLocations
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
     updateDossier.mutate(
-      { id: dossierId, title: editTitle, summary: editSummary, status: editStatus, priority: editPriority, owner_id: editOwnerId === "unassigned" ? null : editOwnerId },
+      {
+        id: dossierId,
+        title: editTitle,
+        summary: editSummary,
+        status: editStatus,
+        priority: editPriority,
+        owner_id: editOwnerId === "unassigned" ? null : editOwnerId,
+        parent_id: editParentId === "none" ? null : editParentId,
+        constituency_relevance: editConstituency || null,
+        affected_locations: locations,
+      },
       { onSuccess: () => setEditOpen(false) }
     );
   };
