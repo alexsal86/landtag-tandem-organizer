@@ -187,6 +187,34 @@ export function DossierBriefingTab({ dossier, entries }: DossierBriefingTabProps
           </section>
         )}
 
+        {parliamentaryEntries.length > 0 && (
+          <section>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Parlamentarischer Stand</h3>
+            <div className="space-y-1.5">
+              {parliamentaryEntries.map((entry) => {
+                const config = ENTRY_TYPE_CONFIG[entry.entry_type as EntryType] ?? { icon: "📄", label: entry.entry_type };
+                return (
+                  <div key={entry.id} className="text-sm flex items-start gap-2">
+                    <span className="shrink-0 text-xs mt-0.5">{config.icon}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline gap-2 flex-wrap">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{config.label}</span>
+                        <span className="font-medium">{entry.title || "Ohne Titel"}</span>
+                        <span className="text-muted-foreground text-xs">
+                          {format(new Date(entry.created_at), "dd.MM.yyyy", { locale: de })}
+                        </span>
+                      </div>
+                      {entry.content && (
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{entry.content}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {latest5.length > 0 && (
           <section>
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Letzte Einträge</h3>
