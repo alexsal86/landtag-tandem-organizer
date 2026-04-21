@@ -85,7 +85,7 @@ export function useCreateDossier() {
   const profileId = useCurrentProfileId();
 
   return useMutation({
-    mutationFn: async (input: { title: string; summary?: string; status?: string; priority?: string }) => {
+    mutationFn: async (input: { title: string; summary?: string; status?: string; priority?: string; parent_id?: string | null }) => {
       if (!currentTenant?.id || !profileId) throw new Error("Nicht angemeldet");
       const { data, error } = await supabase
         .from("dossiers")
@@ -94,6 +94,7 @@ export function useCreateDossier() {
           summary: input.summary ?? null,
           status: input.status ?? "aktiv",
           priority: input.priority ?? "mittel",
+          parent_id: input.parent_id ?? null,
           tenant_id: currentTenant.id,
           created_by: profileId,
           owner_id: profileId,
@@ -129,6 +130,9 @@ export function useUpdateDossier() {
       next_review_at?: string | null;
       last_briefing_at?: string | null;
       owner_id?: string | null;
+      parent_id?: string | null;
+      constituency_relevance?: string | null;
+      affected_locations?: string[];
     }) => {
       const { id, ...updates } = input;
       const payload: Record<string, unknown> = { ...updates, updated_at: new Date().toISOString() };
