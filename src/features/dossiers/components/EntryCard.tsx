@@ -41,9 +41,13 @@ export function EntryCard({ entry, onPin, highlight, onTagClick }: EntryCardProp
   const assignEntry = useAssignEntryToDossier();
   const deleteEntry = useDeleteEntry();
   const updateTags = useUpdateEntryTags();
+  const updateFollowup = useUpdateEntryFollowup();
   const [assigning, setAssigning] = useState(false);
   const [selectedDossier, setSelectedDossier] = useState<string>("");
   const [tagInput, setTagInput] = useState("");
+  const [followupInput, setFollowupInput] = useState<string>(
+    entry.followup_at ? format(new Date(entry.followup_at), "yyyy-MM-dd") : ""
+  );
 
   const isInbox = entry.dossier_id === null;
   const emailMeta = entry.entry_type === "email" && entry.metadata
