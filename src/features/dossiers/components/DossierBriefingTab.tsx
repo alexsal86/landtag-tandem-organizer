@@ -1,5 +1,5 @@
 import type { Dossier, DossierEntry, EntryType } from "../types";
-import { ENTRY_TYPE_CONFIG } from "../types";
+import { ENTRY_TYPE_CONFIG, PARLIAMENTARY_ENTRY_TYPES } from "../types";
 import { useDossierLinks } from "../hooks/useDossierLinks";
 import { Button } from "@/components/ui/button";
 import { Copy, Printer } from "lucide-react";
