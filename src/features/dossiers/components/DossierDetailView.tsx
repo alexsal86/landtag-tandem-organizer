@@ -26,15 +26,17 @@ import { useTenantProfiles } from "@/hooks/useTenantProfiles";
 interface DossierDetailViewProps {
   dossierId: string;
   onBack: () => void;
+  onSelectDossier?: (id: string) => void;
 }
 
-export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps) {
+export function DossierDetailView({ dossierId, onBack, onSelectDossier }: DossierDetailViewProps) {
   const { data: dossiers } = useDossiers();
   const { data: entries, isLoading } = useDossierEntries(dossierId);
   const updateDossier = useUpdateDossier();
   const { data: tenantProfiles } = useTenantProfiles();
   const pinEntry = usePinEntry();
   const dossier = dossiers?.find((d) => d.id === dossierId);
+  const parentDossier = dossier?.parent_id ? dossiers?.find((d) => d.id === dossier.parent_id) : null;
   const [activeSection, setActiveSection] = useState("uebersicht");
 
   useEffect(() => {

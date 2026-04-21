@@ -50,7 +50,7 @@ export function DossiersMainView() {
 
       <div className="flex-1 overflow-auto pt-4 pl-4">
         {selectedDossierId ? (
-          <DossierDetailView dossierId={selectedDossierId} onBack={handleBack} />
+          <DossierDetailView dossierId={selectedDossierId} onBack={handleBack} onSelectDossier={setSelectedDossierId} />
         ) : activeTab === "eingang" ? (
           <InboxView />
         ) : activeTab === "radar" ? (
