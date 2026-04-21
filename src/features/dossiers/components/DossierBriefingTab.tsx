@@ -73,6 +73,17 @@ export function DossierBriefingTab({ dossier, entries }: DossierBriefingTabProps
       lines.push("");
     }
 
+    if (parliamentaryEntries.length > 0) {
+      lines.push("PARLAMENTARISCHER STAND");
+      for (const entry of parliamentaryEntries) {
+        const date = format(new Date(entry.created_at), "dd.MM.yyyy", { locale: de });
+        const config = ENTRY_TYPE_CONFIG[entry.entry_type as EntryType] ?? { icon: "·", label: entry.entry_type };
+        lines.push(`  ${config.icon} [${date}] ${config.label}: ${entry.title || "Ohne Titel"}`);
+        if (entry.content) lines.push(`    ${entry.content.slice(0, 120)}${entry.content.length > 120 ? "…" : ""}`);
+      }
+      lines.push("");
+    }
+
     if (latest5.length > 0) {
       lines.push("LETZTE EINTRÄGE");
       for (const entry of latest5) {
