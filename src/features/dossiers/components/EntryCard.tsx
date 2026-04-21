@@ -11,7 +11,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Trash2, FolderInput, Check, Pin, PinOff, Tag, X, ExternalLink, CalendarClock } from "lucide-react";
 import { useState, KeyboardEvent } from "react";
 import { useUpdateEntryFollowup } from "../hooks/useEntryFollowups";
-import { format } from "date-fns";
+import { format, isPast, isToday } from "date-fns";
+import { Input as DateInput } from "@/components/ui/input";
 
 interface EntryCardProps {
   entry: DossierEntry;
