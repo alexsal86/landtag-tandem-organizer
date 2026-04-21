@@ -1,10 +1,12 @@
-import { Inbox, FolderOpen, FileText, Radio } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Inbox, FolderOpen, FileText, Radio, ChevronRight, ChevronDown } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { QuickCapture } from "./QuickCapture";
 import { GlobalEntrySearch } from "./GlobalEntrySearch";
 import { useInboxEntries } from "../hooks/useDossierEntries";
 import { useDossiers } from "../hooks/useDossiers";
+import type { Dossier } from "../types";
 
 type DossierTab = "eingang" | "radar" | "dossiers" | "artikel";
 
