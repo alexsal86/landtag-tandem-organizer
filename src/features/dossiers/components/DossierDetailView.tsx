@@ -8,13 +8,15 @@ import { DossierBriefingTab } from "./DossierBriefingTab";
 import { DossierQualityFields } from "./DossierQualityFields";
 import { DossierSourceWatchersPanel } from "./DossierSourceWatchersPanel";
 import { DossierReviewReminder } from "./DossierReviewReminder";
+import { DossierStakeholdersTab } from "./DossierStakeholdersTab";
+import { DossierTalkingPoints } from "./DossierTalkingPoints";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, BookOpenText, FileText, Link2, Loader2, NotebookPen, Settings2, Sparkles } from "lucide-react";
+import { ArrowLeft, BookOpenText, FileText, Link2, Loader2, NotebookPen, Settings2, Sparkles, Users, Mic, ChevronRight, Scroll, HelpCircle, Vote, MapPin } from "lucide-react";
 import { useState, useCallback, useEffect } from "react";
 import { trackPageVisit } from "@/hooks/useRecentlyVisited";
 import { DOSSIER_STATUS_OPTIONS, DOSSIER_PRIORITY_OPTIONS, ENTRY_TYPE_CONFIG, type EntryType } from "../types";
@@ -24,15 +26,17 @@ import { useTenantProfiles } from "@/hooks/useTenantProfiles";
 interface DossierDetailViewProps {
   dossierId: string;
   onBack: () => void;
+  onSelectDossier?: (id: string) => void;
 }
 
-export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps) {
+export function DossierDetailView({ dossierId, onBack, onSelectDossier }: DossierDetailViewProps) {
   const { data: dossiers } = useDossiers();
   const { data: entries, isLoading } = useDossierEntries(dossierId);
   const updateDossier = useUpdateDossier();
   const { data: tenantProfiles } = useTenantProfiles();
   const pinEntry = usePinEntry();
   const dossier = dossiers?.find((d) => d.id === dossierId);
+  const parentDossier = dossier?.parent_id ? dossiers?.find((d) => d.id === dossier.parent_id) : null;
   const [activeSection, setActiveSection] = useState("uebersicht");
 
   useEffect(() => {
@@ -48,6 +52,9 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
   const [editStatus, setEditStatus] = useState("");
   const [editPriority, setEditPriority] = useState("");
   const [editOwnerId, setEditOwnerId] = useState("unassigned");
+  const [editParentId, setEditParentId] = useState<string>("none");
+  const [editConstituency, setEditConstituency] = useState<string>("");
+  const [editLocations, setEditLocations] = useState<string>("");
 
   const handleTagClick = useCallback((tag: string) => {
     setTagFilter((curr) => (curr === tag ? null : tag));
@@ -61,6 +68,10 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
     link: Link2,
     email: FileText,
     zitat: BookOpenText,
+    drucksache: Scroll,
+    anfrage: HelpCircle,
+    rede: Mic,
+    abstimmung: Vote,
   };
   const filteredEntries = activeEntryFilter === "alle"
     ? entries
@@ -75,12 +86,29 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
     setEditStatus(dossier.status);
     setEditPriority(dossier.priority);
     setEditOwnerId(dossier.owner_id ?? "unassigned");
+    setEditParentId(dossier.parent_id ?? "none");
+    setEditConstituency(dossier.constituency_relevance ?? "");
+    setEditLocations((dossier.affected_locations ?? []).join(", "));
     setEditOpen(true);
   };
 
   const handleSaveEdit = () => {
+    const locations = editLocations
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
     updateDossier.mutate(
-      { id: dossierId, title: editTitle, summary: editSummary, status: editStatus, priority: editPriority, owner_id: editOwnerId === "unassigned" ? null : editOwnerId },
+      {
+        id: dossierId,
+        title: editTitle,
+        summary: editSummary,
+        status: editStatus,
+        priority: editPriority,
+        owner_id: editOwnerId === "unassigned" ? null : editOwnerId,
+        parent_id: editParentId === "none" ? null : editParentId,
+        constituency_relevance: editConstituency || null,
+        affected_locations: locations,
+      },
       { onSuccess: () => setEditOpen(false) }
     );
   };
@@ -97,6 +125,19 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1 min-w-0">
+          {parentDossier && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground mb-0.5">
+              <button
+                type="button"
+                onClick={() => onSelectDossier?.(parentDossier.id)}
+                className="hover:text-primary truncate max-w-[160px]"
+              >
+                {parentDossier.title}
+              </button>
+              <ChevronRight className="h-3 w-3 shrink-0" />
+              <span className="truncate font-medium text-foreground">{dossier?.title}</span>
+            </div>
+          )}
           <h2 className="text-lg font-semibold truncate">{dossier?.title ?? "Dossier"}</h2>
           {dossier?.summary && <p className="text-sm text-muted-foreground line-clamp-1">{dossier.summary}</p>}
         </div>
@@ -165,6 +206,12 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
           <TabsTrigger value="eintraege" className="gap-1.5">
             <NotebookPen className="h-4 w-4" /> Einträge
           </TabsTrigger>
+          <TabsTrigger value="akteure" className="gap-1.5">
+            <Users className="h-4 w-4" /> Akteure
+          </TabsTrigger>
+          <TabsTrigger value="sprechzettel" className="gap-1.5">
+            <Mic className="h-4 w-4" /> Sprechzettel
+          </TabsTrigger>
           <TabsTrigger value="verknuepfungen" className="gap-1.5">
             <Link2 className="h-4 w-4" /> Verknüpfungen
           </TabsTrigger>
@@ -173,19 +220,15 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
           </TabsTrigger>
         </TabsList>
 
-        {/* Übersicht (default) */}
         <TabsContent value="uebersicht" className="space-y-4">
           {dossier && <DossierSummaryTab dossier={dossier} recentEntries={entries} />}
         </TabsContent>
 
-        {/* Einträge */}
         <TabsContent value="eintraege" className="space-y-4">
           <SmartCapture dossierId={dossierId} />
-
-          {/* Entry type filter tabs */}
           <Tabs value={activeEntryFilter} onValueChange={setActiveEntryFilter}>
-              <TabsList className="flex-wrap h-auto gap-1">
-                <TabsTrigger value="alle">Alle</TabsTrigger>
+            <TabsList className="flex-wrap h-auto gap-1">
+              <TabsTrigger value="alle">Alle</TabsTrigger>
               {entryTypes.map((t) => {
                 const EntryIcon = entryTypeIcons[t];
                 return (
@@ -215,14 +258,20 @@ export function DossierDetailView({ dossierId, onBack }: DossierDetailViewProps)
           )}
         </TabsContent>
 
-        {/* Verknüpfungen */}
+        <TabsContent value="akteure" className="space-y-4">
+          <DossierStakeholdersTab dossierId={dossierId} />
+        </TabsContent>
+
+        <TabsContent value="sprechzettel" className="space-y-4">
+          {dossier && <DossierTalkingPoints dossierId={dossierId} dossierTitle={dossier.title} />}
+        </TabsContent>
+
         <TabsContent value="verknuepfungen" className="space-y-4">
           <DossierLinksView dossierId={dossierId} />
           <DossierSourceWatchersPanel dossierId={dossierId} />
           {dossier && <DossierQualityFields dossier={dossier} />}
         </TabsContent>
 
-        {/* Briefing */}
         <TabsContent value="briefing" className="space-y-4">
           {dossier && <DossierBriefingTab dossier={dossier} entries={entries} />}
         </TabsContent>
