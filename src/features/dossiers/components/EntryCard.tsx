@@ -11,7 +11,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Trash2, FolderInput, Check, Pin, PinOff, Tag, X, ExternalLink, CalendarClock } from "lucide-react";
 import { useState, KeyboardEvent } from "react";
 import { useUpdateEntryFollowup } from "../hooks/useEntryFollowups";
-import { format } from "date-fns";
+import { format, isPast, isToday } from "date-fns";
+import { Input as DateInput } from "@/components/ui/input";
 
 interface EntryCardProps {
   entry: DossierEntry;
@@ -40,9 +41,13 @@ export function EntryCard({ entry, onPin, highlight, onTagClick }: EntryCardProp
   const assignEntry = useAssignEntryToDossier();
   const deleteEntry = useDeleteEntry();
   const updateTags = useUpdateEntryTags();
+  const updateFollowup = useUpdateEntryFollowup();
   const [assigning, setAssigning] = useState(false);
   const [selectedDossier, setSelectedDossier] = useState<string>("");
   const [tagInput, setTagInput] = useState("");
+  const [followupInput, setFollowupInput] = useState<string>(
+    entry.followup_at ? format(new Date(entry.followup_at), "yyyy-MM-dd") : ""
+  );
 
   const isInbox = entry.dossier_id === null;
   const emailMeta = entry.entry_type === "email" && entry.metadata
@@ -85,6 +90,21 @@ export function EntryCard({ entry, onPin, highlight, onTagClick }: EntryCardProp
         <span className="font-medium truncate flex-1">
           {entry.title ? highlightText(entry.title, highlight ?? "") : 'Ohne Titel'}
         </span>
+        {entry.followup_at && (
+          <span
+            className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded shrink-0 ${
+              isPast(new Date(entry.followup_at)) && !isToday(new Date(entry.followup_at))
+                ? "bg-destructive/15 text-destructive"
+                : isToday(new Date(entry.followup_at))
+                ? "bg-warning/15 text-warning"
+                : "bg-primary/10 text-primary"
+            }`}
+            title="Wiedervorlage"
+          >
+            <CalendarClock className="h-2.5 w-2.5" />
+            {format(new Date(entry.followup_at), "dd.MM.")}
+          </span>
+        )}
         {!entry.is_curated && (
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-warning/10 text-warning shrink-0">roh</span>
         )}
@@ -174,6 +194,47 @@ export function EntryCard({ entry, onPin, highlight, onTagClick }: EntryCardProp
             <p className="text-[10px] text-muted-foreground mt-1.5 px-1">
               Enter speichert · Komma trennt · Backspace entfernt letzten
             </p>
+          </PopoverContent>
+        </Popover>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">
+              <CalendarClock className="h-3 w-3" /> {entry.followup_at ? "Wiedervorlage" : "Followup"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-2 space-y-2" side="bottom" align="start">
+            <DateInput
+              type="date"
+              value={followupInput}
+              onChange={(e) => setFollowupInput(e.target.value)}
+              className="h-8 text-xs"
+            />
+            <div className="flex items-center justify-between gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs"
+                disabled={!entry.followup_at && !followupInput}
+                onClick={() => {
+                  setFollowupInput("");
+                  updateFollowup.mutate({ entryId: entry.id, followupAt: null });
+                }}
+              >
+                Entfernen
+              </Button>
+              <Button
+                size="sm"
+                className="h-7 text-xs"
+                disabled={!followupInput}
+                onClick={() => {
+                  const iso = new Date(followupInput + "T09:00:00").toISOString();
+                  updateFollowup.mutate({ entryId: entry.id, followupAt: iso });
+                }}
+              >
+                Speichern
+              </Button>
+            </div>
           </PopoverContent>
         </Popover>
 

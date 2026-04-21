@@ -1,5 +1,5 @@
 import type { Dossier, DossierEntry, EntryType } from "../types";
-import { ENTRY_TYPE_CONFIG } from "../types";
+import { ENTRY_TYPE_CONFIG, PARLIAMENTARY_ENTRY_TYPES } from "../types";
 import { useDossierLinks } from "../hooks/useDossierLinks";
 import { Button } from "@/components/ui/button";
 import { Copy, Printer } from "lucide-react";
@@ -37,6 +37,10 @@ export function DossierBriefingTab({ dossier, entries }: DossierBriefingTabProps
 
   const latest5 = entries?.slice(0, 5) ?? [];
   const newSinceLastBriefing = entries?.filter((entry) => !dossier.last_briefing_at || new Date(entry.created_at) > new Date(dossier.last_briefing_at)) ?? [];
+  const parliamentaryEntries = (entries ?? [])
+    .filter((e) => PARLIAMENTARY_ENTRY_TYPES.includes(e.entry_type as EntryType))
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 10);
 
   const buildTextBriefing = () => {
     const lines: string[] = [];
@@ -66,6 +70,17 @@ export function DossierBriefingTab({ dossier, entries }: DossierBriefingTabProps
     if (dossier.risks_opportunities?.trim()) {
       lines.push("RISIKEN & CHANCEN");
       lines.push(dossier.risks_opportunities);
+      lines.push("");
+    }
+
+    if (parliamentaryEntries.length > 0) {
+      lines.push("PARLAMENTARISCHER STAND");
+      for (const entry of parliamentaryEntries) {
+        const date = format(new Date(entry.created_at), "dd.MM.yyyy", { locale: de });
+        const config = ENTRY_TYPE_CONFIG[entry.entry_type as EntryType] ?? { icon: "·", label: entry.entry_type };
+        lines.push(`  ${config.icon} [${date}] ${config.label}: ${entry.title || "Ohne Titel"}`);
+        if (entry.content) lines.push(`    ${entry.content.slice(0, 120)}${entry.content.length > 120 ? "…" : ""}`);
+      }
       lines.push("");
     }
 
@@ -169,6 +184,34 @@ export function DossierBriefingTab({ dossier, entries }: DossierBriefingTabProps
           <section>
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Neu seit letztem Briefing</h3>
             <p className="text-sm"><span className="font-medium">{newSinceLastBriefing.length}</span> neue Einträge seit {dossier.last_briefing_at ? format(new Date(dossier.last_briefing_at), "dd.MM.yyyy", { locale: de }) : "Beginn"}.</p>
+          </section>
+        )}
+
+        {parliamentaryEntries.length > 0 && (
+          <section>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Parlamentarischer Stand</h3>
+            <div className="space-y-1.5">
+              {parliamentaryEntries.map((entry) => {
+                const config = ENTRY_TYPE_CONFIG[entry.entry_type as EntryType] ?? { icon: "📄", label: entry.entry_type };
+                return (
+                  <div key={entry.id} className="text-sm flex items-start gap-2">
+                    <span className="shrink-0 text-xs mt-0.5">{config.icon}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline gap-2 flex-wrap">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{config.label}</span>
+                        <span className="font-medium">{entry.title || "Ohne Titel"}</span>
+                        <span className="text-muted-foreground text-xs">
+                          {format(new Date(entry.created_at), "dd.MM.yyyy", { locale: de })}
+                        </span>
+                      </div>
+                      {entry.content && (
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{entry.content}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </section>
         )}
 
