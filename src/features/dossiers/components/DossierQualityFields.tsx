@@ -98,7 +98,7 @@ export function DossierQualityFields({ dossier }: DossierQualityFieldsProps) {
 
       {dirty && values.positions !== (dossier.positions ?? "") && (dossier.positions ?? "").trim() && (
         <Input
-          placeholder="Änderungsgrund (z. B. „Fraktionsbeschluss 12.03.")"
+          placeholder='Änderungsgrund (z. B. "Fraktionsbeschluss 12.03.")'
           value={changeReason}
           onChange={(e) => setChangeReason(e.target.value)}
         />
