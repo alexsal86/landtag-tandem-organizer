@@ -8,6 +8,8 @@ import { useDashboardDeadlines } from '@/hooks/useDashboardDeadlines';
 import { NewsWidget } from '@/components/widgets/NewsWidget';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { CalendarDays, ClipboardList, Newspaper } from 'lucide-react';
+import { useResolvedUserRole } from '@/hooks/useResolvedUserRole';
+import { BriefingComposerCard, TodayBriefingPanel } from '@/features/briefings';
 
 interface DashboardWidgetContainerProps {
   title: ReactNode;
