@@ -2882,6 +2882,65 @@ export type Database = {
           },
         ]
       }
+      daily_briefing_reads: {
+        Row: {
+          briefing_id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          briefing_id: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          briefing_id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_briefing_reads_briefing_id_fkey"
+            columns: ["briefing_id"]
+            isOneToOne: false
+            referencedRelation: "daily_briefings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_briefings: {
+        Row: {
+          author_id: string
+          briefing_date: string
+          content: string
+          created_at: string
+          id: string
+          tenant_id: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          briefing_date: string
+          content: string
+          created_at?: string
+          id?: string
+          tenant_id: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          briefing_date?: string
+          content?: string
+          created_at?: string
+          id?: string
+          tenant_id?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       dashboard_layouts: {
         Row: {
           created_at: string
@@ -3556,12 +3615,14 @@ export type Database = {
           external_published_at: string | null
           file_name: string | null
           file_path: string | null
+          followup_at: string | null
           id: string
           is_curated: boolean
           is_pinned: boolean
           metadata: Json | null
           source_hash: string | null
           source_url: string | null
+          tags: string[]
           tenant_id: string
           title: string | null
           title_fingerprint: string | null
@@ -3576,12 +3637,14 @@ export type Database = {
           external_published_at?: string | null
           file_name?: string | null
           file_path?: string | null
+          followup_at?: string | null
           id?: string
           is_curated?: boolean
           is_pinned?: boolean
           metadata?: Json | null
           source_hash?: string | null
           source_url?: string | null
+          tags?: string[]
           tenant_id: string
           title?: string | null
           title_fingerprint?: string | null
@@ -3596,12 +3659,14 @@ export type Database = {
           external_published_at?: string | null
           file_name?: string | null
           file_path?: string | null
+          followup_at?: string | null
           id?: string
           is_curated?: boolean
           is_pinned?: boolean
           metadata?: Json | null
           source_hash?: string | null
           source_url?: string | null
+          tags?: string[]
           tenant_id?: string
           title?: string | null
           title_fingerprint?: string | null
@@ -3656,6 +3721,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "dossier_links_dossier_id_fkey"
+            columns: ["dossier_id"]
+            isOneToOne: false
+            referencedRelation: "dossiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dossier_position_versions: {
+        Row: {
+          change_reason: string | null
+          content_html: string | null
+          created_at: string
+          created_by: string
+          dossier_id: string
+          id: string
+          tenant_id: string
+          valid_from: string
+        }
+        Insert: {
+          change_reason?: string | null
+          content_html?: string | null
+          created_at?: string
+          created_by: string
+          dossier_id: string
+          id?: string
+          tenant_id: string
+          valid_from?: string
+        }
+        Update: {
+          change_reason?: string | null
+          content_html?: string | null
+          created_at?: string
+          created_by?: string
+          dossier_id?: string
+          id?: string
+          tenant_id?: string
+          valid_from?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dossier_position_versions_dossier_id_fkey"
             columns: ["dossier_id"]
             isOneToOne: false
             referencedRelation: "dossiers"
@@ -3730,8 +3836,107 @@ export type Database = {
           },
         ]
       }
+      dossier_stakeholders: {
+        Row: {
+          contact_id: string
+          created_at: string
+          created_by: string
+          dossier_id: string
+          id: string
+          influence: number
+          last_touch_at: string | null
+          note: string | null
+          stance: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          created_by: string
+          dossier_id: string
+          id?: string
+          influence?: number
+          last_touch_at?: string | null
+          note?: string | null
+          stance?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          created_by?: string
+          dossier_id?: string
+          id?: string
+          influence?: number
+          last_touch_at?: string | null
+          note?: string | null
+          stance?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dossier_stakeholders_dossier_id_fkey"
+            columns: ["dossier_id"]
+            isOneToOne: false
+            referencedRelation: "dossiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dossier_talking_points: {
+        Row: {
+          content: Json
+          created_at: string
+          created_by: string
+          dossier_id: string
+          for_appointment_id: string | null
+          id: string
+          tenant_id: string
+          title: string | null
+          updated_at: string
+          valid_until: string | null
+        }
+        Insert: {
+          content?: Json
+          created_at?: string
+          created_by: string
+          dossier_id: string
+          for_appointment_id?: string | null
+          id?: string
+          tenant_id: string
+          title?: string | null
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          created_by?: string
+          dossier_id?: string
+          for_appointment_id?: string | null
+          id?: string
+          tenant_id?: string
+          title?: string | null
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dossier_talking_points_dossier_id_fkey"
+            columns: ["dossier_id"]
+            isOneToOne: false
+            referencedRelation: "dossiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dossiers: {
         Row: {
+          affected_locations: string[]
+          constituency_relevance: string | null
           created_at: string
           created_by: string
           id: string
@@ -3740,6 +3945,7 @@ export type Database = {
           notes_html: string | null
           open_questions: string | null
           owner_id: string | null
+          parent_id: string | null
           positions: string | null
           priority: string
           review_interval_days: number | null
@@ -3752,6 +3958,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          affected_locations?: string[]
+          constituency_relevance?: string | null
           created_at?: string
           created_by: string
           id?: string
@@ -3760,6 +3968,7 @@ export type Database = {
           notes_html?: string | null
           open_questions?: string | null
           owner_id?: string | null
+          parent_id?: string | null
           positions?: string | null
           priority?: string
           review_interval_days?: number | null
@@ -3772,6 +3981,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          affected_locations?: string[]
+          constituency_relevance?: string | null
           created_at?: string
           created_by?: string
           id?: string
@@ -3780,6 +3991,7 @@ export type Database = {
           notes_html?: string | null
           open_questions?: string | null
           owner_id?: string | null
+          parent_id?: string | null
           positions?: string | null
           priority?: string
           review_interval_days?: number | null
@@ -3804,6 +4016,13 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dossiers_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "dossiers"
             referencedColumns: ["id"]
           },
           {
@@ -9339,6 +9558,89 @@ export type Database = {
         }
         Relationships: []
       }
+      social_approval_comments: {
+        Row: {
+          author_id: string
+          comment: string
+          content_item_id: string
+          created_at: string
+          id: string
+          is_change_request: boolean
+          tenant_id: string
+        }
+        Insert: {
+          author_id: string
+          comment: string
+          content_item_id: string
+          created_at?: string
+          id?: string
+          is_change_request?: boolean
+          tenant_id: string
+        }
+        Update: {
+          author_id?: string
+          comment?: string
+          content_item_id?: string
+          created_at?: string
+          id?: string
+          is_change_request?: boolean
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_approval_comments_content_item_id_fkey"
+            columns: ["content_item_id"]
+            isOneToOne: false
+            referencedRelation: "social_content_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_assets: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_size: number | null
+          height: number | null
+          id: string
+          mime_type: string | null
+          storage_path: string
+          tags: string[]
+          tenant_id: string
+          updated_at: string
+          uploaded_by: string
+          width: number | null
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          height?: number | null
+          id?: string
+          mime_type?: string | null
+          storage_path: string
+          tags?: string[]
+          tenant_id: string
+          updated_at?: string
+          uploaded_by: string
+          width?: number | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          height?: number | null
+          id?: string
+          mime_type?: string | null
+          storage_path?: string
+          tags?: string[]
+          tenant_id?: string
+          updated_at?: string
+          uploaded_by?: string
+          width?: number | null
+        }
+        Relationships: []
+      }
       social_campaigns: {
         Row: {
           created_at: string
@@ -9509,6 +9811,7 @@ export type Database = {
       social_content_items: {
         Row: {
           alt_text: string | null
+          appointment_id: string | null
           approval_required: boolean
           approval_state: string
           approved_at: string | null
@@ -9533,6 +9836,9 @@ export type Database = {
           performance_notes: string | null
           publish_link: string | null
           published_at: string | null
+          recurrence_group_id: string | null
+          recurrence_rule: Json | null
+          reminder_sent_at: string | null
           responsible_user_id: string | null
           scheduled_for: string | null
           tenant_id: string
@@ -9542,6 +9848,7 @@ export type Database = {
         }
         Insert: {
           alt_text?: string | null
+          appointment_id?: string | null
           approval_required?: boolean
           approval_state?: string
           approved_at?: string | null
@@ -9566,6 +9873,9 @@ export type Database = {
           performance_notes?: string | null
           publish_link?: string | null
           published_at?: string | null
+          recurrence_group_id?: string | null
+          recurrence_rule?: Json | null
+          reminder_sent_at?: string | null
           responsible_user_id?: string | null
           scheduled_for?: string | null
           tenant_id: string
@@ -9575,6 +9885,7 @@ export type Database = {
         }
         Update: {
           alt_text?: string | null
+          appointment_id?: string | null
           approval_required?: boolean
           approval_state?: string
           approved_at?: string | null
@@ -9599,6 +9910,9 @@ export type Database = {
           performance_notes?: string | null
           publish_link?: string | null
           published_at?: string | null
+          recurrence_group_id?: string | null
+          recurrence_rule?: Json | null
+          reminder_sent_at?: string | null
           responsible_user_id?: string | null
           scheduled_for?: string | null
           tenant_id?: string
@@ -9664,6 +9978,8 @@ export type Database = {
           media_type: string | null
           platform_metadata: Json
           platform_status: string
+          publish_link: string | null
+          published_at: string | null
           tenant_id: string
           updated_at: string
         }
@@ -9679,6 +9995,8 @@ export type Database = {
           media_type?: string | null
           platform_metadata?: Json
           platform_status?: string
+          publish_link?: string | null
+          published_at?: string | null
           tenant_id: string
           updated_at?: string
         }
@@ -9694,6 +10012,8 @@ export type Database = {
           media_type?: string | null
           platform_metadata?: Json
           platform_status?: string
+          publish_link?: string | null
+          published_at?: string | null
           tenant_id?: string
           updated_at?: string
         }
@@ -9727,6 +10047,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      social_hashtag_sets: {
+        Row: {
+          channel_slug: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          hashtags: string[]
+          id: string
+          name: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          channel_slug?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          hashtags?: string[]
+          id?: string
+          name: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          channel_slug?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          hashtags?: string[]
+          id?: string
+          name?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       social_planner_notes: {
         Row: {
@@ -10925,6 +11281,7 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean
+          is_template: boolean
           name: string
           settings: Json | null
           updated_at: string
@@ -10935,6 +11292,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          is_template?: boolean
           name: string
           settings?: Json | null
           updated_at?: string
@@ -10945,6 +11303,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          is_template?: boolean
           name?: string
           settings?: Json | null
           updated_at?: string
