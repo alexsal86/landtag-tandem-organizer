@@ -51,10 +51,13 @@ export function useTodayBriefings() {
           .eq("user_id", userId),
       ]);
 
-      const profileMap = new Map(
-        (profilesRes.data ?? []).map((p) => [p.user_id, p]),
+      type ProfileLite = { user_id: string; display_name: string | null; avatar_url: string | null };
+      const profileMap = new Map<string, ProfileLite>(
+        ((profilesRes.data ?? []) as ProfileLite[]).map((p) => [p.user_id, p]),
       );
-      const readSet = new Set((readsRes.data ?? []).map((r) => r.briefing_id));
+      const readSet = new Set(
+        ((readsRes.data ?? []) as Array<{ briefing_id: string }>).map((r) => r.briefing_id),
+      );
 
       return eligible.map((b) => {
         const profile = profileMap.get(b.author_id);
