@@ -111,9 +111,13 @@ function NewsWidgetCard() {
 }
 
 export function MyWorkDashboardTab() {
+  const { isAbgeordneter, isEmployee } = useResolvedUserRole();
+
   return (
     <div className="space-y-6">
       <DashboardHeader />
+      {isAbgeordneter && <TodayBriefingPanel />}
+      {isEmployee && !isAbgeordneter && <BriefingComposerCard />}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,35fr)_minmax(0,35fr)_minmax(0,30fr)] gap-6 items-start">
         <DeadlinesWidget />
         <AppointmentsWidget />
