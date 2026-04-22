@@ -1,145 +1,66 @@
 
 
-## Dossiers für Abgeordnetenbüros: nächste Ausbaustufe
+## Tagesbriefing fürs Dashboard
 
-### Kurze Antwort zur xWiki-Frage
+Mitarbeiter (inkl. Büroleitung/Praktikant) verfassen ein freiwilliges Tagesbriefing für „ihren" Abgeordneten. Es erscheint **am Tag der Gültigkeit** als Kachel im Dashboard des Abgeordneten – aber nur, wenn es **mindestens am Vortag** geschrieben wurde. So wird verhindert, dass spontane „Last-Minute"-Briefings den Morgenüberblick stören.
 
-**xWiki ist das falsche Vorbild.** Es ist ein generisches Enterprise-Wiki (Page-Tree, Wiki-Syntax, Makros, Berechtigungen). Was es gut macht, hast du im Kern schon: Lexical-Block-Editor (≈ strukturierte Seiten), Verknüpfungen, Tags, Volltext (`GlobalEntrySearch`), Tenant-/Rollen-RLS.
+### Verhalten
 
-Was Abgeordnetenbüros wirklich brauchen, **kann xWiki nicht**: Bezug zu Wahlkreis, Stakeholdern, parlamentarischen Vorgängen, Pressestand, Positionierung gegenüber Fraktion, Briefing-zu-Termin-Anbindung. Genau hier setzen wir an – nicht bei „mehr Wiki", sondern bei **politischer Arbeitslogik**.
+- **Verfassen**: Mitarbeiter sieht im Dashboard eine kompakte Kachel „Tagesbriefing für morgen" (oder folgenden Werktag, wenn morgen Wochenende ist).
+  - Felder: Titel (optional), Freitext (Markdown/Mehrzeilig), Datum-Auswahl (Standard = nächster Werktag, frühestens „heute+1").
+  - Mehrere Mitarbeiter können je eigenes Briefing für denselben Tag schreiben (kein Lock, kein Co-Edit – bewusst schlank).
+  - Eigenes Briefing bleibt bis Mitternacht des Zieltages editierbar; danach archiviert/read-only.
+- **Lesen (Abgeordneter)**: Auf dem Dashboard erscheint ganz oben (über `DashboardHeader`-Grid, unter Begrüßung) eine Sektion **„Briefing für heute"** mit allen für **heute** gültigen Briefings, die **vor dem heutigen Tag** erstellt wurden (`created_at::date < today AND briefing_date = today`).
+  - Pro Briefing: Avatar/Name des Autors, Erstellungszeitpunkt („gestern, 18:42"), Titel, Inhalt (kollabierbar bei >300 Zeichen), „Gelesen"-Häkchen.
+  - „Gelesen" wird pro (briefing × user) gespeichert; gelesene Briefings rutschen optisch nach unten und werden ausgegraut.
+  - Leerer Zustand: dezenter Hinweis „Heute kein Briefing vom Team" – Kachel wird *nicht* angezeigt, wenn keine Briefings existieren (kein Rauschen).
+- **Sichtbarkeit**: Tenant-isoliert. Briefing geht an **alle Abgeordneten des Tenants** (analog zu bestehender „Fallback Abgeordneter"-Logik). Kein Empfänger-Picker im MVP.
+- **Benachrichtigung**: Keine Push-Notification im MVP – das Dashboard ist der Kanal. (Erweiterbar später.)
 
-Übernehmenswert aus xWiki ist genau **eine** Idee: **hierarchische Eltern-Kind-Dossiers** (Mobilität → Mobilität/ÖPNV → Mobilität/ÖPNV/Streckenausbau X). Das fehlt heute.
+### Datenmodell (Migration)
 
----
+Neue Tabelle `daily_briefings`:
+- `id uuid pk`, `tenant_id uuid not null`, `author_id uuid not null` (auth.users)
+- `briefing_date date not null` – der Tag, für den es gilt
+- `title text null`, `content text not null`
+- `created_at timestamptz default now()`, `updated_at timestamptz`
+- Constraint via Trigger: `briefing_date > created_at::date` (mindestens Vortag-Regel auf DB-Ebene).
+- Index `(tenant_id, briefing_date)`.
 
-### Lücken im heutigen Dossier-System
+Neue Tabelle `daily_briefing_reads`:
+- `briefing_id uuid fk`, `user_id uuid`, `read_at timestamptz default now()`, PK `(briefing_id, user_id)`.
 
-Heute vorhanden: Übersicht, Notizen (Lexical), Einträge (Inbox-Typen), Verknüpfungen, Briefing, Quality-Fields (offene Fragen, Positionen, Risiken), Quellen-Watcher, Review-Reminder, globale Suche.
+**RLS**:
+- `daily_briefings` SELECT: Tenant-Mitglieder.
+- INSERT/UPDATE/DELETE: nur `author_id = auth.uid()` UND Tenant-Mitglied. UPDATE zusätzlich nur solange `briefing_date >= current_date`.
+- `daily_briefing_reads`: nur eigene Reads (user_id = auth.uid()).
 
-Was für MdB-Arbeit fehlt:
+### Frontend
 
-1. **Hierarchie/Struktur** – Themen sind verschachtelt (Klima > Energie > Wasserstoff). Heute flach.
-2. **Stakeholder-Mapping** – Wer ist „pro/contra/neutral", welche Forderungen, letzte Berührung? Heute nur lose Kontakt-Links.
-3. **Positionsentwicklung über Zeit** – `positions` ist ein Freitextfeld. Es fehlt die Versionierung („Wie hieß unsere Linie im März?").
-4. **Parlamentarischer Kontext** – Drucksachen, Anfragen, Reden, Abstimmungen, Ausschuss-Sitzungen zum Thema. Heute nicht abbildbar.
-5. **Sprechzettel/Q&A** – Briefing erzeugt heute nur Lagebild; Mitarbeitende brauchen schnell „3 Kernbotschaften + 5 kritische Fragen mit Antwort".
-6. **Wahlkreis-Bezug** – „Was bedeutet das Thema *konkret* für meinen Wahlkreis?" (betroffene Orte, Zahlen, lokale Akteure).
-7. **Anliegen/Fallakten-Aggregation** – Wenn 12 Bürger:innen zum gleichen Thema schreiben, sollte das Dossier das spiegeln (heute nur 1:1-Verknüpfung).
-8. **Wiedervorlage je Eintrag** – Heute nur Review-Intervall fürs ganze Dossier.
+**Neue Hooks** (`src/features/briefings/hooks/`):
+- `useTodayBriefings()` – lädt für aktuellen Tenant alle Briefings mit `briefing_date = today AND created_at::date < today`, joined Autor-Profile + eigene Read-Status.
+- `useMyDraftBriefing(targetDate)` – lädt/legt eigenes Briefing für Zieltag an.
+- `useMarkBriefingRead()`.
 
----
+**Neue Komponenten** (`src/features/briefings/components/`):
+- `BriefingComposerCard.tsx` – Mitarbeiter-Kachel mit Datepicker (min = morgen/nächster Werktag), Textarea, Speichern/Verwerfen, Status-Badge („Geplant für Mi, 24.4.").
+- `TodayBriefingPanel.tsx` – Abgeordneten-Kachel; Liste der heute gültigen Briefings mit „Gelesen"-Toggle und kollabierbarem Inhalt.
 
-### Vorschlag – 6 Bausteine, MVP-tauglich, baut auf bestehendem auf
+**Integration in `MyWorkDashboardTab.tsx`**:
+- Über dem bestehenden 3-Spalten-Grid eine zusätzliche Zeile:
+  - **Wenn `isAbgeordneter`** → `<TodayBriefingPanel/>` (rendert nichts bei leerer Liste).
+  - **Wenn Mitarbeiter/Büroleitung/Praktikant** → `<BriefingComposerCard/>` (kompakt, ein-/ausklappbar, default eingeklappt mit Button „Tagesbriefing schreiben").
+- Rolle wird über bereits vorhandenes `getRoleFlags`/Role-Hook bezogen.
 
-**1) Eltern-Kind-Hierarchie (xWiki-Idee, schlank umgesetzt)**
-- Spalte `dossiers.parent_id uuid null` + Breadcrumb in `DossierDetailView`-Header.
-- Sidepanel zeigt Dossier-Liste als Tree (collapsible), max. 3 Ebenen sinnvoll.
-- Beim Anlegen: optional „Unter-Dossier von …".
+### Out of Scope (bewusst)
 
-**2) Stakeholder-Mapping (eigener Tab)**
-- Neue Tabelle `dossier_stakeholders`: `dossier_id`, `contact_id`, `stance` ('pro'|'contra'|'neutral'|'unklar'), `influence` (1–5), `last_touch_at`, `note`.
-- Neuer Tab **„Akteure"** im Detail: Matrix (Einfluss × Position) als kleines Quadranten-Diagramm + Liste mit Stance-Badge.
-- Jeder Akteur verlinkt auf `Contact` → letzte Interaktion aus Kontakthistorie wird inline gezeigt.
+- Empfänger-Auswahl, Anhänge, Mentions, Verlinkung zu Dossiers/Terminen → Phase 2.
+- Push/E-Mail-Benachrichtigung → Phase 2.
+- Mobile-App-Integration → später.
 
-**3) Positions-Verlauf (Versionierung)**
-- Neue Tabelle `dossier_position_versions`: `dossier_id`, `content_html`, `valid_from`, `created_by`, `change_reason`.
-- Im Quality-Fields-Block: „Position aktualisieren" → speichert alte Fassung, behält Audit-Spur. Anzeige als kompakter Verlauf („Stand 12.03., geändert wegen Fraktionsbeschluss X").
+### Technische Dateien
 
-**4) Parlamentarischer Kontext (eigener Eintragstyp)**
-- `EntryType` um 4 Werte erweitern: `drucksache`, `anfrage`, `rede`, `abstimmung`.
-- `EntryCard` zeigt typ-spezifisches Icon + strukturierte Felder aus `metadata` (z. B. Drucksachen-Nr., Datum, Ausschuss, Abstimmungsergebnis ja/nein/enth.).
-- Im Briefing-Tab eigene Sektion „Parlamentarischer Stand" zieht diese Einträge automatisch chronologisch.
-
-**5) Sprechzettel-Generator (Erweiterung Briefing-Tab)**
-- Im bestehenden `DossierBriefingTab`: zusätzlicher Modus **„Sprechzettel"** neben Lagebild.
-- Strukturierte Felder: 3 Kernbotschaften, 5 kritische Fragen + Antworten, „Was nicht sagen", Quellenfußnoten.
-- Speicherung in `dossier_talking_points` (`dossier_id`, `for_appointment_id` optional, `content_jsonb`, `valid_until`). Termin-Sidebar bekommt Button „Sprechzettel aus Dossier ziehen".
-
-**6) Wahlkreis- und Anliegen-Aggregation**
-- `dossiers.constituency_relevance` (text, Markdown) + `dossiers.affected_locations` (text[]).
-- Auf Übersichts-Tab eine Kachel **„Anliegen aus dem Wahlkreis"**: zählt Fallakten/Vorgänge mit gleichem `topic_id` oder via neuer Tag-Heuristik, zeigt Trend (letzte 30 Tage) und Top-3-Anfragen mit Deep-Link.
-
-**Plus: Wiedervorlage pro Eintrag**
-- `dossier_entries.followup_at timestamptz null`. „Mein Radar"-View bekommt Sektion „Fällige Eintragsfollowups". Minimaler Aufwand, hoher Nutzen.
-
----
-
-### Was wir bewusst NICHT bauen (um Fokus zu halten)
-
-- Echte Wiki-Hierarchie mit Wiki-Syntax/Makros (overkill, Lexical reicht).
-- KI-Auto-Zusammenfassung – existiert als Out-of-Scope im Umsetzungsplan, kommt später.
-- Externe Drucksachen-API-Anbindung (Bundestag-OpenData) – erst wenn manuelle Erfassung im Alltag ankommt.
-- Komplexe Berechtigungsmatrix pro Dossier – Tenant-RLS reicht.
-
----
-
-### Migration (ein Schritt)
-
-```sql
-ALTER TABLE dossiers
-  ADD COLUMN parent_id uuid REFERENCES dossiers(id) ON DELETE SET NULL,
-  ADD COLUMN constituency_relevance text,
-  ADD COLUMN affected_locations text[] DEFAULT '{}';
-
-ALTER TABLE dossier_entries
-  ADD COLUMN followup_at timestamptz;
-
-CREATE TABLE dossier_stakeholders (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  dossier_id uuid NOT NULL REFERENCES dossiers(id) ON DELETE CASCADE,
-  contact_id uuid NOT NULL,
-  tenant_id uuid NOT NULL,
-  stance text NOT NULL DEFAULT 'unklar',
-  influence smallint NOT NULL DEFAULT 3,
-  last_touch_at timestamptz,
-  note text,
-  created_by uuid NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (dossier_id, contact_id)
-);
-
-CREATE TABLE dossier_position_versions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  dossier_id uuid NOT NULL REFERENCES dossiers(id) ON DELETE CASCADE,
-  tenant_id uuid NOT NULL,
-  content_html text,
-  valid_from timestamptz NOT NULL DEFAULT now(),
-  change_reason text,
-  created_by uuid NOT NULL
-);
-
-CREATE TABLE dossier_talking_points (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  dossier_id uuid NOT NULL REFERENCES dossiers(id) ON DELETE CASCADE,
-  tenant_id uuid NOT NULL,
-  for_appointment_id uuid,
-  content jsonb NOT NULL,
-  valid_until timestamptz,
-  created_by uuid NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-```
-RLS analog zu `dossiers` (tenant-basiert).
-
----
-
-### Files (geplante Änderungen)
-
-- **Edit** `src/features/dossiers/types.ts` – neue Typen, EntryType erweitern.
-- **Edit** `src/features/dossiers/components/DossiersSidePanel.tsx` – Tree-Darstellung mit `parent_id`.
-- **Edit** `src/features/dossiers/components/DossierDetailView.tsx` – Tabs „Akteure", „Sprechzettel"; Breadcrumb.
-- **Edit** `src/features/dossiers/components/DossierSummaryTab.tsx` – Kachel „Anliegen aus Wahlkreis".
-- **Edit** `src/features/dossiers/components/DossierBriefingTab.tsx` – Sprechzettel-Modus.
-- **Edit** `src/features/dossiers/components/DossierQualityFields.tsx` – „Position aktualisieren" mit Verlauf.
-- **Edit** `src/features/dossiers/components/EntryCard.tsx` – Drucksache/Rede/Abstimmung-Rendering, Followup-Datum.
-- **Edit** `src/features/dossiers/components/MeinRadarView.tsx` – Sektion „Eintragsfollowups".
-- **Neu** `src/features/dossiers/components/DossierStakeholdersTab.tsx` (+ Quadranten-Visual).
-- **Neu** `src/features/dossiers/components/DossierTalkingPoints.tsx`.
-- **Neu** `src/features/dossiers/hooks/useDossierStakeholders.ts`, `usePositionVersions.ts`, `useTalkingPoints.ts`.
-- **Edit** `src/components/calendar/AppointmentDetailsSidebar.tsx` – Button „Sprechzettel aus Dossier ziehen".
-
-### Rollout in 2 Sprints
-
-- **Sprint 1**: Migration + Hierarchie (1) + Stakeholder-Tab (2) + Followup-Felder.
-- **Sprint 2**: Positions-Versionierung (3) + parlamentarische Eintragstypen (4) + Sprechzettel (5) + Wahlkreis-Aggregation (6).
+- **Migration**: `daily_briefings`, `daily_briefing_reads`, Trigger, RLS-Policies.
+- **Neu**: `src/features/briefings/{types.ts, hooks/useTodayBriefings.ts, hooks/useMyDraftBriefing.ts, hooks/useMarkBriefingRead.ts, components/BriefingComposerCard.tsx, components/TodayBriefingPanel.tsx, index.ts}`.
+- **Edit**: `src/components/my-work/MyWorkDashboardTab.tsx` (rollenbasierte Einblendung der neuen Sektion).
 
