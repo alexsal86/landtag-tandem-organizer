@@ -156,7 +156,7 @@ export function BriefingComposerCard() {
               id="briefing-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="z. B. „Schwerpunkt Bildungspolitik""
+              placeholder='z. B. "Schwerpunkt Bildungspolitik"'
               maxLength={140}
             />
           </div>
