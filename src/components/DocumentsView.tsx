@@ -293,7 +293,7 @@ export function DocumentsView() {
 
     toast({ title: "Einstellung nur lokal gespeichert" });
     setShowArchiveSettings(false);
-  const saveArchiveSettings = () => { localStorage.setItem('autoArchiveDays', autoArchiveDays.toString()); toast({ title: "Einstellungen gespeichert" }); setShowArchiveSettings(false); };
+  };
   const getLetterActionLabel = (action: 'task' | 'subtask' | 'edit' | 'restore' | 'delete') => {
     const labels = {
       task: "Brief als Aufgabe anlegen",
@@ -587,5 +587,4 @@ export function DocumentsView() {
       </div>
     </div>
   );
-}
 }
