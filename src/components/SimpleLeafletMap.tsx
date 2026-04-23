@@ -438,9 +438,25 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
         padding: [paddingValue, paddingValue] as [number, number],
         maxZoom: 12,
       });
-    } else if (!hasFittedBoundsRef.current && showPartyAssociations && associations.length > 0 && !districts.length) {
-      hasFittedBoundsRef.current = true;
-      map.setView([48.7758, 9.1829], 8);
+    } else if (!hasFittedBoundsRef.current) {
+      // Fallback: if no polygons rendered, fit to marker centers so users see BW, not all of Europe
+      const markerLatLngs: L.LatLng[] = [];
+      districts.forEach((d) => {
+        if (d.center_coordinates && typeof (d.center_coordinates as any).lat === 'number') {
+          const c = d.center_coordinates as { lat: number; lng: number };
+          markerLatLngs.push(L.latLng(c.lat, c.lng));
+        }
+      });
+      if (markerLatLngs.length > 0) {
+        hasFittedBoundsRef.current = true;
+        map.fitBounds(L.latLngBounds(markerLatLngs), {
+          padding: [20, 20] as [number, number],
+          maxZoom: 11,
+        });
+      } else if (showPartyAssociations && associations.length > 0 && !districts.length) {
+        hasFittedBoundsRef.current = true;
+        map.setView([48.7758, 9.1829], 8);
+      }
     }
   }, [districts, selectedDistrict, showPartyAssociations, associations]);
 
