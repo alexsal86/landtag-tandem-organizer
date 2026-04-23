@@ -1,35 +1,34 @@
 
 
-## Fix: Dokumente-Unterseite lädt nicht
+## Fix: Wahlkreis-Polygone werden auf der Karte nicht angezeigt
 
-### Ursache
+### Befund
 
-In `src/components/DocumentsView.tsx` existiert die Funktion `saveArchiveSettings` **doppelt** und die erste Variante wird nicht korrekt geschlossen:
+- DB-Check (`election_districts`): alle 70 Wahlkreise haben gültige `boundaries` als `MultiPolygon` (jsonb), `center_coordinates` als `{lat,lng}` im BW-Bereich (47.6–49.6 / 7.7–10.2). Daten sind also intakt.
+- Im Screenshot werden die nummerierten **Marker** korrekt geladen (also kommen die Daten im Frontend an), aber **kein einziges Polygon** wird gezeichnet, und die Karte ist auf den Initial-Zoom (ganz Mitteleuropa) stehen geblieben — was beweist, dass `geoLayer.getBounds()` nie ausgeführt wurde, weil der Polygon-Layer leer geblieben ist.
+- Ursache in `src/components/SimpleLeafletMap.tsx` (Zeilen 173–187): Es wird ein **nacktes Array von Features** an `L.geoJSON(geoJsonFeatures as any, …)` übergeben. Leaflets `L.geoJSON` erwartet entweder ein einzelnes `Feature`, ein `Geometry`-Objekt oder eine **`FeatureCollection`** — ein Array wird nicht zuverlässig verarbeitet (in unserer Konstellation gar nicht). Folge: Layer leer, kein `fitBounds`, kein Polygon sichtbar.
 
-```text
-Zeile 268  const saveArchiveSettings = async () => {   ← neue tenantweite Variante
-   …
-Zeile 295    setShowArchiveSettings(false);            ← hier fehlt das schließende };
-Zeile 296  const saveArchiveSettings = () => { … };    ← alte Legacy-Variante, Re-Deklaration
-```
+### Fix
 
-Folgen:
-- TypeScript/Vite-Build-Fehler („Cannot redeclare block-scoped variable 'saveArchiveSettings'" + fehlendes `}`).
-- Der per `lazyWithRetry` geladene Chunk schlägt beim Parse fehl, `lazyWithRetry` reloadet einmal und gibt dann auf → die Route `/documents` zeigt nichts an.
+Eine kleine, gezielte Änderung in `src/components/SimpleLeafletMap.tsx`:
 
-### Geplante Änderung
+1. Die zusammengebauten Features in eine **echte `FeatureCollection`** wrappen, bevor sie an `L.geoJSON` übergeben werden:
+   ```ts
+   const featureCollection = { type: 'FeatureCollection', features: geoJsonFeatures };
+   const geoLayer = L.geoJSON(featureCollection as any, { style, onEachFeature });
+   ```
+2. Einen kurzen `debugConsole.log` davor („rendering N polygon features"), damit künftige Datenprobleme sofort sichtbar sind.
+3. Fallback-`fitBounds`: Wenn (aus welchem Grund auch immer) keine Polygone, aber Marker mit `center_coordinates` vorhanden sind, soll die Karte beim ersten Render **trotzdem** auf die Marker-Bounds zoomen statt auf Stuttgart bei Zoom 8 stehen zu bleiben.
 
-Eine einzige, saubere `saveArchiveSettings`-Implementierung behalten – die neue, **tenantweite** Variante (sie persistiert in `app_settings` und fällt korrekt auf localStorage zurück). Die alte Zeile 296 wird vollständig entfernt; der Funktionsblock von Zeile 268 wird mit `};` korrekt abgeschlossen.
-
-Konkret in `src/components/DocumentsView.tsx`:
-
-- Zeilen 268–296 ersetzen durch **eine** Funktion `saveArchiveSettings` (async, tenantweit, mit Toast-Feedback und korrektem `};`).
-- `getLetterActionLabel` (ab Zeile 297) bleibt unverändert.
-
-Keine weiteren Dateien betroffen. Keine DB-Migration nötig (`app_settings` mit Schlüssel `letters_auto_archive_days` wird bereits im Lade-Effekt verwendet).
+Keine Änderungen an DB, RLS, Hooks oder Datenstrukturen nötig — die Daten sind korrekt, nur die Übergabe an Leaflet ist es nicht.
 
 ### Verifikation nach Fix
 
-- `/documents` lädt wieder, alle vier Tabs (Dokumente, Briefe, E-Mails, Presse) erscheinen.
-- Archiv-Einstellungen-Dialog speichert tenantweit; bei fehlendem Tenant nur lokal – wie im Lade-Effekt erwartet.
+- `/karten` zeigt 70 farbige Polygone für die Wahlkreise BW, automatisch auf Baden-Württemberg gezoomt.
+- Toggle „Verwaltungsgrenzen" und „Grüne Kreisverbände" rendern weiterhin korrekt (gleicher Render-Pfad).
+- Reiter „Stadtteile Karlsruhe" bleibt unberührt.
+
+### Betroffene Dateien
+
+- `src/components/SimpleLeafletMap.tsx` (eine Stelle, ca. 15 Zeilen)
 
