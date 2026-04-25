@@ -69,6 +69,7 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
         <span className="text-xs text-muted-foreground font-mono shrink-0">
           {format(new Date(item.dueDate), 'dd.MM.', { locale: de })}
         </span>
+        {item.canSnooze ? <DeadlineSnoozeButton item={item} /> : null}
       </div>
     );
   };
