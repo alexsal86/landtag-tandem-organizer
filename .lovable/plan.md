@@ -1,34 +1,78 @@
+## Feature: Wiedervorlage („Snooze") für Fristen im Dashboard
 
+### Verhalten
 
-## Fix: Wahlkreis-Polygone werden auf der Karte nicht angezeigt
+- **Beim Hover** auf einen Fristen-Eintrag erscheint **hinter dem Datum** ein dezenter Button mit `AlarmClockPlus`-Icon — analog zum bereits etablierten Drag-Handle (sanftes Einsliden via `max-w` + `opacity`, kein reservierter Platz im Ruhezustand).
+- **Klick auf das Icon** = sofort **+7 Tage ab heute** (nicht ab altem Fälligkeitsdatum). Eine drei Wochen überfällige Frist landet also auf `heute + 7`, nicht auf `vor 14 Tagen`.
+- **Klick auf das kleine ▾ daneben** öffnet ein Popover mit Schnellauswahl:
+  - Morgen
+  - In 3 Tagen
+  - In 7 Tagen *(Standard)*
+  - In 14 Tagen
+  - In 30 Tagen
+  - Eigenes Datum… *(öffnet shadcn `Calendar` mit `pointer-events-auto`)*
+- Nach erfolgreichem Update: Toast „Frist verschoben auf TT.MM.YYYY" + Neuberechnung der Gruppen via React-Query-Invalidierung.
 
-### Befund
+### Geltungsbereich — „nur eigene Items"
 
-- DB-Check (`election_districts`): alle 70 Wahlkreise haben gültige `boundaries` als `MultiPolygon` (jsonb), `center_coordinates` als `{lat,lng}` im BW-Bereich (47.6–49.6 / 7.7–10.2). Daten sind also intakt.
-- Im Screenshot werden die nummerierten **Marker** korrekt geladen (also kommen die Daten im Frontend an), aber **kein einziges Polygon** wird gezeichnet, und die Karte ist auf den Initial-Zoom (ganz Mitteleuropa) stehen geblieben — was beweist, dass `geoLayer.getBounds()` nie ausgeführt wurde, weil der Polygon-Layer leer geblieben ist.
-- Ursache in `src/components/SimpleLeafletMap.tsx` (Zeilen 173–187): Es wird ein **nacktes Array von Features** an `L.geoJSON(geoJsonFeatures as any, …)` übergeben. Leaflets `L.geoJSON` erwartet entweder ein einzelnes `Feature`, ein `Geometry`-Objekt oder eine **`FeatureCollection`** — ein Array wird nicht zuverlässig verarbeitet (in unserer Konstellation gar nicht). Folge: Layer leer, kein `fitBounds`, kein Polygon sichtbar.
+| Typ | „Eigen", wenn | Snooze möglich |
+|---|---|---|
+| **Aufgabe** (`tasks`) | `assigned_to === user.id` oder CSV enthält user.id oder `user_id === user.id` | ✅ |
+| **Notiz** (`quick_notes`) | `user_id === user.id` (immer eigen) | ✅ |
+| **Entscheidung** (`task_decisions`) | `created_by === user.id` | ✅ |
+| **Vorgang** (`case_items`) | — meist mit anderen abgestimmt | ❌ |
+| **Veranstaltungsplanung** | — Timeline-Termine sind kollaborativ | ❌ |
 
-### Fix
+### Datenbank-Updates pro Typ
 
-Eine kleine, gezielte Änderung in `src/components/SimpleLeafletMap.tsx`:
+| Typ | Tabelle | Feld | Datentyp |
+|---|---|---|---|
+| `task` | `tasks` | `due_date` | `date` |
+| `note` | `quick_notes` | `follow_up_date` | `timestamptz` |
+| `decision` | `task_decisions` | `response_deadline` | `timestamptz` |
 
-1. Die zusammengebauten Features in eine **echte `FeatureCollection`** wrappen, bevor sie an `L.geoJSON` übergeben werden:
-   ```ts
-   const featureCollection = { type: 'FeatureCollection', features: geoJsonFeatures };
-   const geoLayer = L.geoJSON(featureCollection as any, { style, onEachFeature });
-   ```
-2. Einen kurzen `debugConsole.log` davor („rendering N polygon features"), damit künftige Datenprobleme sofort sichtbar sind.
-3. Fallback-`fitBounds`: Wenn (aus welchem Grund auch immer) keine Polygone, aber Marker mit `center_coordinates` vorhanden sind, soll die Karte beim ersten Render **trotzdem** auf die Marker-Bounds zoomen statt auf Stuttgart bei Zoom 8 stehen zu bleiben.
+Bestehende RLS-Policies regeln die Berechtigung; das Frontend filtert defensiv via `canSnooze`.
 
-Keine Änderungen an DB, RLS, Hooks oder Datenstrukturen nötig — die Daten sind korrekt, nur die Übergabe an Leaflet ist es nicht.
+### Technische Umsetzung
 
-### Verifikation nach Fix
+1. **Neue Komponente** `src/components/dashboard/DeadlineSnoozeButton.tsx`
+   - Split-Button: `AlarmClockPlus` (h-3.5 w-3.5) für +7 Tage, daneben kleiner `ChevronDown` als Popover-Trigger
+   - Popover mit Presets + shadcn `Calendar` für „Eigenes Datum"
+   - Hover-Animation analog zum Drag-Handle: `max-w-0 opacity-0` → `group-hover:max-w-12 group-hover:opacity-100`, `transition-all duration-200`
+   - `e.stopPropagation()` auf allen Klicks
 
-- `/karten` zeigt 70 farbige Polygone für die Wahlkreise BW, automatisch auf Baden-Württemberg gezoomt.
-- Toggle „Verwaltungsgrenzen" und „Grüne Kreisverbände" rendern weiterhin korrekt (gleicher Render-Pfad).
-- Reiter „Stadtteile Karlsruhe" bleibt unberührt.
+2. **Neuer Hook** `src/hooks/useSnoozeDeadline.ts`
+   - `mutate({ item, newDate })` → switch auf `item.type`, schreibt das richtige Feld
+   - Datums-Helper: `addDays(startOfDay(new Date()), n)` → garantiert „ab heute, nie rückwärts"
+   - Bei Erfolg: `queryClient.invalidateQueries(['dashboard-deadlines'])` + Toast
+
+3. **Erweiterung** `src/types/dashboardDeadlines.ts` — `DeadlineItem` bekommt `canSnooze: boolean`
+
+4. **Erweiterung** `src/hooks/useDashboardDeadlines.ts`
+   - `tasks`-Select um `assigned_to, user_id` erweitern
+   - `task_decisions`-Select um `created_by` erweitern
+   - `canSnooze` pro Item berechnen; Vorgang & EventPlanning: `false`
+
+5. **Integration** `src/components/dashboard/DashboardTasksSection.tsx`
+   - In `renderItem` hinter dem Datum: `{item.canSnooze && <DeadlineSnoozeButton item={item} />}`
 
 ### Betroffene Dateien
 
-- `src/components/SimpleLeafletMap.tsx` (eine Stelle, ca. 15 Zeilen)
+- **Neu:** `src/components/dashboard/DeadlineSnoozeButton.tsx`
+- **Neu:** `src/hooks/useSnoozeDeadline.ts`
+- **Edit:** `src/types/dashboardDeadlines.ts`
+- **Edit:** `src/hooks/useDashboardDeadlines.ts`
+- **Edit:** `src/components/dashboard/DashboardTasksSection.tsx`
 
+### Keine DB-Migration nötig
+
+Alle benötigten Spalten existieren bereits, RLS bleibt unberührt.
+
+### Verifikation
+
+- Hover über eigene Aufgabe → Snooze-Icon gleitet hinter dem Datum sanft ein.
+- Klick → Datum springt auf `heute + 7`, Eintrag wandert in die richtige Gruppe.
+- ▾-Klick → Popover, „Eigenes Datum…" öffnet Kalender mit funktionierender Auswahl.
+- Vorgang & Veranstaltungsplanung: kein Snooze-Icon, auch nicht bei Hover.
+- Aufgabe, die jemand anderem zugewiesen ist: kein Snooze-Icon.
+- Verlässt man die Maus, verschwindet das Icon ohne Layout-Sprung.

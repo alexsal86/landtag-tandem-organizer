@@ -6,6 +6,7 @@ export interface DeadlineItem {
   dueDate: string;
   type: DeadlineKind;
   planningId?: string;
+  canSnooze: boolean;
 }
 
 export interface GroupedDeadlineItems {
