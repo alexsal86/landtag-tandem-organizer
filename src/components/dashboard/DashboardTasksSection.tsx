@@ -50,15 +50,16 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
     return (
       <div
         key={`${item.type}-${item.id}`}
-        className="flex items-center gap-1.5 rounded px-1 py-0.5 text-sm text-foreground/90 cursor-pointer hover:bg-muted/40 transition-colors"
+        className="group flex items-center gap-1.5 rounded px-1 py-0.5 text-sm text-foreground/90 cursor-pointer hover:bg-muted/40 transition-colors"
         onClick={() => navigate(item.type === 'eventPlanning' && item.planningId ? `${cfg.tabBase}/${item.planningId}` : `${cfg.tabBase}&highlight=${item.id}`)}
         title={`${cfg.label} – Klicken zum Öffnen, oder per Handle in den Tageszettel ziehen`}
       >
         <span
           draggable
           onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, item.title, item.id, item.type); }}
-          className="cursor-grab rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground active:cursor-grabbing"
+          className="cursor-grab rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground active:cursor-grabbing opacity-0 group-hover:opacity-100"
           onClick={(e) => e.stopPropagation()}
+          aria-label="Ziehen"
         >
           <GripVertical className="h-4 w-4" />
         </span>
