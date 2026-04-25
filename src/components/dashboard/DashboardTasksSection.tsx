@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import type { DeadlineItem, GroupedDeadlineItems } from '@/types/dashboardDeadlines';
+import { DeadlineSnoozeButton } from './DeadlineSnoozeButton';
 
 const TYPE_CONFIG = {
   task: { icon: CheckSquare, label: 'Aufgabe', tabBase: '/mywork?tab=tasks', color: 'text-blue-500' },
