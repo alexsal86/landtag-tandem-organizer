@@ -57,11 +57,11 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
         <span
           draggable
           onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, item.title, item.id, item.type); }}
-          className="cursor-grab rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground active:cursor-grabbing opacity-0 group-hover:opacity-100"
+          className="cursor-grab text-muted-foreground hover:text-foreground active:cursor-grabbing grid grid-cols-[0fr] group-hover:grid-cols-[1fr] transition-[grid-template-columns] duration-200 ease-out"
           onClick={(e) => e.stopPropagation()}
           aria-label="Ziehen"
         >
-          <GripVertical className="h-4 w-4" />
+          <GripVertical className="h-4 w-4 overflow-hidden min-w-0" />
         </span>
         <Icon className={`h-3.5 w-3.5 shrink-0 ${cfg.color}`} />
         <span className="flex-1 truncate">{item.title}</span>
