@@ -17,9 +17,16 @@ const pickFirst = <T,>(value: T | T[] | null | undefined): T | null => {
   return Array.isArray(value) ? value[0] ?? null : value;
 };
 
+const isAssignedToUser = (assignedTo: string | null | undefined, userId: string): boolean => {
+  if (!assignedTo) return false;
+  if (assignedTo === userId) return true;
+  // CSV / contains check
+  return assignedTo.toLowerCase().includes(userId.toLowerCase());
+};
+
 const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<DeadlineItem[]> => {
   const [tasksRes, notesRes, casesRes, decisionsRes, planningDeadlinesRes] = await Promise.all([
-    supabase.from('tasks').select('id, title, due_date')
+    supabase.from('tasks').select('id, title, due_date, assigned_to, user_id')
       .or(`assigned_to.eq.${userId},assigned_to.ilike.%${userId}%,user_id.eq.${userId}`)
       .neq('status', 'completed')
       .not('due_date', 'is', null),
@@ -34,7 +41,7 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
           .not('due_at', 'is', null)
           .neq('status', 'erledigt')
       : Promise.resolve({ data: [] }),
-    supabase.from('task_decisions').select('id, title, response_deadline')
+    supabase.from('task_decisions').select('id, title, response_deadline, created_by')
       .neq('status', 'resolved')
       .is('archived_at', null)
       .not('response_deadline', 'is', null),
@@ -51,16 +58,32 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
 
   const all: DeadlineItem[] = [
     ...(tasksRes.data || []).filter((t) => t.due_date && t.title?.trim()).map((t) => ({
-      id: t.id, title: t.title.trim(), dueDate: t.due_date, type: 'task' as const,
+      id: t.id,
+      title: t.title.trim(),
+      dueDate: t.due_date,
+      type: 'task' as const,
+      canSnooze: isAssignedToUser(t.assigned_to, userId) || t.user_id === userId,
     })),
     ...(notesRes.data || []).filter((n) => n.follow_up_date).map((n) => ({
-      id: n.id, title: (n.title || n.content || '').trim().substring(0, 80), dueDate: n.follow_up_date, type: 'note' as const,
+      id: n.id,
+      title: (n.title || n.content || '').trim().substring(0, 80),
+      dueDate: n.follow_up_date,
+      type: 'note' as const,
+      canSnooze: true, // already filtered by user_id
     })),
     ...(casesRes.data || []).filter((c) => c.due_at).map((c) => ({
-      id: c.id, title: (c.subject || 'Vorgang').trim(), dueDate: c.due_at, type: 'case' as const,
+      id: c.id,
+      title: (c.subject || 'Vorgang').trim(),
+      dueDate: c.due_at,
+      type: 'case' as const,
+      canSnooze: false,
     })),
     ...(decisionsRes.data || []).filter((d) => d.response_deadline && d.title?.trim()).map((d) => ({
-      id: d.id, title: d.title.trim(), dueDate: d.response_deadline, type: 'decision' as const,
+      id: d.id,
+      title: d.title.trim(),
+      dueDate: d.response_deadline,
+      type: 'decision' as const,
+      canSnooze: d.created_by === userId,
     })),
     ...(((planningDeadlinesRes.data || []) as PlanningTimelineAssignment[])
       .filter((assignment) => {
@@ -86,6 +109,7 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
           dueDate: assignment.due_date,
           type: 'eventPlanning' as const,
           planningId: planning?.id ?? assignment.event_planning_id,
+          canSnooze: false,
         };
       })),
   ];
