@@ -232,7 +232,10 @@ export function DashboardAppointmentList({ appointments, isShowingTomorrow, brie
 
   // Compute meta info for header (number of appointments + next time)
   const now = new Date();
-  const headerLabel = isShowingTomorrow ? 'Deine Termine morgen' : 'Deine Termine heute';
+  const isEmpty = appointments.length === 0;
+  const headerLabel = isShowingTomorrow
+    ? (isEmpty ? 'Heute & morgen' : 'Deine Termine morgen')
+    : 'Deine Termine heute';
   const upcoming = appointments
     .filter((a) => !a.is_all_day && new Date(a.start_time) > now)
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
