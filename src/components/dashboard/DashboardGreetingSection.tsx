@@ -11,6 +11,7 @@ import { type DashboardData } from '@/hooks/useDashboardData';
 import { useDashboardMessages } from '@/hooks/useDashboardMessages';
 import { Separator } from '@/components/ui/separator';
 import { DashboardAppointmentList } from '@/components/dashboard/DashboardAppointmentList';
+import { useTodayBriefings } from '@/features/briefings/hooks/useTodayBriefings';
 
 interface Props {
   data: DashboardData;
