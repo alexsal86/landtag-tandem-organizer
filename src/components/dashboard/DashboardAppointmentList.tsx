@@ -31,6 +31,8 @@ import type { AppointmentData } from '@/hooks/useDashboardAppointmentsData';
 interface Props {
   appointments: AppointmentData[];
   isShowingTomorrow: boolean;
+  briefingSnippet?: { authorName: string | null; text: string } | null;
+  motivationalText?: string;
 }
 
 export function DashboardAppointmentList({ appointments, isShowingTomorrow }: Props) {
