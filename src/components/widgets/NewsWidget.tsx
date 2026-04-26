@@ -151,7 +151,7 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
                     onClick={() => window.open(article.link, '_blank')}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0 flex items-center gap-2 font-mono text-xs">
+                      <div className="min-w-0 flex items-center gap-2 text-xs">
                         <span className="font-bold text-primary truncate">{article.source}</span>
                         <span className="text-muted-foreground">·</span>
                         <span className="text-muted-foreground">{formatRelativeTime(article.pub_date)}</span>
@@ -185,7 +185,7 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
                         </Button>
                       </div>
                     </div>
-                    <p className="mt-1 text-[15px] leading-snug text-foreground line-clamp-2">
+                    <p className="text-[15px] leading-snug text-foreground line-clamp-2">
                       {decodeHtmlEntities(article.title)}
                     </p>
                   </div>
