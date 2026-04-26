@@ -155,11 +155,16 @@ export const DashboardGreetingSection = ({ data }: Props) => {
           </span>
         )}
         {parseTextSection(beforeAppointments)}
-        <DashboardAppointmentList appointments={appointments} isShowingTomorrow={isShowingTomorrow} />
+        <DashboardAppointmentList
+          appointments={appointments}
+          isShowingTomorrow={isShowingTomorrow}
+          briefingSnippet={briefingSnippet}
+          motivationalText={motivationalText}
+        />
         {afterAppointments && parseTextSection(afterAppointments)}
       </>
     );
-  }, [fullText, openTaskTitles, navigate, specialDayHint, appointments, isShowingTomorrow]);
+  }, [fullText, openTaskTitles, navigate, specialDayHint, appointments, isShowingTomorrow, briefingSnippet, motivationalText]);
 
   if (tenantLoading) return <div className="animate-pulse h-32 bg-muted rounded-lg mb-6" />;
   if (!hasTenant) return null;
