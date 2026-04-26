@@ -117,54 +117,50 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
     return textarea.value;
   };
 
-  const formatDateWithoutYear = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('de-DE', {
-      day: '2-digit',
-      month: 'short'
-    });
-  };
+  const formatRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfYesterday = new Date(startOfToday);
+    startOfYesterday.setDate(startOfYesterday.getDate() - 1);
 
-  const getCompactItemClasses = (index: number, total: number) => {
-    const isLastRow = index >= total - 2;
-    return [
-      'group cursor-pointer hover:bg-muted/40 px-2 py-2 transition-colors border-border',
-      isLastRow ? '' : 'border-b',
-      index % 2 === 0 ? 'border-r' : '',
-    ]
-      .filter(Boolean)
-      .join(' ');
+    if (date >= startOfToday) {
+      return date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    }
+    if (date >= startOfYesterday) {
+      return 'gestern';
+    }
+    return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
   };
 
   if (compact) {
     return (
       <>
         <div>
-          {loading && <div className="animate-pulse space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-6 bg-muted rounded" />)}</div>}
+          {loading && <div className="animate-pulse space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-12 bg-muted rounded" />)}</div>}
           {error && <p className="text-xs text-muted-foreground">{error}</p>}
           {!loading && !error && (
-            <div className="grid grid-cols-2">
+            <div className="divide-y divide-border">
               {filteredArticles.length === 0 ? (
-                <p className="text-xs text-muted-foreground col-span-2">Keine Artikel gefunden</p>
+                <p className="text-xs text-muted-foreground">Keine Artikel gefunden</p>
               ) : (
-                filteredArticles.slice(0, 8).map((article, index, visibleArticles) => (
+                filteredArticles.slice(0, 6).map((article) => (
                   <div
                     key={article.id}
-                    className={getCompactItemClasses(index, visibleArticles.length)}
+                    className="group cursor-pointer py-3 first:pt-0 last:pb-0 -mx-2 px-2 rounded hover:bg-muted/30 transition-colors"
                     onClick={() => window.open(article.link, '_blank')}
                   >
-                    <div className="flex items-start gap-1">
-                      <span className="text-sm text-foreground line-clamp-3 flex-1">{decodeHtmlEntities(article.title)}</span>
-                    </div>
-                    <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
-                      <div className="min-w-0">
-                        <span className="text-primary">{article.source}</span>
-                        <span> • {formatDateWithoutYear(article.pub_date)}</span>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0 flex items-center gap-2 font-mono text-xs">
+                        <span className="font-bold text-primary truncate">{article.source}</span>
+                        <span className="text-muted-foreground">·</span>
+                        <span className="text-muted-foreground">{formatRelativeTime(article.pub_date)}</span>
                       </div>
-                      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto">
+                      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-4 w-4 p-0"
+                          className="h-6 w-6 p-0"
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedArticle(article);
@@ -172,12 +168,12 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
                           }}
                           title="News teilen"
                         >
-                          <Share2 className="h-2.5 w-2.5" />
+                          <Share2 className="h-3 w-3" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-4 w-4 p-0"
+                          className="h-6 w-6 p-0"
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedArticle(article);
@@ -185,10 +181,13 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
                           }}
                           title="Aufgabe erstellen"
                         >
-                          <CheckSquare className="h-2.5 w-2.5" />
+                          <CheckSquare className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
+                    <p className="mt-1 text-[15px] leading-snug text-foreground line-clamp-2">
+                      {decodeHtmlEntities(article.title)}
+                    </p>
                   </div>
                 ))
               )}

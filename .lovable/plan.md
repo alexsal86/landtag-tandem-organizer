@@ -1,78 +1,51 @@
-## Feature: Wiedervorlage („Snooze") für Fristen im Dashboard
+## Umbau News-Widget im Dashboard
 
-### Verhalten
+### Befund
 
-- **Beim Hover** auf einen Fristen-Eintrag erscheint **hinter dem Datum** ein dezenter Button mit `AlarmClockPlus`-Icon — analog zum bereits etablierten Drag-Handle (sanftes Einsliden via `max-w` + `opacity`, kein reservierter Platz im Ruhezustand).
-- **Klick auf das Icon** = sofort **+7 Tage ab heute** (nicht ab altem Fälligkeitsdatum). Eine drei Wochen überfällige Frist landet also auf `heute + 7`, nicht auf `vor 14 Tagen`.
-- **Klick auf das kleine ▾ daneben** öffnet ein Popover mit Schnellauswahl:
-  - Morgen
-  - In 3 Tagen
-  - In 7 Tagen *(Standard)*
-  - In 14 Tagen
-  - In 30 Tagen
-  - Eigenes Datum… *(öffnet shadcn `Calendar` mit `pointer-events-auto`)*
-- Nach erfolgreichem Update: Toast „Frist verschoben auf TT.MM.YYYY" + Neuberechnung der Gruppen via React-Query-Invalidierung.
+- **Datei:** `src/components/widgets/NewsWidget.tsx`, Compact-Variante (Zeilen 138–212).
+- Verwendet auf dem Dashboard via `MyWorkDashboardTab.tsx → NewsWidgetCard → <NewsWidget compact />`. Die Karte trägt bereits Titel + Newspaper-Icon (im äußeren `DashboardWidgetContainer`), also kein Header-Eingriff nötig.
+- Aktuell: 2-Spalten-Grid mit gestrichelten Trennern, Datum als `dd. MMM`, Quelle in Primary, Hover-Buttons Share/Task. Keine Subline „Landespolitik BW" — diese existiert im Code nicht und muss daher auch nirgends entfernt werden (war im Mockup nur dekorativ).
 
-### Geltungsbereich — „nur eigene Items"
+### Designvorlage (image-97.png)
 
-| Typ | „Eigen", wenn | Snooze möglich |
-|---|---|---|
-| **Aufgabe** (`tasks`) | `assigned_to === user.id` oder CSV enthält user.id oder `user_id === user.id` | ✅ |
-| **Notiz** (`quick_notes`) | `user_id === user.id` (immer eigen) | ✅ |
-| **Entscheidung** (`task_decisions`) | `created_by === user.id` | ✅ |
-| **Vorgang** (`case_items`) | — meist mit anderen abgestimmt | ❌ |
-| **Veranstaltungsplanung** | — Timeline-Termine sind kollaborativ | ❌ |
+- **Einspaltige Liste**, jede Meldung durch dünne `border-b` getrennt.
+- Pro Meldung Block aus zwei Zeilen:
+  1. Meta-Zeile: `<Quelle>` in **bold + primary-Grün** mit Mono-Font · `<Uhrzeit>` (`HH:MM` für heute, sonst `gestern`/`dd.MM.`) in `text-muted-foreground` Mono.
+  2. Titel in normalem `text-foreground`, Größe `text-sm`/`text-[15px]`, `line-clamp-2`.
+- **Keine** Kategorie-/Quelle-Sublabels wie „Landespolitik BW".
+- Grünton: bestehender Design-Token `--primary` (`#57ab27`) — passt automatisch ins Branding (Light + Dark Mode).
 
-### Datenbank-Updates pro Typ
+### Änderungen
 
-| Typ | Tabelle | Feld | Datentyp |
-|---|---|---|---|
-| `task` | `tasks` | `due_date` | `date` |
-| `note` | `quick_notes` | `follow_up_date` | `timestamptz` |
-| `decision` | `task_decisions` | `response_deadline` | `timestamptz` |
+**Nur** `src/components/widgets/NewsWidget.tsx`, `compact`-Branch (Zeilen 138–212):
 
-Bestehende RLS-Policies regeln die Berechtigung; das Frontend filtert defensiv via `canSnooze`.
+1. Grid-Layout (`grid-cols-2` + `getCompactItemClasses` mit `border-r`) ersetzen durch eine einfache `divide-y divide-border` Liste — keine vertikalen Trenner mehr, keine alternierenden Zellen.
+2. Pro Article (`filteredArticles.slice(0, 6)` statt 8 — passt visuell besser für die 1-spaltige Variante):
+   - Wrapper: `group cursor-pointer py-3 first:pt-0 last:pb-0 hover:bg-muted/30 -mx-2 px-2 rounded transition-colors`.
+   - Meta-Zeile (oben): `<span class="font-mono text-xs font-bold text-primary">{source}</span>` · `<span class="font-mono text-xs text-muted-foreground">{relativeTime}</span>`.
+   - Titel: `<p class="mt-1 text-[15px] leading-snug text-foreground line-clamp-2">{decodeHtmlEntities(title)}</p>`.
+   - Action-Buttons (Share/Task) bleiben erhalten, rutschen rechts in die Meta-Zeile, weiterhin `opacity-0 group-hover:opacity-100`.
+3. Neue kleine Helper-Funktion `formatRelativeTime(pub_date)`:
+   - Heute → `HH:MM` (z. B. `08:24`).
+   - Gestern → `'gestern'`.
+   - Älter → `dd.MM.`.
+   Lokal in der Datei, keine Hook-Dateien anfassen.
+4. `getCompactItemClasses` entfernen (wird ersatzlos überflüssig).
+5. Nicht-`compact` Variante (volle Card ab Zeile 214) bleibt unverändert.
 
-### Technische Umsetzung
+### Nicht betroffen
 
-1. **Neue Komponente** `src/components/dashboard/DeadlineSnoozeButton.tsx`
-   - Split-Button: `AlarmClockPlus` (h-3.5 w-3.5) für +7 Tage, daneben kleiner `ChevronDown` als Popover-Trigger
-   - Popover mit Presets + shadcn `Calendar` für „Eigenes Datum"
-   - Hover-Animation analog zum Drag-Handle: `max-w-0 opacity-0` → `group-hover:max-w-12 group-hover:opacity-100`, `transition-all duration-200`
-   - `e.stopPropagation()` auf allen Klicks
-
-2. **Neuer Hook** `src/hooks/useSnoozeDeadline.ts`
-   - `mutate({ item, newDate })` → switch auf `item.type`, schreibt das richtige Feld
-   - Datums-Helper: `addDays(startOfDay(new Date()), n)` → garantiert „ab heute, nie rückwärts"
-   - Bei Erfolg: `queryClient.invalidateQueries(['dashboard-deadlines'])` + Toast
-
-3. **Erweiterung** `src/types/dashboardDeadlines.ts` — `DeadlineItem` bekommt `canSnooze: boolean`
-
-4. **Erweiterung** `src/hooks/useDashboardDeadlines.ts`
-   - `tasks`-Select um `assigned_to, user_id` erweitern
-   - `task_decisions`-Select um `created_by` erweitern
-   - `canSnooze` pro Item berechnen; Vorgang & EventPlanning: `false`
-
-5. **Integration** `src/components/dashboard/DashboardTasksSection.tsx`
-   - In `renderItem` hinter dem Datum: `{item.canSnooze && <DeadlineSnoozeButton item={item} />}`
-
-### Betroffene Dateien
-
-- **Neu:** `src/components/dashboard/DeadlineSnoozeButton.tsx`
-- **Neu:** `src/hooks/useSnoozeDeadline.ts`
-- **Edit:** `src/types/dashboardDeadlines.ts`
-- **Edit:** `src/hooks/useDashboardDeadlines.ts`
-- **Edit:** `src/components/dashboard/DashboardTasksSection.tsx`
-
-### Keine DB-Migration nötig
-
-Alle benötigten Spalten existieren bereits, RLS bleibt unberührt.
+- `MyWorkDashboardTab.tsx` (Header bleibt: Newspaper-Icon + „News").
+- Datenfluss / `fetch-rss-feeds` / RLS / Tenant.
+- Andere News-Konsumenten (`DashboardWidget`, `CustomizableDashboard`, `WidgetQuickAccess`) — sie nutzen die Nicht-Compact-Variante.
 
 ### Verifikation
 
-- Hover über eigene Aufgabe → Snooze-Icon gleitet hinter dem Datum sanft ein.
-- Klick → Datum springt auf `heute + 7`, Eintrag wandert in die richtige Gruppe.
-- ▾-Klick → Popover, „Eigenes Datum…" öffnet Kalender mit funktionierender Auswahl.
-- Vorgang & Veranstaltungsplanung: kein Snooze-Icon, auch nicht bei Hover.
-- Aufgabe, die jemand anderem zugewiesen ist: kein Snooze-Icon.
-- Verlässt man die Maus, verschwindet das Icon ohne Layout-Sprung.
+- Dashboard `/mywork` zeigt News einspaltig mit dünnen horizontalen Trennern.
+- Quelle in primary-Grün und Mono, Zeit daneben, Titel darunter.
+- Hover zeigt Share + Task-Buttons rechts in der Meta-Zeile.
+- Keine Spur von „Landespolitik BW" oder Kategorie-Badges in der Compact-Ansicht.
+
+### Betroffene Dateien
+
+- `src/components/widgets/NewsWidget.tsx` (nur compact-Branch, ~50 Zeilen)
