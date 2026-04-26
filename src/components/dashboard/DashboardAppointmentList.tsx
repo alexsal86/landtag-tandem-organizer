@@ -286,9 +286,18 @@ export function DashboardAppointmentList({ appointments, isShowingTomorrow, brie
 
         {/* Empty state */}
         {appointments.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            {isShowingTomorrow ? 'Keine Termine morgen.' : 'Keine Termine heute.'}
-          </p>
+          <div className="rounded-md border border-dashed border-border bg-muted/20 px-4 py-6 text-center">
+            <p className="text-sm font-medium text-foreground">
+              {isShowingTomorrow
+                ? 'Keine Termine heute und morgen'
+                : 'Keine Termine heute'}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {isShowingTomorrow
+                ? 'Ein guter Moment für Liegengebliebenes oder einen Themen-Deep-Dive.'
+                : 'Nutze den freien Tag für Vorbereitung oder Follow-ups.'}
+            </p>
+          </div>
         ) : (
           <div className="divide-y divide-border">
             {appointments.map((apt) => {
