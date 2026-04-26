@@ -20,6 +20,7 @@ interface Props {
 export const DashboardGreetingSection = ({ data }: Props) => {
   const navigate = useNavigate();
   const { messages } = useDashboardMessages();
+  const { data: todayBriefings } = useTodayBriefings();
   const {
     userName, userRole, appointments, isShowingTomorrow,
     openTasksCount, completedTasksToday, openTaskTitles,
@@ -42,19 +43,16 @@ export const DashboardGreetingSection = ({ data }: Props) => {
 
   const specialDayHint = useMemo(() => getSpecialDayHint(new Date(), specialDays), [specialDays]);
 
-  const fullText = useMemo(() => {
+  // Compute motivational text separately so we can pass it into the appointment list card
+  const motivationalText = useMemo(() => {
     if (isLoading) return '';
     const timeSlot = getCurrentTimeSlot();
-    const greeting = getGreeting(timeSlot);
-    const isLateDay = timeSlot === 'evening' || timeSlot === 'night';
-    const useTomorrowTone = isShowingTomorrow || isLateDay;
-
     const hasPlenum = appointments.some(a => a.title.toLowerCase().includes('plenum'));
     const hasCommittee = appointments.some(a => a.title.toLowerCase().match(/ausschuss|ak\s/i));
     const multipleSessions = (hasPlenum && hasCommittee) ||
       (appointments.filter(a => a.title.toLowerCase().includes('plenum') || a.title.toLowerCase().match(/ausschuss|ak\s/i)).length >= 2);
 
-    const message = selectMessage({
+    return selectMessage({
       timeSlot,
       dayOfWeek: getCurrentDayOfWeek(),
       appointmentsCount: appointments.length,
@@ -66,20 +64,33 @@ export const DashboardGreetingSection = ({ data }: Props) => {
       hasPlenum,
       hasCommittee,
       multipleSessions,
-    }, messages);
+    }, messages).text;
+  }, [isLoading, userRole, appointments, openTasksCount, completedTasksToday, messages]);
+
+  // Pick first unread today briefing → snippet for the appointment card
+  const briefingSnippet = useMemo(() => {
+    if (!todayBriefings || todayBriefings.length === 0) return null;
+    const unread = todayBriefings.find(b => !b.is_read) ?? todayBriefings[0];
+    if (!unread?.content) return null;
+    const plain = unread.content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!plain) return null;
+    return { authorName: unread.author_display_name, text: plain };
+  }, [todayBriefings]);
+
+  const fullText = useMemo(() => {
+    if (isLoading) return '';
+    const greeting = getGreeting(getCurrentTimeSlot());
 
     let text = `${greeting}, ${userName}!\n\n`;
-    text += `${message.text}\n\n`;
 
     if (specialDayHint) text += `{{SPECIAL_DAY_PLACEHOLDER}}\n\n`;
 
     text += '✅ **Aufgabenstatus:**\n';
     text += '{{TASK_LIST_PLACEHOLDER}}\n';
 
-    text += isShowingTomorrow ? '\n📅 **Deine Termine morgen:**\n' : '\n📅 **Deine Termine heute:**\n';
-    text += '{{APPOINTMENTS_PLACEHOLDER}}\n';
+    text += '\n{{APPOINTMENTS_PLACEHOLDER}}\n';
     return text;
-  }, [isLoading, userName, userRole, appointments, isShowingTomorrow, openTasksCount, completedTasksToday, specialDayHint, messages]);
+  }, [isLoading, userName, specialDayHint]);
 
   const parsedContent = useMemo(() => {
     const parseTextSection = (text: string) => {
