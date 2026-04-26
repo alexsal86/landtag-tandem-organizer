@@ -35,7 +35,7 @@ interface Props {
   motivationalText?: string;
 }
 
-export function DashboardAppointmentList({ appointments, isShowingTomorrow }: Props) {
+export function DashboardAppointmentList({ appointments, isShowingTomorrow, briefingSnippet, motivationalText }: Props) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const queryClient = useQueryClient();
