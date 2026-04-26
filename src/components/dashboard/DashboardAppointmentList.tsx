@@ -7,7 +7,6 @@ import { useTenant } from '@/hooks/useTenant';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import {
-  ClipboardList,
   ChevronDown,
   StickyNote,
   ListTodo,
