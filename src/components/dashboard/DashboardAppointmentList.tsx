@@ -7,7 +7,6 @@ import { useTenant } from '@/hooks/useTenant';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import {
-  ClipboardList,
   ChevronDown,
   StickyNote,
   ListTodo,
@@ -31,9 +30,11 @@ import type { AppointmentData } from '@/hooks/useDashboardAppointmentsData';
 interface Props {
   appointments: AppointmentData[];
   isShowingTomorrow: boolean;
+  briefingSnippet?: { authorName: string | null; text: string } | null;
+  motivationalText?: string;
 }
 
-export function DashboardAppointmentList({ appointments, isShowingTomorrow }: Props) {
+export function DashboardAppointmentList({ appointments, isShowingTomorrow, briefingSnippet, motivationalText }: Props) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const queryClient = useQueryClient();
@@ -229,182 +230,296 @@ export function DashboardAppointmentList({ appointments, isShowingTomorrow }: Pr
     }
   };
 
-  if (appointments.length === 0) {
-    return (
-      <span className="block text-foreground/90">
-        {isShowingTomorrow ? 'Keine Termine morgen.' : 'Keine Termine heute.'}
-      </span>
-    );
-  }
+  // Compute meta info for header (number of appointments + next time)
+  const now = new Date();
+  const headerLabel = isShowingTomorrow ? 'Deine Termine morgen' : 'Deine Termine heute';
+  const upcoming = appointments
+    .filter((a) => !a.is_all_day && new Date(a.start_time) > now)
+    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+  const nextTime = upcoming[0]
+    ? format(new Date(upcoming[0].start_time), 'HH:mm', { locale: de })
+    : null;
+  const countLabel = `${appointments.length} Termin${appointments.length === 1 ? '' : 'e'}`;
+
+  const isOngoing = (apt: AppointmentData) => {
+    if (apt.is_all_day || isShowingTomorrow) return false;
+    const start = new Date(apt.start_time);
+    const end = apt.end_time
+      ? new Date(apt.end_time)
+      : new Date(start.getTime() + 60 * 60 * 1000);
+    return start <= now && end > now;
+  };
 
   return (
     <>
-      <div className="space-y-1">
-        {appointments.map((apt) => {
-          const time = apt.is_all_day
-            ? 'Ganztägig'
-            : format(new Date(apt.start_time), 'HH:mm', { locale: de });
-          const preparation = preparationsMap?.get(apt.id);
-          const hasBriefing = !!preparation;
-          const isCompleted = completedIds.has(apt.id);
+      <div className="rounded-lg border border-border bg-card p-5 text-base font-normal tracking-normal not-italic">
+        {/* Header */}
+        <div className="flex items-baseline justify-between gap-3 mb-3">
+          <h3 className="text-base font-semibold text-foreground">{headerLabel}</h3>
+          {appointments.length > 0 && (
+            <span className="font-mono text-xs text-muted-foreground">
+              {countLabel}
+              {nextTime ? ` · nächster ${nextTime}` : ''}
+            </span>
+          )}
+        </div>
 
-          return (
-            <div key={apt.id}>
-              <div className="flex items-center gap-2 py-0.5">
-                <span className="text-foreground/90">{time} - {apt.title}</span>
-                {hasBriefing && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOpenBriefings(prev => {
-                          const next = new Set(prev);
-                          if (next.has(apt.id)) next.delete(apt.id);
-                          else next.add(apt.id);
-                          return next;
-                        });
-                      }}
-                      className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors font-medium"
-                      title="Briefing anzeigen"
-                    >
-                      <ClipboardList className="h-3.5 w-3.5" />
-                      <ChevronDown className={`h-3 w-3 transition-transform ${openBriefings.has(apt.id) ? 'rotate-180' : ''}`} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/briefing-live?preparationId=${preparation!.id}&appointmentId=${apt.id}`)}
-                      className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors font-medium"
-                      title="Live-Briefing öffnen"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </button>
-                  </>
+        {/* Briefing + motivational text */}
+        {(briefingSnippet || motivationalText) && (
+          <div className="mb-4 space-y-1.5 text-sm leading-relaxed">
+            {briefingSnippet && (
+              <p className="text-foreground/90">
+                {briefingSnippet.authorName && (
+                  <span className="font-semibold">{briefingSnippet.authorName}: </span>
                 )}
-                {isCompleted && (
-                  <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
-                )}
-              </div>
+                <span className="line-clamp-2">{briefingSnippet.text}</span>
+              </p>
+            )}
+            {motivationalText && (
+              <p className="text-muted-foreground">{motivationalText}</p>
+            )}
+          </div>
+        )}
 
-              {hasBriefing && openBriefings.has(apt.id) && (
-                <div className="ml-4 mt-2 mb-3 space-y-2">
-                  <AppointmentBriefingView
-                    preparation={preparation!}
-                    appointmentInfo={{
-                      title: apt.title,
-                      start_time: apt.start_time,
-                      end_time: apt.end_time ?? apt.start_time,
-                      location: apt.location,
-                    }}
-                    compact
-                  />
+        {/* Empty state */}
+        {appointments.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {isShowingTomorrow ? 'Keine Termine morgen.' : 'Keine Termine heute.'}
+          </p>
+        ) : (
+          <div className="divide-y divide-border">
+            {appointments.map((apt) => {
+              const time = apt.is_all_day
+                ? 'ganztägig'
+                : format(new Date(apt.start_time), 'HH:mm', { locale: de });
+              const preparation = preparationsMap?.get(apt.id);
+              const hasBriefing = !!preparation;
+              const isCompleted = completedIds.has(apt.id);
+              const ongoing = isOngoing(apt);
+              const briefingOpen = openBriefings.has(apt.id);
 
-                  {/* Quick-Action Buttons */}
-                  {!isCompleted && (
-                    <div className="flex items-center gap-2 pt-1">
-                      <Dialog open={noteDialogAppointment?.id === apt.id} onOpenChange={(open) => {
-                        if (!open) setNoteDialogAppointment(null);
-                      }}>
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 text-xs gap-1"
-                            onClick={() => setNoteDialogAppointment(apt)}
-                          >
-                            <StickyNote className="h-3 w-3" />
-                            Notiz
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Notiz zu „{apt.title}"</DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-3">
-                            <SimpleRichTextEditor
-                              initialContent={noteText}
-                              onChange={setNoteText}
-                              placeholder="Ihre Notiz / Rückmeldung …"
-                            />
-                            <Button onClick={handleSaveNote} disabled={saving} className="w-full">
-                              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                              Notiz speichern
-                            </Button>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
+              return (
+                <div key={apt.id} className="group">
+                  <div
+                    className={`grid grid-cols-[60px_1fr_auto] gap-4 items-center py-3 ${
+                      ongoing ? 'bg-muted/40 -mx-2 px-2 rounded' : ''
+                    }`}
+                  >
+                    {/* Time column */}
+                    <span
+                      className={`font-mono text-sm ${
+                        ongoing
+                          ? 'text-primary font-semibold'
+                          : 'text-muted-foreground'
+                      }`}
+                    >
+                      {time}
+                    </span>
 
-                      <Dialog open={taskDialogAppointment?.id === apt.id} onOpenChange={(open) => {
-                        if (!open) setTaskDialogAppointment(null);
-                      }}>
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 text-xs gap-1"
+                    {/* Title + location */}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        {ongoing && (
+                          <span
+                            aria-hidden
+                            className="inline-block h-2 w-2 rounded-full bg-primary animate-pulse shrink-0"
+                          />
+                        )}
+                        <span className="text-[15px] text-foreground truncate">
+                          {apt.title}
+                        </span>
+                        {isCompleted && (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
+                        )}
+                      </div>
+                      {apt.location && (
+                        <div className="text-xs text-muted-foreground truncate mt-0.5">
+                          {apt.location}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Briefing badge + actions */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {hasBriefing && (
+                        <>
+                          <button
+                            type="button"
                             onClick={() => {
-                              setTaskDialogAppointment(apt);
-                              if (!taskTitle) setTaskTitle(`Follow-up: ${apt.title}`);
+                              setOpenBriefings((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(apt.id)) next.delete(apt.id);
+                                else next.add(apt.id);
+                                return next;
+                              });
+                            }}
+                            className="font-mono text-[10px] tracking-wider text-primary border border-primary/40 rounded px-2 py-1 hover:bg-primary/5 transition-colors inline-flex items-center gap-1"
+                            title="Briefing anzeigen"
+                          >
+                            BRIEFING
+                            <ChevronDown
+                              className={`h-3 w-3 transition-transform ${
+                                briefingOpen ? 'rotate-180' : ''
+                              }`}
+                            />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              navigate(
+                                `/briefing-live?preparationId=${preparation!.id}&appointmentId=${apt.id}`,
+                              )
+                            }
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-primary hover:text-primary/80 p-1"
+                            title="Live-Briefing öffnen"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {hasBriefing && briefingOpen && (
+                    <div className="pl-[76px] pb-3 space-y-2">
+                      <AppointmentBriefingView
+                        preparation={preparation!}
+                        appointmentInfo={{
+                          title: apt.title,
+                          start_time: apt.start_time,
+                          end_time: apt.end_time ?? apt.start_time,
+                          location: apt.location,
+                        }}
+                        compact
+                      />
+
+                      {!isCompleted && (
+                        <div className="flex items-center gap-2 pt-1">
+                          <Dialog
+                            open={noteDialogAppointment?.id === apt.id}
+                            onOpenChange={(open) => {
+                              if (!open) setNoteDialogAppointment(null);
                             }}
                           >
-                            <ListTodo className="h-3 w-3" />
-                            Aufgabe
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Aufgabe aus „{apt.title}"</DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-3">
-                            <div>
-                              <Label>Titel</Label>
-                              <Input value={taskTitle} onChange={e => setTaskTitle(e.target.value)} />
-                            </div>
-                            <div>
-                              <Label>Beschreibung</Label>
-                              <Input value={taskDescription} onChange={e => setTaskDescription(e.target.value)} placeholder="Optional" />
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <Label>Priorität</Label>
-                                <Select value={taskPriority} onValueChange={(v) => setTaskPriority(v as 'low' | 'medium' | 'high')}>
-                                  <SelectTrigger><SelectValue /></SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="low">Niedrig</SelectItem>
-                                    <SelectItem value="medium">Mittel</SelectItem>
-                                    <SelectItem value="high">Hoch</SelectItem>
-                                  </SelectContent>
-                                </Select>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs gap-1"
+                                onClick={() => setNoteDialogAppointment(apt)}
+                              >
+                                <StickyNote className="h-3 w-3" />
+                                Notiz
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Notiz zu „{apt.title}"</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-3">
+                                <SimpleRichTextEditor
+                                  initialContent={noteText}
+                                  onChange={setNoteText}
+                                  placeholder="Ihre Notiz / Rückmeldung …"
+                                />
+                                <Button onClick={handleSaveNote} disabled={saving} className="w-full">
+                                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                                  Notiz speichern
+                                </Button>
                               </div>
-                              <div>
-                                <Label>Fällig am</Label>
-                                <Input type="date" value={taskDueDate} onChange={e => setTaskDueDate(e.target.value)} />
-                              </div>
-                            </div>
-                            <Button onClick={handleCreateTask} disabled={saving} className="w-full">
-                              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                              Aufgabe erstellen
-                            </Button>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
+                            </DialogContent>
+                          </Dialog>
 
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs gap-1 text-muted-foreground"
-                        onClick={() => handleMarkRead(apt)}
-                        disabled={saving}
-                      >
-                        <CheckCircle2 className="h-3 w-3" />
-                        Gelesen
-                      </Button>
+                          <Dialog
+                            open={taskDialogAppointment?.id === apt.id}
+                            onOpenChange={(open) => {
+                              if (!open) setTaskDialogAppointment(null);
+                            }}
+                          >
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs gap-1"
+                                onClick={() => {
+                                  setTaskDialogAppointment(apt);
+                                  if (!taskTitle) setTaskTitle(`Follow-up: ${apt.title}`);
+                                }}
+                              >
+                                <ListTodo className="h-3 w-3" />
+                                Aufgabe
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Aufgabe aus „{apt.title}"</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-3">
+                                <div>
+                                  <Label>Titel</Label>
+                                  <Input value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} />
+                                </div>
+                                <div>
+                                  <Label>Beschreibung</Label>
+                                  <Input
+                                    value={taskDescription}
+                                    onChange={(e) => setTaskDescription(e.target.value)}
+                                    placeholder="Optional"
+                                  />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <Label>Priorität</Label>
+                                    <Select
+                                      value={taskPriority}
+                                      onValueChange={(v) => setTaskPriority(v as 'low' | 'medium' | 'high')}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="low">Niedrig</SelectItem>
+                                        <SelectItem value="medium">Mittel</SelectItem>
+                                        <SelectItem value="high">Hoch</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div>
+                                    <Label>Fällig am</Label>
+                                    <Input
+                                      type="date"
+                                      value={taskDueDate}
+                                      onChange={(e) => setTaskDueDate(e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+                                <Button onClick={handleCreateTask} disabled={saving} className="w-full">
+                                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                                  Aufgabe erstellen
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs gap-1 text-muted-foreground"
+                            onClick={() => handleMarkRead(apt)}
+                            disabled={saving}
+                          >
+                            <CheckCircle2 className="h-3 w-3" />
+                            Gelesen
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              )}
-            </div>
-          );
-        })}
+              );
+            })}
+          </div>
+        )}
       </div>
     </>
   );
