@@ -166,7 +166,7 @@ export function TaskCard({
       const containerTop = container.getBoundingClientRect().top;
       const lastChildRect = lastChild.getBoundingClientRect();
       const lineStart = connectorParentLineStartTop;
-      const lineEnd = lastChildRect.top - containerTop + connectorChildTargetTop;
+      const lineEnd = lastChildRect.top - containerTop;
       setParentLineHeight(Math.max(0, lineEnd - lineStart));
     };
 
