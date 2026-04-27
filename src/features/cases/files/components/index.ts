@@ -13,3 +13,4 @@ export * from "./CaseFileUnifiedTimeline";
 export * from "./CaseItemInteractionsTimeline";
 export * from "./MyWorkCaseFilesTab";
 export * from "./tabs";
+export * from "./CaseFileDocumentsCard";
