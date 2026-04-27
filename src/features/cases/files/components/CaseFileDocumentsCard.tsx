@@ -54,7 +54,7 @@ export function CaseFileDocumentsCard({ documents, onAdd }: CaseFileDocumentsCar
           sorted.slice(0, 5).map((doc) => {
             const title = doc.document?.title || doc.document?.file_name || "Dokument";
             const ext = fileExt(doc.document?.file_name);
-            const size = fileSize(doc.document?.file_size);
+            const size: string | null = null;
             const date = doc.document?.created_at ?? doc.created_at;
             return (
               <div
