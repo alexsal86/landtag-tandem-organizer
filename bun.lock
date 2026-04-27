@@ -2751,6 +2751,8 @@
 
     "@landtag/api-client/@landtag/domain": ["@landtag/domain@file:packages/domain", {}],
 
+    "@landtag/mobile/@landtag/api-client": ["@landtag/api-client@file:packages/api-client", { "dependencies": { "@landtag/domain": "file:../domain" } }],
+
     "@landtag/mobile/@landtag/domain": ["@landtag/domain@file:packages/domain", {}],
 
     "@landtag/mobile/@types/react": ["@types/react@19.1.17", "", { "dependencies": { "csstype": "^3.0.2" } }, "sha512-Qec1E3mhALmaspIrhWt9jkQMNdw6bReVu64mjvhbhq2NFPftLPVr+l1SZgmw/66WwBNpDh7ao5AT6gF5v41PFA=="],
@@ -3004,6 +3006,8 @@
     "@expo/prebuild-config/xml2js/xmlbuilder": ["xmlbuilder@11.0.1", "", {}, "sha512-fDlsI/kFEx7gLvbecc0/ohLG50fugQp8ryHzMTuW9vSa1GJ0XYWKnhsUx7oie3G98+r56aTQIUB4kht42R3JvA=="],
 
     "@istanbuljs/load-nyc-config/find-up/locate-path": ["locate-path@5.0.0", "", { "dependencies": { "p-locate": "^4.1.0" } }, "sha512-t7hw9pI+WvuwNJXwk5zVHpyhIqzg2qTlklJOf0mVxGSbe3Fp2VieZcduNYjaLDoy6p9uGpQEGWG87WpMKlNq8g=="],
+
+    "@landtag/mobile/@landtag/api-client/@landtag/domain": ["@landtag/domain@file:packages/domain", {}],
 
     "@react-native/community-cli-plugin/@react-native/dev-middleware/@react-native/debugger-frontend": ["@react-native/debugger-frontend@0.81.4", "", {}, "sha512-SU05w1wD0nKdQFcuNC9D6De0ITnINCi8MEnx9RsTD2e4wN83ukoC7FpXaPCYyP6+VjFt5tUKDPgP1O7iaNXCqg=="],
 
