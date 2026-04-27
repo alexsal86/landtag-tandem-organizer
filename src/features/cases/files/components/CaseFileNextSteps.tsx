@@ -200,37 +200,55 @@ export function CaseFileNextSteps({
     }
   };
 
+  const dotClass = (dueDate: string | null | undefined): string => {
+    if (!dueDate) return "bg-muted-foreground/30";
+    const due = new Date(dueDate).getTime();
+    const now = Date.now();
+    const diffDays = (due - now) / (1000 * 60 * 60 * 24);
+    if (diffDays < 0) return "bg-destructive";
+    if (diffDays < 3) return "bg-amber-500";
+    if (diffDays < 14) return "bg-yellow-400";
+    return "bg-primary";
+  };
+
   return (
     <Card>
       <CardHeader className="p-4 pb-2">
-        <CardTitle className="text-sm font-semibold flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <ListChecks className="h-4 w-4" />
-            Nächste Schritte
+        <CardTitle className="text-[10px] font-semibold tracking-[0.14em] uppercase text-muted-foreground flex items-center justify-between">
+          <span>
+            Offene Aufgaben
+            {tasks.length > 0 && (
+              <span className="ml-2 text-muted-foreground/70">· {openTasks.length}</span>
+            )}
           </span>
-          {tasks.length > 0 && (
-            <Badge variant="secondary" className="text-[10px]">
-              {completedCount}/{tasks.length}
-            </Badge>
-          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => {
+              const input = document.getElementById("case-file-quick-task") as HTMLInputElement | null;
+              input?.focus();
+            }}
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-4 pt-0 space-y-2">
+      <CardContent className="p-4 pt-0 space-y-1">
         {openTasks.length === 0 && (
-          <p className="text-xs text-muted-foreground py-1">
+          <p className="text-xs text-muted-foreground italic py-1">
             Keine offenen Aufgaben
           </p>
         )}
 
         {openTasks.map((item) => {
-          const isOverdue = item.task?.due_date
-            ? isPast(new Date(item.task.due_date))
-            : false;
+          const due = item.task?.due_date;
+          const owner = item.task?.assigned_to_name || item.task?.assigned_to_display_name || null;
 
           return (
             <div
               key={item.id}
-              className="flex items-start gap-2 py-1.5"
+              className="group flex items-start gap-2.5 py-2 border-b border-border/50 last:border-b-0"
             >
               <Checkbox
                 className="mt-0.5"
@@ -239,38 +257,30 @@ export function CaseFileNextSteps({
                 }}
               />
               <div className="flex-1 min-w-0">
-                <p className="text-sm leading-tight truncate">
-                  {item.task?.title}
+                <p className="text-sm font-medium leading-tight">{item.task?.title}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {due && (
+                    <>
+                      bis {format(new Date(due), "dd.MM.", { locale: de })}
+                    </>
+                  )}
+                  {due && owner && <span> · </span>}
+                  {owner && <span>{owner}</span>}
+                  {!due && !owner && <span className="italic">kein Termin</span>}
                 </p>
-                {getCaseTaskDescription(item.task) && (
-                  <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                    {getCaseTaskDescription(item.task)}
-                  </p>
-                )}
-                {item.task?.due_date && (
-                  <div
-                    className={cn(
-                      "flex items-center gap-1 text-[10px] mt-0.5",
-                      isOverdue
-                        ? "text-destructive font-medium"
-                        : "text-muted-foreground"
-                    )}
-                  >
-                    <Calendar className="h-3 w-3" />
-                    {format(new Date(item.task.due_date), "dd.MM.yyyy", {
-                      locale: de,
-                    })}
-                    {isOverdue && " (überfällig)"}
-                  </div>
-                )}
               </div>
+              <span
+                className={cn("h-2 w-2 rounded-full mt-2 shrink-0", dotClass(due))}
+                aria-hidden
+              />
             </div>
           );
         })}
 
         {/* Quick-Add */}
-        <div className="flex items-center gap-1.5 pt-2">
+        <div className="flex items-center gap-1.5 pt-3">
           <Input
+            id="case-file-quick-task"
             value={quickTaskTitle}
             onChange={(e) => setQuickTaskTitle(e.target.value)}
             onKeyDown={(e) => {
@@ -289,10 +299,6 @@ export function CaseFileNextSteps({
             <Plus className="h-4 w-4" />
           </Button>
         </div>
-
-        <p className="text-[11px] text-muted-foreground leading-tight">
-          Hinweis: Container-Aufgaben können erst geschlossen werden, wenn keine Child-Tasks mehr vorhanden sind.
-        </p>
       </CardContent>
     </Card>
   );
