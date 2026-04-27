@@ -112,25 +112,24 @@ export function CaseFileCurrentStatus({ caseFile, onUpdate, onUpdateProcessingSt
   };
 
   return (
-    <Card className="border-primary/30 bg-primary/5">
-      <CardHeader className="p-4 pb-2">
+    <Card className="border-primary/30 bg-primary/5 overflow-hidden">
+      <CardHeader className="p-4 pb-2 bg-primary/10 border-b border-primary/20">
         <CardTitle className="text-sm font-semibold flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <Info className="h-4 w-4 text-primary" />
+          <span className="flex items-center gap-2 text-primary">
+            <Info className="h-4 w-4" />
             Aktueller Stand
           </span>
           {!isEditing && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
+            <button
               onClick={() => {
                 setEditValue(caseFile.current_status_note || "");
                 setIsEditing(true);
               }}
+              className="text-xs font-medium text-primary hover:underline inline-flex items-center gap-1"
             >
-              <Edit2 className="h-3.5 w-3.5" />
-            </Button>
+              <Edit2 className="h-3 w-3" />
+              bearbeiten
+            </button>
           )}
         </CardTitle>
       </CardHeader>
