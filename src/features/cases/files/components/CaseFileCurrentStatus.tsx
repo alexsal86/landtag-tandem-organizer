@@ -188,8 +188,8 @@ export function CaseFileCurrentStatus({ caseFile, onUpdate, onUpdateProcessingSt
               </p>
             )}
             {caseFile.current_status_updated_at && (
-              <p className="text-[10px] text-muted-foreground mt-2">
-                Zuletzt aktualisiert: {format(new Date(caseFile.current_status_updated_at), "dd.MM.yyyy HH:mm", { locale: de })}
+              <p className="text-[11px] text-muted-foreground italic mt-3 pt-2 border-t border-primary/15">
+                zuletzt: {format(new Date(caseFile.current_status_updated_at), "'Heute,' HH:mm", { locale: de })}
               </p>
             )}
           </div>
