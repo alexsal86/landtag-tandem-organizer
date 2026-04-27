@@ -1,31 +1,15 @@
 import { CaseFile } from "@/features/cases/files/hooks";
 import { CaseFileContact, CaseFileDocument, CONTACT_ROLES } from "@/features/cases/files/hooks";
-import { useCaseFileTypes } from "@/features/cases/files/hooks";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
 import { TopicSelector } from "@/components/topics/TopicSelector";
 import { UserSelector } from "@/components/UserSelector";
-import { LucideIcon } from "lucide-react";
-import { getLucideIcon } from "@/utils/iconUtils";
 import {
-  Users,
-  Building2,
   Plus,
   Phone,
   Mail,
-  Tag,
-  Clock,
-  CalendarDays,
-  EyeOff,
-  Globe,
-  UserCheck,
-  FileText,
 } from "lucide-react";
-import { format } from "date-fns";
-import { de } from "date-fns/locale";
 
 interface CaseFileLeftSidebarProps {
   caseFile: CaseFile;
@@ -37,262 +21,158 @@ interface CaseFileLeftSidebarProps {
   onAssignUser?: (userId: string) => void;
 }
 
+function SectionHeader({
+  label,
+  count,
+  onAdd,
+}: {
+  label: string;
+  count?: number;
+  onAdd?: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between mb-3">
+      <div className="text-[10px] font-semibold tracking-[0.14em] uppercase text-muted-foreground">
+        {label}
+        {typeof count === "number" && (
+          <span className="ml-2 text-muted-foreground/70">· {count}</span>
+        )}
+      </div>
+      {onAdd && (
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onAdd}>
+          <Plus className="h-3.5 w-3.5" />
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function SectionCard({ children }: { children: React.ReactNode }) {
+  return <div className="rounded-lg border bg-card p-4">{children}</div>;
+}
+
 export function CaseFileLeftSidebar({
   caseFile,
   contacts,
-  documents,
   assignedTopics,
   onTopicsChange,
   onAddContact,
   onAssignUser,
 }: CaseFileLeftSidebarProps) {
-  const { caseFileTypes } = useCaseFileTypes();
-  const typeConfig = caseFileTypes.find((t) => t.name === caseFile.case_type);
-
-  const getIconComponent = (iconName?: string | null): LucideIcon | null => {
-    if (!iconName) return null;
-    return getLucideIcon(iconName);
-  };
-
-  const TypeIcon = getIconComponent(typeConfig?.icon);
-
   const getRoleLabel = (roleValue: string) => {
     return CONTACT_ROLES.find((r) => r.value === roleValue)?.label || roleValue;
   };
 
-  // Split contacts into persons and organizations
   const personContacts = contacts.filter(
-    (c) => !c.contact?.contact_type || c.contact.contact_type === 'person'
+    (c) => !c.contact?.contact_type || c.contact.contact_type === "person"
   );
   const orgContacts = contacts.filter(
-    (c) => c.contact?.contact_type === 'organization'
+    (c) => c.contact?.contact_type === "organization"
   );
 
-  const visibilityConfig = {
-    private: { icon: EyeOff, label: "Privat" },
-    shared: { icon: Users, label: "Geteilt" },
-    public: { icon: Globe, label: "Öffentlich" },
-  };
-  const visibility = visibilityConfig[caseFile.visibility as keyof typeof visibilityConfig] || visibilityConfig.public;
-  const VisIcon = visibility.icon;
-
-  const renderContactList = (contactList: CaseFileContact[]) => {
-    if (contactList.length === 0) {
-      return <p className="text-xs text-muted-foreground py-1">Keine verknüpft</p>;
-    }
-    return (
-      <div className="space-y-2">
-        {contactList.map((item) => (
-          <div
-            key={item.id}
-            className="flex items-start gap-2 p-2 rounded-md hover:bg-muted/50 transition-colors"
-          >
-            <Avatar className="h-8 w-8 shrink-0">
-              <AvatarImage src={item.contact?.avatar_url || undefined} />
-              <AvatarFallback className="text-xs">
-                {item.contact?.name?.charAt(0) || "?"}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium truncate">{item.contact?.name}</div>
-              {item.contact?.organization && (
-                <div className="text-xs text-muted-foreground truncate flex items-center gap-1">
-                  <Building2 className="h-3 w-3 shrink-0" />
-                  {item.contact.organization}
-                </div>
-              )}
-              {item.role && (
-                <div className="text-xs text-muted-foreground truncate mt-0.5">
-                  {getRoleLabel(item.role)}
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-0.5 shrink-0">
-              {item.contact?.phone && (
-                <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
-                  <a href={`tel:${item.contact.phone}`}>
-                    <Phone className="h-3 w-3" />
-                  </a>
-                </Button>
-              )}
-              {item.contact?.email && (
-                <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
-                  <a href={`mailto:${item.contact.email}`}>
-                    <Mail className="h-3 w-3" />
-                  </a>
-                </Button>
-              )}
-            </div>
-          </div>
-        ))}
+  const renderPerson = (item: CaseFileContact) => (
+    <div key={item.id} className="flex items-start gap-2.5 py-1.5">
+      <Avatar className="h-8 w-8 shrink-0">
+        <AvatarImage src={item.contact?.avatar_url || undefined} />
+        <AvatarFallback className="text-[10px] font-medium">
+          {item.contact?.name
+            ?.split(" ")
+            .slice(0, 2)
+            .map((p) => p[0])
+            .join("") || "?"}
+        </AvatarFallback>
+      </Avatar>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-semibold truncate">{item.contact?.name}</div>
+        <div className="text-xs text-muted-foreground truncate">
+          {item.role ? getRoleLabel(item.role) : item.contact?.organization || ""}
+        </div>
       </div>
-    );
-  };
+      <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100">
+        {item.contact?.phone && (
+          <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
+            <a href={`tel:${item.contact.phone}`}>
+              <Phone className="h-3 w-3" />
+            </a>
+          </Button>
+        )}
+        {item.contact?.email && (
+          <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
+            <a href={`mailto:${item.contact.email}`}>
+              <Mail className="h-3 w-3" />
+            </a>
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderOrg = (item: CaseFileContact) => (
+    <div
+      key={item.id}
+      className="rounded-md border bg-background px-3 py-2 hover:bg-muted/40 transition-colors"
+    >
+      <div className="text-sm font-semibold leading-tight">{item.contact?.name}</div>
+      <div className="text-xs text-muted-foreground mt-0.5">
+        {item.role ? getRoleLabel(item.role) : item.contact?.organization || "—"}
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-4">
-      {/* Zuständiger Bearbeiter - FIRST */}
-      <Card>
-        <CardHeader className="p-4 pb-2">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <UserCheck className="h-4 w-4" />
-            Zuständig
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 pt-0">
-          <UserSelector
-            onSelect={(user) => onAssignUser?.(user.id)}
-            selectedUserId={caseFile.assigned_to || undefined}
-            placeholder="Bearbeiter zuweisen..."
-          />
-        </CardContent>
-      </Card>
+      {/* Zuständig */}
+      <SectionCard>
+        <SectionHeader label="Zuständig" />
+        <UserSelector
+          onSelect={(user) => onAssignUser?.(user.id)}
+          selectedUserId={caseFile.assigned_to || undefined}
+          placeholder="Bearbeiter zuweisen..."
+        />
+      </SectionCard>
 
-      {/* Beteiligte Personen */}
-      <Card>
-        <CardHeader className="p-4 pb-2">
-          <CardTitle className="text-sm font-semibold flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Personen
-            </span>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onAddContact}>
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 pt-0">
-          {renderContactList(personContacts)}
-        </CardContent>
-      </Card>
+      {/* Personen */}
+      <SectionCard>
+        <SectionHeader label="Personen" count={personContacts.length} onAdd={onAddContact} />
+        {personContacts.length === 0 ? (
+          <p className="text-xs text-muted-foreground italic">Keine verknüpft</p>
+        ) : (
+          <div className="space-y-0">{personContacts.map(renderPerson)}</div>
+        )}
+      </SectionCard>
 
-      {/* Beteiligte Institutionen - always show */}
-      <Card>
-        <CardHeader className="p-4 pb-2">
-          <CardTitle className="text-sm font-semibold flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <Building2 className="h-4 w-4" />
-              Institutionen
-            </span>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onAddContact}>
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 pt-0">
-          {renderContactList(orgContacts)}
-        </CardContent>
-      </Card>
+      {/* Institutionen */}
+      <SectionCard>
+        <SectionHeader label="Institutionen" count={orgContacts.length} onAdd={onAddContact} />
+        {orgContacts.length === 0 ? (
+          <p className="text-xs text-muted-foreground italic">Keine verknüpft</p>
+        ) : (
+          <div className="space-y-2">{orgContacts.map(renderOrg)}</div>
+        )}
+      </SectionCard>
 
-      {/* Dokumentenübersicht */}
-      <Card>
-        <CardHeader className="p-4 pb-2">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Dokumente
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 pt-0">
-          {documents.length === 0 ? (
-            <p className="text-xs text-muted-foreground py-1">Keine verknüpft</p>
-          ) : (
-            <div className="space-y-2">
-              {documents.map((doc) => (
-                <div key={doc.id} className="rounded-md border p-2">
-                  <p className="text-sm font-medium line-clamp-1">
-                    {doc.document?.title || doc.document?.file_name || "Dokument"}
-                  </p>
-                  {doc.document?.file_name && (
-                    <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
-                      {doc.document.file_name}
-                    </p>
-                  )}
-                  {doc.relevance && (
-                    <p className="text-xs text-muted-foreground mt-1">Relevanz: {doc.relevance}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Themen */}
+      <SectionCard>
+        <SectionHeader label="Themen" />
+        <TopicSelector
+          selectedTopicIds={assignedTopics}
+          onTopicsChange={onTopicsChange}
+          compact
+        />
+      </SectionCard>
 
-      {/* Themen / Politischer Kontext */}
-      <Card>
-        <CardHeader className="p-4 pb-2">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <Tag className="h-4 w-4" />
-            Themen
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 pt-0">
-          <TopicSelector
-            selectedTopicIds={assignedTopics}
-            onTopicsChange={onTopicsChange}
-            compact
-          />
-        </CardContent>
-      </Card>
-
-      {/* Metadaten (inkl. Kategorie + Sichtbarkeit) */}
-      <Card>
-        <CardHeader className="p-4 pb-2">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            Metadaten
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 pt-0 space-y-2">
-          {/* Kategorie */}
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            {TypeIcon && <TypeIcon className="h-3.5 w-3.5 shrink-0" style={{ color: typeConfig?.color || undefined }} />}
-            <span>Kategorie: {typeConfig?.label || caseFile.case_type}</span>
+      {caseFile.tags && caseFile.tags.length > 0 && (
+        <SectionCard>
+          <SectionHeader label="Tags" />
+          <div className="flex flex-wrap gap-1">
+            {caseFile.tags.map((tag) => (
+              <Badge key={tag} variant="secondary" className="text-[10px]">
+                {tag}
+              </Badge>
+            ))}
           </div>
-
-          {/* Sichtbarkeit */}
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <VisIcon className="h-3.5 w-3.5 shrink-0" />
-            <span>Sichtbarkeit: {visibility.label}</span>
-          </div>
-
-          <Separator className="my-2" />
-
-          {caseFile.start_date && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <CalendarDays className="h-3.5 w-3.5 shrink-0" />
-              <span>Start: {format(new Date(caseFile.start_date), "dd.MM.yyyy", { locale: de })}</span>
-            </div>
-          )}
-          {caseFile.target_date && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <CalendarDays className="h-3.5 w-3.5 shrink-0" />
-              <span>Ziel: {format(new Date(caseFile.target_date), "dd.MM.yyyy", { locale: de })}</span>
-            </div>
-          )}
-          {/* Aktualisiert first, then Erstellt */}
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Clock className="h-3.5 w-3.5 shrink-0" />
-            <span>Aktualisiert: {format(new Date(caseFile.updated_at), "dd.MM.yyyy", { locale: de })}</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Clock className="h-3.5 w-3.5 shrink-0" />
-            <span>Erstellt: {format(new Date(caseFile.created_at), "dd.MM.yyyy", { locale: de })}</span>
-          </div>
-
-          {caseFile.tags && caseFile.tags.length > 0 && (
-            <>
-              <Separator className="my-2" />
-              <div className="flex flex-wrap gap-1">
-                {caseFile.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="text-[10px]">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+        </SectionCard>
+      )}
     </div>
   );
 }

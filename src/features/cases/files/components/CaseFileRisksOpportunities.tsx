@@ -67,16 +67,16 @@ export function CaseFileRisksOpportunities({ caseFile, onUpdate }: CaseFileRisks
   return (
     <Card>
       <CardHeader className="p-4 pb-2">
-        <CardTitle className="text-sm font-semibold flex items-center justify-between">
-          <span>Risiken & Chancen</span>
+        <CardTitle className="text-[10px] font-semibold tracking-[0.14em] uppercase text-muted-foreground flex items-center justify-between">
+          <span>Risiken &amp; Chancen</span>
           {!isEditing && (
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleStartEdit}>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleStartEdit}>
               <Edit2 className="h-3.5 w-3.5" />
             </Button>
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-4 pt-0 space-y-3">
+      <CardContent className="p-4 pt-0 space-y-4">
         {isEditing ? (
           <>
             <div>
@@ -94,7 +94,7 @@ export function CaseFileRisksOpportunities({ caseFile, onUpdate }: CaseFileRisks
             </div>
             <div>
               <div className="flex items-center gap-1.5 mb-1">
-                <Sparkles className="h-3.5 w-3.5 text-green-600" />
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
                 <span className="text-xs font-medium">Chancen</span>
               </div>
               <Textarea
@@ -119,42 +119,42 @@ export function CaseFileRisksOpportunities({ caseFile, onUpdate }: CaseFileRisks
         ) : (
           <>
             {/* Risks */}
-            <div>
-              <div className="flex items-center gap-1.5 mb-1">
-                <ShieldAlert className="h-3.5 w-3.5 text-destructive" />
-                <span className="text-xs font-medium">Risiken</span>
-              </div>
-              {parsed.risks.length > 0 ? (
-                <ul className="text-sm space-y-0.5 pl-4">
-                  {parsed.risks.map((r, i) => (
-                    <li key={i} className="list-disc text-muted-foreground">
-                      {r}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
+            {parsed.risks.length > 0 ? (
+              parsed.risks.map((r, i) => (
+                <div key={`r-${i}`} className="border-l-2 border-destructive pl-3">
+                  <div className="text-[10px] font-semibold tracking-[0.12em] uppercase text-destructive mb-0.5">
+                    Risiko
+                  </div>
+                  <p className="text-sm text-foreground leading-snug">{r}</p>
+                </div>
+              ))
+            ) : (
+              <div className="border-l-2 border-destructive/40 pl-3">
+                <div className="text-[10px] font-semibold tracking-[0.12em] uppercase text-destructive/70 mb-0.5">
+                  Risiko
+                </div>
                 <p className="text-xs text-muted-foreground italic">Keine Risiken eingetragen</p>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Opportunities */}
-            <div>
-              <div className="flex items-center gap-1.5 mb-1">
-                <Sparkles className="h-3.5 w-3.5 text-green-600" />
-                <span className="text-xs font-medium">Chancen</span>
-              </div>
-              {parsed.opportunities.length > 0 ? (
-                <ul className="text-sm space-y-0.5 pl-4">
-                  {parsed.opportunities.map((o, i) => (
-                    <li key={i} className="list-disc text-muted-foreground">
-                      {o}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
+            {parsed.opportunities.length > 0 ? (
+              parsed.opportunities.map((o, i) => (
+                <div key={`o-${i}`} className="border-l-2 border-primary pl-3">
+                  <div className="text-[10px] font-semibold tracking-[0.12em] uppercase text-primary mb-0.5">
+                    Chance
+                  </div>
+                  <p className="text-sm text-foreground leading-snug">{o}</p>
+                </div>
+              ))
+            ) : (
+              <div className="border-l-2 border-primary/40 pl-3">
+                <div className="text-[10px] font-semibold tracking-[0.12em] uppercase text-primary/70 mb-0.5">
+                  Chance
+                </div>
                 <p className="text-xs text-muted-foreground italic">Keine Chancen eingetragen</p>
-              )}
-            </div>
+              </div>
+            )}
           </>
         )}
       </CardContent>
