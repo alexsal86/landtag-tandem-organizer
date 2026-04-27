@@ -243,7 +243,7 @@ export function CaseFileNextSteps({
 
         {openTasks.map((item) => {
           const due = item.task?.due_date;
-          const owner = item.task?.assigned_to_name || item.task?.assigned_to_display_name || null;
+          const owner: string | null = null;
 
           return (
             <div
