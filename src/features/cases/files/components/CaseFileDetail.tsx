@@ -198,12 +198,14 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
           <CaseFileRightSidebar
             caseFile={caseFile}
             tasks={tasks}
+            documents={documents}
             caseFileId={caseFileId}
             onUpdateCurrentStatus={details.updateCurrentStatus}
             onUpdateProcessingStatuses={details.updateProcessingStatuses}
             onUpdateRisksOpportunities={details.updateRisksOpportunities}
             onCompleteTask={details.completeTask}
             onAddTask={details.addTask}
+            onAddDocument={() => setShowAddDocument(true)}
             onRefresh={details.refresh}
           />
         </div>
