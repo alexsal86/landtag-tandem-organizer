@@ -62,15 +62,15 @@ export function useTeamAnnouncements() {
 
       if (dismissalsError) throw dismissalsError;
 
-      const dismissedIds = new Set(dismissalsData?.map(d: Record<string, any> => d.announcement_id) || []);
+      const dismissedIds = new Set(dismissalsData?.map((d: Record<string, any>) => d.announcement_id) || []);
 
-      const authorIds = [...new Set(announcementsData?.map(a: Record<string, any> => a.author_id) || [])];
+      const authorIds = [...new Set(announcementsData?.map((a: Record<string, any>) => a.author_id) || [])];
       const { data: profilesData } = await supabase
         .from("profiles")
         .select("user_id, display_name")
         .in("user_id", authorIds);
 
-      const profileMap = new Map(profilesData?.map(p: Record<string, any> => [p.user_id, p.display_name]) || []);
+      const profileMap = new Map(profilesData?.map((p: Record<string, any>) => [p.user_id, p.display_name]) || []);
 
       const enrichedAnnouncements = (announcementsData || []).map((announcement: Record<string, any>) => ({
         ...announcement,
@@ -82,7 +82,7 @@ export function useTeamAnnouncements() {
       setAnnouncements(enrichedAnnouncements);
 
       const now = new Date();
-      const active = enrichedAnnouncements.filter(a: Record<string, any> => {
+      const active = enrichedAnnouncements.filter((a: Record<string, any>) => {
         if (!a.is_active) return false;
         if (a.is_dismissed) return false;
         if (a.starts_at && new Date(a.starts_at) > now) return false;
@@ -401,15 +401,15 @@ export function useAnnouncementProgress(announcementId: string) {
 
         if (membersError) throw membersError;
 
-        const dismissedUserIds = dismissalsData?.map(d: Record<string, any> => d.user_id) || [];
+        const dismissedUserIds = dismissalsData?.map((d: Record<string, any>) => d.user_id) || [];
         const { data: profilesData } = await supabase
           .from("profiles")
           .select("user_id, display_name")
           .in("user_id", dismissedUserIds);
 
-        const profileMap = new Map(profilesData?.map(p: Record<string, any> => [p.user_id, p.display_name]) || []);
+        const profileMap = new Map(profilesData?.map((p: Record<string, any>) => [p.user_id, p.display_name]) || []);
 
-        const dismissals = (dismissalsData || []).map(d: Record<string, any> => ({
+        const dismissals = (dismissalsData || []).map((d: Record<string, any>) => ({
           user_id: d.user_id,
           display_name: profileMap.get(d.user_id) || "Unbekannt",
           dismissed_at: d.dismissed_at,

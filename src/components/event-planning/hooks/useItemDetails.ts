@@ -94,7 +94,7 @@ export function useItemDetails({
     try {
       const { data: comments, error } = await supabase.from('planning_item_comments').select('id, planning_item_id, user_id, content, created_at').eq('planning_item_id', itemId).order('created_at', { ascending: true });
       if (error) throw error;
-      const userIds = [...new Set(comments?.map(c: Record<string, any> => c.user_id) || [])];
+      const userIds = [...new Set(comments?.map((c: Record<string, any>) => c.user_id) || [])];
       let profiles: Array<{ user_id: string; display_name: string | null; avatar_url: string | null }> = [];
       if (userIds.length > 0) {
         const { data: profilesData } = await supabase.from('profiles').select('user_id, display_name, avatar_url').in('user_id', userIds);
@@ -259,7 +259,7 @@ export function useItemDetails({
       setItemSubtasks(subtasksMap);
 
       const { data: commentsData } = await supabase.from('planning_item_comments').select('planning_item_id, id, content, user_id, created_at').in('planning_item_id', itemIds);
-      const userIds = [...new Set(commentsData?.map(c: Record<string, any> => c.user_id) || [])];
+      const userIds = [...new Set(commentsData?.map((c: Record<string, any>) => c.user_id) || [])];
       let profiles: Array<{ user_id: string; display_name: string | null; avatar_url: string | null }> = [];
       if (userIds.length > 0) {
         const { data: profilesData } = await supabase.from('profiles').select('user_id, display_name, avatar_url').in('user_id', userIds);

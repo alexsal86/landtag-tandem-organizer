@@ -292,7 +292,7 @@ export function useMeetingsData() {
         .from('meeting_participants').select(`meeting_id, meetings(${meetingSelectFields})`).eq('user_id', user?.id ?? '');
       if (participantError) debugConsole.error('Error loading participant meetings:', participantError);
 
-      const ownMeetingIds = new Set((ownMeetings || []).map(m: Record<string, any> => m.id));
+      const ownMeetingIds = new Set((ownMeetings || []).map((m: Record<string, any>) => m.id));
       const participantMeetingsData = ((participantMeetings || []) as ParticipantMeetingRow[])
         .map((row) => (Array.isArray(row.meetings) ? row.meetings[0] ?? null : row.meetings))
         .filter((meeting): meeting is Meeting => Boolean(meeting && !ownMeetingIds.has(meeting.id!) && meeting.status !== 'archived'));
@@ -312,12 +312,12 @@ export function useMeetingsData() {
       if (membershipError) throw membershipError;
       if (!memberships || memberships.length === 0) { setProfiles([]); return; }
 
-      const userIds = memberships.map(m: Record<string, any> => m.user_id);
+      const userIds = memberships.map((m: Record<string, any>) => m.user_id);
       const { data, error } = await supabase.from('profiles').select('user_id, display_name, avatar_url').in('user_id', userIds);
       if (error) throw error;
 
-      const currentUserProfile = data?.find(p: Record<string, any> => p.user_id === user?.id);
-      const otherProfiles = data?.filter(p: Record<string, any> => p.user_id !== user?.id) || [];
+      const currentUserProfile = data?.find((p: Record<string, any>) => p.user_id === user?.id);
+      const otherProfiles = data?.filter((p: Record<string, any>) => p.user_id !== user?.id) || [];
       setProfiles(currentUserProfile ? [currentUserProfile, ...otherProfiles] : otherProfiles);
     } catch (error) {
       handleAppError(error, { context: 'loadProfiles' });
@@ -372,7 +372,7 @@ export function useMeetingsData() {
             .in('user_id', defaultTemplate.default_participants)
             .then(({ data: profilesData }) => {
               if (profilesData) {
-                setNewMeetingParticipants(profilesData.map(u: Record<string, any> => ({
+                setNewMeetingParticipants(profilesData.map((u: Record<string, any>) => ({
                   userId: u.user_id, role: 'participant' as const,
                   user: { id: u.user_id, display_name: u.display_name || 'Unbekannt', avatar_url: u.avatar_url }
                 })));
@@ -470,7 +470,7 @@ export function useMeetingsData() {
       const { data, error } = await supabase
         .from('carryover_items').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
       if (error) throw error;
-      setCarryoverBufferItems((data || []).map(d: Record<string, any> => ({ ...d, is_completed: false, is_recurring: false })));
+      setCarryoverBufferItems((data || []).map((d: Record<string, any>) => ({ ...d, is_completed: false, is_recurring: false })));
     } catch (error) {
       debugConsole.error('Error loading carryover buffer:', error);
     }
@@ -556,7 +556,7 @@ export function useMeetingsData() {
 
       if (agendaItemIds && agendaItemIds.length > 0) {
         const { error: docError } = await supabase
-          .from('meeting_agenda_documents').delete().in('meeting_agenda_item_id', agendaItemIds.map(i: Record<string, any> => i.id));
+          .from('meeting_agenda_documents').delete().in('meeting_agenda_item_id', agendaItemIds.map((i: Record<string, any>) => i.id));
         if (docError) debugConsole.error('Error deleting agenda docs:', docError);
       }
 

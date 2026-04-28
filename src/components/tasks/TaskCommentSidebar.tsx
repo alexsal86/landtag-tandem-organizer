@@ -49,16 +49,16 @@ export function TaskCommentSidebar({
       if (error) throw error;
 
       // Load profiles for all users
-      const userIds = [...new Set(data?.map(c: Record<string, any> => c.user_id) || [])];
+      const userIds = [...new Set(data?.map((c: Record<string, any>) => c.user_id) || [])];
       const { data: profiles } = await supabase
         .from('profiles')
         .select('user_id, display_name, badge_color, avatar_url')
         .in('user_id', userIds);
 
-      const profileMap = new Map(profiles?.map(p: Record<string, any> => [p.user_id, p]) || []);
+      const profileMap = new Map(profiles?.map((p: Record<string, any>) => [p.user_id, p]) || []);
 
       // Build nested structure
-      const commentsWithProfiles: CommentData[] = (data || []).map(c: Record<string, any> => ({
+      const commentsWithProfiles: CommentData[] = (data || []).map((c: Record<string, any>) => ({
         ...c,
         profile: profileMap.get(c.user_id) || undefined,
         replies: [],

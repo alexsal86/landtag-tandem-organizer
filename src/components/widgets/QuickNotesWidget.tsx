@@ -169,7 +169,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
       })));
 
       if (tasksData && tasksData.length > 0) {
-        const taskIds = tasksData.map(t: Record<string, any> => t.id);
+        const taskIds = tasksData.map((t: Record<string, any>) => t.id);
         
         const { data: childTasksData, error: childTasksError } = await supabase
           .from('tasks')

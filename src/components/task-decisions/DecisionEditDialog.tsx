@@ -68,7 +68,7 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
         .eq('tenant_id', tenantData.tenant_id)
         .eq('is_active', true);
 
-      const tenantUserIds = tenantMembers?.map(m: Record<string, any> => m.user_id) || [];
+      const tenantUserIds = tenantMembers?.map((m: Record<string, any>) => m.user_id) || [];
       if (tenantUserIds.length === 0) {
         setProfiles([]);
         return;
@@ -113,7 +113,7 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
 
       if (participantsError) throw participantsError;
 
-      setSelectedUsers(participants.map(p: Record<string, any> => p.user_id));
+      setSelectedUsers(participants.map((p: Record<string, any>) => p.user_id));
     } catch (error) {
       debugConsole.error('Error loading decision data:', error);
       toast({
@@ -168,7 +168,7 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
         .eq('tenant_id', tenantData.tenant_id)
         .eq('is_active', true);
 
-      const tenantUserIds = new Set((tenantMembers || []).map(m: Record<string, any> => m.user_id));
+      const tenantUserIds = new Set((tenantMembers || []).map((m: Record<string, any>) => m.user_id));
       const validSelectedUsers = selectedUsers.filter(id => tenantUserIds.has(id));
 
       if (!visibleToAll && validSelectedUsers.length === 0) {
@@ -201,7 +201,7 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
 
       if (currentError) throw currentError;
 
-      const currentUserIds = currentParticipants.map(p: Record<string, any> => p.user_id);
+      const currentUserIds = currentParticipants.map((p: Record<string, any>) => p.user_id);
 
       // Delete removed participants
       const toDelete = currentUserIds.filter((id: Record<string, any>) => !validSelectedUsers.includes(id));

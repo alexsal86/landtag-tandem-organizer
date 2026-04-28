@@ -306,7 +306,7 @@ export function useEventPlanningData() {
       });
       setPlannings(sortedData);
       if (data && data.length > 0) {
-        try { await fetchAllCollaborators(data.map(p: Record<string, any> => p.id)); }
+        try { await fetchAllCollaborators(data.map((p: Record<string, any>) => p.id)); }
         catch (collabError) { debugConsole.error('Error fetching collaborators:', collabError); }
       }
     } catch (err) {
@@ -342,7 +342,7 @@ export function useEventPlanningData() {
       const { data: memberships, error: memberError } = await supabase.from("user_tenant_memberships").select("user_id").eq("tenant_id", currentTenant.id).eq("is_active", true);
       if (memberError) { debugConsole.error("Error fetching memberships:", memberError); return; }
       if (!memberships || memberships.length === 0) { setAllProfiles([]); return; }
-      const userIds = memberships.map(m: Record<string, any> => m.user_id);
+      const userIds = memberships.map((m: Record<string, any>) => m.user_id);
       const { data: profiles, error: profileError } = await supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", userIds);
       if (profileError) { debugConsole.error("Error fetching profiles:", profileError); return; }
       setAllProfiles(profiles || []);
@@ -374,7 +374,7 @@ export function useEventPlanningData() {
           .select("id, title")
           .in("id", appointmentIds);
         if (appointments) {
-          const titleMap = new Map(appointments.map(a: Record<string, any> => [a.id, a.title]));
+          const titleMap = new Map(appointments.map((a: Record<string, any>) => [a.id, a.title]));
           const updateTitle = (prep: any) => {
             const apptTitle = prep.appointment_id ? titleMap.get(prep.appointment_id) : null;
             if (apptTitle) return { ...prep, title: `Terminplanung: ${apptTitle}` };

@@ -36,7 +36,7 @@ export const useCanvasGallery = () => {
       const folderPath = `${currentTenant.id}/header-images`;
       const { data: files, error } = await supabase.storage.from('letter-assets').list(folderPath);
       if (error) return;
-      const imageFiles = (files || []).filter(f: Record<string, any> => f.name && /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(f.name));
+      const imageFiles = (files || []).filter((f: Record<string, any>) => f.name && /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(f.name));
       const loaded: GalleryImage[] = [];
       for (const file of imageFiles) {
         const filePath = `${folderPath}/${file.name}`;

@@ -104,7 +104,7 @@ export function MeetingCreateDialog({
                         .in('user_id', template.default_participants)
                         .then(({ data }) => {
                           if (data) {
-                            onParticipantsChange(data.map(u: Record<string, any> => ({
+                            onParticipantsChange(data.map((u: Record<string, any>) => ({
                               userId: u.user_id,
                               role: 'participant' as const,
                               user: {

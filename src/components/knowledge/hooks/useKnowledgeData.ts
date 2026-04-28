@@ -144,7 +144,7 @@ export function useKnowledgeData() {
   const fetchDocumentTopicsById = useCallback(async (docId: string) => {
     const { data, error } = await supabase.from('knowledge_document_topics').select('topic_id').eq('document_id', docId);
     if (error) { debugConsole.error('Error fetching document topics:', error); return; }
-    setDocumentTopicsMap(prev => ({ ...prev, [docId]: (data ?? []).map(i: Record<string, any> => i.topic_id) }));
+    setDocumentTopicsMap(prev => ({ ...prev, [docId]: (data ?? []).map((i: Record<string, any>) => i.topic_id) }));
   }, []);
 
   const fetchDocuments = useCallback(async () => {

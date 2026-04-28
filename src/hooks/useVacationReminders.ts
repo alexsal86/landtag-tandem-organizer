@@ -45,12 +45,12 @@ export function useVacationReminders() {
             .eq("is_active", true);
 
           if (templates && templates.length > 0) {
-            const responseMap = new Map(responses?.map(r: Record<string, any> => [r.checklist_item_id, r.completed]) || []);
-            const unchecked = templates.filter(t: Record<string, any> => !responseMap.get(t.id));
+            const responseMap = new Map(responses?.map((r: Record<string, any>) => [r.checklist_item_id, r.completed]) || []);
+            const unchecked = templates.filter((t: Record<string, any>) => !responseMap.get(t.id));
 
             if (unchecked.length > 0) {
               toast.warning(
-                `Dein Urlaub beginnt morgen! ${unchecked.length} Checklisten-Punkt(e) noch offen: ${unchecked.map(u: Record<string, any> => u.label).join(", ")}`,
+                `Dein Urlaub beginnt morgen! ${unchecked.length} Checklisten-Punkt(e) noch offen: ${unchecked.map((u: Record<string, any>) => u.label).join(", ")}`,
                 { duration: 10000 }
               );
             }
@@ -83,12 +83,12 @@ export function useVacationReminders() {
               .select("checklist_item_id, completed")
               .eq("leave_request_id", leave.id);
 
-            const completedMap = new Map(responses?.map(r: Record<string, any> => [r.checklist_item_id, r.completed]) || []);
-            const toReverse = reminderTemplates.filter(t: Record<string, any> => completedMap.get(t.id));
+            const completedMap = new Map(responses?.map((r: Record<string, any>) => [r.checklist_item_id, r.completed]) || []);
+            const toReverse = reminderTemplates.filter((t: Record<string, any>) => completedMap.get(t.id));
 
             if (toReverse.length > 0) {
               toast.info(
-                `Willkommen zurück! Bitte rückgängig machen: ${toReverse.map(t: Record<string, any> => t.label).join(", ")}`,
+                `Willkommen zurück! Bitte rückgängig machen: ${toReverse.map((t: Record<string, any>) => t.label).join(", ")}`,
                 { duration: 15000 }
               );
             }

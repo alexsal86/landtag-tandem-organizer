@@ -96,7 +96,7 @@ async function fetchCollaborators(letterId: string): Promise<LetterCollaborator[
   if (error) throw error;
 
   if (data && data.length > 0) {
-    const userIds = data.map(c: Record<string, any> => c.user_id);
+    const userIds = data.map((c: Record<string, any>) => c.user_id);
     const { data: profiles } = await supabase
       .from('profiles')
       .select('user_id, display_name')
@@ -105,7 +105,7 @@ async function fetchCollaborators(letterId: string): Promise<LetterCollaborator[
     return data.map((item: Record<string, any>) => ({
       ...item,
       role: 'reviewer',
-      profiles: profiles?.find(p: Record<string, any> => p.user_id === item.user_id) || { display_name: 'Unbekannt' },
+      profiles: profiles?.find((p: Record<string, any>) => p.user_id === item.user_id) || { display_name: 'Unbekannt' },
     }));
   }
   return [];

@@ -17,7 +17,7 @@ export const useKnowledgeDocumentTopics = (documentId: string | undefined) => {
         .eq('document_id', documentId);
 
       if (error) throw error;
-      setAssignedTopics(data?.map(t: Record<string, any> => t.topic_id) || []);
+      setAssignedTopics(data?.map((t: Record<string, any>) => t.topic_id) || []);
     } catch (error) {
       debugConsole.error('Error fetching knowledge document topics:', error);
     } finally {

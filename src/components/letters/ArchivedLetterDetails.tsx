@@ -80,7 +80,7 @@ export const ArchivedLetterDetails: React.FC<ArchivedLetterDetailsProps> = ({
         .select('user_id, display_name')
         .in('user_id', userIds);
 
-      const profileMap = new Map(profiles?.map(p: Record<string, any> => [p.user_id, p.display_name]) || []);
+      const profileMap = new Map(profiles?.map((p: Record<string, any>) => [p.user_id, p.display_name]) || []);
       
       const workflowWithNames = workflowData?.map((entry: Record<string, any>) => ({
         ...entry,

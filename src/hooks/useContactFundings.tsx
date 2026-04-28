@@ -49,7 +49,7 @@ export const useContactFundings = (contactId?: string) => {
       if (error) throw error;
 
       // Get participant counts
-      const fundingIds = data?.map(d: Record<string, any> => d.funding_id) || [];
+      const fundingIds = data?.map((d: Record<string, any>) => d.funding_id) || [];
       if (fundingIds.length === 0) return [];
 
       const { data: counts } = await supabase

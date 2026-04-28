@@ -49,7 +49,7 @@ export function DecisionResponseSummary({
       if (participantsError) throw participantsError;
 
       // Get responses for these participants
-      const participantIds = participants?.map(p: Record<string, any> => p.id) || [];
+      const participantIds = participants?.map((p: Record<string, any>) => p.id) || [];
       let responses: Record<string, string> = {};
       
       if (participantIds.length > 0) {
@@ -58,7 +58,7 @@ export function DecisionResponseSummary({
           .select("participant_id, response_type")
           .in("participant_id", participantIds);
         
-        responseData?.forEach(r: Record<string, any> => {
+        responseData?.forEach((r: Record<string, any>) => {
           responses[r.participant_id] = r.response_type;
         });
       }
@@ -71,7 +71,7 @@ export function DecisionResponseSummary({
         total: participants?.length || 0
       };
 
-      participants?.forEach(p: Record<string, any> => {
+      participants?.forEach((p: Record<string, any>) => {
         const response = responses[p.id];
         if (!response) {
           result.pending++;

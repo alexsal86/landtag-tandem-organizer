@@ -15,7 +15,7 @@ export const useMapFlagTopics = (flagId?: string) => {
         .eq('flag_id', flagId);
 
       if (error) throw error;
-      return data?.map(t: Record<string, any> => t.topic_id) || [];
+      return data?.map((t: Record<string, any>) => t.topic_id) || [];
     },
     enabled: !!flagId,
   });

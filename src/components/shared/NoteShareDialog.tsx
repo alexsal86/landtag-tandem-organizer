@@ -77,7 +77,7 @@ export const NoteShareDialog = ({
 
       // Step 2: Get user IDs excluding current user
       const userIds = memberships
-        .map(m: Record<string, any> => m.user_id)
+        .map((m: Record<string, any>) => m.user_id)
         .filter((id: Record<string, any>) => id !== user.id);
 
       if (userIds.length === 0) {
@@ -97,7 +97,7 @@ export const NoteShareDialog = ({
         return;
       }
 
-      const members = (profiles || []).map(p: Record<string, any> => ({
+      const members = (profiles || []).map((p: Record<string, any>) => ({
         id: p.user_id,
         display_name: p.display_name || "Unbekannt",
         avatar_url: p.avatar_url,

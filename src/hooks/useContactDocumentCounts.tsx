@@ -48,11 +48,11 @@ export const useContactDocumentCounts = (contactIds: string[]) => {
 
         const taggedCounts: Record<string, number> = {};
 
-        const contactsWithTags = (contactsData || []).filter(c: Record<string, any> => c.tags && c.tags.length > 0);
+        const contactsWithTags = (contactsData || []).filter((c: Record<string, any>) => c.tags && c.tags.length > 0);
 
         if (contactsWithTags.length > 0) {
           // Alle einzigartigen Tags aller Kontakte ermitteln
-          const allContactTags = Array.from(new Set(contactsWithTags.flatMap(c: Record<string, any> => c.tags as string[])));
+          const allContactTags = Array.from(new Set(contactsWithTags.flatMap((c: Record<string, any>) => c.tags as string[])));
 
           // Nur Dokumente laden, deren Tags sich mit einem der Kontakt-Tags überschneiden (DB-seitig)
           const { data: taggedDocs, error: taggedError } = await supabase

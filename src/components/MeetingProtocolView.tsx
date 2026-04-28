@@ -139,7 +139,7 @@ export function MeetingProtocolView({ meetingId, onBack, isPostArchive }: Meetin
       const participantList: ProtocolParticipant[] = [];
       // Add creator
       if (meetingData?.user_id) {
-        const creatorProfile = profilesData?.find(p: Record<string, any> => p.user_id === meetingData.user_id);
+        const creatorProfile = profilesData?.find((p: Record<string, any>) => p.user_id === meetingData.user_id);
         participantList.push({
           user_id: meetingData.user_id,
           role: 'organizer',
@@ -182,7 +182,7 @@ export function MeetingProtocolView({ meetingId, onBack, isPostArchive }: Meetin
           .limit(100);
         
         for (const agendaItem of decisionAgendaItems) {
-          const matchedDecision = decisionsData?.find(d: Record<string, any> => d.title === agendaItem.title);
+          const matchedDecision = decisionsData?.find((d: Record<string, any>) => d.title === agendaItem.title);
           decisionList.push({
             id: matchedDecision?.id || agendaItem.id,
             title: agendaItem.title,
@@ -210,8 +210,8 @@ export function MeetingProtocolView({ meetingId, onBack, isPostArchive }: Meetin
         .eq('meeting_id', meetingId);
 
       if (starredData && starredData.length > 0) {
-        const appointmentIds = starredData.filter(s: Record<string, any> => s.appointment_id).map(s: Record<string, any> => s.appointment_id!);
-        const externalEventIds = starredData.filter(s: Record<string, any> => s.external_event_id).map(s: Record<string, any> => s.external_event_id!);
+        const appointmentIds = starredData.filter((s: Record<string, any>) => s.appointment_id).map((s: Record<string, any>) => s.appointment_id!);
+        const externalEventIds = starredData.filter((s: Record<string, any>) => s.external_event_id).map((s: Record<string, any>) => s.external_event_id!);
 
         if (appointmentIds.length > 0) {
           const { data: appointments } = await supabase

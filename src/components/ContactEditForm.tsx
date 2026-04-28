@@ -89,7 +89,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         .order('name');
 
       if (error) throw error;
-      setExistingContacts(data?.map(c: Record<string, any> => ({
+      setExistingContacts(data?.map((c: Record<string, any>) => ({
         id: c.id,
         name: c.name,
         email: c.email ?? undefined,

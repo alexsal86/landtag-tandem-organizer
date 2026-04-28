@@ -116,11 +116,11 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
 
         // Calculate results for each time slot
         const results: SlotResults[] = (slotsData || []).map((slot: Record<string, any>) => {
-          const slotResponses = (responsesData || []).filter(r: Record<string, any> => r.time_slot_id === slot.id);
+          const slotResponses = (responsesData || []).filter((r: Record<string, any>) => r.time_slot_id === slot.id);
           
-          const available = slotResponses.filter(r: Record<string, any> => r.status === 'available').length;
-          const tentative = slotResponses.filter(r: Record<string, any> => r.status === 'tentative').length;
-          const unavailable = slotResponses.filter(r: Record<string, any> => r.status === 'unavailable').length;
+          const available = slotResponses.filter((r: Record<string, any>) => r.status === 'available').length;
+          const tentative = slotResponses.filter((r: Record<string, any>) => r.status === 'tentative').length;
+          const unavailable = slotResponses.filter((r: Record<string, any>) => r.status === 'unavailable').length;
           const total = participantsData?.length || 0;
           
           // Calculate score: available = 2 points, tentative = 1 point, unavailable = 0 points

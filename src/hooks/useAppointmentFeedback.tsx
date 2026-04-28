@@ -184,7 +184,7 @@ export const useAppointmentFeedback = () => {
       if (!externalEventsRaw || externalEventsRaw.length === 0) return [];
 
       // 2. Lade existierende Feedback-Einträge für diese Events
-      const eventIds = externalEventsRaw.map(e: Record<string, any> => e.id);
+      const eventIds = externalEventsRaw.map((e: Record<string, any>) => e.id);
       const { data: feedbackData } = await supabase
         .from('appointment_feedback')
         .select('id, external_event_id, appointment_id, feedback_status, notes, has_documents, has_tasks, completed_at, user_id, tenant_id, event_type, priority_score, reminder_dismissed')
@@ -196,7 +196,7 @@ export const useAppointmentFeedback = () => {
           feedback.external_event_id ? [[feedback.external_event_id, feedback] as const] : [],
         ) || [],
       );
-      const eventsWithoutFeedback = externalEventsRaw.filter(e: Record<string, any> => !feedbackMap.has(e.id));
+      const eventsWithoutFeedback = externalEventsRaw.filter((e: Record<string, any>) => !feedbackMap.has(e.id));
 
       // 4. Erstelle Feedback-Einträge für Events ohne Feedback
       if (eventsWithoutFeedback.length > 0) {
@@ -216,7 +216,7 @@ export const useAppointmentFeedback = () => {
 
         if (!insertError && newFeedback) {
           // Füge neue Feedback-Einträge zur Map hinzu
-          newFeedback.forEach(f: Record<string, any> => feedbackMap.set(f.external_event_id, f));
+          newFeedback.forEach((f: Record<string, any>) => feedbackMap.set(f.external_event_id, f));
         }
       }
 

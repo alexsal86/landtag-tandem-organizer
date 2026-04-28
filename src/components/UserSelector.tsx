@@ -77,7 +77,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
         return;
       }
 
-      const userIds = memberships.map(m: Record<string, any> => m.user_id);
+      const userIds = memberships.map((m: Record<string, any>) => m.user_id);
       debugConsole.log('UserSelector: Fetching profiles for user IDs:', userIds);
       
       const { data: profilesData, error: profilesError } = await supabase

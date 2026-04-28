@@ -35,7 +35,7 @@ export function useVacationChecklistItems() {
         .order("sort_order");
 
       setItems(
-        (data || []).map(d: Record<string, any> => ({
+        (data || []).map((d: Record<string, any>) => ({
           id: d.id,
           label: d.label,
           description: d.description,

@@ -74,7 +74,7 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
         .neq('user_id', user?.id ?? '');
 
       if (tenantError) throw tenantError;
-      const userIds = tenantUsers?.map(u: Record<string, any> => u.user_id) || [];
+      const userIds = tenantUsers?.map((u: Record<string, any>) => u.user_id) || [];
       if (userIds.length === 0) { setUsers([]); return; }
 
       const { data, error } = await supabase

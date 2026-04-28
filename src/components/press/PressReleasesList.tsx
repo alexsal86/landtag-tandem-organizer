@@ -89,7 +89,7 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
       .in('setting_key', ['press_default_tags', 'press_email_template_subject', 'press_email_template_body', 'press_default_distribution_list_id']);
     let loadedSubject = '';
     let loadedBody = '';
-    (data || []).forEach(s: Record<string, any> => {
+    (data || []).forEach((s: Record<string, any>) => {
       if (s.setting_key === 'press_default_tags') setDefaultTags(s.setting_value || '');
       if (s.setting_key === 'press_email_template_subject') loadedSubject = s.setting_value || '';
       if (s.setting_key === 'press_email_template_body') loadedBody = s.setting_value || '';
@@ -170,7 +170,7 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
           .in('user_id', userIds);
         
         const profileMap: Record<string, string> = {};
-        (profileData || []).forEach(p: Record<string, any> => {
+        (profileData || []).forEach((p: Record<string, any>) => {
           profileMap[p.user_id] = p.display_name || 'Unbekannt';
         });
         setProfiles(profileMap);

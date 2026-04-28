@@ -67,7 +67,7 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
         return;
       }
 
-      const decisionIds = decisionsData.map(d: Record<string, any> => d.id);
+      const decisionIds = decisionsData.map((d: Record<string, any>) => d.id);
 
       // Get participants for these decisions
       const { data: participantsData, error: participantsError } = await supabase
@@ -87,7 +87,7 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
       if (participantsError) throw participantsError;
 
       // Get user profiles
-      const userIds = participantsData?.map(p: Record<string, any> => p.user_id) || [];
+      const userIds = participantsData?.map((p: Record<string, any>) => p.user_id) || [];
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('user_id, display_name')
@@ -95,7 +95,7 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
 
       if (profilesError) throw profilesError;
 
-      const profileMap = new Map(profiles?.map(p: Record<string, any> => [p.user_id, p]) || []);
+      const profileMap = new Map(profiles?.map((p: Record<string, any>) => [p.user_id, p]) || []);
 
       // Group participants by decision
       const participantsByDecision = new Map();

@@ -63,7 +63,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
     const reviewParentId = await ensureReviewParentItem(targetMeetingId);
     const { data: existingChildren } = await supabase
       .from('meeting_agenda_items').select('title, source_meeting_id').eq('meeting_id', targetMeetingId).eq('parent_id', reviewParentId);
-    let existingSet = new Set((existingChildren || []).map(i: Record<string, any> => `${i.source_meeting_id}::${i.title}`));
+    let existingSet = new Set((existingChildren || []).map((i: Record<string, any>) => `${i.source_meeting_id}::${i.title}`));
 
     const { data: maxOrderData } = await supabase
       .from('meeting_agenda_items').select('order_index').eq('meeting_id', targetMeetingId).eq('parent_id', reviewParentId)
@@ -157,7 +157,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
         .from('meeting_agenda_items').select('order_index, title, source_meeting_id')
         .eq('meeting_id', meetingId).eq('parent_id', reviewParentId).order('order_index', { ascending: false });
 
-      const existingSet = new Set((existingItems || []).map(i: Record<string, any> => `${i.source_meeting_id}::${i.title}`));
+      const existingSet = new Set((existingItems || []).map((i: Record<string, any>) => `${i.source_meeting_id}::${i.title}`));
       let nextOrderIndex = (existingItems?.[0]?.order_index || 0) + 1;
 
       for (const item of pendingItems) {
@@ -382,11 +382,11 @@ export function useMeetingArchive(deps: ArchiveDeps) {
             .from('starred_appointments').select('id, appointment_id, external_event_id, assigned_to').eq('meeting_id', meeting.id);
           if (starredAppts && starredAppts.length > 0) {
             const starredAssignmentMap = new Map<string, string[] | null>();
-            const appointmentIds = starredAppts.filter(s: Record<string, any> => s.appointment_id).map(s: Record<string, any> => {
+            const appointmentIds = starredAppts.filter((s: Record<string, any>) => s.appointment_id).map((s: Record<string, any>) => {
               starredAssignmentMap.set(s.appointment_id!, s.assigned_to || null);
               return s.appointment_id!;
             });
-            const externalEventIds = starredAppts.filter(s: Record<string, any> => s.external_event_id).map(s: Record<string, any> => {
+            const externalEventIds = starredAppts.filter((s: Record<string, any>) => s.external_event_id).map((s: Record<string, any>) => {
               starredAssignmentMap.set(s.external_event_id!, s.assigned_to || null);
               return s.external_event_id!;
             });
@@ -404,7 +404,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
             if (allAppointments.length > 0) {
               const { data: participants } = await supabase.from('meeting_participants').select('user_id').eq('meeting_id', meeting.id);
               const allParticipantIds = Array.from(new Set([
-                ...(participants?.map(p: Record<string, any> => p.user_id).filter(Boolean) || []), meeting.user_id,
+                ...(participants?.map((p: Record<string, any>) => p.user_id).filter(Boolean) || []), meeting.user_id,
               ].filter(Boolean))) as string[];
               if (allParticipantIds.length === 0) allParticipantIds.push(user.id);
 
@@ -474,7 +474,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       try {
         const { data: meetingParticipants } = await supabase.from('meeting_participants').select('user_id').eq('meeting_id', meeting.id);
         const notifyUserIds = Array.from(new Set([
-          ...(meetingParticipants?.map(p: Record<string, any> => p.user_id).filter(Boolean) || []),
+          ...(meetingParticipants?.map((p: Record<string, any>) => p.user_id).filter(Boolean) || []),
         ].filter(id => id !== user.id)));
         const meetingDateFormatted = format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de });
         for (const recipientId of notifyUserIds) {

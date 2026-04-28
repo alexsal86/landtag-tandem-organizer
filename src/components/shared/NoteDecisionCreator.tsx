@@ -104,7 +104,7 @@ export function NoteDecisionCreator({
 
       if (membershipError) throw membershipError;
 
-      const userIds = memberships?.map(m: Record<string, any> => m.user_id) || [];
+      const userIds = memberships?.map((m: Record<string, any>) => m.user_id) || [];
       
       if (userIds.length === 0) {
         setProfiles([]);
@@ -119,7 +119,7 @@ export function NoteDecisionCreator({
 
       if (profileError) throw profileError;
       
-      const filteredProfiles = (profileData || []).filter(p: Record<string, any> => p.user_id !== user?.id);
+      const filteredProfiles = (profileData || []).filter((p: Record<string, any>) => p.user_id !== user?.id);
       setProfiles(filteredProfiles);
 
       // Only set selected users on first initialization (prevents overwriting user changes)
@@ -170,7 +170,7 @@ export function NoteDecisionCreator({
 
       if (abgeordneterRoles && abgeordneterRoles.length > 0) {
         const abgeordneterIds = abgeordneterRoles
-          .map(r: Record<string, any> => r.user_id)
+          .map((r: Record<string, any>) => r.user_id)
           .filter((id: Record<string, any>) => id !== user?.id);
         if (abgeordneterIds.length > 0) {
           setSelectedUsers(abgeordneterIds);

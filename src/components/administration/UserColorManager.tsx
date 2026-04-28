@@ -52,7 +52,7 @@ export const UserColorManager = () => {
         return;
       }
 
-      const userIds = memberships.map(m: Record<string, any> => m.user_id);
+      const userIds = memberships.map((m: Record<string, any>) => m.user_id);
 
       // Then get profiles for those users
       const { data, error } = await supabase

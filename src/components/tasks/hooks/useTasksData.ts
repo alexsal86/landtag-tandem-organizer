@@ -115,7 +115,7 @@ export function useTasksData(options?: { enabled?: boolean }): UseTasksDataRetur
         .select('user_id, display_name')
         .order('display_name');
       if (error) throw error;
-      setUsers((data || []).map(u: Record<string, any> => ({ user_id: u.user_id, display_name: u.display_name ?? undefined })));
+      setUsers((data || []).map((u: Record<string, any>) => ({ user_id: u.user_id, display_name: u.display_name ?? undefined })));
     } catch (error) {
       debugConsole.error('Error loading users:', error);
     }
@@ -337,7 +337,7 @@ export function useTasksData(options?: { enabled?: boolean }): UseTasksDataRetur
 
       const taskTitles: { [taskId: string]: string } = {};
       if (taskSnoozesData && taskSnoozesData.length > 0) {
-        const taskIds = taskSnoozesData.map(s: Record<string, any> => s.task_id).filter((id: Record<string, any>): id is string => id != null);
+        const taskIds = taskSnoozesData.map((s: Record<string, any>) => s.task_id).filter((id: Record<string, any>): id is string => id != null);
         if (taskIds.length > 0) {
           const { data: tasksData } = await supabase.from('tasks').select('id, title').in('id', taskIds);
           tasksData?.forEach((task: Record<string, any>) => { taskTitles[task.id] = task.title; });

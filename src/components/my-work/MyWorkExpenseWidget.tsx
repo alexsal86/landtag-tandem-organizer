@@ -108,7 +108,7 @@ export function MyWorkExpenseWidget({ userRole }: Props) {
 
     // Aggregate by category
     const catTotals: Record<string, number> = {};
-    expenses.forEach(e: Record<string, any> => {
+    expenses.forEach((e: Record<string, any>) => {
       catTotals[e.category_id] = (catTotals[e.category_id] || 0) + e.amount;
     });
     const sorted = Object.entries(catTotals)
@@ -123,7 +123,7 @@ export function MyWorkExpenseWidget({ userRole }: Props) {
 
     // Recent expenses
     setRecentExpenses(
-      (recentRes.data || []).map(e: Record<string, any> => ({
+      (recentRes.data || []).map((e: Record<string, any>) => ({
         id: e.id,
         amount: e.amount,
         description: e.description,

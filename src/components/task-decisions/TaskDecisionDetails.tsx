@@ -178,7 +178,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
         .select('topic_id')
         .eq('decision_id', decisionId);
       
-      const topicIds = topicsData?.map(t: Record<string, any> => t.topic_id) || [];
+      const topicIds = topicsData?.map((t: Record<string, any>) => t.topic_id) || [];
 
       // Load participants with responses including parent_response_id
       const { data: participantsData, error: participantsError } = await supabase
@@ -203,7 +203,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
 
       // Get user profiles separately (including creator)
       const userIds = [...new Set([
-        ...(participantsData?.map(p: Record<string, any> => p.user_id) || []),
+        ...(participantsData?.map((p: Record<string, any>) => p.user_id) || []),
         decisionData.created_by,
       ])];
       const { data: profiles, error: profilesError } = await supabase
@@ -262,7 +262,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
 
       // Build participant-id-to-profile map for threading
       const participantProfileMap = new Map<string, { display_name: string | null; badge_color: string | null; avatar_url: string | null }>();
-      participantsData?.forEach(p: Record<string, any> => {
+      participantsData?.forEach((p: Record<string, any>) => {
         const prof = profileMap.get(p.user_id);
         participantProfileMap.set(p.id, {
           display_name: prof?.display_name || null,
@@ -273,8 +273,8 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
 
       // Collect ALL responses across participants for threading
       const allResponses: ResponseThread[] = [];
-      participantsData?.forEach(p: Record<string, any> => {
-        (p.task_decision_responses || []).forEach(r: Record<string, any> => {
+      participantsData?.forEach((p: Record<string, any>) => {
+        (p.task_decision_responses || []).forEach((r: Record<string, any>) => {
           allResponses.push({
             ...r,
             participant_profile: participantProfileMap.get(r.participant_id),
@@ -313,7 +313,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
           badge_color: profileMap.get(participant.user_id)?.badge_color || null,
         },
         responses: (participant.task_decision_responses || [])
-          .filter(r: Record<string, any> => !r.parent_response_id) // Only root responses for summary
+          .filter((r: Record<string, any>) => !r.parent_response_id) // Only root responses for summary
           .sort((a: Record<string, any>, b: Record<string, any>) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
           .map((response: Record<string, any>) => ({
             ...response,

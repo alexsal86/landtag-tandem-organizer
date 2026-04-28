@@ -36,7 +36,7 @@ export function useKnowledgeVersionHistory(documentId: string | undefined) {
       if (error) throw error;
 
       // Fetch creator names
-      const creatorIds = [...new Set((data ?? []).map(v: Record<string, any> => v.created_by))];
+      const creatorIds = [...new Set((data ?? []).map((v: Record<string, any>) => v.created_by))];
       let nameMap: Record<string, string> = {};
       if (creatorIds.length > 0) {
         const { data: profiles } = await supabase
@@ -50,7 +50,7 @@ export function useKnowledgeVersionHistory(documentId: string | undefined) {
       }
 
       setVersions(
-        (data ?? []).map(v: Record<string, any> => ({
+        (data ?? []).map((v: Record<string, any>) => ({
           ...v,
           creator_name: nameMap[v.created_by] || 'Unbekannt',
         }))

@@ -107,7 +107,7 @@ export function DecisionComments({
       const reactionRows = await loadReactionRowsWithProfiles(commentIds);
 
       // Load profiles for all users
-      const userIds = [...new Set(data?.map(c: Record<string, any> => c.user_id) || [])];
+      const userIds = [...new Set(data?.map((c: Record<string, any>) => c.user_id) || [])];
       const { data: profiles } = await supabase
         .from('profiles')
         .select('user_id, display_name, badge_color, avatar_url')
@@ -120,7 +120,7 @@ export function DecisionComments({
       const reactionsByCommentId = buildReactionMap(reactionRows || [], user?.id);
 
       // Build nested structure
-      const commentsWithProfiles: CommentData[] = (data || []).map(c: Record<string, any> => ({
+      const commentsWithProfiles: CommentData[] = (data || []).map((c: Record<string, any>) => ({
         ...c,
         profile: profileMap.get(c.user_id) ?? undefined,
         replies: [],
@@ -206,7 +206,7 @@ export function DecisionComments({
         if (decision.created_by !== user.id) {
           notifyUserIds.add(decision.created_by);
         }
-        participants?.forEach(p: Record<string, any> => {
+        participants?.forEach((p: Record<string, any>) => {
           if (p.user_id !== user.id) {
             notifyUserIds.add(p.user_id);
           }
