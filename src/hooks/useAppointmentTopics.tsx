@@ -17,7 +17,7 @@ export const useAppointmentTopics = (appointmentId: string | undefined) => {
         .eq('appointment_id', appointmentId);
 
       if (error) throw error;
-      setAssignedTopics(data?.map(t => t.topic_id) || []);
+      setAssignedTopics(data?.map(t: Record<string, any> => t.topic_id) || []);
     } catch (error) {
       debugConsole.error('Error fetching appointment topics:', error);
     } finally {

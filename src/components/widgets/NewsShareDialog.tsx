@@ -72,7 +72,7 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
 
       if (membershipsError) throw membershipsError;
 
-      const tenantUserIds = memberships?.map((membership) => membership.user_id) || [];
+      const tenantUserIds = memberships?.map((membership: Record<string, any>) => membership.user_id) || [];
 
       if (tenantUserIds.length === 0) {
         setUsers([]);

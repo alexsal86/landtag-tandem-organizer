@@ -67,7 +67,7 @@ export function useTimeTrackingOperations({
   const validateDailyLimit = async (workDate: string, grossMin: number, excludeId?: string) => {
     if (!userId) return;
     const { data } = await supabase.from("time_entries").select("id, started_at, ended_at").eq("user_id", userId).eq("work_date", workDate);
-    const total = data?.reduce((s, e) => e.id === excludeId || !e.started_at || !e.ended_at ? s : s + (new Date(e.ended_at).getTime() - new Date(e.started_at).getTime()) / 60000, 0) || 0;
+    const total = data?.reduce((s: Record<string, any>, e: Record<string, any>) => e.id === excludeId || !e.started_at || !e.ended_at ? s : s + (new Date(e.ended_at).getTime() - new Date(e.started_at).getTime()) / 60000, 0) || 0;
     if (total + grossMin > 600) {
       const formatTime = (min: number) => `${Math.floor(min / 60)}:${(min % 60).toString().padStart(2, "0")}`;
       if (total > 0) throw new Error(`Bereits ${formatTime(total)} Stunden erfasst. Mit diesem Eintrag (${formatTime(grossMin)}) wären es ${formatTime(total + grossMin)} Stunden. Maximal 10 Stunden pro Tag erlaubt.`);

@@ -67,7 +67,7 @@ export function UserRolesManager() {
         return;
       }
 
-      const userIds = memberships.map(m => m.user_id);
+      const userIds = memberships.map(m: Record<string, any> => m.user_id);
       const [profilesRes, rolesRes] = await Promise.all([
         supabase.from('profiles').select('user_id, display_name, avatar_url').in('user_id', userIds).order('display_name'),
         supabase.from('user_roles').select('user_id, role').in('user_id', userIds),

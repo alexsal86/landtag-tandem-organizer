@@ -69,7 +69,7 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
         throw tenantError;
       }
 
-      const userIds = tenantUsers?.map(u => u.user_id) || [];
+      const userIds = tenantUsers?.map(u: Record<string, any> => u.user_id) || [];
 
       if (userIds.length === 0) {
         setUsers([]);
@@ -87,7 +87,7 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
         throw error;
       }
 
-      const formattedUsers = data?.map(item => ({
+      const formattedUsers = data?.map(item: Record<string, any> => ({
         user_id: item.user_id,
         display_name: item.display_name || 'Unbekannt'
       })) || [];
@@ -114,7 +114,7 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
 
       if (error) throw error;
 
-      setSelectedUsers(data?.map(c => c.user_id) || []);
+      setSelectedUsers(data?.map(c: Record<string, any> => c.user_id) || []);
     } catch (error) {
       debugConsole.error('Error fetching collaborators:', error);
     }

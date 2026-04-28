@@ -227,7 +227,7 @@ export function useEmployeesData(): UseEmployeesDataResult {
         if (error) throw error;
 
         const latestMeetingByEmployee = new Map<string, string>();
-        (data || []).forEach((meeting) => {
+        (data || []).forEach((meeting: Record<string, any>) => {
           if (!latestMeetingByEmployee.has(meeting.employee_id)) {
             latestMeetingByEmployee.set(meeting.employee_id, meeting.id);
           }
@@ -300,7 +300,7 @@ export function useEmployeesData(): UseEmployeesDataResult {
         setSelfLastMeetingId(lastMeetingRes.data?.meeting_id || null);
 
         const agg = initLeaveAgg();
-        (leavesRes.data || []).forEach((lr) => {
+        (leavesRes.data || []).forEach((lr: Record<string, any>) => {
           const leaveType = lr.type as LeaveType;
           const workingDays = lr.end_date ? calculateWorkingDays(lr.start_date, lr.end_date) : 1;
           if (lr.status === "approved") agg.approved[leaveType] += workingDays;

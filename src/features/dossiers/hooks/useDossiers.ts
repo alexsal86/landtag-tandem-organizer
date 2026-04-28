@@ -49,7 +49,7 @@ export function useDossiers() {
       if (taskFetchError) return;
 
       const existingKeys = new Set(
-        (existingTasks ?? []).map((task) => `${task.source_id ?? ""}::${task.due_date ?? ""}`)
+        (existingTasks ?? []).map((task: Record<string, any>) => `${task.source_id ?? ""}::${task.due_date ?? ""}`)
       );
 
       const tasksToCreate = dueDossiers

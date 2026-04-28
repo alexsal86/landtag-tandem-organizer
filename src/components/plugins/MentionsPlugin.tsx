@@ -167,7 +167,7 @@ export function MentionsPlugin({ onMentionInsert }: MentionsPluginProps = {}): R
 
         if (error) throw error;
         setUsers(
-          (data || []).map((p) => ({
+          (data || []).map((p: Record<string, any>) => ({
             user_id: p.user_id,
             display_name: p.display_name || 'Unbekannt',
             avatar_url: p.avatar_url,

@@ -35,16 +35,16 @@ export const useGlobalNoteSharing = () => {
       if (error) throw error;
 
       if (data && data.length > 0) {
-        const userIds = data.map((s) => s.shared_with_user_id);
+        const userIds = data.map((s: Record<string, any>) => s.shared_with_user_id);
         const { data: profiles } = await supabase
           .from("profiles")
           .select("id, display_name, avatar_url")
           .in("id", userIds);
 
-        const sharesWithUsers = data.map((share) => ({
+        const sharesWithUsers = data.map((share: Record<string, any>) => ({
           ...share,
           permission_type: share.permission_type as "view" | "edit",
-          shared_with_user: profiles?.find((p) => p.id === share.shared_with_user_id),
+          shared_with_user: profiles?.find((p: Record<string, any>) => p.id === share.shared_with_user_id),
         }));
 
         setGlobalShares(sharesWithUsers);

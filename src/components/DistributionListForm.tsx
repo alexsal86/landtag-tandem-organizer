@@ -100,7 +100,7 @@ export function DistributionListForm({ distributionListId, onSuccess, onBack }: 
         .eq('distribution_list_id', distributionListId!);
 
       if (membersError) throw membersError;
-      setSelectedContactIds(members?.map(m => m.contact_id) || []);
+      setSelectedContactIds(members?.map(m: Record<string, any> => m.contact_id) || []);
     } catch (error) {
       debugConsole.error('Error fetching distribution list:', error);
       toast({

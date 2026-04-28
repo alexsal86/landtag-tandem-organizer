@@ -81,7 +81,7 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
 
       // Get all unique user IDs
       const userIds = new Set<string>();
-      meetingsData?.forEach((m) => {
+      meetingsData?.forEach((m: Record<string, any>) => {
         userIds.add(m.employee_id);
         userIds.add(m.conducted_by);
       });
@@ -92,17 +92,17 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
         .select("user_id, display_name")
         .in("user_id", Array.from(userIds));
 
-      const profileMap = new Map(profiles?.map((p) => [p.user_id, p.display_name]) || []);
+      const profileMap = new Map(profiles?.map((p: Record<string, any>) => [p.user_id, p.display_name]) || []);
 
       // Fetch action items counts
-      const meetingIds = meetingsData?.map((m) => m.id) || [];
+      const meetingIds = meetingsData?.map((m: Record<string, any>) => m.id) || [];
       const { data: actionItems } = await supabase
         .from("employee_meeting_action_items")
         .select("meeting_id, status")
         .in("meeting_id", meetingIds);
 
       const actionItemsMap = new Map<string, { open: number; total: number }>();
-      actionItems?.forEach((item) => {
+      actionItems?.forEach((item: Record<string, any>) => {
         const existing = actionItemsMap.get(item.meeting_id) || { open: 0, total: 0 };
         existing.total += 1;
         if (item.status !== "completed") {
@@ -112,7 +112,7 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
       });
 
       // Combine data
-      const enrichedMeetings: Meeting[] = (meetingsData || []).map((m) => ({
+      const enrichedMeetings: Meeting[] = (meetingsData || []).map((m: Record<string, any>) => ({
         ...m,
         employee_name: profileMap.get(m.employee_id) || "Unbekannt",
         conductor_name: profileMap.get(m.conducted_by) || "Unbekannt",

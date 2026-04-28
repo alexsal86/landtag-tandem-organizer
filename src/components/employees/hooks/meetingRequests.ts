@@ -20,7 +20,7 @@ export async function fetchPendingMeetingRequests(tenantId: string): Promise<Pen
 
   if (requestsError) throw requestsError;
 
-  const employeeIds = Array.from(new Set((requestsData || []).map((request) => request.employee_id)));
+  const employeeIds = Array.from(new Set((requestsData || []).map((request: Record<string, any>) => request.employee_id)));
 
   // Cleanup: pending requests are considered processed if a meeting was already created afterwards
   if (employeeIds.length > 0 && requestsData && requestsData.length > 0) {
@@ -39,11 +39,11 @@ export async function fetchPendingMeetingRequests(tenantId: string): Promise<Pen
     });
 
     const staleRequestUpdates = requestsData
-      .filter((request) => {
+      .filter((request: Record<string, any>) => {
         const latestMeeting = latestMeetingByEmployee.get(request.employee_id);
         return latestMeeting && new Date(latestMeeting.created_at).getTime() >= new Date(request.created_at).getTime();
       })
-      .map((request) => {
+      .map((request: Record<string, any>) => {
         const latestMeeting = latestMeetingByEmployee.get(request.employee_id);
         return latestMeeting
           ? supabase
@@ -74,7 +74,7 @@ export async function fetchPendingMeetingRequests(tenantId: string): Promise<Pen
   if (refreshedRequestsError) throw refreshedRequestsError;
 
   const effectiveRequests = refreshedRequests || [];
-  const effectiveEmployeeIds = effectiveRequests.map((request) => request.employee_id);
+  const effectiveEmployeeIds = effectiveRequests.map((request: Record<string, any>) => request.employee_id);
 
   if (effectiveEmployeeIds.length === 0) {
     return [];
@@ -85,9 +85,9 @@ export async function fetchPendingMeetingRequests(tenantId: string): Promise<Pen
     .select("user_id, display_name")
     .in("user_id", effectiveEmployeeIds);
 
-  const profileMap = new Map(profiles?.map((profile) => [profile.user_id, profile.display_name]) || []);
+  const profileMap = new Map(profiles?.map((profile: Record<string, any>) => [profile.user_id, profile.display_name]) || []);
 
-  return effectiveRequests.map((request) => ({
+  return effectiveRequests.map((request: Record<string, any>) => ({
     ...request,
     employee_name: profileMap.get(request.employee_id) || "Unbekannt",
   }));

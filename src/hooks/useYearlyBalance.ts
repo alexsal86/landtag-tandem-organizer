@@ -62,7 +62,7 @@ export function useYearlyBalance(
         const daysPerWeek = employeeSettings.days_per_week || 5;
         const dailyMin = Math.round((hoursPerWeek / daysPerWeek) * 60);
 
-        const holidayDates = new Set((holidaysRes.data || []).map((h) => h.holiday_date));
+        const holidayDates = new Set((holidaysRes.data || []).map((h: Record<string, any>) => h.holiday_date));
 
         const monthlyBreakdown: MonthlyBreakdown[] = [];
         const currentMonthIndex = effectiveEnd.getMonth();
@@ -83,7 +83,7 @@ export function useYearlyBalance(
           const monthAbsenceDates = new Set<string>();
           const medicalAbsenceDates = new Set<string>();
           const overtimeReductionDates = new Set<string>();
-          (leavesRes.data || []).forEach((leave) => {
+          (leavesRes.data || []).forEach((leave: Record<string, any>) => {
             if (["sick", "vacation", "medical", "overtime_reduction"].includes(leave.type)) {
               try {
                 eachDayOfInterval({
@@ -110,7 +110,7 @@ export function useYearlyBalance(
 
           // Worked minutes excluding holidays and absence days (avoids double-counting)
           const monthWorked = (entriesRes.data || [])
-            .filter((e) => {
+            .filter((e: Record<string, any>) => {
               const d = parseISO(e.work_date);
               const dateStr = format(d, "yyyy-MM-dd");
               return (
@@ -120,7 +120,7 @@ export function useYearlyBalance(
                 !monthAbsenceDates.has(dateStr)
               );
             })
-            .reduce((sum, e) => sum + (e.minutes || 0), 0);
+            .reduce((sum: Record<string, any>, e: Record<string, any>) => sum + (e.minutes || 0), 0);
 
           // Credit minutes for day-based leave types on actual work days
           // EXCLUDE medical (has own calculation) and overtime_reduction (must consume balance)
@@ -136,15 +136,15 @@ export function useYearlyBalance(
 
           // Medical leave is credited by its actual counted minutes (only on work days)
           const medicalCredit = (leavesRes.data || [])
-            .filter((leave) => leave.type === "medical")
-            .filter((leave) => {
+            .filter((leave: Record<string, any>) => leave.type === "medical")
+            .filter((leave: Record<string, any>) => {
               const date = parseISO(leave.start_date);
               if (date.getMonth() !== m || date.getFullYear() !== year || date > mEffectiveEnd) return false;
               const dateStr = format(date, "yyyy-MM-dd");
               if (holidayDates.has(dateStr)) return false;
               return date.getDay() !== 0 && date.getDay() !== 6;
             })
-            .reduce((sum, leave) => sum + (leave.minutes_counted || 0), 0);
+            .reduce((sum: Record<string, any>, leave: Record<string, any>) => sum + (leave.minutes_counted || 0), 0);
 
           const monthCredit = dayBasedCredit + medicalCredit;
 
@@ -176,7 +176,7 @@ export function useYearlyBalance(
 
         // Corrections are applied only within the selected year and only to the YEARLY total
         const correctionsTotal = (correctionsRes.data || []).reduce(
-          (sum, c) => sum + c.correction_minutes,
+          (sum: Record<string, any>, c: Record<string, any>) => sum + c.correction_minutes,
           0
         );
 

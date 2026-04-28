@@ -97,7 +97,7 @@ export function useMeetingCreate(deps: UseMeetingCreateDeps) {
         const { data: pendingNotes, error: pendingError } = await supabase
           .from('quick_notes').select('id').eq('user_id', user.id).eq('pending_for_jour_fixe', true).is('deleted_at', null);
         if (!pendingError && pendingNotes && pendingNotes.length > 0) {
-          const noteIds = pendingNotes.map(n => n.id);
+          const noteIds = pendingNotes.map(n: Record<string, any> => n.id);
           const { error: updateError } = await supabase
             .from('quick_notes').update({ meeting_id: data.id, pending_for_jour_fixe: false }).in('id', noteIds);
           if (!updateError) {
@@ -179,7 +179,7 @@ export function useMeetingCreate(deps: UseMeetingCreateDeps) {
             .from('meetings').select('*').eq('tenant_id', currentTenant.id).eq('user_id', user.id)
             .neq('status', 'archived').order('meeting_date', { ascending: false });
           if (reloadError) throw reloadError;
-          if (allMeetings) setMeetings(allMeetings.map(m => ({ ...m, meeting_date: new Date(m.meeting_date) })));
+          if (allMeetings) setMeetings(allMeetings.map(m: Record<string, any> => ({ ...m, meeting_date: new Date(m.meeting_date) })));
         } catch (e) {
           debugConsole.error('Error reloading meetings after create:', e);
           toast({

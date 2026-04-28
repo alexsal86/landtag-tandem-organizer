@@ -458,7 +458,7 @@ export function SuperadminTenantManagement(): React.JSX.Element {
       .select("setting_key, setting_value")
       .eq("tenant_id", tenant.id)
       .in("setting_key", ["app_name", "app_subtitle"]);
-    const settingsMap = Object.fromEntries((appSettings ?? []).map(s => [s.setting_key, s.setting_value]));
+    const settingsMap = Object.fromEntries((appSettings ?? []).map(s: Record<string, any> => [s.setting_key, s.setting_value]));
     setFormAppName(settingsMap.app_name || "LandtagsOS");
     setFormAppSubtitle(settingsMap.app_subtitle || "Koordinationssystem");
 

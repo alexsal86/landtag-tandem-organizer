@@ -29,8 +29,8 @@ export const useHeatmapData = (source: HeatmapSource, enabled: boolean = true) =
           if (error) throw error;
 
           return (data || [])
-            .filter(c => c.coordinates && typeof c.coordinates === 'object')
-            .map(c => {
+            .filter(c: Record<string, any> => c.coordinates && typeof c.coordinates === 'object')
+            .map(c: Record<string, any> => {
               const coords = c.coordinates as { lat: number; lng: number };
               return {
                 lat: coords.lat,
@@ -49,8 +49,8 @@ export const useHeatmapData = (source: HeatmapSource, enabled: boolean = true) =
           if (error) throw error;
 
           return (data || [])
-            .filter(f => f.coordinates && typeof f.coordinates === 'object')
-            .map(f => {
+            .filter(f: Record<string, any> => f.coordinates && typeof f.coordinates === 'object')
+            .map(f: Record<string, any> => {
               const coords = f.coordinates as { lat: number; lng: number };
               return {
                 lat: coords.lat,
@@ -70,8 +70,8 @@ export const useHeatmapData = (source: HeatmapSource, enabled: boolean = true) =
           if (error) throw error;
 
           return (data || [])
-            .filter(a => a.coordinates && typeof a.coordinates === 'object')
-            .map(a => {
+            .filter(a: Record<string, any> => a.coordinates && typeof a.coordinates === 'object')
+            .map(a: Record<string, any> => {
               const coords = a.coordinates as { lat: number; lng: number };
               return {
                 lat: coords.lat,

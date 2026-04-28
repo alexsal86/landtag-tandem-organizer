@@ -67,7 +67,7 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
         return;
       }
 
-      const decisionIds = decisionsData.map(d => d.id);
+      const decisionIds = decisionsData.map(d: Record<string, any> => d.id);
 
       // Get participants for these decisions
       const { data: participantsData, error: participantsError } = await supabase
@@ -87,7 +87,7 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
       if (participantsError) throw participantsError;
 
       // Get user profiles
-      const userIds = participantsData?.map(p => p.user_id) || [];
+      const userIds = participantsData?.map(p: Record<string, any> => p.user_id) || [];
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('user_id, display_name')
@@ -95,11 +95,11 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
 
       if (profilesError) throw profilesError;
 
-      const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+      const profileMap = new Map(profiles?.map(p: Record<string, any> => [p.user_id, p]) || []);
 
       // Group participants by decision
       const participantsByDecision = new Map();
-      participantsData?.forEach(participant => {
+      participantsData?.forEach(participant: Record<string, any> => {
         if (!participantsByDecision.has(participant.decision_id)) {
           participantsByDecision.set(participant.decision_id, []);
         }
@@ -108,15 +108,15 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
           user_id: participant.user_id,
           profile: profileMap.get(participant.user_id) || { display_name: null },
           responses: (participant.task_decision_responses || [])
-            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-            .map(response => ({
+            .sort((a: Record<string, any>, b: Record<string, any>) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            .map(response: Record<string, any> => ({
               ...response,
               response_type: response.response_type as 'yes' | 'no' | 'question'
             })),
         });
       });
 
-      const formattedData = decisionsData.map(decision => ({
+      const formattedData = decisionsData.map(decision: Record<string, any> => ({
         ...decision,
         participants: participantsByDecision.get(decision.id) || [],
       }));

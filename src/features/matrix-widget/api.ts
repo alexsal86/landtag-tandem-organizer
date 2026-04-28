@@ -91,7 +91,7 @@ export async function fetchOpenImprovementTriggers(tenantId: string): Promise<Im
     throw error;
   }
 
-  return (data ?? []).map((item) => ({
+  return (data ?? []).map((item: Record<string, any>) => ({
     id: item.id,
     conversationId: item.conversation_id,
     widgetMessageId: item.widget_message_id,

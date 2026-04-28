@@ -49,7 +49,7 @@ export const useContactFundings = (contactId?: string) => {
       if (error) throw error;
 
       // Get participant counts
-      const fundingIds = data?.map(d => d.funding_id) || [];
+      const fundingIds = data?.map(d: Record<string, any> => d.funding_id) || [];
       if (fundingIds.length === 0) return [];
 
       const { data: counts } = await supabase
@@ -57,12 +57,12 @@ export const useContactFundings = (contactId?: string) => {
         .select('funding_id')
         .in('funding_id', fundingIds);
 
-      const participantCounts = counts?.reduce((acc, item) => {
+      const participantCounts = counts?.reduce((acc: Record<string, any>, item: Record<string, any>) => {
         acc[item.funding_id] = (acc[item.funding_id] || 0) + 1;
         return acc;
       }, {} as Record<string, number>) || {};
 
-      return data?.map(item => ({
+      return data?.map(item: Record<string, any> => ({
         id: item.fundings.id,
         title: item.fundings.title,
         description: item.fundings.description,

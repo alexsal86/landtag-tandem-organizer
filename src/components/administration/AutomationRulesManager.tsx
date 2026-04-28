@@ -108,7 +108,7 @@ export function AutomationRulesManager() {
   const canToggle = isAdmin || userRole === "mitarbeiter";
 
   const filteredRuns = useMemo(() => {
-    return runs.filter((run) => {
+    return runs.filter((run: Record<string, any>) => {
       const statusMatch = runStatusFilter === "all"
         ? true
         : runStatusFilter === "dry_run"
@@ -171,7 +171,7 @@ export function AutomationRulesManager() {
     if (rule.trigger_type !== "schedule") return null;
     const interval = Number(rule.trigger_config?.minutes_interval);
     if (!interval || interval <= 0) return null;
-    const ruleRuns = runs.filter((r) => r.rule_id === rule.id && !r.dry_run);
+    const ruleRuns = runs.filter((r: Record<string, any>) => r.rule_id === rule.id && !r.dry_run);
     const lastRun = ruleRuns[0]; // already sorted desc by started_at
     const base = lastRun ? new Date(lastRun.started_at) : new Date();
     return addMinutes(base, interval);
@@ -364,7 +364,7 @@ export function AutomationRulesManager() {
       return;
     }
 
-    const ruleName = rules.find((r) => r.id === ruleId)?.name || ruleId;
+    const ruleName = rules.find((r: Record<string, any>) => r.id === ruleId)?.name || ruleId;
     try {
       await deleteRuleMutation.mutateAsync(ruleId);
     } catch (error) {
@@ -422,7 +422,7 @@ export function AutomationRulesManager() {
   };
 
   const triggerDryRun = async (rule?: RuleRow) => {
-    const targetRule = rule || (editingRuleId ? rules.find((r) => r.id === editingRuleId) : null);
+    const targetRule = rule || (editingRuleId ? rules.find((r: Record<string, any>) => r.id === editingRuleId) : null);
     if (!currentTenant || !user || !targetRule) return;
     setRunningRuleId(targetRule.id);
 
@@ -466,7 +466,7 @@ export function AutomationRulesManager() {
 
   const handleWizardDryRun = () => {
     if (editingRuleId) {
-      const rule = rules.find((r) => r.id === editingRuleId);
+      const rule = rules.find((r: Record<string, any>) => r.id === editingRuleId);
       if (rule) triggerDryRun(rule);
     } else {
       toast({
@@ -484,7 +484,7 @@ export function AutomationRulesManager() {
       </div>
     );
   }
-  const failedRunCount = runs.filter((r) => r.status === "failed").length;
+  const failedRunCount = runs.filter((r: Record<string, any>) => r.status === "failed").length;
   const loadError = pauseError || rulesError || runsError;
 
   return (
@@ -603,7 +603,7 @@ export function AutomationRulesManager() {
           {rules.length === 0 ? (
             <p className="text-sm text-muted-foreground">Noch keine Regeln vorhanden.</p>
           ) : (
-            rules.map((rule) => {
+            rules.map((rule: Record<string, any>) => {
               const stats = ruleStats[rule.id];
               const successRate = stats && stats.total > 0 ? Math.round((stats.success / stats.total) * 100) : null;
               const avgDuration = stats && stats.withDuration > 0 ? Math.round(stats.totalDurationMs / stats.withDuration / 1000) : null;
@@ -737,7 +737,7 @@ export function AutomationRulesManager() {
                 <SelectTrigger className="w-[180px]"><SelectValue placeholder="Regel" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Regel: Alle</SelectItem>
-                  {rules.map((rule) => (<SelectItem key={rule.id} value={rule.id}>{rule.name}</SelectItem>))}
+                  {rules.map((rule: Record<string, any>) => (<SelectItem key={rule.id} value={rule.id}>{rule.name}</SelectItem>))}
                 </SelectContent>
               </Select>
               <Select value={runTimeFilter} onValueChange={setRunTimeFilter}>
@@ -756,12 +756,12 @@ export function AutomationRulesManager() {
           {filteredRuns.length === 0 ? (
             <p className="text-sm text-muted-foreground">Noch keine Ausführungen protokolliert.</p>
           ) : (
-            filteredRuns.map((run) => (
+            filteredRuns.map((run: Record<string, any>) => (
               <div key={run.id} className="border rounded-md p-2 space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium">
-                      Regel: {rules.find((rule) => rule.id === run.rule_id)?.name || `${run.rule_id.slice(0, 8)}…`}
+                      Regel: {rules.find((rule: Record<string, any>) => rule.id === run.rule_id)?.name || `${run.rule_id.slice(0, 8)}…`}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {run.trigger_source} · {formatDistanceToNow(new Date(run.started_at), { addSuffix: true, locale: de })}
@@ -798,7 +798,7 @@ export function AutomationRulesManager() {
                     ) : expandedRunSteps.length === 0 ? (
                       <p className="text-xs text-muted-foreground">Keine Step-Logs vorhanden.</p>
                     ) : (
-                      expandedRunSteps.map((step) => (
+                      expandedRunSteps.map((step: Record<string, any>) => (
                         <div key={step.id} className="text-xs border-b last:border-b-0 py-1 space-y-1">
                           <div className="flex items-center justify-between">
                             <span>

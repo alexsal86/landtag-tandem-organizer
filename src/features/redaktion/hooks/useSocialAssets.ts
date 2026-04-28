@@ -42,7 +42,7 @@ export function useSocialAssets() {
         .limit(30);
       if (error) throw error;
       setAssets(
-        (data || []).map((row) => ({
+        (data || []).map((row: Record<string, any>) => ({
           ...row,
           tags: row.tags || [],
           public_url: supabase.storage.from(BUCKET).getPublicUrl(row.storage_path).data.publicUrl,

@@ -72,7 +72,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
       return;
     }
 
-    const userIds = participantsData.map(p => p.user_id);
+    const userIds = participantsData.map(p: Record<string, any> => p.user_id);
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
       .select('user_id, display_name, avatar_url')
@@ -82,10 +82,10 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
       debugConsole.error('Error loading profiles:', profilesError);
     }
 
-    const enrichedParticipants: Participant[] = participantsData.map(p => ({
+    const enrichedParticipants: Participant[] = participantsData.map(p: Record<string, any> => ({
       ...p,
       role: (p.role as 'organizer' | 'participant' | 'optional') || 'participant',
-      user: profiles?.find(prof => prof.user_id === p.user_id) || undefined
+      user: profiles?.find(prof: Record<string, any> => prof.user_id === p.user_id) || undefined
     }));
 
     

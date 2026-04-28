@@ -194,7 +194,7 @@ export const useTeamFeedbackFeed = (filters?: TeamFeedbackFeedFilters) => {
       ]);
 
       const meetingIds = Array.from(
-        new Set((appointmentsResult.data || []).flatMap((a) => (a.meeting_id ? [a.meeting_id] : []))),
+        new Set((appointmentsResult.data || []).flatMap((a: Record<string, any>) => (a.meeting_id ? [a.meeting_id] : []))),
       );
 
       const { data: participantRows } = meetingIds.length
@@ -216,7 +216,7 @@ export const useTeamFeedbackFeed = (filters?: TeamFeedbackFeedFilters) => {
         : { data: [] };
 
       const taskLinkMap = new Map<string, string>();
-      (taskLinks || []).forEach((task) => {
+      (taskLinks || []).forEach((task: Record<string, any>) => {
         if (task.source_id && !taskLinkMap.has(task.source_id)) {
           taskLinkMap.set(task.source_id, task.id);
         }

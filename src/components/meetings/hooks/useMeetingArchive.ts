@@ -63,7 +63,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
     const reviewParentId = await ensureReviewParentItem(targetMeetingId);
     const { data: existingChildren } = await supabase
       .from('meeting_agenda_items').select('title, source_meeting_id').eq('meeting_id', targetMeetingId).eq('parent_id', reviewParentId);
-    let existingSet = new Set((existingChildren || []).map(i => `${i.source_meeting_id}::${i.title}`));
+    let existingSet = new Set((existingChildren || []).map(i: Record<string, any> => `${i.source_meeting_id}::${i.title}`));
 
     const { data: maxOrderData } = await supabase
       .from('meeting_agenda_items').select('order_index').eq('meeting_id', targetMeetingId).eq('parent_id', reviewParentId)
@@ -157,7 +157,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
         .from('meeting_agenda_items').select('order_index, title, source_meeting_id')
         .eq('meeting_id', meetingId).eq('parent_id', reviewParentId).order('order_index', { ascending: false });
 
-      const existingSet = new Set((existingItems || []).map(i => `${i.source_meeting_id}::${i.title}`));
+      const existingSet = new Set((existingItems || []).map(i: Record<string, any> => `${i.source_meeting_id}::${i.title}`));
       let nextOrderIndex = (existingItems?.[0]?.order_index || 0) + 1;
 
       for (const item of pendingItems) {
@@ -190,13 +190,13 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       if (agendaError) throw agendaError;
 
       // Step 2: Process carryover items
-      const carryoverItems = agendaItemsData?.filter(item => item.carry_over_to_next) || [];
+      const carryoverItems = agendaItemsData?.filter(item: Record<string, any> => item.carry_over_to_next) || [];
       if (carryoverItems.length > 0) {
         try { await processCarryoverItems(meeting, carryoverItems); } catch (e) { debugConsole.error('Carryover error (non-fatal):', e); }
       }
 
       // Step 3a: Linked task results → child tasks
-      const itemsWithLinkedTaskResult = agendaItemsData?.filter(item => item.task_id && item.result_text?.trim()) || [];
+      const itemsWithLinkedTaskResult = agendaItemsData?.filter(item: Record<string, any> => item.task_id && item.result_text?.trim()) || [];
       for (const item of itemsWithLinkedTaskResult) {
         try {
           const { data: existingTask } = await supabase.from('tasks').select('id, user_id, assigned_to, tenant_id').eq('id', item.task_id!).maybeSingle();
@@ -215,7 +215,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       }
 
       // Step 3b: Create tasks for assigned items without linked task
-      const itemsWithAssignment = agendaItemsData?.filter(item => item.assigned_to && !item.task_id) || [];
+      const itemsWithAssignment = agendaItemsData?.filter(item: Record<string, any> => item.assigned_to && !item.task_id) || [];
       for (const item of itemsWithAssignment) {
         try {
           let assignedUserId: string | null = null;
@@ -227,7 +227,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
           }
 
           const assigneeNames = Array.isArray(item.assigned_to)
-            ? item.assigned_to.flat().filter(Boolean).map(id => {
+            ? item.assigned_to.flat().filter(Boolean).map(id: Record<string, any> => {
                 const profile = profiles.find(p => p.user_id === id);
                 return profile?.display_name || 'Unbekannt';
               }).join(', ')
@@ -253,7 +253,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       }
 
       // Step 3c: Birthday follow-up tasks
-      const birthdayItems = agendaItemsData?.filter(item => item.system_type === 'birthdays' && item.result_text?.trim()) || [];
+      const birthdayItems = agendaItemsData?.filter(item: Record<string, any> => item.system_type === 'birthdays' && item.result_text?.trim()) || [];
       for (const birthdayItem of birthdayItems) {
         try {
           const parsedResults = JSON.parse(birthdayItem.result_text || '{}') as Record<string, { action?: 'card' | 'mail' | 'call' | 'gift'; assigned_to?: string[] }>;
@@ -266,7 +266,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
 
           const actionLabelMap: Record<string, string> = { card: 'Karte', mail: 'Mail', call: 'Anruf', gift: 'Geschenk' };
 
-          const tasksToInsert = contactsData.map(contact => {
+          const tasksToInsert = contactsData.map(contact: Record<string, any> => {
             const result = parsedResults[contact.id];
             const action = result?.action;
             if (!action) return null;
@@ -281,7 +281,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
               tenant_id: currentTenant?.id || '',
               due_date: new Date(new Date(meeting.meeting_date).getTime() + 3 * 24 * 60 * 60 * 1000).toISOString(),
             };
-          }).filter((t): t is NonNullable<typeof t> => t !== null);
+          }).filter((t: Record<string, any>): t is NonNullable<typeof t> => t !== null);
 
           if (tasksToInsert.length > 0) {
             const { data: createdTasks } = await supabase.from('tasks').insert(tasksToInsert).select('id, assigned_to');
@@ -382,11 +382,11 @@ export function useMeetingArchive(deps: ArchiveDeps) {
             .from('starred_appointments').select('id, appointment_id, external_event_id, assigned_to').eq('meeting_id', meeting.id);
           if (starredAppts && starredAppts.length > 0) {
             const starredAssignmentMap = new Map<string, string[] | null>();
-            const appointmentIds = starredAppts.filter(s => s.appointment_id).map(s => {
+            const appointmentIds = starredAppts.filter(s: Record<string, any> => s.appointment_id).map(s: Record<string, any> => {
               starredAssignmentMap.set(s.appointment_id!, s.assigned_to || null);
               return s.appointment_id!;
             });
-            const externalEventIds = starredAppts.filter(s => s.external_event_id).map(s => {
+            const externalEventIds = starredAppts.filter(s: Record<string, any> => s.external_event_id).map(s: Record<string, any> => {
               starredAssignmentMap.set(s.external_event_id!, s.assigned_to || null);
               return s.external_event_id!;
             });
@@ -404,7 +404,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
             if (allAppointments.length > 0) {
               const { data: participants } = await supabase.from('meeting_participants').select('user_id').eq('meeting_id', meeting.id);
               const allParticipantIds = Array.from(new Set([
-                ...(participants?.map(p => p.user_id).filter(Boolean) || []), meeting.user_id,
+                ...(participants?.map(p: Record<string, any> => p.user_id).filter(Boolean) || []), meeting.user_id,
               ].filter(Boolean))) as string[];
               if (allParticipantIds.length === 0) allParticipantIds.push(user.id);
 
@@ -449,7 +449,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
 
       // Step 5f: Write back decision results
       try {
-        const decisionItems = agendaItemsData?.filter(item => item.system_type === 'decisions' && item.result_text?.trim()) || [];
+        const decisionItems = agendaItemsData?.filter(item: Record<string, any> => item.system_type === 'decisions' && item.result_text?.trim()) || [];
         for (const dItem of decisionItems) {
           // Try to find matching decision by title and update it
           const { data: matchedDecisions } = await supabase
@@ -474,7 +474,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       try {
         const { data: meetingParticipants } = await supabase.from('meeting_participants').select('user_id').eq('meeting_id', meeting.id);
         const notifyUserIds = Array.from(new Set([
-          ...(meetingParticipants?.map(p => p.user_id).filter(Boolean) || []),
+          ...(meetingParticipants?.map(p: Record<string, any> => p.user_id).filter(Boolean) || []),
         ].filter(id => id !== user.id)));
         const meetingDateFormatted = format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de });
         for (const recipientId of notifyUserIds) {

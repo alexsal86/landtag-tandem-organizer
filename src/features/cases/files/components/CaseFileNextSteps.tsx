@@ -107,7 +107,7 @@ export function CaseFileNextSteps({
       .eq("case_file_id", caseFileId);
 
     // Find the dedicated parent task for this case file title
-    const parentLink = (existingLinks || []).find((link) => isMatchingCaseParentTaskLink(link, normalizedCaseFileTitle));
+    const parentLink = (existingLinks || []).find((link: Record<string, any>) => isMatchingCaseParentTaskLink(link, normalizedCaseFileTitle));
 
     if (parentLink?.task?.id) {
       if (parentLink.task.status === "completed" || parentLink.task.status === "cancelled") {

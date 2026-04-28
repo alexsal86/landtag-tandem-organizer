@@ -49,7 +49,7 @@ export const ResponseHistoryTimeline = ({ participantId, decisionId }: ResponseH
         debugConsole.error('Error loading history:', error);
       } else if (data) {
         // Type assertion after validating data structure
-        setHistory(data.map(item => ({
+        setHistory(data.map(item: Record<string, any> => ({
           ...item,
           response_type: item.response_type as 'yes' | 'no' | 'question'
         })));

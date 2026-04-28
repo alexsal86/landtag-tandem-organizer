@@ -138,7 +138,7 @@ export function EditProfile() {
       if (existingFiles && existingFiles.length > 0) {
         await supabase.storage
           .from('avatars')
-          .remove(existingFiles.map(f => `${user.id}/${f.name}`));
+          .remove(existingFiles.map(f: Record<string, any> => `${user.id}/${f.name}`));
       }
 
       // Upload with unique timestamp-based filename

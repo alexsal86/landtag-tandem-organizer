@@ -76,8 +76,8 @@ export function DossierDetailView({ dossierId, onBack, onSelectDossier }: Dossie
   const filteredEntries = activeEntryFilter === "alle"
     ? entries
     : activeEntryFilter === "neu_seit_briefing"
-      ? entries?.filter((entry) => !dossier?.last_briefing_at || new Date(entry.created_at) > new Date(dossier.last_briefing_at))
-      : entries?.filter((e) => e.entry_type === activeEntryFilter);
+      ? entries?.filter((entry: Record<string, any>) => !dossier?.last_briefing_at || new Date(entry.created_at) > new Date(dossier.last_briefing_at))
+      : entries?.filter((e: Record<string, any>) => e.entry_type === activeEntryFilter);
 
   const openEdit = () => {
     if (!dossier) return;

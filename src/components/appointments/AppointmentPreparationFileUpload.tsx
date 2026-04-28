@@ -47,7 +47,7 @@ export function AppointmentPreparationFileUpload({
 
       if (error) throw error;
 
-      const loadedFiles: UploadedFile[] = (data || []).map(doc => ({
+      const loadedFiles: UploadedFile[] = (data || []).map(doc: Record<string, any> => ({
         id: doc.id,
         file_name: doc.file_name,
         file_path: doc.file_path,

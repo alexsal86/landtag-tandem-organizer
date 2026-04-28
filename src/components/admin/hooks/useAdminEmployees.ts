@@ -40,7 +40,7 @@ export function useAdminEmployees({ currentTenant, isAdmin, roleLoading }: UseAd
         return;
       }
 
-      const userIds = memberships.map((m) => m.user_id);
+      const userIds = memberships.map((m: Record<string, any>) => m.user_id);
 
       const { data: roles } = await supabase
         .from("user_roles")
@@ -48,8 +48,8 @@ export function useAdminEmployees({ currentTenant, isAdmin, roleLoading }: UseAd
         .in("user_id", userIds);
 
       const employeeIds = (roles || [])
-        .filter((r) => ["mitarbeiter", "praktikant", "bueroleitung"].includes(r.role))
-        .map((r) => r.user_id);
+        .filter((r: Record<string, any>) => ["mitarbeiter", "praktikant", "bueroleitung"].includes(r.role))
+        .map((r: Record<string, any>) => r.user_id);
 
       if (employeeIds.length === 0) {
         setEmployees([]);
@@ -82,7 +82,7 @@ export function useAdminEmployees({ currentTenant, isAdmin, roleLoading }: UseAd
       const profileMap = new Map(profileRows.map((p) => [p.user_id, p]));
       const settingsMap = new Map(settingRows.map((s) => [s.user_id, s]));
 
-      const emps: Employee[] = employeeIds.map((uid) => ({
+      const emps: Employee[] = employeeIds.map((uid: Record<string, any>) => ({
         user_id: uid,
         display_name: profileMap.get(uid)?.display_name || "Unbekannt",
         avatar_url: profileMap.get(uid)?.avatar_url || null,

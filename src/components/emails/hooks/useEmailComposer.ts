@@ -168,7 +168,7 @@ export function useEmailComposer() {
       let templateBody = PRESS_EMAIL_TEMPLATE_BODY_DEFAULT;
       let defaultDistListId: string | null = null;
 
-      (settings || []).forEach((s) => {
+      (settings || []).forEach((s: Record<string, any>) => {
         if (s.setting_key === "press_email_template_subject" && s.setting_value) templateSubject = s.setting_value;
         if (s.setting_key === "press_email_template_body" && s.setting_value) templateBody = s.setting_value;
         if (s.setting_key === "press_default_distribution_list_id" && s.setting_value) defaultDistListId = s.setting_value;
@@ -287,7 +287,7 @@ export function useEmailComposer() {
       const { data: lists, error } = await supabase.from("distribution_lists").select("id, name, topic").eq("user_id", user!.id).order("name");
       if (error) throw error;
       const listsWithCounts = await Promise.all(
-        (lists || []).map(async (list) => {
+        (lists || []).map(async (list: Record<string, any>) => {
           const { count } = await supabase.from("distribution_list_members").select("*", { count: "exact", head: true }).eq("distribution_list_id", list.id);
           return { ...list, memberCount: count || 0 };
         })

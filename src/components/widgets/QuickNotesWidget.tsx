@@ -156,7 +156,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
         .limit(10);
 
       if (tasksError) throw tasksError;
-      setTasks((tasksData || []).map((task) => ({
+      setTasks((tasksData || []).map((task: Record<string, any>) => ({
         id: task.id,
         title: task.title,
         priority: toTaskPriority(task.priority),
@@ -169,7 +169,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
       })));
 
       if (tasksData && tasksData.length > 0) {
-        const taskIds = tasksData.map(t => t.id);
+        const taskIds = tasksData.map(t: Record<string, any> => t.id);
         
         const { data: childTasksData, error: childTasksError } = await supabase
           .from('tasks')
@@ -182,7 +182,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
         if (childTasksError) throw childTasksError;
 
         const groupedSubtasks: Record<string, WidgetSubtask[]> = {};
-        (childTasksData || []).forEach(subtask => {
+        (childTasksData || []).forEach(subtask: Record<string, any> => {
           if (!subtask.parent_task_id) return;
           if (!groupedSubtasks[subtask.parent_task_id]) {
             groupedSubtasks[subtask.parent_task_id] = [];

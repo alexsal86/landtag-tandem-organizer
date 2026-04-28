@@ -162,7 +162,7 @@ export const useDecisionCreator = ({
         .eq("tenant_id", tenantData.tenant_id)
         .eq("is_active", true);
 
-      const tenantUserIdsArray = tenantMembers?.map((member) => member.user_id) || [];
+      const tenantUserIdsArray = tenantMembers?.map((member: Record<string, any>) => member.user_id) || [];
       const tenantUserIds = new Set(tenantUserIdsArray);
 
       if (tenantUserIdsArray.length > 0) {
@@ -213,7 +213,7 @@ export const useDecisionCreator = ({
 
       const { data: roleData } = await supabase.from("user_roles").select("user_id").eq("role", "abgeordneter");
       if (roleData && roleData.length > 0) {
-        const abgeordneteInTenant = roleData.filter((role) => tenantUserIds.has(role.user_id)).map((role) => role.user_id);
+        const abgeordneteInTenant = roleData.filter((role: Record<string, any>) => tenantUserIds.has(role.user_id)).map((role: Record<string, any>) => role.user_id);
         setSelectedUsers(abgeordneteInTenant);
       }
 
@@ -299,7 +299,7 @@ export const useDecisionCreator = ({
         .eq("tenant_id", tenantData.tenant_id)
         .eq("is_active", true);
 
-      const tenantUserIds = new Set(tenantMembers?.map((member) => member.user_id) || []);
+      const tenantUserIds = new Set(tenantMembers?.map((member: Record<string, any>) => member.user_id) || []);
       const validSelectedUsers = selectedUsers.filter((userId) => tenantUserIds.has(userId));
 
       if (!visibleToAll && validSelectedUsers.length === 0) {

@@ -82,11 +82,11 @@ const fetchTasks = async (userId: string, tenantId?: string): Promise<TasksQuery
   const allCreated = createdResult.data || [];
 
   const createdByMe = allCreated.filter(
-    (task) => !(task.category === "meeting" && getTaskAssigneeIds(task).includes(userId))
+    (task: Record<string, any>) => !(task.category === "meeting" && getTaskAssigneeIds(task).includes(userId))
   );
 
   const meetingTasksAssignedToMe = allCreated.filter(
-    (task) => task.category === "meeting" && getTaskAssigneeIds(task).includes(userId)
+    (task: Record<string, any>) => task.category === "meeting" && getTaskAssigneeIds(task).includes(userId)
   );
 
   const assignedByOthers = [
@@ -134,7 +134,7 @@ const fetchTasks = async (userId: string, tenantId?: string): Promise<TasksQuery
       continue;
     }
 
-    (subtaskData || []).forEach((subtask) => {
+    (subtaskData || []).forEach((subtask: Record<string, any>) => {
       allSubtasksData.push(subtask);
       if (subtask.id && !seenParentIds.has(subtask.id)) queuedParentIds.push(subtask.id);
     });
@@ -168,12 +168,12 @@ const fetchTasks = async (userId: string, tenantId?: string): Promise<TasksQuery
   }
 
   const snoozeMap: Record<string, string> = {};
-  snoozesData.forEach((snooze) => {
+  snoozesData.forEach((snooze: Record<string, any>) => {
     if (snooze.task_id) snoozeMap[snooze.task_id] = snooze.snoozed_until;
   });
 
   const commentCounts: Record<string, number> = {};
-  commentsData.forEach((comment) => {
+  commentsData.forEach((comment: Record<string, any>) => {
     if (!comment.task_id || !visibleTaskIds.has(comment.task_id)) return;
     commentCounts[comment.task_id] = (commentCounts[comment.task_id] || 0) + 1;
   });

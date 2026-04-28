@@ -161,7 +161,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
       }
 
       const counts = { accepted: 0, tentative: 0, declined: 0, invited: 0 };
-      (data || []).forEach((entry) => {
+      (data || []).forEach((entry: Record<string, any>) => {
         if (entry.status === "accepted") counts.accepted += 1;
         else if (entry.status === "tentative") counts.tentative += 1;
         else if (entry.status === "declined") counts.declined += 1;

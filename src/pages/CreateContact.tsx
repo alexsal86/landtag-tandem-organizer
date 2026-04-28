@@ -126,7 +126,7 @@ export function CreateContact() {
     if (error) return;
 
     setExistingContacts(
-      data?.map((contact) => ({
+      data?.map((contact: Record<string, any>) => ({
         id: contact.id,
         name: contact.name,
         email: contact.email ?? undefined,
@@ -146,7 +146,7 @@ export function CreateContact() {
     if (error) return;
 
     const tagsSet = new Set<string>();
-    data?.forEach((contact) => {
+    data?.forEach((contact: Record<string, any>) => {
       if (contact.tags && Array.isArray(contact.tags)) {
         contact.tags.forEach((tag: string) => tagsSet.add(tag));
       }

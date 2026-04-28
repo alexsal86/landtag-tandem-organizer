@@ -312,7 +312,7 @@ export const useCaseFiles = () => {
           table: 'case_files',
           filter: `tenant_id=eq.${currentTenant.id}`,
         },
-        (payload) => {
+        (payload: Record<string, any>) => {
           if (payload.eventType === 'DELETE') {
             const deletedId = payload.old?.id as string | undefined;
             if (deletedId) {

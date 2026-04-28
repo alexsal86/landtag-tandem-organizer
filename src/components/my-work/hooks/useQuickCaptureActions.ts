@@ -81,7 +81,7 @@ export function useQuickCaptureActions({
           mentionedUserIds.map((userId) => ({
             id: userId,
             displayName:
-              profiles?.find((profile) => profile.user_id === userId)?.display_name || "Unbekannt",
+              profiles?.find((profile: Record<string, any>) => profile.user_id === userId)?.display_name || "Unbekannt",
           }))
         );
         setMentionPromptOpen(true);

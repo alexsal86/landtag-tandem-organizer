@@ -37,7 +37,7 @@ export function useApprovalComments(contentItemId: string | null) {
         .order("created_at", { ascending: true });
       if (error) throw error;
       setComments(
-        (data || []).map((row) => ({
+        (data || []).map((row: Record<string, any>) => ({
           id: row.id,
           content_item_id: row.content_item_id,
           author_id: row.author_id,

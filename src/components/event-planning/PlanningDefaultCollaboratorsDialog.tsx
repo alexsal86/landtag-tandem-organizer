@@ -74,8 +74,8 @@ export const PlanningDefaultCollaboratorsDialog = ({
 
       // Step 2: Get user IDs excluding current user
       const userIds = memberships
-        .map(m => m.user_id)
-        .filter(id => id !== user.id);
+        .map(m: Record<string, any> => m.user_id)
+        .filter(id: Record<string, any> => id !== user.id);
 
       if (userIds.length === 0) {
         setTeamMembers([]);
@@ -94,7 +94,7 @@ export const PlanningDefaultCollaboratorsDialog = ({
         return;
       }
 
-      const members = (profiles || []).map(p => ({
+      const members = (profiles || []).map(p: Record<string, any> => ({
         id: p.user_id,
         display_name: p.display_name || "Unbekannt",
         avatar_url: p.avatar_url,

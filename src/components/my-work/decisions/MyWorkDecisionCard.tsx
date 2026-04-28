@@ -237,7 +237,7 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
         const { data, error } = await supabase.from("appointments").select("id, title, start_time, end_time").eq("tenant_id", currentTenant.id).lt("start_time", contextEndIso).gt("end_time", contextStartIso).order("start_time", { ascending: true });
         if (error) throw error;
         if (cancelled) return;
-        const existingItems: DayTimelineItem[] = (data || []).map((item) => ({ id: item.id, title: item.title, start: item.start_time, end: item.end_time }));
+        const existingItems: DayTimelineItem[] = (data || []).map((item: Record<string, any>) => ({ id: item.id, title: item.title, start: item.start_time, end: item.end_time }));
         const simulatedStart = requestedStart.toISOString();
         const simulatedEnd = new Date(requestedStart.getTime() + APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES * 60 * 1000).toISOString();
         const combined = existingItems.some((item) => item.start === simulatedStart && item.title.trim().toLowerCase() === requestedTitle.trim().toLowerCase()) ? existingItems : [...existingItems, { id: `simulated-${decision.id}`, title: `${requestedTitle} (angefragt)`, start: simulatedStart, end: simulatedEnd, simulated: true }];

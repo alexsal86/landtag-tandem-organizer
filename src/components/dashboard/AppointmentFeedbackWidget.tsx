@@ -101,16 +101,16 @@ export const AppointmentFeedbackWidget = ({
 
       if (!memberships?.length) return;
 
-      const userIds = memberships.map(m => m.user_id);
+      const userIds = memberships.map(m: Record<string, any> => m.user_id);
       const { data: profiles } = await supabase
         .from('profiles')
         .select('user_id, display_name')
         .in('user_id', userIds);
 
-      const merged: TenantUser[] = (profiles || []).map(p => ({
+      const merged: TenantUser[] = (profiles || []).map(p: Record<string, any> => ({
         user_id: p.user_id,
         display_name: p.display_name || p.user_id,
-        role: memberships.find(m => m.user_id === p.user_id)?.role
+        role: memberships.find(m: Record<string, any> => m.user_id === p.user_id)?.role
       }));
       setTenantUsers(merged);
     } finally {

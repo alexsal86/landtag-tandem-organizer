@@ -131,7 +131,7 @@ export function MeinRadarView({ onSelectDossier }: MeinRadarViewProps) {
                 </span>
               </h3>
               <div className="space-y-1.5">
-                {dayEntries.map((e) => {
+                {dayEntries.map((e: Record<string, any>) => {
                   const cfg = ENTRY_TYPE_CONFIG[e.entry_type as EntryType] ?? { label: e.entry_type, icon: "📄" };
                   const dossierTitle = e.dossier_id ? dossierMap.get(e.dossier_id) : null;
                   return (
@@ -163,7 +163,7 @@ export function MeinRadarView({ onSelectDossier }: MeinRadarViewProps) {
                           </span>
                         )}
                         {e.tags.length > 0 && (
-                          <span className="truncate">{e.tags.map((t) => `#${t}`).join(" ")}</span>
+                          <span className="truncate">{e.tags.map((t: Record<string, any>) => `#${t}`).join(" ")}</span>
                         )}
                       </div>
                     </button>

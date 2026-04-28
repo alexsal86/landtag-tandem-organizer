@@ -73,8 +73,8 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
       }
 
       const directDocs: DirectDocument[] = (directData || [])
-        .filter((item) => item.document)
-        .map((item) => ({
+        .filter((item: Record<string, any>) => item.document)
+        .map((item: Record<string, any>) => ({
           ...(item.document as Document),
           relationship_type: item.relationship_type,
           relationship_notes: item.notes || undefined,

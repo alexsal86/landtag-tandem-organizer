@@ -33,15 +33,15 @@ export function MeetingParticipantAvatars({ meetingId, size = 'default' }: Meeti
         return;
       }
 
-      const userIds = participantsData.map(p => p.user_id);
+      const userIds = participantsData.map(p: Record<string, any> => p.user_id);
       const { data: profiles } = await supabase
         .from('profiles')
         .select('user_id, display_name, avatar_url')
         .in('user_id', userIds);
 
-      const enrichedParticipants = participantsData.map(p => ({
+      const enrichedParticipants = participantsData.map(p: Record<string, any> => ({
         ...p,
-        user: profiles?.find(prof => prof.user_id === p.user_id) || null
+        user: profiles?.find(prof: Record<string, any> => prof.user_id === p.user_id) || null
       }));
 
       setParticipants(enrichedParticipants);

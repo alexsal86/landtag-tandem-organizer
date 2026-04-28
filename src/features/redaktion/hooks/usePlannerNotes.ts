@@ -59,7 +59,7 @@ export function usePlannerNotes() {
         console.error("Error loading note creators:", profilesError);
       } else {
         creatorMap = new Map(
-          (profilesData || []).map((profile) => [
+          (profilesData || []).map((profile: Record<string, any>) => [
             profile.user_id,
             { display_name: profile.display_name, avatar_url: profile.avatar_url },
           ]),

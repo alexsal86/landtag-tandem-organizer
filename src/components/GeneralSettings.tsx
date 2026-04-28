@@ -44,7 +44,7 @@ export function GeneralSettings() {
 
         if (error) throw error;
 
-        const tenantSettings = (tenantData || []).reduce((acc, item) => {
+        const tenantSettings = (tenantData || []).reduce((acc: Record<string, any>, item: Record<string, any>) => {
           const key = item.setting_key as keyof AppSettings;
           acc[key] = item.setting_value || '';
           return acc;
@@ -65,7 +65,7 @@ export function GeneralSettings() {
             .in('setting_key', ['app_name', 'app_subtitle', 'app_logo_url']);
 
           if (!globalError) {
-            globalSettings = (globalData || []).reduce((acc, item) => {
+            globalSettings = (globalData || []).reduce((acc: Record<string, any>, item: Record<string, any>) => {
               const key = item.setting_key as keyof AppSettings;
               acc[key] = item.setting_value || '';
               return acc;

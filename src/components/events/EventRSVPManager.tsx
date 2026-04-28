@@ -176,7 +176,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
 
       if (error) throw error;
 
-      const nextRsvps = (data || []).map((r) => ({
+      const nextRsvps = (data || []).map((r: Record<string, any>) => ({
         ...r,
         invitation_sent: r.invitation_sent ?? false,
         reminder_count: r.reminder_count ?? 0,
@@ -184,7 +184,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
       }));
 
       setRsvps(nextRsvps);
-      await loadPublicLinks(nextRsvps.map((r) => r.id));
+      await loadPublicLinks(nextRsvps.map((r: Record<string, any>) => r.id));
     } catch (error) {
       debugConsole.error('Error loading RSVPs:', error);
     } finally {
@@ -207,8 +207,8 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
     if (error) throw error;
 
     const byRsvpId = rsvpIds.reduce<Record<string, PublicInvitationLink | null>>((acc, rsvpId) => {
-      const rsvpLinks = (data || []).filter((link) => link.event_rsvp_id === rsvpId);
-      const latestActiveLink = rsvpLinks.find((link) => link.revoked_at == null && (!link.expires_at || new Date(link.expires_at).getTime() > Date.now()));
+      const rsvpLinks = (data || []).filter((link: Record<string, any>) => link.event_rsvp_id === rsvpId);
+      const latestActiveLink = rsvpLinks.find((link: Record<string, any>) => link.revoked_at == null && (!link.expires_at || new Date(link.expires_at).getTime() > Date.now()));
       const latestLink = latestActiveLink ?? rsvpLinks[0] ?? null;
       acc[rsvpId] = latestLink;
       return acc;
@@ -248,11 +248,11 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
         return;
       }
 
-      const contactIds = members.map((m) => m.contact_id);
+      const contactIds = members.map((m: Record<string, any>) => m.contact_id);
       const { data: contacts } = await supabase.from('contacts').select('id, first_name, last_name, email').in('id', contactIds);
 
       let added = 0;
-      (contacts || []).forEach((c) => {
+      (contacts || []).forEach((c: Record<string, any>) => {
         if (!c.email) return;
         const name = [c.first_name, c.last_name].filter(Boolean).join(' ') || c.email;
         if (pendingInvites.find((p) => p.email === c.email) || rsvps.find((r) => r.email === c.email)) return;
@@ -350,7 +350,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
 
         const { data: insertedRsvps, error: insertError } = await supabase.from('event_rsvps').insert(rsvpData).select();
         if (insertError) throw insertError;
-        idsToSend = (insertedRsvps || []).map((r) => r.id);
+        idsToSend = (insertedRsvps || []).map((r: Record<string, any>) => r.id);
       }
 
       if (idsToSend && idsToSend.length > 0) {

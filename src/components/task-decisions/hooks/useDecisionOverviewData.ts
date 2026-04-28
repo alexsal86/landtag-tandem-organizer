@@ -136,7 +136,7 @@ export const useDecisionOverviewData = () => {
       if (archivedError) throw archivedError;
 
       const combinedDecisions = [...(allDecisions || []), ...(archivedDecisions || [])];
-      const formattedParticipantData = participantDecisions?.map((item) => ({
+      const formattedParticipantData = participantDecisions?.map((item: Record<string, any>) => ({
         id: item.task_decisions.id,
         task_id: item.task_decisions.task_id,
         title: item.task_decisions.title,
@@ -162,14 +162,14 @@ export const useDecisionOverviewData = () => {
       const formattedAllData = combinedDecisions
         ?.filter((item) => {
           const isCreator = item.created_by === currentUserId;
-          const isParticipant = item.task_decision_participants.some((p) => p.user_id === currentUserId);
+          const isParticipant = item.task_decision_participants.some((p: Record<string, any>) => p.user_id === currentUserId);
           const assignedTo = item.tasks?.assigned_to;
           const isAssigned = assignedTo ? assignedTo.includes(currentUserId) : false;
           const isVisibleToAll = item.visible_to_all === true;
           return isCreator || isParticipant || isAssigned || isVisibleToAll;
         })
         ?.map((item) => {
-          const userParticipant = item.task_decision_participants.find((p) => p.user_id === currentUserId);
+          const userParticipant = item.task_decision_participants.find((p: Record<string, any>) => p.user_id === currentUserId);
           return {
             id: item.id,
             task_id: item.task_id,
@@ -196,7 +196,7 @@ export const useDecisionOverviewData = () => {
 
       const decisionsMap = new Map<string, DecisionRequest>();
       formattedAllData.forEach((decision) => decisionsMap.set(decision.id, decision));
-      formattedParticipantData.forEach((participantDecision) => {
+      formattedParticipantData.forEach((participantDecision: Record<string, any>) => {
         const existing = decisionsMap.get(participantDecision.id);
         if (existing) {
           decisionsMap.set(participantDecision.id, {
@@ -242,21 +242,21 @@ export const useDecisionOverviewData = () => {
         if (topicsError) throw topicsError;
 
         const topicsByDecision = new Map<string, string[]>();
-        topicsData?.forEach((topic) => {
+        topicsData?.forEach((topic: Record<string, any>) => {
           if (!topicsByDecision.has(topic.decision_id)) topicsByDecision.set(topic.decision_id, []);
           topicsByDecision.get(topic.decision_id)!.push(topic.topic_id);
         });
 
-        const allUserIds = [...new Set([...(participantsData?.map((p) => p.user_id) || []), ...allDecisionsList.map((d) => d.created_by)])];
+        const allUserIds = [...new Set([...(participantsData?.map((p: Record<string, any>) => p.user_id) || []), ...allDecisionsList.map((d) => d.created_by)])];
         const { data: profiles } = await supabase
           .from('profiles')
           .select('user_id, display_name, badge_color, avatar_url')
           .in('user_id', allUserIds);
 
-        const profileMap = new Map<string, DecisionCreatorProfile>((profiles ?? []).map((profile) => [profile.user_id, profile]));
+        const profileMap = new Map<string, DecisionCreatorProfile>((profiles ?? []).map((profile: Record<string, any>) => [profile.user_id, profile]));
         const participantsByDecision = new Map<string, DecisionRequest['participants']>();
 
-        participantsData?.forEach((participant) => {
+        participantsData?.forEach((participant: Record<string, any>) => {
           if (!participantsByDecision.has(participant.decision_id)) participantsByDecision.set(participant.decision_id, []);
           participantsByDecision.get(participant.decision_id)?.push({
             id: participant.id,
@@ -266,7 +266,7 @@ export const useDecisionOverviewData = () => {
               badge_color: profileMap.get(participant.user_id)?.badge_color || null,
               avatar_url: profileMap.get(participant.user_id)?.avatar_url || null,
             },
-            responses: (participant.task_decision_responses || []).sort((a, b) => {
+            responses: (participant.task_decision_responses || []).sort((a: Record<string, any>, b: Record<string, any>) => {
               const aIsChild = !!a.parent_response_id;
               const bIsChild = !!b.parent_response_id;
               if (aIsChild !== bIsChild) return aIsChild ? 1 : -1;

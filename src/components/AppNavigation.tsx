@@ -211,7 +211,7 @@ export function AppNavigation({
           .limit(20),
       ]);
 
-      const internalAppointments: UpcomingAppointmentItem[] = (appointmentsResult.data || []).map((appointment) => ({
+      const internalAppointments: UpcomingAppointmentItem[] = (appointmentsResult.data || []).map((appointment: Record<string, any>) => ({
         id: appointment.id,
         title: appointment.title,
         start_time: appointment.start_time,
@@ -220,7 +220,7 @@ export function AppNavigation({
         is_all_day: appointment.is_all_day ?? false,
       }));
 
-      const externalAppointments: UpcomingAppointmentItem[] = (externalEventsResult.data || []).map((event) => ({
+      const externalAppointments: UpcomingAppointmentItem[] = (externalEventsResult.data || []).map((event: Record<string, any>) => ({
         id: event.id,
         title: event.title,
         start_time: event.start_time,
@@ -290,13 +290,13 @@ export function AppNavigation({
       if (error) throw error;
 
       return (data || [])
-        .map((item) => ({
+        .map((item: Record<string, any>) => ({
           id: item.id,
           label: item.subject?.trim() || 'Vorgang ohne Betreff',
           preferred: item.owner_user_id === user.id || item.user_id === user.id,
           updatedAt: item.updated_at,
         }))
-        .sort((a, b) => {
+        .sort((a: Record<string, any>, b: Record<string, any>) => {
           if (a.preferred !== b.preferred) return a.preferred ? -1 : 1;
           return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
         });
@@ -319,13 +319,13 @@ export function AppNavigation({
       if (error) throw error;
 
       return (data || [])
-        .map((item) => ({
+        .map((item: Record<string, any>) => ({
           id: item.id,
           label: item.title?.trim() || 'Dokument ohne Titel',
           preferred: item.user_id === user.id,
           updatedAt: item.updated_at,
         }))
-        .sort((a, b) => {
+        .sort((a: Record<string, any>, b: Record<string, any>) => {
           if (a.preferred !== b.preferred) return a.preferred ? -1 : 1;
           return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
         });
@@ -356,16 +356,16 @@ export function AppNavigation({
       if (planningsResult.error) throw planningsResult.error;
       if (collaboratorsResult.error) throw collaboratorsResult.error;
 
-      const collaboratorIds = new Set((collaboratorsResult.data || []).map((entry) => entry.event_planning_id));
+      const collaboratorIds = new Set((collaboratorsResult.data || []).map((entry: Record<string, any>) => entry.event_planning_id));
 
       return (planningsResult.data || [])
-        .map((planning) => ({
+        .map((planning: Record<string, any>) => ({
           id: planning.id,
           label: planning.title?.trim() || 'Planung ohne Titel',
           preferred: planning.user_id === user.id || collaboratorIds.has(planning.id),
           updatedAt: planning.updated_at,
         }))
-        .sort((a, b) => {
+        .sort((a: Record<string, any>, b: Record<string, any>) => {
           if (a.preferred !== b.preferred) return a.preferred ? -1 : 1;
           return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
         });
@@ -790,7 +790,7 @@ export function AppNavigation({
                     <>
                       <div className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">Vorgang hinzufügen</div>
                       {isCaseItemsLoading && <div className="px-2 py-1.5 text-xs text-muted-foreground">Lade Vorgänge…</div>}
-                      {!isCaseItemsLoading && quickAccessCaseItems.map((item) => (
+                      {!isCaseItemsLoading && quickAccessCaseItems.map((item: Record<string, any>) => (
                         <button
                           key={item.id}
                           onClick={() => {
@@ -813,7 +813,7 @@ export function AppNavigation({
                     <>
                       <div className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">Dokument hinzufügen</div>
                       {isDocumentsLoading && <div className="px-2 py-1.5 text-xs text-muted-foreground">Lade Dokumente…</div>}
-                      {!isDocumentsLoading && quickAccessDocuments.map((item) => (
+                      {!isDocumentsLoading && quickAccessDocuments.map((item: Record<string, any>) => (
                         <button
                           key={item.id}
                           onClick={() => {
@@ -836,7 +836,7 @@ export function AppNavigation({
                     <>
                       <div className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">Veranstaltungs-/Terminplanung hinzufügen</div>
                       {isEventPlanningsLoading && <div className="px-2 py-1.5 text-xs text-muted-foreground">Lade Planungen…</div>}
-                      {!isEventPlanningsLoading && quickAccessEventPlannings.map((item) => (
+                      {!isEventPlanningsLoading && quickAccessEventPlannings.map((item: Record<string, any>) => (
                         <button
                           key={item.id}
                           onClick={() => {
@@ -1223,7 +1223,7 @@ export function AppNavigation({
           </div>
         ) : (
           <div className="space-y-0.5 p-2">
-            {caseFiles.map(cf => (
+            {caseFiles.map(cf: Record<string, any> => (
               <button
                 key={cf.id}
                 onClick={() => handleNavigationClick('casefiles')}

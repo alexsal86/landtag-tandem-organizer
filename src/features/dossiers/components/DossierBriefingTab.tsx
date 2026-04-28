@@ -244,7 +244,7 @@ export function DossierBriefingTab({ dossier, entries }: DossierBriefingTabProps
           <section>
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Verknüpfte Kontakte</h3>
             <div className="space-y-1">
-              {contactNames.map((c) => (
+              {contactNames.map((c: Record<string, any>) => (
                 <p key={c.id} className="text-sm">
                   <span className="font-medium">{c.name}</span>
                   {c.organization && <span className="text-muted-foreground ml-1">({c.organization})</span>}

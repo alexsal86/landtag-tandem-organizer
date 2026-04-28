@@ -129,7 +129,7 @@ export function useChecklistOperations({
           setTimeout(async () => {
             if (selectedPlanningId) {
 const { data: freshItems } = await supabase.from("event_planning_checklist_items").select("id, event_planning_id, title, is_completed, order_index, sub_items, assigned_to, due_date, category, notes, is_system_item, system_type, created_at, color, type, relative_due_days").eq("event_planning_id", selectedPlanningId).order("order_index", { ascending: true });
-               if (freshItems) setChecklistItems(freshItems.map(item => ({ ...item, sub_items: (item.sub_items || []) as { title: string; is_completed: boolean }[] })) as ChecklistItem[]);
+               if (freshItems) setChecklistItems(freshItems.map(item: Record<string, any> => ({ ...item, sub_items: (item.sub_items || []) as { title: string; is_completed: boolean }[] })) as ChecklistItem[]);
              }
            }, 500);
            return;
@@ -155,7 +155,7 @@ const { data: freshItems } = await supabase.from("event_planning_checklist_items
        setTimeout(async () => {
          if (selectedPlanningId) {
            const { data: freshItems } = await supabase.from("event_planning_checklist_items").select("id, event_planning_id, title, is_completed, order_index, sub_items, assigned_to, due_date, category, notes, is_system_item, system_type, created_at, color, type, relative_due_days").eq("event_planning_id", selectedPlanningId).order("order_index", { ascending: true });
-          if (freshItems) setChecklistItems(freshItems.map(item => ({ ...item, sub_items: (item.sub_items || []) as { title: string; is_completed: boolean }[] })) as ChecklistItem[]);
+          if (freshItems) setChecklistItems(freshItems.map(item: Record<string, any> => ({ ...item, sub_items: (item.sub_items || []) as { title: string; is_completed: boolean }[] })) as ChecklistItem[]);
         }
       }, 500);
     }
@@ -287,7 +287,7 @@ const { data: freshItems } = await supabase.from("event_planning_checklist_items
             .limit(100);
 
           const guestCount = rsvpGuests?.length || 0;
-          const sentCount = rsvpGuests?.filter((g) => g.invitation_sent)?.length || 0;
+          const sentCount = rsvpGuests?.filter((g: Record<string, any>) => g.invitation_sent)?.length || 0;
 
           const rsvpUrl = `/eventplanning/${selectedPlanningId}#rsvp-manager`;
           const { data: createdAction, error: actionError } = await supabase
@@ -314,8 +314,8 @@ const { data: freshItems } = await supabase.from("event_planning_checklist_items
           // If invitations were already sent, create a timeline assignment
           if (sentCount > 0) {
             const earliestSent = rsvpGuests
-              ?.filter((g) => g.invitation_sent && g.invited_at)
-              ?.sort((a, b) => new Date(a.invited_at).getTime() - new Date(b.invited_at).getTime())?.[0];
+              ?.filter((g: Record<string, any>) => g.invitation_sent && g.invited_at)
+              ?.sort((a: Record<string, any>, b: Record<string, any>) => new Date(a.invited_at).getTime() - new Date(b.invited_at).getTime())?.[0];
 
             if (earliestSent) {
               await supabase.from("event_planning_timeline_assignments").insert({

@@ -545,7 +545,7 @@ export const KarlsruheDistrictsMap = ({
         schema: 'public',
         table: 'contacts',
         filter: `contact_type=eq.organization`
-      }, (payload) => {
+      }, (payload: Record<string, any>) => {
         const updated = payload.new;
         debugConsole.log('Contact updated via realtime:', updated);
         
