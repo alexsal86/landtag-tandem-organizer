@@ -3,17 +3,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, BarChart3, Clock, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
-import { EmployeeMeetingScheduler } from "./EmployeeMeetingScheduler";
-import { EmployeeMeetingHistory } from "./EmployeeMeetingHistory";
-import { EmployeeMeetingRequestManager } from "./EmployeeMeetingRequestManager";
-import { EmployeeYearlyStatsView } from "./EmployeeYearlyStatsView";
-import { AdminTimeTrackingView } from "./admin/AdminTimeTrackingView";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { EmployeeMeetingScheduler } from "@/components/EmployeeMeetingScheduler";
+import { EmployeeMeetingHistory } from "@/components/EmployeeMeetingHistory";
+import { EmployeeMeetingRequestManager } from "@/components/EmployeeMeetingRequestManager";
+import { EmployeeYearlyStatsView } from "@/components/EmployeeYearlyStatsView";
+import { AdminTimeTrackingView } from "@/components/admin/AdminTimeTrackingView";
 
-import { useEmployeesData } from "./employees/hooks/useEmployeesData";
-import { useEmployeeOperations } from "./employees/hooks/useEmployeeOperations";
-import { EmployeeSelfView } from "./employees/EmployeeSelfView";
-import { PendingLeavesTable, EmployeeListTable } from "./employees/EmployeeAdminTable";
+import { useEmployeesData } from "@/components/employees/hooks/useEmployeesData";
+import { useEmployeeOperations } from "@/components/employees/hooks/useEmployeeOperations";
+import { EmployeeSelfView } from "@/components/employees/EmployeeSelfView";
+import { PendingLeavesTable, EmployeeListTable } from "@/components/employees/EmployeeAdminTable";
 
 export function EmployeesView() {
   const data = useEmployeesData();

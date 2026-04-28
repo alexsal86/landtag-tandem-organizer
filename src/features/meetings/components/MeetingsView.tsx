@@ -1,8 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Users } from "lucide-react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { MeetingArchiveView } from "./MeetingArchiveView";
-import { MeetingProtocolView } from "./MeetingProtocolView";
+import { MeetingArchiveView } from "@/components/MeetingArchiveView";
+import { MeetingProtocolView } from "@/components/MeetingProtocolView";
 import { FocusModeView } from "@/components/meetings/FocusModeView";
 import { ActiveMeetingPanel } from "@/components/meetings/ActiveMeetingPanel";
 import { MeetingSidebar } from "@/components/meetings/MeetingSidebar";
