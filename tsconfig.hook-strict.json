@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "noImplicitAny": true,
+    "noEmit": true
+  },
+  "include": [
+    "src/supabase-fix.d.ts",
+    "src/hooks/useInfiniteContacts.tsx",
+    "src/hooks/useMeetingsData.tsx",
+    "src/hooks/useMyWorkJourFixeMeetings.tsx",
+    "src/hooks/useChecklistOperations.tsx"
+  ]
+}
