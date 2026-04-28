@@ -48,7 +48,7 @@ export function MobileHeader() {
         .in('setting_key', ['app_name', 'app_logo_url']);
 
       if (settings) {
-        const settingsMap = settings.reduce((acc, item) => {
+        const settingsMap = settings.reduce((acc: Record<string, any>, item: Record<string, any>) => {
           acc[item.setting_key] = item.setting_value || '';
           return acc;
         }, {} as Record<string, string>);

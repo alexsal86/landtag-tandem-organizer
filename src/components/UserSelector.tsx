@@ -77,7 +77,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
         return;
       }
 
-      const userIds = memberships.map(m => m.user_id);
+      const userIds = memberships.map((m: Record<string, any>) => m.user_id);
       debugConsole.log('UserSelector: Fetching profiles for user IDs:', userIds);
       
       const { data: profilesData, error: profilesError } = await supabase
@@ -90,7 +90,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
         throw profilesError;
       }
 
-      const usersData: User[] = (profilesData || []).map(profile => ({
+      const usersData: User[] = (profilesData || []).map((profile: Record<string, any>) => ({
         id: profile.user_id,
         display_name: profile.display_name || 'Unbekannt',
         avatar_url: profile.avatar_url

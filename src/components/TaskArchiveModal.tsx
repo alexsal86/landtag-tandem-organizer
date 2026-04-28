@@ -71,7 +71,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
         .order('archived_at', { ascending: false });
 
       if (error) throw error;
-      const formattedTasks: ArchivedTask[] = (data || []).map(task => ({
+      const formattedTasks: ArchivedTask[] = (data || []).map((task: Record<string, any>) => ({
         id: task.id,
         task_id: task.task_id,
         title: task.title,

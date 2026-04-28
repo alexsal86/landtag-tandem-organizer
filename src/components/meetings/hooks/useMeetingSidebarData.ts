@@ -164,7 +164,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
 
         if (requestVersions.current[key] !== version) return;
 
-        const decisionIds = (data || []).map((d) => d.id);
+        const decisionIds = (data || []).map((d: Record<string, any>) => d.id);
         let participantRows: Array<{ decision_id: string; user_id: string }> = [];
         if (decisionIds.length > 0) {
           const { data: participants, error: participantError } = await supabase
@@ -178,7 +178,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
         if (requestVersions.current[key] !== version) return;
 
         const relevant = (data || []).filter(
-          (decision) =>
+          (decision: Record<string, any>) =>
             decision.created_by === uid ||
             participantRows.some((p) => p.decision_id === decision.id && p.user_id === uid)
         );
@@ -223,7 +223,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
         if (requestVersions.current[key] !== version) return;
 
         const all: MeetingUpcomingAppointment[] = [
-          ...(internalData || []).map((a) => ({ ...a, isExternal: false as const })),
+          ...(internalData || []).map((a: Record<string, any>) => ({ ...a, isExternal: false as const })),
           ...((externalData || []) as ExternalEventAppointmentRow[]).map(
             (e) => {
               const calendar = extractExternalCalendar(e.external_calendars);
@@ -259,7 +259,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
         .eq("user_id", uid);
       if (error) throw error;
       const ids = new Set<string>();
-      data?.forEach((item) => {
+      data?.forEach((item: Record<string, any>) => {
         if (item.appointment_id) ids.add(item.appointment_id);
         if (item.external_event_id) ids.add(item.external_event_id);
       });

@@ -96,16 +96,16 @@ async function fetchCollaborators(letterId: string): Promise<LetterCollaborator[
   if (error) throw error;
 
   if (data && data.length > 0) {
-    const userIds = data.map(c => c.user_id);
+    const userIds = data.map((c: Record<string, any>) => c.user_id);
     const { data: profiles } = await supabase
       .from('profiles')
       .select('user_id, display_name')
       .in('user_id', userIds);
 
-    return data.map(item => ({
+    return data.map((item: Record<string, any>) => ({
       ...item,
       role: 'reviewer',
-      profiles: profiles?.find(p => p.user_id === item.user_id) || { display_name: 'Unbekannt' },
+      profiles: profiles?.find((p: Record<string, any>) => p.user_id === item.user_id) || { display_name: 'Unbekannt' },
     }));
   }
   return [];
@@ -196,7 +196,7 @@ export function useLetterData({ isOpen, tenantId, letterId }: UseLetterDataOptio
         .select('user_id, display_name, avatar_url')
         .in('user_id', userIds);
       if (error) { debugConsole.error('Error fetching user profiles:', error); return; }
-      const profilesMap = profiles?.reduce((acc, profile) => {
+      const profilesMap = profiles?.reduce((acc: Record<string, any>, profile: Record<string, any>) => {
         acc[profile.user_id] = { display_name: profile.display_name || 'Unbekannter Benutzer', avatar_url: profile.avatar_url ?? undefined };
         return acc;
       }, {} as Record<string, { display_name: string; avatar_url?: string }>) || {};

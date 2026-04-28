@@ -436,7 +436,7 @@ export const useCaseItems = () => {
           table: "case_items",
           filter: `tenant_id=eq.${currentTenant.id}`,
         },
-        (payload) => {
+        (payload: Record<string, any>) => {
           if (payload.eventType === "DELETE") {
             const deletedId = payload.old?.id as string | undefined;
             if (deletedId) {

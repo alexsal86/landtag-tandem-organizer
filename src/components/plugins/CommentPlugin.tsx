@@ -358,7 +358,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
       if (commentsError) throw commentsError;
 
       // Get user profiles for the comment authors
-      const userIds = [...new Set(commentsData?.map(comment => comment.user_id) || [])];
+      const userIds = [...new Set(commentsData?.map((comment: Record<string, any>) => comment.user_id) || [])];
       
       let profilesData: Array<{ user_id: string; display_name: string | null; avatar_url: string | null }> = [];
       if (userIds.length > 0) {

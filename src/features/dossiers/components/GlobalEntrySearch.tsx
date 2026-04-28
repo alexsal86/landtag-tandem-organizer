@@ -91,7 +91,7 @@ export function GlobalEntrySearch({ onSelectDossier }: GlobalEntrySearchProps) {
                     {g.title} <span className="text-muted-foreground font-normal">({g.entries.length})</span>
                   </button>
                   <div className="space-y-1">
-                    {g.entries.slice(0, 3).map((e) => {
+                    {g.entries.slice(0, 3).map((e: Record<string, any>) => {
                       const cfg = ENTRY_TYPE_CONFIG[e.entry_type as EntryType] ?? { label: e.entry_type, icon: "📄" };
                       const text = e.content ?? e.title ?? "";
                       return (

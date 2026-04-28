@@ -127,7 +127,7 @@ export function useEventPlanningData() {
     setPlanningDates(dates || []);
 
     const { data: items } = await supabase.from("event_planning_checklist_items").select("id, event_planning_id, title, is_completed, order_index, created_at, updated_at, sub_items, type, relative_due_days, color").eq("event_planning_id", planningId).order("order_index", { ascending: true });
-    const transformedItems = (items || []).map(item => ({
+    const transformedItems = (items || []).map((item: Record<string, any>) => ({
       ...item,
       sub_items: Array.isArray(item.sub_items) ? item.sub_items : (item.sub_items ? JSON.parse(item.sub_items as string) : [])
     }));
@@ -140,7 +140,7 @@ export function useEventPlanningData() {
     const { data: collabs } = await supabase.from("event_planning_collaborators").select("id, event_planning_id, user_id, can_edit, created_at").eq("event_planning_id", planningId);
     if (collabs) {
       const collabsWithProfiles = await Promise.all(
-        collabs.map(async (collab) => {
+        collabs.map(async (collab: Record<string, any>) => {
           const { data: profile } = await supabase.from("profiles").select("display_name, avatar_url").eq("user_id", collab.user_id).single();
           return { ...collab, profiles: profile };
         })
@@ -306,7 +306,7 @@ export function useEventPlanningData() {
       });
       setPlannings(sortedData);
       if (data && data.length > 0) {
-        try { await fetchAllCollaborators(data.map(p => p.id)); }
+        try { await fetchAllCollaborators(data.map((p: Record<string, any>) => p.id)); }
         catch (collabError) { debugConsole.error('Error fetching collaborators:', collabError); }
       }
     } catch (err) {
@@ -327,7 +327,7 @@ export function useEventPlanningData() {
     const { data: collabs } = await supabase.from("event_planning_collaborators").select("id, event_planning_id, user_id, can_edit, created_at").in("event_planning_id", planningIds);
     if (collabs) {
       const collabsWithProfiles = await Promise.all(
-        collabs.map(async (collab) => {
+        collabs.map(async (collab: Record<string, any>) => {
           const { data: profile } = await supabase.from("profiles").select("display_name, avatar_url").eq("user_id", collab.user_id).single();
           return { ...collab, profiles: profile };
         })
@@ -342,7 +342,7 @@ export function useEventPlanningData() {
       const { data: memberships, error: memberError } = await supabase.from("user_tenant_memberships").select("user_id").eq("tenant_id", currentTenant.id).eq("is_active", true);
       if (memberError) { debugConsole.error("Error fetching memberships:", memberError); return; }
       if (!memberships || memberships.length === 0) { setAllProfiles([]); return; }
-      const userIds = memberships.map(m => m.user_id);
+      const userIds = memberships.map((m: Record<string, any>) => m.user_id);
       const { data: profiles, error: profileError } = await supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", userIds);
       if (profileError) { debugConsole.error("Error fetching profiles:", profileError); return; }
       setAllProfiles(profiles || []);
@@ -374,7 +374,7 @@ export function useEventPlanningData() {
           .select("id, title")
           .in("id", appointmentIds);
         if (appointments) {
-          const titleMap = new Map(appointments.map(a => [a.id, a.title]));
+          const titleMap = new Map(appointments.map((a: Record<string, any>) => [a.id, a.title]));
           const updateTitle = (prep: any) => {
             const apptTitle = prep.appointment_id ? titleMap.get(prep.appointment_id) : null;
             if (apptTitle) return { ...prep, title: `Terminplanung: ${apptTitle}` };
@@ -394,7 +394,7 @@ export function useEventPlanningData() {
   const fetchEmailActions = async (planningId: string) => {
     const { data: items } = await supabase.from("event_planning_checklist_items").select("id").eq("event_planning_id", planningId);
     if (!items) return;
-    const itemIds = items.map((i) => i.id);
+    const itemIds = items.map((i: Record<string, any>) => i.id);
     const { data: actions } = await supabase.from("event_planning_item_actions").select("*").in("checklist_item_id", itemIds).in("action_type", ["email", "social_planner", "rsvp"]);
     const emailActionsMap: Record<string, ItemActionDto> = {};
     const socialPlannerActionsMap: Record<string, ItemActionDto> = {};
@@ -473,8 +473,8 @@ export function useEventPlanningData() {
     }
 
     const assignments = relativeItems
-      .filter((item) => typeof item.relative_due_days === "number")
-      .map((item) => ({
+      .filter((item: Record<string, any>) => typeof item.relative_due_days === "number")
+      .map((item: Record<string, any>) => ({
         event_planning_id: planningId,
         checklist_item_id: item.id,
         due_date: format(addDays(eventDate, item.relative_due_days as number), "yyyy-MM-dd"),
@@ -495,7 +495,7 @@ export function useEventPlanningData() {
     }
 
     setTimelineAssignments((prev) => {
-      const updatedIds = new Set(data.map((assignment) => assignment.checklist_item_id));
+      const updatedIds = new Set(data.map((assignment: Record<string, any>) => assignment.checklist_item_id));
       const remaining = prev.filter((assignment) => !updatedIds.has(assignment.checklist_item_id));
       return [...remaining, ...data].sort((a, b) => a.due_date.localeCompare(b.due_date));
     });

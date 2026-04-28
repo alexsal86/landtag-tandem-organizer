@@ -87,7 +87,7 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
       setCategories(nextCategories);
       categoriesTenantRef.current = currentTenant.id;
       setSelectedCategory((currentValue) => {
-        if (currentValue && nextCategories.some((category) => category.name === currentValue)) {
+        if (currentValue && nextCategories.some((category: Record<string, any>) => category.name === currentValue)) {
           return currentValue;
         }
 
@@ -126,7 +126,7 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
       const nextUsers = profilesRes.data || [];
       setUsers(nextUsers);
       usersTenantRef.current = currentTenant.id;
-      setAssignedTo((currentValue) => currentValue.filter((userId) => nextUsers.some((profile) => profile.user_id === userId)));
+      setAssignedTo((currentValue) => currentValue.filter((userId) => nextUsers.some((profile: Record<string, any>) => profile.user_id === userId)));
     } catch (error) {
       usersTenantRef.current = null;
       debugConsole.error('Error loading task assignees:', error);

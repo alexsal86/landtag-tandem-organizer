@@ -75,16 +75,16 @@ export function useDecisionSidebarData(decisions: DecisionForSidebar[], currentU
       }
 
       const decisionTitleMap = new Map(decisions.map((d) => [d.id, d.title]));
-      const userIds = [...new Set(comments.map((c) => c.user_id))];
+      const userIds = [...new Set(comments.map((c: Record<string, any>) => c.user_id))];
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, display_name, badge_color, avatar_url")
         .in("user_id", userIds);
 
-      const profileMap = new Map<string, SidebarProfile>((profiles ?? []).map((profile) => [profile.user_id, profile]));
+      const profileMap = new Map<string, SidebarProfile>((profiles ?? []).map((profile: Record<string, any>) => [profile.user_id, profile]));
 
       setRecentDiscussionActivities(
-        comments.map((comment) => ({
+        comments.map((comment: Record<string, any>) => ({
           id: `comment-${comment.id}`,
           decisionId: comment.decision_id,
           decisionTitle: decisionTitleMap.get(comment.decision_id) || "Entscheidung",

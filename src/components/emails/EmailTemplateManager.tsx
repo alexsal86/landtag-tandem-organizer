@@ -74,7 +74,7 @@ export function EmailTemplateManager() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTemplates((data || []).map(t => ({
+      setTemplates((data || []).map((t: Record<string, any>) => ({
         ...t,
         category: (t as any).category || 'general',
         variables: Array.isArray(t.variables) ? t.variables : []

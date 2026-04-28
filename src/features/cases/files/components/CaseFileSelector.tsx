@@ -253,7 +253,7 @@ export function CaseFileSelector({
               </div>
             ) : caseFiles && caseFiles.length > 0 ? (
               <div className="space-y-2">
-                {caseFiles.map((cf) => (
+                {caseFiles.map((cf: Record<string, any>) => (
                   <button
                     key={cf.id}
                     onClick={() => handleSelect(cf.id)}

@@ -152,9 +152,9 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
         ]);
 
         const favContacts = favResult.data || [];
-        const topUsageIds = (topResult.data || []).map(u => u.contact_id);
-        const favIds = new Set(favContacts.map(c => c.id));
-        const missingIds = topUsageIds.filter(id => !favIds.has(id));
+        const topUsageIds = (topResult.data || []).map((u: Record<string, any>) => u.contact_id);
+        const favIds = new Set(favContacts.map((c: Record<string, any>) => c.id));
+        const missingIds = topUsageIds.filter((id: Record<string, any>) => !favIds.has(id));
 
         let topContacts: Contact[] = [];
         if (missingIds.length > 0) {
@@ -167,7 +167,7 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
         }
 
         // Also load a few alphabetical contacts to fill
-        const loadedIds = [...favContacts.map(c => c.id), ...topContacts.map((c) => c.id)];
+        const loadedIds = [...favContacts.map((c: Record<string, any>) => c.id), ...topContacts.map((c) => c.id)];
         let alphaContacts: Contact[] = [];
         if (loadedIds.length < 20) {
           const { data } = await supabase
@@ -177,7 +177,7 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
             .neq('contact_type', 'archive')
             .order('name')
             .limit(20 - loadedIds.length);
-          alphaContacts = (data || []).filter((c) => !loadedIds.includes(c.id));
+          alphaContacts = (data || []).filter((c: Record<string, any>) => !loadedIds.includes(c.id));
         }
 
         const allContacts = [...favContacts, ...topContacts, ...alphaContacts];
@@ -216,7 +216,7 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
           .limit(30);
 
         if (error) throw error;
-        const ids = (searchData || []).map(c => c.id);
+        const ids = (searchData || []).map((c: Record<string, any>) => c.id);
         let usageData: ContactUsageStat[] | null = null;
         if (ids.length > 0) {
           const { data } = await supabase

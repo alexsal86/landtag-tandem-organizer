@@ -57,7 +57,7 @@ export function DecisionComments({
 
     if (reactionError) throw reactionError;
 
-    const reactionUserIds = [...new Set((reactionRows || []).map((row) => row.user_id))];
+    const reactionUserIds = [...new Set((reactionRows || []).map((row: Record<string, any>) => row.user_id))];
     const { data: reactionProfiles, error: reactionProfilesError } = reactionUserIds.length
       ? await supabase
           .from('profiles')
@@ -68,10 +68,10 @@ export function DecisionComments({
     if (reactionProfilesError) throw reactionProfilesError;
 
     const reactionProfileMap = new Map<string, ReactionProfile>(
-      (reactionProfiles || []).map((profile) => [profile.user_id, { ...profile, display_name: profile.display_name ?? null }]),
+      (reactionProfiles || []).map((profile: Record<string, any>) => [profile.user_id, { ...profile, display_name: profile.display_name ?? null }]),
     );
 
-    return (reactionRows || []).map((row) => ({
+    return (reactionRows || []).map((row: Record<string, any>) => ({
       ...row,
       profile: reactionProfileMap.get(row.user_id)
         ? { display_name: reactionProfileMap.get(row.user_id)?.display_name ?? null }
@@ -99,7 +99,7 @@ export function DecisionComments({
 
       if (error) throw error;
 
-      const commentIds = (data || []).map((comment) => comment.id);
+      const commentIds = (data || []).map((comment: Record<string, any>) => comment.id);
       visibleCommentIdsRef.current = new Set(commentIds);
 
       // Produktentscheidung: Client-seitige Gruppierung für Reaktionen über alle sichtbaren Kommentare
@@ -107,20 +107,20 @@ export function DecisionComments({
       const reactionRows = await loadReactionRowsWithProfiles(commentIds);
 
       // Load profiles for all users
-      const userIds = [...new Set(data?.map(c => c.user_id) || [])];
+      const userIds = [...new Set(data?.map((c: Record<string, any>) => c.user_id) || [])];
       const { data: profiles } = await supabase
         .from('profiles')
         .select('user_id, display_name, badge_color, avatar_url')
         .in('user_id', userIds);
 
       const profileMap = new Map<string, DecisionCommentProfile>(
-        (profiles ?? []).map((profile) => [profile.user_id, profile]),
+        (profiles ?? []).map((profile: Record<string, any>) => [profile.user_id, profile]),
       );
 
       const reactionsByCommentId = buildReactionMap(reactionRows || [], user?.id);
 
       // Build nested structure
-      const commentsWithProfiles: CommentData[] = (data || []).map(c => ({
+      const commentsWithProfiles: CommentData[] = (data || []).map((c: Record<string, any>) => ({
         ...c,
         profile: profileMap.get(c.user_id) ?? undefined,
         replies: [],
@@ -206,7 +206,7 @@ export function DecisionComments({
         if (decision.created_by !== user.id) {
           notifyUserIds.add(decision.created_by);
         }
-        participants?.forEach(p => {
+        participants?.forEach((p: Record<string, any>) => {
           if (p.user_id !== user.id) {
             notifyUserIds.add(p.user_id);
           }
@@ -339,7 +339,7 @@ export function DecisionComments({
         event: '*',
         schema: 'public',
         table: 'task_decision_comment_reactions',
-      }, async (payload) => {
+      }, async (payload: Record<string, any>) => {
         const newRow = payload.new as { comment_id?: string } | null;
         const oldRow = payload.old as { comment_id?: string } | null;
         const commentId = newRow?.comment_id ?? oldRow?.comment_id;
@@ -395,7 +395,7 @@ export function DecisionComments({
     const recipientIds = new Set<string>();
     if (comment.user_id !== user.id) recipientIds.add(comment.user_id);
     if (decision?.created_by && decision.created_by !== user.id) recipientIds.add(decision.created_by);
-    participants?.forEach((participant) => {
+    participants?.forEach((participant: Record<string, any>) => {
       if (participant.user_id !== user.id) recipientIds.add(participant.user_id);
     });
 

@@ -97,13 +97,13 @@ const fetchMeetings = async (userId: string) => {
   const participantData = participantResult.data || [];
   const publicMeetings = publicResult.data || [];
 
-  const ownIds = new Set([...ownUpcoming.map(m => m.id), ...ownPast.map(m => m.id)]);
+  const ownIds = new Set([...ownUpcoming.map((m: Record<string, any>) => m.id), ...ownPast.map((m: Record<string, any>) => m.id)]);
   const participantMeetings = participantData
-    .map((row) => extractMeeting(row as MeetingParticipantMeetingRow))
-    .filter((meeting): meeting is Meeting => Boolean(meeting && !ownIds.has(meeting.id) && meeting.status !== 'archived'));
+    .map((row: Record<string, any>) => extractMeeting(row as MeetingParticipantMeetingRow))
+    .filter((meeting: Record<string, any>): meeting is Meeting => Boolean(meeting && !ownIds.has(meeting.id) && meeting.status !== 'archived'));
 
-  const allIds = new Set([...ownIds, ...participantMeetings.map(m => m.id)]);
-  const publicExtra = publicMeetings.filter(m => !allIds.has(m.id));
+  const allIds = new Set([...ownIds, ...participantMeetings.map((m: Record<string, any>) => m.id)]);
+  const publicExtra = publicMeetings.filter((m: Record<string, any>) => !allIds.has(m.id));
   const allMeetings: Meeting[] = [...ownUpcoming, ...ownPast, ...participantMeetings, ...publicExtra];
 
   const seenIds = new Set<string>();
@@ -136,7 +136,7 @@ const fetchParticipants = async (meetingIds: string[]) => {
 
   if (participantsError || !participants || participants.length === 0) return {};
 
-  const userIds = [...new Set(participants.map(p => p.user_id))];
+  const userIds = [...new Set(participants.map((p: Record<string, any>) => p.user_id))];
   const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
     .select('user_id, display_name, avatar_url')
@@ -145,7 +145,7 @@ const fetchParticipants = async (meetingIds: string[]) => {
   if (profilesError) return {};
 
   const profilesByUserId = new Map<string, MeetingProfileRow>(
-    (profiles ?? []).map(profile => [profile.user_id, profile])
+    (profiles ?? []).map((profile: Record<string, any>) => [profile.user_id, profile])
   );
 
   return (participants as any[]).reduce<Record<string, MeetingParticipant[]>>((participantsByMeeting, participant) => {

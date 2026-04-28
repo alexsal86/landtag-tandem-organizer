@@ -137,14 +137,14 @@ export function useKnowledgeData() {
     const { data, error } = await supabase.from('knowledge_document_topics').select('document_id, topic_id').in('document_id', docIds);
     if (error) { debugConsole.error('Error fetching document topics:', error); return; }
     const map: Record<string, string[]> = {};
-    data?.forEach(item => { if (!map[item.document_id]) map[item.document_id] = []; map[item.document_id].push(item.topic_id); });
+    data?.forEach((item: Record<string, any>) => { if (!map[item.document_id]) map[item.document_id] = []; map[item.document_id].push(item.topic_id); });
     setDocumentTopicsMap(map);
   }, []);
 
   const fetchDocumentTopicsById = useCallback(async (docId: string) => {
     const { data, error } = await supabase.from('knowledge_document_topics').select('topic_id').eq('document_id', docId);
     if (error) { debugConsole.error('Error fetching document topics:', error); return; }
-    setDocumentTopicsMap(prev => ({ ...prev, [docId]: (data ?? []).map(i => i.topic_id) }));
+    setDocumentTopicsMap(prev => ({ ...prev, [docId]: (data ?? []).map((i: Record<string, any>) => i.topic_id) }));
   }, []);
 
   const fetchDocuments = useCallback(async () => {
@@ -175,7 +175,7 @@ export function useKnowledgeData() {
   useEffect(() => {
     if (!user || !tenantId) return;
     const channelName = `knowledge-docs-${tenantId}-${crypto.randomUUID()}`;
-    const channel = supabase.channel(channelName).on('postgres_changes', { event: '*', schema: 'public', table: 'knowledge_documents', filter: `tenant_id=eq.${tenantId}` }, async (payload) => {
+    const channel = supabase.channel(channelName).on('postgres_changes', { event: '*', schema: 'public', table: 'knowledge_documents', filter: `tenant_id=eq.${tenantId}` }, async (payload: Record<string, any>) => {
       if (payload.eventType === 'DELETE') {
         const deletedId = (payload.old as any)?.id;
         if (!deletedId) return;

@@ -216,7 +216,7 @@ export function useSocialPlannerItems() {
       });
 
       setItems(
-        (itemRows || []).map((row) => {
+        (itemRows || []).map((row: Record<string, any>) => {
           const channelLinks = (row.social_content_item_channels || []) as Array<{
             channel_id: string;
             social_content_channels: { name: string; slug: string } | null;

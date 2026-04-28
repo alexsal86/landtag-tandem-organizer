@@ -102,13 +102,13 @@ export function MyWorkExpenseWidget({ userRole }: Props) {
 
     // Monthly total & top categories
     const expenses = expensesRes.data || [];
-    const total = expenses.reduce((sum, e) => sum + e.amount, 0);
+    const total = expenses.reduce((sum: Record<string, any>, e: Record<string, any>) => sum + e.amount, 0);
     setMonthTotal(total);
     setBudgetAmount(budgetRes.data?.budget_amount || 0);
 
     // Aggregate by category
     const catTotals: Record<string, number> = {};
-    expenses.forEach(e => {
+    expenses.forEach((e: Record<string, any>) => {
       catTotals[e.category_id] = (catTotals[e.category_id] || 0) + e.amount;
     });
     const sorted = Object.entries(catTotals)
@@ -123,7 +123,7 @@ export function MyWorkExpenseWidget({ userRole }: Props) {
 
     // Recent expenses
     setRecentExpenses(
-      (recentRes.data || []).map(e => ({
+      (recentRes.data || []).map((e: Record<string, any>) => ({
         id: e.id,
         amount: e.amount,
         description: e.description,

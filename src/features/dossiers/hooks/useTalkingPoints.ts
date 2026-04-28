@@ -20,7 +20,7 @@ export function useTalkingPoints(dossierId: string | null) {
         .eq("dossier_id", dossierId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []).map((row) => ({
+      return (data ?? []).map((row: Record<string, any>) => ({
         ...row,
         content: (row.content ?? {}) as TalkingPointsContent,
       })) as DossierTalkingPoint[];

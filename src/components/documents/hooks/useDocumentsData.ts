@@ -46,7 +46,7 @@ export function useDocumentsData(activeTab: string) {
 
       if (error) throw error;
 
-      const mappedDocs = (data || []).map(doc => ({
+      const mappedDocs = (data || []).map((doc: Record<string, any>) => ({
         ...doc,
         archived_attachments: Array.isArray(doc.archived_attachments) ? doc.archived_attachments : []
       })) as Document[];
@@ -91,13 +91,13 @@ export function useDocumentsData(activeTab: string) {
       if (foldersResponse.error) throw foldersResponse.error;
       if (folderDocumentsResponse.error) throw folderDocumentsResponse.error;
 
-      const folderCounts = (folderDocumentsResponse.data || []).reduce((acc: Record<string, number>, doc) => {
+      const folderCounts = (folderDocumentsResponse.data || []).reduce((acc: Record<string, number>, doc: Record<string, any>) => {
         if (!doc.folder_id) return acc;
         acc[doc.folder_id] = (acc[doc.folder_id] || 0) + 1;
         return acc;
       }, {});
 
-      const foldersWithCounts = (foldersResponse.data || []).map((folder) => ({
+      const foldersWithCounts = (foldersResponse.data || []).map((folder: Record<string, any>) => ({
         ...folder,
         documentCount: folderCounts[folder.id] || 0,
       }));

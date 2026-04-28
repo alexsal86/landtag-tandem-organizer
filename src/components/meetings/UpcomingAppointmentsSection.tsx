@@ -135,7 +135,7 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
       }
 
       // Merge and format appointments
-      const internalAppointments: Appointment[] = (internalData || []).map(apt => ({
+      const internalAppointments: Appointment[] = (internalData || []).map((apt: Record<string, any>) => ({
         ...apt,
         isExternal: false
       }));
@@ -183,7 +183,7 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
 
       const ids = new Set<string>();
       const assignments: Record<string, string[]> = {};
-      data?.forEach(item => {
+      data?.forEach((item: Record<string, any>) => {
         const aptId = item.appointment_id || item.external_event_id;
         if (aptId) {
           ids.add(aptId);

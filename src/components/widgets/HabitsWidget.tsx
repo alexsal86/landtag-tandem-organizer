@@ -80,7 +80,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
       if (error) throw error;
       
       // Initialize habits with empty stats - will be calculated after loading completions
-      const habitsWithStats: HabitWithStats[] = (data || []).map(habit => ({
+      const habitsWithStats: HabitWithStats[] = (data || []).map((habit: Record<string, any>) => ({
         ...habit,
         frequency: habit.frequency as 'daily' | 'weekly' | 'monthly',
         todayCount: 0,

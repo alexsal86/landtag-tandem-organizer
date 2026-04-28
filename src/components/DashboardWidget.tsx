@@ -212,7 +212,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
       
       if (usersData) {
         const userMap: {[key: string]: string} = {};
-        usersData.forEach(profile => {
+        usersData.forEach((profile: Record<string, any>) => {
           userMap[profile.user_id] = profile.display_name || profile.user_id;
         });
         setUsers(userMap);
@@ -226,7 +226,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
         .order('due_date', { ascending: true, nullsFirst: false });
 
       if (tasksData) {
-        const userAssignedTasks = tasksData.filter(task => {
+        const userAssignedTasks = tasksData.filter((task: Record<string, any>) => {
           if (!task.assigned_to) return false;
           const assignees = task.assigned_to.split(',').map((id: string) => id.trim());
           return assignees.includes(user.id) || 
@@ -246,14 +246,14 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
 
       if (childTasksData) {
         const mapped = childTasksData
-          .filter(task => {
+          .filter((task: Record<string, any>) => {
             if (!task.assigned_to) return false;
             const assignees = String(task.assigned_to).split(',').map((id: string) => id.trim());
             return assignees.includes(user.id) ||
               assignees.includes(user.email || '') ||
               assignees.includes((user.email || '').toLowerCase());
           })
-          .map(task => ({
+          .map((task: Record<string, any>) => ({
             id: task.id,
             task_id: task.parent_task_id,
             title: task.title,
@@ -277,7 +277,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
         const taskSnoozesMap: {[key: string]: string} = {};
         const subtaskSnoozesMap: {[key: string]: string} = {};
         
-        snoozesData.forEach(snooze => {
+        snoozesData.forEach((snooze: Record<string, any>) => {
           if (snooze.task_id) {
             taskSnoozesMap[snooze.task_id] = snooze.snoozed_until;
           }

@@ -58,7 +58,7 @@ export function useContactsDistributionLists(
       }
 
       const listsWithCounts = await Promise.all(
-        (data || []).map(async (list) => {
+        (data || []).map(async (list: Record<string, any>) => {
           const { count, error: countError } = await supabase
             .from("distribution_list_members")
             .select("id", { count: "exact", head: true })
@@ -105,7 +105,7 @@ export function useContactsDistributionLists(
 
     return (data || [])
       .map((member: { contacts: DistributionListMember | null }) => member.contacts)
-      .filter((contact): contact is DistributionListMember => Boolean(contact));
+      .filter((contact: Record<string, any>): contact is DistributionListMember => Boolean(contact));
   }, []);
 
   const deleteDistributionList = async (id: string) => {

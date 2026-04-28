@@ -33,11 +33,11 @@ export function useTodayBriefings() {
       if (!briefings || briefings.length === 0) return [];
 
       // Vortag-Regel zusätzlich client-seitig anwenden (created_at < today)
-      const eligible = briefings.filter((b) => b.created_at.slice(0, 10) < today);
+      const eligible = briefings.filter((b: Record<string, any>) => b.created_at.slice(0, 10) < today);
       if (eligible.length === 0) return [];
 
-      const authorIds = Array.from(new Set(eligible.map((b) => b.author_id)));
-      const briefingIds = eligible.map((b) => b.id);
+      const authorIds = Array.from(new Set(eligible.map((b: Record<string, any>) => b.author_id)));
+      const briefingIds = eligible.map((b: Record<string, any>) => b.id);
 
       const [profilesRes, readsRes] = await Promise.all([
         supabase
@@ -59,7 +59,7 @@ export function useTodayBriefings() {
         ((readsRes.data ?? []) as Array<{ briefing_id: string }>).map((r) => r.briefing_id),
       );
 
-      return eligible.map((b) => {
+      return eligible.map((b: Record<string, any>) => {
         const profile = profileMap.get(b.author_id);
         return {
           ...b,

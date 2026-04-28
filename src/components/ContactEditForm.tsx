@@ -89,7 +89,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         .order('name');
 
       if (error) throw error;
-      setExistingContacts(data?.map(c => ({
+      setExistingContacts(data?.map((c: Record<string, any>) => ({
         id: c.id,
         name: c.name,
         email: c.email ?? undefined,
@@ -111,7 +111,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       if (error) throw error;
       
       const tagsSet = new Set<string>();
-      data?.forEach(contact => {
+      data?.forEach((contact: Record<string, any>) => {
         if (contact.tags && Array.isArray(contact.tags)) {
           contact.tags.forEach((tag: string) => tagsSet.add(tag));
         }

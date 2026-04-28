@@ -27,7 +27,7 @@ export const useCaseFileProcessingStatuses = () => {
           .order('order_index');
 
         if (error) throw error;
-        setStatuses((data || []).map(d => ({
+        setStatuses((data || []).map((d: Record<string, any>) => ({
           id: d.id,
           name: d.name,
           label: d.label,

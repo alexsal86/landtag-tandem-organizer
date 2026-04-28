@@ -106,9 +106,9 @@ export function CaseFileEditDialog({ caseFile, open, onOpenChange }: CaseFileEdi
         .eq('case_file_id', caseFile.id);
       if (error) throw error;
       
-      const ids = data?.map(p => p.user_id) || [];
+      const ids = data?.map((p: Record<string, any>) => p.user_id) || [];
       const roles: Record<string, 'viewer' | 'editor'> = {};
-      data?.forEach(p => { roles[p.user_id] = p.role as 'viewer' | 'editor'; });
+      data?.forEach((p: Record<string, any>) => { roles[p.user_id] = p.role as 'viewer' | 'editor'; });
       
       setSelectedParticipantIds(ids);
       setParticipantRoles(roles);

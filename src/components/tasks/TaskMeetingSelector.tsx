@@ -72,12 +72,12 @@ export function TaskMeetingSelector({
       }
 
       // Combine and deduplicate
-      const ownIds = new Set((ownMeetings || []).map(m => m.id));
+      const ownIds = new Set((ownMeetings || []).map((m: Record<string, any>) => m.id));
       const participantData = (participantMeetings || [])
-        .filter(p => p.meetings && !ownIds.has(p.meeting_id) && 
+        .filter((p: Record<string, any>) => p.meetings && !ownIds.has(p.meeting_id) && 
                      p.meetings.status !== 'archived' &&
                      new Date(p.meetings.meeting_date) >= startOfToday)
-        .map(p => p.meetings as Meeting);
+        .map((p: Record<string, any>) => p.meetings as Meeting);
 
       const allMeetings = [...(ownMeetings || []), ...participantData]
         .sort((a, b) => new Date(a.meeting_date).getTime() - new Date(b.meeting_date).getTime());

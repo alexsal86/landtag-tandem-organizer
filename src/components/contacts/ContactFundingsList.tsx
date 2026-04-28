@@ -14,7 +14,7 @@ interface ContactFundingsListProps {
 export function ContactFundingsList({ contactId, isExpanded, onToggle }: ContactFundingsListProps) {
   const { data: fundings = [], isLoading } = useContactFundings(contactId);
 
-  const totalAmount = fundings.reduce((sum, f) => sum + (f.allocated_amount || 0), 0);
+  const totalAmount = fundings.reduce((sum: Record<string, any>, f: Record<string, any>) => sum + (f.allocated_amount || 0), 0);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -69,7 +69,7 @@ export function ContactFundingsList({ contactId, isExpanded, onToggle }: Contact
 
       {isExpanded && fundings.length > 0 && (
         <div className="space-y-2 pl-4">
-          {fundings.map((funding) => (
+          {fundings.map((funding: Record<string, any>) => (
             <div key={funding.id} className="p-3 border rounded-lg space-y-2 bg-card">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1">

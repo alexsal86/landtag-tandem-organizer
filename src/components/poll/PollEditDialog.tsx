@@ -77,7 +77,7 @@ export const PollEditDialog = ({
         .eq('poll_id', pollId);
       
       if (error) throw error;
-      setParticipants((data || []).map(p => ({ ...p, isNew: false })));
+      setParticipants((data || []).map((p: Record<string, any>) => ({ ...p, isNew: false })));
       setRemovedParticipantIds([]);
     } catch (error) {
       debugConsole.error('Error loading participants:', error);

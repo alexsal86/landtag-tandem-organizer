@@ -135,7 +135,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
         debugConsole.error("Error loading quick notes for meeting:", { meetingId, error: notesResult.error });
       } else {
         const notes = notesResult.data || [];
-        notes.forEach((note) => note.user_id && encounteredUserIds.add(note.user_id));
+        notes.forEach((note: Record<string, any>) => note.user_id && encounteredUserIds.add(note.user_id));
         setMeetingQuickNotes((prev) => ({ ...prev, [meetingId]: notes }));
       }
 
@@ -143,7 +143,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
         debugConsole.error("Error loading tasks for meeting:", { meetingId, error: tasksResult.error });
       } else {
         const tasks = tasksResult.data || [];
-        tasks.forEach((task) => task.user_id && encounteredUserIds.add(task.user_id));
+        tasks.forEach((task: Record<string, any>) => task.user_id && encounteredUserIds.add(task.user_id));
         setMeetingTasks((prev) => ({ ...prev, [meetingId]: tasks }));
       }
 
@@ -163,7 +163,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
             user_id: decision.created_by,
           }));
 
-        relevantDecisions.forEach((decision) => decision.user_id && encounteredUserIds.add(decision.user_id));
+        relevantDecisions.forEach((decision: Record<string, any>) => decision.user_id && encounteredUserIds.add(decision.user_id));
         setMeetingDecisions((prev) => ({ ...prev, [meetingId]: relevantDecisions }));
       }
 
@@ -229,7 +229,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
 
         setUserProfiles((prev) => {
           const next = { ...prev };
-          profiles.forEach((profile) => {
+          profiles.forEach((profile: Record<string, any>) => {
             next[profile.user_id] = profile;
           });
           userProfilesRef.current = next;

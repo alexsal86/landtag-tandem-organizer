@@ -111,7 +111,7 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
       if (error) throw error;
 
       setTodaySessions((data || []) as PomodoroSession[]);
-      const completedWorkSessions = data?.filter(s => 
+      const completedWorkSessions = data?.filter((s: Record<string, any>) => 
         s.session_type === 'work' && s.is_completed
       ).length || 0;
       setWorkSessionsCompleted(completedWorkSessions);

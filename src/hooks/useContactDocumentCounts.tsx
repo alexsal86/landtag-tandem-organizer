@@ -36,7 +36,7 @@ export const useContactDocumentCounts = (contactIds: string[]) => {
 
         // Count direct documents per contact
         const directCounts: Record<string, number> = {};
-        directData?.forEach(dc => {
+        directData?.forEach((dc: Record<string, any>) => {
           directCounts[dc.contact_id] = (directCounts[dc.contact_id] || 0) + 1;
         });
 
@@ -48,11 +48,11 @@ export const useContactDocumentCounts = (contactIds: string[]) => {
 
         const taggedCounts: Record<string, number> = {};
 
-        const contactsWithTags = (contactsData || []).filter(c => c.tags && c.tags.length > 0);
+        const contactsWithTags = (contactsData || []).filter((c: Record<string, any>) => c.tags && c.tags.length > 0);
 
         if (contactsWithTags.length > 0) {
           // Alle einzigartigen Tags aller Kontakte ermitteln
-          const allContactTags = Array.from(new Set(contactsWithTags.flatMap(c => c.tags as string[])));
+          const allContactTags = Array.from(new Set(contactsWithTags.flatMap((c: Record<string, any>) => c.tags as string[])));
 
           // Nur Dokumente laden, deren Tags sich mit einem der Kontakt-Tags überschneiden (DB-seitig)
           const { data: taggedDocs, error: taggedError } = await supabase
@@ -64,15 +64,15 @@ export const useContactDocumentCounts = (contactIds: string[]) => {
           if (taggedError) throw taggedError;
 
           // Treffer pro Kontakt zählen (bereits stark reduziertes Ergebnis-Set)
-          contactsWithTags.forEach(contact => {
+          contactsWithTags.forEach((contact: Record<string, any>) => {
             const contactTags = contact.tags as string[];
-            const matchingDocs = taggedDocs?.filter(doc =>
+            const matchingDocs = taggedDocs?.filter((doc: Record<string, any>) =>
               doc.tags && (doc.tags as string[]).some(tag => contactTags.includes(tag))
             ) || [];
 
             // Dokumente ausschließen, die bereits über directData gezählt wurden
-            const uniqueMatches = matchingDocs.filter(doc =>
-              !directData?.some(dc => dc.document_id === doc.id && dc.contact_id === contact.id)
+            const uniqueMatches = matchingDocs.filter((doc: Record<string, any>) =>
+              !directData?.some((dc: Record<string, any>) => dc.document_id === doc.id && dc.contact_id === contact.id)
             );
 
             taggedCounts[contact.id] = uniqueMatches.length;

@@ -68,7 +68,7 @@ export const MeetingNoteSelector: React.FC<MeetingNoteSelectorProps> = ({
 
       let participantMeetings: Meeting[] = [];
       if (participantEntries && participantEntries.length > 0) {
-        const meetingIds = participantEntries.map(p => p.meeting_id);
+        const meetingIds = participantEntries.map((p: Record<string, any>) => p.meeting_id);
         const { data: partMeetings } = await supabase
           .from('meetings')
           .select('id, title, meeting_date, status')

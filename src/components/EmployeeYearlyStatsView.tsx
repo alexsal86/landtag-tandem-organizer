@@ -64,7 +64,7 @@ export function EmployeeYearlyStatsView({ isOpen, onClose }: EmployeeYearlyStats
         .order("year", { ascending: false });
 
       if (data) {
-        const years = [...new Set(data.map(d => d.year))] as number[];
+        const years = [...new Set(data.map((d: Record<string, any>) => d.year))] as number[];
         setAvailableYears(years);
         if (years.length > 0 && !years.includes(selectedYear)) {
           setSelectedYear(years[0] as number);
@@ -89,17 +89,17 @@ export function EmployeeYearlyStatsView({ isOpen, onClose }: EmployeeYearlyStats
       if (statsError) throw statsError;
 
       // Get profile names
-      const userIds = (statsData || []).map(s => s.user_id);
+      const userIds = (statsData || []).map((s: Record<string, any>) => s.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, display_name")
         .in("user_id", userIds);
 
       const profileMap = new Map(
-        (profiles || []).map(p => [p.user_id, p.display_name])
+        (profiles || []).map((p: Record<string, any>) => [p.user_id, p.display_name])
       );
 
-      const enrichedStats = (statsData || []).map(s => ({
+      const enrichedStats = (statsData || []).map((s: Record<string, any>) => ({
         ...s,
         display_name: profileMap.get(s.user_id) || "Unbekannt",
       }));

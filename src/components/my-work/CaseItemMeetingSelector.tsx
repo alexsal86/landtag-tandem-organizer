@@ -63,7 +63,7 @@ export function CaseItemMeetingSelector({
         .select("meeting_id, meetings(id, title, meeting_date, meeting_time, status)")
         .eq("user_id", user.id);
 
-      const ownIds = new Set((ownMeetings || []).map((m) => m.id));
+      const ownIds = new Set((ownMeetings || []).map((m: Record<string, any>) => m.id));
       const participantData = (participantMeetings || [])
         .filter(
           (p: any) =>

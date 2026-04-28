@@ -192,7 +192,7 @@ export const useCaseFileTopics = (caseFileId: string | undefined) => {
         .eq('case_file_id', caseFileId);
 
       if (error) throw error;
-      setAssignedTopics(data?.map(t => t.topic_id) || []);
+      setAssignedTopics(data?.map((t: Record<string, any>) => t.topic_id) || []);
     } catch (error) {
       debugConsole.error('Error fetching case file topics:', error);
     } finally {

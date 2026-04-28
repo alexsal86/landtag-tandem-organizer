@@ -42,7 +42,7 @@ export function DeputySelect({ value, onChange, required = true, label = "Stellv
           return;
         }
 
-        const userIds = members.map(m => m.user_id);
+        const userIds = members.map((m: Record<string, any>) => m.user_id);
         const { data: profiles } = await supabase
           .from("profiles")
           .select("user_id, display_name")
@@ -50,8 +50,8 @@ export function DeputySelect({ value, onChange, required = true, label = "Stellv
 
         setColleagues(
           (profiles || [])
-            .map(p => ({ user_id: p.user_id, display_name: p.display_name }))
-            .sort((a, b) => (a.display_name || "").localeCompare(b.display_name || ""))
+            .map((p: Record<string, any>) => ({ user_id: p.user_id, display_name: p.display_name }))
+            .sort((a: Record<string, any>, b: Record<string, any>) => (a.display_name || "").localeCompare(b.display_name || ""))
         );
       } catch {
         setColleagues([]);

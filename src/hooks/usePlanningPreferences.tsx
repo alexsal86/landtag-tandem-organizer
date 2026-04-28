@@ -45,7 +45,7 @@ export const usePlanningPreferences = () => {
             .in("user_id", userIds);
 
           const enrichedCollabs = collabs.map((collab) => {
-            const profile = profiles?.find((p) => p.user_id === collab.user_id);
+            const profile = profiles?.find((p: Record<string, any>) => p.user_id === collab.user_id);
             return {
               ...collab,
               display_name: profile?.display_name || "Unbekannt",

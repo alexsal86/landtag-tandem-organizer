@@ -57,28 +57,28 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
   ]);
 
   const all: DeadlineItem[] = [
-    ...(tasksRes.data || []).filter((t) => t.due_date && t.title?.trim()).map((t) => ({
+    ...(tasksRes.data || []).filter((t: Record<string, any>) => t.due_date && t.title?.trim()).map((t: Record<string, any>) => ({
       id: t.id,
       title: t.title.trim(),
       dueDate: t.due_date,
       type: 'task' as const,
       canSnooze: isAssignedToUser(t.assigned_to, userId) || t.user_id === userId,
     })),
-    ...(notesRes.data || []).filter((n) => n.follow_up_date).map((n) => ({
+    ...(notesRes.data || []).filter((n: Record<string, any>) => n.follow_up_date).map((n: Record<string, any>) => ({
       id: n.id,
       title: (n.title || n.content || '').trim().substring(0, 80),
       dueDate: n.follow_up_date,
       type: 'note' as const,
       canSnooze: true, // already filtered by user_id
     })),
-    ...(casesRes.data || []).filter((c) => c.due_at).map((c) => ({
+    ...(casesRes.data || []).filter((c: Record<string, any>) => c.due_at).map((c: Record<string, any>) => ({
       id: c.id,
       title: (c.subject || 'Vorgang').trim(),
       dueDate: c.due_at,
       type: 'case' as const,
       canSnooze: false,
     })),
-    ...(decisionsRes.data || []).filter((d) => d.response_deadline && d.title?.trim()).map((d) => ({
+    ...(decisionsRes.data || []).filter((d: Record<string, any>) => d.response_deadline && d.title?.trim()).map((d: Record<string, any>) => ({
       id: d.id,
       title: d.title.trim(),
       dueDate: d.response_deadline,

@@ -31,7 +31,7 @@ export function useMyWorkDecisionsSidebarData(decisions: MyWorkDecision[], userI
         return;
       }
 
-      const userIds = [...new Set(comments.map((c) => c.user_id))];
+      const userIds = [...new Set(comments.map((c: Record<string, any>) => c.user_id))];
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, display_name, badge_color, avatar_url")
@@ -42,7 +42,7 @@ export function useMyWorkDecisionsSidebarData(decisions: MyWorkDecision[], userI
       const profileMap = new Map<string, any>(profiles?.map((p: any) => [p.user_id, p]) || []);
       const decisionTitleMap = new Map(decisions.map((d) => [d.id, d.title]));
 
-      const recentComments: SidebarDiscussionComment[] = comments.map((c) => {
+      const recentComments: SidebarDiscussionComment[] = comments.map((c: Record<string, any>) => {
         const profile = profileMap.get(c.user_id);
         const isMention = c.content?.includes(`data-mention-user-id="${userId}"`) || false;
         return {

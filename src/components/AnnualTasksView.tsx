@@ -173,7 +173,7 @@ export function AnnualTasksView() {
 
       if (tasksError) throw tasksError;
 
-      const taskIds = (tasksData || []).map(t => t.id);
+      const taskIds = (tasksData || []).map((t: Record<string, any>) => t.id);
       if (taskIds.length === 0) {
         setTasks([]);
         setLoading(false);
@@ -189,10 +189,10 @@ export function AnnualTasksView() {
       if (completionsError) throw completionsError;
 
       const completionMap = new Map(
-        (completionsData || []).map(c => [c.annual_task_id, c])
+        (completionsData || []).map((c: Record<string, any>) => [c.annual_task_id, c])
       );
 
-      const tasksWithStatus: AnnualTaskWithStatus[] = (tasksData || []).map(task => {
+      const tasksWithStatus: AnnualTaskWithStatus[] = (tasksData || []).map((task: Record<string, any>) => {
         const completion = completionMap.get(task.id) as any;
         let status: AnnualTaskWithStatus['status'] = 'upcoming';
 
@@ -231,7 +231,7 @@ export function AnnualTasksView() {
         return;
       }
       
-      const userIds = memberships.map(m => m.user_id);
+      const userIds = memberships.map((m: Record<string, any>) => m.user_id);
       
       // Count employees managed by these users
       const { count } = await supabase

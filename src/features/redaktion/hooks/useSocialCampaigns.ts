@@ -53,7 +53,7 @@ export function useSocialCampaigns() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setCampaigns((data || []).map((row) => ({ ...row, status: normalizeStatus(row.status) })));
+      setCampaigns((data || []).map((row: Record<string, any>) => ({ ...row, status: normalizeStatus(row.status) })));
     } catch (error) {
       console.error("Error loading social campaigns:", getErrorMessage(error), error);
       setCampaigns([]);

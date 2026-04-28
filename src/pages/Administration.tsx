@@ -182,9 +182,9 @@ export default function Administration(): React.JSX.Element | null {
         .select('annual_task_id')
         .eq('year', currentYear);
       
-      const completedIds = new Set((completions ?? []).map((completion) => completion.annual_task_id));
+      const completedIds = new Set((completions ?? []).map((completion: Record<string, any>) => completion.annual_task_id));
       
-      const pendingCount = tasks.filter((task) => {
+      const pendingCount = tasks.filter((task: Record<string, any>) => {
         const isDue = task.due_month <= currentMonth;
         const isCompleted = completedIds.has(task.id);
         return isDue && !isCompleted;

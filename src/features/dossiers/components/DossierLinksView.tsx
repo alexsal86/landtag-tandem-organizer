@@ -50,7 +50,7 @@ export function DossierLinksView({ dossierId }: DossierLinksViewProps) {
             .eq("tenant_id", tenantId)
             .ilike("name", `%${searchTerm}%`)
             .limit(10);
-          return (data ?? []).map((c) => ({ id: c.id, label: c.name, sub: c.organization }));
+          return (data ?? []).map((c: Record<string, any>) => ({ id: c.id, label: c.name, sub: c.organization }));
         }
         case "task": {
           const { data } = await supabase
@@ -59,7 +59,7 @@ export function DossierLinksView({ dossierId }: DossierLinksViewProps) {
             .eq("user_id", (await supabase.auth.getUser()).data.user?.id ?? "")
             .ilike("title", `%${searchTerm}%`)
             .limit(10);
-          return (data ?? []).map((t) => ({ id: t.id, label: t.title, sub: null }));
+          return (data ?? []).map((t: Record<string, any>) => ({ id: t.id, label: t.title, sub: null }));
         }
         case "appointment": {
           const { data } = await supabase
@@ -69,7 +69,7 @@ export function DossierLinksView({ dossierId }: DossierLinksViewProps) {
             .ilike("title", `%${searchTerm}%`)
             .order("start_time", { ascending: false })
             .limit(10);
-          return (data ?? []).map((a) => ({ id: a.id, label: a.title, sub: new Date(a.start_time).toLocaleDateString("de-DE") }));
+          return (data ?? []).map((a: Record<string, any>) => ({ id: a.id, label: a.title, sub: new Date(a.start_time).toLocaleDateString("de-DE") }));
         }
         case "case_file": {
           const { data } = await supabase
@@ -78,7 +78,7 @@ export function DossierLinksView({ dossierId }: DossierLinksViewProps) {
             .eq("tenant_id", tenantId)
             .ilike("title", `%${searchTerm}%`)
             .limit(10);
-          return (data ?? []).map((c) => ({ id: c.id, label: c.title, sub: c.file_number }));
+          return (data ?? []).map((c: Record<string, any>) => ({ id: c.id, label: c.title, sub: c.file_number }));
         }
         case "document": {
           const { data } = await supabase
@@ -87,7 +87,7 @@ export function DossierLinksView({ dossierId }: DossierLinksViewProps) {
             .eq("tenant_id", tenantId)
             .ilike("title", `%${searchTerm}%`)
             .limit(10);
-          return (data ?? []).map((d) => ({ id: d.id, label: d.title, sub: null }));
+          return (data ?? []).map((d: Record<string, any>) => ({ id: d.id, label: d.title, sub: null }));
         }
         default:
           return [];
@@ -133,7 +133,7 @@ export function DossierLinksView({ dossierId }: DossierLinksViewProps) {
               />
               {searchResults && searchResults.length > 0 && (
                 <div className="max-h-48 overflow-y-auto space-y-1">
-                  {searchResults.map((r) => (
+                  {searchResults.map((r: Record<string, any>) => (
                     <button
                       key={r.id}
                       onClick={() => handleLink(r.id)}

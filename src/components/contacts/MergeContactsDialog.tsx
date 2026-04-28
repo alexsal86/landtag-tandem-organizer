@@ -70,15 +70,15 @@ export function MergeContactsDialog({
     }
 
     const distributionListIds = secondaryMemberships
-      .map((membership) => membership.distribution_list_id)
-      .filter((id): id is string => Boolean(id));
+      .map((membership: Record<string, any>) => membership.distribution_list_id)
+      .filter((id: Record<string, any>): id is string => Boolean(id));
 
     if (distributionListIds.length === 0) return;
 
     const { error: upsertError } = await supabase
       .from('distribution_list_members')
       .upsert(
-        distributionListIds.map((distribution_list_id) => ({
+        distributionListIds.map((distribution_list_id: Record<string, any>) => ({
           distribution_list_id,
           contact_id: primaryContactId,
         })),

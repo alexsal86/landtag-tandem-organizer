@@ -44,7 +44,7 @@ export const ExpenseWidget = ({ className }: ExpenseWidgetProps) => {
       .eq("month", month)
       .single();
 
-    const total = expenses?.reduce((sum, expense) => sum + expense.amount, 0) || 0;
+    const total = expenses?.reduce((sum: Record<string, any>, expense: Record<string, any>) => sum + expense.amount, 0) || 0;
     setCurrentMonthTotal(total);
     setCurrentBudget(budget?.budget_amount || 0);
     setLoading(false);

@@ -62,17 +62,17 @@ export function useTeamAnnouncements() {
 
       if (dismissalsError) throw dismissalsError;
 
-      const dismissedIds = new Set(dismissalsData?.map(d => d.announcement_id) || []);
+      const dismissedIds = new Set(dismissalsData?.map((d: Record<string, any>) => d.announcement_id) || []);
 
-      const authorIds = [...new Set(announcementsData?.map(a => a.author_id) || [])];
+      const authorIds = [...new Set(announcementsData?.map((a: Record<string, any>) => a.author_id) || [])];
       const { data: profilesData } = await supabase
         .from("profiles")
         .select("user_id, display_name")
         .in("user_id", authorIds);
 
-      const profileMap = new Map(profilesData?.map(p => [p.user_id, p.display_name]) || []);
+      const profileMap = new Map(profilesData?.map((p: Record<string, any>) => [p.user_id, p.display_name]) || []);
 
-      const enrichedAnnouncements = (announcementsData || []).map(announcement => ({
+      const enrichedAnnouncements = (announcementsData || []).map((announcement: Record<string, any>) => ({
         ...announcement,
         priority: announcement.priority as TeamAnnouncement['priority'],
         author_name: profileMap.get(announcement.author_id) || "Unbekannt",
@@ -82,7 +82,7 @@ export function useTeamAnnouncements() {
       setAnnouncements(enrichedAnnouncements);
 
       const now = new Date();
-      const active = enrichedAnnouncements.filter(a => {
+      const active = enrichedAnnouncements.filter((a: Record<string, any>) => {
         if (!a.is_active) return false;
         if (a.is_dismissed) return false;
         if (a.starts_at && new Date(a.starts_at) > now) return false;
@@ -91,7 +91,7 @@ export function useTeamAnnouncements() {
       });
 
       const priorityOrder = { critical: 0, warning: 1, info: 2, success: 3 };
-      active.sort((a, b) => {
+      active.sort((a: Record<string, any>, b: Record<string, any>) => {
         const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
         if (priorityDiff !== 0) return priorityDiff;
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
@@ -190,7 +190,7 @@ export function useTeamAnnouncements() {
           .neq("user_id", user.id);
 
         if (members && members.length > 0) {
-          const notifications = members.map((m) => 
+          const notifications = members.map((m: Record<string, any>) => 
             supabase.rpc("create_notification", {
               user_id_param: m.user_id,
               type_name: "team_news",
@@ -401,15 +401,15 @@ export function useAnnouncementProgress(announcementId: string) {
 
         if (membersError) throw membersError;
 
-        const dismissedUserIds = dismissalsData?.map(d => d.user_id) || [];
+        const dismissedUserIds = dismissalsData?.map((d: Record<string, any>) => d.user_id) || [];
         const { data: profilesData } = await supabase
           .from("profiles")
           .select("user_id, display_name")
           .in("user_id", dismissedUserIds);
 
-        const profileMap = new Map(profilesData?.map(p => [p.user_id, p.display_name]) || []);
+        const profileMap = new Map(profilesData?.map((p: Record<string, any>) => [p.user_id, p.display_name]) || []);
 
-        const dismissals = (dismissalsData || []).map(d => ({
+        const dismissals = (dismissalsData || []).map((d: Record<string, any>) => ({
           user_id: d.user_id,
           display_name: profileMap.get(d.user_id) || "Unbekannt",
           dismissed_at: d.dismissed_at,

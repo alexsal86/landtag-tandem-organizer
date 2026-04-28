@@ -234,7 +234,7 @@ export function MyWorkTimeTrackingTab() {
       .eq("user_id", user.id)
       .eq("work_date", workDate);
 
-    const total = data?.reduce((s, e) => {
+    const total = data?.reduce((s: Record<string, any>, e: Record<string, any>) => {
       if (!e.started_at || !e.ended_at) return s;
       return s + (new Date(e.ended_at).getTime() - new Date(e.started_at).getTime()) / 60000;
     }, 0) || 0;

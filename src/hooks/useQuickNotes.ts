@@ -139,7 +139,7 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
       const { data: ownNotes, error: ownError } = ownNotesResult;
       if (ownError) throw ownError;
 
-      const noteIds = (ownNotes || []).map(n => n.id);
+      const noteIds = (ownNotes || []).map((n: Record<string, any>) => n.id);
       let shareDetails: Record<string, Array<{ id: string; display_name: string | null }>> = {};
 
       if (noteIds.length > 0) {
@@ -149,17 +149,17 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
           .in("note_id", noteIds);
 
         if (sharesData && sharesData.length > 0) {
-          const sharedUserIds = [...new Set(sharesData.map(s => s.shared_with_user_id))];
+          const sharedUserIds = [...new Set(sharesData.map((s: Record<string, any>) => s.shared_with_user_id))];
           const { data: sharedProfiles } = await supabase
             .from("profiles")
             .select("user_id, display_name")
             .in("user_id", sharedUserIds);
 
-          sharesData.forEach(s => {
+          sharesData.forEach((s: Record<string, any>) => {
             if (!shareDetails[s.note_id]) {
               shareDetails[s.note_id] = [];
             }
-            const profile = sharedProfiles?.find(p => p.user_id === s.shared_with_user_id);
+            const profile = sharedProfiles?.find((p: Record<string, any>) => p.user_id === s.shared_with_user_id);
             shareDetails[s.note_id].push({
               id: s.shared_with_user_id,
               display_name: profile?.display_name || null
@@ -171,8 +171,8 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
       const { data: individualShares } = individualSharesResult;
       const { data: globalShares } = globalSharesResult;
 
-      const individualNoteIds = individualShares?.map(s => s.note_id) || [];
-      const globalShareUserIds = globalShares?.map(s => s.user_id) || [];
+      const individualNoteIds = individualShares?.map((s: Record<string, any>) => s.note_id) || [];
+      const globalShareUserIds = globalShares?.map((s: Record<string, any>) => s.user_id) || [];
 
       let sharedNotes: QuickNote[] = [];
 
@@ -190,19 +190,19 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
           .is("deleted_at", null);
 
         if (individuallySharedData && individuallySharedData.length > 0) {
-          const ownerIds = [...new Set(individuallySharedData.map(n => n.user_id))];
+          const ownerIds = [...new Set(individuallySharedData.map((n: Record<string, any>) => n.user_id))];
           const { data: profiles } = await supabase
             .from("profiles")
             .select("user_id, display_name, avatar_url")
             .in("user_id", ownerIds);
 
-          sharedNotes = individuallySharedData.map(note => {
-            const shareInfo = individualShares?.find(s => s.note_id === note.id);
+          sharedNotes = individuallySharedData.map((note: Record<string, any>) => {
+            const shareInfo = individualShares?.find((s: Record<string, any>) => s.note_id === note.id);
             return {
               ...note,
               is_shared: true,
               can_edit: shareInfo?.permission_type === 'edit',
-              owner: profiles?.find(p => p.user_id === note.user_id) || null
+              owner: profiles?.find((p: Record<string, any>) => p.user_id === note.user_id) || null
             };
           }) as QuickNote[];
         }
@@ -222,25 +222,25 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
           .is("deleted_at", null);
 
         if (globallySharedData && globallySharedData.length > 0) {
-          const ownerIds = [...new Set(globallySharedData.map(n => n.user_id))];
+          const ownerIds = [...new Set(globallySharedData.map((n: Record<string, any>) => n.user_id))];
           const { data: profiles } = await supabase
             .from("profiles")
             .select("user_id, display_name, avatar_url")
             .in("user_id", ownerIds);
 
           const globalNotes = globallySharedData
-            .filter(note => !sharedNotes.some(s => s.id === note.id))
-            .map(note => ({
+            .filter((note: Record<string, any>) => !sharedNotes.some(s => s.id === note.id))
+            .map((note: Record<string, any>) => ({
               ...note,
               is_shared: true,
-              owner: profiles?.find(p => p.user_id === note.user_id) || null
+              owner: profiles?.find((p: Record<string, any>) => p.user_id === note.user_id) || null
             })) as QuickNote[];
 
           sharedNotes = [...sharedNotes, ...globalNotes];
         }
       }
 
-      const ownWithDetails = (ownNotes || []).map(note => ({
+      const ownWithDetails = (ownNotes || []).map((note: Record<string, any>) => ({
         ...note,
         share_count: shareDetails[note.id]?.length || 0,
         shared_with_users: shareDetails[note.id] || []
@@ -780,7 +780,7 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
     const { data, error } = await supabase
       .from("quick_note_versions").select("id, note_id, title, content, created_at, user_id").eq("note_id", note.id).order("created_at", { ascending: false });
     if (error) { debugConsole.error("Error loading versions:", error); toast.error("Fehler beim Laden der Versionen"); return; }
-    setVersions((data || []).map(v => ({ ...v, created_at: v.created_at ?? '' })));
+    setVersions((data || []).map((v: Record<string, any>) => ({ ...v, created_at: v.created_at ?? '' })));
     setVersionHistoryNote(note);
     setVersionHistoryOpen(true);
   };

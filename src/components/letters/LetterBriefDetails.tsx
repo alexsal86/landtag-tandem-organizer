@@ -44,7 +44,7 @@ const useRevisionComment = (letterId?: string, status?: string) => {
           .order('created_at', { ascending: false })
           .limit(5);
         if (data) {
-          const match = data.find(t => t.description?.includes('Begründung der Zurückweisung'));
+          const match = data.find((t: Record<string, any>) => t.description?.includes('Begründung der Zurückweisung'));
           if (match?.description) {
             const parts = match.description.split('Begründung der Zurückweisung:\n\n');
             setRevisionComment(parts[1] || match.description);

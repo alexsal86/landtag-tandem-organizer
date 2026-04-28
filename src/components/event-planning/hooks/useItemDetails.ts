@@ -94,13 +94,13 @@ export function useItemDetails({
     try {
       const { data: comments, error } = await supabase.from('planning_item_comments').select('id, planning_item_id, user_id, content, created_at').eq('planning_item_id', itemId).order('created_at', { ascending: true });
       if (error) throw error;
-      const userIds = [...new Set(comments?.map(c => c.user_id) || [])];
+      const userIds = [...new Set(comments?.map((c: Record<string, any>) => c.user_id) || [])];
       let profiles: Array<{ user_id: string; display_name: string | null; avatar_url: string | null }> = [];
       if (userIds.length > 0) {
         const { data: profilesData } = await supabase.from('profiles').select('user_id, display_name, avatar_url').in('user_id', userIds);
         profiles = profilesData || [];
       }
-      const formattedComments = (comments || []).map(comment => ({ id: comment.id, planning_item_id: comment.planning_item_id, user_id: comment.user_id, content: comment.content, created_at: comment.created_at, profile: profiles.find(p => p.user_id === comment.user_id) || null })) as PlanningComment[];
+      const formattedComments = (comments || []).map((comment: Record<string, any>) => ({ id: comment.id, planning_item_id: comment.planning_item_id, user_id: comment.user_id, content: comment.content, created_at: comment.created_at, profile: profiles.find(p => p.user_id === comment.user_id) || null })) as PlanningComment[];
       setItemComments(prev => ({ ...prev, [itemId]: formattedComments }));
     } catch (error) { handleAppError(error, { context: 'loadItemComments' }); }
   };
@@ -252,21 +252,21 @@ export function useItemDetails({
 
       const { data: subtasksData } = await supabase.from('planning_item_subtasks').select('planning_item_id, id, description, is_completed, assigned_to, due_date, order_index, created_at, updated_at, result_text, completed_at, user_id').in('planning_item_id', itemIds);
       const subtasksMap: { [itemId: string]: PlanningSubtask[] } = {};
-      (subtasksData || []).forEach(subtask => {
+      (subtasksData || []).forEach((subtask: Record<string, any>) => {
         if (!subtasksMap[subtask.planning_item_id]) subtasksMap[subtask.planning_item_id] = [];
         subtasksMap[subtask.planning_item_id].push({ ...subtask, user_id: subtask.user_id || user?.id || '' });
       });
       setItemSubtasks(subtasksMap);
 
       const { data: commentsData } = await supabase.from('planning_item_comments').select('planning_item_id, id, content, user_id, created_at').in('planning_item_id', itemIds);
-      const userIds = [...new Set(commentsData?.map(c => c.user_id) || [])];
+      const userIds = [...new Set(commentsData?.map((c: Record<string, any>) => c.user_id) || [])];
       let profiles: Array<{ user_id: string; display_name: string | null; avatar_url: string | null }> = [];
       if (userIds.length > 0) {
         const { data: profilesData } = await supabase.from('profiles').select('user_id, display_name, avatar_url').in('user_id', userIds);
         profiles = profilesData || [];
       }
       const commentsMap: { [itemId: string]: PlanningComment[] } = {};
-      (commentsData || []).forEach(comment => {
+      (commentsData || []).forEach((comment: Record<string, any>) => {
         if (!commentsMap[comment.planning_item_id]) commentsMap[comment.planning_item_id] = [];
         commentsMap[comment.planning_item_id].push({ ...comment, profile: profiles.find(p => p.user_id === comment.user_id) || null });
       });
@@ -274,7 +274,7 @@ export function useItemDetails({
 
       const { data: documentsData } = await supabase.from('planning_item_documents').select('planning_item_id, id, file_name, file_path, file_size, file_type, created_at, user_id').in('planning_item_id', itemIds);
       const documentsMap: { [itemId: string]: PlanningDocument[] } = {};
-      (documentsData || []).forEach(doc => {
+      (documentsData || []).forEach((doc: Record<string, any>) => {
         if (!documentsMap[doc.planning_item_id]) documentsMap[doc.planning_item_id] = [];
         documentsMap[doc.planning_item_id].push({ ...doc, user_id: doc.user_id || user?.id || '' });
       });

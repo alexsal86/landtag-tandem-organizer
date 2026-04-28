@@ -103,15 +103,15 @@ export function DecisionFileUpload({
 
       if (error) throw error;
 
-      const uploaderIds = data?.map(f => f.uploaded_by).filter(Boolean) || [];
+      const uploaderIds = data?.map((f: Record<string, any>) => f.uploaded_by).filter(Boolean) || [];
       const { data: profiles } = await supabase
         .from('profiles')
         .select('user_id, display_name')
         .in('user_id', uploaderIds);
 
-      const profileMap = new Map<string, UploaderProfile>((profiles ?? []).map((profile) => [profile.user_id, profile]));
+      const profileMap = new Map<string, UploaderProfile>((profiles ?? []).map((profile: Record<string, any>) => [profile.user_id, profile]));
 
-      const formattedFiles = data?.map(file => ({
+      const formattedFiles = data?.map((file: Record<string, any>) => ({
         id: file.id,
         file_name: file.file_name,
         file_path: file.file_path,

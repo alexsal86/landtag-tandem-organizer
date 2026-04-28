@@ -70,12 +70,12 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
       }
       
       const participantArchivedMeetings = (participantMeetings || [])
-        .filter(p => p.meetings && p.meetings.status === 'archived')
-        .map(p => p.meetings);
+        .filter((p: Record<string, any>) => p.meetings && p.meetings.status === 'archived')
+        .map((p: Record<string, any>) => p.meetings);
       
       const existingMeetingIds = new Set([
-        ...(ownMeetings || []).map(m => m.id),
-        ...participantArchivedMeetings.map(m => m?.id).filter(Boolean)
+        ...(ownMeetings || []).map((m: Record<string, any>) => m.id),
+        ...participantArchivedMeetings.map((m: Record<string, any>) => m?.id).filter(Boolean)
       ]);
       
       let publicMeetings: any[] = [];
@@ -90,7 +90,7 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
         if (publicError) {
           debugConsole.error('Error loading public meetings:', publicError);
         } else {
-          publicMeetings = (publicData || []).filter(m => !existingMeetingIds.has(m.id));
+          publicMeetings = (publicData || []).filter((m: Record<string, any>) => !existingMeetingIds.has(m.id));
         }
       }
       

@@ -67,7 +67,7 @@ export const PollListView = () => {
 
       if (error) throw error;
 
-      const transformedPolls: Poll[] = (pollsData || []).map((poll) => ({
+      const transformedPolls: Poll[] = (pollsData || []).map((poll: Record<string, any>) => ({
         id: poll.id,
         title: poll.title,
         description: poll.description,

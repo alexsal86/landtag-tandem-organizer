@@ -74,7 +74,7 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
         .neq('user_id', user?.id ?? '');
 
       if (tenantError) throw tenantError;
-      const userIds = tenantUsers?.map(u => u.user_id) || [];
+      const userIds = tenantUsers?.map((u: Record<string, any>) => u.user_id) || [];
       if (userIds.length === 0) { setUsers([]); return; }
 
       const { data, error } = await supabase
@@ -83,7 +83,7 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
         .in('user_id', userIds);
 
       if (error) throw error;
-      setUsers(data?.map(item => ({ user_id: item.user_id, display_name: item.display_name || 'Unbekannt' })) || []);
+      setUsers(data?.map((item: Record<string, any>) => ({ user_id: item.user_id, display_name: item.display_name || 'Unbekannt' })) || []);
     } catch (error) {
       debugConsole.error('Error fetching tenant users:', error);
       toast({ title: "Fehler", description: "Benutzer konnten nicht geladen werden.", variant: "destructive" });

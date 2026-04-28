@@ -61,11 +61,11 @@ async function checkMissingEntries(userId: string, softDays: number, hardDays: n
         .lte("start_date", dateStrings[dateStrings.length - 1]),
     ]);
 
-    const entryDates = new Set((entriesRes.data || []).map(e => e.work_date));
-    const holidayDates = new Set((holidaysRes.data || []).map(h => h.holiday_date));
+    const entryDates = new Set((entriesRes.data || []).map((e: Record<string, any>) => e.work_date));
+    const holidayDates = new Set((holidaysRes.data || []).map((h: Record<string, any>) => h.holiday_date));
 
     const leaveDates = new Set<string>();
-    (leavesRes.data || []).forEach(l => {
+    (leavesRes.data || []).forEach((l: Record<string, any>) => {
       try {
         eachDayOfInterval({ start: parseISO(l.start_date), end: parseISO(l.end_date) })
           .forEach(d => leaveDates.add(format(d, "yyyy-MM-dd")));
