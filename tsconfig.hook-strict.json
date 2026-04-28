@@ -6,9 +6,18 @@
   },
   "include": [
     "src/supabase-fix.d.ts",
+    "src/hooks/useAuth.tsx",
+    "src/hooks/useTenant.tsx",
+    "src/hooks/useFeatureFlag.tsx",
     "src/hooks/useInfiniteContacts.tsx",
     "src/hooks/useMeetingsData.tsx",
     "src/hooks/useMyWorkJourFixeMeetings.tsx",
-    "src/hooks/useChecklistOperations.tsx"
+    "src/hooks/useChecklistOperations.tsx",
+    "src/components/layout/AppHeader.tsx",
+    "src/components/SettingsView.tsx",
+    "src/components/account/ActiveSessionsCard.tsx",
+    "src/components/administration/SuperadminTenantManagement.tsx",
+    "src/pages/Administration.tsx",
+    "src/pages/Index.tsx"
   ]
 }
