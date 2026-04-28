@@ -1,1 +1,4 @@
-export { default as KnowledgeBaseView } from "./components/KnowledgeBaseView";
+import KnowledgeBaseView from "./components/KnowledgeBaseView";
+
+export { KnowledgeBaseView };
+export default KnowledgeBaseView;
