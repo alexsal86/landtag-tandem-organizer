@@ -8,7 +8,7 @@ import { MeinRadarView } from "./MeinRadarView";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { Loader2 } from "lucide-react";
 
-const KnowledgeBaseView = lazyWithRetry(() => import("@/components/KnowledgeBaseView"));
+const KnowledgeBaseView = lazyWithRetry(() => import("@/features/knowledge"));
 
 type DossierTab = "eingang" | "radar" | "dossiers" | "artikel";
 
