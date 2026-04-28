@@ -74,7 +74,7 @@ export const ArchivedLetterDetails: React.FC<ArchivedLetterDetailsProps> = ({
       if (workflowError) throw workflowError;
       
       // Fetch user names separately
-      const userIds = [...new Set(workflowData?.map(e(ntry: Record<string, any>) => entry.changed_by) || [])];
+      const userIds = [...new Set(workflowData?.map((entry: Record<string, any>) => entry.changed_by) || [])];
       const { data: profiles } = await supabase
         .from('profiles')
         .select('user_id, display_name')
@@ -82,7 +82,7 @@ export const ArchivedLetterDetails: React.FC<ArchivedLetterDetailsProps> = ({
 
       const profileMap = new Map(profiles?.map(p: Record<string, any> => [p.user_id, p.display_name]) || []);
       
-      const workflowWithNames = workflowData?.map(e(ntry: Record<string, any>) => ({
+      const workflowWithNames = workflowData?.map((entry: Record<string, any>) => ({
         ...entry,
         user_name: profileMap.get(entry.changed_by) || 'Unbekannt'
       })) || [];

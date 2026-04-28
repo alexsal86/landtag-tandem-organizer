@@ -85,7 +85,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
     const enrichedParticipants: Participant[] = participantsData.map(p: Record<string, any> => ({
       ...p,
       role: (p.role as 'organizer' | 'participant' | 'optional') || 'participant',
-      user: profiles?.find(p(rof: Record<string, any>) => prof.user_id === p.user_id) || undefined
+      user: profiles?.find((prof: Record<string, any>) => prof.user_id === p.user_id) || undefined
     }));
 
     

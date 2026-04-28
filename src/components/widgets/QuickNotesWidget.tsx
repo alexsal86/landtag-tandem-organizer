@@ -182,7 +182,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
         if (childTasksError) throw childTasksError;
 
         const groupedSubtasks: Record<string, WidgetSubtask[]> = {};
-        (childTasksData || []).forEach(s(ubtask: Record<string, any>) => {
+        (childTasksData || []).forEach((subtask: Record<string, any>) => {
           if (!subtask.parent_task_id) return;
           if (!groupedSubtasks[subtask.parent_task_id]) {
             groupedSubtasks[subtask.parent_task_id] = [];

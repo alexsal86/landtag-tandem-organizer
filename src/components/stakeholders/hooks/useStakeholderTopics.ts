@@ -23,7 +23,7 @@ export function useStakeholderTopics(stakeholders: Contact[], onRefresh?: () => 
       if (error) { debugConsole.error('Error loading stakeholder topics:', error); return; }
       
       const topicsMap: Record<string, string[]> = {};
-      data?.forEach(i(tem: Record<string, any>) => {
+      data?.forEach((item: Record<string, any>) => {
         if (!topicsMap[item.contact_id]) topicsMap[item.contact_id] = [];
         topicsMap[item.contact_id].push(item.topic_id);
       });

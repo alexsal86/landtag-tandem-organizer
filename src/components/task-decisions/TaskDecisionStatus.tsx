@@ -99,7 +99,7 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
 
       // Group participants by decision
       const participantsByDecision = new Map();
-      participantsData?.forEach(p(articipant: Record<string, any>) => {
+      participantsData?.forEach((participant: Record<string, any>) => {
         if (!participantsByDecision.has(participant.decision_id)) {
           participantsByDecision.set(participant.decision_id, []);
         }
@@ -109,14 +109,14 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
           profile: profileMap.get(participant.user_id) || { display_name: null },
           responses: (participant.task_decision_responses || [])
             .sort((a: Record<string, any>, b: Record<string, any>) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-            .map(r(esponse: Record<string, any>) => ({
+            .map((response: Record<string, any>) => ({
               ...response,
               response_type: response.response_type as 'yes' | 'no' | 'question'
             })),
         });
       });
 
-      const formattedData = decisionsData.map(d(ecision: Record<string, any>) => ({
+      const formattedData = decisionsData.map((decision: Record<string, any>) => ({
         ...decision,
         participants: participantsByDecision.get(decision.id) || [],
       }));

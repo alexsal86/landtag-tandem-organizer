@@ -62,7 +62,7 @@ export const useContactFundings = (contactId?: string) => {
         return acc;
       }, {} as Record<string, number>) || {};
 
-      return data?.map(i(tem: Record<string, any>) => ({
+      return data?.map((item: Record<string, any>) => ({
         id: item.fundings.id,
         title: item.fundings.title,
         description: item.fundings.description,

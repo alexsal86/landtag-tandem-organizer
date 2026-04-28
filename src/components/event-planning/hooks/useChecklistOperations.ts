@@ -129,7 +129,7 @@ export function useChecklistOperations({
           setTimeout(async () => {
             if (selectedPlanningId) {
 const { data: freshItems } = await supabase.from("event_planning_checklist_items").select("id, event_planning_id, title, is_completed, order_index, sub_items, assigned_to, due_date, category, notes, is_system_item, system_type, created_at, color, type, relative_due_days").eq("event_planning_id", selectedPlanningId).order("order_index", { ascending: true });
-               if (freshItems) setChecklistItems(freshItems.map(i(tem: Record<string, any>) => ({ ...item, sub_items: (item.sub_items || []) as { title: string; is_completed: boolean }[] })) as ChecklistItem[]);
+               if (freshItems) setChecklistItems(freshItems.map((item: Record<string, any>) => ({ ...item, sub_items: (item.sub_items || []) as { title: string; is_completed: boolean }[] })) as ChecklistItem[]);
              }
            }, 500);
            return;
@@ -155,7 +155,7 @@ const { data: freshItems } = await supabase.from("event_planning_checklist_items
        setTimeout(async () => {
          if (selectedPlanningId) {
            const { data: freshItems } = await supabase.from("event_planning_checklist_items").select("id, event_planning_id, title, is_completed, order_index, sub_items, assigned_to, due_date, category, notes, is_system_item, system_type, created_at, color, type, relative_due_days").eq("event_planning_id", selectedPlanningId).order("order_index", { ascending: true });
-          if (freshItems) setChecklistItems(freshItems.map(i(tem: Record<string, any>) => ({ ...item, sub_items: (item.sub_items || []) as { title: string; is_completed: boolean }[] })) as ChecklistItem[]);
+          if (freshItems) setChecklistItems(freshItems.map((item: Record<string, any>) => ({ ...item, sub_items: (item.sub_items || []) as { title: string; is_completed: boolean }[] })) as ChecklistItem[]);
         }
       }, 500);
     }

@@ -100,7 +100,7 @@ export function useItemDetails({
         const { data: profilesData } = await supabase.from('profiles').select('user_id, display_name, avatar_url').in('user_id', userIds);
         profiles = profilesData || [];
       }
-      const formattedComments = (comments || []).map(c(omment: Record<string, any>) => ({ id: comment.id, planning_item_id: comment.planning_item_id, user_id: comment.user_id, content: comment.content, created_at: comment.created_at, profile: profiles.find(p => p.user_id === comment.user_id) || null })) as PlanningComment[];
+      const formattedComments = (comments || []).map((comment: Record<string, any>) => ({ id: comment.id, planning_item_id: comment.planning_item_id, user_id: comment.user_id, content: comment.content, created_at: comment.created_at, profile: profiles.find(p => p.user_id === comment.user_id) || null })) as PlanningComment[];
       setItemComments(prev => ({ ...prev, [itemId]: formattedComments }));
     } catch (error) { handleAppError(error, { context: 'loadItemComments' }); }
   };
@@ -252,7 +252,7 @@ export function useItemDetails({
 
       const { data: subtasksData } = await supabase.from('planning_item_subtasks').select('planning_item_id, id, description, is_completed, assigned_to, due_date, order_index, created_at, updated_at, result_text, completed_at, user_id').in('planning_item_id', itemIds);
       const subtasksMap: { [itemId: string]: PlanningSubtask[] } = {};
-      (subtasksData || []).forEach(s(ubtask: Record<string, any>) => {
+      (subtasksData || []).forEach((subtask: Record<string, any>) => {
         if (!subtasksMap[subtask.planning_item_id]) subtasksMap[subtask.planning_item_id] = [];
         subtasksMap[subtask.planning_item_id].push({ ...subtask, user_id: subtask.user_id || user?.id || '' });
       });
@@ -266,7 +266,7 @@ export function useItemDetails({
         profiles = profilesData || [];
       }
       const commentsMap: { [itemId: string]: PlanningComment[] } = {};
-      (commentsData || []).forEach(c(omment: Record<string, any>) => {
+      (commentsData || []).forEach((comment: Record<string, any>) => {
         if (!commentsMap[comment.planning_item_id]) commentsMap[comment.planning_item_id] = [];
         commentsMap[comment.planning_item_id].push({ ...comment, profile: profiles.find(p => p.user_id === comment.user_id) || null });
       });
@@ -274,7 +274,7 @@ export function useItemDetails({
 
       const { data: documentsData } = await supabase.from('planning_item_documents').select('planning_item_id, id, file_name, file_path, file_size, file_type, created_at, user_id').in('planning_item_id', itemIds);
       const documentsMap: { [itemId: string]: PlanningDocument[] } = {};
-      (documentsData || []).forEach(d(oc: Record<string, any>) => {
+      (documentsData || []).forEach((doc: Record<string, any>) => {
         if (!documentsMap[doc.planning_item_id]) documentsMap[doc.planning_item_id] = [];
         documentsMap[doc.planning_item_id].push({ ...doc, user_id: doc.user_id || user?.id || '' });
       });

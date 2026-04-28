@@ -137,7 +137,7 @@ export function useKnowledgeData() {
     const { data, error } = await supabase.from('knowledge_document_topics').select('document_id, topic_id').in('document_id', docIds);
     if (error) { debugConsole.error('Error fetching document topics:', error); return; }
     const map: Record<string, string[]> = {};
-    data?.forEach(i(tem: Record<string, any>) => { if (!map[item.document_id]) map[item.document_id] = []; map[item.document_id].push(item.topic_id); });
+    data?.forEach((item: Record<string, any>) => { if (!map[item.document_id]) map[item.document_id] = []; map[item.document_id].push(item.topic_id); });
     setDocumentTopicsMap(map);
   }, []);
 

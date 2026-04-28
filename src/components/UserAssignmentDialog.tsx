@@ -87,7 +87,7 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
         throw error;
       }
 
-      const formattedUsers = data?.map(i(tem: Record<string, any>) => ({
+      const formattedUsers = data?.map((item: Record<string, any>) => ({
         user_id: item.user_id,
         display_name: item.display_name || 'Unbekannt'
       })) || [];

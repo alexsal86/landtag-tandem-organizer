@@ -103,7 +103,7 @@ export function EmailHistory() {
 
       if (error) throw error;
       
-      const typedData = (data || []).map(l(og: Record<string, any>) => ({
+      const typedData = (data || []).map((log: Record<string, any>) => ({
         ...log,
         recipients: Array.isArray(log.recipients) ? log.recipients : [],
         cc: Array.isArray(log.cc) ? log.cc : [],

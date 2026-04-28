@@ -305,7 +305,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
 
       setResponseThreads(rootResponses);
 
-      const formattedParticipants = participantsData?.map(p(articipant: Record<string, any>) => ({
+      const formattedParticipants = participantsData?.map((participant: Record<string, any>) => ({
         id: participant.id,
         user_id: participant.user_id,
         profile: {
@@ -315,7 +315,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
         responses: (participant.task_decision_responses || [])
           .filter(r: Record<string, any> => !r.parent_response_id) // Only root responses for summary
           .sort((a: Record<string, any>, b: Record<string, any>) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-          .map(r(esponse: Record<string, any>) => ({
+          .map((response: Record<string, any>) => ({
             ...response,
             response_type: response.response_type
           })),

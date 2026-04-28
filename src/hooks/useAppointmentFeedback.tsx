@@ -131,7 +131,7 @@ export const useAppointmentFeedback = () => {
       if (error) throw error;
 
       // Transform data to match our interface
-      return (data || []).map(a(pt: Record<string, any>) => ({
+      return (data || []).map((apt: Record<string, any>) => ({
         ...apt,
         event_type: 'appointment' as const,
         feedback: Array.isArray(apt.feedback) && apt.feedback.length > 0 
@@ -200,7 +200,7 @@ export const useAppointmentFeedback = () => {
 
       // 4. Erstelle Feedback-Einträge für Events ohne Feedback
       if (eventsWithoutFeedback.length > 0) {
-        const newFeedbackEntries = eventsWithoutFeedback.map(e(vent: Record<string, any>) => ({
+        const newFeedbackEntries = eventsWithoutFeedback.map((event: Record<string, any>) => ({
           external_event_id: event.id,
           user_id: user.id,
           tenant_id: currentTenant.id,

@@ -127,7 +127,7 @@ export function useEventPlanningData() {
     setPlanningDates(dates || []);
 
     const { data: items } = await supabase.from("event_planning_checklist_items").select("id, event_planning_id, title, is_completed, order_index, created_at, updated_at, sub_items, type, relative_due_days, color").eq("event_planning_id", planningId).order("order_index", { ascending: true });
-    const transformedItems = (items || []).map(i(tem: Record<string, any>) => ({
+    const transformedItems = (items || []).map((item: Record<string, any>) => ({
       ...item,
       sub_items: Array.isArray(item.sub_items) ? item.sub_items : (item.sub_items ? JSON.parse(item.sub_items as string) : [])
     }));

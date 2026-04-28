@@ -149,7 +149,7 @@ export function MeetingProtocolView({ meetingId, onBack, isPostArchive }: Meetin
       // Add participants (avoid duplicates with creator)
       for (const p of participantsData || []) {
         if (p.user_id === meetingData?.user_id) continue;
-        const profile = profilesData?.find(p(r: Record<string, any>) => pr.user_id === p.user_id);
+        const profile = profilesData?.find((pr: Record<string, any>) => pr.user_id === p.user_id);
         participantList.push({
           user_id: p.user_id,
           role: p.role,

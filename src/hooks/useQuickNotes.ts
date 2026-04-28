@@ -196,7 +196,7 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
             .select("user_id, display_name, avatar_url")
             .in("user_id", ownerIds);
 
-          sharedNotes = individuallySharedData.map(n(ote: Record<string, any>) => {
+          sharedNotes = individuallySharedData.map((note: Record<string, any>) => {
             const shareInfo = individualShares?.find(s: Record<string, any> => s.note_id === note.id);
             return {
               ...note,
@@ -229,8 +229,8 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
             .in("user_id", ownerIds);
 
           const globalNotes = globallySharedData
-            .filter(n(ote: Record<string, any>) => !sharedNotes.some(s => s.id === note.id))
-            .map(n(ote: Record<string, any>) => ({
+            .filter((note: Record<string, any>) => !sharedNotes.some(s => s.id === note.id))
+            .map((note: Record<string, any>) => ({
               ...note,
               is_shared: true,
               owner: profiles?.find(p: Record<string, any> => p.user_id === note.user_id) || null
@@ -240,7 +240,7 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
         }
       }
 
-      const ownWithDetails = (ownNotes || []).map(n(ote: Record<string, any>) => ({
+      const ownWithDetails = (ownNotes || []).map((note: Record<string, any>) => ({
         ...note,
         share_count: shareDetails[note.id]?.length || 0,
         shared_with_users: shareDetails[note.id] || []

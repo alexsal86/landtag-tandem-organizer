@@ -109,7 +109,7 @@ export function MeetingTemplateParticipantsEditor({
 
       if (error) throw error;
 
-      const users: User[] = (data || []).map(p(rofile: Record<string, any>) => ({
+      const users: User[] = (data || []).map((profile: Record<string, any>) => ({
         id: profile.user_id,
         display_name: profile.display_name || 'Unbekannt',
         avatar_url: profile.avatar_url ?? undefined

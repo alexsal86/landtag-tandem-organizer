@@ -41,7 +41,7 @@ export function MeetingParticipantAvatars({ meetingId, size = 'default' }: Meeti
 
       const enrichedParticipants = participantsData.map(p: Record<string, any> => ({
         ...p,
-        user: profiles?.find(p(rof: Record<string, any>) => prof.user_id === p.user_id) || null
+        user: profiles?.find((prof: Record<string, any>) => prof.user_id === p.user_id) || null
       }));
 
       setParticipants(enrichedParticipants);

@@ -111,7 +111,7 @@ export function DecisionFileUpload({
 
       const profileMap = new Map<string, UploaderProfile>((profiles ?? []).map((profile: Record<string, any>) => [profile.user_id, profile]));
 
-      const formattedFiles = data?.map(f(ile: Record<string, any>) => ({
+      const formattedFiles = data?.map((file: Record<string, any>) => ({
         id: file.id,
         file_name: file.file_name,
         file_path: file.file_path,

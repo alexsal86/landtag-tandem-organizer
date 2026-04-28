@@ -97,7 +97,7 @@ export const useAllDistrictNotes = () => {
       if (error) throw error;
 
       const notesByDistrict: Record<string, string> = {};
-      data?.forEach(n(ote: Record<string, any>) => {
+      data?.forEach((note: Record<string, any>) => {
         if (note.content) {
           notesByDistrict[note.district_id] = note.content;
         }

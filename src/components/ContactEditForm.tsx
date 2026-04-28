@@ -111,7 +111,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       if (error) throw error;
       
       const tagsSet = new Set<string>();
-      data?.forEach(c(ontact: Record<string, any>) => {
+      data?.forEach((contact: Record<string, any>) => {
         if (contact.tags && Array.isArray(contact.tags)) {
           contact.tags.forEach((tag: string) => tagsSet.add(tag));
         }

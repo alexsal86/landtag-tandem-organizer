@@ -90,7 +90,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
         throw profilesError;
       }
 
-      const usersData: User[] = (profilesData || []).map(p(rofile: Record<string, any>) => ({
+      const usersData: User[] = (profilesData || []).map((profile: Record<string, any>) => ({
         id: profile.user_id,
         display_name: profile.display_name || 'Unbekannt',
         avatar_url: profile.avatar_url
