@@ -192,7 +192,7 @@ export function AnnualTasksView() {
         (completionsData || []).map(c: Record<string, any> => [c.annual_task_id, c])
       );
 
-      const tasksWithStatus: AnnualTaskWithStatus[] = (tasksData || []).map(task: Record<string, any> => {
+      const tasksWithStatus: AnnualTaskWithStatus[] = (tasksData || []).map(t(ask: Record<string, any>) => {
         const completion = completionMap.get(task.id) as any;
         let status: AnnualTaskWithStatus['status'] = 'upcoming';
 

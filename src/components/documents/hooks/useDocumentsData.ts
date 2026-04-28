@@ -46,7 +46,7 @@ export function useDocumentsData(activeTab: string) {
 
       if (error) throw error;
 
-      const mappedDocs = (data || []).map(doc: Record<string, any> => ({
+      const mappedDocs = (data || []).map(d(oc: Record<string, any>) => ({
         ...doc,
         archived_attachments: Array.isArray(doc.archived_attachments) ? doc.archived_attachments : []
       })) as Document[];

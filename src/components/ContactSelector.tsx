@@ -154,7 +154,7 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
         const favContacts = favResult.data || [];
         const topUsageIds = (topResult.data || []).map(u: Record<string, any> => u.contact_id);
         const favIds = new Set(favContacts.map(c: Record<string, any> => c.id));
-        const missingIds = topUsageIds.filter(id: Record<string, any> => !favIds.has(id));
+        const missingIds = topUsageIds.filter(i(d: Record<string, any>) => !favIds.has(id));
 
         let topContacts: Contact[] = [];
         if (missingIds.length > 0) {

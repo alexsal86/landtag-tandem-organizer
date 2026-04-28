@@ -158,9 +158,9 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
 
       // Load profiles for creators, publishers, and email senders
       const userIds = [...new Set([
-        ...(data || []).map(pr: Record<string, any> => pr.created_by),
-        ...(data || []).map(pr: Record<string, any> => pr.published_by).filter(Boolean),
-        ...(data || []).map(pr: Record<string, any> => pr.email_sent_by).filter(Boolean),
+        ...(data || []).map(p(r: Record<string, any>) => pr.created_by),
+        ...(data || []).map(p(r: Record<string, any>) => pr.published_by).filter(Boolean),
+        ...(data || []).map(p(r: Record<string, any>) => pr.email_sent_by).filter(Boolean),
       ] as string[])];
       
       if (userIds.length > 0) {

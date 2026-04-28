@@ -204,7 +204,7 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
       const currentUserIds = currentParticipants.map(p: Record<string, any> => p.user_id);
 
       // Delete removed participants
-      const toDelete = currentUserIds.filter(id: Record<string, any> => !validSelectedUsers.includes(id));
+      const toDelete = currentUserIds.filter(i(d: Record<string, any>) => !validSelectedUsers.includes(id));
       if (toDelete.length > 0) {
         const { error: deleteError } = await supabase
           .from('task_decision_participants')

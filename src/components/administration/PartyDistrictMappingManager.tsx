@@ -39,7 +39,7 @@ export const PartyDistrictMappingManager = () => {
     ]);
 
     if (partyResponse.data) {
-      setPartyAssociations(partyResponse.data.map(party: Record<string, any> => ({
+      setPartyAssociations(partyResponse.data.map(p(arty: Record<string, any>) => ({
         ...party,
         administrative_boundaries: Array.isArray(party.administrative_boundaries) 
           ? party.administrative_boundaries as string[] 

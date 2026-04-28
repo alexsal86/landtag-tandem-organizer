@@ -83,7 +83,7 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
         .in('user_id', userIds);
 
       if (error) throw error;
-      setUsers(data?.map(item: Record<string, any> => ({ user_id: item.user_id, display_name: item.display_name || 'Unbekannt' })) || []);
+      setUsers(data?.map(i(tem: Record<string, any>) => ({ user_id: item.user_id, display_name: item.display_name || 'Unbekannt' })) || []);
     } catch (error) {
       debugConsole.error('Error fetching tenant users:', error);
       toast({ title: "Fehler", description: "Benutzer konnten nicht geladen werden.", variant: "destructive" });

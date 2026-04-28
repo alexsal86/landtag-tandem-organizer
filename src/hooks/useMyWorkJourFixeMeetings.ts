@@ -145,7 +145,7 @@ const fetchParticipants = async (meetingIds: string[]) => {
   if (profilesError) return {};
 
   const profilesByUserId = new Map<string, MeetingProfileRow>(
-    (profiles ?? []).map(profile: Record<string, any> => [profile.user_id, profile])
+    (profiles ?? []).map(p(rofile: Record<string, any>) => [profile.user_id, profile])
   );
 
   return (participants as any[]).reduce<Record<string, MeetingParticipant[]>>((participantsByMeeting, participant) => {

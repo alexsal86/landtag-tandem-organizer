@@ -102,7 +102,7 @@ async function fetchCollaborators(letterId: string): Promise<LetterCollaborator[
       .select('user_id, display_name')
       .in('user_id', userIds);
 
-    return data.map(item: Record<string, any> => ({
+    return data.map(i(tem: Record<string, any>) => ({
       ...item,
       role: 'reviewer',
       profiles: profiles?.find(p: Record<string, any> => p.user_id === item.user_id) || { display_name: 'Unbekannt' },

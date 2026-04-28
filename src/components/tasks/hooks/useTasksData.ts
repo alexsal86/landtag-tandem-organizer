@@ -101,7 +101,7 @@ export function useTasksData(options?: { enabled?: boolean }): UseTasksDataRetur
         .select('user_id, display_name')
         .in('user_id', userIds);
       if (error) throw error;
-      const nameMap = new Map(data?.map(profile: Record<string, any> => [profile.user_id, profile.display_name]) || []);
+      const nameMap = new Map(data?.map(p(rofile: Record<string, any>) => [profile.user_id, profile.display_name]) || []);
       return userIds.map(userId => nameMap.get(userId) || userId).join(', ');
     } catch {
       return userIds.join(', ');
@@ -131,7 +131,7 @@ export function useTasksData(options?: { enabled?: boolean }): UseTasksDataRetur
         .or(`user_id.eq.${user.id},assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%`)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      const transformedTasks: Task[] = (data || []).map(task: Record<string, any> => ({
+      const transformedTasks: Task[] = (data || []).map(t(ask: Record<string, any>) => ({
         id: task.id,
         title: task.title,
         description: task.description || '',
@@ -179,7 +179,7 @@ export function useTasksData(options?: { enabled?: boolean }): UseTasksDataRetur
         .order('created_at', { ascending: true });
       if (error) throw error;
       const commentsMap: { [taskId: string]: TaskComment[] } = {};
-      (data || []).forEach(comment: Record<string, any> => {
+      (data || []).forEach(c(omment: Record<string, any>) => {
         if (!commentsMap[comment.task_id]) commentsMap[comment.task_id] = [];
         commentsMap[comment.task_id].push({
           id: comment.id,
@@ -199,7 +199,7 @@ export function useTasksData(options?: { enabled?: boolean }): UseTasksDataRetur
           .order('created_at', { ascending: true });
         if (fallbackError) throw fallbackError;
         const commentsMap: { [taskId: string]: TaskComment[] } = {};
-        (fallbackData || []).forEach(comment: Record<string, any> => {
+        (fallbackData || []).forEach(c(omment: Record<string, any>) => {
           if (!commentsMap[comment.task_id]) commentsMap[comment.task_id] = [];
           commentsMap[comment.task_id].push({
             id: comment.id,
@@ -225,7 +225,7 @@ export function useTasksData(options?: { enabled?: boolean }): UseTasksDataRetur
         .order('created_at', { ascending: false });
       if (error) throw error;
       const detailsMap: Record<string, TaskDocumentInfo[]> = {};
-      (data || []).forEach(doc: Record<string, any> => {
+      (data || []).forEach(d(oc: Record<string, any>) => {
         if (!detailsMap[doc.task_id]) detailsMap[doc.task_id] = [];
         detailsMap[doc.task_id].push(doc);
       });
@@ -241,7 +241,7 @@ export function useTasksData(options?: { enabled?: boolean }): UseTasksDataRetur
         .order('created_at', { ascending: false });
       if (error) throw error;
       const counts: { [taskId: string]: number } = {};
-      (data || []).forEach(doc: Record<string, any> => { counts[doc.task_id] = (counts[doc.task_id] || 0) + 1; });
+      (data || []).forEach(d(oc: Record<string, any>) => { counts[doc.task_id] = (counts[doc.task_id] || 0) + 1; });
       setTaskDocuments(counts);
     } catch (error) {
       debugConsole.error('Error loading task document counts:', error);
@@ -256,7 +256,7 @@ export function useTasksData(options?: { enabled?: boolean }): UseTasksDataRetur
         .not('parent_task_id', 'is', null);
       if (error) throw error;
       const counts: { [taskId: string]: number } = {};
-      (childTasks || []).forEach(task: Record<string, any> => {
+      (childTasks || []).forEach(t(ask: Record<string, any>) => {
         if (!task.parent_task_id) return;
         counts[task.parent_task_id] = (counts[task.parent_task_id] || 0) + 1;
       });
@@ -308,7 +308,7 @@ export function useTasksData(options?: { enabled?: boolean }): UseTasksDataRetur
       if (error) throw error;
       const taskSnoozeMap: { [taskId: string]: string } = {};
       const subtaskSnoozeMap: { [subtaskId: string]: string } = {};
-      (data || []).forEach(snooze: Record<string, any> => {
+      (data || []).forEach(s(nooze: Record<string, any>) => {
         if (snooze.task_id) taskSnoozeMap[snooze.task_id] = snooze.snoozed_until;
         else if (snooze.subtask_id) subtaskSnoozeMap[snooze.subtask_id] = snooze.snoozed_until;
       });
@@ -340,18 +340,18 @@ export function useTasksData(options?: { enabled?: boolean }): UseTasksDataRetur
         const taskIds = taskSnoozesData.map(s: Record<string, any> => s.task_id).filter((id: Record<string, any>): id is string => id != null);
         if (taskIds.length > 0) {
           const { data: tasksData } = await supabase.from('tasks').select('id, title').in('id', taskIds);
-          tasksData?.forEach(task: Record<string, any> => { taskTitles[task.id] = task.title; });
+          tasksData?.forEach(t(ask: Record<string, any>) => { taskTitles[task.id] = task.title; });
         }
       }
 
       setAllSnoozes([
-        ...(taskSnoozesData || []).map(snooze: Record<string, any> => ({
+        ...(taskSnoozesData || []).map(s(nooze: Record<string, any>) => ({
           id: snooze.id,
           task_id: snooze.task_id,
           snoozed_until: snooze.snoozed_until,
           task_title: snooze.task_id ? (taskTitles[snooze.task_id] || 'Unbekannte Aufgabe') : 'Unbekannte Aufgabe',
         })),
-        ...(subtaskSnoozesData || []).map(snooze: Record<string, any> => ({
+        ...(subtaskSnoozesData || []).map(s(nooze: Record<string, any>) => ({
           id: snooze.id,
           subtask_id: snooze.subtask_id,
           snoozed_until: snooze.snoozed_until,
@@ -373,7 +373,7 @@ export function useTasksData(options?: { enabled?: boolean }): UseTasksDataRetur
         .eq('user_id', user.id)
         .eq('is_completed', false);
       if (error) throw error;
-      setTodos((data || []).map(todo: Record<string, any> => ({
+      setTodos((data || []).map(t(odo: Record<string, any>) => ({
         id: todo.id,
         title: todo.title,
         category_label: todo.todo_categories.label,
@@ -403,7 +403,7 @@ export function useTasksData(options?: { enabled?: boolean }): UseTasksDataRetur
       for (const childTask of childTasksData || []) {
         const assignees = Array.isArray(childTask.assigned_to)
           ? childTask.assigned_to
-          : (childTask.assigned_to || '').split(',').map(item: Record<string, any> => item.trim()).filter(Boolean);
+          : (childTask.assigned_to || '').split(',').map(i(tem: Record<string, any>) => item.trim()).filter(Boolean);
         if (!assignees.includes(user.id)) continue;
 
         let parentTitle = 'Unbekannte Aufgabe';

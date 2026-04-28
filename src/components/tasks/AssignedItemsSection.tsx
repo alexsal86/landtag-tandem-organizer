@@ -312,7 +312,7 @@ export function AssignedItemsSection({
         if (error) throw error;
 
         const topicsMap: { [taskId: string]: string[] } = {};
-        data?.forEach(item: Record<string, any> => {
+        data?.forEach(i(tem: Record<string, any>) => {
           if (!topicsMap[item.task_id]) {
             topicsMap[item.task_id] = [];
           }

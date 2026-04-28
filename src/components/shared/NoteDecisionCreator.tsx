@@ -171,7 +171,7 @@ export function NoteDecisionCreator({
       if (abgeordneterRoles && abgeordneterRoles.length > 0) {
         const abgeordneterIds = abgeordneterRoles
           .map(r: Record<string, any> => r.user_id)
-          .filter(id: Record<string, any> => id !== user?.id);
+          .filter(i(d: Record<string, any>) => id !== user?.id);
         if (abgeordneterIds.length > 0) {
           setSelectedUsers(abgeordneterIds);
         }

@@ -44,7 +44,7 @@ export function AuditLogViewer() {
       // Client-side filtering for payload search
       let filteredData = data || [];
       if (searchTerm && filteredData.length > 0) {
-        filteredData = filteredData.filter(log: Record<string, any> => 
+        filteredData = filteredData.filter(l(og: Record<string, any>) => 
           JSON.stringify(log.payload).toLowerCase().includes(searchTerm.toLowerCase())
         );
       }
@@ -60,7 +60,7 @@ export function AuditLogViewer() {
   const handleExport = () => {
     if (!data?.logs) return;
 
-    const csv = data.logs.map(log: Record<string, any> => ({
+    const csv = data.logs.map(l(og: Record<string, any>) => ({
       Zeitstempel: format(new Date(log.created_at), 'dd.MM.yyyy HH:mm:ss', { locale: de }),
       'IP-Adresse': log.ip_address || 'N/A',
       Aktion: (log.payload as Record<string, unknown>)?.action as string || 'Unbekannt',

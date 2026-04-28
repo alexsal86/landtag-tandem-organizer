@@ -331,11 +331,11 @@ export function useMeetingsData() {
         .from('tasks').select('id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id').eq('tenant_id', currentTenant.id).eq('status', 'todo').order('created_at', { ascending: false });
       if (error) { debugConsole.error('Error loading tasks:', error); return; }
 
-      const filteredTasks = (allTenantTasks || []).filter(task: Record<string, any> => 
+      const filteredTasks = (allTenantTasks || []).filter(t(ask: Record<string, any>) => 
         task.user_id === user.id || (task.assigned_to && task.assigned_to.includes(user.id))
       );
       setTasks(filteredTasks);
-      if (filteredTasks.length > 0) await loadTaskDocuments(filteredTasks.map(task: Record<string, any> => task.id));
+      if (filteredTasks.length > 0) await loadTaskDocuments(filteredTasks.map(t(ask: Record<string, any>) => task.id));
     } catch (error) {
       handleAppError(error, { context: 'loadTasks' });
     }
@@ -346,7 +346,7 @@ export function useMeetingsData() {
       const { data, error } = await supabase.from('task_documents').select('id, task_id, file_name, file_path, file_size, file_type, created_at').in('task_id', taskIds);
       if (error) throw error;
       const docsByTaskId: Record<string, AgendaDocument[]> = {};
-      data?.forEach(doc: Record<string, any> => {
+      data?.forEach(d(oc: Record<string, any>) => {
         if (!docsByTaskId[doc.task_id]) docsByTaskId[doc.task_id] = [];
         docsByTaskId[doc.task_id].push({ ...doc, meeting_agenda_item_id: doc.task_id });
       });
@@ -394,12 +394,12 @@ export function useMeetingsData() {
         .from('meeting_agenda_items').select('id, meeting_id, title, description, duration_minutes, order_index, type, parent_id, task_id, result_text, assigned_to, is_completed, completed_at, planning_item_id').eq('meeting_id', meetingId).order('order_index');
       if (error) throw error;
 
-      const mainItems = (data || []).filter(item: Record<string, any> => !item.parent_id).sort((a: Record<string, any>, b: Record<string, any>) => a.order_index - b.order_index);
+      const mainItems = (data || []).filter(i(tem: Record<string, any>) => !item.parent_id).sort((a: Record<string, any>, b: Record<string, any>) => a.order_index - b.order_index);
       const sortedItems: AgendaItem[] = [];
-      mainItems.forEach(main: Record<string, any> => {
+      mainItems.forEach(m(ain: Record<string, any>) => {
         sortedItems.push({ ...main, localKey: main.id, parentLocalKey: undefined });
-        const children = (data || []).filter(item: Record<string, any> => item.parent_id === main.id).sort((a: Record<string, any>, b: Record<string, any>) => a.order_index - b.order_index);
-        children.forEach(child: Record<string, any> => {
+        const children = (data || []).filter(i(tem: Record<string, any>) => item.parent_id === main.id).sort((a: Record<string, any>, b: Record<string, any>) => a.order_index - b.order_index);
+        children.forEach(c(hild: Record<string, any>) => {
           sortedItems.push({ ...child, localKey: child.id, parentLocalKey: child.parent_id ?? undefined });
         });
       });
@@ -419,7 +419,7 @@ export function useMeetingsData() {
         .from('meeting_agenda_documents').select('id, meeting_agenda_item_id, file_name, file_path, file_size, file_type, created_at').in('meeting_agenda_item_id', agendaItemIds);
       if (error) throw error;
       const docsByItemId: Record<string, AgendaDocument[]> = {};
-      data?.forEach(doc: Record<string, any> => {
+      data?.forEach(d(oc: Record<string, any>) => {
         if (!docsByItemId[doc.meeting_agenda_item_id]) docsByItemId[doc.meeting_agenda_item_id] = [];
         docsByItemId[doc.meeting_agenda_item_id].push(doc);
       });

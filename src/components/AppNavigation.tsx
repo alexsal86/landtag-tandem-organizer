@@ -1223,7 +1223,7 @@ export function AppNavigation({
           </div>
         ) : (
           <div className="space-y-0.5 p-2">
-            {caseFiles.map(cf: Record<string, any> => (
+            {caseFiles.map(c(f: Record<string, any>) => (
               <button
                 key={cf.id}
                 onClick={() => handleNavigationClick('casefiles')}

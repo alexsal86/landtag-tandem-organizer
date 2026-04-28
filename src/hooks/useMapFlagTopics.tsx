@@ -66,7 +66,7 @@ export const useMapFlagsTopics = (flagIds: string[]) => {
 
       // Group by flag_id
       const grouped: Record<string, string[]> = {};
-      data?.forEach(item: Record<string, any> => {
+      data?.forEach(i(tem: Record<string, any>) => {
         if (!grouped[item.flag_id]) grouped[item.flag_id] = [];
         grouped[item.flag_id].push(item.topic_id);
       });

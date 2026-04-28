@@ -190,13 +190,13 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       if (agendaError) throw agendaError;
 
       // Step 2: Process carryover items
-      const carryoverItems = agendaItemsData?.filter(item: Record<string, any> => item.carry_over_to_next) || [];
+      const carryoverItems = agendaItemsData?.filter(i(tem: Record<string, any>) => item.carry_over_to_next) || [];
       if (carryoverItems.length > 0) {
         try { await processCarryoverItems(meeting, carryoverItems); } catch (e) { debugConsole.error('Carryover error (non-fatal):', e); }
       }
 
       // Step 3a: Linked task results → child tasks
-      const itemsWithLinkedTaskResult = agendaItemsData?.filter(item: Record<string, any> => item.task_id && item.result_text?.trim()) || [];
+      const itemsWithLinkedTaskResult = agendaItemsData?.filter(i(tem: Record<string, any>) => item.task_id && item.result_text?.trim()) || [];
       for (const item of itemsWithLinkedTaskResult) {
         try {
           const { data: existingTask } = await supabase.from('tasks').select('id, user_id, assigned_to, tenant_id').eq('id', item.task_id!).maybeSingle();
@@ -215,7 +215,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       }
 
       // Step 3b: Create tasks for assigned items without linked task
-      const itemsWithAssignment = agendaItemsData?.filter(item: Record<string, any> => item.assigned_to && !item.task_id) || [];
+      const itemsWithAssignment = agendaItemsData?.filter(i(tem: Record<string, any>) => item.assigned_to && !item.task_id) || [];
       for (const item of itemsWithAssignment) {
         try {
           let assignedUserId: string | null = null;
@@ -227,7 +227,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
           }
 
           const assigneeNames = Array.isArray(item.assigned_to)
-            ? item.assigned_to.flat().filter(Boolean).map(id: Record<string, any> => {
+            ? item.assigned_to.flat().filter(Boolean).map(i(d: Record<string, any>) => {
                 const profile = profiles.find(p => p.user_id === id);
                 return profile?.display_name || 'Unbekannt';
               }).join(', ')
@@ -253,7 +253,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       }
 
       // Step 3c: Birthday follow-up tasks
-      const birthdayItems = agendaItemsData?.filter(item: Record<string, any> => item.system_type === 'birthdays' && item.result_text?.trim()) || [];
+      const birthdayItems = agendaItemsData?.filter(i(tem: Record<string, any>) => item.system_type === 'birthdays' && item.result_text?.trim()) || [];
       for (const birthdayItem of birthdayItems) {
         try {
           const parsedResults = JSON.parse(birthdayItem.result_text || '{}') as Record<string, { action?: 'card' | 'mail' | 'call' | 'gift'; assigned_to?: string[] }>;
@@ -266,7 +266,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
 
           const actionLabelMap: Record<string, string> = { card: 'Karte', mail: 'Mail', call: 'Anruf', gift: 'Geschenk' };
 
-          const tasksToInsert = contactsData.map(contact: Record<string, any> => {
+          const tasksToInsert = contactsData.map(c(ontact: Record<string, any>) => {
             const result = parsedResults[contact.id];
             const action = result?.action;
             if (!action) return null;
@@ -449,7 +449,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
 
       // Step 5f: Write back decision results
       try {
-        const decisionItems = agendaItemsData?.filter(item: Record<string, any> => item.system_type === 'decisions' && item.result_text?.trim()) || [];
+        const decisionItems = agendaItemsData?.filter(i(tem: Record<string, any>) => item.system_type === 'decisions' && item.result_text?.trim()) || [];
         for (const dItem of decisionItems) {
           // Try to find matching decision by title and update it
           const { data: matchedDecisions } = await supabase

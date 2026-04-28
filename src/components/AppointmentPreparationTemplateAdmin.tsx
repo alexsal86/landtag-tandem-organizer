@@ -64,7 +64,7 @@ export default function AppointmentPreparationTemplateAdmin() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTemplates((data || []).map(template: Record<string, any> => ({
+      setTemplates((data || []).map(t(emplate: Record<string, any>) => ({
         ...template,
         template_data: Array.isArray(template.template_data) ? template.template_data : []
       })));

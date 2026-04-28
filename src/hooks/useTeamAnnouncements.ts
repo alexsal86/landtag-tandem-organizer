@@ -72,7 +72,7 @@ export function useTeamAnnouncements() {
 
       const profileMap = new Map(profilesData?.map(p: Record<string, any> => [p.user_id, p.display_name]) || []);
 
-      const enrichedAnnouncements = (announcementsData || []).map(announcement: Record<string, any> => ({
+      const enrichedAnnouncements = (announcementsData || []).map(a(nnouncement: Record<string, any>) => ({
         ...announcement,
         priority: announcement.priority as TeamAnnouncement['priority'],
         author_name: profileMap.get(announcement.author_id) || "Unbekannt",

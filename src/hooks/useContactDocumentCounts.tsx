@@ -36,7 +36,7 @@ export const useContactDocumentCounts = (contactIds: string[]) => {
 
         // Count direct documents per contact
         const directCounts: Record<string, number> = {};
-        directData?.forEach(dc: Record<string, any> => {
+        directData?.forEach(d(c: Record<string, any>) => {
           directCounts[dc.contact_id] = (directCounts[dc.contact_id] || 0) + 1;
         });
 
@@ -64,15 +64,15 @@ export const useContactDocumentCounts = (contactIds: string[]) => {
           if (taggedError) throw taggedError;
 
           // Treffer pro Kontakt zählen (bereits stark reduziertes Ergebnis-Set)
-          contactsWithTags.forEach(contact: Record<string, any> => {
+          contactsWithTags.forEach(c(ontact: Record<string, any>) => {
             const contactTags = contact.tags as string[];
-            const matchingDocs = taggedDocs?.filter(doc: Record<string, any> =>
+            const matchingDocs = taggedDocs?.filter(d(oc: Record<string, any>) =>
               doc.tags && (doc.tags as string[]).some(tag => contactTags.includes(tag))
             ) || [];
 
             // Dokumente ausschließen, die bereits über directData gezählt wurden
-            const uniqueMatches = matchingDocs.filter(doc: Record<string, any> =>
-              !directData?.some(dc: Record<string, any> => dc.document_id === doc.id && dc.contact_id === contact.id)
+            const uniqueMatches = matchingDocs.filter(d(oc: Record<string, any>) =>
+              !directData?.some(d(c: Record<string, any>) => dc.document_id === doc.id && dc.contact_id === contact.id)
             );
 
             taggedCounts[contact.id] = uniqueMatches.length;
