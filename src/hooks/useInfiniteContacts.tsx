@@ -163,7 +163,7 @@ export const useInfiniteContacts = ({
         throw error;
       }
 
-      const formattedContacts = data?.map(contact => ({
+      const formattedContacts = data?.map((contact: Record<string, any>) => ({
         id: contact.id,
         contact_type: (contact.contact_type as "person" | "organization" | "archive") || "person",
         name: contact.name,
@@ -199,7 +199,7 @@ export const useInfiniteContacts = ({
           if (sampleInserted && generation === fetchGenerationRef.current) {
             const { data: newData, error: newError, count: newCount } = await buildQuery(0, ITEMS_PER_PAGE);
             if (!newError && newData && generation === fetchGenerationRef.current) {
-              const newFormattedContacts = newData.map(contact => ({
+              const newFormattedContacts = newData.map((contact: Record<string, any>) => ({
                 id: contact.id,
                 contact_type: (contact.contact_type as "person" | "organization" | "archive") || "person",
                 name: contact.name,
