@@ -24,18 +24,18 @@ import { useMyWorkShellData } from "@/components/my-work/hooks/useMyWorkShellDat
 import { trackPageVisit } from "@/hooks/useRecentlyVisited";
 import { MY_WORK_TABS } from "@/components/my-work/myWorkTabs";
 
-const MyWorkQuickCapture = lazyWithRetry(() => import("./my-work/MyWorkQuickCapture").then(m => ({ default: m.MyWorkQuickCapture })));
-const MyWorkNotesList = lazyWithRetry(() => import("./my-work/MyWorkNotesList").then(m => ({ default: m.MyWorkNotesList })));
-const MyWorkTasksTab = lazyWithRetry(() => import("./my-work/MyWorkTasksTab").then(m => ({ default: m.MyWorkTasksTab })));
-const MyWorkDecisionsTab = lazyWithRetry(() => import("./my-work/MyWorkDecisionsTab").then(m => ({ default: m.MyWorkDecisionsTab })));
-const MyWorkCasesWorkspace = lazyWithRetry(() => import("./my-work/MyWorkCasesWorkspace").then(m => ({ default: m.MyWorkCasesWorkspace })));
-const MyWorkTeamTab = lazyWithRetry(() => import("./my-work/MyWorkTeamTab").then(m => ({ default: m.MyWorkTeamTab })));
-const MyWorkRedaktionTab = lazyWithRetry(() => import("./my-work/MyWorkRedaktionTab").then(m => ({ default: m.MyWorkRedaktionTab })));
-const MyWorkTerminePlanungTab = lazyWithRetry(() => import("./my-work/MyWorkTerminePlanungTab").then(m => ({ default: m.MyWorkTerminePlanungTab })));
-const MyWorkTimeTrackingTab = lazyWithRetry(() => import("./my-work/MyWorkTimeTrackingTab").then(m => ({ default: m.MyWorkTimeTrackingTab })));
-const MyWorkAppointmentFeedbackTab = lazyWithRetry(() => import("./my-work/MyWorkAppointmentFeedbackTab").then(m => ({ default: m.MyWorkAppointmentFeedbackTab })));
-const MyWorkFeedbackFeedTab = lazyWithRetry(() => import("./my-work/MyWorkFeedbackFeedTab").then(m => ({ default: m.MyWorkFeedbackFeedTab })));
-const MyWorkDashboardTab = lazyWithRetry(() => import("./my-work/MyWorkDashboardTab").then(m => ({ default: m.MyWorkDashboardTab })));
+const MyWorkQuickCapture = lazyWithRetry(() => import("@/components/my-work/MyWorkQuickCapture").then(m => ({ default: m.MyWorkQuickCapture })));
+const MyWorkNotesList = lazyWithRetry(() => import("@/components/my-work/MyWorkNotesList").then(m => ({ default: m.MyWorkNotesList })));
+const MyWorkTasksTab = lazyWithRetry(() => import("@/components/my-work/MyWorkTasksTab").then(m => ({ default: m.MyWorkTasksTab })));
+const MyWorkDecisionsTab = lazyWithRetry(() => import("@/components/my-work/MyWorkDecisionsTab").then(m => ({ default: m.MyWorkDecisionsTab })));
+const MyWorkCasesWorkspace = lazyWithRetry(() => import("@/components/my-work/MyWorkCasesWorkspace").then(m => ({ default: m.MyWorkCasesWorkspace })));
+const MyWorkTeamTab = lazyWithRetry(() => import("@/components/my-work/MyWorkTeamTab").then(m => ({ default: m.MyWorkTeamTab })));
+const MyWorkRedaktionTab = lazyWithRetry(() => import("@/components/my-work/MyWorkRedaktionTab").then(m => ({ default: m.MyWorkRedaktionTab })));
+const MyWorkTerminePlanungTab = lazyWithRetry(() => import("@/components/my-work/MyWorkTerminePlanungTab").then(m => ({ default: m.MyWorkTerminePlanungTab })));
+const MyWorkTimeTrackingTab = lazyWithRetry(() => import("@/components/my-work/MyWorkTimeTrackingTab").then(m => ({ default: m.MyWorkTimeTrackingTab })));
+const MyWorkAppointmentFeedbackTab = lazyWithRetry(() => import("@/components/my-work/MyWorkAppointmentFeedbackTab").then(m => ({ default: m.MyWorkAppointmentFeedbackTab })));
+const MyWorkFeedbackFeedTab = lazyWithRetry(() => import("@/components/my-work/MyWorkFeedbackFeedTab").then(m => ({ default: m.MyWorkFeedbackFeedTab })));
+const MyWorkDashboardTab = lazyWithRetry(() => import("@/components/my-work/MyWorkDashboardTab").then(m => ({ default: m.MyWorkDashboardTab })));
 
 export function MyWorkView() {
   const { app_logo_url } = useAppSettings();
