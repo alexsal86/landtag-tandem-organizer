@@ -229,7 +229,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
 
         setUserProfiles((prev) => {
           const next = { ...prev };
-          profiles.forEach((profile: Record<string, any>) => {
+          profiles.forEach((profile: UserProfileData) => {
             next[profile.user_id] = profile;
           });
           userProfilesRef.current = next;

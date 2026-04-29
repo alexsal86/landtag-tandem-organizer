@@ -227,7 +227,7 @@ export function useTasksData(options?: { enabled?: boolean }): UseTasksDataRetur
       const detailsMap: Record<string, TaskDocumentInfo[]> = {};
       (data || []).forEach((doc: Record<string, any>) => {
         if (!detailsMap[doc.task_id]) detailsMap[doc.task_id] = [];
-        detailsMap[doc.task_id].push(doc);
+        detailsMap[doc.task_id].push(doc as TaskDocumentInfo);
       });
       setTaskDocumentDetails(detailsMap);
     } catch (error) {
@@ -337,7 +337,7 @@ export function useTasksData(options?: { enabled?: boolean }): UseTasksDataRetur
 
       const taskTitles: { [taskId: string]: string } = {};
       if (taskSnoozesData && taskSnoozesData.length > 0) {
-        const taskIds = taskSnoozesData.map((s: Record<string, any>) => s.task_id).filter((id: Record<string, any>): id is string => id != null);
+        const taskIds = taskSnoozesData.map((s: { task_id: string | null }) => s.task_id).filter((id: string | null): id is string => id != null);
         if (taskIds.length > 0) {
           const { data: tasksData } = await supabase.from('tasks').select('id, title').in('id', taskIds);
           tasksData?.forEach((task: Record<string, any>) => { taskTitles[task.id] = task.title; });

@@ -216,7 +216,7 @@ export const useAppointmentFeedback = () => {
 
         if (!insertError && newFeedback) {
           // Füge neue Feedback-Einträge zur Map hinzu
-          newFeedback.forEach((f: Record<string, any>) => feedbackMap.set(f.external_event_id, f));
+          newFeedback.forEach((f: AppointmentFeedbackRow) => feedbackMap.set(f.external_event_id, f));
         }
       }
 

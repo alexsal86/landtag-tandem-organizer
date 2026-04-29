@@ -134,7 +134,7 @@ const fetchTasks = async (userId: string, tenantId?: string): Promise<TasksQuery
       continue;
     }
 
-    (subtaskData || []).forEach((subtask: Record<string, any>) => {
+    (subtaskData || []).forEach((subtask: MyWorkTask) => {
       allSubtasksData.push(subtask);
       if (subtask.id && !seenParentIds.has(subtask.id)) queuedParentIds.push(subtask.id);
     });

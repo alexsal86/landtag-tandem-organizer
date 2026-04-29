@@ -22,7 +22,7 @@ export function InboxView() {
         </div>
       ) : (
         <div className="space-y-2">
-          {entries.map((entry: Record<string, any>) => (
+          {entries.map((entry: DossierEntry) => (
             <EntryCard key={entry.id} entry={entry} />
           ))}
         </div>
