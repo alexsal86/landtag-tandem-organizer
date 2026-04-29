@@ -11,7 +11,7 @@ import { useNavWidth } from "@/hooks/useNavWidth";
 // Lazy load all major view components for better initial load performance
 const CustomizableDashboard = lazyWithRetry(() => import("@/components/CustomizableDashboard").then(m => ({ default: m.CustomizableDashboard })));
 const CalendarView = lazyWithRetry(() => import("@/components/CalendarView").then(m => ({ default: m.CalendarView })));
-const ContactsView = lazyWithRetry(() => import("@/components/ContactsView").then(m => ({ default: m.ContactsView })));
+const ContactsView = lazyWithRetry(() => import("@/features/contacts/components/ContactsView").then(m => ({ default: m.ContactsView })));
 const DocumentsView = lazyWithRetry(() => import("@/components/DocumentsView").then(m => ({ default: m.DocumentsView as React.ComponentType })));
 const KnowledgeBaseView = lazyWithRetry(() => import("@/features/knowledge"));
 const TasksView = lazyWithRetry(() => import("@/components/TasksView").then(m => ({ default: m.TasksView })));
