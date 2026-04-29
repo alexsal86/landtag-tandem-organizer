@@ -16,7 +16,7 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { EmployeeMeetingPDFExport } from "@/components/EmployeeMeetingPDFExport";
+import { EmployeeMeetingPDFExport } from "@/features/employees/components/EmployeeMeetingPDFExport";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { cn } from "@/lib/utils";

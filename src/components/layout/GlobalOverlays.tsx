@@ -11,7 +11,7 @@ const GlobalDaySlipPanel = lazyWithRetry(() =>
   import("@/components/GlobalDaySlipPanel").then(m => ({ default: m.GlobalDaySlipPanel }))
 );
 const GlobalAppointmentRequestDialog = lazyWithRetry(() =>
-  import("@/components/GlobalAppointmentRequestDialog").then(m => ({ default: m.GlobalAppointmentRequestDialog }))
+  import("@/features/appointments/components/GlobalAppointmentRequestDialog").then(m => ({ default: m.GlobalAppointmentRequestDialog }))
 );
 
 export const GlobalOverlays = () => {

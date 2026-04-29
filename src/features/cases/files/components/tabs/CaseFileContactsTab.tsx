@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Plus, Trash2, Users, Mail, Phone, Building2 } from "lucide-react";
-import { ContactSelector } from "@/components/ContactSelector";
+import { ContactSelector } from "@/features/contacts/components/ContactSelector";
 import {
   Dialog,
   DialogContent,

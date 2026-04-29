@@ -8,7 +8,7 @@ import { AlertCircle, ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useYearlyBalance } from "@/hooks/useYearlyBalance";
-import { AdminTimeEntryEditor, type EntryType } from "@/components/AdminTimeEntryEditor";
+import { AdminTimeEntryEditor, type EntryType } from "@/features/timetracking/components/AdminTimeEntryEditor";
 import type { CombinedTimeEntry } from "@/hooks/useCombinedTimeEntries";
 
 import { useAdminAccessControl } from "./hooks/useAdminAccessControl";

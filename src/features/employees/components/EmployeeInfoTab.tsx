@@ -7,8 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { format, formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
-import { EmployeeMeetingHistory } from "@/components/EmployeeMeetingHistory";
-import { EmployeeMeetingRequestDialog } from "@/components/EmployeeMeetingRequestDialog";
+import { EmployeeMeetingHistory } from "@/features/employees/components/EmployeeMeetingHistory";
+import { EmployeeMeetingRequestDialog } from "@/features/employees/components/EmployeeMeetingRequestDialog";
 
 interface EmployeeSettingsRow {
   user_id: string;

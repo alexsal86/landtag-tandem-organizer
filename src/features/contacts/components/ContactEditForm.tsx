@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { isValidEmail, findPotentialDuplicates, DuplicateMatch, type Contact as UtilContact } from "@/lib/utils";
-import { DuplicateWarning } from "@/components/DuplicateWarning";
+import { DuplicateWarning } from "@/features/contacts/components/DuplicateWarning";
 import { ImageCropper } from "@/components/ui/ImageCropper";
 
 import { TagInput } from "@/components/ui/tag-input";

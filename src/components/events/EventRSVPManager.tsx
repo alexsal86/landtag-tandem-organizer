@@ -17,7 +17,7 @@ import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/hooks/useTenant';
-import { ContactSelector } from '@/components/ContactSelector';
+import { ContactSelector } from '@/features/contacts/components/ContactSelector';
 import { debugConsole } from '@/utils/debugConsole';
 
 interface EventRSVP {
