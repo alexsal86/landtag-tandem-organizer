@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import type { EntryType } from "@/components/AdminTimeEntryEditor";
+import type { EntryType } from "@/features/timetracking/components/AdminTimeEntryEditor";
 import { validateDailyLimit } from "../utils/validationHelpers";
 import { fmt, getTypeLabel } from "../utils/timeFormatting";
 

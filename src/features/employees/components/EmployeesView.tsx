@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Calendar, BarChart3, Clock, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { EmployeeMeetingScheduler } from "@/components/EmployeeMeetingScheduler";
-import { EmployeeMeetingHistory } from "@/components/EmployeeMeetingHistory";
-import { EmployeeMeetingRequestManager } from "@/components/EmployeeMeetingRequestManager";
-import { EmployeeYearlyStatsView } from "@/components/EmployeeYearlyStatsView";
+import { EmployeeMeetingScheduler } from "@/features/employees/components/EmployeeMeetingScheduler";
+import { EmployeeMeetingHistory } from "@/features/employees/components/EmployeeMeetingHistory";
+import { EmployeeMeetingRequestManager } from "@/features/employees/components/EmployeeMeetingRequestManager";
+import { EmployeeYearlyStatsView } from "@/features/employees/components/EmployeeYearlyStatsView";
 import { AdminTimeTrackingView } from "@/components/admin/AdminTimeTrackingView";
 
 import { useEmployeesData } from "@/components/employees/hooks/useEmployeesData";

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { ContactDetailPanel } from "@/components/ContactDetailPanel";
+import { ContactDetailPanel } from "@/features/contacts/components/ContactDetailPanel";
 
 interface ContactsSidePanelProps {
   activeTab: string;

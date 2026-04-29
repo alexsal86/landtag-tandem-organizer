@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertCircle } from "lucide-react";
-import type { EntryType } from "@/components/AdminTimeEntryEditor";
+import type { EntryType } from "@/features/timetracking/components/AdminTimeEntryEditor";
 import { fmt } from "../utils/timeFormatting";
 import type { NewEntryFormData } from "../hooks/useAdminEntryCreation";
 import type { Employee } from "../types";

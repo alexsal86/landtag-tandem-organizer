@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { VacationHistoryDialog } from "@/components/VacationHistoryDialog";
+import { VacationHistoryDialog } from "@/features/timetracking/components/VacationHistoryDialog";
 import { DeputySelect } from "./DeputySelect";
 import { VacationChecklistForm, useVacationChecklistItems } from "./VacationChecklistForm";
 import type { ChecklistItem } from "./VacationChecklistForm";

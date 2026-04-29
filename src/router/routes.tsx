@@ -18,7 +18,7 @@ const CaseItemDetail = lazyWithRetry(() =>
   import("@/features/cases/items/pages").then((m) => ({ default: m.CaseItemDetail }))
 );
 const TaskArchiveView = lazyWithRetry(() =>
-  import("@/components/TaskArchiveView").then((module) => ({ default: module.TaskArchiveView }))
+  import("@/features/tasks/components/TaskArchiveView").then((module) => ({ default: module.TaskArchiveView }))
 );
 const Auth = lazyWithRetry(() => import("@/pages/Auth"));
 const NotFound = lazyWithRetry(() => import("@/pages/NotFound"));

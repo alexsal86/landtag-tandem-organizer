@@ -11,7 +11,7 @@ import { CalendarEvent } from "./types";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatEventDisplay } from "@/lib/timeUtils";
-import { GuestManager } from "../GuestManager";
+import { GuestManager } from "@/features/appointments/components/GuestManager";
 import { useTenant } from "@/hooks/useTenant";
 import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";

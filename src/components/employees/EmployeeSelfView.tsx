@@ -4,8 +4,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
-import { EmployeeMeetingRequestDialog } from "@/components/EmployeeMeetingRequestDialog";
-import { EmployeeMeetingHistory } from "@/components/EmployeeMeetingHistory";
+import { EmployeeMeetingRequestDialog } from "@/features/employees/components/EmployeeMeetingRequestDialog";
+import { EmployeeMeetingHistory } from "@/features/employees/components/EmployeeMeetingHistory";
 import { Loader2 } from "lucide-react";
 import { EmployeeSettingsRow, LeaveAgg, Profile } from "./types";
 

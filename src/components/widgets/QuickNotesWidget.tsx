@@ -13,7 +13,7 @@ import { debugConsole } from '@/utils/debugConsole';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
-import { TaskDetailSidebar } from '@/components/TaskDetailSidebar';
+import { TaskDetailSidebar } from '@/features/tasks/components/TaskDetailSidebar';
 import { QuickNotesList } from '@/components/shared/QuickNotesList';
 import SimpleRichTextEditor from '@/components/ui/SimpleRichTextEditor';
 import type { Task } from '@/components/task-detail/types';

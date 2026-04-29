@@ -43,7 +43,7 @@ vi.mock("@/hooks/useCombinedTimeEntries", () => ({
   useCombinedTimeEntries: () => [],
 }));
 
-vi.mock("@/components/AdminTimeEntryEditor", () => ({
+vi.mock("@/features/timetracking/components/AdminTimeEntryEditor", () => ({
   AdminTimeEntryEditor: () => <div>editor</div>,
 }));
 

@@ -7,7 +7,7 @@ import { MessageCircle, Clipboard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMessagesRealtime } from "@/hooks/useMessagesRealtime";
-import { BlackBoard } from "./BlackBoard";
+import { BlackBoard } from "@/features/dashboard/components/BlackBoard";
 import { MessageSystem } from "./MessageSystem";
 
 interface CombinedMessagesWidgetProps {

@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { ContactSelector } from "../ContactSelector";
+import { ContactSelector } from "@/features/contacts/components/ContactSelector";
 
 interface FundingFormData {
   title: string;

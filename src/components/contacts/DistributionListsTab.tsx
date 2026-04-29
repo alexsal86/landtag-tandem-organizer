@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Plus, Users, Edit, Trash2, ChevronDown, ChevronUp } from "lucide-react";
-import { DistributionListForm } from "@/components/DistributionListForm";
+import { DistributionListForm } from "@/features/contacts/components/DistributionListForm";
 import { DistributionList } from "./hooks/useContactsViewState";
 import type { DistributionListMember } from "./hooks/useContactsDistributionLists";
 

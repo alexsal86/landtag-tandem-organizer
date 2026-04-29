@@ -16,7 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { isValidEmail } from '@/lib/utils';
-import { ContactSelector, type ContactSelectorContact } from '@/components/ContactSelector';
+import { ContactSelector, type ContactSelectorContact } from '@/features/contacts/components/ContactSelector';
 
 interface TimeSlot {
   id: string;

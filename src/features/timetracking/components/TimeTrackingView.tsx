@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { EmployeeInfoTab } from "@/components/EmployeeInfoTab";
+import { EmployeeInfoTab } from "@/features/employees/components/EmployeeInfoTab";
 import { LeaveRequestsTab } from "@/components/timetracking/LeaveRequestsTab";
 import { useTimeTrackingData } from "@/components/timetracking/hooks/useTimeTrackingData";
 import { useTimeTrackingOperations } from "@/components/timetracking/hooks/useTimeTrackingOperations";

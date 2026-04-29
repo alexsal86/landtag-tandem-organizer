@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft } from "lucide-react";
-import { EmployeeMeetingProtocol } from "@/components/EmployeeMeetingProtocol";
+import { EmployeeMeetingProtocol } from "@/features/employees/components/EmployeeMeetingProtocol";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";

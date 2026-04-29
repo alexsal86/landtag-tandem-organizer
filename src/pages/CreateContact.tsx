@@ -23,7 +23,7 @@ import {
   DuplicateMatch,
   type Contact,
 } from "@/lib/utils";
-import { DuplicateWarning } from "@/components/DuplicateWarning";
+import { DuplicateWarning } from "@/features/contacts/components/DuplicateWarning";
 import { TagInput } from "@/components/ui/tag-input";
 import type { ContactCategory, ContactDuplicateCandidate, ContactPriority, EditableContact } from "@/types/contact";
 import { createContactSchema } from "@/features/contacts/schemas/contact.schema";
