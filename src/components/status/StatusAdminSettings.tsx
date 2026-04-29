@@ -24,7 +24,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, GripVertical, Palette } from 'lucide-react';
 import { StatusOption } from '@/hooks/useUserStatus';
-import { EmojiPicker } from './EmojiPicker';
+import { EmojiPicker } from '@/components/EmojiPicker';
 import { debugConsole } from '@/utils/debugConsole';
 import { useTenant } from "@/hooks/useTenant";
 

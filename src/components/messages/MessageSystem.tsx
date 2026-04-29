@@ -10,7 +10,7 @@ import { useMessagesRealtime } from "@/hooks/useMessagesRealtime";
 import { MessageComposer } from "./MessageComposer";
 import { toast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
-import { ReceivedMessageCard, SentMessageCard, ArchivedMessageCard, PaginationControls } from "./messages/MessageCard";
+import { ReceivedMessageCard, SentMessageCard, ArchivedMessageCard, PaginationControls } from "@/components/messages/MessageCard";
 import type {
   ConfirmationRow,
   MessageItem,

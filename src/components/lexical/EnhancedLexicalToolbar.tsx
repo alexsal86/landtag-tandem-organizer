@@ -16,7 +16,7 @@ import {
 import { INSERT_HORIZONTAL_RULE_COMMAND } from '@lexical/react/LexicalHorizontalRuleNode';
 import { INSERT_TABLE_COMMAND } from '@lexical/table';
 import { $setBlocksType } from '@lexical/selection';
-import { $createImageNode } from './nodes/ImageNode';
+import { $createImageNode } from '@/components/nodes/ImageNode';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
@@ -50,13 +50,13 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { VersionHistoryPlugin } from './plugins/VersionHistoryPlugin';
-import FontSizePlugin from './plugins/FontSizePlugin';
-import FontFamilyPlugin from './plugins/FontFamilyPlugin';
-import { TextColorPlugin } from './plugins/TextColorPlugin';
-import { TextAlignmentPlugin } from './plugins/TextAlignmentPlugin';
-import { LineHeightPlugin } from './plugins/LineHeightPlugin';
-import { ImageUploadDialog } from './plugins/ImagePlugin';
+import { VersionHistoryPlugin } from '@/components/plugins/VersionHistoryPlugin';
+import FontSizePlugin from '@/components/plugins/FontSizePlugin';
+import FontFamilyPlugin from '@/components/plugins/FontFamilyPlugin';
+import { TextColorPlugin } from '@/components/plugins/TextColorPlugin';
+import { TextAlignmentPlugin } from '@/components/plugins/TextAlignmentPlugin';
+import { LineHeightPlugin } from '@/components/plugins/LineHeightPlugin';
+import { ImageUploadDialog } from '@/components/plugins/ImagePlugin';
 import { Input } from '@/components/ui/input';
 import {
   Dialog,

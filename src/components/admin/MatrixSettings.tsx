@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import { supabase } from "@/integrations/supabase/client";
 import { MatrixMorningSettings } from "./MatrixMorningSettings";
-import { MatrixLoginForm } from "./chat/MatrixLoginForm";
+import { MatrixLoginForm } from "@/components/chat/MatrixLoginForm";
 
 interface MatrixSubscription {
   id: string;
