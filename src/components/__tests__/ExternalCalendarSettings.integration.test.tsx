@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
-import { ExternalCalendarSettings } from "@/components/ExternalCalendarSettings";
+import { ExternalCalendarSettings } from "@/features/calendar/components/ExternalCalendarSettings";
 import { mockSupabaseClient } from "@/test/mockSupabaseClient";
 
 const toastSuccess = vi.fn();

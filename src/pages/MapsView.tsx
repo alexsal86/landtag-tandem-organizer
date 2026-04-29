@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ElectionDistrictsView } from '@/components/ElectionDistrictsView';
+import { ElectionDistrictsView } from '@/features/election-districts/components/ElectionDistrictsView';
 import { KarlsruheDistrictsView } from '@/components/karlsruhe/KarlsruheDistrictsView';
 import { MapPin, Building2 } from 'lucide-react';
 

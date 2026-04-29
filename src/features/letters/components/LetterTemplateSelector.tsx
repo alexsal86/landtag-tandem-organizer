@@ -13,7 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import LetterTemplateManager from '@/components/LetterTemplateManager';
+import LetterTemplateManager from '@/features/letters/components/LetterTemplateManager';
 import { debugConsole } from '@/utils/debugConsole';
 import type { Database } from '@/integrations/supabase/types';
 import type { LetterTemplate } from '@/components/letters/types';
