@@ -206,7 +206,7 @@ export const useDecisionOverviewData = () => {
             isParticipant: true,
           });
         } else {
-          decisionsMap.set(participantDecision.id, participantDecision);
+          decisionsMap.set(participantDecision.id, participantDecision as DecisionRequest);
         }
       });
 

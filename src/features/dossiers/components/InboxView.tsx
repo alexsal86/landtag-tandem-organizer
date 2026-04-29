@@ -2,6 +2,7 @@ import { useInboxEntries } from "../hooks/useDossierEntries";
 import { QuickCapture } from "./QuickCapture";
 import { EntryCard } from "./EntryCard";
 import { Loader2, Inbox } from "lucide-react";
+import type { DossierEntry } from "../types";
 
 export function InboxView() {
   const { data: entries, isLoading } = useInboxEntries();
