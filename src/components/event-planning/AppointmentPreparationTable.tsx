@@ -1,7 +1,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { NewItemIndicator } from "../NewItemIndicator";
+import { NewItemIndicator } from "@/components/notifications/NewItemIndicator";
 import { CheckCircle, Clock, FileEdit, Archive } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";

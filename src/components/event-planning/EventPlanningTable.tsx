@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { UserBadge } from "@/components/ui/user-badge";
 import { getHashedColor } from "@/utils/userColors";
-import { NewItemIndicator } from "../NewItemIndicator";
+import { NewItemIndicator } from "@/components/notifications/NewItemIndicator";
 import { CheckCircle, Clock, Archive, MoreVertical } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { QuickAccessMenuItem } from "@/components/shared/QuickAccessMenuItem";

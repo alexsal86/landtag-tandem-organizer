@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, type ElementType } from "react";
-import { NavDossierCapture } from "@/components/NavDossierCapture";
+import { NavDossierCapture } from "@/components/search/NavDossierCapture";
 import { useNavigate } from "react-router-dom";
 import { 
   Home, 

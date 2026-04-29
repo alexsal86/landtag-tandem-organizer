@@ -11,7 +11,7 @@ import { debugConsole } from '@/utils/debugConsole';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { UserBadge } from "@/components/ui/user-badge";
 import { getHashedColor } from "@/utils/userColors";
-import { NewItemIndicator } from "../NewItemIndicator";
+import { NewItemIndicator } from "@/components/notifications/NewItemIndicator";
 import { Plus, Calendar as CalendarIcon, Clock, MapPin, Archive, Grid, List, Users, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";

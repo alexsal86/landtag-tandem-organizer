@@ -5,7 +5,7 @@ import { formatEventDisplay, isMultiDayEvent, getEventDays } from "@/lib/timeUti
 import { FileText, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNewItemIndicators } from "@/hooks/useNewItemIndicators";
-import { NewItemIndicator } from "../NewItemIndicator";
+import { NewItemIndicator } from "@/components/notifications/NewItemIndicator";
 
 interface DayViewProps {
   date: Date;
