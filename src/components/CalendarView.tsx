@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ProperReactBigCalendar } from "./calendar/ProperReactBigCalendar";
 import { AppointmentDetailsSidebar } from "./calendar/AppointmentDetailsSidebar";
-import AppointmentPreparationSidebar from "./AppointmentPreparationSidebar";
+import AppointmentPreparationSidebar from "@/features/appointments/components/AppointmentPreparationSidebar";
 import { PollListView } from "./poll/PollListView";
 import { CalendarHeader } from "./calendar/CalendarHeader";
 import { useCalendarData } from "./calendar/hooks/useCalendarData";
