@@ -15,11 +15,11 @@ import { debugConsole } from "@/utils/debugConsole";
 import { ContactEditForm } from "./ContactEditForm";
 import { CallLogWidget } from "@/components/widgets/CallLogWidget";
 import { formatGermanDate } from "@/lib/utils";
-import { ActivityTimeline } from "./contacts/ActivityTimeline";
-import { ContactDocumentList } from "./contacts/ContactDocumentList";
+import { ActivityTimeline } from "@/components/contacts/ActivityTimeline";
+import { ContactDocumentList } from "@/components/contacts/ContactDocumentList";
 import { useContactDocuments } from "@/hooks/useContactDocuments";
-import { FundingDialog } from "./contacts/FundingDialog";
-import { ContactFundingsList } from "./contacts/ContactFundingsList";
+import { FundingDialog } from "@/components/contacts/FundingDialog";
+import { ContactFundingsList } from "@/components/contacts/ContactFundingsList";
 import { useContactFundings } from "@/hooks/useContactFundings";
 
 interface CallLog {

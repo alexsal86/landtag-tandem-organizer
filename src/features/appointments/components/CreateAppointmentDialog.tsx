@@ -14,7 +14,7 @@ import { GuestManager } from "@/features/appointments/components/GuestManager";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
 import { TopicSelector } from "@/components/topics/TopicSelector";
-import { useCreateAppointment } from "./appointments/hooks/useCreateAppointment";
+import { useCreateAppointment } from "@/components/appointments/hooks/useCreateAppointment";
 
 interface CreateAppointmentDialogProps {
   open: boolean;

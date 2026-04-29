@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import { useContactImport } from "./contact-import/hooks/useContactImport";
-import { ImportSteps } from "./contact-import/ImportSteps";
+import { useContactImport } from "@/components/contact-import/hooks/useContactImport";
+import { ImportSteps } from "@/components/contact-import/ImportSteps";
 import { ContactImportDuplicateDialog } from "@/components/contacts/ContactImportDuplicateDialog";
 
 export function ContactImport() {

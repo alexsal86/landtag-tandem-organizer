@@ -3,20 +3,20 @@ import { Link, useNavigate } from "react-router-dom";
 import { Plus, Filter, Grid3X3, List, User, CheckSquare, Square, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ContactDetailSheet } from "./ContactDetailSheet";
-import { InfiniteScrollTrigger } from "./InfiniteScrollTrigger";
+import { InfiniteScrollTrigger } from "@/components/InfiniteScrollTrigger";
 import { ContactSkeleton } from "./ContactSkeleton";
 import { StakeholderView } from "./StakeholderView";
-import { DuplicateContactsSheet } from "./contacts/DuplicateContactsSheet";
-import { BulkActionsToolbar } from "./contacts/BulkActionsToolbar";
+import { DuplicateContactsSheet } from "@/components/contacts/DuplicateContactsSheet";
+import { BulkActionsToolbar } from "@/components/contacts/BulkActionsToolbar";
 import { StakeholderNetworkPage } from "@/components/contacts/StakeholderNetworkPage";
-import { ContactsSidePanel } from "./contacts/ContactsSidePanel";
+import { ContactsSidePanel } from "@/components/contacts/ContactsSidePanel";
 
-import { useContactsViewState } from "./contacts/hooks/useContactsViewState";
-import { ContactGridCard } from "./contacts/ContactGridCard";
-import { ContactListTable } from "./contacts/ContactListTable";
-import { DistributionListsTab } from "./contacts/DistributionListsTab";
-import { ArchiveTab } from "./contacts/ArchiveTab";
-import { Card, CardContent } from "./ui/card";
+import { useContactsViewState } from "@/components/contacts/hooks/useContactsViewState";
+import { ContactGridCard } from "@/components/contacts/ContactGridCard";
+import { ContactListTable } from "@/components/contacts/ContactListTable";
+import { DistributionListsTab } from "@/components/contacts/DistributionListsTab";
+import { ArchiveTab } from "@/components/contacts/ArchiveTab";
+import { Card, CardContent } from "@/components/ui/card";
 
 export function ContactsView() {
   const s = useContactsViewState();

@@ -14,7 +14,7 @@ import { de } from "date-fns/locale";
 import { Calendar, CheckCircle2, Loader2, X, AlertCircle } from "lucide-react";
 import { EmployeeMeetingScheduler } from "./EmployeeMeetingScheduler";
 import { debugConsole } from "@/utils/debugConsole";
-import { fetchPendingMeetingRequests, PendingMeetingRequest } from "./employees/hooks/meetingRequests";
+import { fetchPendingMeetingRequests, PendingMeetingRequest } from "@/components/employees/hooks/meetingRequests";
 
 interface MeetingRequestManagerProps {
   onPendingCountChange?: (count: number) => void;

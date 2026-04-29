@@ -5,9 +5,9 @@ import { Contact } from "@/hooks/useInfiniteContacts";
 import { Link } from "react-router-dom";
 import { StakeholderToDistributionDialog } from "./StakeholderToDistributionDialog";
 import { useContactDocumentCounts } from "@/hooks/useContactDocumentCounts";
-import { useStakeholderTopics } from "./stakeholders/hooks/useStakeholderTopics";
-import { StakeholderGridView } from "./stakeholders/StakeholderGridView";
-import { StakeholderListView } from "./stakeholders/StakeholderListView";
+import { useStakeholderTopics } from "@/components/stakeholders/hooks/useStakeholderTopics";
+import { StakeholderGridView } from "@/components/stakeholders/StakeholderGridView";
+import { StakeholderListView } from "@/components/stakeholders/StakeholderListView";
 
 interface StakeholderViewProps {
   stakeholders: Contact[];
