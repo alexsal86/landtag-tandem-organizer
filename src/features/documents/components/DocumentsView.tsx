@@ -27,13 +27,13 @@ import { de } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
 
-import LetterEditor from "@/components/LetterEditor";
+import LetterEditor from "@/features/letters/components/LetterEditor";
 import { PressReleasesList } from "@/components/press/PressReleasesList";
 import { PressReleaseEditor } from "@/components/press/PressReleaseEditor";
 import { PressReleaseWizard, type PressWizardResult } from "@/components/press/PressReleaseWizard";
 import { LetterWizard } from "@/components/letters/LetterWizard";
-import LetterPDFExport from "@/components/LetterPDFExport";
-import LetterDOCXExport from "@/components/LetterDOCXExport";
+import LetterPDFExport from "@/features/letters/components/LetterPDFExport";
+import LetterDOCXExport from "@/features/letters/components/LetterDOCXExport";
 import { EmailComposer } from "@/components/emails/EmailComposer";
 import { EmailHistory } from "@/components/emails/EmailHistory";
 import { EmailTemplateManager } from "@/components/emails/EmailTemplateManager";
