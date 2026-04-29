@@ -5,8 +5,8 @@ import { $createHorizontalRuleNode, HorizontalRuleNode } from "@lexical/react/Le
 import { ParagraphNode } from "lexical";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
-import { DaySlipLineNode, $createDaySlipLineNode } from "@/components/DaySlipLineNode";
-import { LabeledHorizontalRuleNode, $createLabeledHorizontalRuleNode } from "@/components/LabeledHorizontalRuleNode";
+import { DaySlipLineNode, $createDaySlipLineNode } from "@/components/lexical/DaySlipLineNode";
+import { LabeledHorizontalRuleNode, $createLabeledHorizontalRuleNode } from "@/components/lexical/LabeledHorizontalRuleNode";
 import { getWeekPlanForDay } from "@/components/dayslip/WeekPlanningBanner";
 import {
   type DaySlipStore, type DaySlipDayData, type DaySlipLineEntry, type RecurringTemplate,

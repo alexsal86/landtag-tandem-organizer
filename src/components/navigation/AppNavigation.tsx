@@ -43,7 +43,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { UserStatusSelector } from "@/components/UserStatusSelector";
+import { UserStatusSelector } from "@/components/status/UserStatusSelector";
 import {
   Tooltip,
   TooltipContent,

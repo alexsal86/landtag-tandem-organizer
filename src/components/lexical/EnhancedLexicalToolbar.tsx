@@ -69,8 +69,8 @@ import {
 } from '@/components/ui/dialog';
 import { useSpeechDictation } from '@/hooks/useSpeechDictation';
 
-import { SpeechCommandsDialog } from '@/components/SpeechCommandsDialog';
-import { SpeechSessionStats } from '@/components/SpeechSessionStats';
+import { SpeechCommandsDialog } from '@/components/shared/SpeechCommandsDialog';
+import { SpeechSessionStats } from '@/components/shared/SpeechSessionStats';
 
 interface EnhancedLexicalToolbarProps {
   showFloatingToolbar?: boolean;

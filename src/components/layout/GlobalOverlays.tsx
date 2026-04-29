@@ -2,13 +2,13 @@ import { useState, useEffect } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 
 const GlobalSearchCommand = lazyWithRetry(() =>
-  import("@/components/GlobalSearchCommand").then(m => ({ default: m.GlobalSearchCommand }))
+  import("@/components/search/GlobalSearchCommand").then(m => ({ default: m.GlobalSearchCommand }))
 );
 const GlobalQuickNoteDialog = lazyWithRetry(() =>
-  import("@/components/GlobalQuickNoteDialog").then(m => ({ default: m.GlobalQuickNoteDialog }))
+  import("@/components/search/GlobalQuickNoteDialog").then(m => ({ default: m.GlobalQuickNoteDialog }))
 );
 const GlobalDaySlipPanel = lazyWithRetry(() =>
-  import("@/components/GlobalDaySlipPanel").then(m => ({ default: m.GlobalDaySlipPanel }))
+  import("@/components/dayslip/GlobalDaySlipPanel").then(m => ({ default: m.GlobalDaySlipPanel }))
 );
 const GlobalAppointmentRequestDialog = lazyWithRetry(() =>
   import("@/features/appointments/components/GlobalAppointmentRequestDialog").then(m => ({ default: m.GlobalAppointmentRequestDialog }))

@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Checkbox } from '@/components/ui/checkbox';
 import { CalendarIcon, Plus, Users, X } from 'lucide-react';
 import { TimePickerCombobox } from '@/components/ui/time-picker-combobox';
-import { UserSelector } from '@/components/UserSelector';
+import { UserSelector } from '@/components/admin/UserSelector';
 import { RecurrenceSelector } from '@/components/ui/recurrence-selector';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';

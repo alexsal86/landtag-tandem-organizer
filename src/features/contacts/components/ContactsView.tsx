@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Plus, Filter, Grid3X3, List, User, CheckSquare, Square, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ContactDetailSheet } from "@/features/contacts/components/ContactDetailSheet";
-import { InfiniteScrollTrigger } from "@/components/InfiniteScrollTrigger";
+import { InfiniteScrollTrigger } from "@/components/shared/InfiniteScrollTrigger";
 import { ContactSkeleton } from "@/features/contacts/components/ContactSkeleton";
 import { StakeholderView } from "@/features/contacts/components/StakeholderView";
 import { DuplicateContactsSheet } from "@/components/contacts/DuplicateContactsSheet";

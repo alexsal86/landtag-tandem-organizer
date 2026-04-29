@@ -3,9 +3,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Settings, LogOut, User, Plus, Calendar, Users, FileText, CheckSquare, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { NotificationBell } from '@/components/NotificationBell';
-import { OnlineUsersWidget } from '@/components/OnlineUsersWidget';
-import { UserStatusSelector } from '@/components/UserStatusSelector';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { OnlineUsersWidget } from '@/components/status/OnlineUsersWidget';
+import { UserStatusSelector } from '@/components/status/UserStatusSelector';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useUserStatus } from '@/hooks/useUserStatus';

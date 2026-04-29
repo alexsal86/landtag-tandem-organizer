@@ -7,7 +7,7 @@ import { PressReleaseStatusBadge } from "./PressReleaseStatusBadge";
 import { RevisionCommentDialog } from "./RevisionCommentDialog";
 import { GhostPublishDialog } from "./GhostPublishDialog";
 import { FeatureImagePicker } from "./FeatureImagePicker";
-import EnhancedLexicalEditor from "@/components/EnhancedLexicalEditor";
+import EnhancedLexicalEditor from "@/components/lexical/EnhancedLexicalEditor";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import {

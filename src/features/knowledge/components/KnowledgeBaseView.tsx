@@ -3,7 +3,7 @@ import { trackPageVisit } from '@/hooks/useRecentlyVisited';
 import { Search, Plus, Database, User, ChevronLeft, ChevronRight, Lock, Unlock, Save, Trash2, Upload, MoreVertical } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { QuickAccessMenuItem } from "@/components/shared/QuickAccessMenuItem";
-import EnhancedLexicalEditor from '@/components/EnhancedLexicalEditor';
+import EnhancedLexicalEditor from '@/components/lexical/EnhancedLexicalEditor';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useNotificationHighlight } from '@/hooks/useNotificationHighlight';
 import { cn } from '@/lib/utils';

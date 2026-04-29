@@ -13,7 +13,7 @@ import { WeatherWidget } from '@/components/dashboard/WeatherWidget';
 import { AppointmentFeedbackWidget } from '@/components/dashboard/AppointmentFeedbackWidget';
 import { TasksSummary } from '@/components/dashboard/TasksSummary';
 import { TodaySchedule } from '@/components/dashboard/TodaySchedule';
-import { CombinedMessagesWidget } from '@/components/CombinedMessagesWidget';
+import { CombinedMessagesWidget } from '@/components/messages/CombinedMessagesWidget';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WidgetPalette } from '@/components/dashboard/WidgetPalette';

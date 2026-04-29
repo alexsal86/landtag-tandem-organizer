@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { UserSelector } from '@/components/UserSelector';
+import { UserSelector } from '@/components/admin/UserSelector';
 import { Users, Trash2, Crown, User, UserMinus } from 'lucide-react';
 import { MeetingParticipant } from '@/hooks/useMeetingParticipants';
 

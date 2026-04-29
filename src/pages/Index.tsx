@@ -4,7 +4,7 @@ import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { AppNavigation, getNavigationGroups } from "@/components/AppNavigation";
+import { AppNavigation, getNavigationGroups } from "@/components/navigation/AppNavigation";
 import { prefetchRoute } from "@/lib/routePrefetch";
 import { useNavWidth } from "@/hooks/useNavWidth";
 
@@ -15,7 +15,7 @@ const ContactsView = lazyWithRetry(() => import("@/features/contacts/components/
 const DocumentsView = lazyWithRetry(() => import("@/features/documents/components/DocumentsView").then(m => ({ default: m.DocumentsView as React.ComponentType })));
 const KnowledgeBaseView = lazyWithRetry(() => import("@/features/knowledge"));
 const TasksView = lazyWithRetry(() => import("@/features/tasks/components/TasksView").then(m => ({ default: m.TasksView })));
-const SettingsView = lazyWithRetry(() => import("@/components/SettingsView").then(m => ({ default: m.SettingsView })));
+const SettingsView = lazyWithRetry(() => import("@/components/admin/SettingsView").then(m => ({ default: m.SettingsView })));
 const MeetingsView = lazyWithRetry(() => import("@/features/meetings").then(m => ({ default: m.MeetingsView })));
 const EventPlanningView = lazyWithRetry(() => import("@/features/event-planning/components/EventPlanningView").then(m => ({ default: m.EventPlanningView })));
 const MapsView = lazyWithRetry(() => import("@/pages/MapsView").then(m => ({ default: m.MapsView })));
@@ -29,7 +29,7 @@ const DossiersMainView = lazyWithRetry(() => import("@/features/dossiers/compone
 const MatrixChatView = lazyWithRetry(() => import("@/components/chat/MatrixChatView").then(m => ({ default: m.MatrixChatView })));
 const MatrixClientProvider = lazyWithRetry(() => import("@/contexts/MatrixClientContext").then(m => ({ default: m.MatrixClientProvider })));
 const MyWorkView = lazyWithRetry(() => import("@/features/dashboard/components/MyWorkView").then(m => ({ default: m.MyWorkView })));
-const DataView = lazyWithRetry(() => import("@/components/DataView").then(m => ({ default: m.DataView })));
+const DataView = lazyWithRetry(() => import("@/components/admin/DataView").then(m => ({ default: m.DataView })));
 const EditProfile = lazyWithRetry(() => import("@/pages/EditProfile"));
 const NotificationsPage = lazyWithRetry(() => import("@/pages/NotificationsPage"));
 const LetterDetail = lazyWithRetry(() => import("@/pages/LetterDetail"));
@@ -42,8 +42,8 @@ const GlobalAnnouncementBanner = lazyWithRetry(() => import("@/components/announ
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import { MobileHeader } from "@/components/MobileHeader";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { MobileHeader } from "@/components/navigation/MobileHeader";
+import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { cn } from "@/lib/utils";
 import { SubNavigation } from "@/components/layout/SubNavigation";
 import { MobileSubNavigation } from "@/components/layout/MobileSubNavigation";

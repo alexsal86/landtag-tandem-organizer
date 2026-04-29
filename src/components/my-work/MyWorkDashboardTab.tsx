@@ -6,7 +6,7 @@ import { DashboardAppointments } from '@/components/my-work/MyWorkDashboardAppoi
 import { useDashboardAppointmentsData } from '@/hooks/useDashboardAppointmentsData';
 import { useDashboardDeadlines } from '@/hooks/useDashboardDeadlines';
 import { NewsWidget } from '@/components/widgets/NewsWidget';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { CalendarDays, ClipboardList, Newspaper } from 'lucide-react';
 import { useResolvedUserRole } from '@/hooks/useResolvedUserRole';
 import { BriefingComposerCard, TodayBriefingPanel } from '@/features/briefings';

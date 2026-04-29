@@ -2,13 +2,13 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Save, X, Users, UserPlus, Eye, EyeOff, AlertTriangle, Edit3, FileText, MessageSquare, Ruler, Paperclip, Settings, Layout, Building, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import EnhancedLexicalEditor from '@/components/EnhancedLexicalEditor';
+import EnhancedLexicalEditor from '@/components/lexical/EnhancedLexicalEditor';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 
-import ReviewAssignmentDialog from '@/components/ReviewAssignmentDialog';
-import UserAssignmentDialog from '@/components/UserAssignmentDialog';
+import ReviewAssignmentDialog from '@/components/admin/ReviewAssignmentDialog';
+import UserAssignmentDialog from '@/components/admin/UserAssignmentDialog';
 import { DIN5008LetterLayout } from '@/components/letters/DIN5008LetterLayout';
 import { LetterEditorCanvas } from '@/components/letters/LetterEditorCanvas';
 import { LetterEditorToolbar } from '@/components/letters/LetterEditorToolbar';

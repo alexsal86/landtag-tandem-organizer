@@ -19,7 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { ThemeProvider } from "next-themes";
-import { Navigation } from "@/components/Navigation";
+import { Navigation } from "@/components/navigation/Navigation";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { ImageCropper } from "@/components/ui/ImageCropper";
 import type { ContactCategory, ContactPriority, EditableContact } from "@/types/contact";

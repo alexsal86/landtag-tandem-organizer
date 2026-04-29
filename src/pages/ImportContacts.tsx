@@ -1,6 +1,6 @@
 
 import { ContactImport } from "@/features/contacts/components/ContactImport";
-import { Navigation } from "@/components/Navigation";
+import { Navigation } from "@/components/navigation/Navigation";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { useNavigate } from "react-router-dom";
 

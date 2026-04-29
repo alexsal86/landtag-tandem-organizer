@@ -32,8 +32,8 @@ import { MentionNode } from '@/components/nodes/MentionNode';
 import { MentionsPlugin } from '@/components/plugins/MentionsPlugin';
 import { useSpeechDictation } from '@/hooks/useSpeechDictation';
 import { toast } from 'sonner';
-import { SpeechCommandsDialog } from '@/components/SpeechCommandsDialog';
-import { SpeechSessionStats } from '@/components/SpeechSessionStats';
+import { SpeechCommandsDialog } from '@/components/shared/SpeechCommandsDialog';
+import { SpeechSessionStats } from '@/components/shared/SpeechSessionStats';
 
 interface SimpleRichTextEditorProps {
   /**
