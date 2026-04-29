@@ -12,22 +12,22 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
-import { AssignedItemsSection } from "./tasks/AssignedItemsSection";
+import { AssignedItemsSection } from "@/components/tasks/AssignedItemsSection";
 import { LetterSourceLink } from "@/components/letters/LetterSourceLink";
 import { extractLetterSourceId, stripLetterSourceMarker } from "@/utils/letterSource";
 import { buildFeedbackBackLink } from "@/types/feedbackContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { TaskDetailSidebar } from "./TaskDetailSidebar";
-import { TaskDecisionCreator } from "./task-decisions/TaskDecisionCreator";
-import { TaskDecisionStatus } from "./task-decisions/TaskDecisionStatus";
+import { TaskDecisionCreator } from "@/components/task-decisions/TaskDecisionCreator";
+import { TaskDecisionStatus } from "@/components/task-decisions/TaskDecisionStatus";
 import { useNewItemIndicators } from "@/hooks/useNewItemIndicators";
-import { NewItemIndicator } from "./NewItemIndicator";
+import { NewItemIndicator } from "@/components/NewItemIndicator";
 
-import { useTasksData } from "./tasks/hooks/useTasksData";
-import { useTaskOperations } from "./tasks/hooks/useTaskOperations";
-import { TaskDialogs } from "./tasks/TaskDialogs";
-import type { Task } from "./tasks/types";
+import { useTasksData } from "@/components/tasks/hooks/useTasksData";
+import { useTaskOperations } from "@/components/tasks/hooks/useTaskOperations";
+import { TaskDialogs } from "@/components/tasks/TaskDialogs";
+import type { Task } from "@/components/tasks/types";
 
 export function TasksView() {
   const [searchParams, setSearchParams] = useSearchParams();

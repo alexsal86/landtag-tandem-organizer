@@ -14,7 +14,7 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { PieChart as RechartsPieChart, Cell, ResponsiveContainer, Tooltip, Legend, Pie } from 'recharts';
 import { supabase } from "@/integrations/supabase/client";
-import { useExpenseData } from "./expenses/hooks/useExpenseData";
+import { useExpenseData } from "@/components/expenses/hooks/useExpenseData";
 
 interface PieLabelProps {
   name?: string;

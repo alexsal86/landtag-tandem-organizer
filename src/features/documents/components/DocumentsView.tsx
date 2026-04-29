@@ -27,31 +27,31 @@ import { de } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
 
-import LetterEditor from "./LetterEditor";
-import { PressReleasesList } from "./press/PressReleasesList";
-import { PressReleaseEditor } from "./press/PressReleaseEditor";
-import { PressReleaseWizard, type PressWizardResult } from "./press/PressReleaseWizard";
-import { LetterWizard } from "./letters/LetterWizard";
-import LetterPDFExport from "./LetterPDFExport";
-import LetterDOCXExport from "./LetterDOCXExport";
-import { EmailComposer } from "./emails/EmailComposer";
-import { EmailHistory } from "./emails/EmailHistory";
-import { EmailTemplateManager } from "./emails/EmailTemplateManager";
-import { DocumentContactManager } from "./documents/DocumentContactManager";
-import { DocumentContactAddDialog } from "./documents/DocumentContactAddDialog";
+import LetterEditor from "@/components/LetterEditor";
+import { PressReleasesList } from "@/components/press/PressReleasesList";
+import { PressReleaseEditor } from "@/components/press/PressReleaseEditor";
+import { PressReleaseWizard, type PressWizardResult } from "@/components/press/PressReleaseWizard";
+import { LetterWizard } from "@/components/letters/LetterWizard";
+import LetterPDFExport from "@/components/LetterPDFExport";
+import LetterDOCXExport from "@/components/LetterDOCXExport";
+import { EmailComposer } from "@/components/emails/EmailComposer";
+import { EmailHistory } from "@/components/emails/EmailHistory";
+import { EmailTemplateManager } from "@/components/emails/EmailTemplateManager";
+import { DocumentContactManager } from "@/components/documents/DocumentContactManager";
+import { DocumentContactAddDialog } from "@/components/documents/DocumentContactAddDialog";
 import { SenderInformationManager } from "@/components/administration/SenderInformationManager";
 
-import { useDocumentsData } from "./documents/hooks/useDocumentsData";
-import { useDocumentOperations } from "./documents/hooks/useDocumentOperations";
-import { DocumentDialogs } from "./documents/DocumentDialogs";
-import { STATUS_LABELS, getStatusColor, formatFileSize } from "./documents/types";
-import type { Document, Letter, DocumentFolder } from "./documents/types";
+import { useDocumentsData } from "@/components/documents/hooks/useDocumentsData";
+import { useDocumentOperations } from "@/components/documents/hooks/useDocumentOperations";
+import { DocumentDialogs } from "@/components/documents/DocumentDialogs";
+import { STATUS_LABELS, getStatusColor, formatFileSize } from "@/components/documents/types";
+import type { Document, Letter, DocumentFolder } from "@/components/documents/types";
 import {
   isDocumentCategoryOption,
   isDocumentTagOption,
   isDocumentFolderWithCount,
   type DocumentDialogState,
-} from "./documents/operationsContract";
+} from "@/components/documents/operationsContract";
 
 const AUTO_ARCHIVE_DEFAULT_DAYS = 30;
 const AUTO_ARCHIVE_SETTING_KEY = "letters_auto_archive_days";

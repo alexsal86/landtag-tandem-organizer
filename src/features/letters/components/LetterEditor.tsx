@@ -2,31 +2,31 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Save, X, Users, UserPlus, Eye, EyeOff, AlertTriangle, Edit3, FileText, MessageSquare, Ruler, Paperclip, Settings, Layout, Building, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import EnhancedLexicalEditor from './EnhancedLexicalEditor';
+import EnhancedLexicalEditor from '@/components/EnhancedLexicalEditor';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 
-import ReviewAssignmentDialog from './ReviewAssignmentDialog';
-import UserAssignmentDialog from './UserAssignmentDialog';
-import { DIN5008LetterLayout } from './letters/DIN5008LetterLayout';
-import { LetterEditorCanvas } from './letters/LetterEditorCanvas';
-import { LetterEditorToolbar } from './letters/LetterEditorToolbar';
+import ReviewAssignmentDialog from '@/components/ReviewAssignmentDialog';
+import UserAssignmentDialog from '@/components/UserAssignmentDialog';
+import { DIN5008LetterLayout } from '@/components/letters/DIN5008LetterLayout';
+import { LetterEditorCanvas } from '@/components/letters/LetterEditorCanvas';
+import { LetterEditorToolbar } from '@/components/letters/LetterEditorToolbar';
 import { buildVariableMap, substituteVariables, substituteBlockLines, isLineMode } from '@/lib/letterVariables';
 import type { HeaderElement } from '@/components/canvas-engine/types';
 import type { BlockLine } from '@/components/letters/BlockLineEditor';
 
-import { useLetterData } from './letters/hooks/useLetterData';
-import { useLetterOperations } from './letters/hooks/useLetterOperations';
+import { useLetterData } from '@/components/letters/hooks/useLetterData';
+import { useLetterOperations } from '@/components/letters/hooks/useLetterOperations';
 import { debugConsole } from '@/utils/debugConsole';
-import LetterBriefDetails from './letters/LetterBriefDetails';
-import LetterCommentDialog from './letters/LetterCommentDialog';
+import LetterBriefDetails from '@/components/letters/LetterBriefDetails';
+import LetterCommentDialog from '@/components/letters/LetterCommentDialog';
 import {
   type Letter, type LetterTemplate, type Contact,
   type LetterContentNodes,
   DEFAULT_LETTER_FONT_STACK, STATUS_LABELS, extractFontFamilyFromContentNodes,
   formatContactAddress, getNextStatus,
-} from './letters/types';
+} from '@/components/letters/types';
 import type { LetterLayoutSettings } from '@/types/letterLayout';
 
 interface LetterEditorProps {

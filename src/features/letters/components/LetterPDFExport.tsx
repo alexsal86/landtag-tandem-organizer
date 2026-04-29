@@ -3,9 +3,9 @@ import { debugConsole } from '@/utils/debugConsole';
 import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { usePDFData } from './letter-pdf/usePDFData';
-import { generatePDF } from './letter-pdf/pdfGenerator';
-import type { LetterPDFExportProps } from './letter-pdf/types';
+import { usePDFData } from '@/components/letter-pdf/usePDFData';
+import { generatePDF } from '@/components/letter-pdf/pdfGenerator';
+import type { LetterPDFExportProps } from '@/components/letter-pdf/types';
 
 const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
   letter,

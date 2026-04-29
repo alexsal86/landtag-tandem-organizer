@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { WidgetOverlayMenu } from './dashboard/WidgetOverlayMenu';
+import { WidgetOverlayMenu } from '@/components/dashboard/WidgetOverlayMenu';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,9 +10,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
-import { MessageSystem } from './MessageSystem';
+import { MessageSystem } from '@/components/MessageSystem';
 import { BlackBoard } from './BlackBoard';
-import { CombinedMessagesWidget } from './CombinedMessagesWidget';
+import { CombinedMessagesWidget } from '@/components/CombinedMessagesWidget';
 import { NewsWidget } from '@/components/widgets/NewsWidget';
 import { QuickNotesWidget } from '@/components/widgets/QuickNotesWidget';
 import { PomodoroWidget } from '@/components/widgets/PomodoroWidget';

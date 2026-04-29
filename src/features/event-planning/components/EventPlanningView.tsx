@@ -1,6 +1,6 @@
-import { useEventPlanningData } from "./event-planning/useEventPlanningData";
-import { EventPlanningListView } from "./event-planning/EventPlanningListView";
-import { EventPlanningDetailView } from "./event-planning/EventPlanningDetailView";
+import { useEventPlanningData } from "@/components/event-planning/useEventPlanningData";
+import { EventPlanningListView } from "@/components/event-planning/EventPlanningListView";
+import { EventPlanningDetailView } from "@/components/event-planning/EventPlanningDetailView";
 
 export function EventPlanningView() {
   const data = useEventPlanningData();

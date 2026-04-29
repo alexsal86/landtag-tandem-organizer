@@ -17,12 +17,12 @@ import { useDashboardLayout, type WidgetSize } from '@/hooks/useDashboardLayout'
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { DashboardWidget } from './DashboardWidget';
-import { DashboardGreetingSection } from './dashboard/DashboardGreetingSection';
+import { DashboardGreetingSection } from '@/components/dashboard/DashboardGreetingSection';
 import { useDashboardData } from '@/hooks/useDashboardData';
-import { DashboardCoverImage } from './dashboard/DashboardCoverImage';
-import { QuickActionsWidget } from './widgets/QuickActionsWidget';
-import { NewsWidget } from './widgets/NewsWidget';
-import { WidgetQuickAccess } from './dashboard/WidgetQuickAccess';
+import { DashboardCoverImage } from '@/components/dashboard/DashboardCoverImage';
+import { QuickActionsWidget } from '@/components/widgets/QuickActionsWidget';
+import { NewsWidget } from '@/components/widgets/NewsWidget';
+import { WidgetQuickAccess } from '@/components/dashboard/WidgetQuickAccess';
 import { toast } from 'sonner';
 import {
   Settings,

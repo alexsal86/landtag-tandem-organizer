@@ -7,11 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileUp, FileText, Search, Settings, Eye } from 'lucide-react';
-import { DrucksachenUpload } from './drucksachen/DrucksachenUpload';
-import { ProtocolsList } from './drucksachen/ProtocolsList';
-import { ProtocolViewer } from './drucksachen/ProtocolViewer';
-import { ProtocolSearch } from './drucksachen/ProtocolSearch';
-import { ProtocolAnalytics } from './drucksachen/ProtocolAnalytics';
+import { DrucksachenUpload } from '@/components/drucksachen/DrucksachenUpload';
+import { ProtocolsList } from '@/components/drucksachen/ProtocolsList';
+import { ProtocolViewer } from '@/components/drucksachen/ProtocolViewer';
+import { ProtocolSearch } from '@/components/drucksachen/ProtocolSearch';
+import { ProtocolAnalytics } from '@/components/drucksachen/ProtocolAnalytics';
 import { toast } from 'sonner';
 
 interface Protocol {

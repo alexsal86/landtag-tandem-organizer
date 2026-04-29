@@ -8,18 +8,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ProperReactBigCalendar } from "./calendar/ProperReactBigCalendar";
-import { AppointmentDetailsSidebar } from "./calendar/AppointmentDetailsSidebar";
+import { ProperReactBigCalendar } from "@/components/calendar/ProperReactBigCalendar";
+import { AppointmentDetailsSidebar } from "@/components/calendar/AppointmentDetailsSidebar";
 import AppointmentPreparationSidebar from "@/features/appointments/components/AppointmentPreparationSidebar";
-import { PollListView } from "./poll/PollListView";
-import { CalendarHeader } from "./calendar/CalendarHeader";
-import { useCalendarData } from "./calendar/hooks/useCalendarData";
-import { useCalendarOperations } from "./calendar/hooks/useCalendarOperations";
-import type { CalendarEvent } from "./calendar/types";
+import { PollListView } from "@/components/poll/PollListView";
+import { CalendarHeader } from "@/components/calendar/CalendarHeader";
+import { useCalendarData } from "@/components/calendar/hooks/useCalendarData";
+import { useCalendarOperations } from "@/components/calendar/hooks/useCalendarOperations";
+import type { CalendarEvent } from "@/components/calendar/types";
 import { usePersistentState } from "@/hooks/usePersistentState";
-import type { CalendarSource } from "./calendar/CalendarSidebarSources";
+import type { CalendarSource } from "@/components/calendar/CalendarSidebarSources";
 
-export type { CalendarEvent } from "./calendar/types";
+export type { CalendarEvent } from "@/components/calendar/types";
 
 type CalendarViewType = "day" | "week" | "month" | "agenda" | "polls";
 type HighlightEventRow = {

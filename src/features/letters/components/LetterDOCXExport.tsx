@@ -4,7 +4,7 @@ import { Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateLetterDOCX } from "@/utils/letterDOCXGenerator";
 import { debugConsole } from '@/utils/debugConsole';
-import type { LetterRecord } from './letter-pdf/types';
+import type { LetterRecord } from '@/components/letter-pdf/types';
 
 interface LetterDOCXExportProps {
   letter: LetterRecord;

@@ -5,9 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { LetterTemplateSettings } from '@/components/letters/LetterTemplateSettings';
-import { useLetterTemplateData } from './letter-templates/hooks/useLetterTemplateData';
-import { useTemplateFormTabs } from './letter-templates/TemplateFormTabs';
-import { TemplateGrid } from './letter-templates/TemplateGrid';
+import { useLetterTemplateData } from '@/components/letter-templates/hooks/useLetterTemplateData';
+import { useTemplateFormTabs } from '@/components/letter-templates/TemplateFormTabs';
+import { TemplateGrid } from '@/components/letter-templates/TemplateGrid';
 
 const LetterTemplateManager: React.FC = () => {
   const data = useLetterTemplateData();

@@ -16,9 +16,9 @@ import { useToast } from '@/hooks/use-toast';
 import { debugConsole } from '@/utils/debugConsole';
 import { useViewPreference } from '@/hooks/useViewPreference';
 import LetterEditor from './LetterEditor';
-import { LetterWizard } from './letters/LetterWizard';
+import { LetterWizard } from '@/components/letters/LetterWizard';
 import LetterPDFExport from './LetterPDFExport';
-import { ConfirmDialog } from './shared/ConfirmDialog';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import type { Database } from '@/integrations/supabase/types';
 import type { LetterRecord } from '@/components/letter-pdf/types';
 
