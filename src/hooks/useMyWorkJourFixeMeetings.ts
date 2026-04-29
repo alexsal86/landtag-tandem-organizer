@@ -97,13 +97,18 @@ const fetchMeetings = async (userId: string) => {
   const participantData = participantResult.data || [];
   const publicMeetings = publicResult.data || [];
 
-  const ownIds = new Set([...ownUpcoming.map((m: Record<string, any>) => m.id), ...ownPast.map((m: Record<string, any>) => m.id)]);
-  const participantMeetings = participantData
-    .map((row: Record<string, any>) => extractMeeting(row as MeetingParticipantMeetingRow))
-    .filter((meeting: Record<string, any>): meeting is Meeting => Boolean(meeting && !ownIds.has(meeting.id) && meeting.status !== 'archived'));
+  const ownUpcomingTyped = ownUpcoming as unknown as Meeting[];
+  const ownPastTyped = ownPast as unknown as Meeting[];
+  const participantTyped = participantData as unknown as MeetingParticipantMeetingRow[];
+  const publicTyped = publicMeetings as unknown as Meeting[];
 
-  const allIds = new Set([...ownIds, ...participantMeetings.map((m: Record<string, any>) => m.id)]);
-  const publicExtra = publicMeetings.filter((m: Record<string, any>) => !allIds.has(m.id));
+  const ownIds = new Set([...ownUpcomingTyped.map(m => m.id), ...ownPastTyped.map(m => m.id)]);
+  const participantMeetings = participantTyped
+    .map(row => extractMeeting(row))
+    .filter((meeting): meeting is Meeting => Boolean(meeting && !ownIds.has(meeting.id) && meeting.status !== 'archived'));
+
+  const allIds = new Set([...ownIds, ...participantMeetings.map(m => m.id)]);
+  const publicExtra = publicTyped.filter(m => !allIds.has(m.id));
   const allMeetings: Meeting[] = [...ownUpcoming, ...ownPast, ...participantMeetings, ...publicExtra];
 
   const seenIds = new Set<string>();
