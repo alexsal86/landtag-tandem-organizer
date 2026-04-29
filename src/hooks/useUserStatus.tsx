@@ -324,7 +324,7 @@ export const useUserStatus = () => {
         avatar_url: onlineUser.avatar_url,
         is_online: true,
         last_seen: onlineUser.online_at,
-        status: statuses?.find((status: string) => status.user_id === onlineUser.user_id)
+        status: statuses?.find((status: { user_id: string }) => status.user_id === onlineUser.user_id)
       }));
 
       setUsersWithStatus(usersWithStatusData);
