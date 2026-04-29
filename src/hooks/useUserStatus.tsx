@@ -243,7 +243,7 @@ export const useUserStatus = () => {
           debugConsole.log('User left tenant presence:', leftPresences);
         });
 
-      channel.subscribe(async (status: Record<string, any>) => {
+      channel.subscribe(async (status: string) => {
         if (status === 'SUBSCRIBED') {
           const { data: profile } = await supabase
             .from('profiles')
@@ -324,7 +324,7 @@ export const useUserStatus = () => {
         avatar_url: onlineUser.avatar_url,
         is_online: true,
         last_seen: onlineUser.online_at,
-        status: statuses?.find((status: Record<string, any>) => status.user_id === onlineUser.user_id)
+        status: statuses?.find((status: string) => status.user_id === onlineUser.user_id)
       }));
 
       setUsersWithStatus(usersWithStatusData);

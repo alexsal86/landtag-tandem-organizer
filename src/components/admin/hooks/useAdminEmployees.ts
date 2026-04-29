@@ -82,7 +82,7 @@ export function useAdminEmployees({ currentTenant, isAdmin, roleLoading }: UseAd
       const profileMap = new Map(profileRows.map((p) => [p.user_id, p]));
       const settingsMap = new Map(settingRows.map((s) => [s.user_id, s]));
 
-      const emps: Employee[] = employeeIds.map((uid: Record<string, any>) => ({
+      const emps: Employee[] = employeeIds.map((uid: string) => ({
         user_id: uid,
         display_name: profileMap.get(uid)?.display_name || "Unbekannt",
         avatar_url: profileMap.get(uid)?.avatar_url || null,
