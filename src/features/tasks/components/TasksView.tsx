@@ -22,7 +22,7 @@ import { TaskDetailSidebar } from "@/features/tasks/components/TaskDetailSidebar
 import { TaskDecisionCreator } from "@/components/task-decisions/TaskDecisionCreator";
 import { TaskDecisionStatus } from "@/components/task-decisions/TaskDecisionStatus";
 import { useNewItemIndicators } from "@/hooks/useNewItemIndicators";
-import { NewItemIndicator } from "@/components/NewItemIndicator";
+import { NewItemIndicator } from "@/components/notifications/NewItemIndicator";
 
 import { useTasksData } from "@/components/tasks/hooks/useTasksData";
 import { useTaskOperations } from "@/components/tasks/hooks/useTaskOperations";

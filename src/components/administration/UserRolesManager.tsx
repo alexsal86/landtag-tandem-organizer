@@ -13,8 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { NewUserForm } from "@/components/NewUserForm";
-import { CreateDemoUsers } from "@/components/CreateDemoUsers";
+import { NewUserForm } from "@/components/admin/NewUserForm";
+import { CreateDemoUsers } from "@/dev/CreateDemoUsers";
 import { Users, Plus, Trash2 } from "lucide-react";
 
 const ROLE_OPTIONS = [

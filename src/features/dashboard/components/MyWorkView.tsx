@@ -17,7 +17,7 @@ import { useMyWorkSettings } from "@/hooks/useMyWorkSettings";
 import { useMyWorkNewCounts } from "@/hooks/useMyWorkNewCounts";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { MyWorkTabErrorState } from "@/components/my-work/MyWorkTabErrorState";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { MY_WORK_TAB_VISIT_CONTEXTS } from "@/components/my-work/myWorkTabs";
 import { useMyWorkActiveTab } from "@/components/my-work/hooks/useMyWorkActiveTab";
 import { useMyWorkShellData } from "@/components/my-work/hooks/useMyWorkShellData";

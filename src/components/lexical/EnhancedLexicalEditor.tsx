@@ -34,20 +34,20 @@ import { MarkNode } from '@lexical/mark';
 import { TRANSFORMERS } from '@lexical/markdown';
 
 // Custom nodes
-import { ImageNode } from './nodes/ImageNode';
-import { MentionNode } from './nodes/MentionNode';
-import { TrackInsertNode, TrackDeleteNode } from './nodes/TrackChangeNode';
+import { ImageNode } from '@/components/nodes/ImageNode';
+import { MentionNode } from '@/components/nodes/MentionNode';
+import { TrackInsertNode, TrackDeleteNode } from '@/components/nodes/TrackChangeNode';
 
 // UI
 import FloatingTextFormatToolbar from './FloatingTextFormatToolbar';
 import { EnhancedLexicalToolbar } from './EnhancedLexicalToolbar';
 
 // Plugins
-import { ImagePlugin } from './plugins/ImagePlugin';
-import { CommentPlugin, CommentMarkNode } from './plugins/CommentPlugin';
-import { MentionsPlugin } from './plugins/MentionsPlugin';
-import { TrackChangesPlugin } from './plugins/TrackChangesPlugin';
-import { TrackChangesToolbar } from './plugins/TrackChangesToolbar';
+import { ImagePlugin } from '@/components/plugins/ImagePlugin';
+import { CommentPlugin, CommentMarkNode } from '@/components/plugins/CommentPlugin';
+import { MentionsPlugin } from '@/components/plugins/MentionsPlugin';
+import { TrackChangesPlugin } from '@/components/plugins/TrackChangesPlugin';
+import { TrackChangesToolbar } from '@/components/plugins/TrackChangesToolbar';
 
 // AutoLink matchers
 const URL_REGEX =

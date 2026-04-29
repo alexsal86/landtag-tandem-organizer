@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { WeeklyRoutineGrid } from "@/components/dayslip/WeeklyRoutineGrid";
 import { WeekPlanningBanner } from "@/components/dayslip/WeekPlanningBanner";
 import { DaySlipLexicalEditor } from "@/components/dayslip/DaySlipLexicalEditor";
-import { $createDaySlipLineNode, DaySlipLineNode } from "@/components/DaySlipLineNode";
+import { $createDaySlipLineNode, DaySlipLineNode } from "@/components/lexical/DaySlipLineNode";
 import { useDaySlipStore } from "@/components/dayslip/hooks/useDaySlipStore";
 import {
   type DayTemplate, type RecurringTemplate, type ResolveTarget,

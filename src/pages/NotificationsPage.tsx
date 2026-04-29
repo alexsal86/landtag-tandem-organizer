@@ -22,7 +22,7 @@ import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { useNotifications, type Notification } from '@/contexts/NotificationContext';
 import type { NotificationDisplayPreferences } from '@/hooks/useNotificationDisplayPreferences';
-import { NotificationSettings } from '@/components/NotificationSettings';
+import { NotificationSettings } from '@/components/notifications/NotificationSettings';
 import { useNotificationDisplayPreferences } from '@/hooks/useNotificationDisplayPreferences';
 import { NOTIFICATION_SOUNDS, playNotificationSound, hasCustomSound, saveCustomSound, removeCustomSound } from '@/utils/notificationSounds';
 import { toast } from 'sonner';

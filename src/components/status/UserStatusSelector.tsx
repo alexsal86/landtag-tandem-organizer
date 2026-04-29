@@ -17,7 +17,7 @@ import { useUserStatus } from '@/hooks/useUserStatus';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Calendar, Clock, MessageSquare, Settings, Smile } from 'lucide-react';
-import { OnlineUsersWidget } from "@/components/OnlineUsersWidget";
+import { OnlineUsersWidget } from "@/components/status/OnlineUsersWidget";
 
 // Emoji categories
 const emojiCategories = {

@@ -23,10 +23,10 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AppNavigation, getNavigationGroups } from "@/components/AppNavigation";
+import { AppNavigation, getNavigationGroups } from "@/components/navigation/AppNavigation";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { SubNavigation } from "@/components/layout/SubNavigation";
-import { MobileHeader } from "@/components/MobileHeader";
+import { MobileHeader } from "@/components/navigation/MobileHeader";
 import { MobileSubNavigation } from "@/components/layout/MobileSubNavigation";
 
 type CaseScale = "small" | "large";

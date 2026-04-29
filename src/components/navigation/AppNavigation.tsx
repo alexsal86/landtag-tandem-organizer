@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, type ElementType } from "react";
-import { NavDossierCapture } from "./NavDossierCapture";
+import { NavDossierCapture } from "@/components/search/NavDossierCapture";
 import { useNavigate } from "react-router-dom";
 import { 
   Home, 
@@ -43,7 +43,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { UserStatusSelector } from "@/components/UserStatusSelector";
+import { UserStatusSelector } from "@/components/status/UserStatusSelector";
 import {
   Tooltip,
   TooltipContent,

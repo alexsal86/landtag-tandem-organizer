@@ -3,11 +3,11 @@ import type { ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { Monitor, Moon, Sun, Bell, Shield, Globe, User, Save, Volume2, Calendar, Mail, Activity, ClipboardList, Eye, EyeOff } from "lucide-react";
-import { NotificationSettings } from "./NotificationSettings";
+import { NotificationSettings } from "@/components/notifications/NotificationSettings";
 import { ExternalCalendarSettings } from "@/features/calendar/components/ExternalCalendarSettings";
 import { TwoFactorSettings } from "./TwoFactorSettings";
-import { SenderInformationManager } from "./administration/SenderInformationManager";
-import { AutoStatusDetection } from "./AutoStatusDetection";
+import { SenderInformationManager } from "@/components/administration/SenderInformationManager";
+import { AutoStatusDetection } from "@/components/status/AutoStatusDetection";
 import { useMyWorkSettings, BadgeDisplayMode } from "@/hooks/useMyWorkSettings";
 import { debugConsole } from "@/utils/debugConsole";
 

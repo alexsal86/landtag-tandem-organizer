@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Checkbox } from "@/components/ui/checkbox";
 import { CalendarIcon, Users, X } from "lucide-react";
 import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
-import { UserSelector } from "@/components/UserSelector";
+import { UserSelector } from "@/components/admin/UserSelector";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";

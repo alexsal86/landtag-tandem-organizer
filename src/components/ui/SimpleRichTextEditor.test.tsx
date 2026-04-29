@@ -55,8 +55,8 @@ vi.mock('@/hooks/useSpeechDictation', () => ({
     stopSpeechRecognition: vi.fn(),
   }),
 }));
-vi.mock('@/components/SpeechCommandsDialog', () => ({ SpeechCommandsDialog: () => null }));
-vi.mock('@/components/SpeechSessionStats', () => ({ SpeechSessionStats: () => null }));
+vi.mock('@/components/shared/SpeechCommandsDialog', () => ({ SpeechCommandsDialog: () => null }));
+vi.mock('@/components/shared/SpeechSessionStats', () => ({ SpeechSessionStats: () => null }));
 
 vi.mock('@lexical/html', () => ({
   $generateNodesFromDOM: () => ['node'],

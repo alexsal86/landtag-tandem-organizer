@@ -5,7 +5,7 @@ import { TenantProvider } from "@/hooks/useTenant";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { AppSettingsProvider } from "@/hooks/useAppSettings";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AppHeadManager } from "@/components/AppHeadManager";
+import { AppHeadManager } from "@/components/navigation/AppHeadManager";
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -30,7 +30,7 @@ import { TRANSFORMERS } from '@lexical/markdown';
 import { ImageNode } from '@/components/nodes/ImageNode';
 import { MentionNode } from '@/components/nodes/MentionNode';
 
-import { EnhancedLexicalToolbar } from '@/components/EnhancedLexicalToolbar';
+import { EnhancedLexicalToolbar } from '@/components/lexical/EnhancedLexicalToolbar';
 import ComponentPickerPlugin from '@/components/plugins/ComponentPickerPlugin';
 import DraggableBlockPlugin from '@/components/plugins/DraggableBlockPlugin';
 

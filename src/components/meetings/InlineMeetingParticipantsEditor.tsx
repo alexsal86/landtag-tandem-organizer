@@ -3,7 +3,7 @@ import type { ParticipantRole } from '@/components/meetings/types';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { UserSelector } from '@/components/UserSelector';
+import { UserSelector } from '@/components/admin/UserSelector';
 import { Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';

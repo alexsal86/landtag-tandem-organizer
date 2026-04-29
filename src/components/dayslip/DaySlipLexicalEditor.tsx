@@ -23,9 +23,9 @@ import {
 import { $createHorizontalRuleNode } from "@lexical/react/LexicalHorizontalRuleNode";
 import { BLUR_COMMAND, FOCUS_COMMAND } from "lexical";
 import { $generateNodesFromDOM } from "@lexical/html";
-import FloatingTextFormatToolbar from "@/components/FloatingTextFormatToolbar";
-import { $createDaySlipLineNode } from "@/components/DaySlipLineNode";
-import { $createLabeledHorizontalRuleNode } from "@/components/LabeledHorizontalRuleNode";
+import FloatingTextFormatToolbar from "@/components/lexical/FloatingTextFormatToolbar";
+import { $createDaySlipLineNode } from "@/components/lexical/DaySlipLineNode";
+import { $createLabeledHorizontalRuleNode } from "@/components/lexical/LabeledHorizontalRuleNode";
 import { parseRuleLine } from "./dayslipTypes";
 
 // ─── Lexical Plugins ─────────────────────────────────────────────────────────
