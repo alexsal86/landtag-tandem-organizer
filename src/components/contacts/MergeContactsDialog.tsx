@@ -71,7 +71,7 @@ export function MergeContactsDialog({
 
     const distributionListIds = secondaryMemberships
       .map((membership: Record<string, any>) => membership.distribution_list_id)
-      .filter((id: Record<string, any>): id is string => Boolean(id));
+      .filter((id: unknown): id is string => Boolean(id));
 
     if (distributionListIds.length === 0) return;
 

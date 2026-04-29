@@ -75,7 +75,7 @@ export const GlobalNoteShareDialog = ({
       // Step 2: Get user IDs excluding current user
       const userIds = memberships
         .map((m: Record<string, any>) => m.user_id)
-        .filter((id: Record<string, any>) => id !== user.id);
+        .filter((id: string) => id !== user.id);
 
       if (userIds.length === 0) {
         setTeamMembers([]);

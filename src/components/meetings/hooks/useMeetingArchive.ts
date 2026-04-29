@@ -227,7 +227,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
           }
 
           const assigneeNames = Array.isArray(item.assigned_to)
-            ? item.assigned_to.flat().filter(Boolean).map((id: Record<string, any>) => {
+            ? item.assigned_to.flat().filter(Boolean).map((id: string) => {
                 const profile = profiles.find(p => p.user_id === id);
                 return profile?.display_name || 'Unbekannt';
               }).join(', ')

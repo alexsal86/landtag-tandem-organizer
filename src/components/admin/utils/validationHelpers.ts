@@ -15,7 +15,7 @@ export async function validateDailyLimit(
 
   if (error) throw error;
 
-  const alreadyLogged = (data || []).reduce((sum: Record<string, any>, entry: Record<string, any>) => {
+  const alreadyLogged = (data || []).reduce((sum: number, entry: { id: string; started_at?: string | null; ended_at?: string | null }) => {
     if (entry.id === excludeEntryId || !entry.started_at || !entry.ended_at) return sum;
     const duration = Math.round(
       (new Date(entry.ended_at).getTime() - new Date(entry.started_at).getTime()) / 60000

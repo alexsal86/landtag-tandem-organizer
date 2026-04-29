@@ -348,7 +348,7 @@ export function useMeetingsData() {
       const docsByTaskId: Record<string, AgendaDocument[]> = {};
       data?.forEach((doc: Record<string, any>) => {
         if (!docsByTaskId[doc.task_id]) docsByTaskId[doc.task_id] = [];
-        docsByTaskId[doc.task_id].push({ ...doc, meeting_agenda_item_id: doc.task_id });
+        docsByTaskId[doc.task_id].push({ ...doc, meeting_agenda_item_id: doc.task_id } as AgendaDocument);
       });
       setTaskDocuments(docsByTaskId);
     } catch (error) {
@@ -397,10 +397,10 @@ export function useMeetingsData() {
       const mainItems = (data || []).filter((item: Record<string, any>) => !item.parent_id).sort((a: Record<string, any>, b: Record<string, any>) => a.order_index - b.order_index);
       const sortedItems: AgendaItem[] = [];
       mainItems.forEach((main: Record<string, any>) => {
-        sortedItems.push({ ...main, localKey: main.id, parentLocalKey: undefined });
+        sortedItems.push({ ...main, localKey: main.id, parentLocalKey: undefined } as AgendaItem);
         const children = (data || []).filter((item: Record<string, any>) => item.parent_id === main.id).sort((a: Record<string, any>, b: Record<string, any>) => a.order_index - b.order_index);
         children.forEach((child: Record<string, any>) => {
-          sortedItems.push({ ...child, localKey: child.id, parentLocalKey: child.parent_id ?? undefined });
+          sortedItems.push({ ...child, localKey: child.id, parentLocalKey: child.parent_id ?? undefined } as AgendaItem);
         });
       });
       setAgendaItems(sortedItems);
@@ -421,7 +421,7 @@ export function useMeetingsData() {
       const docsByItemId: Record<string, AgendaDocument[]> = {};
       data?.forEach((doc: Record<string, any>) => {
         if (!docsByItemId[doc.meeting_agenda_item_id]) docsByItemId[doc.meeting_agenda_item_id] = [];
-        docsByItemId[doc.meeting_agenda_item_id].push(doc);
+        docsByItemId[doc.meeting_agenda_item_id].push(doc as AgendaDocument);
       });
       setAgendaDocuments(docsByItemId);
     } catch (error) {

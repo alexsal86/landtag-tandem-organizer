@@ -109,11 +109,11 @@ export function useTopicBacklog() {
       const eventPlanningTopicIds = new Set(
         (plannerActionRows || [])
           .map((row: Record<string, any>) => (row.action_config as { topic_backlog_id?: string | null } | null)?.topic_backlog_id)
-          .filter((value: Record<string, any>): value is string => Boolean(value)),
+          .filter((value: unknown): value is string => Boolean(value)),
       );
 
       const topicData = (topicRows || []).filter((row: Record<string, any>) => !eventPlanningTopicIds.has(row.id));
-      const ownerIds = Array.from(new Set(topicData.map((row: Record<string, any>) => row.owner_id).filter((value: Record<string, any>): value is string => Boolean(value))));
+      const ownerIds = Array.from(new Set(topicData.map((row: Record<string, any>) => row.owner_id).filter((value: unknown): value is string => Boolean(value))));
       const topicIds = topicData.map((row: Record<string, any>) => row.id);
 
       const [{ data: ownerRows, error: ownerError }, { data: linkedRows, error: linkedError }] = await Promise.all([
@@ -144,7 +144,7 @@ export function useTopicBacklog() {
       if (ownerError) throw ownerError;
       if (linkedError) throw linkedError;
 
-      const responsibleIds = Array.from(new Set((linkedRows || []).map((row: Record<string, any>) => row.responsible_user_id).filter((value: Record<string, any>): value is string => Boolean(value))));
+      const responsibleIds = Array.from(new Set((linkedRows || []).map((row: Record<string, any>) => row.responsible_user_id).filter((value: unknown): value is string => Boolean(value))));
       const { data: responsibleRows, error: responsibleError } = responsibleIds.length
         ? await supabase.from("profiles").select("id, display_name").in("id", responsibleIds).eq("tenant_id", currentTenant.id)
         : { data: [], error: null };
@@ -152,7 +152,7 @@ export function useTopicBacklog() {
       if (responsibleError) throw responsibleError;
 
       const ownerNameById = new Map((ownerRows || []).map((row: Record<string, any>) => [row.id, row.display_name || null]));
-      const campaignIds = Array.from(new Set(topicData.map((row: Record<string, any>) => row.campaign_id).filter((value: Record<string, any>): value is string => Boolean(value))));
+      const campaignIds = Array.from(new Set(topicData.map((row: Record<string, any>) => row.campaign_id).filter((value: unknown): value is string => Boolean(value))));
       const { data: campaignRows, error: campaignError } = campaignIds.length
         ? await supabase.from("social_campaigns").select("id, name").in("id", campaignIds).eq("tenant_id", currentTenant.id)
         : { data: [], error: null };

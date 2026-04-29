@@ -2,6 +2,7 @@ import { useInboxEntries } from "../hooks/useDossierEntries";
 import { QuickCapture } from "./QuickCapture";
 import { EntryCard } from "./EntryCard";
 import { Loader2, Inbox } from "lucide-react";
+import type { DossierEntry } from "../types";
 
 export function InboxView() {
   const { data: entries, isLoading } = useInboxEntries();
@@ -22,7 +23,7 @@ export function InboxView() {
         </div>
       ) : (
         <div className="space-y-2">
-          {entries.map((entry: Record<string, any>) => (
+          {entries.map((entry: DossierEntry) => (
             <EntryCard key={entry.id} entry={entry} />
           ))}
         </div>

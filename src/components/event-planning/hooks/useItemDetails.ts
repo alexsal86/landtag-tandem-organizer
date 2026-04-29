@@ -254,7 +254,7 @@ export function useItemDetails({
       const subtasksMap: { [itemId: string]: PlanningSubtask[] } = {};
       (subtasksData || []).forEach((subtask: Record<string, any>) => {
         if (!subtasksMap[subtask.planning_item_id]) subtasksMap[subtask.planning_item_id] = [];
-        subtasksMap[subtask.planning_item_id].push({ ...subtask, user_id: subtask.user_id || user?.id || '' });
+        subtasksMap[subtask.planning_item_id].push({ ...subtask, user_id: subtask.user_id || user?.id || '' } as PlanningSubtask);
       });
       setItemSubtasks(subtasksMap);
 
@@ -268,7 +268,7 @@ export function useItemDetails({
       const commentsMap: { [itemId: string]: PlanningComment[] } = {};
       (commentsData || []).forEach((comment: Record<string, any>) => {
         if (!commentsMap[comment.planning_item_id]) commentsMap[comment.planning_item_id] = [];
-        commentsMap[comment.planning_item_id].push({ ...comment, profile: profiles.find(p => p.user_id === comment.user_id) || null });
+        commentsMap[comment.planning_item_id].push({ ...comment, profile: profiles.find(p => p.user_id === comment.user_id) || null } as PlanningComment);
       });
       setItemComments(commentsMap);
 
@@ -276,7 +276,7 @@ export function useItemDetails({
       const documentsMap: { [itemId: string]: PlanningDocument[] } = {};
       (documentsData || []).forEach((doc: Record<string, any>) => {
         if (!documentsMap[doc.planning_item_id]) documentsMap[doc.planning_item_id] = [];
-        documentsMap[doc.planning_item_id].push({ ...doc, user_id: doc.user_id || user?.id || '' });
+        documentsMap[doc.planning_item_id].push({ ...doc, user_id: doc.user_id || user?.id || '' } as PlanningDocument);
       });
       setItemDocuments(documentsMap);
     } catch (error) { handleAppError(error, { context: 'loadAllItemCounts' }); }

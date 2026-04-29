@@ -603,7 +603,7 @@ export function AutomationRulesManager() {
           {rules.length === 0 ? (
             <p className="text-sm text-muted-foreground">Noch keine Regeln vorhanden.</p>
           ) : (
-            rules.map((rule: Record<string, any>) => {
+            rules.map((rule: RuleRow) => {
               const stats = ruleStats[rule.id];
               const successRate = stats && stats.total > 0 ? Math.round((stats.success / stats.total) * 100) : null;
               const avgDuration = stats && stats.withDuration > 0 ? Math.round(stats.totalDurationMs / stats.withDuration / 1000) : null;
@@ -737,7 +737,7 @@ export function AutomationRulesManager() {
                 <SelectTrigger className="w-[180px]"><SelectValue placeholder="Regel" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Regel: Alle</SelectItem>
-                  {rules.map((rule: Record<string, any>) => (<SelectItem key={rule.id} value={rule.id}>{rule.name}</SelectItem>))}
+                  {rules.map((rule: RuleRow) => (<SelectItem key={rule.id} value={rule.id}>{rule.name}</SelectItem>))}
                 </SelectContent>
               </Select>
               <Select value={runTimeFilter} onValueChange={setRunTimeFilter}>

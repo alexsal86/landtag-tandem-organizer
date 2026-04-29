@@ -206,11 +206,11 @@ export const useDecisionOverviewData = () => {
             isParticipant: true,
           });
         } else {
-          decisionsMap.set(participantDecision.id, participantDecision);
+          decisionsMap.set(participantDecision.id, participantDecision as DecisionRequest);
         }
       });
 
-      const allDecisionsList = Array.from(decisionsMap.values()) as DecisionRequest[];
+      const allDecisionsList = Array.from(decisionsMap.values()) as unknown as DecisionRequest[];
 
       if (allDecisionsList.length > 0) {
         const decisionIds = allDecisionsList.map((d) => d.id);

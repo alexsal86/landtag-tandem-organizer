@@ -278,7 +278,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
           allResponses.push({
             ...r,
             participant_profile: participantProfileMap.get(r.participant_id),
-          });
+          } as ResponseThread);
         });
       });
 
