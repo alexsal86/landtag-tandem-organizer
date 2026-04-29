@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { Calendar, CheckCircle2, Loader2, X, AlertCircle } from "lucide-react";
-import { EmployeeMeetingScheduler } from "./EmployeeMeetingScheduler";
+import { EmployeeMeetingScheduler } from "@/features/employees/components/EmployeeMeetingScheduler";
 import { debugConsole } from "@/utils/debugConsole";
 import { fetchPendingMeetingRequests, PendingMeetingRequest } from "@/components/employees/hooks/meetingRequests";
 

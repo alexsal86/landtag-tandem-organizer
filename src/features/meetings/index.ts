@@ -1,3 +1,3 @@
 export { MeetingsView } from "./components/MeetingsView";
-export { MeetingArchiveView } from "./components/MeetingArchiveView";
-export { MeetingProtocolView } from "./components/MeetingProtocolView";
+export { MeetingArchiveView } from "@/features/meetings/components/MeetingArchiveView";
+export { MeetingProtocolView } from "@/features/meetings/components/MeetingProtocolView";

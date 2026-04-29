@@ -11,7 +11,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { MeetingProtocolView } from "./MeetingProtocolView";
+import { MeetingProtocolView } from "@/features/meetings/components/MeetingProtocolView";
 import { debugConsole } from "@/utils/debugConsole";
 
 interface ArchivedMeeting {

@@ -16,7 +16,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { useDashboardLayout, type WidgetSize } from '@/hooks/useDashboardLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
-import { DashboardWidget } from './DashboardWidget';
+import { DashboardWidget } from '@/features/dashboard/components/DashboardWidget';
 import { DashboardGreetingSection } from '@/components/dashboard/DashboardGreetingSection';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { DashboardCoverImage } from '@/components/dashboard/DashboardCoverImage';

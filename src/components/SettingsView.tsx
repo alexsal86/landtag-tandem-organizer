@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { Monitor, Moon, Sun, Bell, Shield, Globe, User, Save, Volume2, Calendar, Mail, Activity, ClipboardList, Eye, EyeOff } from "lucide-react";
 import { NotificationSettings } from "./NotificationSettings";
-import { ExternalCalendarSettings } from "./ExternalCalendarSettings";
+import { ExternalCalendarSettings } from "@/features/calendar/components/ExternalCalendarSettings";
 import { TwoFactorSettings } from "./TwoFactorSettings";
 import { SenderInformationManager } from "./administration/SenderInformationManager";
 import { AutoStatusDetection } from "./AutoStatusDetection";

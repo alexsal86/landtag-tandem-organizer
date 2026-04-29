@@ -1,4 +1,4 @@
 export { TimeTrackingView } from "./components/TimeTrackingView";
-export { AdminTimeEntryEditor } from "./components/AdminTimeEntryEditor";
-export { AnnualTasksView } from "./components/AnnualTasksView";
-export { VacationHistoryDialog } from "./components/VacationHistoryDialog";
+export { AdminTimeEntryEditor } from "@/features/timetracking/components/AdminTimeEntryEditor";
+export { AnnualTasksView } from "@/features/timetracking/components/AnnualTasksView";
+export { VacationHistoryDialog } from "@/features/timetracking/components/VacationHistoryDialog";

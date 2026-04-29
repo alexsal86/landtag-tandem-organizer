@@ -12,7 +12,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
-import { ContactEditForm } from "./ContactEditForm";
+import { ContactEditForm } from "@/features/contacts/components/ContactEditForm";
 import { CallLogWidget } from "@/components/widgets/CallLogWidget";
 import { formatGermanDate } from "@/lib/utils";
 import { ActivityTimeline } from "@/components/contacts/ActivityTimeline";

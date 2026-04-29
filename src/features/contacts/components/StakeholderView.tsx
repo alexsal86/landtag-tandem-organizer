@@ -3,7 +3,7 @@ import { Building, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Contact } from "@/hooks/useInfiniteContacts";
 import { Link } from "react-router-dom";
-import { StakeholderToDistributionDialog } from "./StakeholderToDistributionDialog";
+import { StakeholderToDistributionDialog } from "@/features/contacts/components/StakeholderToDistributionDialog";
 import { useContactDocumentCounts } from "@/hooks/useContactDocumentCounts";
 import { useStakeholderTopics } from "@/components/stakeholders/hooks/useStakeholderTopics";
 import { StakeholderGridView } from "@/components/stakeholders/StakeholderGridView";

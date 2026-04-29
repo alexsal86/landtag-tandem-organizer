@@ -5,9 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { AlarmClock } from "lucide-react";
-import { TaskArchiveModal } from "../TaskArchiveModal";
+import { TaskArchiveModal } from "@/features/tasks/components/TaskArchiveModal";
 import { SnoozeManagementSidebar } from "../SnoozeManagementSidebar";
-import { TodoCreateDialog } from "../TodoCreateDialog";
+import { TodoCreateDialog } from "@/features/tasks/components/TodoCreateDialog";
 import { CelebrationAnimationSystem } from "../celebrations";
 import type { SnoozeEntry } from "./types";
 

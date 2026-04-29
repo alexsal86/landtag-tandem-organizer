@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import { MessageSystem } from '@/components/MessageSystem';
-import { BlackBoard } from './BlackBoard';
+import { BlackBoard } from '@/features/dashboard/components/BlackBoard';
 import { CombinedMessagesWidget } from '@/components/CombinedMessagesWidget';
 import { NewsWidget } from '@/components/widgets/NewsWidget';
 import { QuickNotesWidget } from '@/components/widgets/QuickNotesWidget';

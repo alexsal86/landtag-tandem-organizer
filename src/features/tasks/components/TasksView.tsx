@@ -18,7 +18,7 @@ import { extractLetterSourceId, stripLetterSourceMarker } from "@/utils/letterSo
 import { buildFeedbackBackLink } from "@/types/feedbackContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { TaskDetailSidebar } from "./TaskDetailSidebar";
+import { TaskDetailSidebar } from "@/features/tasks/components/TaskDetailSidebar";
 import { TaskDecisionCreator } from "@/components/task-decisions/TaskDecisionCreator";
 import { TaskDecisionStatus } from "@/components/task-decisions/TaskDecisionStatus";
 import { useNewItemIndicators } from "@/hooks/useNewItemIndicators";

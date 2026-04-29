@@ -4,9 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Users, BarChart3, Crown, Award } from "lucide-react";
 import { useElectionDistricts } from "@/hooks/useElectionDistricts";
-import { DistrictDetailDialog } from "./DistrictDetailDialog";
-import SimpleLeafletMap from "./SimpleLeafletMap";
-import LeafletMapFallback from "./LeafletMapFallback";
+import { DistrictDetailDialog } from "@/features/election-districts/components/DistrictDetailDialog";
+import SimpleLeafletMap from "@/features/election-districts/components/SimpleLeafletMap";
+import LeafletMapFallback from "@/features/election-districts/components/LeafletMapFallback";
 import { debugConsole } from '@/utils/debugConsole';
 import { ElectionDistrict } from "@/hooks/useElectionDistricts";
 
