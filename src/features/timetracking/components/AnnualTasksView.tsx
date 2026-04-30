@@ -233,7 +233,7 @@ export function AnnualTasksView() {
         return;
       }
       
-      const userIds = memberships.map((m: Record<string, any>) => m.user_id);
+      const userIds = (memberships as Array<{ user_id: string }>).map((m) => m.user_id);
       
       // Count employees managed by these users
       const { count } = await supabase
