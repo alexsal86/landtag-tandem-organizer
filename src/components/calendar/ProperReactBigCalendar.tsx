@@ -52,7 +52,7 @@ interface ProperReactBigCalendarProps {
 // Set up date-fns localizer with German locale
 const locales = { 'de': de };
 const localizer = dateFnsLocalizer({
-  format: (date: Date, formatStr: string, options?: any) =>
+  format: (date: Date, formatStr: string, options?: { locale?: Locale }) =>
     format(date, formatStr, { ...options, locale: de }),
   parse: (dateStr: string, formatStr: string, backupDate: Date) =>
     parse(dateStr, formatStr, backupDate, { locale: de }),
