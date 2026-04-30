@@ -449,9 +449,9 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       // Fallback: if no polygons rendered, fit to marker centers so users see BW, not all of Europe
       const markerLatLngs: L.LatLng[] = [];
       districts.forEach((d) => {
-        if (d.center_coordinates && typeof (d.center_coordinates as any).lat === 'number') {
-          const c = d.center_coordinates as { lat: number; lng: number };
-          markerLatLngs.push(L.latLng(c.lat, c.lng));
+        const center = d.center_coordinates as { lat?: number; lng?: number } | null | undefined;
+        if (center && typeof center.lat === 'number' && typeof center.lng === 'number') {
+          markerLatLngs.push(L.latLng(center.lat, center.lng));
         }
       });
       if (markerLatLngs.length > 0) {
