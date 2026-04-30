@@ -382,14 +382,14 @@ export function MeetingTemplateManager() {
                   <div className="border-t pt-4">
                     <MeetingTemplateParticipantsEditor
                       templateId={selectedTemplate.id}
-                      defaultParticipants={selectedTemplate.default_participants as any || []}
-                      defaultRecurrence={selectedTemplate.default_recurrence as any || null}
+                      defaultParticipants={(selectedTemplate.default_participants as unknown as Parameters<typeof MeetingTemplateParticipantsEditor>[0]['defaultParticipants']) || []}
+                      defaultRecurrence={(selectedTemplate.default_recurrence as unknown as Parameters<typeof MeetingTemplateParticipantsEditor>[0]['defaultRecurrence']) || null}
                       autoCreateCount={selectedTemplate.auto_create_count || 3}
                       compact
                       onSave={async (participants, recurrence, autoCreateCount, visibility) => {
                         try {
-                          const normalizedParticipants = participants as any;
-                          const normalizedRecurrence = recurrence as any;
+                          const normalizedParticipants = participants as unknown as Record<string, unknown>[];
+                          const normalizedRecurrence = recurrence as unknown as Record<string, unknown> | null;
                           await supabase.from('meeting_templates').update({
                             default_participants: normalizedParticipants,
                             default_recurrence: normalizedRecurrence,
