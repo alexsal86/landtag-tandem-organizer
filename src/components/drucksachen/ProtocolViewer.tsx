@@ -35,10 +35,22 @@ import { ProtocolPlenaryView } from './ProtocolPlenaryView';
 import type { ProtocolRecord, ProtocolStructuredData } from './types';
 import '@/styles/protocol-viewer.css';
 
+interface ProtocolStructuredDataExtras {
+  toc_agenda?: unknown[];
+  speeches?: unknown[];
+  stats?: Record<string, unknown>;
+  session?: Record<string, unknown>;
+  sitting?: Record<string, unknown>;
+  layout?: Record<string, unknown>;
+  _qa?: Record<string, unknown>;
+}
+
+type ExtendedStructuredData = ProtocolStructuredData & ProtocolStructuredDataExtras;
+
 type Protocol = ProtocolRecord & {
   original_filename: string;
   processing_status: string;
-  structured_data?: ProtocolStructuredData;
+  structured_data?: ExtendedStructuredData;
   raw_text?: string;
 };
 
