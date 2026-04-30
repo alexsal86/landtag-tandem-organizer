@@ -258,8 +258,9 @@ export function AnnualTasksView() {
 
       // Execute the function if available
       if (selectedTask.execute_function) {
+        // @ts-expect-error - execute_function is a dynamic RPC name not in generated types
         const { data, error } = await supabase.rpc(
-          selectedTask.execute_function as any,
+          selectedTask.execute_function,
           { p_tenant_id: currentTenant.id }
         );
 
