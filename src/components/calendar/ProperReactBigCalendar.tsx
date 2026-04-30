@@ -375,15 +375,15 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
         titleAccessor={(event: RBCEvent) => event.title}
         allDayAccessor={(event: RBCEvent) => event.allDay || false}
         resourceAccessor={(event: RBCEvent) => event.resource}
-        view={view as any}
+        view={view as View}
         date={date}
         onNavigate={onNavigate}
         onView={onView}
         onSelectEvent={(event: RBCEvent) => handleSelectEvent(event)}
         onSelectSlot={handleSelectSlot}
-        onEventDrop={(args: any) => handleEventDrop(args)}
-        onEventResize={(args: any) => handleEventResize(args)}
-        eventPropGetter={eventPropGetter as any}
+        onEventDrop={(args) => handleEventDrop(args as { event: RBCEvent; start: Date; end: Date })}
+        onEventResize={(args) => handleEventResize(args as { event: RBCEvent; start: Date; end: Date })}
+        eventPropGetter={eventPropGetter}
         dayPropGetter={dayPropGetter}
         messages={messages}
         formats={{
