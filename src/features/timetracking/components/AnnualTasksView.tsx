@@ -360,7 +360,7 @@ export function AnnualTasksView() {
     
     try {
       const { data, error } = await supabase.rpc(
-        'generate_current_year_stats' as any,
+        'generate_current_year_stats',
         { p_tenant_id: currentTenant.id }
       );
 
