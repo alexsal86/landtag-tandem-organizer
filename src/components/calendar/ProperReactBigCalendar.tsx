@@ -1,6 +1,6 @@
 import React, { useMemo, useCallback, useEffect, useRef } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
-import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar';
+import { Calendar, dateFnsLocalizer, Views, type View, type EventProps } from 'react-big-calendar';
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import { format, parse, startOfWeek, getDay, isSameDay } from 'date-fns';
 import { de } from 'date-fns/locale';
