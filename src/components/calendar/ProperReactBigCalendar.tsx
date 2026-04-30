@@ -3,6 +3,7 @@ import { debugConsole } from '@/utils/debugConsole';
 import { Calendar, dateFnsLocalizer, Views, type View, type EventProps } from 'react-big-calendar';
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import { format, parse, startOfWeek, getDay, isSameDay } from 'date-fns';
+import type { Locale } from 'date-fns';
 import { de } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
