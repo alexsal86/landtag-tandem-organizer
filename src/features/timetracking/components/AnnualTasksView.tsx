@@ -188,12 +188,14 @@ export function AnnualTasksView() {
 
       if (completionsError) throw completionsError;
 
-      const completionMap = new Map(
-        (completionsData || []).map((c: Record<string, any>) => [c.annual_task_id, c])
+      const completionMap = new Map<string, AnnualTaskCompletion>(
+        ((completionsData || []) as AnnualTaskCompletion[])
+          .filter((c) => c.annual_task_id !== null)
+          .map((c) => [c.annual_task_id as string, c])
       );
 
-      const tasksWithStatus: AnnualTaskWithStatus[] = (tasksData || []).map((task: Record<string, any>) => {
-        const completion = completionMap.get(task.id) as any;
+      const tasksWithStatus: AnnualTaskWithStatus[] = ((tasksData || []) as AnnualTask[]).map((task) => {
+        const completion = completionMap.get(task.id);
         let status: AnnualTaskWithStatus['status'] = 'upcoming';
 
         if (completion?.completed_at) {
@@ -231,7 +233,7 @@ export function AnnualTasksView() {
         return;
       }
       
-      const userIds = memberships.map((m: Record<string, any>) => m.user_id);
+      const userIds = (memberships as Array<{ user_id: string }>).map((m) => m.user_id);
       
       // Count employees managed by these users
       const { count } = await supabase
@@ -257,7 +259,7 @@ export function AnnualTasksView() {
       // Execute the function if available
       if (selectedTask.execute_function) {
         const { data, error } = await supabase.rpc(
-          selectedTask.execute_function as any,
+          selectedTask.execute_function,
           { p_tenant_id: currentTenant.id }
         );
 
@@ -358,7 +360,7 @@ export function AnnualTasksView() {
     
     try {
       const { data, error } = await supabase.rpc(
-        'generate_current_year_stats' as any,
+        'generate_current_year_stats',
         { p_tenant_id: currentTenant.id }
       );
 
@@ -387,7 +389,7 @@ export function AnnualTasksView() {
     
     try {
       const { data, error } = await supabase.rpc(
-        'generate_yearly_stats_for_year' as any,
+        'generate_yearly_stats_for_year',
         { p_tenant_id: currentTenant.id, p_year: currentYear - 1 }
       );
 

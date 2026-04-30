@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { DashboardWidget } from '@/types/dashboardWidgets';
+import type { DashboardWidget, DashboardQuicknotesConfig, DashboardPomodoroConfig } from '@/types/dashboardWidgets';
 import { Palette, Clock, Eye, Zap } from 'lucide-react';
 
 interface WidgetConfigDialogProps {
@@ -297,8 +297,10 @@ export function WidgetConfigDialog({ widget, open, onOpenChange, onSave }: Widge
                   <div className="space-y-2">
                     <Label>Standard-Notizfarbe</Label>
                     <Select
-                      value={(config as any).defaultNoteColor || 'yellow'}
-                      onValueChange={(value) => updateConfig('defaultNoteColor' as any, value)}
+                      value={(config as DashboardQuicknotesConfig).defaultNoteColor || 'yellow'}
+                      onValueChange={(value) =>
+                        setConfig(prev => ({ ...prev, defaultNoteColor: value as DashboardQuicknotesConfig['defaultNoteColor'] }))
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -320,8 +322,8 @@ export function WidgetConfigDialog({ widget, open, onOpenChange, onSave }: Widge
                       <Label>Arbeitszeit (Minuten)</Label>
                       <Input
                         type="number"
-                        value={(config as any).workDuration || 25}
-                        onChange={(e) => updateConfig('workDuration' as any, Number(e.target.value))}
+                        value={(config as DashboardPomodoroConfig).workDuration || 25}
+                        onChange={(e) => setConfig(prev => ({ ...prev, workDuration: Number(e.target.value) }))}
                         min={1}
                         max={60}
                       />
@@ -330,8 +332,8 @@ export function WidgetConfigDialog({ widget, open, onOpenChange, onSave }: Widge
                       <Label>Pausenzeit (Minuten)</Label>
                       <Input
                         type="number"
-                        value={(config as any).breakDuration || 5}
-                        onChange={(e) => updateConfig('breakDuration' as any, Number(e.target.value))}
+                        value={(config as DashboardPomodoroConfig).breakDuration || 5}
+                        onChange={(e) => setConfig(prev => ({ ...prev, breakDuration: Number(e.target.value) }))}
                         min={1}
                         max={30}
                       />

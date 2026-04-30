@@ -192,7 +192,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
         type: 'FeatureCollection' as const,
         features: geoJsonFeatures,
       };
-      const geoLayer = L.geoJSON(featureCollection as any, {
+      const geoLayer = L.geoJSON(featureCollection as GeoJSON.FeatureCollection, {
         style: (feature) => {
           const districtNumber = feature?.properties?.district_number;
           const isPartyBoundary = feature?.properties?.isPartyBoundary;
@@ -364,10 +364,17 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
             } else if ('lat' in boundaryDistrict.center_coordinates && 'lng' in boundaryDistrict.center_coordinates) {
               lat = boundaryDistrict.center_coordinates.lat;
               lng = boundaryDistrict.center_coordinates.lng;
-            } else if ('latitude' in (boundaryDistrict.center_coordinates as any) && 'longitude' in (boundaryDistrict.center_coordinates as any)) {
-              lat = (boundaryDistrict.center_coordinates as any).latitude;
-              lng = (boundaryDistrict.center_coordinates as any).longitude;
-            } else if (Array.isArray(boundaryDistrict.center_coordinates) && (boundaryDistrict.center_coordinates as any[]).length >= 2) {
+            } else if (
+              'latitude' in (boundaryDistrict.center_coordinates as Record<string, unknown>) &&
+              'longitude' in (boundaryDistrict.center_coordinates as Record<string, unknown>)
+            ) {
+              const coords = boundaryDistrict.center_coordinates as { latitude: number; longitude: number };
+              lat = coords.latitude;
+              lng = coords.longitude;
+            } else if (
+              Array.isArray(boundaryDistrict.center_coordinates) &&
+              (boundaryDistrict.center_coordinates as unknown[]).length >= 2
+            ) {
               // Assume [lat, lng] format for plain arrays
               lat = boundaryDistrict.center_coordinates[0];
               lng = boundaryDistrict.center_coordinates[1];
@@ -442,9 +449,9 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       // Fallback: if no polygons rendered, fit to marker centers so users see BW, not all of Europe
       const markerLatLngs: L.LatLng[] = [];
       districts.forEach((d) => {
-        if (d.center_coordinates && typeof (d.center_coordinates as any).lat === 'number') {
-          const c = d.center_coordinates as { lat: number; lng: number };
-          markerLatLngs.push(L.latLng(c.lat, c.lng));
+        const center = d.center_coordinates as { lat?: number; lng?: number } | null | undefined;
+        if (center && typeof center.lat === 'number' && typeof center.lng === 'number') {
+          markerLatLngs.push(L.latLng(center.lat, center.lng));
         }
       });
       if (markerLatLngs.length > 0) {

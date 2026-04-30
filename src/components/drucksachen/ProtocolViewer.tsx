@@ -35,10 +35,22 @@ import { ProtocolPlenaryView } from './ProtocolPlenaryView';
 import type { ProtocolRecord, ProtocolStructuredData } from './types';
 import '@/styles/protocol-viewer.css';
 
+interface ProtocolStructuredDataExtras {
+  toc_agenda?: unknown[];
+  speeches?: unknown[];
+  stats?: Record<string, unknown>;
+  session?: { source_pdf_url?: string } & Record<string, unknown>;
+  sitting?: Record<string, unknown>;
+  layout?: Record<string, unknown>;
+  _qa?: Record<string, unknown>;
+}
+
+type ExtendedStructuredData = Omit<ProtocolStructuredData, 'session' | 'sitting'> & ProtocolStructuredDataExtras;
+
 type Protocol = ProtocolRecord & {
   original_filename: string;
   processing_status: string;
-  structured_data?: ProtocolStructuredData;
+  structured_data?: ExtendedStructuredData;
   raw_text?: string;
 };
 
@@ -92,21 +104,21 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
 
   // Extract data from structured_data JSONB
   const tocAgenda: TOCAgendaItem[] = useMemo(() => {
-    return (protocol.structured_data as any)?.toc_agenda || [];
+    return (protocol.structured_data?.toc_agenda as TOCAgendaItem[] | undefined) || [];
   }, [protocol.structured_data]);
 
   const allSpeeches: Speech[] = useMemo(() => {
-    return (protocol.structured_data as any)?.speeches || [];
+    return (protocol.structured_data?.speeches as Speech[] | undefined) || [];
   }, [protocol.structured_data]);
 
   const stats = useMemo(() => {
-    return (protocol.structured_data as any)?.stats || {};
+    return protocol.structured_data?.stats || {};
   }, [protocol.structured_data]);
 
-  const sessionData = (protocol.structured_data as any)?.session || {};
-  const sittingData = (protocol.structured_data as any)?.sitting || {};
-  const layoutData = (protocol.structured_data as any)?.layout || {};
-  const qaData = (protocol.structured_data as any)?._qa || {};
+  const sessionData = protocol.structured_data?.session || {};
+  const sittingData = protocol.structured_data?.sitting || {};
+  const layoutData = protocol.structured_data?.layout || {};
+  const qaData = protocol.structured_data?._qa || {};
 
   // Get unique parties
   const parties = useMemo(() => {

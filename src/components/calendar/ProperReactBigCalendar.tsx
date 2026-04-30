@@ -1,8 +1,9 @@
 import React, { useMemo, useCallback, useEffect, useRef } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
-import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar';
+import { Calendar, dateFnsLocalizer, Views, type View, type EventProps } from 'react-big-calendar';
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import { format, parse, startOfWeek, getDay, isSameDay } from 'date-fns';
+import type { Locale } from 'date-fns';
 import { de } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
@@ -52,7 +53,7 @@ interface ProperReactBigCalendarProps {
 // Set up date-fns localizer with German locale
 const locales = { 'de': de };
 const localizer = dateFnsLocalizer({
-  format: (date: Date, formatStr: string, options?: any) =>
+  format: (date: Date, formatStr: string, options?: { locale?: Locale }) =>
     format(date, formatStr, { ...options, locale: de }),
   parse: (dateStr: string, formatStr: string, backupDate: Date) =>
     parse(dateStr, formatStr, backupDate, { locale: de }),
@@ -374,15 +375,15 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
         titleAccessor={(event: RBCEvent) => event.title}
         allDayAccessor={(event: RBCEvent) => event.allDay || false}
         resourceAccessor={(event: RBCEvent) => event.resource}
-        view={view as any}
+        view={view as View}
         date={date}
         onNavigate={onNavigate}
         onView={onView}
         onSelectEvent={(event: RBCEvent) => handleSelectEvent(event)}
         onSelectSlot={handleSelectSlot}
-        onEventDrop={(args: any) => handleEventDrop(args)}
-        onEventResize={(args: any) => handleEventResize(args)}
-        eventPropGetter={eventPropGetter as any}
+        onEventDrop={(args) => handleEventDrop(args as { event: RBCEvent; start: Date; end: Date })}
+        onEventResize={(args) => handleEventResize(args as { event: RBCEvent; start: Date; end: Date })}
+        eventPropGetter={eventPropGetter}
         dayPropGetter={dayPropGetter}
         messages={messages}
         formats={{
@@ -419,7 +420,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
             header: WeekHeader,
           },
           month: {
-            event: MonthEvent as any,
+            event: MonthEvent as React.ComponentType<EventProps<RBCEvent>>,
           },
         }}
         className="rbc-calendar"

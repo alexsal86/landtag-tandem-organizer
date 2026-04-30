@@ -13,11 +13,11 @@ import { MergeContactsDialog } from './MergeContactsDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { getInitials } from './utils/contactFormatters';
-import type { Contact } from '@/types/contact';
+import type { Contact, MergeContact } from '@/types/contact';
 
 interface DuplicateMatch {
-  contact1: Pick<Contact, "id" | "name" | "email" | "phone" | "organization" | "contact_type">;
-  contact2: Pick<Contact, "id" | "name" | "email" | "phone" | "organization" | "contact_type">;
+  contact1: MergeContact;
+  contact2: MergeContact;
   matchScore: number;
   matchReasons: string[];
 }
@@ -67,11 +67,11 @@ export function DuplicateContactsSheet({
       if (error) throw error;
 
       setProgress({ processed: 0, total: 0 });
-      const foundDuplicates = await findDuplicatesProgressive((data || []) as any, {
+      const foundDuplicates = await findDuplicatesProgressive((data || []) as unknown as Contact[], {
         chunkSize: 300,
         onProgress: (processed, total) => setProgress({ processed, total }),
       });
-      setDuplicates(foundDuplicates as any);
+      setDuplicates(foundDuplicates as unknown as DuplicateMatch[]);
     } catch (error) {
       debugConsole.error('Error fetching contacts:', error);
     } finally {
@@ -223,8 +223,8 @@ export function DuplicateContactsSheet({
 
       {selectedMatch && (
         <MergeContactsDialog
-          contact1={selectedMatch.contact1 as any}
-          contact2={selectedMatch.contact2 as any}
+          contact1={selectedMatch.contact1}
+          contact2={selectedMatch.contact2}
           isOpen={!!selectedMatch}
           onClose={() => setSelectedMatch(null)}
           onMergeComplete={handleMergeComplete}
