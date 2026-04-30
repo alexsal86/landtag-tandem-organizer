@@ -406,8 +406,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
                   onRecipientNameChange={(value) => setEditedLetter(prev => ({ ...prev, recipient_name: value }))}
                   onRecipientAddressChange={(value) => setEditedLetter(prev => ({ ...prev, recipient_address: value }))}
                   onRecipientContactSelect={(contact) => {
-                     const recipientAddress = ('formatted_address' in contact ? (contact as any).formatted_address : undefined) || (contact as any).address || '';
-                     setEditedLetter(prev => ({ ...prev, contact_id: contact.id, recipient_name: (contact as any).name, recipient_address: recipientAddress }));
+                     const contactRecord = contact as Contact & { formatted_address?: string; address?: string };
+                     const recipientAddress = contactRecord.formatted_address || contactRecord.address || '';
+                     setEditedLetter(prev => ({ ...prev, contact_id: contactRecord.id, recipient_name: contactRecord.name, recipient_address: recipientAddress }));
                   }}
                   onSenderChange={(value) => setEditedLetter(prev => ({ ...prev, sender_info_id: value || undefined }))}
                   onInfoBlockChange={(newIds) => setEditedLetter(prev => ({ ...prev, information_block_ids: newIds }))}
