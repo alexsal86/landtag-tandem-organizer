@@ -223,8 +223,8 @@ export function DuplicateContactsSheet({
 
       {selectedMatch && (
         <MergeContactsDialog
-          contact1={selectedMatch.contact1 as any}
-          contact2={selectedMatch.contact2 as any}
+          contact1={selectedMatch.contact1}
+          contact2={selectedMatch.contact2}
           isOpen={!!selectedMatch}
           onClose={() => setSelectedMatch(null)}
           onMergeComplete={handleMergeComplete}
