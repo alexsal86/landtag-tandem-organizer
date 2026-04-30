@@ -420,7 +420,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
             header: WeekHeader,
           },
           month: {
-            event: MonthEvent as any,
+            event: MonthEvent as React.ComponentType<EventProps<RBCEvent>>,
           },
         }}
         className="rbc-calendar"
