@@ -188,12 +188,14 @@ export function AnnualTasksView() {
 
       if (completionsError) throw completionsError;
 
-      const completionMap = new Map(
-        (completionsData || []).map((c: Record<string, any>) => [c.annual_task_id, c])
+      const completionMap = new Map<string, AnnualTaskCompletion>(
+        ((completionsData || []) as AnnualTaskCompletion[])
+          .filter((c) => c.annual_task_id !== null)
+          .map((c) => [c.annual_task_id as string, c])
       );
 
-      const tasksWithStatus: AnnualTaskWithStatus[] = (tasksData || []).map((task: Record<string, any>) => {
-        const completion = completionMap.get(task.id) as any;
+      const tasksWithStatus: AnnualTaskWithStatus[] = ((tasksData || []) as AnnualTask[]).map((task) => {
+        const completion = completionMap.get(task.id);
         let status: AnnualTaskWithStatus['status'] = 'upcoming';
 
         if (completion?.completed_at) {
