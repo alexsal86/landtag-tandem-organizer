@@ -67,11 +67,11 @@ export function DuplicateContactsSheet({
       if (error) throw error;
 
       setProgress({ processed: 0, total: 0 });
-      const foundDuplicates = await findDuplicatesProgressive((data || []) as any, {
+      const foundDuplicates = await findDuplicatesProgressive((data || []) as unknown as Contact[], {
         chunkSize: 300,
         onProgress: (processed, total) => setProgress({ processed, total }),
       });
-      setDuplicates(foundDuplicates as any);
+      setDuplicates(foundDuplicates as unknown as DuplicateMatch[]);
     } catch (error) {
       debugConsole.error('Error fetching contacts:', error);
     } finally {
