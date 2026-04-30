@@ -39,13 +39,13 @@ interface ProtocolStructuredDataExtras {
   toc_agenda?: unknown[];
   speeches?: unknown[];
   stats?: Record<string, unknown>;
-  session?: Record<string, unknown>;
+  session?: { source_pdf_url?: string } & Record<string, unknown>;
   sitting?: Record<string, unknown>;
   layout?: Record<string, unknown>;
   _qa?: Record<string, unknown>;
 }
 
-type ExtendedStructuredData = ProtocolStructuredData & ProtocolStructuredDataExtras;
+type ExtendedStructuredData = Omit<ProtocolStructuredData, 'session' | 'sitting'> & ProtocolStructuredDataExtras;
 
 type Protocol = ProtocolRecord & {
   original_filename: string;
