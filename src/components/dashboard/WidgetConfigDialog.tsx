@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { DashboardWidget } from '@/types/dashboardWidgets';
+import type { DashboardWidget, DashboardQuicknotesConfig, DashboardPomodoroConfig } from '@/types/dashboardWidgets';
 import { Palette, Clock, Eye, Zap } from 'lucide-react';
 
 interface WidgetConfigDialogProps {
