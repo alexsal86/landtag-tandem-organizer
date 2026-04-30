@@ -192,7 +192,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
         type: 'FeatureCollection' as const,
         features: geoJsonFeatures,
       };
-      const geoLayer = L.geoJSON(featureCollection as any, {
+      const geoLayer = L.geoJSON(featureCollection as GeoJSON.FeatureCollection, {
         style: (feature) => {
           const districtNumber = feature?.properties?.district_number;
           const isPartyBoundary = feature?.properties?.isPartyBoundary;
