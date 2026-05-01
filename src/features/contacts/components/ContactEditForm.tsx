@@ -258,8 +258,8 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
 
       // Clear organization fields if no organization is selected
       if (formData.contact_type === 'person' && !formData.organization_id && !formData.organization) {
-        updateData.organization_id = null as any;
-        updateData.organization = null as any;
+        updateData.organization_id = null;
+        updateData.organization = null;
       }
 
       // Clean date fields - convert empty strings to null for database
@@ -341,7 +341,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
     }
   };
 
-  const handleChange = (field: string, value: any) => {
+  const handleChange = (field: string, value: unknown) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
     if (field === 'email') {
