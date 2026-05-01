@@ -42,21 +42,6 @@ export const FoldHoleMarks: React.FC<FoldHoleMarksProps> = ({ foldHoleMarks }) =
   );
 };
 
-interface FooterBlockLine {
-  type?: string;
-  label?: string;
-  value?: string;
-  fontSize?: number | string;
-  fontFamily?: string;
-  spacerHeight?: number | string;
-}
-interface FooterBlock {
-  id?: string;
-  title?: string;
-  widthUnit?: 'cm' | '%';
-  widthValue?: number | string;
-  lines?: FooterBlockLine[];
-}
 interface TemplateFooterBlocksProps {
   footerBlocks?: unknown;
   debugMode?: boolean;
