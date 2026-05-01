@@ -215,7 +215,7 @@ export const useUserStatus = () => {
           const onlineUsersList: OnlineUser[] = [];
           
           Object.entries(presenceState).forEach(([userId, rawPresences]) => {
-            const presences = rawPresences as Array<{ online_at?: string; display_name?: string; avatar_url?: string; presence_ref?: string; status?: string }>;
+            const presences = rawPresences as Array<{ online_at?: string; display_name?: string; avatar_url?: string; presence_ref?: string; status?: UserStatus }>;
             if (presences && presences.length > 0) {
               const presence = [...presences].sort((a, b) => {
                 const aTime = new Date(a.online_at || 0).getTime();
