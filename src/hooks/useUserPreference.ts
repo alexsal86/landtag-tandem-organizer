@@ -79,7 +79,7 @@ export function useUserPreference<T>(key: string, defaultValue: T) {
                   key,
                   value: parsed,
                   updated_at: new Date().toISOString(),
-                } as any,
+                },
                 { onConflict: "user_id,tenant_id,key" }
               );
             } catch {
@@ -115,9 +115,9 @@ export function useUserPreference<T>(key: string, defaultValue: T) {
               user_id: user.id,
               tenant_id: tenantId,
               key,
-              value: newValue as any,
+              value: newValue as unknown,
               updated_at: new Date().toISOString(),
-            } as any,
+            },
             { onConflict: "user_id,tenant_id,key" }
           );
         } catch (e) {

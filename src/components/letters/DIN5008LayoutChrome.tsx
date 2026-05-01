@@ -43,7 +43,7 @@ export const FoldHoleMarks: React.FC<FoldHoleMarksProps> = ({ foldHoleMarks }) =
 };
 
 interface TemplateFooterBlocksProps {
-  footerBlocks?: any;
+  footerBlocks?: unknown;
   debugMode?: boolean;
 }
 
@@ -66,7 +66,7 @@ export const TemplateFooterBlocks: React.FC<TemplateFooterBlocksProps> = ({ foot
         backgroundColor: debugMode ? 'rgba(128,0,128,0.05)' : '#fff',
       }}
     >
-      {sortedBlocks.map((block: any, index: number) => {
+      {sortedBlocks.map((block, index) => {
         const blockWidth = block.widthUnit === 'cm'
           ? `${Math.max(1, Number(block.widthValue) || 1)}cm`
           : `${Math.max(1, Number(block.widthValue) || 25)}%`;
@@ -78,7 +78,7 @@ export const TemplateFooterBlocks: React.FC<TemplateFooterBlocksProps> = ({ foot
           >
             {block.title && <div style={{ fontWeight: 'bold', marginBottom: '1mm' }}>{block.title}</div>}
             <div>
-              {(block.lines || []).map((line: any, lineIndex: number) => {
+              {(block.lines || []).map((line, lineIndex) => {
                 if (line.type === 'spacer') {
                   return <div key={lineIndex} style={{ height: `${Math.max(0.5, Number(line.spacerHeight) || 1)}mm` }} />;
                 }

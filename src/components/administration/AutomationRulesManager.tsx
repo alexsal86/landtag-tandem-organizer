@@ -136,11 +136,11 @@ export function AutomationRulesManager() {
   }, [runs, runStatusFilter, runModuleFilter, runOwnerFilter, runRuleFilter, runTimeFilter]);
 
   const runModules = useMemo(
-    () => Array.from(new Set(runs.map((run: any) => String(run.result_payload?.module ?? run.input_payload?.module ?? "unknown")))) as string[],
+    () => Array.from(new Set(runs.map((run: { result_payload?: { module?: string; owner_id?: string }; input_payload?: { module?: string; owner_id?: string } }) => String(run.result_payload?.module ?? run.input_payload?.module ?? "unknown")))) as string[],
     [runs],
   );
   const runOwners = useMemo(
-    () => Array.from(new Set(runs.map((run: any) => String(run.result_payload?.owner_id ?? run.input_payload?.owner_id ?? "unassigned")))) as string[],
+    () => Array.from(new Set(runs.map((run: { result_payload?: { owner_id?: string }; input_payload?: { owner_id?: string } }) => String(run.result_payload?.owner_id ?? run.input_payload?.owner_id ?? "unassigned")))) as string[],
     [runs],
   );
 

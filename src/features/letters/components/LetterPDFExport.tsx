@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { usePDFData } from '@/components/letter-pdf/usePDFData';
 import { generatePDF } from '@/components/letter-pdf/pdfGenerator';
-import type { LetterPDFExportProps } from '@/components/letter-pdf/types';
+import type { LetterPDFExportProps, InformationBlockContract, AttachmentContract } from '@/components/letter-pdf/types';
 
 const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
   letter,
@@ -25,8 +25,8 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         letter,
         template,
         senderInfo,
-        informationBlock: informationBlock as any,
-        attachments: attachments as any,
+        informationBlock: informationBlock as unknown as InformationBlockContract,
+        attachments: attachments as unknown as AttachmentContract[],
         showPagination,
         returnBlob: false,
         contact,
@@ -39,7 +39,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
 
       if (onPDFGenerated) {
         const blobResult = await generatePDF({
-          letter, template, senderInfo, informationBlock: informationBlock as any, attachments: attachments as any,
+          letter, template, senderInfo, informationBlock: informationBlock as unknown as InformationBlockContract, attachments: attachments as unknown as AttachmentContract[],
           showPagination, returnBlob: true, contact,
         });
         if (blobResult) onPDFGenerated(blobResult.blob, blobResult.filename);

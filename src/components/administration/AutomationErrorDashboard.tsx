@@ -51,7 +51,7 @@ export function AutomationErrorDashboard({ onRetrigger }: AutomationErrorDashboa
     }
 
     // Fetch rule names
-    const ruleIds = [...new Set((runs || []).map((r: any) => r.rule_id))];
+    const ruleIds = [...new Set((runs || []).map((r: { rule_id: string }) => r.rule_id))];
     let ruleMap: Record<string, string> = {};
 
     if (ruleIds.length > 0) {
@@ -59,14 +59,14 @@ export function AutomationErrorDashboard({ onRetrigger }: AutomationErrorDashboa
         .from("automation_rules")
         .select("id, name")
         .in("id", ruleIds);
-      ruleMap = (rules || []).reduce((acc: Record<string, string>, r: any) => {
+      ruleMap = (rules || []).reduce((acc: Record<string, string>, r: { id: string; name: string }) => {
         acc[r.id] = r.name;
         return acc;
       }, {});
     }
 
     setFailedRuns(
-      (runs || []).map((r: any) => ({
+      (runs || []).map((r: { rule_id: string; [k: string]: unknown }) => ({
         ...r,
         rule_name: ruleMap[r.rule_id] || r.rule_id.slice(0, 8) + "…",
       }))

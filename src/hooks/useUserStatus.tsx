@@ -53,8 +53,8 @@ export const useUserStatus = () => {
   const [usersWithStatus, setUsersWithStatus] = useState<UserWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAwayTimerActive, setIsAwayTimerActive] = useState(false);
-  const statusChannelRef = useRef<any>(null);
-  const presenceChannelRef = useRef<any>(null);
+  const statusChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   // Auto-away timer
   useEffect(() => {
@@ -214,7 +214,8 @@ export const useUserStatus = () => {
           const presenceState = channel.presenceState();
           const onlineUsersList: OnlineUser[] = [];
           
-          Object.entries(presenceState).forEach(([userId, presences]: [string, any[]]) => {
+          Object.entries(presenceState).forEach(([userId, rawPresences]) => {
+            const presences = rawPresences as Array<{ online_at?: string; display_name?: string; avatar_url?: string; presence_ref?: string; status?: UserStatus }>;
             if (presences && presences.length > 0) {
               const presence = [...presences].sort((a, b) => {
                 const aTime = new Date(a.online_at || 0).getTime();
@@ -225,9 +226,9 @@ export const useUserStatus = () => {
               onlineUsersList.push({
                 user_id: userId,
                 display_name: presence.display_name || 'Unbekannt',
-                avatar_url: presence.avatar_url,
-                presence_ref: presence.presence_ref,
-                online_at: presence.online_at,
+                avatar_url: presence.avatar_url ?? '',
+                presence_ref: presence.presence_ref ?? '',
+                online_at: presence.online_at ?? '',
                 status: presence.status
               });
             }

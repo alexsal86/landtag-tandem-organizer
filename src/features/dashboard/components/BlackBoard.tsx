@@ -29,7 +29,7 @@ export function BlackBoard() {
     if (!user) return;
 
     try {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .rpc('get_user_messages', { user_id_param: user.id });
 
       if (error) {
@@ -41,7 +41,7 @@ export function BlackBoard() {
       // 1. Unread "An alle" messages (including own)
       // 2. Unread personal messages addressed to the user
       const relevantMessages = (data || [])
-        .filter((msg: any) => {
+        .filter((msg: BlackBoardMessage & { is_for_all_users?: boolean }) => {
           // Unread "An alle" messages (from anyone including self)
           if (msg.is_for_all_users && !msg.has_read) {
             return true;
@@ -75,7 +75,7 @@ export function BlackBoard() {
     if (!user) return;
 
     try {
-      await (supabase as any)
+      await supabase
         .rpc('mark_message_read', {
           message_id_param: messageId,
           user_id_param: user.id,

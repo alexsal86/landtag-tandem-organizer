@@ -1,4 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { LetterLayoutSettings } from '@/types/letterLayout';
+import type { HeaderElement } from '@/components/canvas-engine/types';
 
 export const PRESS_TEMPLATE_SETTINGS_KEY = 'press_templates_v1';
 
@@ -12,9 +14,9 @@ export interface PressTemplateConfig {
   default_tags?: string;
   is_default?: boolean;
   is_active?: boolean;
-  layout_settings?: any;
-  header_elements?: any[];
-  footer_elements?: any[];
+  layout_settings?: LetterLayoutSettings;
+  header_elements?: HeaderElement[];
+  footer_elements?: HeaderElement[];
 }
 
 export const parsePressTemplates = (rawValue?: string | null): PressTemplateConfig[] => {
