@@ -344,7 +344,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
   const handleChange = (field: string, value: unknown) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
-    if (field === 'email') {
+    if (field === 'email' && typeof value === 'string') {
       validateEmail(value);
     }
     
