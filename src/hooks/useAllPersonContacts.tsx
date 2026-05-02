@@ -55,7 +55,7 @@ export const useAllPersonContacts = () => {
           return;
         }
 
-        const pageContacts = (contacts || []).map((c: any) => mapPersonContact(c));
+        const pageContacts = (contacts || []).map((c) => mapPersonContact(c as Parameters<typeof mapPersonContact>[0]));
         allContacts.push(...pageContacts);
 
         if (!contacts || contacts.length < PAGE_SIZE) {
@@ -122,7 +122,7 @@ export const useAllPersonContacts = () => {
           filter: `tenant_id=eq.${currentTenant.id}`,
         },
         (payload: RealtimePostgresChangesPayload<{ id: string }>) => {
-          const changedId = (payload.new as any)?.id || (payload.old as any)?.id;
+          const changedId = (payload.new as { id?: string } | null)?.id || (payload.old as { id?: string } | null)?.id;
           if (!changedId) return;
 
           if (payload.eventType === "DELETE") {
