@@ -164,14 +164,14 @@ export function MeetingProtocolView({ meetingId, onBack, isPostArchive }: Meetin
         .eq('meeting_id', meetingId);
 
       // Load case items linked via agenda items with system_type='case_items'
-      const caseItemAgendaItems = (agendaData || []).filter(
-        (item: any) => item.system_type === 'case_items' && item.result_text?.trim()
+      const caseItemAgendaItems = ((agendaData || []) as ProtocolAgendaItem[]).filter(
+        (item) => item.system_type === 'case_items' && item.result_text?.trim()
       );
       // We'll display them from agenda items directly
 
       // Load decisions linked via agenda items with system_type='decisions'
-      const decisionAgendaItems = (agendaData || []).filter(
-        (item: any) => item.system_type === 'decisions'
+      const decisionAgendaItems = ((agendaData || []) as ProtocolAgendaItem[]).filter(
+        (item) => item.system_type === 'decisions'
       );
       const decisionList: ProtocolDecision[] = [];
       if (decisionAgendaItems.length > 0) {

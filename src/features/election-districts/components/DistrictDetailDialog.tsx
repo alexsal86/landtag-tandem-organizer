@@ -261,7 +261,7 @@ export function DistrictDetailDialog({ district, open, onOpenChange }: DistrictD
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="priority">Priorität</Label>
-                      <Select value={noteForm.priority} onValueChange={(value: any) => setNoteForm({ ...noteForm, priority: value })}>
+                      <Select value={noteForm.priority} onValueChange={(value) => setNoteForm({ ...noteForm, priority: value as NoteFormData["priority"] })}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -275,7 +275,7 @@ export function DistrictDetailDialog({ district, open, onOpenChange }: DistrictD
 
                     <div>
                       <Label htmlFor="category">Kategorie</Label>
-                      <Select value={noteForm.category} onValueChange={(value: any) => setNoteForm({ ...noteForm, category: value })}>
+                      <Select value={noteForm.category} onValueChange={(value) => setNoteForm({ ...noteForm, category: value as NoteFormData["category"] })}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>

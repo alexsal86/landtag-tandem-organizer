@@ -597,7 +597,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
             )}
 
             <div className="grid grid-cols-2 gap-2">
-              <Select value={callType} onValueChange={(value) => setCallType(value as any)}>
+              <Select value={callType} onValueChange={(value) => setCallType(value as typeof callType)}>
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
@@ -636,7 +636,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <Select value={priority} onValueChange={(value) => setPriority(value as any)}>
+              <Select value={priority} onValueChange={(value) => setPriority(value as typeof priority)}>
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
