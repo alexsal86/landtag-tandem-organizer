@@ -34,6 +34,7 @@ import { PressReleaseWizard, type PressWizardResult } from "@/components/press/P
 import { LetterWizard } from "@/components/letters/LetterWizard";
 import LetterPDFExport from "@/features/letters/components/LetterPDFExport";
 import LetterDOCXExport from "@/features/letters/components/LetterDOCXExport";
+import type { LetterRecord } from "@/components/letter-pdf/types";
 import { EmailComposer } from "@/components/emails/EmailComposer";
 import { EmailHistory } from "@/components/emails/EmailHistory";
 import { EmailTemplateManager } from "@/components/emails/EmailTemplateManager";
@@ -257,7 +258,7 @@ export function DocumentsView() {
 
   const handleWizardComplete = (config: { occasion: string; recipientName: string; recipientAddress: string; contactId?: string; templateId?: string; senderInfoId?: string; }) => {
     setShowWizard(false);
-    setSelectedLetter({ id: undefined, title: '', content: '', content_html: '', status: 'draft', template_id: config.templateId, sender_info_id: config.senderInfoId, information_block_ids: [], tenant_id: data.currentTenant?.id || '', created_by: data.user?.id || '', created_at: '', updated_at: '', recipient_name: config.recipientName, recipient_address: config.recipientAddress, contact_id: config.contactId } as any);
+    setSelectedLetter({ id: undefined, title: '', content: '', content_html: '', status: 'draft', template_id: config.templateId, sender_info_id: config.senderInfoId, information_block_ids: [], tenant_id: data.currentTenant?.id || '', created_by: data.user?.id || '', created_at: '', updated_at: '', recipient_name: config.recipientName, recipient_address: config.recipientAddress, contact_id: config.contactId });
     setShowLetterEditor(true);
   };
 
@@ -565,11 +566,11 @@ export function DocumentsView() {
           editFolderId={editFolderId} setEditFolderId={setEditFolderId}
           documentCategories={safeCategories} tags={safeTags} folders={safeFolders}
           loading={data.loading}
-          onUpdateDocument={() => ops.handleUpdateDocument({ editingDocument, mutation: { type: "update", documentId: editingDocument?.id || "", title: editTitle, description: editDescription, category: editCategory, tags: editTags, status: editStatus, folderId: editFolderId }, onSuccess: () => { setShowEditDialog(false); setEditingDocument(null); } }) as any}
+          onUpdateDocument={() => { void ops.handleUpdateDocument({ editingDocument, mutation: { type: "update", documentId: editingDocument?.id || "", title: editTitle, description: editDescription, category: editCategory, tags: editTags, status: editStatus, folderId: editFolderId }, onSuccess: () => { setShowEditDialog(false); setEditingDocument(null); } }); }}
           showMoveFolderDialog={dialogState.showMoveFolderDialog} setShowMoveFolderDialog={setShowMoveFolderDialog}
           selectedDocument={selectedDocument} setSelectedDocument={setSelectedDocument}
           moveToFolderId={moveToFolderId} setMoveToFolderId={setMoveToFolderId}
-          onMoveDocument={() => ops.handleMoveDocument(selectedDocument, { type: "move-document", documentId: selectedDocument?.id || "", folderId: moveToFolderId }, () => { setShowMoveFolderDialog(false); setSelectedDocument(null); setMoveToFolderId(""); }) as any}
+          onMoveDocument={() => { void ops.handleMoveDocument(selectedDocument, { type: "move-document", documentId: selectedDocument?.id || "", folderId: moveToFolderId }, () => { setShowMoveFolderDialog(false); setSelectedDocument(null); setMoveToFolderId(""); }); }}
           taskDialogMode={dialogState.taskDialogMode} taskTitle={ops.taskTitle} setTaskTitle={ops.setTaskTitle}
           taskDescription={ops.taskDescription} setTaskDescription={ops.setTaskDescription}
           parentTaskId={ops.parentTaskId} setParentTaskId={ops.setParentTaskId}

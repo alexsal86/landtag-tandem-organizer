@@ -5,6 +5,8 @@ import type { Letter, LetterTemplate } from '../types';
 import { canTransitionStatus, STATUS_LABELS } from '../types';
 import { debugConsole } from '@/utils/debugConsole';
 import type { Database } from '@/integrations/supabase/types';
+import type { LetterContentNodes } from '../types';
+import type { SenderInformationRecord, InformationBlockRecord } from '@/types/letterLayout';
 
 type LetterAttachment = Database['public']['Tables']['letter_attachments']['Row'];
 
@@ -16,7 +18,7 @@ interface UseLetterOperationsOptions {
   userId?: string;
   tenantId?: string;
   showPagination: boolean;
-  latestContentRef: React.MutableRefObject<{ content: string; contentNodes?: any }>;
+  latestContentRef: React.MutableRefObject<{ content: string; contentNodes?: LetterContentNodes }>;
   isUpdatingFromRemoteRef: React.MutableRefObject<boolean>;
   pendingMentionsRef: React.MutableRefObject<Set<string>>;
   onSave: () => void;
@@ -26,8 +28,8 @@ interface UseLetterOperationsOptions {
   setShowAssignmentDialog: React.Dispatch<React.SetStateAction<boolean>>;
   fetchComments: () => void;
   fetchCollaborators: () => void;
-  senderInfos: any[];
-  informationBlocks: any[];
+  senderInfos: SenderInformationRecord[];
+  informationBlocks: InformationBlockRecord[];
 }
 
 export function useLetterOperations(opts: UseLetterOperationsOptions) {

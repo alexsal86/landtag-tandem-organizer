@@ -14,4 +14,6 @@ export interface ParsedVCard {
   email?: VCardValueLike | VCardValueLike[];
   tel?: VCardValueLike | VCardValueLike[];
   adr?: VCardValueLike | VCardValueLike[];
+  url?: VCardValueLike;
+  note?: VCardValueLike;
 }

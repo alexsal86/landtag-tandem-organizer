@@ -237,7 +237,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
   }, [currentTemplate, editedLetter, senderInfos, contacts, informationBlocks, attachments]);
 
   const templateDefaultFontFamily = useMemo(() => {
-    const layoutFontFamily = (currentTemplate?.layout_settings?.content as any)?.fontFamily;
+    const layoutFontFamily = (currentTemplate?.layout_settings?.content as { fontFamily?: unknown } | undefined)?.fontFamily;
     if (typeof layoutFontFamily === 'string' && layoutFontFamily.trim() !== '') return layoutFontFamily.trim();
     const draftNodesFontFamily = extractFontFamilyFromContentNodes(draftContentNodes);
     if (draftNodesFontFamily) return draftNodesFontFamily;
@@ -271,6 +271,19 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
     if (!nodes) return undefined;
     return typeof nodes === 'string' ? nodes : JSON.stringify(nodes);
   };
+
+  const layoutTemplate: import('@/types/letterLayout').LetterLayoutTemplateLike | undefined = currentTemplate
+    ? {
+        layout_settings: currentTemplate.layout_settings ?? undefined,
+        header_layout_type: (currentTemplate as { header_layout_type?: string | null }).header_layout_type ?? undefined,
+        header_text_elements: Array.isArray((currentTemplate as { header_text_elements?: unknown }).header_text_elements)
+          ? ((currentTemplate as { header_text_elements?: unknown }).header_text_elements as import('@/types/letterLayout').LetterCanvasElement[])
+          : undefined,
+        letterhead_html: (currentTemplate as { letterhead_html?: string | null }).letterhead_html ?? undefined,
+        letterhead_css: (currentTemplate as { letterhead_css?: string | null }).letterhead_css ?? undefined,
+        footer_blocks: (currentTemplate as { footer_blocks?: unknown }).footer_blocks,
+      }
+    : undefined;
 
   if (!isOpen) return null;
 
@@ -343,9 +356,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
               <div className="flex-1 overflow-auto bg-muted/50 p-6">
                 <div style={{ transform: `scale(${previewZoom})`, transformOrigin: 'top center', marginBottom: `${(previewZoom - 1) * 297}mm` }}>
                   <div className="mx-auto" style={{ width: '210mm', boxShadow: '0 4px 24px rgba(0,0,0,0.12)' }}>
-                    <DIN5008LetterLayout template={currentTemplate as any ?? undefined} senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}
+                    <DIN5008LetterLayout template={layoutTemplate} senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}
                       informationBlock={informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id)) ? [informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id))!] : undefined}
-                      recipientAddress={editedLetter.recipient_address ? { name: editedLetter.recipient_name, address: editedLetter.recipient_address } as any : undefined}
+                      recipientAddress={editedLetter.recipient_address ? { name: editedLetter.recipient_name, address: editedLetter.recipient_address } : undefined}
                       subject={editedLetter.subject} letterDate={editedLetter.letter_date} referenceNumber={editedLetter.reference_number}
                       content={editedLetter.content_html || editedLetter.content || ''} attachments={attachments} showPagination={showPagination} debugMode={showLayoutDebug}
                       salutation={editedLetter.salutation_override || computedSalutation} layoutSettings={getLayoutSettings()}
@@ -368,7 +381,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Live</Badge>
                     </div>
                     <Button size="sm" variant="default" className="h-7 px-2" disabled={!canEdit || saving}
-                      onClick={() => handleManualSave(latestContentRef.current.content, latestContentRef.current.contentNodes as any)}>
+                      onClick={() => handleManualSave(latestContentRef.current.content, toSerializedContentNodes(latestContentRef.current.contentNodes ?? undefined))}>
                       <Save className="h-3.5 w-3.5 mr-1" />Speichern
                     </Button>
                     <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setShowTextSplitEditor(false)}><X className="h-3.5 w-3.5" /></Button>
@@ -389,8 +402,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
                     }}><Edit3 className="h-4 w-4 mr-2" />Editor öffnen</Button>
                   </div>
                 )}
-                <LetterEditorCanvas template={currentTemplate as any ?? undefined} subject={editedLetter.subject} salutation={editedLetter.salutation_override || computedSalutation}
-                  content={editedLetter.content_html || editedLetter.content || ''} contentNodes={editedLetter.content_nodes as any}
+                <LetterEditorCanvas template={layoutTemplate} subject={editedLetter.subject} salutation={editedLetter.salutation_override || computedSalutation}
+                  content={editedLetter.content_html || editedLetter.content || ''} contentNodes={toSerializedContentNodes(editedLetter.content_nodes ?? undefined)}
                   recipientAddress={editedLetter.recipient_address ? { name: editedLetter.recipient_name, address: editedLetter.recipient_address } : undefined}
                   letterDate={editedLetter.letter_date} referenceNumber={editedLetter.reference_number} attachments={attachments}
                   showPagination={showPagination} senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}

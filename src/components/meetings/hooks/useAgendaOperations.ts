@@ -119,7 +119,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
     }
   };
 
-  const updateAgendaItem = async (index: number, field: keyof AgendaItem, value: any) => {
+  const updateAgendaItem = async (index: number, field: keyof AgendaItem, value: unknown) => {
     let normalizedValue = value;
     if (field === 'assigned_to' && Array.isArray(value)) normalizedValue = value.flat();
 
@@ -219,7 +219,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
         .eq('meeting_id', selectedMeeting.id);
       if (existingError) throw existingError;
 
-      const existingIds = new Set<string>((existingRows || []).map((row: any) => row.id));
+      const existingIds = new Set<string>((existingRows || []).map((row) => row.id));
       const incomingIds = new Set<string>(ordered.map(item => item.id).filter((id): id is string => Boolean(id)));
       const idsToDelete = [...existingIds].filter(id => !incomingIds.has(id)) as string[];
 
@@ -299,7 +299,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
     }
   };
 
-  const addTaskToAgenda = async (task: any, parentItem: AgendaItem, parentIndex: number) => {
+  const addTaskToAgenda = async (task: { id: string; title: string; description?: string | null; assigned_to?: string | null; user_id?: string | null }, parentItem: AgendaItem, parentIndex: number) => {
     if (!selectedMeeting?.id) return;
     const showTaskSelectorRef = { current: null };
     try {
