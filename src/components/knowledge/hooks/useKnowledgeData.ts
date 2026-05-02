@@ -114,7 +114,7 @@ export function useKnowledgeData() {
     if (ids.length === 0) return {} as Record<string, string>;
     const { data, error } = await supabase.from('profiles').select('user_id, display_name').in('user_id', ids);
     if (error) throw error;
-    return ((data ?? []) as any[]).reduce<Record<string, string>>((acc, p) => { acc[p.user_id] = p.display_name || 'Unbekannt'; return acc; }, {});
+    return ((data ?? []) as Array<{ user_id: string; display_name: string | null }>).reduce<Record<string, string>>((acc, p) => { acc[p.user_id] = p.display_name || 'Unbekannt'; return acc; }, {});
   }, []);
 
   const hydrateDocuments = useCallback(async (rows: KnowledgeDocumentRow[]) => {
@@ -177,7 +177,7 @@ export function useKnowledgeData() {
     const channelName = `knowledge-docs-${tenantId}-${crypto.randomUUID()}`;
     const channel = supabase.channel(channelName).on('postgres_changes', { event: '*', schema: 'public', table: 'knowledge_documents', filter: `tenant_id=eq.${tenantId}` }, async (payload: Record<string, any>) => {
       if (payload.eventType === 'DELETE') {
-        const deletedId = (payload.old as any)?.id;
+        const deletedId = (payload.old as { id?: string } | null)?.id;
         if (!deletedId) return;
         setDocuments(prev => prev.filter(d => d.id !== deletedId));
         setDocumentTopicsMap(prev => { const { [deletedId]: _, ...rest } = prev; return rest; });
@@ -226,7 +226,7 @@ export function useKnowledgeData() {
     }
   };
 
-  const handleSaveDocument = async (topicIds: string[], setTopicsFn: (ids: string[]) => Promise<any>) => {
+  const handleSaveDocument = async (topicIds: string[], setTopicsFn: (ids: string[]) => Promise<unknown>) => {
     if (!selectedDocument || !user) return;
     try {
       const persistedContent = serializeKnowledgeContent(editorContent);
