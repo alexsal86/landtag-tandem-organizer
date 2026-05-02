@@ -381,7 +381,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Live</Badge>
                     </div>
                     <Button size="sm" variant="default" className="h-7 px-2" disabled={!canEdit || saving}
-                      onClick={() => handleManualSave(latestContentRef.current.content, latestContentRef.current.contentNodes as any)}>
+                      onClick={() => handleManualSave(latestContentRef.current.content, toSerializedContentNodes(latestContentRef.current.contentNodes ?? undefined))}>
                       <Save className="h-3.5 w-3.5 mr-1" />Speichern
                     </Button>
                     <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setShowTextSplitEditor(false)}><X className="h-3.5 w-3.5" /></Button>
@@ -402,8 +402,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
                     }}><Edit3 className="h-4 w-4 mr-2" />Editor öffnen</Button>
                   </div>
                 )}
-                <LetterEditorCanvas template={currentTemplate as any ?? undefined} subject={editedLetter.subject} salutation={editedLetter.salutation_override || computedSalutation}
-                  content={editedLetter.content_html || editedLetter.content || ''} contentNodes={editedLetter.content_nodes as any}
+                <LetterEditorCanvas template={layoutTemplate} subject={editedLetter.subject} salutation={editedLetter.salutation_override || computedSalutation}
+                  content={editedLetter.content_html || editedLetter.content || ''} contentNodes={toSerializedContentNodes(editedLetter.content_nodes ?? undefined)}
                   recipientAddress={editedLetter.recipient_address ? { name: editedLetter.recipient_name, address: editedLetter.recipient_address } : undefined}
                   letterDate={editedLetter.letter_date} referenceNumber={editedLetter.reference_number} attachments={attachments}
                   showPagination={showPagination} senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}
