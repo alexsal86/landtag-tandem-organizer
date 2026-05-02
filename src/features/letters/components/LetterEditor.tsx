@@ -272,8 +272,17 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
     return typeof nodes === 'string' ? nodes : JSON.stringify(nodes);
   };
 
-  const layoutTemplate = currentTemplate
-    ? { ...currentTemplate, layout_settings: currentTemplate.layout_settings ?? undefined }
+  const layoutTemplate: import('@/types/letterLayout').LetterLayoutTemplateLike | undefined = currentTemplate
+    ? {
+        layout_settings: currentTemplate.layout_settings ?? undefined,
+        header_layout_type: (currentTemplate as { header_layout_type?: string | null }).header_layout_type ?? undefined,
+        header_text_elements: Array.isArray((currentTemplate as { header_text_elements?: unknown }).header_text_elements)
+          ? ((currentTemplate as { header_text_elements?: unknown }).header_text_elements as import('@/types/letterLayout').LetterCanvasElement[])
+          : undefined,
+        letterhead_html: (currentTemplate as { letterhead_html?: string | null }).letterhead_html ?? undefined,
+        letterhead_css: (currentTemplate as { letterhead_css?: string | null }).letterhead_css ?? undefined,
+        footer_blocks: (currentTemplate as { footer_blocks?: unknown }).footer_blocks,
+      }
     : undefined;
 
   if (!isOpen) return null;
