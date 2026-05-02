@@ -258,7 +258,7 @@ export function DocumentsView() {
 
   const handleWizardComplete = (config: { occasion: string; recipientName: string; recipientAddress: string; contactId?: string; templateId?: string; senderInfoId?: string; }) => {
     setShowWizard(false);
-    setSelectedLetter({ id: undefined, title: '', content: '', content_html: '', status: 'draft', template_id: config.templateId, sender_info_id: config.senderInfoId, information_block_ids: [], tenant_id: data.currentTenant?.id || '', created_by: data.user?.id || '', created_at: '', updated_at: '', recipient_name: config.recipientName, recipient_address: config.recipientAddress, contact_id: config.contactId } as any);
+    setSelectedLetter({ id: undefined, title: '', content: '', content_html: '', status: 'draft', template_id: config.templateId, sender_info_id: config.senderInfoId, information_block_ids: [], tenant_id: data.currentTenant?.id || '', created_by: data.user?.id || '', created_at: '', updated_at: '', recipient_name: config.recipientName, recipient_address: config.recipientAddress, contact_id: config.contactId });
     setShowLetterEditor(true);
   };
 
