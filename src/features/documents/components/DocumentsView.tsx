@@ -565,11 +565,11 @@ export function DocumentsView() {
           editFolderId={editFolderId} setEditFolderId={setEditFolderId}
           documentCategories={safeCategories} tags={safeTags} folders={safeFolders}
           loading={data.loading}
-          onUpdateDocument={() => ops.handleUpdateDocument({ editingDocument, mutation: { type: "update", documentId: editingDocument?.id || "", title: editTitle, description: editDescription, category: editCategory, tags: editTags, status: editStatus, folderId: editFolderId }, onSuccess: () => { setShowEditDialog(false); setEditingDocument(null); } }) as any}
+          onUpdateDocument={() => { void ops.handleUpdateDocument({ editingDocument, mutation: { type: "update", documentId: editingDocument?.id || "", title: editTitle, description: editDescription, category: editCategory, tags: editTags, status: editStatus, folderId: editFolderId }, onSuccess: () => { setShowEditDialog(false); setEditingDocument(null); } }); }}
           showMoveFolderDialog={dialogState.showMoveFolderDialog} setShowMoveFolderDialog={setShowMoveFolderDialog}
           selectedDocument={selectedDocument} setSelectedDocument={setSelectedDocument}
           moveToFolderId={moveToFolderId} setMoveToFolderId={setMoveToFolderId}
-          onMoveDocument={() => ops.handleMoveDocument(selectedDocument, { type: "move-document", documentId: selectedDocument?.id || "", folderId: moveToFolderId }, () => { setShowMoveFolderDialog(false); setSelectedDocument(null); setMoveToFolderId(""); }) as any}
+          onMoveDocument={() => { void ops.handleMoveDocument(selectedDocument, { type: "move-document", documentId: selectedDocument?.id || "", folderId: moveToFolderId }, () => { setShowMoveFolderDialog(false); setSelectedDocument(null); setMoveToFolderId(""); }); }}
           taskDialogMode={dialogState.taskDialogMode} taskTitle={ops.taskTitle} setTaskTitle={ops.setTaskTitle}
           taskDescription={ops.taskDescription} setTaskDescription={ops.setTaskDescription}
           parentTaskId={ops.parentTaskId} setParentTaskId={ops.setParentTaskId}
