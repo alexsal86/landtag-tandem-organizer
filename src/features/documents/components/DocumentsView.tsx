@@ -34,6 +34,7 @@ import { PressReleaseWizard, type PressWizardResult } from "@/components/press/P
 import { LetterWizard } from "@/components/letters/LetterWizard";
 import LetterPDFExport from "@/features/letters/components/LetterPDFExport";
 import LetterDOCXExport from "@/features/letters/components/LetterDOCXExport";
+import type { LetterRecord } from "@/components/letter-pdf/types";
 import { EmailComposer } from "@/components/emails/EmailComposer";
 import { EmailHistory } from "@/components/emails/EmailHistory";
 import { EmailTemplateManager } from "@/components/emails/EmailTemplateManager";
