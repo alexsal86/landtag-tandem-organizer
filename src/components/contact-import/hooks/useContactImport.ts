@@ -128,8 +128,8 @@ export function useContactImport() {
                 }
               });
             }
-            if ((vcard as any).url) d["Website"] = String((vcard as any).url.valueOf());
-            if ((vcard as any).note) d["Notizen"] = String((vcard as any).note.valueOf());
+            if (vcard.url) d["Website"] = String(vcard.url.valueOf());
+            if (vcard.note) d["Notizen"] = String(vcard.note.valueOf());
             return d;
           });
           setData(parsed); autoMapFields(Object.keys(parsed[0] || {})); setStep("mapping");
@@ -258,7 +258,7 @@ export function useContactImport() {
       } else {
         await assignContactToDistributionLists(insertedContact.id, distributionListNames, rowIndex);
         setImportedCount((prev) => prev + 1);
-        setExistingContacts((prev) => [...prev, { id: insertedContact.id, name: contactData.name || '', email: contactData.email, phone: contactData.phone, organization: contactData.organization } as any]);
+        setExistingContacts((prev) => [...prev, { id: insertedContact.id, name: contactData.name || '', email: contactData.email, phone: contactData.phone, organization: contactData.organization }]);
       }
     } catch {
       setErrors((prev) => [...prev, `Zeile ${rowIndex + 1}: Unbekannter Fehler`]);
