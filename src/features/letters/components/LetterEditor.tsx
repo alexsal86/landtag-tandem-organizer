@@ -272,6 +272,10 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
     return typeof nodes === 'string' ? nodes : JSON.stringify(nodes);
   };
 
+  const layoutTemplate = currentTemplate
+    ? { ...currentTemplate, layout_settings: currentTemplate.layout_settings ?? undefined }
+    : undefined;
+
   if (!isOpen) return null;
 
   return (
