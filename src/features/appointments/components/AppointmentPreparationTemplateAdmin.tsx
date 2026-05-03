@@ -19,7 +19,8 @@ interface Template {
   id: string;
   name: string;
   description: string | null;
-  template_data: unknown[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  template_data: any[];
   is_default: boolean;
   is_active: boolean;
   created_at: string;

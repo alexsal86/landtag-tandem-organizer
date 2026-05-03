@@ -225,9 +225,11 @@ export default function EnhancedLexicalEditor({
     },
   }), [editable]);
 
-  const editorRef = useRef<LexicalEditor | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const editorRef = useRef<any>(null);
 
-  const handleChange = useCallback((editorState: EditorState, editor: LexicalEditor) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleChange = useCallback((editorState: EditorState, editor: any) => {
     editorRef.current = editor;
     editorState.read(() => {
       const root = $getRoot();

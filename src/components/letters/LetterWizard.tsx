@@ -105,7 +105,7 @@ export const LetterWizard: React.FC<LetterWizardProps> = ({ onComplete, onCancel
         key: o.key,
         label: o.label,
         description: o.description || '',
-        icon: ICON_MAP[o.icon] || FileText,
+        icon: (o.icon ? ICON_MAP[o.icon] : undefined) || FileText,
         color: o.color || 'bg-muted-foreground',
         default_template_id: o.default_template_id,
         template_match_patterns: o.template_match_patterns || [],

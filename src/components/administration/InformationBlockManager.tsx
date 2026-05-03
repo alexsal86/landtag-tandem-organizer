@@ -18,7 +18,8 @@ interface InformationBlock {
   id: string;
   name: string;
   label: string;
-  block_data: Record<string, unknown> | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  block_data: any;
   block_type: string;
   is_default: boolean | null;
   is_active: boolean | null;

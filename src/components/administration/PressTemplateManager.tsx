@@ -40,7 +40,8 @@ const cloneLayout = (layout?: LetterLayoutSettings): LetterLayoutSettings => ({
   footer: { ...DEFAULT_DIN5008_LAYOUT.footer, ...(layout?.footer || {}) },
   attachments: { ...DEFAULT_DIN5008_LAYOUT.attachments, ...(layout?.attachments || {}) },
   pagination: { enabled: false, top: 10, align: 'right' as const, ...(DEFAULT_DIN5008_LAYOUT.pagination || {}), ...(layout?.pagination || {}) },
-  blockContent: { ...((layout?.blockContent as Record<string, unknown[]>) || {}) },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  blockContent: { ...((layout?.blockContent as Record<string, any[]>) || {}) },
 });
 
 const getBlockItems = (layout: LetterLayoutSettings, blockKey: BlockKey): CanvasElement[] => {

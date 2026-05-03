@@ -73,7 +73,7 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
         }
       });
 
-      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as { data?: { articles?: unknown[] }; error?: unknown };
+      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as { data?: { articles?: NewsArticle[] }; error?: unknown };
 
       if (error) throw error;
       
