@@ -84,7 +84,8 @@ interface ContactDetailSheetProps {
 export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate }: ContactDetailSheetProps) {
   const [contact, setContact] = useState<Contact | null>(null);
   const [callLogs, setCallLogs] = useState<CallLog[]>([]);
-  const [activities, setActivities] = useState<Array<Record<string, unknown>>>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingCallLogs, setLoadingCallLogs] = useState(false);
   const [activitiesLoading, setActivitiesLoading] = useState(false);

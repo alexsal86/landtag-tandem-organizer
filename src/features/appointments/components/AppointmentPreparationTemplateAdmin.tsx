@@ -461,7 +461,7 @@ function TemplateEditor({ template, onSave, onCancel }: TemplateEditorProps) {
                         value={field.type}
                         onValueChange={(value: string) => {
                           const newSections = [...sections];
-                          newSections[sectionIndex].fields![fieldIndex].type = value;
+                          newSections[sectionIndex].fields![fieldIndex].type = value as 'text' | 'textarea' | 'select';
                           setSections(newSections);
                         }}
                       >

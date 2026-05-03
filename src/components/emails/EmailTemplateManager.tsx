@@ -22,7 +22,7 @@ interface EmailTemplate {
   subject: string;
   body_html: string;
   category?: string;
-  variables?: unknown[];
+  variables?: string[];
   is_active: boolean;
   created_at: string;
   updated_at: string;
