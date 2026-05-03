@@ -162,8 +162,7 @@ export function useTopicBacklog() {
       const linkedByTopic = new Map<string, TopicBacklogLinkedContent[]>();
 
       for (const row of linkedRows || []) {
-        // INTEROP-ANY(TS-4823, Redaktion-Backlog, 2026-04-22): Supabase join payload is dynamic until typed view contract is finalized.
-        const channelLinks = ((row as any).social_content_item_channels || []) as Array<{
+        const channelLinks = ((row as Record<string, unknown>).social_content_item_channels || []) as Array<{
           channel_id: string;
           is_primary: boolean;
           social_content_channels: { name: string | null } | null;
