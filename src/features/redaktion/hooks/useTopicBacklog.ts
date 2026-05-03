@@ -108,13 +108,13 @@ export function useTopicBacklog() {
 
       const eventPlanningTopicIds = new Set(
         (plannerActionRows || [])
-          .map((row: Record<string, any>) => (row.action_config as { topic_backlog_id?: string | null } | null)?.topic_backlog_id)
+          .map((row: Record<string, unknown>) => (row.action_config as { topic_backlog_id?: string | null } | null)?.topic_backlog_id)
           .filter((value: unknown): value is string => Boolean(value)),
       );
 
-      const topicData = (topicRows || []).filter((row: Record<string, any>) => !eventPlanningTopicIds.has(row.id));
-      const ownerIds = Array.from(new Set(topicData.map((row: Record<string, any>) => row.owner_id).filter((value: unknown): value is string => Boolean(value))));
-      const topicIds = topicData.map((row: Record<string, any>) => row.id);
+      const topicData = (topicRows || []).filter((row: Record<string, unknown>) => !eventPlanningTopicIds.has(row.id));
+      const ownerIds = Array.from(new Set(topicData.map((row: Record<string, unknown>) => row.owner_id).filter((value: unknown): value is string => Boolean(value))));
+      const topicIds = topicData.map((row: Record<string, unknown>) => row.id);
 
       const [{ data: ownerRows, error: ownerError }, { data: linkedRows, error: linkedError }] = await Promise.all([
         ownerIds.length
@@ -144,21 +144,21 @@ export function useTopicBacklog() {
       if (ownerError) throw ownerError;
       if (linkedError) throw linkedError;
 
-      const responsibleIds = Array.from(new Set((linkedRows || []).map((row: Record<string, any>) => row.responsible_user_id).filter((value: unknown): value is string => Boolean(value))));
+      const responsibleIds = Array.from(new Set((linkedRows || []).map((row: Record<string, unknown>) => row.responsible_user_id).filter((value: unknown): value is string => Boolean(value))));
       const { data: responsibleRows, error: responsibleError } = responsibleIds.length
         ? await supabase.from("profiles").select("id, display_name").in("id", responsibleIds).eq("tenant_id", currentTenant.id)
         : { data: [], error: null };
 
       if (responsibleError) throw responsibleError;
 
-      const ownerNameById = new Map((ownerRows || []).map((row: Record<string, any>) => [row.id, row.display_name || null]));
-      const campaignIds = Array.from(new Set(topicData.map((row: Record<string, any>) => row.campaign_id).filter((value: unknown): value is string => Boolean(value))));
+      const ownerNameById = new Map((ownerRows || []).map((row: Record<string, unknown>) => [row.id, row.display_name || null]));
+      const campaignIds = Array.from(new Set(topicData.map((row: Record<string, unknown>) => row.campaign_id).filter((value: unknown): value is string => Boolean(value))));
       const { data: campaignRows, error: campaignError } = campaignIds.length
         ? await supabase.from("social_campaigns").select("id, name").in("id", campaignIds).eq("tenant_id", currentTenant.id)
         : { data: [], error: null };
       if (campaignError) throw campaignError;
-      const campaignNameById = new Map((campaignRows || []).map((row: Record<string, any>) => [row.id, row.name]));
-      const responsibleNameById = new Map((responsibleRows || []).map((row: Record<string, any>) => [row.id, row.display_name || null]));
+      const campaignNameById = new Map((campaignRows || []).map((row: Record<string, unknown>) => [row.id, row.name]));
+      const responsibleNameById = new Map((responsibleRows || []).map((row: Record<string, unknown>) => [row.id, row.display_name || null]));
       const linkedByTopic = new Map<string, TopicBacklogLinkedContent[]>();
 
       for (const row of linkedRows || []) {
@@ -190,7 +190,7 @@ export function useTopicBacklog() {
       }
 
       setTopics(
-        topicData.map((row: Record<string, any>) => {
+        topicData.map((row: Record<string, unknown>) => {
           const linkedContentItems = linkedByTopic.get(row.id) || [];
           const latestScheduledItem = linkedContentItems.find((item) => Boolean(item.scheduled_for)) || null;
           const openProductionNeeds = Array.from(
