@@ -30,7 +30,7 @@ interface QuickAction {
 interface QuickActionsWidgetProps {
   className?: string;
   widgetSize?: string;
-  onConfigurationChange?: (config: any) => void;
+  onConfigurationChange?: (config: Record<string, unknown>) => void;
   configuration?: {
     actions?: QuickAction[];
     columns?: number | string;

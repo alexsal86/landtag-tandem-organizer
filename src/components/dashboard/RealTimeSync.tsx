@@ -256,7 +256,7 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
     
     try {
       const newLayout = payload.new.layout_data;
-      onLayoutUpdate(newLayout as any);
+      onLayoutUpdate(newLayout as DashboardLayout);
       setLastSyncTime(new Date());
     } catch (error) {
       debugConsole.error('Failed to apply database layout update:', error);

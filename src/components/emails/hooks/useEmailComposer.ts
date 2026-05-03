@@ -256,7 +256,7 @@ export function useEmailComposer() {
         .eq("is_active", true);
       if (error) throw error;
       setSenderInfos((data || []) as SenderInfo[]);
-      const defaultSender = data?.find((s: any) => s.is_default);
+      const defaultSender = data?.find((s: { is_default?: boolean | null }) => s.is_default);
       if (defaultSender) setSelectedSender(defaultSender.id);
       else if (data && data.length > 0) setSelectedSender(data[0].id);
     } catch (error) {

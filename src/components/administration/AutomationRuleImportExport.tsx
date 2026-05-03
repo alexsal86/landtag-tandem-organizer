@@ -184,8 +184,8 @@ export function AutomationRuleImportDialog({ open, onOpenChange, onImported }: I
       }
 
       setParsed(json);
-    } catch (err: any) {
-      setParseError(err.message || "Datei konnte nicht gelesen werden.");
+    } catch (err: unknown) {
+      setParseError((err instanceof Error ? err.message : null) || "Datei konnte nicht gelesen werden.");
     }
   };
 

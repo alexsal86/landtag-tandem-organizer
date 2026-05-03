@@ -66,7 +66,7 @@ export function StakeholderView({
     const filtered = [...stakeholders];
     return filtered.sort((a, b) => {
       if (!sortColumn || !onSort) return 0;
-      let aValue: any, bValue: any;
+      let aValue: string | number = "", bValue: string | number = "";
       switch (sortColumn) {
         case "name": aValue = a.name?.toLowerCase() || ""; bValue = b.name?.toLowerCase() || ""; break;
         case "contacts": return 0;

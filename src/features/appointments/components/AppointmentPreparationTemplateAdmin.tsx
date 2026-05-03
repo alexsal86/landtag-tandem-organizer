@@ -19,6 +19,7 @@ interface Template {
   id: string;
   name: string;
   description: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   template_data: any[];
   is_default: boolean;
   is_active: boolean;
@@ -458,9 +459,9 @@ function TemplateEditor({ template, onSave, onCancel }: TemplateEditorProps) {
                       />
                       <Select
                         value={field.type}
-                        onValueChange={(value: any) => {
+                        onValueChange={(value: string) => {
                           const newSections = [...sections];
-                          newSections[sectionIndex].fields![fieldIndex].type = value;
+                          newSections[sectionIndex].fields![fieldIndex].type = value as 'text' | 'textarea' | 'select';
                           setSections(newSections);
                         }}
                       >

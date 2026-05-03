@@ -36,6 +36,7 @@ interface LeaveRequestsTabProps {
   medicalLeaves: LeaveRow[];
   overtimeLeaves: LeaveRow[];
   employeeSettings: EmployeeSettingsRow;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   vacationBalance: any;
   yearlyBalance: number;
   // Vacation form

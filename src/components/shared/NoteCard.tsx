@@ -31,6 +31,7 @@ interface NoteCardProps {
   note: QuickNote;
   userId?: string;
   showFollowUpBadge?: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dragHandleProps?: any;
   isExpanded: boolean;
   isDetailsExpanded: boolean;

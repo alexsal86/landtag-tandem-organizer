@@ -31,13 +31,13 @@ function serializeConditionGroup(group: ConditionGroup): Record<string, Json> {
 }
 
 /** Parse DB JSON format back into a ConditionGroup tree */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function parseConditionGroup(raw: any): ConditionGroup {
-  if (!raw || typeof raw !== "object") {
+function parseConditionGroup(raw: unknown): ConditionGroup {
+  const r = raw as Record<string, unknown> | null;
+  if (!r || typeof r !== "object") {
     return { logic: "all", conditions: [{ field: "status", operator: "equals", value: "" }], groups: [] };
   }
-  const logic: "all" | "any" = raw.any ? "any" : "all";
-  const items: unknown[] = raw[logic] || [];
+  const logic: "all" | "any" = r.any ? "any" : "all";
+  const items: unknown[] = (r[logic] as unknown[]) || [];
   const conditions: ConditionItem[] = [];
   const groups: ConditionGroup[] = [];
 

@@ -90,8 +90,8 @@ function DaySlipEnterBehaviorPlugin() {
         if (ruleParsed.isRule) {
           const hrNode = ruleParsed.label ? $createLabeledHorizontalRuleNode(ruleParsed.label) : $createHorizontalRuleNode();
           const newParagraph = $createDaySlipLineNode();
-          topLevel.replace(hrNode as any);
-          (hrNode as any).insertAfter(newParagraph);
+          topLevel.replace(hrNode);
+          hrNode.insertAfter(newParagraph);
           newParagraph.select();
           return;
         }

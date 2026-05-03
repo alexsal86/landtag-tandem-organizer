@@ -65,10 +65,11 @@ export function EmployeeMeetingScheduler({
   const [durationMinutes, setDurationMinutes] = useState<number>(60);
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
 
+  const tenantSettings = (typeof currentTenant?.settings === "object" && currentTenant?.settings !== null
+    ? (currentTenant.settings as Record<string, unknown>)
+    : null);
   const tenantTimeZone =
-    (typeof currentTenant?.settings === "object" &&
-      currentTenant.settings !== null &&
-      ((currentTenant.settings as any)?.timezone ?? (currentTenant.settings as any)?.time_zone)) ||
+    (tenantSettings && (tenantSettings.timezone ?? tenantSettings.time_zone)) as string | undefined ||
     DEFAULT_TENANT_TIME_ZONE;
 
   const toUtcFromTenantLocal = (date: Date, time: string) => {

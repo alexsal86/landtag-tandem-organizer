@@ -128,6 +128,7 @@ export function NoteDecisionCreator({
 
       // Check for default settings first
       let defaultIds: string[] = [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let defaultSettings: any = null;
       try {
         const stored = localStorage.getItem('default_decision_settings');

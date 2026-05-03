@@ -68,6 +68,7 @@ export function EmailHistory() {
   const { toast } = useToast();
 
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [scheduledEmails, setScheduledEmails] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");

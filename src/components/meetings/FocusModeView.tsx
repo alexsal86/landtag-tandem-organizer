@@ -230,7 +230,7 @@ export function FocusModeView({
       });
     }
     if (systemItem.system_type === 'case_items' && linkedCaseItems.length > 0) {
-      linkedCaseItems.forEach((ci: any, i: number) => {
+      linkedCaseItems.forEach((ci: { id: string; subject?: string | null }, i: number) => {
         const persistedCompleted = getPersistentSystemSubItemCompletion('task', ci, parentForChildren);
         result.push({
           item: {

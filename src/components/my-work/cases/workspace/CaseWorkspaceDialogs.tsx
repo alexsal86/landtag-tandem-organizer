@@ -15,6 +15,7 @@ type CaseWorkspaceDialogsProps = {
   isCaseItemDialogOpen: boolean;
   setIsCaseItemDialogOpen: (open: boolean) => void;
   onCaseItemCreated: (id: string) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   createCaseItem: (...args: any[]) => any;
   teamUsers: TeamUser[];
   defaultAssigneeId: string | null;

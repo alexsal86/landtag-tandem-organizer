@@ -134,7 +134,7 @@ export function ConfigurableTypeSettings({
     if (!newItem?.label.trim()) return;
 
     try {
-      const insertData: any = {
+      const insertData: Record<string, unknown> = {
         name: newItem.label.toLowerCase().replace(/\s+/g, '_'),
         label: newItem.label,
         order_index: Math.max(...items.map(i => i.order_index ?? 0), -1) + 1
@@ -180,7 +180,7 @@ export function ConfigurableTypeSettings({
     setEditingItem(null);
 
     try {
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         name: editingItem.label.toLowerCase().replace(/\s+/g, '_'),
         label: editingItem.label
       };

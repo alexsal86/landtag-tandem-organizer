@@ -6,7 +6,7 @@ import { debugConsole } from '@/utils/debugConsole';
 export interface KarlsruheDistrict {
   id: string;
   name: string;
-  boundaries: any;
+  boundaries: unknown;
   center_coordinates: { lat: number; lng: number };
   color: string;
   area_km2?: number;

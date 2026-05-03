@@ -43,7 +43,7 @@ export function useKnowledgeVersionHistory(documentId: string | undefined) {
           .from('profiles')
           .select('user_id, display_name')
           .in('user_id', creatorIds);
-        nameMap = ((profiles ?? []) as any[]).reduce<Record<string, string>>((acc, p) => {
+        nameMap = ((profiles ?? []) as Array<{ user_id: string; display_name: string | null }>).reduce<Record<string, string>>((acc, p) => {
           acc[p.user_id] = p.display_name || 'Unbekannt';
           return acc;
         }, {});

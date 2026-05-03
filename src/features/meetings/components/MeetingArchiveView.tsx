@@ -78,7 +78,7 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
         ...participantArchivedMeetings.map((m: Record<string, any>) => m?.id).filter(Boolean)
       ]);
       
-      let publicMeetings: any[] = [];
+      let publicMeetings: Array<Record<string, unknown>> = [];
       if (currentTenant?.id) {
         const { data: publicData, error: publicError } = await supabase
           .from('meetings')
@@ -90,7 +90,7 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
         if (publicError) {
           debugConsole.error('Error loading public meetings:', publicError);
         } else {
-          publicMeetings = (publicData || []).filter((m: Record<string, any>) => !existingMeetingIds.has(m.id));
+          publicMeetings = ((publicData || []) as Array<Record<string, unknown>>).filter((m) => !existingMeetingIds.has(m.id as string));
         }
       }
       

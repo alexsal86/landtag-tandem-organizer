@@ -101,11 +101,11 @@ export const LetterWizard: React.FC<LetterWizardProps> = ({ onComplete, onCancel
       .eq('is_active', true)
       .order('sort_order');
     if (data && data.length > 0) {
-      setOccasions(data.map((o: any) => ({
+      setOccasions(data.map((o: { key: string; label: string; description: string | null; icon: string | null; color: string | null; default_template_id: string | null; template_match_patterns: string[] | null }) => ({
         key: o.key,
         label: o.label,
         description: o.description || '',
-        icon: ICON_MAP[o.icon] || FileText,
+        icon: (o.icon ? ICON_MAP[o.icon] : undefined) || FileText,
         color: o.color || 'bg-muted-foreground',
         default_template_id: o.default_template_id,
         template_match_patterns: o.template_match_patterns || [],

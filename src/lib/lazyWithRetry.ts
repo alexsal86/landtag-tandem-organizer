@@ -4,6 +4,7 @@ import { lazy } from "react";
 // This prevents a failed chunk for one route from blocking retries for other routes.
 let _counter = 0;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function lazyWithRetry<T extends React.ComponentType<any>>(
   factory: () => Promise<{ default: T }>
 ) {

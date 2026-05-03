@@ -181,7 +181,7 @@ function DayCell({
         <div className="space-y-1.5">
           {/* Special days */}
           {specialDays.map((sd) => {
-            const HintIcon = sd.icon ? (icons as any)[sd.icon] : Sparkles;
+            const HintIcon = sd.icon ? (icons as unknown as Record<string, typeof Sparkles>)[sd.icon] ?? Sparkles : Sparkles;
             return (
               <div
                 key={`sd-${sd.month}-${sd.day}`}

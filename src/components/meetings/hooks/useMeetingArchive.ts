@@ -297,7 +297,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       }
 
       // Step 4: Follow-up task with subtasks
-      let followUpTask: any = null;
+      let followUpTask: { id: string } | null = null;
       try {
         const { data: createdTask, error: taskError } = await supabase.from('tasks').insert([{
           user_id: user.id,
@@ -315,7 +315,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
 
       // Step 5: Child tasks for items with results but no assignment
       if (followUpTask && agendaItemsData) {
-        const childTasksToCreate: any[] = [];
+        const childTasksToCreate: Array<Record<string, unknown>> = [];
         for (const item of agendaItemsData) {
           if (item.assigned_to) continue;
           if (item.task_id) continue;

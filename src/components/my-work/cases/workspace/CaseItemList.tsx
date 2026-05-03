@@ -42,8 +42,8 @@ type CaseItemListProps = {
   getCategory: (item: CaseItem) => string;
   getItemSubject: (item: CaseItem) => string;
   getItemDescription: (item: CaseItem) => string;
-  getContactName: (payload: any) => string;
-  getContactDetail: (payload: any) => string;
+  getContactName: (payload: unknown) => string;
+  getContactDetail: (payload: unknown) => string;
   sourceChannelMeta: SourceChannelMeta;
   getStatusMeta: (status: string | null) => StatusOption;
   priorityMeta: (priority: string | null) => { color: string; label: string };

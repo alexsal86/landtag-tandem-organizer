@@ -98,7 +98,7 @@ const LeafletBasicKarlsruheMap: React.FC<BasicMapProps> = ({ districts, onDistri
       const partyColor = getPartyColorHex(district.representatives?.find(rep => rep.mandate_type === 'direct')?.party);
       const boundaries = getDistrictBoundaries(district.district_number);
 
-      const polygon = L.polygon(boundaries as any, {
+      const polygon = L.polygon(boundaries as L.LatLngExpression[], {
         color: partyColor,
         weight: selectedDistrict?.id === district.id ? 3 : 2,
         opacity: 0.9,

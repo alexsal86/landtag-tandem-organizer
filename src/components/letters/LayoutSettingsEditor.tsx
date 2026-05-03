@@ -72,13 +72,13 @@ export function LayoutSettingsEditor({ layoutSettings, onLayoutChange, letterhea
 
   const updateSetting = (path: string[], value: number | string | boolean) => {
     const newSettings = JSON.parse(JSON.stringify(layoutSettings));
-    let current: any = newSettings;
+    let current: Record<string, unknown> = newSettings;
     
     for (let i = 0; i < path.length - 1; i++) {
       if (!current[path[i]]) {
         current[path[i]] = {};
       }
-      current = current[path[i]];
+      current = current[path[i]] as Record<string, unknown>;
     }
     current[path[path.length - 1]] = value;
     

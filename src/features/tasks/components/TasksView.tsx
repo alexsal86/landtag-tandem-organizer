@@ -194,7 +194,7 @@ export function TasksView() {
           onTodoToggleComplete={(todoId, completed) => { if (completed) ops.completeTodo(todoId); }}
           onTaskSnooze={(taskId) => { setSnoozeDialogOpen({ type: 'task', id: taskId }); }}
           onSubtaskSnooze={(subtaskId) => { setSnoozeDialogOpen({ type: 'subtask', id: subtaskId }); }}
-          onTaskEdit={(task) => handleTaskClick(task)}
+          onTaskEdit={(task) => handleTaskClick(task as Parameters<typeof handleTaskClick>[0])}
           onSubtaskEdit={(subtask) => { const parentTask = data.tasks.find(t => t.id === subtask.task_id); if (parentTask) handleTaskClick(parentTask); }}
           resolveUserNames={data.resolveUserNames}
         />
@@ -329,7 +329,7 @@ export function TasksView() {
                                 }; input.click();
                               }}><Plus className="h-4 w-4" />Dokument hinzufügen</Button>
                             </div>
-                            {data.taskDocumentDetails[task.id].map((doc: any) => (
+                            {data.taskDocumentDetails[task.id].map((doc: { id: string; file_name: string }) => (
                               <div key={doc.id} className="flex items-center gap-2 text-sm border border-border rounded p-3">
                                 <Paperclip className="h-4 w-4" /><span className="flex-1">{doc.file_name}</span>
                                 <div className="flex gap-1">
