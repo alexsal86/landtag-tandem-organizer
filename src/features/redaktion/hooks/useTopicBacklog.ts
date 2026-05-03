@@ -190,7 +190,7 @@ export function useTopicBacklog() {
       }
 
       setTopics(
-        (topicData as Array<{ id: string; topic: string; tags?: string[] | null; campaign_id?: string | null; content_pillar?: string | null; status?: string | null; priority: number; owner_id?: string | null; short_description?: string | null }>).map((row) => {
+        (topicData as Array<{ id: string; topic: string; tags: string[] | null; campaign_id: string | null; content_pillar: string | null; status: string | null; priority: number; owner_id: string | null; short_description: string | null }>).map((row) => {
           const linkedContentItems = linkedByTopic.get(row.id) || [];
           const latestScheduledItem = linkedContentItems.find((item) => Boolean(item.scheduled_for)) || null;
           const openProductionNeeds = Array.from(
