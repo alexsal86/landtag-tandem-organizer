@@ -151,14 +151,14 @@ export function useTopicBacklog() {
 
       if (responsibleError) throw responsibleError;
 
-      const ownerNameById = new Map((ownerRows || []).map((row: Record<string, unknown>) => [row.id, row.display_name || null]));
-      const campaignIds = Array.from(new Set(topicData.map((row: Record<string, unknown>) => row.campaign_id).filter((value: unknown): value is string => Boolean(value))));
+      const ownerNameById = new Map<string, string | null>(((ownerRows || []) as Array<{ id: string; display_name: string | null }>).map((row) => [row.id, row.display_name || null]));
+      const campaignIds = Array.from(new Set((topicData as Array<{ campaign_id?: string | null }>).map((row) => row.campaign_id).filter((value): value is string => Boolean(value))));
       const { data: campaignRows, error: campaignError } = campaignIds.length
         ? await supabase.from("social_campaigns").select("id, name").in("id", campaignIds).eq("tenant_id", currentTenant.id)
         : { data: [], error: null };
       if (campaignError) throw campaignError;
-      const campaignNameById = new Map((campaignRows || []).map((row: Record<string, unknown>) => [row.id, row.name]));
-      const responsibleNameById = new Map((responsibleRows || []).map((row: Record<string, unknown>) => [row.id, row.display_name || null]));
+      const campaignNameById = new Map<string, string | null>(((campaignRows || []) as Array<{ id: string; name: string | null }>).map((row) => [row.id, row.name]));
+      const responsibleNameById = new Map<string, string | null>(((responsibleRows || []) as Array<{ id: string; display_name: string | null }>).map((row) => [row.id, row.display_name || null]));
       const linkedByTopic = new Map<string, TopicBacklogLinkedContent[]>();
 
       for (const row of linkedRows || []) {
