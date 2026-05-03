@@ -194,7 +194,7 @@ export function TasksView() {
           onTodoToggleComplete={(todoId, completed) => { if (completed) ops.completeTodo(todoId); }}
           onTaskSnooze={(taskId) => { setSnoozeDialogOpen({ type: 'task', id: taskId }); }}
           onSubtaskSnooze={(subtaskId) => { setSnoozeDialogOpen({ type: 'subtask', id: subtaskId }); }}
-          onTaskEdit={(task) => handleTaskClick(task)}
+          onTaskEdit={(task) => handleTaskClick(task as Parameters<typeof handleTaskClick>[0])}
           onSubtaskEdit={(subtask) => { const parentTask = data.tasks.find(t => t.id === subtask.task_id); if (parentTask) handleTaskClick(parentTask); }}
           resolveUserNames={data.resolveUserNames}
         />
