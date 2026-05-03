@@ -79,7 +79,8 @@ export const InformationBlockManager: React.FC = () => {
 
   const renderBlockDataFields = () => {
     const blockType = formData.block_type;
-    const blockData = (formData.block_data || {}) as Record<string, string | boolean | undefined>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const blockData: Record<string, any> = formData.block_data || {};
 
     switch (blockType) {
       case 'contact':
