@@ -79,7 +79,7 @@ export const InformationBlockManager: React.FC = () => {
 
   const renderBlockDataFields = () => {
     const blockType = formData.block_type;
-    const blockData = formData.block_data || {};
+    const blockData = (formData.block_data || {}) as Record<string, string | boolean | undefined>;
 
     switch (blockType) {
       case 'contact':
