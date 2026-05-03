@@ -337,8 +337,8 @@ export function SenderInformationManager() {
 
       <div className="grid gap-3">
         {senderInfos.map((info) => {
-          const landtagAddr = formatAddress(info.landtag_street as any, info.landtag_house_number as any, info.landtag_postal_code as any, info.landtag_city as any);
-          const wahlkreisAddr = formatAddress(info.wahlkreis_street as any, info.wahlkreis_house_number as any, info.wahlkreis_postal_code as any, info.wahlkreis_city as any);
+          const landtagAddr = formatAddress(info.landtag_street, info.landtag_house_number, info.landtag_postal_code, info.landtag_city);
+          const wahlkreisAddr = formatAddress(info.wahlkreis_street, info.wahlkreis_house_number, info.wahlkreis_postal_code, info.wahlkreis_city);
           return (
             <Card key={info.id}>
               <CardHeader className="pb-2">

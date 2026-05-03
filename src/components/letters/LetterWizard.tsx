@@ -101,7 +101,7 @@ export const LetterWizard: React.FC<LetterWizardProps> = ({ onComplete, onCancel
       .eq('is_active', true)
       .order('sort_order');
     if (data && data.length > 0) {
-      setOccasions(data.map((o: any) => ({
+      setOccasions(data.map((o: { key: string; label: string; description: string | null; icon: string | null; color: string | null; default_template_id: string | null; template_match_patterns: string[] | null }) => ({
         key: o.key,
         label: o.label,
         description: o.description || '',

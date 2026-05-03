@@ -262,7 +262,7 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
 
   return (
     <>
-      <Card ref={highlightRef as any} className={cn("group border-l-4 hover:bg-muted/40 transition-colors cursor-pointer", getBorderColor(summary, decision.response_options, decision.participants), isHighlighted && "notification-highlight")} onClick={() => onOpenDetails(decision.id)}>
+      <Card ref={highlightRef as React.Ref<HTMLDivElement>} className={cn("group border-l-4 hover:bg-muted/40 transition-colors cursor-pointer", getBorderColor(summary, decision.response_options, decision.participants), isHighlighted && "notification-highlight")} onClick={() => onOpenDetails(decision.id)}>
         <CardContent className="p-4">
           <DecisionCardHeader decision={decision} archivingDecisionId={archivingDecisionId} deletingDecisionId={deletingDecisionId} creatingTaskId={creatingTaskId} onArchive={onArchive} onCreateTask={onCreateTask} onDelete={onDelete} onEdit={onEdit} />
 

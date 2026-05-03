@@ -375,7 +375,7 @@ export function useEventPlanningData() {
           .in("id", appointmentIds);
         if (appointments) {
           const titleMap = new Map(appointments.map((a: Record<string, any>) => [a.id, a.title]));
-          const updateTitle = (prep: any) => {
+          const updateTitle = <T extends { appointment_id?: string | null; title?: string | null }>(prep: T): T => {
             const apptTitle = prep.appointment_id ? titleMap.get(prep.appointment_id) : null;
             if (apptTitle) return { ...prep, title: `Terminplanung: ${apptTitle}` };
             return prep;

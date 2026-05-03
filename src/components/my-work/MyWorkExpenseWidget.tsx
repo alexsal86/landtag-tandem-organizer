@@ -98,7 +98,8 @@ export function MyWorkExpenseWidget({ userRole }: Props) {
 
     const cats = categoriesRes.data || [];
     setCategories(cats);
-    const catMap = new Map<string, any>(cats.map((c: any) => [c.id, c]));
+    type CatLite = { id: string; name: string; color: string | null };
+    const catMap = new Map<string, CatLite>((cats as CatLite[]).map((c) => [c.id, c]));
 
     // Monthly total & top categories
     const expenses = expensesRes.data || [];
@@ -156,8 +157,8 @@ export function MyWorkExpenseWidget({ userRole }: Props) {
       setNewDescription("");
       setNewDate(format(new Date(), "yyyy-MM-dd"));
       loadData();
-    } catch (err: any) {
-      toast({ title: "Fehler", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Fehler", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     } finally {
       setSubmitting(false);
     }

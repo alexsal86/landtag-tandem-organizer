@@ -130,7 +130,7 @@ export const KarlsruheDistrictsMap = ({
 
     return districts
       .map((district) => {
-        const b = district.boundaries as any;
+        const b = district.boundaries as { type?: string; features?: unknown[]; coordinates?: unknown };
         if (!b) return null;
 
         let features: Feature<DistrictGeoProperties>[];

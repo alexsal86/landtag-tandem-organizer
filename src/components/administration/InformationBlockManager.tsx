@@ -18,7 +18,7 @@ interface InformationBlock {
   id: string;
   name: string;
   label: string;
-  block_data: any;
+  block_data: Record<string, unknown> | null;
   block_type: string;
   is_default: boolean | null;
   is_active: boolean | null;

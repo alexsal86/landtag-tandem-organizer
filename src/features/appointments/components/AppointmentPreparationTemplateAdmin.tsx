@@ -19,7 +19,7 @@ interface Template {
   id: string;
   name: string;
   description: string | null;
-  template_data: any[];
+  template_data: unknown[];
   is_default: boolean;
   is_active: boolean;
   created_at: string;
@@ -458,7 +458,7 @@ function TemplateEditor({ template, onSave, onCancel }: TemplateEditorProps) {
                       />
                       <Select
                         value={field.type}
-                        onValueChange={(value: any) => {
+                        onValueChange={(value: string) => {
                           const newSections = [...sections];
                           newSections[sectionIndex].fields![fieldIndex].type = value;
                           setSections(newSections);

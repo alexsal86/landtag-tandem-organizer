@@ -143,7 +143,7 @@ export function TaskArchiveView() {
         .select('decision_id, response_type')
         .in('decision_id', decisionIds);
 
-      const responseCounts = ((responses ?? []) as any[]).reduce<Record<string, DecisionResponseCount>>((acc, response: Pick<TaskDecisionResponseRow, 'decision_id' | 'response_type'>) => {
+      const responseCounts = ((responses ?? []) as Array<Pick<TaskDecisionResponseRow, 'decision_id' | 'response_type'>>).reduce<Record<string, DecisionResponseCount>>((acc, response) => {
         const decisionId = response.decision_id;
         if (!decisionId) return acc;
         if (!acc[decisionId]) {

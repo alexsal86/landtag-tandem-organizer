@@ -15,7 +15,7 @@ interface CalendarEvent {
   participants?: string[];
   priority?: 'low' | 'medium' | 'high';
   category?: string;
-  resource?: any;
+  resource?: unknown;
 }
 
 interface EnhancedCalendarProps {

@@ -64,15 +64,16 @@ export function CaseItemMeetingSelector({
         .eq("user_id", user.id);
 
       const ownIds = new Set((ownMeetings || []).map((m: Record<string, any>) => m.id));
-      const participantData = (participantMeetings || [])
+      type ParticipantRow = { meeting_id: string; meetings: (Meeting & { status?: string; meeting_date?: string }) | null };
+      const participantData = ((participantMeetings || []) as ParticipantRow[])
         .filter(
-          (p: any) =>
+          (p) =>
             p.meetings &&
             !ownIds.has(p.meeting_id) &&
             p.meetings.status !== "archived" &&
-            p.meetings.meeting_date >= todayStr
+            (p.meetings.meeting_date ?? '') >= todayStr
         )
-        .map((p: any) => p.meetings as Meeting);
+        .map((p) => p.meetings as Meeting);
 
       const allMeetings = [...(ownMeetings || []), ...participantData].sort(
         (a, b) => new Date(a.meeting_date).getTime() - new Date(b.meeting_date).getTime()

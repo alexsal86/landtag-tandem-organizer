@@ -68,7 +68,7 @@ export function EmailHistory() {
   const { toast } = useToast();
 
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
-  const [scheduledEmails, setScheduledEmails] = useState<any[]>([]);
+  const [scheduledEmails, setScheduledEmails] = useState<Array<Record<string, unknown>>>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedEmail, setSelectedEmail] = useState<EmailLog | null>(null);

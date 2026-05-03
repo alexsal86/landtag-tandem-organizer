@@ -22,7 +22,7 @@ export interface PressRelease {
   title: string;
   content: string;
   content_html: string | null;
-  content_nodes: any;
+  content_nodes: unknown;
   slug: string | null;
   excerpt: string | null;
   feature_image_url: string | null;

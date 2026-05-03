@@ -833,8 +833,8 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
             intake_payload: {
               category: 'Allgemein',
             },
-          } as any,
-        ], { returning: 'minimal' } as any);
+          },
+        ]);
 
       if (caseError) throw caseError;
 

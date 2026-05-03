@@ -124,7 +124,7 @@ const getPriorityBadgeClass = (priority?: Contact["priority"]): string => {
 export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: ContactDetailPanelProps) {
   const [contact, setContact] = useState<Contact | null>(null);
   const [callLogs, setCallLogs] = useState<CallLog[]>([]);
-  const [activities, setActivities] = useState<any[]>([]);
+  const [activities, setActivities] = useState<Array<Record<string, unknown>>>([]);
   const [loading, setLoading] = useState(false);
   const [loadingCallLogs, setLoadingCallLogs] = useState(false);
   const [activitiesLoading, setActivitiesLoading] = useState(false);

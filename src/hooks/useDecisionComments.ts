@@ -26,7 +26,7 @@ export function useDecisionComments(decisionIds: string[]) {
 
       // Build counts map by grouping results client-side
       const counts = new Map<string, number>();
-      (data || []).forEach((row: any) => {
+      (data as Array<{ decision_id: string | null }> | null ?? []).forEach((row) => {
         const id = row.decision_id;
         if (id) counts.set(id, (counts.get(id) || 0) + 1);
       });

@@ -225,9 +225,9 @@ export default function EnhancedLexicalEditor({
     },
   }), [editable]);
 
-  const editorRef = useRef<any>(null);
+  const editorRef = useRef<LexicalEditor | null>(null);
 
-  const handleChange = useCallback((editorState: EditorState, editor: any) => {
+  const handleChange = useCallback((editorState: EditorState, editor: LexicalEditor) => {
     editorRef.current = editor;
     editorState.read(() => {
       const root = $getRoot();

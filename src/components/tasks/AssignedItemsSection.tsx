@@ -84,7 +84,7 @@ interface AssignedItemsSectionProps {
   onTodoToggleComplete: (todoId: string, completed: boolean) => void;
   onTaskSnooze: (taskId: string) => void;
   onSubtaskSnooze: (subtaskId: string) => void;
-  onTaskEdit: (task: any) => void;
+  onTaskEdit: (task: unknown) => void;
   onSubtaskEdit: (subtask: Subtask) => void;
   resolveUserNames: (assignedTo: string | string[] | null) => string;
   children?: React.ReactNode;

@@ -27,7 +27,7 @@ export function FeatureImagePicker({ value, onChange, disabled }: FeatureImagePi
   const { currentTenant } = useTenant();
   const [open, setOpen] = useState(false);
   const [urlInput, setUrlInput] = useState(value);
-  const [documents, setDocuments] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<Array<{ id: string; file_name: string; file_path: string; file_type: string | null }>>([]);
   const [loading, setLoading] = useState(false);
 
   // Unsplash state
@@ -69,7 +69,7 @@ export function FeatureImagePicker({ value, onChange, disabled }: FeatureImagePi
     return data.publicUrl;
   };
 
-  const handleSelectDocument = (doc: any) => {
+  const handleSelectDocument = (doc: { file_path: string }) => {
     const url = getPublicUrl(doc.file_path);
     onChange(url);
     setOpen(false);

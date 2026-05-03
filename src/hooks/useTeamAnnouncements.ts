@@ -273,7 +273,7 @@ export function useTeamAnnouncements() {
       return true;
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'Unbekannter Fehler';
-      const code = error instanceof Error ? (error as any).code : undefined;
+      const code = error instanceof Error ? (error as Error & { code?: string }).code : undefined;
       debugConsole.error("Error updating announcement:", error);
       debugConsole.error("Error code:", code);
       debugConsole.error("Error message:", msg);

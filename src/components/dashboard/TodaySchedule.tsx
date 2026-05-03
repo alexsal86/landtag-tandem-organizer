@@ -90,7 +90,7 @@ export const TodaySchedule = ({ onCountChange }: TodayScheduleProps) => {
           .lt('start_time', dayAfterTomorrow.toISOString())
           .order('start_time', { ascending: true });
         
-        const externalEventsResult = await (supabase as any)
+        const externalEventsResult = await supabase
           .from('external_events')
           .select(`
             id,
@@ -105,12 +105,13 @@ export const TodaySchedule = ({ onCountChange }: TodayScheduleProps) => {
           .lt('start_time', dayAfterTomorrow.toISOString())
           .order('start_time', { ascending: true });
         
-        const externalEventsFormatted: Appointment[] = (externalEventsResult.data || []).map((e: any) => ({
-          id: e.id as string,
-          title: e.title as string,
-          start_time: e.start_time as string,
-          location: (e.location as string | null) ?? null,
-          is_all_day: (e.all_day as boolean) ?? false
+        type ExternalEventRow = { id: string; title: string; start_time: string; location: string | null; all_day: boolean | null };
+        const externalEventsFormatted: Appointment[] = ((externalEventsResult.data ?? []) as ExternalEventRow[]).map((e) => ({
+          id: e.id,
+          title: e.title,
+          start_time: e.start_time,
+          location: e.location ?? null,
+          is_all_day: e.all_day ?? false
         }));
         
         const allEvents: Appointment[] = [

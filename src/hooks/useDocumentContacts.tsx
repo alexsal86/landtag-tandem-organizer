@@ -106,7 +106,7 @@ export const useDocumentContacts = (documentId?: string) => {
     notes?: string
   ) => {
     try {
-      const updateData: any = {};
+      const updateData: { relationship_type?: string; notes?: string } = {};
       if (relationshipType !== undefined) updateData.relationship_type = relationshipType;
       if (notes !== undefined) updateData.notes = notes;
 

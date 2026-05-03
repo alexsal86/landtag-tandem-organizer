@@ -275,7 +275,7 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
     }
   };
 
-  const handleAddDocumentAttachment = async (document: any) => {
+  const handleAddDocumentAttachment = async (document: { file_name: string; file_path: string; file_type: string | null; file_size: number | null; user_id: string; title?: string | null }) => {
     try {
       const { data, error } = await supabase
         .from('letter_attachments')

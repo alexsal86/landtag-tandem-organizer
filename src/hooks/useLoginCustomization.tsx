@@ -16,7 +16,7 @@ interface LoginCustomization {
   social_login_enabled: boolean | null;
   registration_enabled: boolean | null;
   password_reset_enabled: boolean | null;
-  background_attribution: any;
+  background_attribution: unknown;
 }
 
 const DEFAULT_CUSTOMIZATION: Partial<LoginCustomization> = {

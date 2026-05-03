@@ -49,7 +49,7 @@ interface SenderInfo {
   wahlkreis_postal_code?: string | null;
   wahlkreis_city?: string | null;
   wahlkreis_email?: string | null;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface StructuredFooterEditorProps {

@@ -39,7 +39,8 @@ export function useMyWorkDecisionsSidebarData(decisions: MyWorkDecision[], userI
 
       if (requestRef.current !== requestId) return;
 
-      const profileMap = new Map<string, any>(profiles?.map((p: any) => [p.user_id, p]) || []);
+      type ProfileLite = { user_id: string; display_name: string | null; badge_color: string | null; avatar_url: string | null };
+      const profileMap = new Map<string, ProfileLite>((profiles as ProfileLite[] | null)?.map((p) => [p.user_id, p]) || []);
       const decisionTitleMap = new Map(decisions.map((d) => [d.id, d.title]));
 
       const recentComments: SidebarDiscussionComment[] = comments.map((c: Record<string, any>) => {

@@ -36,7 +36,7 @@ interface LeaveRequestsTabProps {
   medicalLeaves: LeaveRow[];
   overtimeLeaves: LeaveRow[];
   employeeSettings: EmployeeSettingsRow;
-  vacationBalance: any;
+  vacationBalance: unknown;
   yearlyBalance: number;
   // Vacation form
   vacationStartDate: string; setVacationStartDate: (v: string) => void;

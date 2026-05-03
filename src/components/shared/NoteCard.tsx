@@ -31,7 +31,7 @@ interface NoteCardProps {
   note: QuickNote;
   userId?: string;
   showFollowUpBadge?: boolean;
-  dragHandleProps?: any;
+  dragHandleProps?: Record<string, unknown>;
   isExpanded: boolean;
   isDetailsExpanded: boolean;
   colorModeUpdating: string | null;

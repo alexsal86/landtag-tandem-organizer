@@ -60,7 +60,7 @@ export function ChecklistItemEmailDialog({
     if (data) {
       setActionId(data.id);
       setIsEnabled(data.is_enabled);
-      const config = data.action_config as any;
+      const config = (data.action_config ?? {}) as { recipients?: string[]; subject?: string; message?: string; sender_name?: string; sender_email?: string };
       setRecipients(config.recipients || []);
       setSubject(config.subject || "");
       setMessage(config.message || "");

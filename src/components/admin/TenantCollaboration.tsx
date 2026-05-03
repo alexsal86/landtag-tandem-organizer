@@ -31,7 +31,7 @@ export function TenantCollaboration() {
   const { currentTenant } = useTenant();
   const { toast } = useToast();
   const [collaborations, setCollaborations] = useState<TenantCollaboration[]>([]);
-  const [availableTenants, setAvailableTenants] = useState<any[]>([]);
+  const [availableTenants, setAvailableTenants] = useState<Array<{ id: string; name: string }>>([]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedTenantId, setSelectedTenantId] = useState("");
   const [loading, setLoading] = useState(true);

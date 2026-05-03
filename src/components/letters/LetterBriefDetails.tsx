@@ -73,7 +73,7 @@ const LetterBriefDetails: React.FC<LetterBriefDetailsProps> = ({
   broadcastContentChange,
 }) => {
   const status = editedLetter.status || 'draft';
-  const revisionComment = useRevisionComment((editedLetter as any).id, status);
+  const revisionComment = useRevisionComment((editedLetter as { id: string }).id, status);
 
   return (
     <div className="border-b bg-card/30 p-4 overflow-y-auto max-h-[45vh]">

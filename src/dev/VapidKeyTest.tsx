@@ -9,7 +9,7 @@ interface VapidTestResult {
   step: string;
   status: 'pending' | 'success' | 'error';
   message: string;
-  data?: any;
+  data?: unknown;
 }
 
 export const VapidKeyTest: React.FC = () => {

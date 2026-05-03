@@ -128,7 +128,7 @@ export function NoteDecisionCreator({
 
       // Check for default settings first
       let defaultIds: string[] = [];
-      let defaultSettings: any = null;
+      let defaultSettings: { participants?: string[]; visibleToAll?: boolean; sendByEmail?: boolean } | null = null;
       try {
         const stored = localStorage.getItem('default_decision_settings');
         if (stored) {

@@ -15,7 +15,7 @@ type CaseWorkspaceDialogsProps = {
   isCaseItemDialogOpen: boolean;
   setIsCaseItemDialogOpen: (open: boolean) => void;
   onCaseItemCreated: (id: string) => void;
-  createCaseItem: (...args: any[]) => any;
+  createCaseItem: (...args: unknown[]) => unknown;
   teamUsers: TeamUser[];
   defaultAssigneeId: string | null;
   categoryOptions: string[];

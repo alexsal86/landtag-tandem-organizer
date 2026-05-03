@@ -22,7 +22,7 @@ interface EmailTemplate {
   subject: string;
   body_html: string;
   category?: string;
-  variables?: any;
+  variables?: unknown;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -76,7 +76,7 @@ export function EmailTemplateManager() {
       if (error) throw error;
       setTemplates((data || []).map((t: Record<string, any>) => ({
         ...t,
-        category: (t as any).category || 'general',
+        category: ((t as { category?: string }).category) || 'general',
         variables: Array.isArray(t.variables) ? t.variables : []
       })) as EmailTemplate[]);
     } catch (error: unknown) {
