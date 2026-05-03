@@ -190,7 +190,7 @@ export function useTopicBacklog() {
       }
 
       setTopics(
-        topicData.map((row: Record<string, unknown>) => {
+        topicData.map((row: Record<string, string | string[] | null | undefined>) => {
           const linkedContentItems = linkedByTopic.get(row.id) || [];
           const latestScheduledItem = linkedContentItems.find((item) => Boolean(item.scheduled_for)) || null;
           const openProductionNeeds = Array.from(
