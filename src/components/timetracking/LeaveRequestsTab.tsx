@@ -37,7 +37,7 @@ interface LeaveRequestsTabProps {
   overtimeLeaves: LeaveRow[];
   employeeSettings: EmployeeSettingsRow;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  vacationBalance: any;
+  vacationBalance: unknown;
   yearlyBalance: number;
   // Vacation form
   vacationStartDate: string; setVacationStartDate: (v: string) => void;

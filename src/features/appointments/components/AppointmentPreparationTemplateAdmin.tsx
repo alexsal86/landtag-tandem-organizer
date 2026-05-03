@@ -20,7 +20,7 @@ interface Template {
   name: string;
   description: string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  template_data: any[];
+  template_data: Record<string, unknown>[];
   is_default: boolean;
   is_active: boolean;
   created_at: string;

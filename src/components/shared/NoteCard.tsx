@@ -32,7 +32,7 @@ interface NoteCardProps {
   userId?: string;
   showFollowUpBadge?: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  dragHandleProps?: any;
+  dragHandleProps?: Record<string, unknown>;
   isExpanded: boolean;
   isDetailsExpanded: boolean;
   colorModeUpdating: string | null;
