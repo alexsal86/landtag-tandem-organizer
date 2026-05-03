@@ -154,7 +154,7 @@ export const VapidKeyTest: React.FC = () => {
             </div>
             <p className="text-sm mb-2">{testResult.message}</p>
             
-            {testResult.data ? (
+            {testResult.data && (
               <div className="mt-3 p-2 bg-gray-100 rounded text-xs font-mono">
                 <details>
                   <summary className="cursor-pointer font-semibold">Debug-Details</summary>
