@@ -15,17 +15,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 
-interface Template {
-  id: string;
-  name: string;
-  description: string | null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  template_data: any[];
-  is_default: boolean;
-  is_active: boolean;
-  created_at: string;
-}
-
 interface TemplateField {
   id: string;
   label: string;
@@ -40,6 +29,16 @@ interface TemplateSection {
   type: 'section' | 'checklist';
   fields?: TemplateField[];
   items?: Array<{ id: string; label: string; completed: boolean }>;
+}
+
+interface Template {
+  id: string;
+  name: string;
+  description: string | null;
+  template_data: TemplateSection[];
+  is_default: boolean;
+  is_active: boolean;
+  created_at: string;
 }
 
 export default function AppointmentPreparationTemplateAdmin() {

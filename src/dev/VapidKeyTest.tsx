@@ -10,7 +10,7 @@ interface VapidTestResult {
   status: 'pending' | 'success' | 'error';
   message: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data?: any;
+  data?: unknown;
 }
 
 export const VapidKeyTest: React.FC = () => {
@@ -154,7 +154,7 @@ export const VapidKeyTest: React.FC = () => {
             </div>
             <p className="text-sm mb-2">{testResult.message}</p>
             
-            {testResult.data && (
+            {Boolean(testResult.data) && (
               <div className="mt-3 p-2 bg-gray-100 rounded text-xs font-mono">
                 <details>
                   <summary className="cursor-pointer font-semibold">Debug-Details</summary>

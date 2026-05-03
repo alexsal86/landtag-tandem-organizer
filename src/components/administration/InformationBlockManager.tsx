@@ -19,7 +19,7 @@ interface InformationBlock {
   name: string;
   label: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  block_data: any;
+  block_data: Record<string, any>;
   block_type: string;
   is_default: boolean | null;
   is_active: boolean | null;
@@ -79,7 +79,8 @@ export const InformationBlockManager: React.FC = () => {
 
   const renderBlockDataFields = () => {
     const blockType = formData.block_type;
-    const blockData = formData.block_data || {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const blockData: Record<string, any> = formData.block_data || {};
 
     switch (blockType) {
       case 'contact':

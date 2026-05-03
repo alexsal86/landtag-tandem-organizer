@@ -129,12 +129,12 @@ export function NoteDecisionCreator({
       // Check for default settings first
       let defaultIds: string[] = [];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let defaultSettings: any = null;
+      let defaultSettings: Record<string, unknown> | null = null;
       try {
         const stored = localStorage.getItem('default_decision_settings');
         if (stored) {
           defaultSettings = JSON.parse(stored);
-          defaultIds = defaultSettings.participants || [];
+          defaultIds = (defaultSettings?.participants as string[] | undefined) || [];
         } else {
           const oldStored = localStorage.getItem('default_decision_participants');
           if (oldStored) {

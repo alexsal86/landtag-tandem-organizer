@@ -108,13 +108,13 @@ export function useTopicBacklog() {
 
       const eventPlanningTopicIds = new Set(
         (plannerActionRows || [])
-          .map((row: Record<string, any>) => (row.action_config as { topic_backlog_id?: string | null } | null)?.topic_backlog_id)
+          .map((row: Record<string, unknown>) => (row.action_config as { topic_backlog_id?: string | null } | null)?.topic_backlog_id)
           .filter((value: unknown): value is string => Boolean(value)),
       );
 
-      const topicData = (topicRows || []).filter((row: Record<string, any>) => !eventPlanningTopicIds.has(row.id));
-      const ownerIds = Array.from(new Set(topicData.map((row: Record<string, any>) => row.owner_id).filter((value: unknown): value is string => Boolean(value))));
-      const topicIds = topicData.map((row: Record<string, any>) => row.id);
+      const topicData = (topicRows || []).filter((row: Record<string, unknown>) => !eventPlanningTopicIds.has(row.id));
+      const ownerIds = Array.from(new Set(topicData.map((row: Record<string, unknown>) => row.owner_id).filter((value: unknown): value is string => Boolean(value))));
+      const topicIds = topicData.map((row: Record<string, unknown>) => row.id);
 
       const [{ data: ownerRows, error: ownerError }, { data: linkedRows, error: linkedError }] = await Promise.all([
         ownerIds.length
@@ -144,26 +144,25 @@ export function useTopicBacklog() {
       if (ownerError) throw ownerError;
       if (linkedError) throw linkedError;
 
-      const responsibleIds = Array.from(new Set((linkedRows || []).map((row: Record<string, any>) => row.responsible_user_id).filter((value: unknown): value is string => Boolean(value))));
+      const responsibleIds = Array.from(new Set((linkedRows || []).map((row: Record<string, unknown>) => row.responsible_user_id).filter((value: unknown): value is string => Boolean(value))));
       const { data: responsibleRows, error: responsibleError } = responsibleIds.length
         ? await supabase.from("profiles").select("id, display_name").in("id", responsibleIds).eq("tenant_id", currentTenant.id)
         : { data: [], error: null };
 
       if (responsibleError) throw responsibleError;
 
-      const ownerNameById = new Map((ownerRows || []).map((row: Record<string, any>) => [row.id, row.display_name || null]));
-      const campaignIds = Array.from(new Set(topicData.map((row: Record<string, any>) => row.campaign_id).filter((value: unknown): value is string => Boolean(value))));
+      const ownerNameById = new Map<string, string | null>(((ownerRows || []) as Array<{ id: string; display_name: string | null }>).map((row) => [row.id, row.display_name || null]));
+      const campaignIds = Array.from(new Set((topicData as Array<{ campaign_id?: string | null }>).map((row) => row.campaign_id).filter((value): value is string => Boolean(value))));
       const { data: campaignRows, error: campaignError } = campaignIds.length
         ? await supabase.from("social_campaigns").select("id, name").in("id", campaignIds).eq("tenant_id", currentTenant.id)
         : { data: [], error: null };
       if (campaignError) throw campaignError;
-      const campaignNameById = new Map((campaignRows || []).map((row: Record<string, any>) => [row.id, row.name]));
-      const responsibleNameById = new Map((responsibleRows || []).map((row: Record<string, any>) => [row.id, row.display_name || null]));
+      const campaignNameById = new Map<string, string | null>(((campaignRows || []) as Array<{ id: string; name: string | null }>).map((row) => [row.id, row.name]));
+      const responsibleNameById = new Map<string, string | null>(((responsibleRows || []) as Array<{ id: string; display_name: string | null }>).map((row) => [row.id, row.display_name || null]));
       const linkedByTopic = new Map<string, TopicBacklogLinkedContent[]>();
 
       for (const row of linkedRows || []) {
-        // INTEROP-ANY(TS-4823, Redaktion-Backlog, 2026-04-22): Supabase join payload is dynamic until typed view contract is finalized.
-        const channelLinks = ((row as any).social_content_item_channels || []) as Array<{
+        const channelLinks = ((row as Record<string, unknown>).social_content_item_channels || []) as Array<{
           channel_id: string;
           is_primary: boolean;
           social_content_channels: { name: string | null } | null;
@@ -191,7 +190,7 @@ export function useTopicBacklog() {
       }
 
       setTopics(
-        topicData.map((row: Record<string, any>) => {
+        (topicData as Array<{ id: string; topic: string; tags: string[] | null; campaign_id: string | null; content_pillar: string | null; status: string | null; priority: number; owner_id: string | null; short_description: string | null }>).map((row) => {
           const linkedContentItems = linkedByTopic.get(row.id) || [];
           const latestScheduledItem = linkedContentItems.find((item) => Boolean(item.scheduled_for)) || null;
           const openProductionNeeds = Array.from(
