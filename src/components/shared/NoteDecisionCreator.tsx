@@ -134,7 +134,7 @@ export function NoteDecisionCreator({
         const stored = localStorage.getItem('default_decision_settings');
         if (stored) {
           defaultSettings = JSON.parse(stored);
-          defaultIds = defaultSettings.participants || [];
+          defaultIds = (defaultSettings?.participants as string[] | undefined) || [];
         } else {
           const oldStored = localStorage.getItem('default_decision_participants');
           if (oldStored) {
