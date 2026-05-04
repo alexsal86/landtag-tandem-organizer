@@ -36,6 +36,7 @@ const LetterDetail = lazyWithRetry(() => import("@/pages/LetterDetail"));
 const EmployeeMeetingDetail = lazyWithRetry(() => import("@/pages/EmployeeMeetingDetail"));
 const AppointmentPreparationDetail = lazyWithRetry(() => import("@/pages/AppointmentPreparationDetail"));
 const BriefingLivePage = lazyWithRetry(() => import("@/pages/BriefingLivePage"));
+const SelftestView = lazyWithRetry(() => import("@/features/selftest/components/SelftestView").then(m => ({ default: m.SelftestView })));
 const CreateAppointmentDialog = lazyWithRetry(() => import("@/features/appointments/components/CreateAppointmentDialog").then(m => ({ default: m.CreateAppointmentDialog })));
 const GlobalQuickActionHandler = lazyWithRetry(() => import("@/components/layout/GlobalQuickActionHandler").then(m => ({ default: m.GlobalQuickActionHandler })));
 const GlobalAnnouncementBanner = lazyWithRetry(() => import("@/components/announcements/GlobalAnnouncementBanner").then(m => ({ default: m.GlobalAnnouncementBanner })));
@@ -245,6 +246,9 @@ const Index = (): React.JSX.Element => {
         return withSectionBoundary('Terminvorbereitung', <AppointmentPreparationDetail />);
       case "briefing-live":
         return withSectionBoundary('Live Briefing', <BriefingLivePage />);
+      case "selftest":
+      case "selbsttest":
+        return withSectionBoundary('Selbsttest', <SelftestView />);
       default:
         return <NotFound />;
     }

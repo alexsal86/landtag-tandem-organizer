@@ -1,50 +1,96 @@
+# Plan: In-App Test-Runner („Selbsttest-Center")
+
+Eine Admin-Seite, auf der du komplette Anwendungs-Szenarien gegen die echte Supabase-Datenbank ausführen kannst — inklusive automatischer Aufräumung, damit keine Daten zurückbleiben.
+
 ## Ziel
-Einen weiteren `any`-Abbau-Schub durchführen, fokussiert auf die Dateien mit den meisten Treffern. Memory-Regel beachten: **Niemals `as any`** — stattdessen präzise Typen, `unknown` + Type-Guards oder `@ts-expect-error` mit Begründung.
 
-## Scope (Welle "Top-Hits")
-Die 8 Dateien mit den meisten verbliebenen `any`-Treffern (~67 Treffer gesamt):
+- Reale End-to-End-Tests aus der laufenden App heraus starten (nicht nur Unit-Tests)
+- Pro Szenario sehen, welche Schritte erfolgreich/fehlgeschlagen sind
+- Garantierter Cleanup, auch wenn ein Schritt mittendrin scheitert
+- Einfach erweiterbar um weitere Szenarien (Aufgaben, Briefe, Termine, Entscheidungen…)
 
-1. `src/features/appointments/components/CreateAppointmentDialog.tsx` (14)
-2. `src/features/letters/components/LetterEditor.tsx` (8)
-3. `src/components/drucksachen/ProtocolViewer.tsx` (7)
-4. `src/features/election-districts/components/SimpleLeafletMap.tsx` (6)
-5. `src/features/documents/components/DocumentsView.tsx` (6)
-6. `src/components/dashboard/WidgetConfigDialog.tsx` (6)
-7. `src/components/calendar/ProperReactBigCalendar.tsx` (6)
-8. `src/features/timetracking/components/AnnualTasksView.tsx` (4)
-9. `src/components/contacts/DuplicateContactsSheet.tsx` (4)
-10. `src/components/administration/MeetingTemplateManager.tsx` (4)
+## Wie das in einer Web-App realisiert wird (Konzept)
 
-## Vorgehen pro Datei
+Drei etablierte Bausteine, die wir kombinieren:
 
-```text
-1. Treffer per rg lokalisieren
-2. Pro Stelle die richtige Strategie wählen:
-   - Bekannter Domain-Typ vorhanden → importieren (z. B. Database['public']['Tables'][...])
-   - Externe Lib (Leaflet, react-big-calendar, Lexical) → vorhandenen Plugin-Typ oder
-     präzises Interface aus src/types/*.d.ts nutzen
-   - Generisches JSON aus DB → unknown + Type-Guards aus src/utils/typeSafety.ts
-     (isRecord, hasOwnProperty, normalizeSupabaseResult)
-   - Event-Handler → React.ChangeEvent<HTMLInputElement> etc.
-3. tsc-Check pro Datei: bunx tsc -p tsconfig.app.json --noEmit
+1. **Test-Szenario-Registry** — jedes Szenario ist eine Datei mit `setup → steps → cleanup`. Schritte sind kleine async-Funktionen, die echte Supabase-Calls absetzen und ein Ergebnis zurückgeben.
+2. **Test-Runner** — führt die Schritte sequentiell aus, fängt Fehler ab, sammelt Logs, ruft am Ende **immer** den Cleanup auf (`try/finally`-Pattern, wie in `scripts/e2e-smoke-flows.mjs` bereits etabliert).
+3. **Tagging für Cleanup-Sicherheit** — alle erzeugten Datensätze bekommen einen Marker (z.B. Titel-Prefix `[TEST-<runId>]` und ein `tenant_id`-Scope). Selbst wenn Cleanup teilweise scheitert, kann ein „Aufräumen"-Button alle Datensätze mit diesem Prefix gezielt löschen.
+
+## Umsetzung
+
+### 1. Neue Seite: `/admin/selbsttest`
+
+- Nur sichtbar für Rolle `abgeordneter`/`bueroleitung` (analog `team`-Tab)
+- Liste der verfügbaren Szenarien mit „Ausführen"-Button
+- Live-Anzeige: Schritt für Schritt mit ✅/❌/⏳, ausklappbarer Fehler-Log
+- Globaler „Test-Daten aufräumen"-Button (löscht alle Datensätze mit `[TEST-…]`-Prefix im aktuellen Tenant)
+
+### 2. Test-Framework (`src/features/selftest/`)
+
+```
+src/features/selftest/
+  types.ts              # TestScenario, TestStep, TestContext, TestResult
+  runner.ts             # runScenario() mit try/finally Cleanup
+  registry.ts           # Liste aller Szenarien
+  cleanup.ts            # purgeTestData(tenantId) - löscht alles mit TEST-Prefix
+  scenarios/
+    meeting-lifecycle.ts
+    task-lifecycle.ts
+    letter-lifecycle.ts
+  components/
+    SelftestView.tsx
+    ScenarioCard.tsx
+    StepLog.tsx
 ```
 
-## Technische Leitplanken
-- Kein `as any`; falls JSX-Namespace-Probleme: `import type { JSX } from 'react'`.
-- Bei externen Libs ohne Typen: schmales lokales Interface in derselben Datei oder in `src/types/`.
-- Supabase-Rows: `Database['public']['Tables']['<name>']['Row']` (siehe `src/integrations/supabase/types`).
-- JSONB-Felder: `Json` aus Supabase-Types + Parser/Guard.
-- Bestehende Helfer wiederverwenden (`typeSafety.ts`, `featureDomainTypes.ts`).
+### 3. Beispiel-Szenario „Meeting-Lifecycle"
 
-## Validierung
-- `bunx tsc -p tsconfig.app.json --noEmit` muss 0 Fehler zeigen.
-- `rg`-Diff: Treffer in den 10 Dateien sollten auf 0 fallen.
-- Kurzer Bericht am Ende: Anzahl entfernter `any`, ggf. notwendige `@ts-expect-error` mit Grund.
+Schritte, die nacheinander ausgeführt und einzeln angezeigt werden:
 
-## Out of Scope
-- Long-tail-Dateien mit 1–3 Treffern (separate Welle).
-- Test-Dateien (`__tests__`, `.test.ts`).
-- Type-Definition-Dateien (`*.d.ts`).
+1. Meeting erstellen (`meetings` insert, Titel `[TEST-abc123] Selbsttest-Meeting`)
+2. Verknüpften Kalender-Termin erzeugen (`appointments`)
+3. Teilnehmer hinzufügen (`meeting_participants`)
+4. Agenda-Punkt anlegen (`meeting_agenda_items`)
+5. Aufgabe aus Agenda erzeugen (`tasks` mit `meeting_id`)
+6. Meeting archivieren (Edge Function aufrufen, prüfen dass Aufgaben übernommen werden)
+7. Verifizieren: Aufgabe existiert, Status ist korrekt, Kalender-Termin verknüpft
+8. **Cleanup** (immer): Aufgaben → Agenda → Teilnehmer → Termin → Meeting löschen
 
-## Erwartetes Ergebnis
-~60+ `any`-Stellen entfernt, Build bleibt grün. Falls einzelne externe Lib-Stellen unvermeidbar sind, dokumentiert via `@ts-expect-error` mit kurzer Begründung statt `as any`.
+Jeder Schritt gibt zurück: `{ ok: boolean, message: string, durationMs: number, createdIds?: string[] }`. Erstellte IDs werden im `TestContext` gesammelt — der Cleanup arbeitet diese Liste rückwärts ab, unabhängig davon wo der Fehler auftrat.
+
+### 4. Sicherheitsmechanismen
+
+- **Tenant-Scope**: Alle Operationen laufen im aktuellen Tenant des angemeldeten Users → keine Auswirkung auf andere Mandanten
+- **Prefix-Marker**: `[TEST-<runId>]` im Titel + `description` enthält `__SELFTEST__`
+- **Notfall-Cleanup**: separater Button `purgeTestData()` löscht alle Records mit diesen Markern, scoped auf Tenant
+- **Bestätigungsdialog** vor jedem Lauf, weil echte DB-Writes passieren
+- **Run-Historie** (optional, in localStorage) zeigt die letzten 10 Läufe
+
+### 5. Erweiterbarkeit
+
+Ein neues Szenario = eine neue Datei in `scenarios/` + Eintrag in `registry.ts`. Vorgesehene weitere Szenarien:
+
+- Aufgaben (Erstellen, Zuweisen, Status-Wechsel, Archiv)
+- Briefe (Wizard → Entwurf → Freigabe → Archiv → Folge-Aufgabe)
+- Terminabstimmung (Erstellen → Gast-Antwort → Auto-Termin)
+- Entscheidungen (Erstellen → Kommentar → Abschluss)
+- Vorgänge (Erstellen → Verknüpfen → Schließen)
+
+## Technische Details
+
+- **Runner-Pattern**: `try { for (step of steps) await step(ctx) } finally { await cleanup(ctx) }` — derselbe Ansatz wie in `scripts/e2e-smoke-flows.mjs`, aber im Browser statt Node
+- **State-Sammlung**: `TestContext` ist ein Objekt mit `createdIds: { meetings: [], tasks: [], … }`, das jeder Step befüllt; Cleanup iteriert in umgekehrter Abhängigkeitsreihenfolge
+- **Edge Functions**: Werden über `supabase.functions.invoke()` aufgerufen, genau wie in der echten App — testet damit auch CORS/Auth-Pfade
+- **UI**: shadcn `Card` pro Szenario, `Collapsible` für Step-Logs, `Badge` für Status, `useState` für Live-Updates während des Laufs
+- **Keine neuen Dependencies** nötig
+
+## Was du nach Approval bekommst
+
+1. Neue Route `/admin/selbsttest` mit der UI
+2. Test-Framework-Code in `src/features/selftest/`
+3. **Erstes Szenario „Meeting-Lifecycle"** voll implementiert mit ~8 Schritten und Cleanup
+4. Gerüst für weitere Szenarien + ein einfaches Beispiel `task-lifecycle` als Vorlage
+5. Globaler „Aufräumen"-Notfallknopf
+
+Weitere Szenarien (Briefe, Terminabstimmung, Entscheidungen) können danach inkrementell hinzugefügt werden — sag einfach welche du als nächstes willst.
