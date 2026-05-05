@@ -147,12 +147,40 @@ export const meetingLifecycleScenario: TestScenario = {
           .from("meeting_agenda_items")
           .insert(rows)
           .select("id, system_type");
-        if (error || !data) return { ok: false, message: error?.message ?? "Insert lieferte keine Daten" };
+        if (error || !data) return { ok: false, message: describeError(error) };
         for (const row of data) ctx.created.push({ table: "meeting_agenda_items", id: row.id });
+        if (data.length !== SYSTEM_TYPES.length) {
+          return { ok: false, message: `Nur ${data.length}/${SYSTEM_TYPES.length} System-Punkte angelegt.` };
+        }
+
+        // Field-by-Field Verifikation pro System-Typ + Renderer-Sanity (utils.tsx).
+        const issues: string[] = [];
+        for (const row of data) {
+          const expected = rows.find((r) => r.system_type === row.system_type);
+          if (!expected) {
+            issues.push(`Unerwarteter system_type: ${row.system_type}`);
+            continue;
+          }
+          const verify = await expectFields(
+            "meeting_agenda_items",
+            row.id,
+            expected,
+            `System '${row.system_type}'`,
+          );
+          if (!verify.ok) issues.push(verify.message);
+
+          // Renderer-Drift-Check: jeder eingetragene System-Typ muss vom UI-Mapping erkannt werden.
+          if (!getSystemItemIcon(row.system_type)) {
+            issues.push(`Renderer kennt system_type '${row.system_type}' nicht (utils.tsx).`);
+          }
+        }
         return {
-          ok: data.length === SYSTEM_TYPES.length,
-          message: `${data.length}/${SYSTEM_TYPES.length} System-Punkte angelegt.`,
-          details: data.map((d) => d.system_type),
+          ok: issues.length === 0,
+          message:
+            issues.length === 0
+              ? `${data.length} System-Punkte verifiziert + Renderer-Mapping ok.`
+              : `${issues.length} Probleme.`,
+          details: issues.length ? issues : data.map((d) => d.system_type),
         };
       },
     },
