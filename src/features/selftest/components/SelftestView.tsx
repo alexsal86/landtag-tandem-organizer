@@ -107,12 +107,17 @@ export function SelftestView() {
               <CardHeader>
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 flex-wrap">
                       {scenario.title}
                       {state?.status === "ok" && <Badge variant="default" className="bg-green-600">OK</Badge>}
                       {state?.status === "failed" && <Badge variant="destructive">Fehler</Badge>}
                     </CardTitle>
-                    <CardDescription>{scenario.description}</CardDescription>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {scenario.features.map((f) => (
+                        <Badge key={f} variant="outline" className="text-xs">{f}</Badge>
+                      ))}
+                    </div>
+                    <CardDescription className="mt-2">{scenario.description}</CardDescription>
                   </div>
                   <Button onClick={() => handleRun(scenario.id)} disabled={!canRun || isRunning}>
                     {isRunning ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
