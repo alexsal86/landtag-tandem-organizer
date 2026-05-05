@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
+import { describeError, expectFields } from "../verify";
 
 const tag = (run: string, label: string) => `${SELFTEST_PREFIX} ${label} (${run})`;
 
@@ -8,9 +9,14 @@ export const letterLifecycleScenario: TestScenario = {
   id: "letter-lifecycle",
   title: "Brief-Lifecycle (Entwurf → Prüfung → Genehmigt → Versendet)",
   description:
-    "Erstellt einen Brief, hängt eine Anlage an, durchläuft den Workflow draft → review → approved → sent inkl. verknüpfter Entscheidung und prüft am Ende alle Verknüpfungen.",
+    "Erstellt einen Brief, hängt eine Anlage an, durchläuft den Workflow draft → review → approved → sent inkl. verknüpfter Entscheidung. Jeder Schritt liest seine geschriebenen Felder zurück.",
   touches: ["letters", "letter_attachments", "task_decisions"],
   features: ["letters", "decisions"],
+  writes: [
+    { table: "letters", columns: ["title", "subject", "content", "content_html", "status", "created_by", "tenant_id", "letter_date", "recipient_name", "recipient_address", "submitted_for_review_at", "submitted_for_review_by", "submitted_to_user", "approved_at", "approved_by", "sent_at", "sent_by", "sent_method", "sent_date"] },
+    { table: "letter_attachments", columns: ["letter_id", "file_name", "file_path", "file_type", "file_size", "uploaded_by"] },
+    { table: "task_decisions", columns: ["title", "description", "status", "created_by", "tenant_id", "visible_to_all"] },
+  ],
   steps: [
     {
       id: "create-letter",
