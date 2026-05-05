@@ -1,6 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
+import { describeError, expectFields } from "../verify";
+import { getSystemItemIcon } from "@/components/my-work/jour-fixe/utils";
 
 const title = (run: string, label: string) => `${SELFTEST_PREFIX} ${label} (${run})`;
 
@@ -15,9 +17,9 @@ const SYSTEM_TYPES = [
 
 export const meetingLifecycleScenario: TestScenario = {
   id: "meeting-lifecycle",
-  title: "Meeting-Lifecycle (vollständig)",
+  title: "Meeting-Lifecycle (vollständig + Field-Verifikation)",
   description:
-    "Erstellt ein Meeting mit Termin, Teilnehmer, regulären und allen System-Agenda-Punkten (Geburtstage, Termine, Quick-Notes, Aufgaben, Vorgänge, Entscheidungen), Sub-Item, Dokument, Aufgabe, Carry-Over und Folge-Meeting. Verifiziert alle Verknüpfungen und räumt am Ende auf.",
+    "Erstellt ein Meeting mit Termin, Teilnehmer, regulären und allen System-Agenda-Punkten (Geburtstage, Termine, Quick-Notes, Aufgaben, Vorgänge, Entscheidungen), Sub-Item, Dokument, Aufgabe, Carry-Over und Folge-Meeting. Liest jedes geschriebene Feld zurück und vergleicht — inkl. Renderer-Sanity (utils.tsx-Mapping).",
   touches: [
     "meetings",
     "meeting_agenda_items",
@@ -27,6 +29,14 @@ export const meetingLifecycleScenario: TestScenario = {
     "tasks",
   ],
   features: ["meetings", "appointments", "tasks"],
+  writes: [
+    { table: "meetings", columns: ["title", "description", "meeting_date", "meeting_time", "status", "user_id", "tenant_id", "is_public", "parent_meeting_id", "is_recurring_instance"] },
+    { table: "meeting_agenda_items", columns: ["meeting_id", "title", "description", "order_index", "is_completed", "is_recurring", "system_type", "is_visible", "is_optional", "parent_id", "task_id", "notes", "result_text", "carry_over_to_next", "carryover_notes", "carried_over_from", "original_meeting_date", "original_meeting_title"] },
+    { table: "meeting_agenda_documents", columns: ["meeting_agenda_item_id", "user_id", "file_name", "file_path", "file_type", "file_size"] },
+    { table: "meeting_participants", columns: ["meeting_id", "user_id", "role", "status"] },
+    { table: "appointments", columns: ["title", "description", "start_time", "end_time", "category", "status", "user_id", "tenant_id", "meeting_id"] },
+    { table: "tasks", columns: ["title", "description", "status", "priority", "user_id", "tenant_id"] },
+  ],
   steps: [
     {
       id: "create-meeting",
