@@ -17,6 +17,7 @@ function newRunId(): string {
 /** Tabellen in Reihenfolge: spezifischere zuerst, danach Eltern. */
 const CLEANUP_ORDER = [
   "tasks",
+  "meeting_agenda_documents",
   "meeting_agenda_items",
   "meeting_participants",
   "appointments",
@@ -142,20 +143,21 @@ export async function purgeAllSelftestData(tenantId: string): Promise<{
   message: string;
 }> {
   const removed: Record<string, number> = {};
-  const tables: Array<{ name: string; column: string }> = [
-    { name: "tasks", column: "title" },
-    { name: "meeting_agenda_items", column: "title" },
-    { name: "appointments", column: "title" },
-    { name: "meetings", column: "title" },
+  const tables: Array<{ name: string; column: string; hasTenant: boolean }> = [
+    { name: "tasks", column: "title", hasTenant: true },
+    { name: "meeting_agenda_documents", column: "file_name", hasTenant: false },
+    { name: "meeting_agenda_items", column: "title", hasTenant: false },
+    { name: "appointments", column: "title", hasTenant: true },
+    { name: "meetings", column: "title", hasTenant: true },
   ];
 
   for (const t of tables) {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const query: any = supabase.from(t.name as any).delete({ count: "exact" });
-      const { count, error } = await query
-        .ilike(t.column, `${SELFTEST_PREFIX}%`)
-        .eq("tenant_id", tenantId);
+      let query: any = supabase.from(t.name as any).delete({ count: "exact" })
+        .ilike(t.column, `${SELFTEST_PREFIX}%`);
+      if (t.hasTenant) query = query.eq("tenant_id", tenantId);
+      const { count, error } = await query;
       if (error) throw error;
       removed[t.name] = count ?? 0;
     } catch (err) {
