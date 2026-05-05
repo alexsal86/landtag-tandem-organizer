@@ -82,6 +82,24 @@ console.log(`[selftest-coverage] Tabellen gesamt: ${tables.length}`);
 console.log(`[selftest-coverage] Abgedeckt: ${coverage.size}, ignoriert: ${ignored.size}, FEHLT: ${missing.length}`);
 console.log(`[selftest-coverage] Doc geschrieben: ${DOC_OUT}`);
 
+md += `\n## Spalten-Coverage (writes)\n\n`;
+if (columnCoverage.size === 0) {
+  md += `_Noch keine \`writes:\`-Manifeste in den Szenarien hinterlegt._\n`;
+} else {
+  md += `| Tabelle | Getestete Spalten |\n|---|---|\n`;
+  for (const [table, cols] of [...columnCoverage.entries()].sort()) {
+    md += `| \`${table}\` | ${[...cols].sort().map((c) => `\`${c}\``).join(", ")} |\n`;
+  }
+}
+
+writeFileSync(DOC_OUT, md);
+
+console.log(`[selftest-coverage] Szenarien: ${scenarioMeta.length}`);
+console.log(`[selftest-coverage] Tabellen gesamt: ${tables.length}`);
+console.log(`[selftest-coverage] Abgedeckt: ${coverage.size}, ignoriert: ${ignored.size}, FEHLT: ${missing.length}`);
+console.log(`[selftest-coverage] Spalten-Manifeste für ${columnCoverage.size} Tabellen.`);
+console.log(`[selftest-coverage] Doc geschrieben: ${DOC_OUT}`);
+
 if (missing.length > 0) {
   console.error(`\nFehlende Coverage für:\n${missing.map((t) => "  - " + t).join("\n")}`);
   console.error(`\nLösung: Szenario in src/features/selftest/scenarios/ ergänzen ODER Tabelle in coverage-config.ts in IGNORED_TABLES aufnehmen.`);
