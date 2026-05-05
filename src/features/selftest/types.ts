@@ -33,6 +33,10 @@ export interface TestScenario {
   id: string;
   title: string;
   description: string;
+  /** Tabellen, die das Szenario aktiv schreibt — für Coverage-Check. */
+  touches: string[];
+  /** Domänen-Tags für UI-Badges, z.B. "letters", "case-items". */
+  features: string[];
   steps: TestStep[];
 }
 
