@@ -96,6 +96,21 @@ export async function runScenario(
 
   let aborted = false;
 
+  // Preflight: Session + aktive Tenant-Membership prüfen, sonst sofort abbrechen.
+  const preflight = await runPreflight(options.userId, options.tenantId);
+  if (!preflight.ok) {
+    state.steps.forEach((s) => {
+      s.status = "skipped";
+      s.message = preflight.message;
+    });
+    state.cleanup.status = "ok";
+    state.cleanup.message = "Nichts zu tun.";
+    state.status = "failed";
+    state.finishedAt = Date.now();
+    emit();
+    return state;
+  }
+
   try {
     for (let i = 0; i < scenario.steps.length; i += 1) {
       const step = scenario.steps[i];
