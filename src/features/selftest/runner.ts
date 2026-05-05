@@ -17,6 +17,7 @@ function newRunId(): string {
 /** Tabellen in Reihenfolge: spezifischere zuerst, danach Eltern. */
 const CLEANUP_ORDER = [
   "tasks",
+  "meeting_agenda_documents",
   "meeting_agenda_items",
   "meeting_participants",
   "appointments",
