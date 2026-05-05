@@ -44,69 +44,63 @@ export const letterLifecycleScenario: TestScenario = {
       label: "Anlage anhängen",
       critical: false,
       run: async (ctx) => {
-        const { data, error } = await supabase
-          .from("letter_attachments")
-          .insert({
-            letter_id: ctx.data.letterId as string,
-            file_name: tag(ctx.runId, "Anlage") + ".pdf",
-            file_path: `${ctx.userId}/selftest/letter-${ctx.runId}.pdf`,
-            file_type: "application/pdf",
-            file_size: 2048,
-            uploaded_by: ctx.userId,
-          })
-          .select("id")
-          .single();
-        if (error || !data) return { ok: false, message: error?.message ?? "Insert leer" };
+        const payload = {
+          letter_id: ctx.data.letterId as string,
+          file_name: tag(ctx.runId, "Anlage") + ".pdf",
+          file_path: `${ctx.userId}/selftest/letter-${ctx.runId}.pdf`,
+          file_type: "application/pdf",
+          file_size: 2048,
+          uploaded_by: ctx.userId,
+        };
+        const { data, error } = await supabase.from("letter_attachments").insert(payload).select("id").single();
+        if (error || !data) return { ok: false, message: describeError(error) };
         ctx.created.push({ table: "letter_attachments", id: data.id });
-        return { ok: true, message: "Anlage hinzugefügt." };
+        return expectFields("letter_attachments", data.id, payload, "Anlage");
       },
     },
     {
       id: "set-recipient",
       label: "Empfänger setzen",
       run: async (ctx) => {
-        const { error } = await supabase
-          .from("letters")
-          .update({
-            recipient_name: `${SELFTEST_MARKER} Max Mustermann`,
-            recipient_address: `${SELFTEST_MARKER}\nMusterstraße 1\n12345 Musterstadt`,
-          })
-          .eq("id", ctx.data.letterId as string);
-        if (error) return { ok: false, message: error.message };
-        return { ok: true, message: "Empfänger gesetzt." };
+        const id = ctx.data.letterId as string;
+        const update = {
+          recipient_name: `${SELFTEST_MARKER} Max Mustermann`,
+          recipient_address: `${SELFTEST_MARKER}\nMusterstraße 1\n12345 Musterstadt`,
+        };
+        const { error } = await supabase.from("letters").update(update).eq("id", id);
+        if (error) return { ok: false, message: describeError(error) };
+        return expectFields("letters", id, update, "Empfänger");
       },
     },
     {
       id: "submit-review",
       label: "Zur Prüfung einreichen (review)",
       run: async (ctx) => {
-        const { error } = await supabase
-          .from("letters")
-          .update({
-            status: "review",
-            submitted_for_review_at: new Date().toISOString(),
-            submitted_for_review_by: ctx.userId,
-            submitted_to_user: ctx.userId,
-          })
-          .eq("id", ctx.data.letterId as string);
-        if (error) return { ok: false, message: error.message };
-        return { ok: true, message: "Eingereicht." };
+        const id = ctx.data.letterId as string;
+        const update = {
+          status: "review",
+          submitted_for_review_at: new Date().toISOString(),
+          submitted_for_review_by: ctx.userId,
+          submitted_to_user: ctx.userId,
+        };
+        const { error } = await supabase.from("letters").update(update).eq("id", id);
+        if (error) return { ok: false, message: describeError(error) };
+        return expectFields("letters", id, update, "Review");
       },
     },
     {
       id: "approve",
       label: "Genehmigen (approved)",
       run: async (ctx) => {
-        const { error } = await supabase
-          .from("letters")
-          .update({
-            status: "approved",
-            approved_at: new Date().toISOString(),
-            approved_by: ctx.userId,
-          })
-          .eq("id", ctx.data.letterId as string);
-        if (error) return { ok: false, message: error.message };
-        return { ok: true, message: "Genehmigt." };
+        const id = ctx.data.letterId as string;
+        const update = {
+          status: "approved",
+          approved_at: new Date().toISOString(),
+          approved_by: ctx.userId,
+        };
+        const { error } = await supabase.from("letters").update(update).eq("id", id);
+        if (error) return { ok: false, message: describeError(error) };
+        return expectFields("letters", id, update, "Approval");
       },
     },
     {
