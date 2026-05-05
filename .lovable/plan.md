@@ -1,123 +1,95 @@
-## Schritt 1: Drei neue Selbsttest-Szenarien
+## Ziel
 
-### A) Brief-Lifecycle (`scenarios/letter-lifecycle.ts`)
-Schritte:
-1. **Brief anlegen** in `letters` mit `status='draft'`, Marker im Titel/Subject, `created_by=ctx.userId`, `tenant_id`, `content` und `content_html` mit Marker.
-2. **Anhang ergänzen** in `letter_attachments` (`file_name`, `file_path` unter `${userId}/selftest/...`, `file_type='application/pdf'`).
-3. **Empfänger setzen** via Update auf `letters` (`recipient_name`, `recipient_address`).
-4. **Workflow: zur Prüfung einreichen** – Update `status='review'`, `submitted_for_review_at=now()`, `submitted_for_review_by=userId`, `submitted_to_user=userId`.
-5. **Genehmigen** – Update `status='approved'`, `approved_at=now()`, `approved_by=userId`.
-6. **Verknüpfte Entscheidung** anlegen (`task_decisions`, ohne `task_id`) mit `case_item_id=null`, Marker, `created_by=userId`. Optional: Self-Participant via `task_decision_participants`. Step ist `critical:false`.
-7. **Senden** – Update `status='sent'`, `sent_at`, `sent_by`, `sent_method='email'`, `sent_date=heute`.
-8. **Verifikation** – Read-Back: status='sent', Anhang vorhanden, recipient gesetzt.
-9. **Archivieren** (Status bleibt 'sent'; in DB kein zusätzliches Archiv-Flag nötig).
-
-### B) Vorgangs-Lifecycle (`scenarios/case-item-lifecycle.ts`)
-Tabelle: `case_items` (Enums: status `neu|in_klaerung|antwort_ausstehend|erledigt|archiviert`, source_channel `phone|email|social|in_person|other`, priority `low|medium|high|urgent`).
-
-Wichtige Constraint: Bei `status='erledigt'` muss `completion_note` (nicht leer) UND `completed_at` gesetzt sein.
-
-Schritte:
-1. **Vorgang anlegen** mit `subject` (mit Marker), `summary` mit Marker, `source_channel='email'`, `status='neu'`, `priority='medium'`, `user_id`, `tenant_id`, `contains_personal_data=false`, `pending_for_jour_fixe=false`, `visible_to_all=false`.
-2. **Interaktion loggen** in `case_item_interactions` (`case_item_id`, `tenant_id`, `interaction_type='note'` (oder anderer gültiger Enum-Wert; wird per Read aus Schema bestimmt – falls Enum unbekannt, `direction='in'`, `summary` mit Marker, `created_by`, `visibility='internal'` (oder gültig)).
-   - Da Enums `interaction_type` und `visibility` USER-DEFINED sind, lese ich vor Implementation die gültigen Labels via `pg_enum` aus und nutze konkrete Werte.
-3. **Status-Wechsel** auf `in_klaerung`.
-4. **Folge-Status** auf `antwort_ausstehend` mit `follow_up_at=now()+1d`.
-5. **Entscheidung anhängen**: `task_decisions` mit `case_item_id=ctx.data.caseItemId`. Critical false.
-6. **Vorgang abschließen**: Update `status='erledigt'`, `completion_note='[SELFTEST] erledigt'`, `completed_at=now()`, `resolution_summary` mit Marker.
-7. **Verifikation**: Read zurück; Interaktion-Anzahl ≥1, Status erledigt, completion_note nicht null.
-
-### C) Entscheidungs-Lifecycle (`scenarios/decision-lifecycle.ts`)
-Tabellen: `task_decisions`, `task_decision_participants`.
-
-Schritte:
-1. **Entscheidung anlegen** in `task_decisions` mit `title` (Marker), `description` (Marker), `status='active'`, `created_by=userId`, `tenant_id`, `visible_to_all=false`, `priority=1`, `response_deadline=now()+3d`. (kein `task_id` notwendig – nullable.)
-2. **Teilnehmer (sich selbst) hinzufügen** in `task_decision_participants` (`decision_id`, `user_id`, default token wird gesetzt).
-3. **Antwort-Optionen prüfen**: Read `response_options` → erwarte default JSON mit drei Keys (yes/no/question).
-4. **Status `open`** setzen (Wert ist im CHECK-Constraint erlaubt: `active|open|archived`).
-5. **Auto-Archiv simulieren**: Update `status='archived'`, `archived_at=now()`, `archived_by=userId`.
-6. **Verifikation**: Read-Back.
-
-### Cleanup-Anpassung in `runner.ts`
-- `CLEANUP_ORDER` erweitern (Reihenfolge Kind→Eltern):
-  `task_decision_participants → task_decisions → case_item_interactions → case_items → letter_attachments → letters → tasks → meeting_agenda_documents → meeting_agenda_items → meeting_participants → appointments → meetings`.
-- `purgeAllSelftestData` um folgende Tabellen ergänzen (mit korrektem `hasTenant`-Flag):
-  - `letters` (Spalte `title`, hasTenant=true)
-  - `letter_attachments` (Spalte `file_name`, hasTenant=false)
-  - `case_items` (Spalte `subject`, hasTenant=true)
-  - `case_item_interactions` (Spalte `summary`, hasTenant=true)
-  - `task_decisions` (Spalte `title`, hasTenant=true)
-
-### Registry
-`src/features/selftest/registry.ts` um die drei neuen Szenarien ergänzen.
+1. Den RLS-Fehler bei `case_items` im Selbsttest beheben — inkl. besserer Fehlerdiagnose.
+2. Die Selbsttests so umbauen, dass sie nicht nur "Insert ging durch" prüfen, sondern alle eingetragenen Felder **nach dem Schreiben aus der DB lesen und Wert für Wert vergleichen** — damit z.B. Geburtstags-Systempunkte oder andere Felder nicht stillschweigend verloren gehen.
 
 ---
 
-## Schritt 2: Coverage-Manifest + CI-Check
+## Teil 1 — RLS bei `case_items`
 
-### Manifest pro Szenario
-Erweiterung von `TestScenario` in `src/features/selftest/types.ts` um:
+### Befund
+
+Die INSERT-Policy lautet:
+```
+WITH CHECK (tenant_id = ANY(get_user_tenant_ids(auth.uid())) AND user_id = auth.uid())
+```
+`get_user_tenant_ids` liefert nur Tenants mit `user_tenant_memberships.is_active = true`. Das Meeting-Insert hat dieselbe Tenant-Bedingung und funktioniert — also ist auth + Tenant-Membership grundsätzlich ok. Die zusätzliche Bedingung bei `case_items` ist `user_id = auth.uid()`. Häufigste Ursachen, dass das in der Praxis fehlschlägt:
+
+- Die Session ist abgelaufen (auf der aktuellen Route `/auth` ist genau das der Fall) → `auth.uid()` ist `NULL`. Die Aktion wirkt erst beim nächsten Test wieder.
+- Eine ältere Session wird zwar im Browser gehalten, aber der JWT ist nicht mehr gültig — Postgrest sieht keinen User.
+- (Theoretisch) `useAuth().user.id` und `auth.uid()` driften, falls ein Impersonate-/Switch-Mechanismus verwendet wird.
+
+### Maßnahmen
+
+1. **Preflight-Step pro Szenario** (`runner.ts` / Szenario-Header):
+   - `await supabase.auth.getSession()` → wenn keine Session: Abbruch mit klarer Meldung "Bitte erneut anmelden".
+   - SELECT auf `user_tenant_memberships` mit `eq('user_id', userId).eq('tenant_id', tenantId).eq('is_active', true)` — abbrechen, falls leer ("Tenant-Membership nicht aktiv").
+   - SELECT auf eine geschützte Funktion (`select auth.uid()` über RPC oder Vergleich mit `getUser()`), damit JWT-Drift sofort sichtbar wird.
+
+2. **Bessere Fehlermeldung im Step**: bei `error.code === '42501'` (RLS) zusätzlich anhängen, welche Bedingung typischerweise greift (Tenant-ID, user_id, oder fehlende Auth).
+
+3. **Defaults im Insert vereinheitlichen**: Felder, die DB-Defaults haben (z.B. `source_channel='other'`, `status='neu'`, `priority='medium'`, alle `false`-Booleans) werden weggelassen — das Szenario testet absichtlich die Defaults, nicht die Übergabe.
+
+---
+
+## Teil 2 — Echte Datenintegritäts-Verifikation
+
+Heute prüfen die Szenarien überwiegend nur "Insert OK" und am Ende grobe Vorhandenseins-Counts. Geburtstage usw. werden zwar in `meeting_agenda_items.system_type` geschrieben — aber niemand schaut nach, **was** dort steht. Das ändern wir.
+
+### Neues Hilfs-Modul `src/features/selftest/verify.ts`
+
 ```ts
-touches: string[];        // Tabellen, die das Szenario berührt
-features: string[];       // Domänen-Tags wie "letters", "case-items", "meetings"
+expectFields<T>(actual: T, expected: Partial<T>, label: string): StepResult
 ```
-Alle bestehenden und neuen Szenarien füllen das Feld:
-- meeting-lifecycle: `["meetings","meeting_agenda_items","meeting_agenda_documents","meeting_participants","appointments","tasks"]`
-- task-lifecycle: `["tasks"]`
-- letter-lifecycle: `["letters","letter_attachments","task_decisions"]`
-- case-item-lifecycle: `["case_items","case_item_interactions","task_decisions"]`
-- decision-lifecycle: `["task_decisions","task_decision_participants"]`
+- Liest pro Insert das gerade geschriebene Objekt zurück (`select('*').eq('id', …).single()`).
+- Vergleicht jedes Feld aus `expected` mit dem DB-Wert — Mismatches werden mit Feldname + Wert in `details` gemeldet.
+- Liefert ein `StepResult`, das wir am Ende jedes "Create"-Steps zurückgeben.
 
-### Allowlist für „nicht zu testende" Tabellen
-Neue Datei `src/features/selftest/coverage-config.ts`:
-- `IGNORED_TABLES`: Konfig/Lookup-Tabellen, RLS-Helper, Audit, Push-Subscriptions, Migrations etc. – werden nicht in der Coverage gefordert.
-- Begründung als Kommentar pro Eintrag.
+### Anwendung pro Szenario
 
-### CI-Check-Script
-Neue Datei `scripts/check-selftest-coverage.mjs`:
-- Liest `IGNORED_TABLES` und alle Szenario-Dateien per Regex-Scan über `touches:` Arrays (kein TS-Compile nötig, läuft mit Node/`fs`).
-- Holt alle Tabellen aus `public` über die Supabase REST-Introspection. Wenn `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` nicht gesetzt sind, fällt das Script auf eine eingecheckte Snapshot-Datei `src/features/selftest/__schema-snapshot__/public-tables.json` zurück.
-- Snapshot-Datei wird einmalig generiert und als Quelle der Wahrheit für CI verwendet (driftet erst, wenn Migrationen sie aktualisieren).
-- Output: Markdown-Tabelle „Tabelle → abgedeckt von Szenario X / FEHLT". Exit-Code 1, wenn ungetestete und nicht-ignorierte Tabellen existieren.
+- **meeting-lifecycle**:
+  - Nach `add-system-agenda`: für jeden System-Typ (`birthdays`, `upcoming_appointments`, `quick_notes`, `tasks`, `case_items`, `decisions`) prüfen, dass `system_type`, `is_visible`, `is_optional`, `order_index`, `meeting_id`, `title`, `description` exakt zurückkommen.
+  - Zusätzlich Verifikation, dass die Renderer-Helfer (`getSystemEntries` / `getSystemItemIcon`) den Typ kennen — Sicherheitsnetz gegen "Typ in DB, aber UI zeigt nichts".
+  - Für Sub-Item zusätzlich `parent_id` und Hierarchie-Konsistenz prüfen.
+  - Carry-Over: nach Anlegen des Folge-Meetings die Felder `carried_over_from`, `original_meeting_date`, `original_meeting_title` lesen und vergleichen.
+  - Termin/Aufgabe/Dokument: alle gesetzten Felder zurücklesen.
+- **case-item-lifecycle**, **letter-lifecycle**, **decision-lifecycle**, **task-lifecycle**: identisches Muster — jedes Insert/Update durchläuft `expectFields`.
 
-### NPM-Skript
-`package.json` um Eintrag erweitern:
-```
-"check:selftest-coverage": "node scripts/check-selftest-coverage.mjs"
-```
+### Strict-Coverage-Hinweis
 
-### Living Doc
-`scripts/check-selftest-coverage.mjs` schreibt zusätzlich `docs/selftest-coverage.md` mit der aktuellen Tabelle (Feature → Szenario → Tabellen) – das Doc wird eingecheckt.
-
-### UI-Hinweis
-`SelftestView.tsx` erhält pro Szenario einen kleinen Tag-Bereich, der `features` als Badge anzeigt – damit der Nutzer im UI sieht, welche Domäne abgedeckt ist.
-
-### Memory-Eintrag
-Neue `mem://selftest/coverage-policy`: „Jedes neue Workflow-Feature braucht ein Selbsttest-Szenario in `src/features/selftest/scenarios/` mit `touches`-Manifest. CI-Check `scripts/check-selftest-coverage.mjs` blockiert bei Lücken." Im Index unter „Memories" referenzieren.
+Die `touches`/`features`-Manifeste werden um eine Liste der Felder ergänzt, die das Szenario aktiv setzt (`writes: { table: string; columns: string[] }[]`). Der bestehende Check-Script (`scripts/check-selftest-coverage.mjs`) bekommt eine zusätzliche Warnung, wenn eine Tabelle Spalten besitzt, die kein Szenario je schreibt (Hinweis auf untestete Felder — ohne Hard-Fail).
 
 ---
 
-## Betroffene/Neue Dateien
+## Geplante Datei-Änderungen
 
-Neu:
-- `src/features/selftest/scenarios/letter-lifecycle.ts`
-- `src/features/selftest/scenarios/case-item-lifecycle.ts`
-- `src/features/selftest/scenarios/decision-lifecycle.ts`
-- `src/features/selftest/coverage-config.ts`
-- `src/features/selftest/__schema-snapshot__/public-tables.json`
-- `scripts/check-selftest-coverage.mjs`
-- `docs/selftest-coverage.md` (auto-generiert, eingecheckt)
-- `mem://selftest/coverage-policy`
+```
+src/features/selftest/runner.ts
+  • runScenario: Preflight (Session + Membership) vor erstem Step
+  • Fehler-Mapping für Postgrest-RLS-Codes
 
-Bearbeitet:
-- `src/features/selftest/types.ts` – `touches` und `features` ergänzen
-- `src/features/selftest/runner.ts` – CLEANUP_ORDER + Purge-Tabellen erweitern
-- `src/features/selftest/registry.ts` – neue Szenarien registrieren
-- `src/features/selftest/scenarios/meeting-lifecycle.ts` + `task-lifecycle.ts` – `touches`/`features` ergänzen
-- `src/features/selftest/components/SelftestView.tsx` – Feature-Tags anzeigen
-- `package.json` – neues npm-Skript
-- `mem://index.md` – neuen Memory-Eintrag verlinken
+src/features/selftest/verify.ts                     (neu)
+  • expectFields, expectRowExists Helfer
 
-## Bewusst ausgeklammert (für später)
-- Schema-Fingerprint-Hash (Punkt 3 aus dem vorigen Vorschlag) – kann sauber als zweiter CI-Check nachgezogen werden, sobald die Coverage-Logik produktiv ist.
-- Tatsächlicher CI-Workflow (`.github/workflows/...`) – wird nach Approval ergänzt, falls gewünscht; das Skript ist aber sofort manuell ausführbar.
+src/features/selftest/scenarios/meeting-lifecycle.ts
+  • Field-by-Field Verifikation für alle Steps
+  • Renderer-Sanity (SYSTEM_TYPES vs. utils.tsx Map)
+
+src/features/selftest/scenarios/case-item-lifecycle.ts
+src/features/selftest/scenarios/letter-lifecycle.ts
+src/features/selftest/scenarios/decision-lifecycle.ts
+src/features/selftest/scenarios/task-lifecycle.ts
+  • Insert-Defaults reduzieren, expectFields nach jedem Schreibschritt
+
+src/features/selftest/types.ts
+  • TestScenario.writes?: { table; columns }[]
+
+scripts/check-selftest-coverage.mjs
+  • Spalten-Coverage-Warnung
+```
+
+Keine DB-Migration nötig — alle Erkenntnisse fließen in die Test-Schicht.
+
+## Offene Frage
+
+Ich kann die Renderer-Sanity (Schritt: System-Typen die im UI tatsächlich gerendert werden) optional auch als eigenständiges "UI-Drift"-Szenario umsetzen. Sage Bescheid, falls das gewünscht ist — sonst bleibt die Prüfung als Mini-Step im Meeting-Lifecycle.
