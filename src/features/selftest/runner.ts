@@ -16,6 +16,12 @@ function newRunId(): string {
 
 /** Tabellen in Reihenfolge: spezifischere zuerst, danach Eltern. */
 const CLEANUP_ORDER = [
+  "task_decision_participants",
+  "task_decisions",
+  "case_item_interactions",
+  "case_items",
+  "letter_attachments",
+  "letters",
   "tasks",
   "meeting_agenda_documents",
   "meeting_agenda_items",
@@ -144,6 +150,11 @@ export async function purgeAllSelftestData(tenantId: string): Promise<{
 }> {
   const removed: Record<string, number> = {};
   const tables: Array<{ name: string; column: string; hasTenant: boolean }> = [
+    { name: "task_decisions", column: "title", hasTenant: true },
+    { name: "case_item_interactions", column: "summary", hasTenant: true },
+    { name: "case_items", column: "subject", hasTenant: true },
+    { name: "letter_attachments", column: "file_name", hasTenant: false },
+    { name: "letters", column: "title", hasTenant: true },
     { name: "tasks", column: "title", hasTenant: true },
     { name: "meeting_agenda_documents", column: "file_name", hasTenant: false },
     { name: "meeting_agenda_items", column: "title", hasTenant: false },

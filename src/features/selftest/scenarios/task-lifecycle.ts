@@ -6,6 +6,8 @@ export const taskLifecycleScenario: TestScenario = {
   id: "task-lifecycle",
   title: "Aufgaben-Lifecycle",
   description: "Erstellt eine Aufgabe, ändert den Status mehrfach, verifiziert und löscht sie.",
+  touches: ["tasks"],
+  features: ["tasks"],
   steps: [
     {
       id: "create",
