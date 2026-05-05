@@ -19,9 +19,20 @@ export default {
 		},
 		extend: {
 			fontFamily: {
-				'headline': ['Arvo', 'Georgia', 'serif'],
-				'body': ['Source Sans Pro', 'system-ui', 'sans-serif'],
-				'sans': ['Source Sans Pro', 'system-ui', 'sans-serif']
+				'headline': ['"Inter Tight"', 'system-ui', 'sans-serif'],
+				'body': ['"Inter Tight"', 'system-ui', 'sans-serif'],
+				'sans': ['"Inter Tight"', 'system-ui', 'sans-serif'],
+				'mono': ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace']
+			},
+			fontSize: {
+				'label':   ['0.6875rem', { lineHeight: '1rem',    letterSpacing: '0.08em',  fontWeight: '600' }],
+				'caption': ['0.75rem',   { lineHeight: '1.1rem',  letterSpacing: '0' }],
+				'body':    ['0.875rem',  { lineHeight: '1.35rem', letterSpacing: '-0.005em' }],
+				'body-lg': ['0.9375rem', { lineHeight: '1.45rem', letterSpacing: '-0.005em' }],
+				'title':   ['1.125rem',  { lineHeight: '1.55rem', letterSpacing: '-0.015em', fontWeight: '500' }],
+				'h2':      ['1.5rem',    { lineHeight: '1.85rem', letterSpacing: '-0.02em',  fontWeight: '500' }],
+				'h1':      ['1.875rem',  { lineHeight: '2.25rem', letterSpacing: '-0.025em', fontWeight: '500' }],
+				'display': ['2.25rem',   { lineHeight: '2.6rem',  letterSpacing: '-0.03em',  fontWeight: '500' }]
 			},
 			colors: {
 				border: 'hsl(var(--border))',
