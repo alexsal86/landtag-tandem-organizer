@@ -243,6 +243,7 @@ export default function Administration(): React.JSX.Element | null {
         case "tenants": return <SuperadminTenantManagement />;
         case "auditlogs": return <AuditLogViewer />;
         case "expense": return <ExpenseManagement />;
+        case "selftest": return <SelftestView />;
         default: return <GeneralSettings />;
       }
     }
