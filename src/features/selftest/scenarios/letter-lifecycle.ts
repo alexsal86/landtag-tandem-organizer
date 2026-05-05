@@ -108,39 +108,35 @@ export const letterLifecycleScenario: TestScenario = {
       label: "Verknüpfte Entscheidung anlegen",
       critical: false,
       run: async (ctx) => {
-        const { data, error } = await supabase
-          .from("task_decisions")
-          .insert({
-            title: tag(ctx.runId, "Brief-Entscheidung"),
-            description: `${SELFTEST_MARKER} Bitte freigeben`,
-            status: "active",
-            created_by: ctx.userId,
-            tenant_id: ctx.tenantId,
-            visible_to_all: false,
-          })
-          .select("id")
-          .single();
-        if (error || !data) return { ok: false, message: error?.message ?? "Insert leer" };
+        const payload = {
+          title: tag(ctx.runId, "Brief-Entscheidung"),
+          description: `${SELFTEST_MARKER} Bitte freigeben`,
+          status: "active",
+          created_by: ctx.userId,
+          tenant_id: ctx.tenantId,
+          visible_to_all: false,
+        };
+        const { data, error } = await supabase.from("task_decisions").insert(payload).select("id").single();
+        if (error || !data) return { ok: false, message: describeError(error) };
         ctx.created.push({ table: "task_decisions", id: data.id });
-        return { ok: true, message: "Entscheidung angelegt." };
+        return expectFields("task_decisions", data.id, payload, "Brief-Entscheidung");
       },
     },
     {
       id: "send",
       label: "Versenden (sent)",
       run: async (ctx) => {
-        const { error } = await supabase
-          .from("letters")
-          .update({
-            status: "sent",
-            sent_at: new Date().toISOString(),
-            sent_by: ctx.userId,
-            sent_method: "email",
-            sent_date: new Date().toISOString().slice(0, 10),
-          })
-          .eq("id", ctx.data.letterId as string);
-        if (error) return { ok: false, message: error.message };
-        return { ok: true, message: "Versendet." };
+        const id = ctx.data.letterId as string;
+        const update = {
+          status: "sent",
+          sent_at: new Date().toISOString(),
+          sent_by: ctx.userId,
+          sent_method: "email",
+          sent_date: new Date().toISOString().slice(0, 10),
+        };
+        const { error } = await supabase.from("letters").update(update).eq("id", id);
+        if (error) return { ok: false, message: describeError(error) };
+        return expectFields("letters", id, update, "Versand");
       },
     },
     {
