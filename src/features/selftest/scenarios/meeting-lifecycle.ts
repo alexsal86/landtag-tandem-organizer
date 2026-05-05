@@ -18,6 +18,15 @@ export const meetingLifecycleScenario: TestScenario = {
   title: "Meeting-Lifecycle (vollständig)",
   description:
     "Erstellt ein Meeting mit Termin, Teilnehmer, regulären und allen System-Agenda-Punkten (Geburtstage, Termine, Quick-Notes, Aufgaben, Vorgänge, Entscheidungen), Sub-Item, Dokument, Aufgabe, Carry-Over und Folge-Meeting. Verifiziert alle Verknüpfungen und räumt am Ende auf.",
+  touches: [
+    "meetings",
+    "meeting_agenda_items",
+    "meeting_agenda_documents",
+    "meeting_participants",
+    "appointments",
+    "tasks",
+  ],
+  features: ["meetings", "appointments", "tasks"],
   steps: [
     {
       id: "create-meeting",
