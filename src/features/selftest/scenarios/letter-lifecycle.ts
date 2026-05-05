@@ -22,24 +22,21 @@ export const letterLifecycleScenario: TestScenario = {
       id: "create-letter",
       label: "Brief anlegen (draft)",
       run: async (ctx) => {
-        const { data, error } = await supabase
-          .from("letters")
-          .insert({
-            title: tag(ctx.runId, "Brief"),
-            subject: tag(ctx.runId, "Betreff"),
-            content: `${SELFTEST_MARKER} Inhalt`,
-            content_html: `<p>${SELFTEST_MARKER} Inhalt</p>`,
-            status: "draft",
-            created_by: ctx.userId,
-            tenant_id: ctx.tenantId,
-            letter_date: new Date().toISOString().slice(0, 10),
-          })
-          .select("id")
-          .single();
-        if (error || !data) return { ok: false, message: error?.message ?? "Insert leer" };
+        const payload = {
+          title: tag(ctx.runId, "Brief"),
+          subject: tag(ctx.runId, "Betreff"),
+          content: `${SELFTEST_MARKER} Inhalt`,
+          content_html: `<p>${SELFTEST_MARKER} Inhalt</p>`,
+          status: "draft",
+          created_by: ctx.userId,
+          tenant_id: ctx.tenantId,
+          letter_date: new Date().toISOString().slice(0, 10),
+        };
+        const { data, error } = await supabase.from("letters").insert(payload).select("id").single();
+        if (error || !data) return { ok: false, message: describeError(error) };
         ctx.created.push({ table: "letters", id: data.id });
         ctx.data.letterId = data.id;
-        return { ok: true, message: `Brief ${data.id} angelegt.` };
+        return expectFields("letters", data.id, payload, "Brief");
       },
     },
     {
