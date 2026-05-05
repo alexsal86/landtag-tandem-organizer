@@ -168,7 +168,7 @@ export function SelftestView() {
         <CardHeader>
           <CardTitle className="text-base">Notfall: Test-Daten aufräumen</CardTitle>
           <CardDescription>
-            Löscht alle Datensätze mit dem Prefix <code>[SELFTEST]</code> im aktuellen Tenant aus den Tabellen meetings, appointments, meeting_agenda_items und tasks.
+            Löscht alle Datensätze mit dem Prefix <code>[SELFTEST]</code> im aktuellen Tenant aus den Tabellen meetings, appointments, meeting_agenda_items, meeting_agenda_documents, tasks, letters, letter_attachments, case_items, case_item_interactions und task_decisions.
           </CardDescription>
         </CardHeader>
         <CardContent>
