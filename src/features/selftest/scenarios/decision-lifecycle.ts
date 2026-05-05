@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
+import { describeError, expectFields } from "../verify";
 
 const tag = (run: string, label: string) => `${SELFTEST_PREFIX} ${label} (${run})`;
 
@@ -8,9 +9,13 @@ export const decisionLifecycleScenario: TestScenario = {
   id: "decision-lifecycle",
   title: "Entscheidungs-Lifecycle (active → open → archived)",
   description:
-    "Erstellt eine Entscheidung, fügt sich selbst als Teilnehmer hinzu, prüft die Default-Antwortoptionen und archiviert die Entscheidung am Ende.",
+    "Erstellt eine Entscheidung, fügt sich selbst als Teilnehmer hinzu, prüft die Default-Antwortoptionen, archiviert die Entscheidung und liest jedes geschriebene Feld zurück.",
   touches: ["task_decisions", "task_decision_participants"],
   features: ["decisions"],
+  writes: [
+    { table: "task_decisions", columns: ["title", "description", "status", "created_by", "tenant_id", "visible_to_all", "priority", "response_deadline", "archived_at", "archived_by"] },
+    { table: "task_decision_participants", columns: ["decision_id", "user_id"] },
+  ],
   steps: [
     {
       id: "create",
