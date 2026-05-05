@@ -45,6 +45,7 @@
     "report:bundle-size": "node scripts/report-bundle-size.mjs",
     "check:security-doc-drift": "node scripts/check-security-doc-drift.mjs",
     "check:dangerouslysetinnerhtml-inventory": "node scripts/check-dangerouslysetinnerhtml-inventory.mjs",
+    "check:selftest-coverage": "node scripts/check-selftest-coverage.mjs",
     "check:security-hygiene": "npm run check:security-doc-drift && npm run check:dangerouslysetinnerhtml-inventory && npm run check:edge-function-security",
     "test:unit-integration:ci": "vitest run --reporter=dot --passWithNoTests",
     "test:coverage:ci": "vitest run --coverage.enabled=true --coverage.provider=v8 --coverage.reporter=json-summary --coverage.reporter=text --coverage.reportsDirectory=coverage --passWithNoTests",
