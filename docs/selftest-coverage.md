@@ -9,7 +9,7 @@ _Auto-generiert von `scripts/check-selftest-coverage.mjs`. Nicht von Hand bearbe
 | `case-item-lifecycle` | Vorgangs-Lifecycle (neu → in Klärung → Antwort ausstehend → erledigt) | case-items, decisions | case_items, case_item_interactions, task_decisions |
 | `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | decisions | task_decisions, task_decision_participants |
 | `letter-lifecycle` | Brief-Lifecycle (Entwurf → Prüfung → Genehmigt → Versendet) | letters, decisions | letters, letter_attachments, task_decisions |
-| `meeting-lifecycle` | Meeting-Lifecycle (vollständig) | meetings, appointments, tasks | meetings, meeting_agenda_items, meeting_agenda_documents, meeting_participants, appointments, tasks |
+| `meeting-lifecycle` | Meeting-Lifecycle (vollständig + Field-Verifikation) | meetings, appointments, tasks | meetings, meeting_agenda_items, meeting_agenda_documents, meeting_participants, appointments, tasks |
 | `task-lifecycle` | Aufgaben-Lifecycle | tasks | tasks |
 
 ## Tabellen-Coverage
@@ -261,3 +261,18 @@ _Auto-generiert von `scripts/check-selftest-coverage.mjs`. Nicht von Hand bearbe
 ## Lücken
 
 _Keine — alle relevanten Tabellen sind abgedeckt._
+
+## Spalten-Coverage (writes)
+
+| Tabelle | Getestete Spalten |
+|---|---|
+| `appointments` | `category`, `description`, `end_time`, `meeting_id`, `start_time`, `status`, `tenant_id`, `title`, `user_id` |
+| `letter_attachments` | `file_name`, `file_path`, `file_size`, `file_type`, `letter_id`, `uploaded_by` |
+| `letters` | `approved_at`, `approved_by`, `content`, `content_html`, `created_by`, `letter_date`, `recipient_address`, `recipient_name`, `sent_at`, `sent_by`, `sent_date`, `sent_method`, `status`, `subject`, `submitted_for_review_at`, `submitted_for_review_by`, `submitted_to_user`, `tenant_id`, `title` |
+| `meeting_agenda_documents` | `file_name`, `file_path`, `file_size`, `file_type`, `meeting_agenda_item_id`, `user_id` |
+| `meeting_agenda_items` | `carried_over_from`, `carry_over_to_next`, `carryover_notes`, `description`, `is_completed`, `is_optional`, `is_recurring`, `is_visible`, `meeting_id`, `notes`, `order_index`, `original_meeting_date`, `original_meeting_title`, `parent_id`, `result_text`, `system_type`, `task_id`, `title` |
+| `meeting_participants` | `meeting_id`, `role`, `status`, `user_id` |
+| `meetings` | `description`, `is_public`, `is_recurring_instance`, `meeting_date`, `meeting_time`, `parent_meeting_id`, `status`, `tenant_id`, `title`, `user_id` |
+| `task_decision_participants` | `decision_id`, `user_id` |
+| `task_decisions` | `archived_at`, `archived_by`, `created_by`, `description`, `priority`, `response_deadline`, `status`, `tenant_id`, `title`, `visible_to_all` |
+| `tasks` | `description`, `priority`, `status`, `tenant_id`, `title`, `user_id` |
