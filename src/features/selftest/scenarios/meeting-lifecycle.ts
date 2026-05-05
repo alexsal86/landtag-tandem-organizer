@@ -42,24 +42,21 @@ export const meetingLifecycleScenario: TestScenario = {
       id: "create-meeting",
       label: "Meeting anlegen",
       run: async (ctx) => {
-        const { data, error } = await supabase
-          .from("meetings")
-          .insert({
-            title: title(ctx.runId, "Meeting"),
-            description: SELFTEST_MARKER,
-            meeting_date: new Date().toISOString().slice(0, 10),
-            meeting_time: "10:00",
-            status: "planned",
-            user_id: ctx.userId,
-            tenant_id: ctx.tenantId,
-            is_public: false,
-          })
-          .select("id")
-          .single();
-        if (error || !data) return { ok: false, message: error?.message ?? "Insert lieferte keine Daten" };
+        const payload = {
+          title: title(ctx.runId, "Meeting"),
+          description: SELFTEST_MARKER,
+          meeting_date: new Date().toISOString().slice(0, 10),
+          meeting_time: "10:00",
+          status: "planned",
+          user_id: ctx.userId,
+          tenant_id: ctx.tenantId,
+          is_public: false,
+        };
+        const { data, error } = await supabase.from("meetings").insert(payload).select("id").single();
+        if (error || !data) return { ok: false, message: describeError(error) };
         ctx.created.push({ table: "meetings", id: data.id });
         ctx.data.meetingId = data.id;
-        return { ok: true, message: `Meeting ${data.id} angelegt.` };
+        return expectFields("meetings", data.id, payload, "Meeting");
       },
     },
     {
