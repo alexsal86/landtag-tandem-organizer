@@ -1,95 +1,80 @@
 ## Ziel
 
-1. Den RLS-Fehler bei `case_items` im Selbsttest beheben — inkl. besserer Fehlerdiagnose.
-2. Die Selbsttests so umbauen, dass sie nicht nur "Insert ging durch" prüfen, sondern alle eingetragenen Felder **nach dem Schreiben aus der DB lesen und Wert für Wert vergleichen** — damit z.B. Geburtstags-Systempunkte oder andere Felder nicht stillschweigend verloren gehen.
+Plattformweiter Wechsel auf **Inter Tight** als UI-Schriftart, mit konsistenter Type-Scale, tabellarischen Ziffern für Listen und einem klaren Hierarchie-System (Section-Label / Title / Body / Caption). Das Ergebnis entspricht dem Look des Screenshots — nicht nur in Kontakten, sondern überall.
 
----
+## Was sich ändert
 
-## Teil 1 — RLS bei `case_items`
+### 1. Schriftart einbinden (`index.html`)
+- `Arvo` und `Source Sans Pro` aus den Google-Fonts-Links entfernen.
+- Stattdessen **Inter Tight** (variable, Gewichte 300–700) + **JetBrains Mono** (für IDs/Code-Akzente, optional aber sinnvoll) preloaden.
+- `font-display: swap` beibehalten.
 
-### Befund
-
-Die INSERT-Policy lautet:
-```
-WITH CHECK (tenant_id = ANY(get_user_tenant_ids(auth.uid())) AND user_id = auth.uid())
-```
-`get_user_tenant_ids` liefert nur Tenants mit `user_tenant_memberships.is_active = true`. Das Meeting-Insert hat dieselbe Tenant-Bedingung und funktioniert — also ist auth + Tenant-Membership grundsätzlich ok. Die zusätzliche Bedingung bei `case_items` ist `user_id = auth.uid()`. Häufigste Ursachen, dass das in der Praxis fehlschlägt:
-
-- Die Session ist abgelaufen (auf der aktuellen Route `/auth` ist genau das der Fall) → `auth.uid()` ist `NULL`. Die Aktion wirkt erst beim nächsten Test wieder.
-- Eine ältere Session wird zwar im Browser gehalten, aber der JWT ist nicht mehr gültig — Postgrest sieht keinen User.
-- (Theoretisch) `useAuth().user.id` und `auth.uid()` driften, falls ein Impersonate-/Switch-Mechanismus verwendet wird.
-
-### Maßnahmen
-
-1. **Preflight-Step pro Szenario** (`runner.ts` / Szenario-Header):
-   - `await supabase.auth.getSession()` → wenn keine Session: Abbruch mit klarer Meldung "Bitte erneut anmelden".
-   - SELECT auf `user_tenant_memberships` mit `eq('user_id', userId).eq('tenant_id', tenantId).eq('is_active', true)` — abbrechen, falls leer ("Tenant-Membership nicht aktiv").
-   - SELECT auf eine geschützte Funktion (`select auth.uid()` über RPC oder Vergleich mit `getUser()`), damit JWT-Drift sofort sichtbar wird.
-
-2. **Bessere Fehlermeldung im Step**: bei `error.code === '42501'` (RLS) zusätzlich anhängen, welche Bedingung typischerweise greift (Tenant-ID, user_id, oder fehlende Auth).
-
-3. **Defaults im Insert vereinheitlichen**: Felder, die DB-Defaults haben (z.B. `source_channel='other'`, `status='neu'`, `priority='medium'`, alle `false`-Booleans) werden weggelassen — das Szenario testet absichtlich die Defaults, nicht die Übergabe.
-
----
-
-## Teil 2 — Echte Datenintegritäts-Verifikation
-
-Heute prüfen die Szenarien überwiegend nur "Insert OK" und am Ende grobe Vorhandenseins-Counts. Geburtstage usw. werden zwar in `meeting_agenda_items.system_type` geschrieben — aber niemand schaut nach, **was** dort steht. Das ändern wir.
-
-### Neues Hilfs-Modul `src/features/selftest/verify.ts`
-
+### 2. Tailwind-Tokens (`tailwind.config.ts`)
 ```ts
-expectFields<T>(actual: T, expected: Partial<T>, label: string): StepResult
-```
-- Liest pro Insert das gerade geschriebene Objekt zurück (`select('*').eq('id', …).single()`).
-- Vergleicht jedes Feld aus `expected` mit dem DB-Wert — Mismatches werden mit Feldname + Wert in `details` gemeldet.
-- Liefert ein `StepResult`, das wir am Ende jedes "Create"-Steps zurückgeben.
-
-### Anwendung pro Szenario
-
-- **meeting-lifecycle**:
-  - Nach `add-system-agenda`: für jeden System-Typ (`birthdays`, `upcoming_appointments`, `quick_notes`, `tasks`, `case_items`, `decisions`) prüfen, dass `system_type`, `is_visible`, `is_optional`, `order_index`, `meeting_id`, `title`, `description` exakt zurückkommen.
-  - Zusätzlich Verifikation, dass die Renderer-Helfer (`getSystemEntries` / `getSystemItemIcon`) den Typ kennen — Sicherheitsnetz gegen "Typ in DB, aber UI zeigt nichts".
-  - Für Sub-Item zusätzlich `parent_id` und Hierarchie-Konsistenz prüfen.
-  - Carry-Over: nach Anlegen des Folge-Meetings die Felder `carried_over_from`, `original_meeting_date`, `original_meeting_title` lesen und vergleichen.
-  - Termin/Aufgabe/Dokument: alle gesetzten Felder zurücklesen.
-- **case-item-lifecycle**, **letter-lifecycle**, **decision-lifecycle**, **task-lifecycle**: identisches Muster — jedes Insert/Update durchläuft `expectFields`.
-
-### Strict-Coverage-Hinweis
-
-Die `touches`/`features`-Manifeste werden um eine Liste der Felder ergänzt, die das Szenario aktiv setzt (`writes: { table: string; columns: string[] }[]`). Der bestehende Check-Script (`scripts/check-selftest-coverage.mjs`) bekommt eine zusätzliche Warnung, wenn eine Tabelle Spalten besitzt, die kein Szenario je schreibt (Hinweis auf untestete Felder — ohne Hard-Fail).
-
----
-
-## Geplante Datei-Änderungen
-
-```
-src/features/selftest/runner.ts
-  • runScenario: Preflight (Session + Membership) vor erstem Step
-  • Fehler-Mapping für Postgrest-RLS-Codes
-
-src/features/selftest/verify.ts                     (neu)
-  • expectFields, expectRowExists Helfer
-
-src/features/selftest/scenarios/meeting-lifecycle.ts
-  • Field-by-Field Verifikation für alle Steps
-  • Renderer-Sanity (SYSTEM_TYPES vs. utils.tsx Map)
-
-src/features/selftest/scenarios/case-item-lifecycle.ts
-src/features/selftest/scenarios/letter-lifecycle.ts
-src/features/selftest/scenarios/decision-lifecycle.ts
-src/features/selftest/scenarios/task-lifecycle.ts
-  • Insert-Defaults reduzieren, expectFields nach jedem Schreibschritt
-
-src/features/selftest/types.ts
-  • TestScenario.writes?: { table; columns }[]
-
-scripts/check-selftest-coverage.mjs
-  • Spalten-Coverage-Warnung
+fontFamily: {
+  sans:     ['"Inter Tight"', 'system-ui', 'sans-serif'],
+  body:     ['"Inter Tight"', 'system-ui', 'sans-serif'],
+  headline: ['"Inter Tight"', 'system-ui', 'sans-serif'], // Display = gleiche Schrift, anderes Gewicht/Tracking
+  mono:     ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+},
+fontSize: {
+  // Type-Scale mit festem line-height und tracking
+  'label':   ['0.6875rem', { lineHeight: '1rem',    letterSpacing: '0.08em',  fontWeight: '600' }], // 11px UPPERCASE
+  'caption': ['0.75rem',   { lineHeight: '1.1rem',  letterSpacing: '0' }],                          // 12px
+  'body':    ['0.875rem',  { lineHeight: '1.35rem', letterSpacing: '-0.005em' }],                   // 14px
+  'body-lg': ['0.9375rem', { lineHeight: '1.45rem', letterSpacing: '-0.005em' }],                   // 15px
+  'title':   ['1.125rem',  { lineHeight: '1.55rem', letterSpacing: '-0.015em', fontWeight: '500' }], // 18px
+  'h2':      ['1.5rem',    { lineHeight: '1.85rem', letterSpacing: '-0.02em',  fontWeight: '500' }], // 24px
+  'h1':      ['1.875rem',  { lineHeight: '2.25rem', letterSpacing: '-0.025em', fontWeight: '500' }], // 30px
+  'display': ['2.25rem',   { lineHeight: '2.6rem',  letterSpacing: '-0.03em',  fontWeight: '500' }], // 36px
+},
 ```
 
-Keine DB-Migration nötig — alle Erkenntnisse fließen in die Test-Schicht.
+### 3. Globale Defaults (`src/index.css`)
+- `body { font-family: "Inter Tight", system-ui, sans-serif; font-feature-settings: "cv11", "ss01"; }`
+- `font-variant-numeric: tabular-nums` als Utility-Klasse `.tabular` und automatisch auf `<table>`, `td`, `th`, sowie auf Klassen wie `.list-meta` (Counts, Daten, Stunden).
+- `:root { --font-sans: "Inter Tight"; }` für Komponenten, die CSS-Variablen lesen.
+- Optional: `text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased;`
 
-## Offene Frage
+### 4. Listen-Header-Stil (Screenshot-Look)
+Neue Utility-Klasse `.section-label`:
+```css
+.section-label {
+  font-size: 0.6875rem;       /* 11px */
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+```
+- In Kontakte-, Vorgänge-, Aufgaben-, Termine-Listen-Headern (`NAME / ROLLE`, `ORGANISATION`, `LETZTE AKTIVITÄT` etc.) anwenden.
+- Breadcrumb-Style oben links („WISSEN · KONTAKTE") nutzt dieselbe Klasse.
 
-Ich kann die Renderer-Sanity (Schritt: System-Typen die im UI tatsächlich gerendert werden) optional auch als eigenständiges "UI-Drift"-Szenario umsetzen. Sage Bescheid, falls das gewünscht ist — sonst bleibt die Prüfung als Mini-Step im Meeting-Lifecycle.
+### 5. Page-Title-Komponente angleichen
+- Page-Titel, die heute `font-headline` (Arvo serif) verwenden, auf `text-h1` / `text-h2` mit Inter-Tight-Medium umstellen — keine separate Display-Schrift mehr nötig.
+- Subtitel/Counts neben dem Titel (z. B. „· 14 Personen & Institutionen") in `text-h2 text-muted-foreground font-normal`.
+
+### 6. Lexical Editor unangetastet
+- Lexical-Editor-Standard (pt-Einheiten, eigene Schriftarten in Briefen/Dossiers) bleibt **unverändert**, weil dort eigene Typografie-Regeln für Briefe/Dokumente gelten. Nur die UI-Chrome um den Editor wechselt.
+
+## Technische Details
+
+**Geänderte Dateien:**
+- `index.html` — Font-Tags ersetzen
+- `tailwind.config.ts` — `fontFamily` + `fontSize`-Scale erweitern
+- `src/index.css` — Body-Default, `.section-label`, `.tabular`-Utility, tabular-nums Defaults
+- `mem://style/tailwind-v4-integration` ergänzen oder neue Memory `mem://style/typography-system` mit Type-Scale + Inter-Tight-Regel
+
+**Backward-Compat:**
+- `font-headline`, `font-body`, `font-sans` zeigen alle auf Inter Tight → keine bestehende Klasse bricht.
+- Alte Größen-Klassen (`text-xl`, `text-2xl` …) funktionieren weiter; die neuen semantischen Klassen (`text-h1`, `text-title`, `text-label`) sind additiv.
+
+**QA nach Umsetzung:**
+- Kontakte-Liste, Vorgänge-Master-Detail, My Work, Sidebar-Footer und Auth-Seite visuell prüfen.
+- Tabellen mit Zahlen (Stunden, Counts) auf saubere vertikale Ausrichtung der Ziffern checken.
+- Brief-Editor (Lexical) gegenprüfen, dass die DIN-5008-Briefschrift weiterhin korrekt gerendert wird.
+
+## Nicht enthalten (kann später folgen)
+
+- Migration einzelner Komponenten von `text-2xl font-headline` auf `text-h1` — passiert organisch beim nächsten Touch der jeweiligen Datei oder als separater Refactor-Pass.
+- Dark-Mode-spezifische Font-Smoothing-Tweaks.
