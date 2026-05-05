@@ -53,6 +53,7 @@ import { PlanningTemplateManager } from "@/components/administration/PlanningTem
 import { UserRolesManager } from "@/components/administration/UserRolesManager";
 import { OfficeSocialMediaSettings } from "@/components/administration/OfficeSocialMediaSettings";
 import { CelebrationSettingsCard } from "@/components/administration/CelebrationSettingsCard";
+import { SelftestView } from "@/features/selftest/components/SelftestView";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
