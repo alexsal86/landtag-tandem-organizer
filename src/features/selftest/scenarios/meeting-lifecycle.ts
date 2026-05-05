@@ -66,25 +66,22 @@ export const meetingLifecycleScenario: TestScenario = {
         const start = new Date();
         start.setHours(10, 0, 0, 0);
         const end = new Date(start.getTime() + 60 * 60 * 1000);
-        const { data, error } = await supabase
-          .from("appointments")
-          .insert({
-            title: title(ctx.runId, "Termin"),
-            description: SELFTEST_MARKER,
-            start_time: start.toISOString(),
-            end_time: end.toISOString(),
-            category: "meeting",
-            status: "planned",
-            user_id: ctx.userId,
-            tenant_id: ctx.tenantId,
-            meeting_id: ctx.data.meetingId as string,
-          })
-          .select("id")
-          .single();
-        if (error || !data) return { ok: false, message: error?.message ?? "Insert lieferte keine Daten" };
+        const payload = {
+          title: title(ctx.runId, "Termin"),
+          description: SELFTEST_MARKER,
+          start_time: start.toISOString(),
+          end_time: end.toISOString(),
+          category: "meeting",
+          status: "planned",
+          user_id: ctx.userId,
+          tenant_id: ctx.tenantId,
+          meeting_id: ctx.data.meetingId as string,
+        };
+        const { data, error } = await supabase.from("appointments").insert(payload).select("id").single();
+        if (error || !data) return { ok: false, message: describeError(error) };
         ctx.created.push({ table: "appointments", id: data.id });
         ctx.data.appointmentId = data.id;
-        return { ok: true, message: "Termin verknüpft." };
+        return expectFields("appointments", data.id, payload, "Termin");
       },
     },
     {
