@@ -75,12 +75,6 @@ md += missing.length
   ? missing.map((t) => `- \`${t}\``).join("\n") + "\n"
   : "_Keine — alle relevanten Tabellen sind abgedeckt._\n";
 
-writeFileSync(DOC_OUT, md);
-
-console.log(`[selftest-coverage] Szenarien: ${scenarioMeta.length}`);
-console.log(`[selftest-coverage] Tabellen gesamt: ${tables.length}`);
-console.log(`[selftest-coverage] Abgedeckt: ${coverage.size}, ignoriert: ${ignored.size}, FEHLT: ${missing.length}`);
-console.log(`[selftest-coverage] Doc geschrieben: ${DOC_OUT}`);
 
 md += `\n## Spalten-Coverage (writes)\n\n`;
 if (columnCoverage.size === 0) {
