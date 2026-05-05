@@ -24,7 +24,8 @@ const ignored = new Set(
 );
 
 const coverage = new Map(); // table -> [scenarioId]
-const scenarioMeta = []; // {id, title, touches, features, file}
+const columnCoverage = new Map(); // table -> Set(columns) tested
+const scenarioMeta = []; // {id, title, touches, features, writes, file}
 for (const f of readdirSync(SCENARIOS_DIR).filter((n) => n.endsWith(".ts"))) {
   const src = readFileSync(join(SCENARIOS_DIR, f), "utf8");
   const id = (src.match(/id:\s*"([^"]+)"/) || [])[1] ?? f;
@@ -37,7 +38,19 @@ for (const f of readdirSync(SCENARIOS_DIR).filter((n) => n.endsWith(".ts"))) {
   const features = featuresMatch
     ? Array.from(featuresMatch[1].matchAll(/"([^"]+)"/g)).map((m) => m[1])
     : [];
-  scenarioMeta.push({ id, title, touches, features, file: f });
+  // Extract writes: [...] block (multi-line)
+  const writes = [];
+  const writesMatch = src.match(/writes:\s*\[([\s\S]*?)\n\s*\],/);
+  if (writesMatch) {
+    for (const entry of writesMatch[1].matchAll(/\{\s*table:\s*"([^"]+)"\s*,\s*columns:\s*\[([^\]]*)\]\s*\}/g)) {
+      const table = entry[1];
+      const cols = Array.from(entry[2].matchAll(/"([^"]+)"/g)).map((m) => m[1]);
+      writes.push({ table, columns: cols });
+      if (!columnCoverage.has(table)) columnCoverage.set(table, new Set());
+      cols.forEach((c) => columnCoverage.get(table).add(c));
+    }
+  }
+  scenarioMeta.push({ id, title, touches, features, writes, file: f });
   for (const t of touches) {
     if (!coverage.has(t)) coverage.set(t, []);
     coverage.get(t).push(id);
@@ -62,11 +75,23 @@ md += missing.length
   ? missing.map((t) => `- \`${t}\``).join("\n") + "\n"
   : "_Keine — alle relevanten Tabellen sind abgedeckt._\n";
 
+
+md += `\n## Spalten-Coverage (writes)\n\n`;
+if (columnCoverage.size === 0) {
+  md += `_Noch keine \`writes:\`-Manifeste in den Szenarien hinterlegt._\n`;
+} else {
+  md += `| Tabelle | Getestete Spalten |\n|---|---|\n`;
+  for (const [table, cols] of [...columnCoverage.entries()].sort()) {
+    md += `| \`${table}\` | ${[...cols].sort().map((c) => `\`${c}\``).join(", ")} |\n`;
+  }
+}
+
 writeFileSync(DOC_OUT, md);
 
 console.log(`[selftest-coverage] Szenarien: ${scenarioMeta.length}`);
 console.log(`[selftest-coverage] Tabellen gesamt: ${tables.length}`);
 console.log(`[selftest-coverage] Abgedeckt: ${coverage.size}, ignoriert: ${ignored.size}, FEHLT: ${missing.length}`);
+console.log(`[selftest-coverage] Spalten-Manifeste für ${columnCoverage.size} Tabellen.`);
 console.log(`[selftest-coverage] Doc geschrieben: ${DOC_OUT}`);
 
 if (missing.length > 0) {

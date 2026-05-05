@@ -37,6 +37,8 @@ export interface TestScenario {
   touches: string[];
   /** Domänen-Tags für UI-Badges, z.B. "letters", "case-items". */
   features: string[];
+  /** Spalten-Coverage pro Tabelle — vom Coverage-Script ausgewertet. */
+  writes?: Array<{ table: string; columns: string[] }>;
   steps: TestStep[];
 }
 

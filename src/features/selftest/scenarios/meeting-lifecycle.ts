@@ -1,6 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
+import { describeError, expectFields } from "../verify";
+import { getSystemItemIcon } from "@/components/my-work/jour-fixe/utils";
 
 const title = (run: string, label: string) => `${SELFTEST_PREFIX} ${label} (${run})`;
 
@@ -15,9 +17,9 @@ const SYSTEM_TYPES = [
 
 export const meetingLifecycleScenario: TestScenario = {
   id: "meeting-lifecycle",
-  title: "Meeting-Lifecycle (vollständig)",
+  title: "Meeting-Lifecycle (vollständig + Field-Verifikation)",
   description:
-    "Erstellt ein Meeting mit Termin, Teilnehmer, regulären und allen System-Agenda-Punkten (Geburtstage, Termine, Quick-Notes, Aufgaben, Vorgänge, Entscheidungen), Sub-Item, Dokument, Aufgabe, Carry-Over und Folge-Meeting. Verifiziert alle Verknüpfungen und räumt am Ende auf.",
+    "Erstellt ein Meeting mit Termin, Teilnehmer, regulären und allen System-Agenda-Punkten (Geburtstage, Termine, Quick-Notes, Aufgaben, Vorgänge, Entscheidungen), Sub-Item, Dokument, Aufgabe, Carry-Over und Folge-Meeting. Liest jedes geschriebene Feld zurück und vergleicht — inkl. Renderer-Sanity (utils.tsx-Mapping).",
   touches: [
     "meetings",
     "meeting_agenda_items",
@@ -27,29 +29,34 @@ export const meetingLifecycleScenario: TestScenario = {
     "tasks",
   ],
   features: ["meetings", "appointments", "tasks"],
+  writes: [
+    { table: "meetings", columns: ["title", "description", "meeting_date", "meeting_time", "status", "user_id", "tenant_id", "is_public", "parent_meeting_id", "is_recurring_instance"] },
+    { table: "meeting_agenda_items", columns: ["meeting_id", "title", "description", "order_index", "is_completed", "is_recurring", "system_type", "is_visible", "is_optional", "parent_id", "task_id", "notes", "result_text", "carry_over_to_next", "carryover_notes", "carried_over_from", "original_meeting_date", "original_meeting_title"] },
+    { table: "meeting_agenda_documents", columns: ["meeting_agenda_item_id", "user_id", "file_name", "file_path", "file_type", "file_size"] },
+    { table: "meeting_participants", columns: ["meeting_id", "user_id", "role", "status"] },
+    { table: "appointments", columns: ["title", "description", "start_time", "end_time", "category", "status", "user_id", "tenant_id", "meeting_id"] },
+    { table: "tasks", columns: ["title", "description", "status", "priority", "user_id", "tenant_id"] },
+  ],
   steps: [
     {
       id: "create-meeting",
       label: "Meeting anlegen",
       run: async (ctx) => {
-        const { data, error } = await supabase
-          .from("meetings")
-          .insert({
-            title: title(ctx.runId, "Meeting"),
-            description: SELFTEST_MARKER,
-            meeting_date: new Date().toISOString().slice(0, 10),
-            meeting_time: "10:00",
-            status: "planned",
-            user_id: ctx.userId,
-            tenant_id: ctx.tenantId,
-            is_public: false,
-          })
-          .select("id")
-          .single();
-        if (error || !data) return { ok: false, message: error?.message ?? "Insert lieferte keine Daten" };
+        const payload = {
+          title: title(ctx.runId, "Meeting"),
+          description: SELFTEST_MARKER,
+          meeting_date: new Date().toISOString().slice(0, 10),
+          meeting_time: "10:00",
+          status: "planned",
+          user_id: ctx.userId,
+          tenant_id: ctx.tenantId,
+          is_public: false,
+        };
+        const { data, error } = await supabase.from("meetings").insert(payload).select("id").single();
+        if (error || !data) return { ok: false, message: describeError(error) };
         ctx.created.push({ table: "meetings", id: data.id });
         ctx.data.meetingId = data.id;
-        return { ok: true, message: `Meeting ${data.id} angelegt.` };
+        return expectFields("meetings", data.id, payload, "Meeting");
       },
     },
     {
@@ -59,25 +66,22 @@ export const meetingLifecycleScenario: TestScenario = {
         const start = new Date();
         start.setHours(10, 0, 0, 0);
         const end = new Date(start.getTime() + 60 * 60 * 1000);
-        const { data, error } = await supabase
-          .from("appointments")
-          .insert({
-            title: title(ctx.runId, "Termin"),
-            description: SELFTEST_MARKER,
-            start_time: start.toISOString(),
-            end_time: end.toISOString(),
-            category: "meeting",
-            status: "planned",
-            user_id: ctx.userId,
-            tenant_id: ctx.tenantId,
-            meeting_id: ctx.data.meetingId as string,
-          })
-          .select("id")
-          .single();
-        if (error || !data) return { ok: false, message: error?.message ?? "Insert lieferte keine Daten" };
+        const payload = {
+          title: title(ctx.runId, "Termin"),
+          description: SELFTEST_MARKER,
+          start_time: start.toISOString(),
+          end_time: end.toISOString(),
+          category: "meeting",
+          status: "planned",
+          user_id: ctx.userId,
+          tenant_id: ctx.tenantId,
+          meeting_id: ctx.data.meetingId as string,
+        };
+        const { data, error } = await supabase.from("appointments").insert(payload).select("id").single();
+        if (error || !data) return { ok: false, message: describeError(error) };
         ctx.created.push({ table: "appointments", id: data.id });
         ctx.data.appointmentId = data.id;
-        return { ok: true, message: "Termin verknüpft." };
+        return expectFields("appointments", data.id, payload, "Termin");
       },
     },
     {
@@ -143,12 +147,40 @@ export const meetingLifecycleScenario: TestScenario = {
           .from("meeting_agenda_items")
           .insert(rows)
           .select("id, system_type");
-        if (error || !data) return { ok: false, message: error?.message ?? "Insert lieferte keine Daten" };
+        if (error || !data) return { ok: false, message: describeError(error) };
         for (const row of data) ctx.created.push({ table: "meeting_agenda_items", id: row.id });
+        if (data.length !== SYSTEM_TYPES.length) {
+          return { ok: false, message: `Nur ${data.length}/${SYSTEM_TYPES.length} System-Punkte angelegt.` };
+        }
+
+        // Field-by-Field Verifikation pro System-Typ + Renderer-Sanity (utils.tsx).
+        const issues: string[] = [];
+        for (const row of data) {
+          const expected = rows.find((r) => r.system_type === row.system_type);
+          if (!expected) {
+            issues.push(`Unerwarteter system_type: ${row.system_type}`);
+            continue;
+          }
+          const verify = await expectFields(
+            "meeting_agenda_items",
+            row.id,
+            expected,
+            `System '${row.system_type}'`,
+          );
+          if (!verify.ok) issues.push(verify.message);
+
+          // Renderer-Drift-Check: jeder eingetragene System-Typ muss vom UI-Mapping erkannt werden.
+          if (!getSystemItemIcon(row.system_type)) {
+            issues.push(`Renderer kennt system_type '${row.system_type}' nicht (utils.tsx).`);
+          }
+        }
         return {
-          ok: data.length === SYSTEM_TYPES.length,
-          message: `${data.length}/${SYSTEM_TYPES.length} System-Punkte angelegt.`,
-          details: data.map((d) => d.system_type),
+          ok: issues.length === 0,
+          message:
+            issues.length === 0
+              ? `${data.length} System-Punkte verifiziert + Renderer-Mapping ok.`
+              : `${issues.length} Probleme.`,
+          details: issues.length ? issues : data.map((d) => d.system_type),
         };
       },
     },

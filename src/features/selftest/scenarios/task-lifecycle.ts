@@ -1,34 +1,35 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
+import { describeError, expectFields } from "../verify";
 
 export const taskLifecycleScenario: TestScenario = {
   id: "task-lifecycle",
   title: "Aufgaben-Lifecycle",
-  description: "Erstellt eine Aufgabe, ändert den Status mehrfach, verifiziert und löscht sie.",
+  description: "Erstellt eine Aufgabe, ändert den Status mehrfach und liest jedes geschriebene Feld zurück.",
   touches: ["tasks"],
   features: ["tasks"],
+  writes: [
+    { table: "tasks", columns: ["title", "description", "status", "priority", "user_id", "tenant_id"] },
+  ],
   steps: [
     {
       id: "create",
       label: "Aufgabe anlegen",
       run: async (ctx) => {
-        const { data, error } = await supabase
-          .from("tasks")
-          .insert({
-            title: `${SELFTEST_PREFIX} Aufgabe (${ctx.runId})`,
-            description: SELFTEST_MARKER,
-            status: "todo",
-            priority: "high",
-            user_id: ctx.userId,
-            tenant_id: ctx.tenantId,
-          })
-          .select("id")
-          .single();
-        if (error || !data) return { ok: false, message: error?.message ?? "Kein Ergebnis" };
+        const payload = {
+          title: `${SELFTEST_PREFIX} Aufgabe (${ctx.runId})`,
+          description: SELFTEST_MARKER,
+          status: "todo",
+          priority: "high",
+          user_id: ctx.userId,
+          tenant_id: ctx.tenantId,
+        };
+        const { data, error } = await supabase.from("tasks").insert(payload).select("id").single();
+        if (error || !data) return { ok: false, message: describeError(error) };
         ctx.created.push({ table: "tasks", id: data.id });
         ctx.data.taskId = data.id;
-        return { ok: true, message: `Aufgabe ${data.id} angelegt.` };
+        return expectFields("tasks", data.id, payload, "Aufgabe");
       },
     },
     {
@@ -37,8 +38,8 @@ export const taskLifecycleScenario: TestScenario = {
       run: async (ctx) => {
         const id = ctx.data.taskId as string;
         const { error } = await supabase.from("tasks").update({ status: "in_progress" }).eq("id", id);
-        if (error) return { ok: false, message: error.message };
-        return { ok: true, message: "OK" };
+        if (error) return { ok: false, message: describeError(error) };
+        return expectFields("tasks", id, { status: "in_progress" }, "in_progress");
       },
     },
     {
@@ -47,9 +48,8 @@ export const taskLifecycleScenario: TestScenario = {
       run: async (ctx) => {
         const id = ctx.data.taskId as string;
         const { error } = await supabase.from("tasks").update({ status: "completed" }).eq("id", id);
-        if (error) return { ok: false, message: error.message };
-        const { data } = await supabase.from("tasks").select("status").eq("id", id).single();
-        return { ok: data?.status === "completed", message: `Status: ${data?.status}` };
+        if (error) return { ok: false, message: describeError(error) };
+        return expectFields("tasks", id, { status: "completed" }, "completed");
       },
     },
   ],
