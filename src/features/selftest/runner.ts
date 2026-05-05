@@ -145,6 +145,7 @@ export async function purgeAllSelftestData(tenantId: string): Promise<{
   const removed: Record<string, number> = {};
   const tables: Array<{ name: string; column: string }> = [
     { name: "tasks", column: "title" },
+    { name: "meeting_agenda_documents", column: "file_name" },
     { name: "meeting_agenda_items", column: "title" },
     { name: "appointments", column: "title" },
     { name: "meetings", column: "title" },
