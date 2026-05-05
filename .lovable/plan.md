@@ -1,96 +1,63 @@
-# Plan: In-App Test-Runner („Selbsttest-Center")
+## 1. Selbsttest unter Administration verlinken
 
-Eine Admin-Seite, auf der du komplette Anwendungs-Szenarien gegen die echte Supabase-Datenbank ausführen kannst — inklusive automatischer Aufräumung, damit keine Daten zurückbleiben.
+In `src/components/administration/AdminSidebar.tsx`:
+- In der Gruppe **„System & Sicherheit“** einen neuen Eintrag ergänzen:
+  `{ id: "selftest", label: "Selbsttest", icon: ClipboardCheck }` (Icon ist bereits importiert).
 
-## Ziel
+In `src/pages/Administration.tsx`:
+- `SelftestView` aus `@/features/selftest/components/SelftestView` importieren.
+- Im Switch des Bereichs `security` einen neuen Case ergänzen:
+  `case "selftest": return <SelftestView />;`
 
-- Reale End-to-End-Tests aus der laufenden App heraus starten (nicht nur Unit-Tests)
-- Pro Szenario sehen, welche Schritte erfolgreich/fehlgeschlagen sind
-- Garantierter Cleanup, auch wenn ein Schritt mittendrin scheitert
-- Einfach erweiterbar um weitere Szenarien (Aufgaben, Briefe, Termine, Entscheidungen…)
+Dadurch erreichbar via `/administration?adminSection=security&adminSubSection=selftest`. Die bestehende eigenständige Route `/selbsttest` bleibt zusätzlich erhalten.
 
-## Wie das in einer Web-App realisiert wird (Konzept)
+## 2. Bugfix Teilnehmer-Schritt
 
-Drei etablierte Bausteine, die wir kombinieren:
+Ursache: `meeting_participants.status` ist per CHECK-Constraint auf `pending | confirmed | declined` beschränkt. Das Szenario nutzt aktuell `"accepted"` → Insert schlägt fehl.
 
-1. **Test-Szenario-Registry** — jedes Szenario ist eine Datei mit `setup → steps → cleanup`. Schritte sind kleine async-Funktionen, die echte Supabase-Calls absetzen und ein Ergebnis zurückgeben.
-2. **Test-Runner** — führt die Schritte sequentiell aus, fängt Fehler ab, sammelt Logs, ruft am Ende **immer** den Cleanup auf (`try/finally`-Pattern, wie in `scripts/e2e-smoke-flows.mjs` bereits etabliert).
-3. **Tagging für Cleanup-Sicherheit** — alle erzeugten Datensätze bekommen einen Marker (z.B. Titel-Prefix `[TEST-<runId>]` und ein `tenant_id`-Scope). Selbst wenn Cleanup teilweise scheitert, kann ein „Aufräumen"-Button alle Datensätze mit diesem Prefix gezielt löschen.
+Fix in `src/features/selftest/scenarios/meeting-lifecycle.ts`: `status: "accepted"` → `status: "confirmed"`.
 
-## Umsetzung
+## 3. Meeting-Lifecycle: Vollständige Funktionsabdeckung
 
-### 1. Neue Seite: `/admin/selbsttest`
+Das Szenario wird so erweitert, dass alle realen Meeting-Bausteine getestet und am Ende sauber entfernt werden. Reihenfolge der Schritte:
 
-- Nur sichtbar für Rolle `abgeordneter`/`bueroleitung` (analog `team`-Tab)
-- Liste der verfügbaren Szenarien mit „Ausführen"-Button
-- Live-Anzeige: Schritt für Schritt mit ✅/❌/⏳, ausklappbarer Fehler-Log
-- Globaler „Test-Daten aufräumen"-Button (löscht alle Datensätze mit `[TEST-…]`-Prefix im aktuellen Tenant)
+1. **Meeting anlegen** (wie bisher).
+2. **Verknüpften Termin** im Kalender erzeugen (wie bisher).
+3. **Teilnehmer hinzufügen** (organizer, confirmed) – Bugfix oben.
+4. **Reguläre Agenda-Punkte** (3 Stück, mit `order_index 0..2`).
+5. **System-Agenda-Punkte** für jeden tatsächlich genutzten `system_type`:
+   `birthdays`, `upcoming_appointments`, `quick_notes`, `tasks`, `case_items`, `decisions`. Jeweils `is_visible=true`, `is_optional=true`.
+6. **Sub-Agenda-Punkt** mit `parent_id` auf Punkt 4.0 (Hierarchie-Test).
+7. **Agenda-Dokument** in `meeting_agenda_documents` (file_path mit SELFTEST-Prefix, file_name, file_type='application/pdf') anhängen, um die Document-Verknüpfung abzudecken.
+8. **Aufgabe** anlegen und mit dem Sub-Agenda-Punkt verknüpfen (`meeting_agenda_items.task_id` setzen).
+9. **Agenda-Punkt abschließen** (`is_completed=true`, `result_text` setzen, `notes` setzen).
+10. **Carry-Over markieren** (`carry_over_to_next=true`, `carryover_notes` setzen) – simuliert Übertrag in nächstes Jour fixe.
+11. **Wiederkehrendes Folge-Meeting** anlegen mit `parent_meeting_id` & `is_recurring_instance=true`, dann den Carry-Over-Punkt als neues Agenda-Item mit `carried_over_from`, `original_meeting_date`, `original_meeting_title` in das Folge-Meeting kopieren.
+12. **Verifikationsschritt**: Per Select prüfen, dass je `system_type` mindestens 1 Eintrag existiert, dass das Folge-Meeting den Carry-Over enthält, dass der Termin verknüpft ist und dass die Aufgabe verknüpft ist.
+13. **Aufgabe abschließen** (`status='completed'`).
+14. **Meeting archivieren** (`status='archived'`) und ebenso das Folge-Meeting.
 
-### 2. Test-Framework (`src/features/selftest/`)
+### Cleanup-Erweiterung
 
-```
-src/features/selftest/
-  types.ts              # TestScenario, TestStep, TestContext, TestResult
-  runner.ts             # runScenario() mit try/finally Cleanup
-  registry.ts           # Liste aller Szenarien
-  cleanup.ts            # purgeTestData(tenantId) - löscht alles mit TEST-Prefix
-  scenarios/
-    meeting-lifecycle.ts
-    task-lifecycle.ts
-    letter-lifecycle.ts
-  components/
-    SelftestView.tsx
-    ScenarioCard.tsx
-    StepLog.tsx
-```
+`src/features/selftest/runner.ts`:
+- `CLEANUP_ORDER` um `"meeting_agenda_documents"` (vor `meeting_agenda_items`) ergänzen.
+- `purgeAllSelftestData` zusätzlich um `meeting_agenda_documents` (Spalte `file_name`) erweitern, damit der Notfall-Purge auch Dokumente erfasst.
+- Beim Anlegen aller Records-IDs in `ctx.created` registrieren – Aufräumreihenfolge stellt sicher, dass Kindtabellen vor Eltern gelöscht werden. Da Cascade-Deletes auf `meeting_id` und `parent_id` gesetzt sind, bleibt das Aufräumen robust selbst wenn ein Schritt ausfällt.
 
-### 3. Beispiel-Szenario „Meeting-Lifecycle"
+### Robustheit
 
-Schritte, die nacheinander ausgeführt und einzeln angezeigt werden:
+- Jeder Insert prüft Fehler und gibt eine sprechende Meldung zurück.
+- Sub-Item- und Document-Schritte sind `critical: false`, damit ein Einzelfehler den restlichen Lauf nicht abbricht, der Cleanup aber dennoch alle bereits angelegten IDs erfasst.
+- Verifikation vergleicht `expected vs actual counts` und liefert ein Detail-Objekt für die UI.
 
-1. Meeting erstellen (`meetings` insert, Titel `[TEST-abc123] Selbsttest-Meeting`)
-2. Verknüpften Kalender-Termin erzeugen (`appointments`)
-3. Teilnehmer hinzufügen (`meeting_participants`)
-4. Agenda-Punkt anlegen (`meeting_agenda_items`)
-5. Aufgabe aus Agenda erzeugen (`tasks` mit `meeting_id`)
-6. Meeting archivieren (Edge Function aufrufen, prüfen dass Aufgaben übernommen werden)
-7. Verifizieren: Aufgabe existiert, Status ist korrekt, Kalender-Termin verknüpft
-8. **Cleanup** (immer): Aufgaben → Agenda → Teilnehmer → Termin → Meeting löschen
+### Geltungsbereich (was NICHT im DB-Test abgedeckt wird)
 
-Jeder Schritt gibt zurück: `{ ok: boolean, message: string, durationMs: number, createdIds?: string[] }`. Erstellte IDs werden im `TestContext` gesammelt — der Cleanup arbeitet diese Liste rückwärts ab, unabhängig davon wo der Fehler auftrat.
+- UI-Interaktionen (Dialoge, Drag&Drop) – das Test-Center bleibt datenorientiert.
+- Externe Edge-Functions wie E-Mail-Versand und ICS-Generierung – würden echten Versand erzeugen; bewusst ausgespart, kann später als separates Szenario mit Dry-Run-Flag ergänzt werden.
 
-### 4. Sicherheitsmechanismen
+## Betroffene Dateien
 
-- **Tenant-Scope**: Alle Operationen laufen im aktuellen Tenant des angemeldeten Users → keine Auswirkung auf andere Mandanten
-- **Prefix-Marker**: `[TEST-<runId>]` im Titel + `description` enthält `__SELFTEST__`
-- **Notfall-Cleanup**: separater Button `purgeTestData()` löscht alle Records mit diesen Markern, scoped auf Tenant
-- **Bestätigungsdialog** vor jedem Lauf, weil echte DB-Writes passieren
-- **Run-Historie** (optional, in localStorage) zeigt die letzten 10 Läufe
-
-### 5. Erweiterbarkeit
-
-Ein neues Szenario = eine neue Datei in `scenarios/` + Eintrag in `registry.ts`. Vorgesehene weitere Szenarien:
-
-- Aufgaben (Erstellen, Zuweisen, Status-Wechsel, Archiv)
-- Briefe (Wizard → Entwurf → Freigabe → Archiv → Folge-Aufgabe)
-- Terminabstimmung (Erstellen → Gast-Antwort → Auto-Termin)
-- Entscheidungen (Erstellen → Kommentar → Abschluss)
-- Vorgänge (Erstellen → Verknüpfen → Schließen)
-
-## Technische Details
-
-- **Runner-Pattern**: `try { for (step of steps) await step(ctx) } finally { await cleanup(ctx) }` — derselbe Ansatz wie in `scripts/e2e-smoke-flows.mjs`, aber im Browser statt Node
-- **State-Sammlung**: `TestContext` ist ein Objekt mit `createdIds: { meetings: [], tasks: [], … }`, das jeder Step befüllt; Cleanup iteriert in umgekehrter Abhängigkeitsreihenfolge
-- **Edge Functions**: Werden über `supabase.functions.invoke()` aufgerufen, genau wie in der echten App — testet damit auch CORS/Auth-Pfade
-- **UI**: shadcn `Card` pro Szenario, `Collapsible` für Step-Logs, `Badge` für Status, `useState` für Live-Updates während des Laufs
-- **Keine neuen Dependencies** nötig
-
-## Was du nach Approval bekommst
-
-1. Neue Route `/admin/selbsttest` mit der UI
-2. Test-Framework-Code in `src/features/selftest/`
-3. **Erstes Szenario „Meeting-Lifecycle"** voll implementiert mit ~8 Schritten und Cleanup
-4. Gerüst für weitere Szenarien + ein einfaches Beispiel `task-lifecycle` als Vorlage
-5. Globaler „Aufräumen"-Notfallknopf
-
-Weitere Szenarien (Briefe, Terminabstimmung, Entscheidungen) können danach inkrementell hinzugefügt werden — sag einfach welche du als nächstes willst.
+- edit `src/components/administration/AdminSidebar.tsx`
+- edit `src/pages/Administration.tsx`
+- edit `src/features/selftest/scenarios/meeting-lifecycle.ts`
+- edit `src/features/selftest/runner.ts`
