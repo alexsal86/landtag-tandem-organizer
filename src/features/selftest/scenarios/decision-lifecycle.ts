@@ -23,25 +23,26 @@ export const decisionLifecycleScenario: TestScenario = {
       run: async (ctx) => {
         const deadline = new Date();
         deadline.setDate(deadline.getDate() + 3);
+        const payload = {
+          title: tag(ctx.runId, "Entscheidung"),
+          description: `${SELFTEST_MARKER} Beschreibung`,
+          status: "active",
+          created_by: ctx.userId,
+          tenant_id: ctx.tenantId,
+          visible_to_all: false,
+          priority: 1,
+          response_deadline: deadline.toISOString(),
+        };
         const { data, error } = await supabase
           .from("task_decisions")
-          .insert({
-            title: tag(ctx.runId, "Entscheidung"),
-            description: `${SELFTEST_MARKER} Beschreibung`,
-            status: "active",
-            created_by: ctx.userId,
-            tenant_id: ctx.tenantId,
-            visible_to_all: false,
-            priority: 1,
-            response_deadline: deadline.toISOString(),
-          })
+          .insert(payload)
           .select("id, response_options")
           .single();
-        if (error || !data) return { ok: false, message: error?.message ?? "Insert leer" };
+        if (error || !data) return { ok: false, message: describeError(error) };
         ctx.created.push({ table: "task_decisions", id: data.id });
         ctx.data.decisionId = data.id;
         ctx.data.responseOptions = data.response_options;
-        return { ok: true, message: `Entscheidung ${data.id} angelegt.` };
+        return expectFields("task_decisions", data.id, payload, "Entscheidung");
       },
     },
     {
