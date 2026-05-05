@@ -71,6 +71,41 @@ export interface RunOptions {
   onUpdate: (state: ScenarioRunState) => void;
 }
 
+async function runPreflight(
+  userId: string,
+  tenantId: string,
+): Promise<{ ok: boolean; message: string }> {
+  try {
+    const { data: sess } = await supabase.auth.getSession();
+    if (!sess.session?.access_token) {
+      return { ok: false, message: "Keine aktive Session — bitte erneut anmelden." };
+    }
+    if (sess.session.user.id !== userId) {
+      return {
+        ok: false,
+        message: `JWT-Drift: Session-User (${sess.session.user.id}) ≠ erwarteter User (${userId}).`,
+      };
+    }
+    const { data: mem, error } = await supabase
+      .from("user_tenant_memberships")
+      .select("id, is_active")
+      .eq("user_id", userId)
+      .eq("tenant_id", tenantId)
+      .eq("is_active", true)
+      .maybeSingle();
+    if (error) return { ok: false, message: `Membership-Check: ${error.message}` };
+    if (!mem) {
+      return {
+        ok: false,
+        message: "Keine aktive Tenant-Membership — INSERTs würden an RLS scheitern.",
+      };
+    }
+    return { ok: true, message: "Preflight ok." };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 export async function runScenario(
   scenario: TestScenario,
   options: RunOptions,
