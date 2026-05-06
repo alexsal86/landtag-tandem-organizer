@@ -168,6 +168,19 @@ export function SelftestView() {
                       </div>
                     </li>
                   </ol>
+                  {state.links && state.links.length > 0 && (
+                    <div className="mt-4 p-3 rounded-md border border-primary/30 bg-primary/5">
+                      <div className="text-label text-primary mb-2">Im System ansehen</div>
+                      <div className="flex flex-wrap gap-2">
+                        {state.links.map((l) => (
+                          <Button key={l.href} variant="outline" size="sm" onClick={() => navigate(l.href)}>
+                            <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                            {l.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               )}
             </Card>
@@ -179,7 +192,7 @@ export function SelftestView() {
         <CardHeader>
           <CardTitle className="text-base">Notfall: Test-Daten aufräumen</CardTitle>
           <CardDescription>
-            Löscht alle Datensätze mit dem Prefix <code>[SELFTEST]</code> im aktuellen Tenant aus den Tabellen meetings, appointments, meeting_agenda_items, meeting_agenda_documents, tasks, letters, letter_attachments, case_items, case_item_interactions und task_decisions.
+            Löscht alle Datensätze mit dem Prefix <code>[SELFTEST]</code> im aktuellen Tenant aus meetings, appointments, appointment_preparations, appointment_feedback, meeting_agenda_items, meeting_agenda_documents, tasks, letters, letter_attachments, case_items, case_item_interactions, task_decisions, daily_briefings sowie event_plannings inkl. allen Kindtabellen.
           </CardDescription>
         </CardHeader>
         <CardContent>
