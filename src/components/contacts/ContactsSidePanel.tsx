@@ -20,9 +20,6 @@ interface ContactsSidePanelProps {
   navigate: (path: string) => void;
   setCreatingDistribution: (val: boolean) => void;
   setIsDuplicateSheetOpen: (val: boolean) => void;
-  selectedContactId: string | null;
-  setSelectedContactId: (id: string | null) => void;
-  refreshContacts: () => void;
 }
 
 export function ContactsSidePanel({
@@ -39,22 +36,7 @@ export function ContactsSidePanel({
   navigate,
   setCreatingDistribution,
   setIsDuplicateSheetOpen,
-  selectedContactId,
-  setSelectedContactId,
-  refreshContacts,
 }: ContactsSidePanelProps) {
-  if (selectedContactId) {
-    return (
-      <div className="w-[40%] min-w-[420px] border-r border-border bg-background overflow-hidden flex flex-col">
-        <ContactDetailPanel
-          contactId={selectedContactId}
-          onClose={() => setSelectedContactId(null)}
-          onContactUpdate={refreshContacts}
-        />
-      </div>
-    );
-  }
-
   const tabs = [
     { key: "contacts", label: "Kontakte", icon: User, count: contactsCount, path: "/contacts" },
     { key: "stakeholders", label: "Stakeholder", icon: Building, count: stakeholdersCount, path: "/contacts/stakeholder" },
