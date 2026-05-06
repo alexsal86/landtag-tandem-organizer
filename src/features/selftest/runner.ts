@@ -26,8 +26,18 @@ const CLEANUP_ORDER = [
   "meeting_agenda_documents",
   "meeting_agenda_items",
   "meeting_participants",
+  "appointment_feedback",
+  "appointment_preparations",
+  "appointment_contacts",
   "appointments",
   "meetings",
+  "event_planning_timeline_assignments",
+  "event_planning_checklist_items",
+  "event_planning_contacts",
+  "event_planning_speakers",
+  "event_planning_dates",
+  "event_plannings",
+  "daily_briefings",
 ];
 
 export async function cleanupCreated(
