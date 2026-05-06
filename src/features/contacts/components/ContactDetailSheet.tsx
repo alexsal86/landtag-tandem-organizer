@@ -28,6 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
+import { getContactAvatarColor } from "@/components/contacts/utils/avatarColors";
 import { ContactEditForm } from "@/features/contacts/components/ContactEditForm";
 
 interface ContactRow {
@@ -369,7 +370,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
               <div className="flex items-start gap-4">
                 <Avatar className="h-14 w-14">
                   <AvatarImage src={contact.avatar_url ?? undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                  <AvatarFallback className={`${getContactAvatarColor(contact.id || contact.name)} font-semibold`}>
                     {getInitials(contact.name)}
                   </AvatarFallback>
                 </Avatar>

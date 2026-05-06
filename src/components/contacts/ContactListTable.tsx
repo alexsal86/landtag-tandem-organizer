@@ -10,6 +10,7 @@ import { Mail, Phone, CalendarDays, User, Star, ChevronUp, ChevronDown, Clock, T
 import { Contact } from "@/hooks/useInfiniteContacts";
 import { getGenderLabel } from "./hooks/useContactsViewState";
 import { getInitials } from "./utils/contactFormatters";
+import { getContactAvatarColor } from "./utils/avatarColors";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -195,7 +196,7 @@ export function ContactListTable({
                   <div className="relative inline-block">
                     <Avatar className="h-7 w-7">
                       <AvatarImage src={contact.avatar_url ?? undefined} />
-                      <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">{getInitials(contact.name)}</AvatarFallback>
+                      <AvatarFallback className={`${getContactAvatarColor(contact.id || contact.name)} text-[10px]`}>{getInitials(contact.name)}</AvatarFallback>
                     </Avatar>
                     <button
                       onClick={(e) => { e.stopPropagation(); onToggleFavorite(contact.id, !contact.is_favorite); }}

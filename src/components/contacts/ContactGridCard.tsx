@@ -16,6 +16,7 @@ import { Contact } from "@/hooks/useInfiniteContacts";
 import { ContactQuickActions } from "./ContactQuickActions";
 import { getPriorityColor } from "./hooks/useContactsViewState";
 import { getInitials } from "./utils/contactFormatters";
+import { getContactAvatarColor } from "./utils/avatarColors";
 
 interface ContactGridCardProps {
   contact: Contact;
@@ -71,7 +72,7 @@ export function ContactGridCard({
             <div className="flex items-center gap-3">
               <Avatar>
                 <AvatarImage src={contact.avatar_url ?? undefined} />
-                <AvatarFallback className="bg-primary text-primary-foreground">{getInitials(contact.name)}</AvatarFallback>
+                <AvatarFallback className={getContactAvatarColor(contact.id || contact.name)}>{getInitials(contact.name)}</AvatarFallback>
               </Avatar>
               <div className="flex-1">
                 <CardTitle className="text-lg mb0">{contact.name}</CardTitle>
