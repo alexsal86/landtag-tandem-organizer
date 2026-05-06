@@ -6,8 +6,11 @@ _Auto-generiert von `scripts/check-selftest-coverage.mjs`. Nicht von Hand bearbe
 
 | ID | Titel | Features | Tabellen |
 |---|---|---|---|
+| `appointment-lifecycle` | Termin-Lifecycle (Kalender + Briefing + Feedback) | appointments, briefings | appointments, appointment_preparations, appointment_feedback |
 | `case-item-lifecycle` | Vorgangs-Lifecycle (neu → in Klärung → Antwort ausstehend → erledigt) | case-items, decisions | case_items, case_item_interactions, task_decisions |
+| `daily-briefing-lifecycle` | Tages-Briefings (heute + gestern) | briefings | daily_briefings |
 | `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | decisions | task_decisions, task_decision_participants |
+| `event-planning-lifecycle` | Event-Planung (komplett: Termine, Speaker, Checkliste, Timeline) | event-planning | event_plannings, event_planning_dates, event_planning_speakers, event_planning_contacts, event_planning_checklist_items, event_planning_timeline_assignments |
 | `letter-lifecycle` | Brief-Lifecycle (Entwurf → Prüfung → Genehmigt → Versendet) | letters, decisions | letters, letter_attachments, task_decisions |
 | `meeting-lifecycle` | Meeting-Lifecycle (vollständig + Field-Verifikation) | meetings, appointments, tasks | meetings, meeting_agenda_items, meeting_agenda_documents, meeting_participants, appointments, tasks |
 | `task-lifecycle` | Aufgaben-Lifecycle | tasks | tasks |
@@ -23,17 +26,17 @@ _Auto-generiert von `scripts/check-selftest-coverage.mjs`. Nicht von Hand bearbe
 | `appointment_categories` | ⚪ ignoriert | — |
 | `appointment_contacts` | ⚪ ignoriert | — |
 | `appointment_documents` | ⚪ ignoriert | — |
-| `appointment_feedback` | ⚪ ignoriert | — |
+| `appointment_feedback` | ✅ getestet | appointment-lifecycle |
 | `appointment_feedback_settings` | ⚪ ignoriert | — |
 | `appointment_guests` | ⚪ ignoriert | — |
 | `appointment_locations` | ⚪ ignoriert | — |
 | `appointment_polls` | ⚪ ignoriert | — |
 | `appointment_preparation_documents` | ⚪ ignoriert | — |
 | `appointment_preparation_templates` | ⚪ ignoriert | — |
-| `appointment_preparations` | ⚪ ignoriert | — |
+| `appointment_preparations` | ✅ getestet | appointment-lifecycle |
 | `appointment_statuses` | ⚪ ignoriert | — |
 | `appointment_topics` | ⚪ ignoriert | — |
-| `appointments` | ✅ getestet | meeting-lifecycle |
+| `appointments` | ✅ getestet | appointment-lifecycle, meeting-lifecycle |
 | `archived_tasks` | ⚪ ignoriert | — |
 | `audit_log_entries` | ⚪ ignoriert | — |
 | `automation_rate_limits` | ⚪ ignoriert | — |
@@ -71,7 +74,7 @@ _Auto-generiert von `scripts/check-selftest-coverage.mjs`. Nicht von Hand bearbe
 | `contact_usage_stats` | ⚪ ignoriert | — |
 | `contacts` | ⚪ ignoriert | — |
 | `daily_briefing_reads` | ⚪ ignoriert | — |
-| `daily_briefings` | ⚪ ignoriert | — |
+| `daily_briefings` | ✅ getestet | daily-briefing-lifecycle |
 | `dashboard_layouts` | ⚪ ignoriert | — |
 | `day_slips` | ⚪ ignoriert | — |
 | `decision_archive_settings` | ⚪ ignoriert | — |
@@ -108,15 +111,15 @@ _Auto-generiert von `scripts/check-selftest-coverage.mjs`. Nicht von Hand bearbe
 | `employee_yearly_stats` | ⚪ ignoriert | — |
 | `event_email_templates` | ⚪ ignoriert | — |
 | `event_planning_action_logs` | ⚪ ignoriert | — |
-| `event_planning_checklist_items` | ⚪ ignoriert | — |
+| `event_planning_checklist_items` | ✅ getestet | event-planning-lifecycle |
 | `event_planning_collaborators` | ⚪ ignoriert | — |
-| `event_planning_contacts` | ⚪ ignoriert | — |
-| `event_planning_dates` | ⚪ ignoriert | — |
+| `event_planning_contacts` | ✅ getestet | event-planning-lifecycle |
+| `event_planning_dates` | ✅ getestet | event-planning-lifecycle |
 | `event_planning_documents` | ⚪ ignoriert | — |
 | `event_planning_item_actions` | ⚪ ignoriert | — |
-| `event_planning_speakers` | ⚪ ignoriert | — |
-| `event_planning_timeline_assignments` | ⚪ ignoriert | — |
-| `event_plannings` | ⚪ ignoriert | — |
+| `event_planning_speakers` | ✅ getestet | event-planning-lifecycle |
+| `event_planning_timeline_assignments` | ✅ getestet | event-planning-lifecycle |
+| `event_plannings` | ✅ getestet | event-planning-lifecycle |
 | `event_rsvp_public_links` | ⚪ ignoriert | — |
 | `event_rsvps` | ⚪ ignoriert | — |
 | `expense_budgets` | ⚪ ignoriert | — |
@@ -267,6 +270,11 @@ _Keine — alle relevanten Tabellen sind abgedeckt._
 | Tabelle | Getestete Spalten |
 |---|---|
 | `appointments` | `category`, `description`, `end_time`, `meeting_id`, `start_time`, `status`, `tenant_id`, `title`, `user_id` |
+| `event_planning_checklist_items` | `event_planning_id`, `is_completed`, `order_index`, `title`, `type` |
+| `event_planning_contacts` | `email`, `event_planning_id`, `name`, `phone`, `role` |
+| `event_planning_dates` | `date_time`, `event_planning_id`, `is_confirmed` |
+| `event_planning_speakers` | `bio`, `event_planning_id`, `name`, `order_index`, `topic` |
+| `event_planning_timeline_assignments` | `checklist_item_id`, `due_date`, `event_planning_id` |
 | `letter_attachments` | `file_name`, `file_path`, `file_size`, `file_type`, `letter_id`, `uploaded_by` |
 | `letters` | `approved_at`, `approved_by`, `content`, `content_html`, `created_by`, `letter_date`, `recipient_address`, `recipient_name`, `sent_at`, `sent_by`, `sent_date`, `sent_method`, `status`, `subject`, `submitted_for_review_at`, `submitted_for_review_by`, `submitted_to_user`, `tenant_id`, `title` |
 | `meeting_agenda_documents` | `file_name`, `file_path`, `file_size`, `file_type`, `meeting_agenda_item_id`, `user_id` |
