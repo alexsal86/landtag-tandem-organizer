@@ -1,77 +1,86 @@
-import { useState, useEffect } from "react";
-import { Edit2, Trash2, Mail, Phone, MapPin, Building, User, Calendar, Globe, ExternalLink, PhoneCall, Plus, Tag, Hash, FileText, ChevronDown, Euro } from "lucide-react";
-import { Linkedin, Facebook, Instagram } from "@/components/icons/SocialIcons";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { useState, useEffect, useMemo, useCallback, type ComponentType } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
+  Globe,
+  PhoneCall,
+  StickyNote,
+  Copy,
+  ChevronUp,
+  ChevronDown,
+  Maximize2,
+  X,
+  Edit2,
+  ExternalLink,
+  ArrowRight,
+  FileText,
+  MessageSquare,
+} from "lucide-react";
+import { Linkedin, Facebook, Instagram, Twitter } from "@/components/icons/SocialIcons";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import { ContactEditForm } from "@/features/contacts/components/ContactEditForm";
-import { CallLogWidget } from "@/components/widgets/CallLogWidget";
-import { formatGermanDate } from "@/lib/utils";
-import { ActivityTimeline } from "@/components/contacts/ActivityTimeline";
-import { ContactDocumentList } from "@/components/contacts/ContactDocumentList";
-import { useContactDocuments } from "@/hooks/useContactDocuments";
-import { FundingDialog } from "@/components/contacts/FundingDialog";
-import { ContactFundingsList } from "@/components/contacts/ContactFundingsList";
-import { useContactFundings } from "@/hooks/useContactFundings";
 
-interface CallLog {
-  id: string;
-  contact_id?: string;
-  caller_name?: string;
-  caller_phone?: string;
-  call_type: 'outgoing' | 'incoming' | 'missed';
-  duration_minutes?: number;
-  call_date: string;
-  notes?: string;
-  follow_up_required: boolean;
-  follow_up_date?: string;
-  follow_up_completed: boolean;
-  completion_notes?: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  created_at: string;
-  created_by_name?: string;
-}
-
-interface Contact {
+interface ContactRow {
   id: string;
   contact_type: "person" | "organization";
   name: string;
-  role?: string;
-  organization?: string;
-  organization_id?: string;
-  email?: string;
-  phone?: string;
-  location?: string;
-  address?: string;
-  birthday?: string;
-  website?: string;
-  linkedin?: string;
-  twitter?: string;
-  facebook?: string;
-  instagram?: string;
-  xing?: string;
-  category?: "citizen" | "colleague" | "lobbyist" | "media" | "business";
-  priority?: "low" | "medium" | "high";
-  last_contact?: string;
-  avatar_url?: string;
-  notes?: string;
-  tags?: string[];
-  inherited_tags?: string[];
-  business_street?: string;
-  business_house_number?: string;
-  business_postal_code?: string;
-  business_city?: string;
-  business_country?: string;
-  coordinates?: { lat: number; lng: number };
-  geocoded_at?: string;
+  role?: string | null;
+  organization?: string | null;
+  organization_id?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  birthday?: string | null;
+  website?: string | null;
+  linkedin?: string | null;
+  twitter?: string | null;
+  facebook?: string | null;
+  instagram?: string | null;
+  xing?: string | null;
+  category?: string | null;
+  priority?: "low" | "medium" | "high" | null;
+  last_contact?: string | null;
+  avatar_url?: string | null;
+  notes?: string | null;
+  tags?: string[] | null;
+  business_street?: string | null;
+  business_house_number?: string | null;
+  business_postal_code?: string | null;
+  business_city?: string | null;
+  business_country?: string | null;
+  updated_at?: string | null;
+}
+
+interface ActivityRow {
+  id: string;
+  activity_type: string;
+  title: string | null;
+  description: string | null;
+  created_at: string;
+  metadata?: Record<string, unknown> | null;
+  profiles?: { display_name?: string | null } | null;
+}
+
+interface CaseItemRow {
+  id: string;
+  subject: string | null;
+  status: string;
+}
+
+interface RelationRow {
+  id: string;
+  name: string;
+  avatar_url?: string | null;
 }
 
 interface ContactDetailSheetProps {
@@ -81,863 +90,631 @@ interface ContactDetailSheetProps {
   onContactUpdate: () => void;
 }
 
+const CATEGORY_LABELS: Record<string, string> = {
+  citizen: "Bürger:innen",
+  colleague: "Kolleg:innen",
+  business: "Wirtschaft",
+  media: "Presse",
+  lobbyist: "Lobbyist",
+  organization: "Organisation",
+  government: "Politik & Verw.",
+  ngo: "NGO",
+  academia: "Wissenschaft",
+  healthcare: "Gesundheit",
+  legal: "Recht",
+  other: "Sonstige",
+};
+
+const ACTIVITY_ICONS: Record<string, ComponentType<{ className?: string }>> = {
+  call: Phone,
+  phone: Phone,
+  email: Mail,
+  mail: Mail,
+  meeting: Calendar,
+  appointment: Calendar,
+  letter: FileText,
+  brief: FileText,
+  note: StickyNote,
+  message: MessageSquare,
+};
+
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+function cleanSocialUsername(input: string): string {
+  if (!input) return "";
+  return input
+    .replace(/^https?:\/\//, "")
+    .replace(/^(www\.)?/, "")
+    .replace(/^(linkedin\.com\/in\/|x\.com\/|twitter\.com\/|facebook\.com\/|instagram\.com\/|xing\.com\/profile\/)/, "")
+    .replace(/^@/, "")
+    .replace(/\/$/, "")
+    .trim();
+}
+
+function buildSocialUrl(platform: string, value: string): string {
+  if (value.startsWith("http://") || value.startsWith("https://")) return value;
+  const u = cleanSocialUsername(value);
+  switch (platform) {
+    case "linkedin": return `https://www.linkedin.com/in/${u}`;
+    case "twitter":  return `https://x.com/${u}`;
+    case "facebook": return `https://www.facebook.com/${u}`;
+    case "instagram":return `https://www.instagram.com/${u}`;
+    case "xing":     return `https://www.xing.com/profile/${u}`;
+    case "website":  return `https://${value.replace(/^https?:\/\//, "")}`;
+    default:         return `https://${value}`;
+  }
+}
+
+function formatRelative(dateIso: string): string {
+  const d = new Date(dateIso).getTime();
+  const diff = Date.now() - d;
+  const days = Math.floor(diff / 86400000);
+  if (days <= 0) return "heute";
+  if (days === 1) return "gestern";
+  if (days < 30) return `vor ${days} Tagen`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `vor ${months} Mon.`;
+  return new Date(dateIso).toLocaleDateString("de-DE");
+}
+
+function formatShortDate(dateIso: string): string {
+  return new Date(dateIso).toLocaleDateString("de-DE", { day: "2-digit", month: "short" });
+}
+
+function deriveFrequency(activityCount: number, lastContact?: string | null): { label: string; tone: string } {
+  if (activityCount >= 6) return { label: "regelmäßig", tone: "bg-primary/10 text-primary border-primary/30" };
+  if (activityCount >= 2) return { label: "gelegentlich", tone: "bg-muted text-muted-foreground border-border" };
+  if (lastContact) return { label: "selten", tone: "bg-muted text-muted-foreground border-border" };
+  return { label: "neu", tone: "bg-muted text-muted-foreground border-border" };
+}
+
+function deriveTone(activities: ActivityRow[]): string {
+  for (const a of activities) {
+    const text = `${a.title ?? ""} ${a.description ?? ""}`.toLowerCase();
+    if (/(positiv|danke|gut|freundlich|👍|🙂)/.test(text)) return "positiv";
+    if (/(negativ|kritisch|beschwerde|ärger|👎)/.test(text)) return "kritisch";
+  }
+  return "neutral";
+}
+
+const CASE_STATUS_LABELS: Record<string, string> = {
+  open: "Offen",
+  in_progress: "In Arbeit",
+  waiting: "Wartet",
+  on_hold: "Wartet",
+  resolved: "Gelöst",
+  closed: "Geschlossen",
+  done: "Erledigt",
+};
+
 export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate }: ContactDetailSheetProps) {
-  const [contact, setContact] = useState<Contact | null>(null);
-  const [callLogs, setCallLogs] = useState<CallLog[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [activities, setActivities] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadingCallLogs, setLoadingCallLogs] = useState(false);
-  const [activitiesLoading, setActivitiesLoading] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [showCallLogWidget, setShowCallLogWidget] = useState(false);
-  const [allTags, setAllTags] = useState<{ direct: string[], inherited: string[] }>({ direct: [], inherited: [] });
-  const [showDirectDocs, setShowDirectDocs] = useState(true);
-  const [showTaggedDocs, setShowTaggedDocs] = useState(true);
-  const [fundingDialogOpen, setFundingDialogOpen] = useState(false);
-  const [fundingsExpanded, setFundingsExpanded] = useState(false);
+  const navigate = useNavigate();
   const { toast } = useToast();
-
-  // Fetch documents related to this contact
-  const { directDocuments, taggedDocuments, loading: documentsLoading, removeDocumentLink } = useContactDocuments(
-    contactId || undefined,
-    [...(allTags.direct || []), ...(allTags.inherited || [])]
-  );
-
-  // Fetch fundings related to this contact
-  const { data: fundings = [], isLoading: fundingsLoading } = useContactFundings(contactId || undefined);
-
-  // Helper functions for social media
-  const cleanUsername = (input: string): string => {
-    if (!input) return '';
-    
-    return input
-      .replace(/^https?:\/\//, '') // Remove protocol
-      .replace(/^(www\.)?/, '') // Remove www
-      .replace(/^(linkedin\.com\/in\/|x\.com\/|facebook\.com\/|instagram\.com\/|xing\.com\/profile\/)/, '') // Remove platform prefixes
-      .replace(/^@/, '') // Remove @ symbol
-      .replace(/\/$/, '') // Remove trailing slash
-      .trim();
-  };
-
-  const generateSocialMediaUrl = (platform: string, username: string): string => {
-    const cleanedUsername = cleanUsername(username);
-    
-    switch (platform) {
-      case 'linkedin':
-        return `https://www.linkedin.com/in/${cleanedUsername}`;
-      case 'twitter':
-        return `https://x.com/${cleanedUsername}`;
-      case 'facebook':
-        return `https://www.facebook.com/${cleanedUsername}`;
-      case 'instagram':
-        return `https://www.instagram.com/${cleanedUsername}`;
-      case 'xing':
-        return `https://www.xing.com/profile/${cleanedUsername}`;
-      default:
-        return `https://${cleanedUsername}`;
-    }
-  };
+  const [contact, setContact] = useState<ContactRow | null>(null);
+  const [activities, setActivities] = useState<ActivityRow[]>([]);
+  const [cases, setCases] = useState<CaseItemRow[]>([]);
+  const [relations, setRelations] = useState<RelationRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [tab, setTab] = useState("overview");
 
   useEffect(() => {
-    if (contactId && isOpen) {
-      fetchContact();
-      fetchCallLogs();
-      fetchActivities();
-    }
-  }, [contactId, isOpen]);
-
-  const fetchCallLogs = async () => {
-    if (!contactId) return;
-    
-    try {
-      setLoadingCallLogs(true);
-      const { data, error } = await supabase
-        .from('call_logs')
-        .select('id, contact_id, caller_name, caller_phone, call_type, duration_minutes, call_date, notes, follow_up_required, follow_up_date, follow_up_completed, completion_notes, priority, created_at, created_by_name')
-        .or(contact?.phone ? `contact_id.eq.${contactId},caller_phone.ilike.%${contact.phone}%` : `contact_id.eq.${contactId}`)
-        .order('call_date', { ascending: false });
-
-      if (error) throw error;
-
-      setCallLogs((data || []) as CallLog[]);
-    } catch (error) {
-      debugConsole.error('Error fetching call logs:', error);
-    } finally {
-      setLoadingCallLogs(false);
-    }
-  };
-
-  const fetchActivities = async () => {
-    if (!contactId) return;
-
-    try {
-      setActivitiesLoading(true);
-      const { data, error } = await supabase
-        .from("contact_activities")
-        .select(`
-          *,
-          profiles:created_by (
-            display_name,
-            avatar_url
-          )
-        `)
-        .eq("contact_id", contactId)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
-      setActivities(data || []);
-    } catch (error) {
-      debugConsole.error("Error fetching activities:", error);
-    } finally {
-      setActivitiesLoading(false);
-    }
-  };
-
-  const fetchContact = async () => {
-    if (!contactId) return;
-    
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('contacts')
-        .select('*')
-        .eq('id', contactId)
-        .single();
-
-      if (error) throw error;
-
-      setContact({
-        ...data,
-        contact_type: data.contact_type as "person" | "organization",
-        category: data.category as Contact["category"],
-        priority: data.priority as Contact["priority"],
-        tags: data.tags || [],
-        coordinates: data.coordinates as { lat: number; lng: number } | undefined,
-      } as Contact);
-      
-      // Tags direkt hier laden, nachdem contact gesetzt wurde
-      let inheritedTags: string[] = [];
-      if (data.contact_type === 'person' && data.organization_id) {
-        const { data: orgData, error: orgError } = await supabase
-          .from('contacts')
-          .select('tags')
-          .eq('id', data.organization_id)
-          .single();
-        
-        if (!orgError && orgData?.tags) {
-          inheritedTags = orgData.tags;
-        }
-      }
-      
-      const directTags = data.tags || [];
-      setAllTags({ direct: directTags, inherited: inheritedTags });
-      
-    } catch (error) {
-      debugConsole.error('Error fetching contact:', error);
-      toast({
-        title: "Fehler",
-        description: "Kontakt konnte nicht geladen werden.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
-  const handleDelete = async () => {
-    if (!contact) return;
-
-    try {
-      const { error } = await supabase
-        .from('contacts')
-        .delete()
-        .eq('id', contact.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Kontakt gelöscht",
-        description: `${contact.name} wurde erfolgreich gelöscht.`,
-      });
-
-      onContactUpdate();
-      onClose();
-    } catch (error) {
-      debugConsole.error('Error deleting contact:', error);
-      toast({
-        title: "Fehler",
-        description: "Kontakt konnte nicht gelöscht werden.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const getCategoryColor = (category: Contact["category"]) => {
-    switch (category) {
-      case "citizen":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
-      case "colleague":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
-      case "business":
-        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300";
-      case "media":
-        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300";
-      case "lobbyist":
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
-      default:
-        return "bg-muted text-muted-foreground";
-    }
-  };
-
-  const getInitials = (name: string) => {
-    return name.split(" ").map(n => n[0]).join("").toUpperCase();
-  };
-
-  const handleEditSuccess = () => {
+    if (!contactId || !isOpen) return;
     setIsEditing(false);
-    fetchContact();
-    fetchCallLogs();
-    onContactUpdate();
-  };
+    setTab("overview");
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        const [{ data: c, error: cErr }, { data: act }, { data: cs }] = await Promise.all([
+          supabase
+            .from("contacts")
+            .select("id, contact_type, name, role, organization, organization_id, email, phone, address, birthday, website, linkedin, twitter, facebook, instagram, xing, category, priority, last_contact, avatar_url, notes, tags, business_street, business_house_number, business_postal_code, business_city, business_country, updated_at")
+            .eq("id", contactId)
+            .maybeSingle(),
+          supabase
+            .from("contact_activities")
+            .select("id, activity_type, title, description, created_at, metadata, profiles:created_by(display_name)")
+            .eq("contact_id", contactId)
+            .order("created_at", { ascending: false })
+            .limit(20),
+          supabase
+            .from("case_items")
+            .select("id, subject, status")
+            .eq("contact_id", contactId)
+            .order("updated_at", { ascending: false })
+            .limit(10),
+        ]);
+        if (cancelled) return;
+        if (cErr) throw cErr;
+        setContact((c as ContactRow) ?? null);
+        setActivities((act ?? []) as unknown as ActivityRow[]);
+        setCases((cs ?? []) as CaseItemRow[]);
 
-  const getCallTypeIcon = (type: 'outgoing' | 'incoming' | 'missed') => {
-    switch (type) {
-      case 'outgoing': return <PhoneCall className="h-4 w-4 text-green-500" />;
-      case 'incoming': return <PhoneCall className="h-4 w-4 text-blue-500" />;
-      case 'missed': return <PhoneCall className="h-4 w-4 text-red-500" />;
+        // Relations: persons sharing the same organization
+        if (c?.contact_type === "organization") {
+          const { data: rel } = await supabase
+            .from("contacts")
+            .select("id, name, avatar_url")
+            .eq("organization_id", contactId)
+            .eq("contact_type", "person")
+            .limit(8);
+          if (!cancelled) setRelations((rel ?? []) as RelationRow[]);
+        } else if (c?.organization_id) {
+          const { data: rel } = await supabase
+            .from("contacts")
+            .select("id, name, avatar_url")
+            .eq("organization_id", c.organization_id)
+            .eq("contact_type", "person")
+            .neq("id", contactId)
+            .limit(8);
+          if (!cancelled) setRelations((rel ?? []) as RelationRow[]);
+        } else {
+          if (!cancelled) setRelations([]);
+        }
+      } catch (e) {
+        debugConsole.error("ContactDetailSheet load error", e);
+        toast({ title: "Fehler", description: "Kontakt konnte nicht geladen werden.", variant: "destructive" });
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [contactId, isOpen, toast]);
+
+  const handleCopy = useCallback(async (value: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast({ title: "Kopiert", description: `${label} wurde in die Zwischenablage kopiert.` });
+    } catch {
+      toast({ title: "Fehler", description: "Kopieren nicht möglich.", variant: "destructive" });
     }
-  };
+  }, [toast]);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('de-DE', { 
-      day: '2-digit', 
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  const formattedAddress = useMemo(() => {
+    if (!contact) return null;
+    const street = [contact.business_street, contact.business_house_number].filter(Boolean).join(" ");
+    const city = [contact.business_postal_code, contact.business_city].filter(Boolean).join(" ");
+    const full = [street, city].filter(Boolean).join(", ");
+    return full || contact.address || null;
+  }, [contact]);
 
-  if (isEditing && contact) {
-    return (
-      <Sheet open={isOpen} onOpenChange={onClose}>
-        <SheetContent className="w-[600px] sm:w-[540px] overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>Kontakt bearbeiten</SheetTitle>
-            <SheetDescription>
-              Bearbeiten Sie die Informationen für {contact.name}
-            </SheetDescription>
-          </SheetHeader>
-          <div className="mt-6">
-            <ContactEditForm
-              contact={contact}
-              onSuccess={handleEditSuccess}
-              onCancel={() => setIsEditing(false)}
-            />
-          </div>
-        </SheetContent>
-      </Sheet>
-    );
-  }
+  const socialChips = useMemo(() => {
+    if (!contact) return [];
+    return [
+      contact.website && { key: "website", icon: Globe, label: "Website", href: buildSocialUrl("website", contact.website) },
+      contact.linkedin && { key: "linkedin", icon: Linkedin, label: "LinkedIn", href: buildSocialUrl("linkedin", contact.linkedin) },
+      contact.twitter && { key: "twitter", icon: Twitter, label: "X / Twitter", href: buildSocialUrl("twitter", contact.twitter) },
+      contact.facebook && { key: "facebook", icon: Facebook, label: "Facebook", href: buildSocialUrl("facebook", contact.facebook) },
+      contact.instagram && { key: "instagram", icon: Instagram, label: "Instagram", href: buildSocialUrl("instagram", contact.instagram) },
+      contact.xing && { key: "xing", icon: Globe, label: "Xing", href: buildSocialUrl("xing", contact.xing) },
+    ].filter(Boolean) as Array<{ key: string; icon: ComponentType<{ className?: string }>; label: string; href: string }>;
+  }, [contact]);
+
+  const frequency = useMemo(() => deriveFrequency(activities.length, contact?.last_contact), [activities.length, contact?.last_contact]);
+  const tone = useMemo(() => deriveTone(activities), [activities]);
+  const lastInteraction = activities[0];
+  const categoryLabel = contact?.category ? (CATEGORY_LABELS[contact.category] ?? contact.category) : null;
 
   return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="w-[700px] sm:w-[640px] overflow-y-auto">
-        {loading ? (
-          <div className="flex items-center justify-center h-96">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    <Sheet open={isOpen} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <SheetContent
+        side="right"
+        className="p-0 w-full sm:max-w-[600px] sm:w-[600px] overflow-hidden flex flex-col gap-0"
+      >
+        {loading || !contact ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
           </div>
-        ) : contact ? (
-          <div className="space-y-6">
-            <SheetHeader>
-              <div className="flex items-center gap-4">
-                <Avatar className="h-16 w-16">
-                  <AvatarImage src={contact.avatar_url} />
-                  <AvatarFallback className="bg-primary text-primary-foreground text-lg">
+        ) : isEditing ? (
+          <div className="flex flex-col h-full overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+              <button
+                onClick={() => setIsEditing(false)}
+                className="text-caption text-muted-foreground hover:text-foreground transition-colors"
+              >
+                ← Zurück
+              </button>
+              <span className="text-caption text-muted-foreground">Kontakt bearbeiten</span>
+              <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8" aria-label="Schließen">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5">
+              <ContactEditForm
+                contact={contact as unknown as Parameters<typeof ContactEditForm>[0]["contact"]}
+                onSuccess={() => { setIsEditing(false); onContactUpdate(); }}
+                onCancel={() => setIsEditing(false)}
+              />
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Topbar */}
+            <div className="flex items-center justify-between px-5 py-2.5 border-b border-border bg-muted/20">
+              <div className="text-caption text-muted-foreground truncate">
+                {categoryLabel}
+              </div>
+              <div className="flex items-center gap-0.5">
+                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Vorheriger" disabled>
+                  <ChevronUp className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Nächster" disabled>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  aria-label="Vollbild"
+                  onClick={() => navigate(`/contacts/${contact.id}`)}
+                >
+                  <Maximize2 className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Schließen" onClick={onClose}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Identity */}
+            <div className="px-5 pt-5 pb-4 border-b border-border">
+              <div className="flex items-start gap-4">
+                <Avatar className="h-14 w-14">
+                  <AvatarImage src={contact.avatar_url ?? undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                     {getInitials(contact.name)}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <SheetTitle className="text-2xl">{contact.name}</SheetTitle>
-                  </div>
-                  <SheetDescription className="text-base">
-                    {contact.contact_type === "organization" 
-                      ? contact.role || ""
-                      : contact.role
-                    }
-                  </SheetDescription>
-                  {contact.contact_type === "organization" && (
-                    <Badge className={`mt-2 ${getCategoryColor(contact.category)}`}>
-                      {contact.category === "citizen" && "Bürger"}
-                      {contact.category === "colleague" && "Kollege"}
-                      {contact.category === "business" && "Wirtschaft"}
-                      {contact.category === "media" && "Medien"}
-                      {contact.category === "lobbyist" && "Lobbyist"}
-                    </Badge>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-h2 leading-tight">{contact.name}</h2>
+                  {contact.role && (
+                    <div className="text-body text-muted-foreground truncate">{contact.role}</div>
                   )}
+                  {contact.organization && (
+                    <div className="text-body text-muted-foreground truncate">{contact.organization}</div>
+                  )}
+                  <div className="flex items-center gap-2 mt-2">
+                    <Badge variant="outline" className={frequency.tone}>
+                      {frequency.label}
+                    </Badge>
+                    <span className="text-caption text-muted-foreground">·</span>
+                    <span className="text-caption text-muted-foreground">Ton: {tone}</span>
+                  </div>
                 </div>
               </div>
-              <div className="flex gap-2 pt-4">
-                <Button onClick={() => setIsEditing(true)} className="flex-1">
-                  <Edit2 className="h-4 w-4 mr-2" />
-                  Bearbeiten
+
+              {/* Quick actions */}
+              <div className="grid grid-cols-4 gap-2 mt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  disabled={!contact.phone}
+                  asChild={!!contact.phone}
+                >
+                  {contact.phone ? <a href={`tel:${contact.phone}`}><Phone className="h-4 w-4" /> Anrufen</a> : <span><Phone className="h-4 w-4" /> Anrufen</span>}
                 </Button>
-                <Button variant="destructive" onClick={handleDelete}>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Löschen
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  disabled={!contact.email}
+                  asChild={!!contact.email}
+                >
+                  {contact.email ? <a href={`mailto:${contact.email}`}><Mail className="h-4 w-4" /> Mail</a> : <span><Mail className="h-4 w-4" /> Mail</span>}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => navigate(`/calendar?contactId=${contact.id}`)}
+                >
+                  <Calendar className="h-4 w-4" /> Termin
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => navigate(`/contacts/${contact.id}?action=note`)}
+                >
+                  <StickyNote className="h-4 w-4" /> Notiz
                 </Button>
               </div>
-            </SheetHeader>
+            </div>
 
-            <Separator />
-
-            <Tabs defaultValue="details" className="w-full">
-              <div className="border-b border-border mb-4">
-                <TabsList className="flex w-full h-auto bg-transparent p-0 gap-0">
-                  <TabsTrigger 
-                    value="details" 
-                    className="flex-1 py-3 px-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:text-primary transition-all"
+            {/* Tabs */}
+            <Tabs value={tab} onValueChange={setTab} className="flex flex-col flex-1 overflow-hidden">
+              <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent h-auto p-0 px-5 gap-6 shrink-0">
+                {[
+                  { v: "overview", label: "Übersicht" },
+                  { v: "chronology", label: "Chronologie" },
+                  { v: "cases", label: "Vorgänge" },
+                  { v: "notes", label: "Notizen" },
+                ].map((t) => (
+                  <TabsTrigger
+                    key={t.v}
+                    value={t.v}
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-0 py-3 text-body font-medium"
                   >
-                    <User className="h-4 w-4 mr-1.5" />
-                    <span className="hidden sm:inline">Kontakt</span>
+                    {t.label}
                   </TabsTrigger>
-                  <TabsTrigger 
-                    value="activities" 
-                    className="flex-1 py-3 px-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:text-primary transition-all"
-                  >
-                    <Calendar className="h-4 w-4 mr-1.5" />
-                    <span className="hidden sm:inline">Aktivitäten</span>
-                    <Badge variant="secondary" className="ml-1.5 text-xs h-5 px-1.5">{activities.length}</Badge>
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="calls" 
-                    className="flex-1 py-3 px-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:text-primary transition-all"
-                  >
-                    <PhoneCall className="h-4 w-4 mr-1.5" />
-                    <span className="hidden sm:inline">Anrufe</span>
-                    <Badge variant="secondary" className="ml-1.5 text-xs h-5 px-1.5">{callLogs.length}</Badge>
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="documents" 
-                    className="flex-1 py-3 px-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:text-primary transition-all"
-                  >
-                    <FileText className="h-4 w-4 mr-1.5" />
-                    <span className="hidden sm:inline">Doku</span>
-                    <Badge variant="secondary" className="ml-1.5 text-xs h-5 px-1.5">{directDocuments.length + taggedDocuments.length}</Badge>
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="fundings" 
-                    className="flex-1 py-3 px-2 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:text-primary transition-all"
-                  >
-                    <Euro className="h-4 w-4 mr-1.5" />
-                    <span className="hidden sm:inline">Förder.</span>
-                    <Badge variant="secondary" className="ml-1.5 text-xs h-5 px-1.5">{fundings.length}</Badge>
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-              
-              <TabsContent value="details" className="space-y-6">
-                {/* Classification Card - Category & Priority */}
-                <Card className="border-l-4 border-l-primary">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Tag className="h-5 w-5 text-primary" />
-                      <h3 className="font-semibold text-lg">Klassifizierung</h3>
+                ))}
+              </TabsList>
+
+              <div className="flex-1 overflow-y-auto">
+                <TabsContent value="overview" className="m-0 p-5 space-y-5">
+                  {/* Contact data */}
+                  <section>
+                    <div className="section-label mb-2">Kontaktdaten</div>
+                    <div className="space-y-1.5">
+                      {contact.email && (
+                        <ContactDataRow icon={Mail} value={contact.email} onCopy={() => handleCopy(contact.email!, "E-Mail")} />
+                      )}
+                      {contact.phone && (
+                        <ContactDataRow icon={Phone} value={contact.phone} onCopy={() => handleCopy(contact.phone!, "Telefon")} />
+                      )}
+                      {formattedAddress && (
+                        <ContactDataRow icon={MapPin} value={formattedAddress} onCopy={() => handleCopy(formattedAddress, "Adresse")} />
+                      )}
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1">Kategorie</p>
-                        <Badge className={getCategoryColor(contact.category)}>
-                          {contact.category === "citizen" && "Bürger"}
-                          {contact.category === "colleague" && "Kollege"}
-                          {contact.category === "business" && "Wirtschaft"}
-                          {contact.category === "media" && "Medien"}
-                          {contact.category === "lobbyist" && "Lobbyist"}
-                          {!contact.category && "Keine Kategorie"}
-                        </Badge>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1">Priorität</p>
-                        <Badge variant="outline" className={
-                          contact.priority === 'high' ? 'border-destructive text-destructive' :
-                          contact.priority === 'medium' ? 'border-yellow-500 text-yellow-600' :
-                          'border-muted-foreground text-muted-foreground'
-                        }>
-                          {contact.priority === 'high' && '🔴 Hoch'}
-                          {contact.priority === 'medium' && '🟡 Mittel'}
-                          {contact.priority === 'low' && '🟢 Niedrig'}
-                          {!contact.priority && 'Keine Priorität'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
 
-                {/* Contact Information */}
-                <Card>
-                  <CardContent className="p-4 space-y-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Phone className="h-5 w-5 text-primary" />
-                      <h3 className="font-semibold text-lg">Kontaktinformationen</h3>
-                    </div>
-                
-                {contact.email && (
-                  <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
-                    <Mail className="h-5 w-5 text-muted-foreground" />
-                    <div className="flex-1">
-                      <p className="text-sm text-muted-foreground">E-Mail</p>
-                      <p className="font-medium">{contact.email}</p>
-                    </div>
-                    <Button size="sm" variant="outline" asChild>
-                      <a href={`mailto:${contact.email}`}>
-                        <Mail className="h-4 w-4" />
-                      </a>
-                    </Button>
-                  </div>
-                )}
-
-                {contact.phone && (
-                  <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
-                    <Phone className="h-5 w-5 text-muted-foreground" />
-                    <div className="flex-1">
-                      <p className="text-sm text-muted-foreground">Telefon</p>
-                      <p className="font-medium">{contact.phone}</p>
-                    </div>
-                    <Button size="sm" variant="outline" asChild>
-                      <a href={`tel:${contact.phone}`}>
-                        <Phone className="h-4 w-4" />
-                      </a>
-                    </Button>
-                  </div>
-                )}
-
-                {contact.contact_type === "person" && contact.organization && (
-                  <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
-                    <Building className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Organisation</p>
-                      <p className="font-medium">{contact.organization}</p>
-                    </div>
-                  </div>
-                )}
-
-                {contact.birthday && (
-                  <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
-                    <Calendar className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Geburtstag</p>
-                      <p className="font-medium">{formatGermanDate(contact.birthday)}</p>
-                    </div>
-                  </div>
-                )}
-
-                {contact.website && (
-                  <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
-                    <Globe className="h-5 w-5 text-muted-foreground" />
-                    <div className="flex-1">
-                      <p className="text-sm text-muted-foreground">Website</p>
-                      <p className="font-medium">{contact.website}</p>
-                    </div>
-                    <Button size="sm" variant="outline" asChild>
-                      <a href={contact.website.startsWith('http') ? contact.website : `https://${contact.website}`} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
-                    </Button>
-                  </div>
-                 )}
-               </CardContent>
-                </Card>
-
-                {/* Business Address - More Detailed */}
-                {(contact.business_street || contact.business_city || contact.address || contact.location) && (
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 mb-4">
-                        <MapPin className="h-5 w-5 text-primary" />
-                        <h3 className="font-semibold text-lg">Geschäftsadresse</h3>
-                        {contact.coordinates && (
-                          <Badge variant="outline" className="text-xs ml-auto">
-                            <MapPin className="h-3 w-3 mr-1" />
-                            Geocodiert
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        {contact.business_street && (
-                          <div className="grid grid-cols-2 gap-2 text-sm">
-                            <div>
-                              <p className="text-muted-foreground">Straße</p>
-                              <p className="font-medium">{contact.business_street} {contact.business_house_number}</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">PLZ / Ort</p>
-                              <p className="font-medium">{contact.business_postal_code} {contact.business_city}</p>
-                            </div>
-                          </div>
-                        )}
-                        {contact.business_country && (
-                          <div className="text-sm">
-                            <p className="text-muted-foreground">Land</p>
-                            <p className="font-medium">{contact.business_country}</p>
-                          </div>
-                        )}
-                        {!contact.business_street && (contact.address || contact.location) && (
-                          <p className="text-sm font-medium">{contact.address || contact.location}</p>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Social Media */}
-                {(contact.linkedin || contact.twitter || contact.facebook || contact.instagram || contact.xing) && (
-                  <Card>
-                    <CardContent className="p-4">
-                      <h3 className="font-semibold text-lg mb-4">Social Media</h3>
-                      <div className="space-y-3">
-                        {contact.linkedin && (
-                          <div className="flex items-center gap-3">
-                            <Linkedin className="h-5 w-5 text-blue-600" />
-                            <div className="flex-1">
-                              <p className="font-medium">LinkedIn</p>
-                              <p className="text-muted-foreground text-sm">@{cleanUsername(contact.linkedin)}</p>
-                            </div>
-                            <Button size="sm" variant="outline" asChild>
-                              <a href={generateSocialMediaUrl('linkedin', contact.linkedin)} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="h-4 w-4" />
-                              </a>
-                            </Button>
-                          </div>
-                        )}
-                        {contact.twitter && (
-                          <div className="flex items-center gap-3">
-                            <Hash className="h-5 w-5 text-foreground" />
-                            <div className="flex-1">
-                              <p className="font-medium">X</p>
-                              <p className="text-muted-foreground text-sm">@{cleanUsername(contact.twitter)}</p>
-                            </div>
-                            <Button size="sm" variant="outline" asChild>
-                              <a href={generateSocialMediaUrl('twitter', contact.twitter)} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="h-4 w-4" />
-                              </a>
-                            </Button>
-                          </div>
-                        )}
-                        {contact.facebook && (
-                          <div className="flex items-center gap-3">
-                            <Facebook className="h-5 w-5 text-blue-600" />
-                            <div className="flex-1">
-                              <p className="font-medium">Facebook</p>
-                              <p className="text-muted-foreground text-sm">{cleanUsername(contact.facebook)}</p>
-                            </div>
-                            <Button size="sm" variant="outline" asChild>
-                              <a href={generateSocialMediaUrl('facebook', contact.facebook)} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="h-4 w-4" />
-                              </a>
-                            </Button>
-                          </div>
-                        )}
-                        {contact.instagram && (
-                          <div className="flex items-center gap-3">
-                            <Instagram className="h-5 w-5 text-pink-500" />
-                            <div className="flex-1">
-                              <p className="font-medium">Instagram</p>
-                              <p className="text-muted-foreground text-sm">@{cleanUsername(contact.instagram)}</p>
-                            </div>
-                            <Button size="sm" variant="outline" asChild>
-                              <a href={generateSocialMediaUrl('instagram', contact.instagram)} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="h-4 w-4" />
-                              </a>
-                            </Button>
-                          </div>
-                        )}
-                        {contact.xing && (
-                          <div className="flex items-center gap-3">
-                            <User className="h-5 w-5 text-green-600" />
-                            <div className="flex-1">
-                              <p className="font-medium">XING</p>
-                              <p className="text-muted-foreground text-sm">{cleanUsername(contact.xing)}</p>
-                            </div>
-                            <Button size="sm" variant="outline" asChild>
-                              <a href={generateSocialMediaUrl('xing', contact.xing)} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="h-4 w-4" />
-                              </a>
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Organization Details */}
-
-                {/* Tags */}
-                {(allTags.direct.length > 0 || allTags.inherited.length > 0) && (
-                  <Card>
-                    <CardContent className="p-4">
-                      <h3 className="font-semibold text-lg mb-2">Tags</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {allTags.inherited.map((tag) => (
-                          <Badge 
-                            key={`inherited-${tag}`} 
-                            variant="outline" 
-                            className="bg-muted/30 text-muted-foreground border-dashed flex items-center gap-1"
-                          >
-                            <Tag className="h-3 w-3" />
-                            {tag}
-                            <span className="text-xs">(geerbt)</span>
-                          </Badge>
-                        ))}
-                        {allTags.direct.map((tag) => (
-                          <Badge key={`direct-${tag}`} variant="secondary">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Notes */}
-                {contact.notes && (
-                  <Card>
-                    <CardContent className="p-4">
-                      <h3 className="font-semibold text-lg mb-2">Notizen</h3>
-                      <p className="text-muted-foreground whitespace-pre-wrap">{contact.notes}</p>
-                    </CardContent>
-                  </Card>
-                )}
-
-
-                {contact.last_contact && (
-                  <Card>
-                    <CardContent className="p-4">
-                      <h3 className="font-semibold text-lg mb-2">Letzter Kontakt</h3>
-                      <p className="text-muted-foreground">{contact.last_contact}</p>
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
-
-              <TabsContent value="activities" className="space-y-4 mt-4">
-                <ActivityTimeline activities={activities} loading={activitiesLoading} />
-              </TabsContent>
-
-              <TabsContent value="calls" className="space-y-4 mt-4">
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">Anrufhistorie</CardTitle>
-                      <Button 
-                        size="sm" 
-                        onClick={() => setShowCallLogWidget(!showCallLogWidget)}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Anruf protokollieren
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {showCallLogWidget && (
-                      <div className="mb-4 p-4 border rounded-lg bg-muted/30">
-                        <div className="text-sm font-medium mb-2">Neuen Anruf protokollieren</div>
-                        <CallLogWidget 
-                          className="border-0 shadow-none bg-transparent" 
-                          configuration={{ compact: true, showFollowUps: false }}
-                        />
+                    {socialChips.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-3">
+                        {socialChips.map((chip) => {
+                          const Icon = chip.icon;
+                          return (
+                            <a
+                              key={chip.key}
+                              href={chip.href}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border border-border bg-background hover:bg-muted text-caption text-muted-foreground hover:text-foreground transition-colors"
+                              aria-label={chip.label}
+                              title={chip.label}
+                            >
+                              <Icon className="h-3.5 w-3.5" />
+                              {chip.label}
+                            </a>
+                          );
+                        })}
                       </div>
                     )}
+                  </section>
 
-                    {loadingCallLogs ? (
-                      <div className="text-center py-4">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
+                  {/* Last interaction */}
+                  {lastInteraction && (
+                    <section className="rounded-md border border-primary/30 bg-primary/5 p-3.5">
+                      <div className="text-caption font-medium text-primary mb-1.5">LETZTE INTERAKTION</div>
+                      <div className="text-body font-medium text-foreground">
+                        {formatActivityType(lastInteraction.activity_type)} · {lastInteraction.title ?? "—"}
                       </div>
-                    ) : callLogs.length === 0 ? (
-                      <div className="text-center text-muted-foreground py-8">
-                        <PhoneCall className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p>Noch keine Anrufe protokolliert</p>
+                      <div className="text-caption text-muted-foreground mt-0.5">
+                        {formatRelative(lastInteraction.created_at)}
+                        {lastInteraction.profiles?.display_name && ` · ${lastInteraction.profiles.display_name}`}
                       </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {callLogs.map((log) => (
-                          <div key={log.id} className="p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                            <div className="flex items-start gap-3">
-                              {getCallTypeIcon(log.call_type)}
+                    </section>
+                  )}
+
+                  {/* Activity */}
+                  {activities.length > 0 && (
+                    <section>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="section-label">Aktivität</div>
+                        <button
+                          onClick={() => setTab("chronology")}
+                          className="text-caption text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+                        >
+                          Alle {activities.length} anzeigen <ArrowRight className="h-3 w-3" />
+                        </button>
+                      </div>
+                      <ul className="space-y-2.5">
+                        {activities.slice(0, 3).map((a) => {
+                          const Icon = ACTIVITY_ICONS[a.activity_type] ?? StickyNote;
+                          return (
+                            <li key={a.id} className="flex gap-2.5">
+                              <div className="flex flex-col items-center pt-1">
+                                <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                              </div>
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="font-medium text-sm">
-                                    {log.call_type === 'outgoing' ? 'Ausgehender Anruf' : 
-                                     log.call_type === 'incoming' ? 'Eingehender Anruf' : 'Verpasster Anruf'}
-                                  </span>
-                                  {log.duration_minutes && (
-                                    <Badge variant="outline" className="text-xs">
-                                      {log.duration_minutes} Min
-                                    </Badge>
-                                  )}
-                                  <Badge variant="secondary" className="text-xs">
-                                    {log.priority}
-                                  </Badge>
+                                <div className="text-caption text-muted-foreground tabular-nums">
+                                  {formatShortDate(a.created_at)}
                                 </div>
-                                
-                                <div className="text-xs text-muted-foreground mb-2">
-                                  {formatDate(log.call_date)}
-                                  {log.created_by_name && ` • Protokolliert von ${log.created_by_name}`}
+                                <div className="text-body font-medium text-foreground">
+                                  {formatActivityType(a.activity_type)}{a.title ? ` · ${a.title}` : ""}
                                 </div>
-
-                                {log.notes && (
-                                  <p className="text-sm text-muted-foreground mb-2">
-                                    {log.notes}
-                                  </p>
+                                {a.description && (
+                                  <div className="text-caption text-muted-foreground line-clamp-2">{a.description}</div>
                                 )}
-
-                                 {log.follow_up_required && (
-                                   <div className="flex items-center gap-2 text-xs">
-                                     <Badge variant={log.follow_up_completed ? "default" : "destructive"} className="text-xs">
-                                       {log.follow_up_completed ? "Follow-up erledigt" : "Follow-up erforderlich"}
-                                     </Badge>
-                                     {log.follow_up_date && (
-                                       <span className="text-muted-foreground">
-                                         bis {formatDate(log.follow_up_date)}
-                                       </span>
-                                     )}
-                                   </div>
-                                 )}
-
-                                 {log.follow_up_completed && log.completion_notes && (
-                                   <div className="mt-2 p-2 bg-muted/30 rounded text-xs">
-                                     <span className="font-medium text-muted-foreground">Erledigungsnotiz: </span>
-                                     <span className="text-muted-foreground">{log.completion_notes}</span>
-                                   </div>
-                                 )}
                               </div>
-                            </div>
-                          </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </section>
+                  )}
+
+                  {/* Linked cases */}
+                  {cases.length > 0 && (
+                    <section>
+                      <div className="section-label mb-2">Verknüpfte Vorgänge · {cases.length}</div>
+                      <ul className="space-y-1.5">
+                        {cases.map((c) => (
+                          <li key={c.id}>
+                            <button
+                              onClick={() => navigate(`/cases/${c.id}`)}
+                              className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md border border-border hover:bg-muted text-left transition-colors"
+                            >
+                              <span className="flex-1 truncate text-body">{c.subject ?? "Ohne Titel"}</span>
+                              <Badge variant="outline" className="text-caption shrink-0">
+                                {CASE_STATUS_LABELS[c.status] ?? c.status}
+                              </Badge>
+                            </button>
+                          </li>
                         ))}
-                       </div>
-                     )}
-                   </CardContent>
-                  </Card>
-                </TabsContent>
+                      </ul>
+                    </section>
+                  )}
 
-                <TabsContent value="documents" className="space-y-4 mt-4">
-                  {documentsLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    </div>
-                  ) : (
-                    <>
-                      {/* Directly linked documents */}
-                      <Collapsible open={showDirectDocs} onOpenChange={setShowDirectDocs}>
-                        <Card>
-                          <CardHeader className="pb-3">
-                            <CollapsibleTrigger className="flex items-center justify-between w-full hover:opacity-80 transition-opacity">
-                              <div className="flex items-center gap-2">
-                                <FileText className="h-5 w-5 text-primary" />
-                                <CardTitle className="text-base">Direkt verknüpfte Dokumente</CardTitle>
-                                <Badge variant="secondary">{directDocuments.length}</Badge>
-                              </div>
-                              <ChevronDown className={`h-4 w-4 transition-transform ${showDirectDocs ? 'rotate-180' : ''}`} />
-                            </CollapsibleTrigger>
-                          </CardHeader>
-                          <CollapsibleContent>
-                            <CardContent>
-                              <ContactDocumentList
-                                documents={directDocuments}
-                                type="direct"
-                                onRemove={removeDocumentLink}
-                              />
-                            </CardContent>
-                          </CollapsibleContent>
-                        </Card>
-                      </Collapsible>
-
-                      {/* Tag-based documents */}
-                      <Collapsible open={showTaggedDocs} onOpenChange={setShowTaggedDocs}>
-                        <Card>
-                          <CardHeader className="pb-3">
-                            <CollapsibleTrigger className="flex items-center justify-between w-full hover:opacity-80 transition-opacity">
-                              <div className="flex items-center gap-2">
-                                <Tag className="h-5 w-5 text-primary" />
-                                <CardTitle className="text-base">Über Tags verknüpft</CardTitle>
-                                <Badge variant="secondary">{taggedDocuments.length}</Badge>
-                              </div>
-                              <ChevronDown className={`h-4 w-4 transition-transform ${showTaggedDocs ? 'rotate-180' : ''}`} />
-                            </CollapsibleTrigger>
-                          </CardHeader>
-                          <CollapsibleContent>
-                            <CardContent>
-                              <ContactDocumentList
-                                documents={taggedDocuments}
-                                type="tagged"
-                                contactTags={[...(allTags.direct || []), ...(allTags.inherited || [])]}
-                              />
-                            </CardContent>
-                          </CollapsibleContent>
-                        </Card>
-                      </Collapsible>
-                    </>
+                  {/* Tags + relations */}
+                  {((contact.tags?.length ?? 0) > 0 || relations.length > 0) && (
+                    <section className="grid grid-cols-2 gap-5">
+                      {contact.tags && contact.tags.length > 0 && (
+                        <div>
+                          <div className="section-label mb-2">Tags</div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {contact.tags.map((t) => (
+                              <Badge key={t} variant="secondary" className="font-normal">{t}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {relations.length > 0 && (
+                        <div>
+                          <div className="section-label mb-2">Beziehungen · {relations.length}</div>
+                          <div className="flex -space-x-2">
+                            {relations.slice(0, 6).map((r) => (
+                              <button
+                                key={r.id}
+                                onClick={() => navigate(`/contacts/${r.id}`)}
+                                title={r.name}
+                                className="ring-2 ring-background rounded-full"
+                              >
+                                <Avatar className="h-7 w-7">
+                                  <AvatarImage src={r.avatar_url ?? undefined} />
+                                  <AvatarFallback className="text-caption bg-muted">{getInitials(r.name)}</AvatarFallback>
+                                </Avatar>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </section>
                   )}
                 </TabsContent>
 
-                <TabsContent value="fundings" className="space-y-4 mt-4">
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          <Euro className="h-5 w-5" />
-                          Förderungen & Unterstützungen
-                        </CardTitle>
-                        <Button 
-                          size="sm" 
-                          onClick={() => setFundingDialogOpen(true)}
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Neue Förderung
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {fundingsLoading ? (
-                        <div className="flex items-center justify-center py-8">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                        </div>
-                      ) : fundings.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                          <Euro className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                          <p>Keine Förderungen vorhanden</p>
-                        </div>
-                      ) : (
-                        <ContactFundingsList
-                          contactId={contactId || ''}
-                          isExpanded={fundingsExpanded}
-                          onToggle={() => setFundingsExpanded(!fundingsExpanded)}
-                        />
-                      )}
-                    </CardContent>
-                  </Card>
+                <TabsContent value="chronology" className="m-0 p-5">
+                  {activities.length === 0 ? (
+                    <p className="text-body text-muted-foreground">Noch keine Aktivitäten erfasst.</p>
+                  ) : (
+                    <ul className="space-y-3">
+                      {activities.map((a) => {
+                        const Icon = ACTIVITY_ICONS[a.activity_type] ?? StickyNote;
+                        return (
+                          <li key={a.id} className="flex gap-3 border-b border-border pb-3 last:border-0">
+                            <Icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-caption text-muted-foreground">
+                                {new Date(a.created_at).toLocaleString("de-DE", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                                {a.profiles?.display_name && ` · ${a.profiles.display_name}`}
+                              </div>
+                              <div className="text-body font-medium">{formatActivityType(a.activity_type)}{a.title ? ` · ${a.title}` : ""}</div>
+                              {a.description && <p className="text-body text-muted-foreground whitespace-pre-wrap">{a.description}</p>}
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </TabsContent>
-              </Tabs>
-           </div>
-        ) : (
-          <div className="flex items-center justify-center h-96">
-            <p className="text-muted-foreground">Kontakt nicht gefunden</p>
-          </div>
+
+                <TabsContent value="cases" className="m-0 p-5">
+                  {cases.length === 0 ? (
+                    <p className="text-body text-muted-foreground">Keine verknüpften Vorgänge.</p>
+                  ) : (
+                    <ul className="space-y-1.5">
+                      {cases.map((c) => (
+                        <li key={c.id}>
+                          <button
+                            onClick={() => navigate(`/cases/${c.id}`)}
+                            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-md border border-border hover:bg-muted text-left transition-colors"
+                          >
+                            <span className="flex-1 truncate text-body">{c.subject ?? "Ohne Titel"}</span>
+                            <Badge variant="outline" className="text-caption shrink-0">
+                              {CASE_STATUS_LABELS[c.status] ?? c.status}
+                            </Badge>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="notes" className="m-0 p-5">
+                  {contact.notes ? (
+                    <div className="rounded-md border border-border p-3.5 bg-muted/20">
+                      <p className="text-body text-foreground whitespace-pre-wrap">{contact.notes}</p>
+                    </div>
+                  ) : (
+                    <p className="text-body text-muted-foreground">Keine Notizen vorhanden.</p>
+                  )}
+                </TabsContent>
+              </div>
+            </Tabs>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-muted/10 shrink-0">
+              <span className="text-caption text-muted-foreground">
+                {contact.updated_at ? `Aktualisiert: ${new Date(contact.updated_at).toLocaleDateString("de-DE")}` : ""}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} className="gap-1.5">
+                  <Edit2 className="h-3.5 w-3.5" /> Bearbeiten
+                </Button>
+                <Button size="sm" onClick={() => navigate(`/contacts/${contact.id}`)} className="gap-1.5">
+                  Auf Seite öffnen <ExternalLink className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          </>
         )}
       </SheetContent>
-
-      {contactId && (
-        <FundingDialog
-          open={fundingDialogOpen}
-          onOpenChange={setFundingDialogOpen}
-          initialContactId={contactId}
-        />
-      )}
     </Sheet>
+  );
+}
+
+function formatActivityType(type: string): string {
+  switch (type) {
+    case "call":
+    case "phone": return "Anruf";
+    case "email":
+    case "mail": return "E-Mail";
+    case "meeting":
+    case "appointment": return "Termin";
+    case "letter":
+    case "brief": return "Brief";
+    case "note": return "Notiz";
+    case "message": return "Nachricht";
+    default: return type.charAt(0).toUpperCase() + type.slice(1);
+  }
+}
+
+interface ContactDataRowProps {
+  icon: ComponentType<{ className?: string }>;
+  value: string;
+  onCopy: () => void;
+}
+
+function ContactDataRow({ icon: Icon, value, onCopy }: ContactDataRowProps) {
+  return (
+    <div className="group flex items-center gap-2.5 px-3 py-2 rounded-md border border-border bg-background hover:bg-muted/40 transition-colors">
+      <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+      <span className="flex-1 truncate text-body text-foreground">{value}</span>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onCopy}
+        className="h-7 px-2 text-caption opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <Copy className="h-3 w-3 mr-1" /> Kopieren
+      </Button>
+    </div>
   );
 }
