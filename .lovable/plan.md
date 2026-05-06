@@ -1,80 +1,59 @@
 ## Ziel
 
-Plattformweiter Wechsel auf **Inter Tight** als UI-Schriftart, mit konsistenter Type-Scale, tabellarischen Ziffern für Listen und einem klaren Hierarchie-System (Section-Label / Title / Body / Caption). Das Ergebnis entspricht dem Look des Screenshots — nicht nur in Kontakten, sondern überall.
+Das Selbsttest-Center bekommt einen **Demo-Modus**: Statt Daten zu erzeugen und sofort wieder zu löschen, kannst du pro Szenario realistische Datensätze in der Datenbank belassen und sie an ihrem normalen Ort im System ansehen (Kalender, Briefing-Widget, Event-Planung). Alle Demo-Datensätze tragen weiterhin das Prefix `[SELFTEST]` und werden über den bestehenden Notfall-Aufräumknopf entfernt.
 
-## Was sich ändert
+## Änderungen im Selbsttest-Center
 
-### 1. Schriftart einbinden (`index.html`)
-- `Arvo` und `Source Sans Pro` aus den Google-Fonts-Links entfernen.
-- Stattdessen **Inter Tight** (variable, Gewichte 300–700) + **JetBrains Mono** (für IDs/Code-Akzente, optional aber sinnvoll) preloaden.
-- `font-display: swap` beibehalten.
+1. **Neuer Button „Demo-Daten erzeugen"** pro Szenario, neben „Ausführen".
+   - Führt dieselben Steps aus wie der Test, aber **überspringt das Cleanup** am Ende.
+   - Zeigt nach Abschluss eine Liste mit Deep-Links zu den erzeugten Datensätzen (z. B. „Termin öffnen", „Briefing ansehen", „Event-Planung öffnen").
+2. **Aufräumen erweitern**: Der Notfall-Button räumt zusätzlich `daily_briefings`, `event_plannings`, `event_planning_*`-Kindtabellen sowie `appointment_preparations` mit `[SELFTEST]`-Prefix auf.
+3. **Ausführen-Button** bleibt unverändert (Test mit Cleanup).
 
-### 2. Tailwind-Tokens (`tailwind.config.ts`)
-```ts
-fontFamily: {
-  sans:     ['"Inter Tight"', 'system-ui', 'sans-serif'],
-  body:     ['"Inter Tight"', 'system-ui', 'sans-serif'],
-  headline: ['"Inter Tight"', 'system-ui', 'sans-serif'], // Display = gleiche Schrift, anderes Gewicht/Tracking
-  mono:     ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
-},
-fontSize: {
-  // Type-Scale mit festem line-height und tracking
-  'label':   ['0.6875rem', { lineHeight: '1rem',    letterSpacing: '0.08em',  fontWeight: '600' }], // 11px UPPERCASE
-  'caption': ['0.75rem',   { lineHeight: '1.1rem',  letterSpacing: '0' }],                          // 12px
-  'body':    ['0.875rem',  { lineHeight: '1.35rem', letterSpacing: '-0.005em' }],                   // 14px
-  'body-lg': ['0.9375rem', { lineHeight: '1.45rem', letterSpacing: '-0.005em' }],                   // 15px
-  'title':   ['1.125rem',  { lineHeight: '1.55rem', letterSpacing: '-0.015em', fontWeight: '500' }], // 18px
-  'h2':      ['1.5rem',    { lineHeight: '1.85rem', letterSpacing: '-0.02em',  fontWeight: '500' }], // 24px
-  'h1':      ['1.875rem',  { lineHeight: '2.25rem', letterSpacing: '-0.025em', fontWeight: '500' }], // 30px
-  'display': ['2.25rem',   { lineHeight: '2.6rem',  letterSpacing: '-0.03em',  fontWeight: '500' }], // 36px
-},
-```
+## Drei neue Szenarien
 
-### 3. Globale Defaults (`src/index.css`)
-- `body { font-family: "Inter Tight", system-ui, sans-serif; font-feature-settings: "cv11", "ss01"; }`
-- `font-variant-numeric: tabular-nums` als Utility-Klasse `.tabular` und automatisch auf `<table>`, `td`, `th`, sowie auf Klassen wie `.list-meta` (Counts, Daten, Stunden).
-- `:root { --font-sans: "Inter Tight"; }` für Komponenten, die CSS-Variablen lesen.
-- Optional: `text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased;`
+### A) Termine eigenständig (`appointment-lifecycle`)
+Erzeugt einen vollständigen Termin, wie er im Kalender erscheint:
+- `appointments` (Titel, Beschreibung, Start/Ende heute +2h, Ort, Kategorie, Priorität, `is_all_day`, optional `is_private`).
+- `appointment_contacts` (1 Kontakt-Verknüpfung, falls vorhanden — sonst übersprungen).
+- `appointment_preparations` mit strukturiertem `preparation_data` (visit_reason, conversation_partners, companions, program, sections) → testet das gesamte Briefing-/Vorbereitungs-System.
+- Optional: `appointment_feedback` mit Bewertung 1–5 und Notizen.
+- Verify: zurücklesen, Felder prüfen.
+- Deep-Link: `/kalender` und `/termine/<id>`.
 
-### 4. Listen-Header-Stil (Screenshot-Look)
-Neue Utility-Klasse `.section-label`:
-```css
-.section-label {
-  font-size: 0.6875rem;       /* 11px */
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: hsl(var(--muted-foreground));
-}
-```
-- In Kontakte-, Vorgänge-, Aufgaben-, Termine-Listen-Headern (`NAME / ROLLE`, `ORGANISATION`, `LETZTE AKTIVITÄT` etc.) anwenden.
-- Breadcrumb-Style oben links („WISSEN · KONTAKTE") nutzt dieselbe Klasse.
+### B) Tages-Briefings (`daily-briefing-lifecycle`)
+- `daily_briefings` für **heute** und **gestern** (zwei Datensätze mit unterschiedlichem Inhalt, damit die Vortag-Regel sichtbar wird).
+- Verify: per RPC/Query prüfen, dass beide für `tenant_id` lesbar sind.
+- Deep-Link: `/` (Dashboard) bzw. Briefing-Widget.
 
-### 5. Page-Title-Komponente angleichen
-- Page-Titel, die heute `font-headline` (Arvo serif) verwenden, auf `text-h1` / `text-h2` mit Inter-Tight-Medium umstellen — keine separate Display-Schrift mehr nötig.
-- Subtitel/Counts neben dem Titel (z. B. „· 14 Personen & Institutionen") in `text-h2 text-muted-foreground font-normal`.
+### C) Event-Planung (`event-planning-lifecycle`)
+- `event_plannings` (Titel, Beschreibung, Ort, `is_digital`, optional digitale Felder).
+- `event_planning_dates` (2 Terminoptionen, eine als `is_confirmed=true`).
+- `event_planning_speakers` (1–2 Redner mit Bio/Topic/Order).
+- `event_planning_contacts` (1 Ansprechpartner mit Rolle).
+- `event_planning_checklist_items` (3–4 Items inkl. eines `type='social_media'` und `type='rsvp'` Punkts → testet Auto-Verlinkung).
+- `event_planning_timeline_assignments` für eine Checkliste.
+- Verify: alle Kindtabellen pro `event_planning_id` zählen und Felder stichprobenartig prüfen.
+- Deep-Link: `/veranstaltungsplanung/<id>`.
 
-### 6. Lexical Editor unangetastet
-- Lexical-Editor-Standard (pt-Einheiten, eigene Schriftarten in Briefen/Dossiers) bleibt **unverändert**, weil dort eigene Typografie-Regeln für Briefe/Dokumente gelten. Nur die UI-Chrome um den Editor wechselt.
+## Technisches
 
-## Technische Details
+- Neue Datei `src/features/selftest/scenarios/appointment-lifecycle.ts`, `daily-briefing-lifecycle.ts`, `event-planning-lifecycle.ts`.
+- Registry erweitern.
+- Runner: neue Option `runScenario(scenario, { …, keepData: true })`. Bei `keepData=true` wird `cleanupCreated` übersprungen und `state.cleanup.status='skipped'` mit Message „Demo-Modus: Daten behalten" gesetzt; zusätzlich wird `state.createdLinks` gefüllt.
+- `TestScenario` erhält optional `links?: (ctx) => Array<{ label; href }>` zum Aufbau der Deep-Links nach erfolgreichem Lauf.
+- `SelftestView`:
+  - Zweiter Button „Demo-Daten erzeugen" (Variant `secondary`) ruft `runScenario` mit `keepData: true` auf.
+  - Nach Abschluss eines Demo-Laufs wird unter den Steps eine Card „Im System ansehen" mit den Links angezeigt (öffnet via `useNavigate`).
+- `purgeAllSelftestData`: Tabellen ergänzen — `appointment_feedback`, `appointment_preparations`, `appointment_contacts`, `event_planning_timeline_assignments`, `event_planning_checklist_items`, `event_planning_contacts`, `event_planning_speakers`, `event_planning_dates`, `event_plannings`, `daily_briefings`. Reihenfolge: Kinder vor Eltern.
+- `CLEANUP_ORDER` im Runner entsprechend ergänzen, damit auch der reguläre Test-Modus die neuen Szenarien sauber abräumen kann.
+- Coverage-Snapshot (`scripts/check-selftest-coverage.mjs` + `__schema-snapshot__/public-tables.json`) um die neuen Tabellen erweitern und in `docs/selftest-coverage.md` dokumentieren.
 
-**Geänderte Dateien:**
-- `index.html` — Font-Tags ersetzen
-- `tailwind.config.ts` — `fontFamily` + `fontSize`-Scale erweitern
-- `src/index.css` — Body-Default, `.section-label`, `.tabular`-Utility, tabular-nums Defaults
-- `mem://style/tailwind-v4-integration` ergänzen oder neue Memory `mem://style/typography-system` mit Type-Scale + Inter-Tight-Regel
+## Sicherheit / RLS
 
-**Backward-Compat:**
-- `font-headline`, `font-body`, `font-sans` zeigen alle auf Inter Tight → keine bestehende Klasse bricht.
-- Alte Größen-Klassen (`text-xl`, `text-2xl` …) funktionieren weiter; die neuen semantischen Klassen (`text-h1`, `text-title`, `text-label`) sind additiv.
+Alle neuen INSERTs setzen `tenant_id`, `created_by`/`user_id` korrekt (analog zu den bestehenden Szenarien) und nutzen die bereits laufende Preflight-Prüfung (Session + aktive Membership). Keine neuen Migrationen nötig.
 
-**QA nach Umsetzung:**
-- Kontakte-Liste, Vorgänge-Master-Detail, My Work, Sidebar-Footer und Auth-Seite visuell prüfen.
-- Tabellen mit Zahlen (Stunden, Counts) auf saubere vertikale Ausrichtung der Ziffern checken.
-- Brief-Editor (Lexical) gegenprüfen, dass die DIN-5008-Briefschrift weiterhin korrekt gerendert wird.
+## Was es **nicht** gibt
 
-## Nicht enthalten (kann später folgen)
-
-- Migration einzelner Komponenten von `text-2xl font-headline` auf `text-h1` — passiert organisch beim nächsten Touch der jeweiligen Datei oder als separater Refactor-Pass.
-- Dark-Mode-spezifische Font-Smoothing-Tweaks.
+- Kein zusätzliches farbiges Badge in Listen (Prefix reicht laut deiner Antwort).
+- Kein Auto-Cleanup-Toggle pro Lauf — bewusst zwei klar unterscheidbare Buttons.
