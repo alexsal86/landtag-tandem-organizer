@@ -28,6 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
+import { getContactAvatarColor } from "@/components/contacts/utils/avatarColors";
 import { ContactEditForm } from "@/features/contacts/components/ContactEditForm";
 
 interface ContactRow {
