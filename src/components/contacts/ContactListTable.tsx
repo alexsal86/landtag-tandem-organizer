@@ -10,6 +10,7 @@ import { Mail, Phone, CalendarDays, User, Star, ChevronUp, ChevronDown, Clock, T
 import { Contact } from "@/hooks/useInfiniteContacts";
 import { getGenderLabel } from "./hooks/useContactsViewState";
 import { getInitials } from "./utils/contactFormatters";
+import { getContactAvatarColor } from "./utils/avatarColors";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
