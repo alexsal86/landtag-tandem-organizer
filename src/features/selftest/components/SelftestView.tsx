@@ -1,9 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, CheckCircle2, XCircle, Clock, SkipForward, Play, Trash2, AlertTriangle } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Clock, SkipForward, Play, Trash2, AlertTriangle, Sparkles, ExternalLink } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
@@ -30,11 +31,43 @@ export function SelftestView() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [runs, setRuns] = useState<Record<string, ScenarioRunState>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [purging, setPurging] = useState(false);
 
   const canRun = !!user && !!currentTenant;
+
+  const handleRun = async (scenarioId: string, keepData: boolean) => {
+    if (!user || !currentTenant) {
+      toast({ title: "Nicht bereit", description: "Login und Tenant erforderlich.", variant: "destructive" });
+      return;
+    }
+    const scenario = SELFTEST_SCENARIOS.find((s) => s.id === scenarioId);
+    if (!scenario) return;
+
+    const confirmMsg = keepData
+      ? `„${scenario.title}" als Demo-Lauf ausführen?\n\nDie erzeugten Datensätze bleiben mit dem Prefix [SELFTEST] im System erhalten und sind in den jeweiligen Bereichen (Kalender, Briefing-Widget, Planungen …) sichtbar. Über den Notfall-Aufräumknopf unten lassen sie sich wieder entfernen.`
+      : `„${scenario.title}" jetzt gegen die echte Datenbank ausführen?\n\nEs werden temporäre Datensätze angelegt und am Ende wieder entfernt.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setBusy(scenarioId);
+    try {
+      const result = await runScenario(scenario, {
+        tenantId: currentTenant.id,
+        userId: user.id,
+        keepData,
+        onUpdate: (state) => setRuns((prev) => ({ ...prev, [scenarioId]: state })),
+      });
+      toast({
+        title: result.status === "ok" ? (keepData ? "Demo-Daten erzeugt" : "Selbsttest erfolgreich") : "Selbsttest mit Fehlern",
+        description: scenario.title,
+        variant: result.status === "ok" ? "default" : "destructive",
+      });
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const handleRun = async (scenarioId: string) => {
     if (!user || !currentTenant) {
