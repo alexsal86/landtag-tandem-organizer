@@ -74,9 +74,6 @@ export function ContactsView() {
         navigate={s.navigate}
         setCreatingDistribution={s.setCreatingDistribution}
         setIsDuplicateSheetOpen={s.setIsDuplicateSheetOpen}
-        selectedContactId={s.selectedContactId}
-        setSelectedContactId={s.setSelectedContactId}
-        refreshContacts={s.refreshContacts}
       />
 
       {/* Main Content */}
