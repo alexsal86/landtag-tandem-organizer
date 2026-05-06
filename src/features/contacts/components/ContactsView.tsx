@@ -188,7 +188,7 @@ export function ContactsView() {
           <BulkActionsToolbar selectedContacts={s.contacts.filter(c => s.selectedContactIds.has(c.id))} onClearSelection={s.clearSelection}
             onActionComplete={() => { s.clearSelection(); s.refreshContacts(); }} allTags={s.allTags} />
 
-          <ContactDetailSheet contactId={s.selectedContactId} isOpen={s.isSheetOpen}
+          <ContactDetailSheet contactId={s.selectedContactId} isOpen={Boolean(s.selectedContactId)}
             onClose={() => { s.setIsSheetOpen(false); s.setSelectedContactId(null); }} onContactUpdate={s.refreshContacts} />
 
           <DuplicateContactsSheet isOpen={s.isDuplicateSheetOpen} onClose={() => s.setIsDuplicateSheetOpen(false)} onDuplicatesResolved={s.refreshContacts} />
