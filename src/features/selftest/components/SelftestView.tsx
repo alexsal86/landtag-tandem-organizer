@@ -1,9 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, CheckCircle2, XCircle, Clock, SkipForward, Play, Trash2, AlertTriangle } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Clock, SkipForward, Play, Trash2, AlertTriangle, Sparkles, ExternalLink } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
@@ -30,13 +31,14 @@ export function SelftestView() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [runs, setRuns] = useState<Record<string, ScenarioRunState>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [purging, setPurging] = useState(false);
 
   const canRun = !!user && !!currentTenant;
 
-  const handleRun = async (scenarioId: string) => {
+  const handleRun = async (scenarioId: string, keepData: boolean) => {
     if (!user || !currentTenant) {
       toast({ title: "Nicht bereit", description: "Login und Tenant erforderlich.", variant: "destructive" });
       return;
@@ -44,19 +46,21 @@ export function SelftestView() {
     const scenario = SELFTEST_SCENARIOS.find((s) => s.id === scenarioId);
     if (!scenario) return;
 
-    if (!window.confirm(`„${scenario.title}" jetzt gegen die echte Datenbank ausführen?\n\nEs werden temporäre Datensätze angelegt und am Ende wieder entfernt.`)) {
-      return;
-    }
+    const confirmMsg = keepData
+      ? `„${scenario.title}" als Demo-Lauf ausführen?\n\nDie erzeugten Datensätze bleiben mit dem Prefix [SELFTEST] im System erhalten und sind in den jeweiligen Bereichen (Kalender, Briefing-Widget, Planungen …) sichtbar. Über den Notfall-Aufräumknopf unten lassen sie sich wieder entfernen.`
+      : `„${scenario.title}" jetzt gegen die echte Datenbank ausführen?\n\nEs werden temporäre Datensätze angelegt und am Ende wieder entfernt.`;
+    if (!window.confirm(confirmMsg)) return;
 
     setBusy(scenarioId);
     try {
       const result = await runScenario(scenario, {
         tenantId: currentTenant.id,
         userId: user.id,
+        keepData,
         onUpdate: (state) => setRuns((prev) => ({ ...prev, [scenarioId]: state })),
       });
       toast({
-        title: result.status === "ok" ? "Selbsttest erfolgreich" : "Selbsttest mit Fehlern",
+        title: result.status === "ok" ? (keepData ? "Demo-Daten erzeugt" : "Selbsttest erfolgreich") : "Selbsttest mit Fehlern",
         description: scenario.title,
         variant: result.status === "ok" ? "default" : "destructive",
       });
@@ -64,6 +68,7 @@ export function SelftestView() {
       setBusy(null);
     }
   };
+
 
   const handlePurge = async () => {
     if (!currentTenant) return;
@@ -119,10 +124,16 @@ export function SelftestView() {
                     </div>
                     <CardDescription className="mt-2">{scenario.description}</CardDescription>
                   </div>
-                  <Button onClick={() => handleRun(scenario.id)} disabled={!canRun || isRunning}>
-                    {isRunning ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
-                    Ausführen
-                  </Button>
+                  <div className="flex flex-col gap-2 shrink-0">
+                    <Button onClick={() => handleRun(scenario.id, false)} disabled={!canRun || isRunning}>
+                      {isRunning ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+                      Ausführen
+                    </Button>
+                    <Button variant="secondary" onClick={() => handleRun(scenario.id, true)} disabled={!canRun || isRunning}>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Demo-Daten erzeugen
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               {state && (
@@ -157,6 +168,19 @@ export function SelftestView() {
                       </div>
                     </li>
                   </ol>
+                  {state.links && state.links.length > 0 && (
+                    <div className="mt-4 p-3 rounded-md border border-primary/30 bg-primary/5">
+                      <div className="text-label text-primary mb-2">Im System ansehen</div>
+                      <div className="flex flex-wrap gap-2">
+                        {state.links.map((l) => (
+                          <Button key={l.href} variant="outline" size="sm" onClick={() => navigate(l.href)}>
+                            <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                            {l.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               )}
             </Card>
@@ -168,7 +192,7 @@ export function SelftestView() {
         <CardHeader>
           <CardTitle className="text-base">Notfall: Test-Daten aufräumen</CardTitle>
           <CardDescription>
-            Löscht alle Datensätze mit dem Prefix <code>[SELFTEST]</code> im aktuellen Tenant aus den Tabellen meetings, appointments, meeting_agenda_items, meeting_agenda_documents, tasks, letters, letter_attachments, case_items, case_item_interactions und task_decisions.
+            Löscht alle Datensätze mit dem Prefix <code>[SELFTEST]</code> im aktuellen Tenant aus meetings, appointments, appointment_preparations, appointment_feedback, meeting_agenda_items, meeting_agenda_documents, tasks, letters, letter_attachments, case_items, case_item_interactions, task_decisions, daily_briefings sowie event_plannings inkl. allen Kindtabellen.
           </CardDescription>
         </CardHeader>
         <CardContent>

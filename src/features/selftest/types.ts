@@ -39,6 +39,8 @@ export interface TestScenario {
   features: string[];
   /** Spalten-Coverage pro Tabelle — vom Coverage-Script ausgewertet. */
   writes?: Array<{ table: string; columns: string[] }>;
+  /** Optional: Deep-Links nach erfolgreichem Lauf (Demo-Modus zeigt sie an). */
+  links?: (ctx: TestContext) => Array<{ label: string; href: string }>;
   steps: TestStep[];
 }
 
@@ -57,4 +59,6 @@ export interface ScenarioRunState {
   startedAt?: number;
   finishedAt?: number;
   cleanup: { status: StepStatus; message?: string; remaining?: CreatedRecord[] };
+  /** Im Demo-Modus gefüllt: Deep-Links zu den erzeugten Datensätzen. */
+  links?: Array<{ label: string; href: string }>;
 }
