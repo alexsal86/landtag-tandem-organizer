@@ -79,6 +79,8 @@ export interface RunOptions {
   tenantId: string;
   userId: string;
   onUpdate: (state: ScenarioRunState) => void;
+  /** Wenn true: Cleanup wird übersprungen, Daten bleiben sichtbar im System. */
+  keepData?: boolean;
 }
 
 async function runPreflight(
@@ -186,16 +188,30 @@ export async function runScenario(
       emit();
     }
   } finally {
-    state.cleanup.status = "running";
-    emit();
-    const cleanupResult = await cleanupCreated(ctx.created);
-    state.cleanup.status = cleanupResult.ok ? "ok" : "failed";
-    state.cleanup.message = cleanupResult.message;
-    state.cleanup.remaining = cleanupResult.remaining;
+    if (options.keepData) {
+      state.cleanup.status = "skipped";
+      state.cleanup.message = `Demo-Modus: ${ctx.created.length} Datensätze behalten. Notfall-Aufräumknopf entfernt sie wieder.`;
+    } else {
+      state.cleanup.status = "running";
+      emit();
+      const cleanupResult = await cleanupCreated(ctx.created);
+      state.cleanup.status = cleanupResult.ok ? "ok" : "failed";
+      state.cleanup.message = cleanupResult.message;
+      state.cleanup.remaining = cleanupResult.remaining;
+    }
 
     state.finishedAt = Date.now();
-    const allOk = state.steps.every((s) => s.status === "ok") && state.cleanup.status === "ok";
-    state.status = allOk ? "ok" : "failed";
+    const stepsOk = state.steps.every((s) => s.status === "ok");
+    const cleanupOk = state.cleanup.status === "ok" || state.cleanup.status === "skipped";
+    state.status = stepsOk && cleanupOk ? "ok" : "failed";
+
+    if (options.keepData && stepsOk && scenario.links) {
+      try {
+        state.links = scenario.links(ctx);
+      } catch {
+        state.links = [];
+      }
+    }
     emit();
   }
 
@@ -218,8 +234,15 @@ export async function purgeAllSelftestData(tenantId: string): Promise<{
     { name: "tasks", column: "title", hasTenant: true },
     { name: "meeting_agenda_documents", column: "file_name", hasTenant: false },
     { name: "meeting_agenda_items", column: "title", hasTenant: false },
+    { name: "appointment_feedback", column: "notes", hasTenant: true },
+    { name: "appointment_preparations", column: "title", hasTenant: true },
     { name: "appointments", column: "title", hasTenant: true },
     { name: "meetings", column: "title", hasTenant: true },
+    { name: "event_planning_checklist_items", column: "title", hasTenant: false },
+    { name: "event_planning_speakers", column: "name", hasTenant: false },
+    { name: "event_planning_contacts", column: "name", hasTenant: false },
+    { name: "event_plannings", column: "title", hasTenant: true },
+    { name: "daily_briefings", column: "title", hasTenant: true },
   ];
 
   for (const t of tables) {
