@@ -369,7 +369,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
               <div className="flex items-start gap-4">
                 <Avatar className="h-14 w-14">
                   <AvatarImage src={contact.avatar_url ?? undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                  <AvatarFallback className={`${getContactAvatarColor(contact.id || contact.name)} font-semibold`}>
                     {getInitials(contact.name)}
                   </AvatarFallback>
                 </Avatar>

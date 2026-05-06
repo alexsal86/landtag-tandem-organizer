@@ -195,7 +195,7 @@ export function ContactListTable({
                   <div className="relative inline-block">
                     <Avatar className="h-7 w-7">
                       <AvatarImage src={contact.avatar_url ?? undefined} />
-                      <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">{getInitials(contact.name)}</AvatarFallback>
+                      <AvatarFallback className={`${getContactAvatarColor(contact.id || contact.name)} text-[10px]`}>{getInitials(contact.name)}</AvatarFallback>
                     </Avatar>
                     <button
                       onClick={(e) => { e.stopPropagation(); onToggleFavorite(contact.id, !contact.is_favorite); }}
