@@ -69,34 +69,6 @@ export function SelftestView() {
     }
   };
 
-  const handleRun = async (scenarioId: string) => {
-    if (!user || !currentTenant) {
-      toast({ title: "Nicht bereit", description: "Login und Tenant erforderlich.", variant: "destructive" });
-      return;
-    }
-    const scenario = SELFTEST_SCENARIOS.find((s) => s.id === scenarioId);
-    if (!scenario) return;
-
-    if (!window.confirm(`„${scenario.title}" jetzt gegen die echte Datenbank ausführen?\n\nEs werden temporäre Datensätze angelegt und am Ende wieder entfernt.`)) {
-      return;
-    }
-
-    setBusy(scenarioId);
-    try {
-      const result = await runScenario(scenario, {
-        tenantId: currentTenant.id,
-        userId: user.id,
-        onUpdate: (state) => setRuns((prev) => ({ ...prev, [scenarioId]: state })),
-      });
-      toast({
-        title: result.status === "ok" ? "Selbsttest erfolgreich" : "Selbsttest mit Fehlern",
-        description: scenario.title,
-        variant: result.status === "ok" ? "default" : "destructive",
-      });
-    } finally {
-      setBusy(null);
-    }
-  };
 
   const handlePurge = async () => {
     if (!currentTenant) return;
@@ -152,10 +124,16 @@ export function SelftestView() {
                     </div>
                     <CardDescription className="mt-2">{scenario.description}</CardDescription>
                   </div>
-                  <Button onClick={() => handleRun(scenario.id)} disabled={!canRun || isRunning}>
-                    {isRunning ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
-                    Ausführen
-                  </Button>
+                  <div className="flex flex-col gap-2 shrink-0">
+                    <Button onClick={() => handleRun(scenario.id, false)} disabled={!canRun || isRunning}>
+                      {isRunning ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+                      Ausführen
+                    </Button>
+                    <Button variant="secondary" onClick={() => handleRun(scenario.id, true)} disabled={!canRun || isRunning}>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Demo-Daten erzeugen
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               {state && (
