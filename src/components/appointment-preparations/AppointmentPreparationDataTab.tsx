@@ -47,7 +47,18 @@ export function AppointmentPreparationDataTab({
   appointmentDetails,
   onUpdate,
   onOpenAppointmentDetails,
+  visibleSections,
 }: AppointmentPreparationDataTabProps) {
+  const sectionSet = visibleSections?.sections
+    ? new Set(visibleSections.sections)
+    : null;
+  const showSection = (key: string) => !sectionSet || sectionSet.has(key as never);
+  const showFacts = visibleSections?.showFacts ?? true;
+  const showTalkingPoints = visibleSections?.showTalkingPoints ?? true;
+  const showQa = visibleSections?.showQa ?? true;
+  const showInhalteRahmen = visibleSections?.showInhalteRahmen ?? true;
+  const showInhalteHeaderCards = visibleSections?.showInhalteHeaderCards ?? true;
+  const showInhaltePanel = showSection('inhalte') && (showFacts || showTalkingPoints || showQa || showInhalteRahmen || showInhalteHeaderCards);
   const extendedPreparation = preparation as ExtendedAppointmentPreparation;
   const preparationDataWithDefaults = getPreparationDataWithDefaults(preparation.preparation_data);
 
@@ -428,7 +439,7 @@ export function AppointmentPreparationDataTab({
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Linke Spalte */}
         <div className="space-y-4">
-          {/* Anlass des Besuchs */}
+          {showSection('anlass') && (
           <Card>
             <CardContent className="pt-6">
               <Collapsible open={expandedSections.anlass} onOpenChange={() => toggleSection('anlass')}>
@@ -473,7 +484,9 @@ export function AppointmentPreparationDataTab({
               </Collapsible>
             </CardContent>
           </Card>
+          )}
 
+          {showSection('gespraechspartner') && (
           <ConversationPartnersCard
             conversationPartners={conversationPartners}
             contacts={contacts}
@@ -495,7 +508,9 @@ export function AppointmentPreparationDataTab({
             onPartnerSearchChange={(partnerId, value) => setPartnerSearchTexts((prev) => ({ ...prev, [partnerId]: value }))}
             onFieldChange={handleFieldChange}
           />
+          )}
 
+          {showSection('begleitpersonen') && (
           <CompanionsCard
             companions={companions}
             expandedSection={expandedSections.begleitpersonen}
@@ -504,8 +519,9 @@ export function AppointmentPreparationDataTab({
             onUpdate={updateCompanion}
             onRemove={removeCompanion}
           />
+          )}
 
-          {/* Logistik */}
+          {showSection('logistik') && (
           <Card>
             <CardContent className="pt-6">
               <Collapsible open={expandedSections.logistik} onOpenChange={() => toggleSection('logistik')}>
@@ -547,8 +563,9 @@ export function AppointmentPreparationDataTab({
               </Collapsible>
             </CardContent>
           </Card>
+          )}
 
-          {/* Öffentlichkeitsarbeit */}
+          {showSection('oeffentlichkeit') && (
           <Card>
             <CardContent className="pt-6">
               <div className="space-y-4">
@@ -578,10 +595,12 @@ export function AppointmentPreparationDataTab({
               </div>
             </CardContent>
           </Card>
+          )}
         </div>
 
         {/* Rechte Spalte */}
         <div className="space-y-4">
+          {showSection('programm') && (
           <ProgramCard
             programRows={programRows}
             expandedSection={expandedSections.programm}
@@ -590,7 +609,9 @@ export function AppointmentPreparationDataTab({
             onUpdate={updateProgramRow}
             onRemove={removeProgramRow}
           />
+          )}
 
+          {showInhaltePanel && (
           <PreparationDataCards
             qaPairs={qaPairs}
             keyTopicItems={keyTopicItems}
@@ -611,7 +632,13 @@ export function AppointmentPreparationDataTab({
             onRemoveTalkingPointItem={removeTalkingPointItem}
             onTalkingPointKeyDown={handleTalkingPointKeyDown}
             onReorderTalkingPoints={reorderTalkingPoints}
+            showFacts={showFacts}
+            showTalkingPoints={showTalkingPoints}
+            showQa={showQa}
+            showInhalteHeaderCards={showInhalteHeaderCards}
+            showInhalteRahmen={showInhalteRahmen}
           />
+          )}
         </div>
 
       </div>

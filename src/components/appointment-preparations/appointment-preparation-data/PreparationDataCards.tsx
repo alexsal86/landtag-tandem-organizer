@@ -31,6 +31,11 @@ interface PreparationDataCardsProps {
   onRemoveTalkingPointItem: (idx: number) => void;
   onTalkingPointKeyDown: (e: KeyboardEvent<HTMLInputElement>, idx: number) => void;
   onReorderTalkingPoints?: (fromIdx: number, toIdx: number) => void;
+  showFacts?: boolean;
+  showTalkingPoints?: boolean;
+  showQa?: boolean;
+  showInhalteHeaderCards?: boolean;
+  showInhalteRahmen?: boolean;
 }
 
 function PreparationSection({
@@ -160,15 +165,22 @@ export function PreparationDataCards({
   onRemoveTalkingPointItem,
   onTalkingPointKeyDown,
   onReorderTalkingPoints,
+  showFacts = true,
+  showTalkingPoints = true,
+  showQa = true,
+  showInhalteHeaderCards = true,
+  showInhalteRahmen = true,
 }: PreparationDataCardsProps) {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const allEmpty = Object.values(FIELD_SECTIONS).every((section) =>
     section.fields.every((field) => !editData[field.key]),
   );
 
+  const showInhalteCard = showInhalteHeaderCards || showFacts || showTalkingPoints || showQa;
+
   return (
     <>
-      {/* Inhalte & Kommunikation */}
+      {showInhalteCard && (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -177,22 +189,26 @@ export function PreparationDataCards({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <PreparationSection
-            sectionKey="basics"
-            editData={editData}
-            expandedSections={expandedSections}
-            onToggleSection={onToggleSection}
-            onFieldChange={onFieldChange}
-          />
-          <PreparationSection
-            sectionKey="communication"
-            editData={editData}
-            expandedSections={expandedSections}
-            onToggleSection={onToggleSection}
-            onFieldChange={onFieldChange}
-          />
+          {showInhalteHeaderCards && (
+            <>
+              <PreparationSection
+                sectionKey="basics"
+                editData={editData}
+                expandedSections={expandedSections}
+                onToggleSection={onToggleSection}
+                onFieldChange={onFieldChange}
+              />
+              <PreparationSection
+                sectionKey="communication"
+                editData={editData}
+                expandedSections={expandedSections}
+                onToggleSection={onToggleSection}
+                onFieldChange={onFieldChange}
+              />
+            </>
+          )}
 
-          {/* Wichtige Themen */}
+          {showFacts && (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <h4 className="text-sm font-medium">Wichtige Themen</h4>
@@ -233,8 +249,9 @@ export function PreparationDataCards({
               Thema hinzufügen
             </Button>
           </div>
+          )}
 
-          {/* Ergänzende Gesprächspunkte */}
+          {showTalkingPoints && (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <h4 className="text-sm font-medium">Ergänzende Gesprächspunkte</h4>
@@ -294,8 +311,9 @@ export function PreparationDataCards({
               Gesprächspunkt hinzufügen
             </Button>
           </div>
+          )}
 
-          {/* Fragen & Antworten */}
+          {showQa && (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <h4 className="text-sm font-medium">Fragen & Antworten</h4>
@@ -342,10 +360,12 @@ export function PreparationDataCards({
               Frage hinzufügen
             </Button>
           </div>
+          )}
         </CardContent>
       </Card>
+      )}
 
-      {/* Personen, Unterlagen & Rahmen */}
+      {showInhalteRahmen && (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -384,6 +404,7 @@ export function PreparationDataCards({
           )}
         </CardContent>
       </Card>
+      )}
     </>
   );
 }

@@ -36,11 +36,30 @@ export interface AppointmentPreparationTabAppointmentDetails {
   priority?: string | null;
 }
 
+export type PreparationSectionKey =
+  | 'anlass'
+  | 'gespraechspartner'
+  | 'begleitpersonen'
+  | 'logistik'
+  | 'oeffentlichkeit'
+  | 'programm'
+  | 'inhalte';
+
+export interface PreparationVisibleSections {
+  sections?: PreparationSectionKey[];
+  showFacts?: boolean;
+  showTalkingPoints?: boolean;
+  showQa?: boolean;
+  showInhalteRahmen?: boolean;
+  showInhalteHeaderCards?: boolean;
+}
+
 export interface AppointmentPreparationDataTabProps {
   preparation: AppointmentPreparation;
   appointmentDetails: AppointmentPreparationTabAppointmentDetails | null;
   onUpdate: (updates: Partial<AppointmentPreparation>) => Promise<void>;
   onOpenAppointmentDetails?: () => void;
+  visibleSections?: PreparationVisibleSections;
 }
 
 export type ExpandedSections = {
