@@ -404,3 +404,75 @@ export default function AppointmentPreparationDetail() {
     </div>
   );
 }
+
+interface WorkflowWorkspaceProps {
+  preparation: NonNullable<ReturnType<typeof useAppointmentPreparation>['preparation']>;
+  appointmentInfo: AppointmentPreparationAppointmentDetails | null;
+  updatePreparation: (updates: Parameters<ReturnType<typeof useAppointmentPreparation>['updatePreparation']>[0]) => Promise<void>;
+  onOpenAppointmentDetails: () => void;
+  selectedPhase: PhaseId | null;
+  setSelectedPhase: (id: PhaseId | null) => void;
+  onShowBriefing: () => void;
+}
+
+function WorkflowWorkspace({
+  preparation,
+  appointmentInfo,
+  updatePreparation,
+  onOpenAppointmentDetails,
+  selectedPhase,
+  setSelectedPhase,
+  onShowBriefing,
+}: WorkflowWorkspaceProps) {
+  const { phases, activePhase, blockers } = usePhaseStatus(preparation, selectedPhase);
+  const currentIdx = phases.findIndex((p) => p.id === activePhase);
+  const nextPhase = phases[currentIdx + 1];
+
+  return (
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 mt-4">
+      <div className="lg:col-span-3 lg:sticky lg:top-4 lg:self-start">
+        <PhaseSidebar
+          phases={phases}
+          activePhase={activePhase}
+          onSelect={(id) => setSelectedPhase(id)}
+          blockers={blockers}
+        />
+      </div>
+
+      <div className="lg:col-span-6">
+        <PhaseContent
+          phase={activePhase}
+          preparation={preparation}
+          appointmentDetails={appointmentInfo}
+          onUpdate={updatePreparation}
+          onOpenAppointmentDetails={onOpenAppointmentDetails}
+        />
+        {nextPhase && (
+          <div className="mt-6 flex justify-end">
+            <Button variant="default" size="sm" onClick={() => setSelectedPhase(nextPhase.id)}>
+              Phase abschließen
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
+
+      <div className="hidden lg:block lg:col-span-3 lg:sticky lg:top-4 lg:self-start">
+        <LiveBriefingPane
+          preparation={preparation}
+          appointmentInfo={appointmentInfo ? {
+            title: appointmentInfo.title,
+            start_time: appointmentInfo.start_time,
+            end_time: appointmentInfo.end_time,
+            location: appointmentInfo.location ?? null,
+          } : null}
+        />
+        <div className="mt-3 text-right">
+          <Button variant="ghost" size="sm" onClick={onShowBriefing}>
+            Vollbild-Briefing →
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
