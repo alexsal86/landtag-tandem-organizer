@@ -105,7 +105,16 @@ export function PhaseContent({ phase, preparation, appointmentDetails, onUpdate,
       )}
 
       {phase === "freigabe" && (
-        <AppointmentPreparationDetailsTab preparation={preparation} onUpdate={onUpdate} />
+        <>
+          <AppointmentPreparationDataTab
+            preparation={preparation}
+            appointmentDetails={appointmentDetails}
+            onUpdate={onUpdate}
+            onOpenAppointmentDetails={onOpenAppointmentDetails}
+            visibleSections={PHASE_VISIBILITY.freigabe}
+          />
+          <AppointmentPreparationDetailsTab preparation={preparation} onUpdate={onUpdate} />
+        </>
       )}
 
       {phase === "nachbereitung" && (
