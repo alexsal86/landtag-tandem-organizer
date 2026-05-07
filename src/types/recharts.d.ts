@@ -90,6 +90,8 @@ declare module 'recharts' {
   export interface TooltipProps extends import('react').Attributes {
     children?: ReactNode;
     className?: string;
+    content?: ReactNode;
+    cursor?: boolean | object;
     formatter?: (
       value: unknown,
       name: unknown,
