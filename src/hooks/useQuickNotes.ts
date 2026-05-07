@@ -17,10 +17,11 @@ import {
   hasInactiveMeetingLink,
   normalizeMeetingLink,
 } from "./quickNotes/utils";
+import type { GroupedNotes } from "./quickNotes/types";
 
 // Re-exports for backwards compatibility
 export { noteColors, stripHtml, toEditorHtml, getCardBackground };
-export type { GroupedNotes } from "./quickNotes/types";
+export type { GroupedNotes };
 
 export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: string) {
   const { user } = useAuth();
