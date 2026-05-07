@@ -163,6 +163,46 @@ const canAccessAdminArea = (state, sessionToken) => {
   return false;
 };
 
+const createLetter = (state, sessionToken, payload) => {
+  const { tenantId } = requireTenant(state, sessionToken);
+  const entries = state.lettersByTenant.get(tenantId) ?? [];
+  const withoutFixture = entries.filter((l) => l.id !== payload.id);
+  const created = { ...payload, tenantId };
+  state.lettersByTenant.set(tenantId, [...withoutFixture, created]);
+  return created;
+};
+
+const transitionLetterStatus = (state, sessionToken, letterId, nextStatus) => {
+  const { tenantId } = requireTenant(state, sessionToken);
+  const allowed = {
+    draft: ['review'],
+    review: ['approved', 'draft'],
+    approved: ['sent'],
+    sent: [],
+  };
+  const letters = state.lettersByTenant.get(tenantId) ?? [];
+  const letter = letters.find((l) => l.id === letterId);
+  if (!letter) throw new Error('Brief nicht gefunden');
+  if (!allowed[letter.status]?.includes(nextStatus)) {
+    throw new Error(`Unzulässiger Statuswechsel ${letter.status} -> ${nextStatus}`);
+  }
+  letter.status = nextStatus;
+  return letter;
+};
+
+const pushNotification = (state, userId, payload) => {
+  const list = state.notificationsByUser.get(userId) ?? [];
+  list.push({ ...payload, read: false });
+  state.notificationsByUser.set(userId, list);
+};
+
+const markAllNotificationsRead = (state, userId) => {
+  const list = state.notificationsByUser.get(userId) ?? [];
+  list.forEach((n) => { n.read = true; });
+  state.notificationsByUser.set(userId, list);
+  return list.filter((n) => !n.read).length;
+};
+
 const run = () => {
   const state = createState();
 
