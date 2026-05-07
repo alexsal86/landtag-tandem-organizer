@@ -26,6 +26,7 @@ import {
   Briefcase
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { STALE_TIME } from "@/lib/query-cache";
 import { useTenant } from "@/hooks/useTenant";
 import { useAuth } from "@/hooks/useAuth";
 // debounce no longer needed - using direct state updates
@@ -145,6 +146,8 @@ export function GlobalSearchCommand() {
   // Get popular searches
   const { data: popularSearches } = useQuery({
     queryKey: ['popular-searches', currentTenant?.id],
+    staleTime: STALE_TIME.LIST,
+    gcTime: STALE_TIME.LIST * 2,
     queryFn: async () => {
       if (!currentTenant?.id) return [];
       const { data } = await supabase
@@ -174,6 +177,8 @@ export function GlobalSearchCommand() {
   // Search queries with fuzzy search - all use debouncedQuery to prevent firing on every keystroke
   const { data: contacts, isLoading: contactsLoading } = useQuery({
     queryKey: ['global-search-contacts', debouncedQuery, currentTenant?.id, filters],
+    staleTime: STALE_TIME.LIST,
+    gcTime: STALE_TIME.LIST * 2,
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return [];
       let query = supabase
@@ -196,6 +201,8 @@ export function GlobalSearchCommand() {
 
   const { data: appointments, isLoading: appointmentsLoading } = useQuery({
     queryKey: ['global-search-appointments', debouncedQuery, currentTenant?.id, filters],
+    staleTime: STALE_TIME.LIST,
+    gcTime: STALE_TIME.LIST * 2,
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return [];
       let query = supabase
@@ -225,6 +232,8 @@ export function GlobalSearchCommand() {
 
   const { data: tasks, isLoading: tasksLoading } = useQuery({
     queryKey: ['global-search-tasks', debouncedQuery, currentTenant?.id, filters],
+    staleTime: STALE_TIME.LIST,
+    gcTime: STALE_TIME.LIST * 2,
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return [];
       let query = supabase
@@ -256,6 +265,8 @@ export function GlobalSearchCommand() {
 
   const { data: documents, isLoading: documentsLoading } = useQuery({
     queryKey: ['global-search-documents', debouncedQuery, currentTenant?.id, filters],
+    staleTime: STALE_TIME.LIST,
+    gcTime: STALE_TIME.LIST * 2,
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return [];
       let query = supabase
@@ -281,6 +292,8 @@ export function GlobalSearchCommand() {
 
   const { data: letters, isLoading: lettersLoading } = useQuery({
     queryKey: ['global-search-letters', debouncedQuery, currentTenant?.id],
+    staleTime: STALE_TIME.LIST,
+    gcTime: STALE_TIME.LIST * 2,
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return [];
       const { data } = await supabase
@@ -297,6 +310,8 @@ export function GlobalSearchCommand() {
 
   const { data: protocols, isLoading: protocolsLoading } = useQuery({
     queryKey: ['global-search-protocols', debouncedQuery, currentTenant?.id],
+    staleTime: STALE_TIME.LIST,
+    gcTime: STALE_TIME.LIST * 2,
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return [];
       const { data } = await supabase
@@ -313,6 +328,8 @@ export function GlobalSearchCommand() {
 
   const { data: caseFiles, isLoading: caseFilesLoading } = useQuery({
     queryKey: ['global-search-casefiles', debouncedQuery, currentTenant?.id],
+    staleTime: STALE_TIME.LIST,
+    gcTime: STALE_TIME.LIST * 2,
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return [];
       const { data } = await supabase
@@ -330,6 +347,8 @@ export function GlobalSearchCommand() {
   // Search archived tasks
   const { data: archivedTasks, isLoading: archivedTasksLoading } = useQuery({
     queryKey: ['global-search-archived-tasks', debouncedQuery, currentTenant?.id],
+    staleTime: STALE_TIME.LIST,
+    gcTime: STALE_TIME.LIST * 2,
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return [];
       const { data } = await supabase
@@ -346,6 +365,8 @@ export function GlobalSearchCommand() {
 
   const { data: decisions, isLoading: decisionsLoading } = useQuery({
     queryKey: ['global-search-decisions', debouncedQuery, currentTenant?.id],
+    staleTime: STALE_TIME.LIST,
+    gcTime: STALE_TIME.LIST * 2,
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return [];
       const { data } = await supabase
@@ -362,6 +383,8 @@ export function GlobalSearchCommand() {
 
   const { data: plannings, isLoading: planningsLoading } = useQuery({
     queryKey: ['global-search-plannings', debouncedQuery, currentTenant?.id],
+    staleTime: STALE_TIME.LIST,
+    gcTime: STALE_TIME.LIST * 2,
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return [];
       const { data } = await supabase
