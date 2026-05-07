@@ -50,6 +50,7 @@ export default function AppointmentPreparationDetail() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [showAppointmentSidebar, setShowAppointmentSidebar] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [responsiblePerson, setResponsiblePerson] = useState<{ display_name: string | null; avatar_url: string | null } | null>(null);
 
   const appointmentId = searchParams.get('appointmentId');
   const title = searchParams.get('title');
