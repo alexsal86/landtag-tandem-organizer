@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { SheetShell } from '@/ui/SheetShell';
 import { useToast } from '@/ui/Toast';
 import { ensurePermission } from '@/lib/permissions';
+import { enqueue, flushOutbox } from '@/lib/offlineOutbox';
 
 export function VoiceNoteSheet({
   visible, onClose, userId,
