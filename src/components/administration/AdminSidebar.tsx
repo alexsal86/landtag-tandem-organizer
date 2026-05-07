@@ -83,6 +83,8 @@ export const adminMenuItems: AdminMenuItem[] = [
       { id: "general", label: "Allgemein", icon: Settings },
       { id: "expense", label: "Verwaltung", icon: CreditCard },
       { id: "auditlogs", label: "Audit-Logs", icon: History },
+      { id: "security-cockpit", label: "Security-Cockpit", icon: ShieldAlert, superAdminOnly: true },
+      { id: "gdpr", label: "DSGVO-Anfragen", icon: Shield },
       { id: "performance", label: "Performance", icon: Activity, superAdminOnly: true },
       { id: "selftest", label: "Selbsttest", icon: ClipboardCheck },
     ],

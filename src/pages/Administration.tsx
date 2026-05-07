@@ -60,6 +60,8 @@ import { OfficeSocialMediaSettings } from "@/components/administration/OfficeSoc
 import { CelebrationSettingsCard } from "@/components/administration/CelebrationSettingsCard";
 import { SelftestView } from "@/features/selftest/components/SelftestView";
 import { PerformanceDashboard } from "@/components/administration/PerformanceDashboard";
+import { SecurityCockpit } from "@/components/administration/SecurityCockpit";
+import { GdprRequestsManager } from "@/components/administration/GdprRequestsManager";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -248,6 +250,10 @@ export default function Administration(): React.JSX.Element | null {
           return <UserRolesManager />;
         case "tenants": return <SuperadminTenantManagement />;
         case "auditlogs": return <AuditLogViewer />;
+        case "security-cockpit":
+          if (!isSuperAdmin) return null;
+          return <SecurityCockpit />;
+        case "gdpr": return <GdprRequestsManager />;
         case "performance":
           if (!isSuperAdmin) return null;
           return <PerformanceDashboard />;
