@@ -10,11 +10,12 @@ import type { FactRow, FactInput } from "../types";
 interface Props {
   fact: FactRow | null;
   dossiers: Array<{ id: string; title: string }>;
+  defaultContactId?: string | null;
   onClose: () => void;
   onSave: (input: FactInput) => Promise<void>;
 }
 
-export function FactEditDialog({ fact, dossiers, onClose, onSave }: Props) {
+export function FactEditDialog({ fact, dossiers, defaultContactId, onClose, onSave }: Props) {
   const [text, setText] = useState("");
   const [source, setSource] = useState("");
   const [tagsInput, setTagsInput] = useState("");
@@ -40,6 +41,7 @@ export function FactEditDialog({ fact, dossiers, onClose, onSave }: Props) {
         source: source.trim() || null,
         tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
         dossier_id: dossierId === "none" ? null : dossierId,
+        contact_id: fact?.contact_id ?? defaultContactId ?? null,
         valid_until: validUntil || null,
       });
     } finally {
