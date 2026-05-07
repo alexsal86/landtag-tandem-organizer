@@ -57,7 +57,7 @@ export function MyWorkView() {
     feedbackFeedCoreRolesOnly,
   });
 
-  const { badgeDisplayMode } = useMyWorkSettings();
+
   const { newCounts, markTabAsVisited, refreshCounts } = useMyWorkNewCounts();
 
   useEffect(() => {
