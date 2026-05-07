@@ -349,6 +349,12 @@ export function MyWorkTimeTrackingTab() {
 
   return (
     <div className="space-y-6">
+      <Tabs defaultValue="erfassen" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="erfassen">Erfassen</TabsTrigger>
+          <TabsTrigger value="auswertung">Auswertung</TabsTrigger>
+        </TabsList>
+        <TabsContent value="auswertung" className="mt-0 space-y-6">
       {/* Wochenübersicht */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
