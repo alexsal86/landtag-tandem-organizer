@@ -40,7 +40,7 @@ export function MyWorkTasksToolbar({
       <div className="flex items-center justify-between px-4 py-2 border-b">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">Aufgaben</span>
-          <Badge variant="outline">{totalTasks}</Badge>
+          {totalTasks > 0 && <span className="text-xs text-muted-foreground tabular-nums">{totalTasks}</span>}
         </div>
         <div className="flex items-center gap-2">
           <Select value={statusFilter} onValueChange={onStatusFilterChange}>
