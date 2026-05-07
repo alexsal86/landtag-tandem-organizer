@@ -181,7 +181,6 @@ export function PreparationDataCards({
   return (
     <>
       {showInhalteCard && (
-      /* Inhalte & Kommunikation */
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -190,20 +189,24 @@ export function PreparationDataCards({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <PreparationSection
-            sectionKey="basics"
-            editData={editData}
-            expandedSections={expandedSections}
-            onToggleSection={onToggleSection}
-            onFieldChange={onFieldChange}
-          />
-          <PreparationSection
-            sectionKey="communication"
-            editData={editData}
-            expandedSections={expandedSections}
-            onToggleSection={onToggleSection}
-            onFieldChange={onFieldChange}
-          />
+          {showInhalteHeaderCards && (
+            <>
+              <PreparationSection
+                sectionKey="basics"
+                editData={editData}
+                expandedSections={expandedSections}
+                onToggleSection={onToggleSection}
+                onFieldChange={onFieldChange}
+              />
+              <PreparationSection
+                sectionKey="communication"
+                editData={editData}
+                expandedSections={expandedSections}
+                onToggleSection={onToggleSection}
+                onFieldChange={onFieldChange}
+              />
+            </>
+          )}
 
           {/* Wichtige Themen */}
           <div className="space-y-3">
