@@ -349,9 +349,12 @@ export default function AppointmentPreparationDetail() {
                     Live-Briefing
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground whitespace-nowrap">
-                  Zuletzt bearbeitet: {new Date(preparation.updated_at).toLocaleString('de-DE')}
-                </p>
+                <div className="flex flex-col items-end gap-0.5">
+                  <AutosaveIndicator status={saveStatus} lastSavedAt={lastSavedAt} />
+                  <p className="text-xs text-muted-foreground whitespace-nowrap">
+                    Zuletzt bearbeitet: {new Date(preparation.updated_at).toLocaleString('de-DE')}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
