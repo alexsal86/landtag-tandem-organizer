@@ -1,116 +1,76 @@
-# Code-Quality-Audit & Refactoring-Plan
+# Phase E — UX-Polish & Konsistenz (großes Refactor)
 
-## Befunde (objektiv gemessen)
+Nachdem Phase D (Color-Tokens) abgeschlossen ist, folgt jetzt das systematische UX-Hardening über alle Module. Ziel: konsistente Wahrnehmung, vorhersehbares Verhalten, deutlich höhere wahrgenommene Qualität — ohne Business-Logik anzufassen.
 
-| Metrik | Wert | Bewertung |
-|---|---|---|
-| TS/TSX-Dateien | 1.215 | groß, ok |
-| Zeilen Code (ohne types.ts) | ~253k | groß |
-| Dateien > 800 Zeilen | **32** | zu viele Mega-Komponenten |
-| `as any` Vorkommen | **24** in 19 Dateien | bricht eure Core-Regel |
-| `useEffect` gesamt | 711 in 435 Dateien | viel manuelles State-Sync |
-| Komponenten mit direktem `supabase.from(...)` | **38** | Datenzugriff in der UI-Schicht |
-| Komponenten mit `useEffect`+Supabase-Fetch (Anti-Pattern) | **90** | sollten React-Query nutzen |
-| Hardcodierte Tailwind-Farben (`text-white`, `bg-gray-…`) | **1.040** in 220 Dateien | bricht Design-Token-Regel |
-| `console.log/debug/warn` in src | 15 in 6 Dateien | ok, wenig |
-| Error Boundaries | 11 | dünn für 24 Features |
-| Migrationen | **640** | extrem fragmentiert |
-| Edge Functions | 71 | viele |
+## Welle 1 — Foundation Tokens (Voraussetzung für alles weitere)
 
-## Konkrete Befunde
+**`src/index.css` & `tailwind.config.ts`** um fehlende semantische Tokens erweitern:
+- **Spacing-Skala**: `--space-2xs … --space-3xl` (4/8/12/16/24/32/48/64) — alle Komponenten verwenden danach Tokens statt Magic-Numbers.
+- **Radius-Tokens**: `--radius-sm/md/lg/xl/2xl` + `--radius-pill`.
+- **Elevation-Tokens**: `--shadow-xs/sm/md/lg` + `--shadow-focus-ring`, `--shadow-popover`.
+- **Motion-Tokens**: `--ease-standard`, `--ease-emphasized`, `--duration-fast/base/slow` + Reduced-Motion-Fallback.
+- **Z-Index-Skala**: `--z-base/dropdown/sticky/overlay/modal/toast` (eliminiert ad-hoc `z-[999]`).
 
-### 1. Mega-Komponenten (>800 LOC)
-Top-Brocken laut Component-Decomposition-Memory (>1500 splitten, aber auch 800+ ist Risiko):
-- `AppNavigation.tsx` 1.469
-- `MyWorkCasesWorkspace.tsx` 1.283
-- `FocusModeView.tsx` 1.182
-- `SuperadminTenantManagement.tsx` 1.149
-- `TaskDecisionDetails.tsx` 1.084
-- `MatrixClientProvider.tsx` 1.037
-- `AutomationRuleWizard.tsx` 1.030
-- `AppointmentDetailsSidebar.tsx` 1.000
-- `DIN5008LetterLayout.tsx` 983
-- … insgesamt 32 Dateien >800 Zeilen
+## Welle 2 — Standard-Komponenten für wiederkehrende Patterns
 
-### 2. Verstöße gegen Core-Regeln
-- **`as any` in 19 Dateien** — direkt gegen TypeScript-Core-Regel
-- **1.040 hardcodierte Farb-Klassen** — gegen Design-Token-Regel
-- Beispiele: `text-white`, `bg-gray-100`, `border-blue-500` statt `text-foreground`, `bg-muted`, `border-primary`
+Neue zentrale Bausteine in `src/components/ui-patterns/`:
+- **`EmptyState`** — Icon + Headline + Subtext + optionaler CTA. Heute ~40 unterschiedliche Empty-States in der App.
+- **`LoadingState`** — Skeleton-Varianten (List/Card/Detail/Table) statt der aktuellen "Laden…"-Texte.
+- **`ErrorState`** — Inline-Fehler mit Retry-Button (heute oft nur `console.error`).
+- **`SectionHeader`** — Einheitlicher Listen-/Section-Header (Title + Action-Slot + Count-Badge).
+- **`InlineActions`** — Hover-Action-Bar für Listenzeilen (heute uneinheitlich: mal Dreipunkt, mal Buttons, mal nur bei Selected).
+- **`StatusPill`** — Konsolidiert die ~6 Status-Badge-Varianten (Tasks, Cases, Decisions, Letters, Press, Polls).
 
-### 3. Datenfluss-Architektur
-- **38 Komponenten** rufen direkt `supabase.from(...)` auf statt über Hook/Service
-- **90 Dateien** verwenden `useEffect` + manuellen Fetch statt React-Query (`useQuery` nur in 62 Dateien — viel weniger als nötig)
-- Konsequenzen: doppelte Requests, kein Caching, kein Stale-Time-Schutz (widerspricht eurer Egress-Optimierungsstrategie)
+## Welle 3 — Interaktions-Konsistenz
 
-### 4. Migrations-Wildwuchs
-640 Migrationen für 1 Projekt. Schwer zu auditieren. Kein Konsolidierungs-Schnitt.
+- **Hover-States** überall: `hover:bg-muted/50` statt heute teils gar keiner, teils `hover:bg-accent`, teils Custom.
+- **Focus-Visible-Ring** durchgängig auf interaktiven Elementen (a11y-Audit).
+- **Mikroanimationen**: `animate-fade-in` für neu geladene Listen, `animate-scale-in` für Popover/Sheets, sanfte Slide-Übergänge für Detail-Panels (280ms `--ease-emphasized`).
+- **Optimistic-UI-Indikatoren**: dezenter Pulse während Mutations laufen (statt Disable-Lock).
+- **Toast-Konsistenz**: Erfolg = grün-Pill links, Fehler = rot-Pill links, neutrale Aktionen = primary. Aktuell wild gemischt.
 
-### 5. Doppelte Komponenten
-- `StructuredHeaderEditor.tsx` 2× (unterschiedliche Pfade)
-- `DecisionDialogs.tsx`, `DecisionCardActivity.tsx`, `UnicornAnimation.tsx` jeweils 2×
+## Welle 4 — Layout-Polish (Top-traffic Module)
 
-### 6. Bundle / Dependencies
-125 Runtime-Dependencies — vermutlich Dead Weight. Nicht geprüft, aber lohnt einen `depcheck`.
+Priorisiert nach täglicher Nutzung:
+1. **MyWork-Dashboard** — verdichtete Padding, einheitliche Card-Höhen, bessere visuelle Hierarchie zwischen Tasks/Decisions/Appointments.
+2. **Sidebar** — gleichmäßige Item-Höhen (32px), konsistente Icon-Größen (16px), aktiver Zustand mit linker Akzent-Bar statt Background-Fill.
+3. **Kalender** — einheitliche Event-Pill-Höhen, bessere Kontraste in Month-View, Hover zeigt Mini-Preview-Card.
+4. **Vorgänge Master-Detail** — Spacing der 340px-Liste, Detail-Header sticky, Section-Trenner statt Cards-in-Cards.
+5. **Briefe Split-Editor** — Toolbar-Hierarchie, Zoom-Control persistent sichtbar.
+6. **Kontakte-Liste** — Spaltenausrichtung tabular-nums durchgängig, Avatars konsistent 28px.
 
-### 7. Resilienz
-Nur **11 Error Boundaries** für 24 Features. Kritische Routen (Briefe, Vorgänge, Kalender) sollten je eigene Boundary haben.
+## Welle 5 — Detail-Pässe
 
----
+- **Empty-States** in allen Modulen austauschen (~40 Stellen).
+- **Loading-Skeletons** statt "Laden…"-Text (~25 Stellen).
+- **Datums-/Zeit-Formatierung** über zentralen Helper (heute teils `de-DE`, teils ISO, teils custom).
+- **Tooltips** auf allen Icon-Only-Buttons (a11y + Onboarding).
+- **Keyboard-Shortcuts** sichtbar machen: Hint-Chips in Cmd+K, Tooltips mit `⌘K`-Style.
 
-## Vorgeschlagenes Refactoring (priorisiert)
+## Welle 6 — A11y & SEO Sweep
 
-### Phase A — Quick Wins (geringe Risiken, großer Aufwand-Ertrag)
-1. **`as any` eliminieren** (19 Dateien): durch konkrete Types oder `@ts-expect-error` mit Begründung ersetzen.
-2. **Tailwind-Farb-Audit-Skript**: `scripts/audit-color-tokens.mjs`, das hardcodierte Farben listet und bei CI als Warning ausgibt. Dann die ~50 schlimmsten Dateien manuell auf semantische Tokens umstellen.
-3. **Doppelte Dateien zusammenführen** (4 Files).
-4. **`depcheck` laufen lassen**, ungenutzte Dependencies entfernen.
-5. **3 zusätzliche Error Boundaries** an den lazy-geladenen Routen-Containern (Briefe, Vorgänge, Redaktion).
+- `aria-label` auf allen Icon-Buttons.
+- Landmark-Roles (`<nav>`, `<main>`, `<aside>`).
+- Tab-Order-Audit in komplexen Panels (Briefe, Vorgänge).
+- Reduced-Motion-Respektierung in allen neuen Animationen.
 
-### Phase B — Datenzugriff zentralisieren
-1. **`supabase.from()` aus 38 Komponenten herausziehen** in dedizierte Hooks unter `src/hooks/queries/`.
-2. **90 Komponenten mit `useEffect`+Fetch** schrittweise auf `useQuery` migrieren — beginnen mit hochfrequenten (Dashboard, MyWork, Sidebar-Panels).
-3. Konvention dokumentieren: Komponenten dürfen Supabase nur über Hook benutzen. Lint-Regel via custom ESLint-Rule oder `no-restricted-imports`.
+## Out-of-Scope (bewusst nicht in Phase E)
 
-### Phase C — Mega-Komponenten zerlegen
-Die 6 größten Dateien (>1.000 LOC) in Sub-Module nach euer bestehender Komposition-Konvention (types/constants/use*Interactions/sub-components):
-1. `AppNavigation.tsx` → in Sidebar-Sektionen aufteilen
-2. `MyWorkCasesWorkspace.tsx` → Workspace-Skelett + Tab-Module
-3. `FocusModeView.tsx`
-4. `SuperadminTenantManagement.tsx`
-5. `TaskDecisionDetails.tsx`
-6. `AutomationRuleWizard.tsx`
+- Keine neuen Features.
+- Keine Business-Logik-Änderungen.
+- Keine DB-Migrationen.
+- Keine Mobile-spezifischen Layouts (separate Phase).
 
-### Phase D — Migrations-Konsolidierung
-- Snapshot-Migration erzeugen (`pg_dump` des aktuellen Schemas), neue Baseline einchecken, alte 640 Migrationen archivieren in `supabase/migrations/_archive/`.
-- Ab da nur noch additive Migrationen.
-- Vorsicht: nur durchführen, wenn keine Branch-/Forks-Workflow blockiert ist.
+## Vorgehen
 
-### Phase E — Performance-Sweep
-- Bundle-Size-Report (vorhandenes `report-bundle-size.mjs`) gegen Budget durchsetzen — fail bei Überschreitung.
-- React-Profiler an den Mega-Routen, `React.memo`/Selektoren für Listen-Items.
-- `useEffect`-Audit: jeden Effect ohne klares Cleanup oder mit Dependency-Lücke flaggen (custom Skript).
+Ich liefere eine Welle pro „weiter"-Runde, beginnend mit **Welle 1 (Foundation Tokens)** + **Welle 2 (Pattern-Komponenten)** zusammen, da Welle 3–6 darauf aufbauen. Nach jeder Welle Typecheck + visuelle Stichprobe.
 
----
-
-## Was ich konkret als nächstes umsetzen würde
-
-Falls du grünes Licht gibst, schlage ich vor mit **Phase A komplett + Phase B Migration der 10 hochfrequentesten Komponenten** zu starten. Das ist:
-- 19 `as any`-Stellen sauber typisieren
-- 4 Duplikate zusammenführen
-- 50 Dateien auf Design-Tokens umstellen (semi-automatisches Skript + manuelle Kontrolle)
-- 3 Error-Boundaries ergänzen
-- 10 Komponenten von `useEffect`-Fetch auf React-Query
-- depcheck-Bericht als Datei
-
-Größere Refactorings (Mega-Komponenten zerlegen, Migrations-Konsolidierung) sind eigene Loops — das wären jeweils 2–4 Stunden Arbeit pro Komponente und sollten einzeln freigegeben werden.
-
-## Außerhalb des Scopes
-- Funktionale Änderungen (kein neues Feature)
-- Visuelle Re-Designs
-- Auth-/RLS-Änderungen
-- Edge-Function-Konsolidierung (separate Initiative)
-
-## Risiken
-- **Tailwind-Token-Migration** kann subtile visuelle Diffs erzeugen — pro Datei prüfen.
-- **React-Query-Migration** kann doppeltes Fetching verursachen, wenn alter `useEffect` parallel weiterläuft — atomar pro Komponente.
-- **Migrations-Snapshot** ist destruktiv im Sinne der History — nur mit explizitem Go.
+```text
+Phase E
+├── Welle 1: Tokens (CSS-Variablen, Tailwind-Theme)
+├── Welle 2: ui-patterns/ (EmptyState, LoadingState, ErrorState, SectionHeader, InlineActions, StatusPill)
+├── Welle 3: Interaktion (Hover, Focus, Motion, Toasts)
+├── Welle 4: Top-Module (MyWork, Sidebar, Kalender, Vorgänge, Briefe, Kontakte)
+├── Welle 5: Empty/Loading/Tooltip-Sweep
+└── Welle 6: A11y & SEO Sweep
+```

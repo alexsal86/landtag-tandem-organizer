@@ -154,9 +154,32 @@ export default {
 				}
 			},
 			borderRadius: {
-				lg: 'var(--radius)',
-				md: 'calc(var(--radius) - 2px)',
-				sm: 'calc(var(--radius) - 4px)'
+				sm: 'var(--radius-sm)',
+				md: 'var(--radius-md)',
+				lg: 'var(--radius-lg)',
+				xl: 'var(--radius-xl)',
+				'2xl': 'var(--radius-2xl)',
+				pill: 'var(--radius-pill)'
+			},
+			spacing: {
+				'2xs': 'var(--space-2xs)',
+				xs: 'var(--space-xs)',
+				sm: 'var(--space-sm)',
+				md: 'var(--space-md)',
+				lg: 'var(--space-lg)',
+				xl: 'var(--space-xl)',
+				'2xl': 'var(--space-2xl)',
+				'3xl': 'var(--space-3xl)'
+			},
+			transitionTimingFunction: {
+				standard: 'var(--ease-standard)',
+				emphasized: 'var(--ease-emphasized)',
+				decelerate: 'var(--ease-decelerate)'
+			},
+			transitionDuration: {
+				fast: 'var(--duration-fast)',
+				base: 'var(--duration-base)',
+				slow: 'var(--duration-slow)'
 			},
 			keyframes: {
 				'accordion-down': {
@@ -236,15 +259,24 @@ export default {
 				'gradient-subtle': 'var(--gradient-subtle)'
 			},
 			boxShadow: {
-				'elegant': 'var(--shadow-elegant)',
-				'card': 'var(--shadow-card)'
+				xs: 'var(--shadow-xs)',
+				sm: 'var(--shadow-sm)',
+				md: 'var(--shadow-md)',
+				lg: 'var(--shadow-lg)',
+				popover: 'var(--shadow-popover)',
+				'focus-ring': 'var(--shadow-focus-ring)',
+				elegant: 'var(--shadow-elegant)',
+				card: 'var(--shadow-card)'
 			},
 			zIndex: {
-				'widget': '10',
-				'controls': '50',
-				'dropdown': '60',
-				'modal': '70',
-				'overlay': '80'
+				base: '1',
+				dropdown: '50',
+				sticky: '100',
+				overlay: '200',
+				modal: '300',
+				toast: '400',
+				widget: '10',
+				controls: '50'
 			}
 		}
 	},
