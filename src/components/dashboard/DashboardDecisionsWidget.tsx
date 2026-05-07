@@ -142,14 +142,17 @@ function DecisionRow({ decision, onRefresh, onOpen, onPromptOpen, onPromptClose,
             <MessageSquare className="h-3.5 w-3.5" /> Entscheidung erfasst.
           </div>
           <div className="text-muted-foreground mb-2">
-            Aktualisierung in 10 Sekunden – oder direkt:
+            Du kannst die Antwort zurücknehmen oder begründen:
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={handleAddJustification}>
               <MessageSquare className="h-3 w-3 mr-1" />Begründung hinzufügen
             </Button>
             <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={handleUndo}>
               <Undo2 className="h-3 w-3 mr-1" />Rückgängig
+            </Button>
+            <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs ml-auto" onClick={handleDismiss}>
+              Fertig
             </Button>
           </div>
         </div>
