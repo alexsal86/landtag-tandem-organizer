@@ -1,76 +1,46 @@
-# Phase E — UX-Polish & Konsistenz (großes Refactor)
+# Konsistenz-Sweep finalisieren
 
-Nachdem Phase D (Color-Tokens) abgeschlossen ist, folgt jetzt das systematische UX-Hardening über alle Module. Ziel: konsistente Wahrnehmung, vorhersehbares Verhalten, deutlich höhere wahrgenommene Qualität — ohne Business-Logik anzufassen.
+Ausgangslage nach Welle 1–7: `ui-patterns`, Foundation-Tokens, Typografie-System und `notify`-Wrapper stehen — werden aber noch nicht durchgängig genutzt. Scan zeigt:
 
-## Welle 1 — Foundation Tokens (Voraussetzung für alles weitere)
+- **268 Dateien** rufen `sonner`/`use-toast` direkt auf (89× sonner direkt, 179× `useToast`), **0× `notify`**.
+- **67 Dateien** mit `Laden...` oder rohem `animate-pulse`-Skeleton.
+- **176 Dateien** mit ad-hoc Empty-State-Text (`Noch keine …`, `Keine … gefunden`).
+- **109 Dateien** mit nativem `title="…"` statt shadcn-`Tooltip`.
 
-**`src/index.css` & `tailwind.config.ts`** um fehlende semantische Tokens erweitern:
-- **Spacing-Skala**: `--space-2xs … --space-3xl` (4/8/12/16/24/32/48/64) — alle Komponenten verwenden danach Tokens statt Magic-Numbers.
-- **Radius-Tokens**: `--radius-sm/md/lg/xl/2xl` + `--radius-pill`.
-- **Elevation-Tokens**: `--shadow-xs/sm/md/lg` + `--shadow-focus-ring`, `--shadow-popover`.
-- **Motion-Tokens**: `--ease-standard`, `--ease-emphasized`, `--duration-fast/base/slow` + Reduced-Motion-Fallback.
-- **Z-Index-Skala**: `--z-base/dropdown/sticky/overlay/modal/toast` (eliminiert ad-hoc `z-[999]`).
+Ziel: konsistente Toasts, einheitliche Empty/Loading/Error-States und einheitliche Tooltips über die ganze App.
 
-## Welle 2 — Standard-Komponenten für wiederkehrende Patterns
+## Welle 8 — Toast-Migration auf `notify`-Wrapper
 
-Neue zentrale Bausteine in `src/components/ui-patterns/`:
-- **`EmptyState`** — Icon + Headline + Subtext + optionaler CTA. Heute ~40 unterschiedliche Empty-States in der App.
-- **`LoadingState`** — Skeleton-Varianten (List/Card/Detail/Table) statt der aktuellen "Laden…"-Texte.
-- **`ErrorState`** — Inline-Fehler mit Retry-Button (heute oft nur `console.error`).
-- **`SectionHeader`** — Einheitlicher Listen-/Section-Header (Title + Action-Slot + Count-Badge).
-- **`InlineActions`** — Hover-Action-Bar für Listenzeilen (heute uneinheitlich: mal Dreipunkt, mal Buttons, mal nur bei Selected).
-- **`StatusPill`** — Konsolidiert die ~6 Status-Badge-Varianten (Tasks, Cases, Decisions, Letters, Press, Polls).
+- `useToast`/`toast({ title, description, variant })` durchgängig durch `notify.success/error/warning/info` ersetzen.
+- Direkte `import { toast } from "sonner"`-Aufrufe ebenfalls auf `notify` umstellen.
+- `variant: "destructive"` → `notify.error`, sonst `notify.success`/`info`.
+- In Batches nach Bereich abarbeiten: `features/tasks` → `features/letters` → `features/contacts` → `features/employees` → `features/redaktion` → `features/calendar` → `features/knowledge` → `features/timetracking` → `pages/*` → `hooks/*` → `components/*`.
+- Memory-Eintrag erweitern: „Immer `@/lib/notify` statt direktem sonner/useToast".
 
-## Welle 3 — Interaktions-Konsistenz
+## Welle 9 — Empty/Loading/Error-Sweep Restbestand
 
-- **Hover-States** überall: `hover:bg-muted/50` statt heute teils gar keiner, teils `hover:bg-accent`, teils Custom.
-- **Focus-Visible-Ring** durchgängig auf interaktiven Elementen (a11y-Audit).
-- **Mikroanimationen**: `animate-fade-in` für neu geladene Listen, `animate-scale-in` für Popover/Sheets, sanfte Slide-Übergänge für Detail-Panels (280ms `--ease-emphasized`).
-- **Optimistic-UI-Indikatoren**: dezenter Pulse während Mutations laufen (statt Disable-Lock).
-- **Toast-Konsistenz**: Erfolg = grün-Pill links, Fehler = rot-Pill links, neutrale Aktionen = primary. Aktuell wild gemischt.
+- Verbleibende `Laden...`-Texte und `animate-pulse`-Skeletons durch `<LoadingState variant="list|card|table|detail|inline" />` ersetzen.
+- Ad-hoc Empty-States (`Noch keine …`, „Keine … gefunden") durch `<EmptyState icon={…} title description />` ersetzen — passende Lucide-Icons je Domäne.
+- Fehler-Pfade (Toast-only oder roter Text) durch `<ErrorState onRetry={…} />` ersetzen, wo eine Retry-Action sinnvoll ist.
+- Bereiche: `features/calendar`, `features/employees`, `features/redaktion`, `features/knowledge`, `features/timetracking`, `features/letters` (Listen, Sidebars, Editor-Panels), `features/meetings`, restliche Widgets.
 
-## Welle 4 — Layout-Polish (Top-traffic Module)
+## Welle 10 — Tooltip-Konsistenz
 
-Priorisiert nach täglicher Nutzung:
-1. **MyWork-Dashboard** — verdichtete Padding, einheitliche Card-Höhen, bessere visuelle Hierarchie zwischen Tasks/Decisions/Appointments.
-2. **Sidebar** — gleichmäßige Item-Höhen (32px), konsistente Icon-Größen (16px), aktiver Zustand mit linker Akzent-Bar statt Background-Fill.
-3. **Kalender** — einheitliche Event-Pill-Höhen, bessere Kontraste in Month-View, Hover zeigt Mini-Preview-Card.
-4. **Vorgänge Master-Detail** — Spacing der 340px-Liste, Detail-Header sticky, Section-Trenner statt Cards-in-Cards.
-5. **Briefe Split-Editor** — Toolbar-Hierarchie, Zoom-Control persistent sichtbar.
-6. **Kontakte-Liste** — Spaltenausrichtung tabular-nums durchgängig, Avatars konsistent 28px.
+- Native `title="…"`-Attribute auf Buttons/Icons durch shadcn `<Tooltip><TooltipTrigger asChild>…</TooltipTrigger><TooltipContent>…</TooltipContent></Tooltip>` ersetzen.
+- Sicherstellen, dass `TooltipProvider` einmal global im App-Root sitzt; dann lokale Provider entfernen.
+- `title=` nur dort lassen, wo es Accessibility-Backup für native Form-Controls ist (Inputs, Selects ohne Visual Trigger).
 
-## Welle 5 — Detail-Pässe
+## Reihenfolge & Verifikation
 
-- **Empty-States** in allen Modulen austauschen (~40 Stellen).
-- **Loading-Skeletons** statt "Laden…"-Text (~25 Stellen).
-- **Datums-/Zeit-Formatierung** über zentralen Helper (heute teils `de-DE`, teils ISO, teils custom).
-- **Tooltips** auf allen Icon-Only-Buttons (a11y + Onboarding).
-- **Keyboard-Shortcuts** sichtbar machen: Hint-Chips in Cmd+K, Tooltips mit `⌘K`-Style.
+1. Welle 8a: `features/tasks` + `features/letters` + `pages/*` (Toast).
+2. Welle 8b: `features/contacts` + `features/employees` + `features/redaktion` + restliche.
+3. Welle 9a: `features/calendar` + `features/employees` + `features/meetings`.
+4. Welle 9b: `features/redaktion` + `features/knowledge` + `features/timetracking` + Widgets.
+5. Welle 10: Tooltips (in einem Rutsch, eher mechanisch).
 
-## Welle 6 — A11y & SEO Sweep
+Nach jeder Welle: `bunx tsc --noEmit` + Spot-Check Preview. Memory-Index aktualisieren, sobald `notify` Pflicht ist.
 
-- `aria-label` auf allen Icon-Buttons.
-- Landmark-Roles (`<nav>`, `<main>`, `<aside>`).
-- Tab-Order-Audit in komplexen Panels (Briefe, Vorgänge).
-- Reduced-Motion-Respektierung in allen neuen Animationen.
+## Out of Scope
 
-## Out-of-Scope (bewusst nicht in Phase E)
-
-- Keine neuen Features.
-- Keine Business-Logik-Änderungen.
-- Keine DB-Migrationen.
-- Keine Mobile-spezifischen Layouts (separate Phase).
-
-## Vorgehen
-
-Ich liefere eine Welle pro „weiter"-Runde, beginnend mit **Welle 1 (Foundation Tokens)** + **Welle 2 (Pattern-Komponenten)** zusammen, da Welle 3–6 darauf aufbauen. Nach jeder Welle Typecheck + visuelle Stichprobe.
-
-```text
-Phase E
-├── Welle 1: Tokens (CSS-Variablen, Tailwind-Theme)
-├── Welle 2: ui-patterns/ (EmptyState, LoadingState, ErrorState, SectionHeader, InlineActions, StatusPill)
-├── Welle 3: Interaktion (Hover, Focus, Motion, Toasts)
-├── Welle 4: Top-Module (MyWork, Sidebar, Kalender, Vorgänge, Briefe, Kontakte)
-├── Welle 5: Empty/Loading/Tooltip-Sweep
-└── Welle 6: A11y & SEO Sweep
-```
+- Performance/Bundle, Mobile-Sweep, Resilienz/RLS — eigene Hebel, nicht Teil dieses Plans.
+- Funktionale Logik bleibt unverändert; rein Presentation-Layer.
