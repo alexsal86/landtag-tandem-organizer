@@ -8,7 +8,7 @@ import { useInboxEntries } from "../hooks/useDossierEntries";
 import { useDossiers } from "../hooks/useDossiers";
 import type { Dossier } from "../types";
 
-type DossierTab = "eingang" | "radar" | "dossiers" | "artikel";
+type DossierTab = "eingang" | "radar" | "dossiers" | "artikel" | "fakten";
 
 interface DossiersSidePanelProps {
   activeTab: DossierTab;
