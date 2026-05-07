@@ -42,14 +42,14 @@ export function TaskBadges({
   if (!isHovered) {
     return (
       <div className={cn("flex items-center gap-1.5", className)}>
-        <div className={cn("w-1.5 h-1.5 rounded-sm", priorityCfg.color)} title={`Priorität: ${priorityCfg.label}`} />
-        <div className={cn("w-1.5 h-1.5 rounded-sm", statusCfg.color)} title={`Status: ${statusCfg.label}`} />
+        <div className={cn("w-1.5 h-1.5 rounded-sm", priorityCfg.dot)} title={`Priorität: ${priorityCfg.label}`} />
+        <div className={cn("w-1.5 h-1.5 rounded-sm", statusCfg.dot)} title={`Status: ${statusCfg.label}`} />
         {category && (
-          <div className="w-1.5 h-1.5 rounded-sm bg-violet-500" title={`Kategorie: ${category}`} />
+          <div className="w-1.5 h-1.5 rounded-sm bg-palette-violet" title={`Kategorie: ${category}`} />
         )}
         {assignedTo && (
           <div
-            className="w-1.5 h-1.5 rounded-sm bg-cyan-500"
+            className="w-1.5 h-1.5 rounded-sm bg-palette-cyan"
             title={assigneeName ? `Zugewiesen an ${assigneeName}` : "Zugewiesen"}
           />
         )}
@@ -67,8 +67,8 @@ export function TaskBadges({
               variant="outline" 
               className={cn(
                 "text-xs px-1.5 py-0 h-4 cursor-help",
-                priorityCfg.textColor, 
-                priorityCfg.borderColor, 
+                priorityCfg.text, 
+                priorityCfg.border, 
                 priorityCfg.bgLight
               )}
             >
@@ -84,8 +84,8 @@ export function TaskBadges({
               variant="outline" 
               className={cn(
                 "text-xs px-1.5 py-0 h-4 cursor-help",
-                statusCfg.textColor, 
-                statusCfg.borderColor, 
+                statusCfg.text, 
+                statusCfg.border, 
                 statusCfg.bgLight
               )}
             >
@@ -100,7 +100,7 @@ export function TaskBadges({
             <TooltipTrigger asChild>
               <Badge 
                 variant="outline" 
-                className="text-xs px-1.5 py-0 h-4 cursor-help text-violet-600 border-violet-300 bg-violet-50 dark:bg-violet-900/30"
+                className="text-xs px-1.5 py-0 h-4 cursor-help text-palette-violet border-palette-violet/40 bg-palette-violet/10"
               >
                 {category}
               </Badge>
@@ -114,7 +114,7 @@ export function TaskBadges({
             <TooltipTrigger asChild>
               <Badge 
                 variant="outline" 
-                className="text-xs px-1.5 py-0 h-4 cursor-help text-cyan-600 border-cyan-300 bg-cyan-50 dark:bg-cyan-900/30"
+                className="text-xs px-1.5 py-0 h-4 cursor-help text-palette-cyan border-palette-cyan/40 bg-palette-cyan/10"
               >
                 {assigneeName.split(',')[0].trim().split(' ')[0]}
               </Badge>
@@ -126,3 +126,4 @@ export function TaskBadges({
     </TooltipProvider>
   );
 }
+
