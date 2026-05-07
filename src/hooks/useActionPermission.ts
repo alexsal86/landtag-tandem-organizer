@@ -1,17 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
+import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { STALE_TIME } from "@/lib/query-cache";
 
 /**
- * Lädt einmalig alle Action-Permissions des Tenants und prüft client-seitig
- * gegen die Rollen des Users. Server-Guard erfolgt zusätzlich über `is_action_allowed`.
- *
- * Default: ist keine Regel gesetzt, ist die Aktion erlaubt.
+ * Server-Guard erfolgt zusätzlich über RPC `is_action_allowed`.
+ * Default: erlaubt, wenn keine Regel gesetzt.
  */
 export function useActionPermission(actionKey: string): { allowed: boolean; isLoading: boolean } {
-  const { user, profile, roles } = useAuth();
-  const tenantId = profile?.tenant_id;
+  const { user } = useAuth();
+  const { currentTenant } = useTenant();
+  const { role, loading: roleLoading } = useResolvedUserRole();
+  const tenantId = currentTenant?.id;
 
   const { data, isLoading } = useQuery({
     queryKey: ["action-permissions", tenantId],
@@ -31,11 +33,9 @@ export function useActionPermission(actionKey: string): { allowed: boolean; isLo
     },
   });
 
-  if (isLoading || !data) return { allowed: true, isLoading };
+  if (isLoading || roleLoading || !data) return { allowed: true, isLoading: true };
   const allowedRoles = data.get(actionKey);
   if (!allowedRoles) return { allowed: true, isLoading: false };
-
-  const userRoles = (roles ?? []) as string[];
-  const allowed = allowedRoles.some((r) => userRoles.includes(r));
-  return { allowed, isLoading: false };
+  if (!role) return { allowed: false, isLoading: false };
+  return { allowed: allowedRoles.includes(role), isLoading: false };
 }

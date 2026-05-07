@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
+import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { STALE_TIME } from "@/lib/query-cache";
 
 interface FieldPermission {
@@ -12,8 +14,9 @@ interface FieldPermission {
 }
 
 function useFieldPermissionsMap() {
-  const { user, profile } = useAuth();
-  const tenantId = profile?.tenant_id;
+  const { user } = useAuth();
+  const { currentTenant } = useTenant();
+  const tenantId = currentTenant?.id;
 
   return useQuery({
     queryKey: ["field-permissions", tenantId],
@@ -31,23 +34,23 @@ function useFieldPermissionsMap() {
 }
 
 /**
- * Prüft ob der aktuelle User ein Feld lesen/schreiben darf.
- * Default: erlaubt, wenn keine deny-Regel für eine Rolle des Users vorliegt.
+ * Default: lesen/schreiben erlaubt, wenn keine deny-Regel für die Rolle des Users.
  */
 export function useFieldPermission(
   table: string,
   column: string,
 ): { canRead: boolean; canWrite: boolean; isLoading: boolean } {
-  const { roles } = useAuth();
+  const { role, loading: roleLoading } = useResolvedUserRole();
   const { data, isLoading } = useFieldPermissionsMap();
 
-  if (isLoading || !data) return { canRead: true, canWrite: true, isLoading };
+  if (isLoading || roleLoading || !data) {
+    return { canRead: true, canWrite: true, isLoading: true };
+  }
+  if (!role) return { canRead: false, canWrite: false, isLoading: false };
 
-  const userRoles = (roles ?? []) as string[];
   const matching = data.filter(
-    (p) => p.table_name === table && p.column_name === column && userRoles.includes(p.role),
+    (p) => p.table_name === table && p.column_name === column && p.role === role,
   );
-
   const canRead = !matching.some((p) => p.can_read === false);
   const canWrite = canRead && !matching.some((p) => p.can_write === false);
 
