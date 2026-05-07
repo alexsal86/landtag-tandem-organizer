@@ -588,7 +588,8 @@ const LettersView: React.FC = () => {
 
       {/* Letter Editor */}
       <LetterEditor
-        letter={selectedLetter as any ?? undefined}
+        /* @ts-expect-error LettersView Letter[] differs from LetterEditor's Letter type (legacy duplicate) */
+        letter={selectedLetter ?? undefined}
         isOpen={isEditorOpen}
         onClose={() => {
           setIsEditorOpen(false);

@@ -83,8 +83,9 @@ export const UserStatusSelector: React.FC<UserStatusSelectorProps> = ({ children
   const handleSave = async () => {
     const until = statusUntil ? new Date(statusUntil) : undefined;
     
+    type StatusType = 'away' | 'break' | 'custom' | 'meeting' | 'offline' | 'online';
     await updateStatus(
-      selectedType as any,
+      selectedType as StatusType,
       selectedType === 'custom' ? customMessage : undefined,
       selectedEmoji,
       until,

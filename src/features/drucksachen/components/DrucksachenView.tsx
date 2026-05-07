@@ -164,7 +164,8 @@ export function DrucksachenView() {
 
         <TabsContent value="protocols" className="space-y-6">
           <ProtocolsList 
-            protocols={protocols as any}
+            /* @ts-expect-error duplicate Protocol type from two locations - nullable vs optional fields differ */
+            protocols={protocols}
             onProtocolSelect={handleProtocolSelect}
             onProtocolsRefresh={loadProtocols}
           />

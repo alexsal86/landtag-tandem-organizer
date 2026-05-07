@@ -53,8 +53,7 @@ export async function cleanupCreated(
 
   for (const rec of sorted) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase.from(rec.table as any) as any)
+      const { error } = await supabase.from(rec.table)
         .delete()
         .eq("id", rec.id);
       if (error) {
@@ -247,8 +246,7 @@ export async function purgeAllSelftestData(tenantId: string): Promise<{
 
   for (const t of tables) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let query: any = supabase.from(t.name as any).delete({ count: "exact" })
+      let query = supabase.from(t.name).delete({ count: "exact" })
         .ilike(t.column, `${SELFTEST_PREFIX}%`);
       if (t.hasTenant) query = query.eq("tenant_id", tenantId);
       const { count, error } = await query;

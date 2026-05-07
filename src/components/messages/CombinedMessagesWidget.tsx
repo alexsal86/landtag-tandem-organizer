@@ -24,9 +24,12 @@ export function CombinedMessagesWidget({ configuration }: CombinedMessagesWidget
     if (!user) return;
 
     try {
-      // Single RPC call instead of two identical ones
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.rpc as any)('get_user_messages', { user_id_param: user.id }) as { data: Array<{ is_for_all_users: boolean; has_read: boolean; author_id: string }> | null; error: unknown };
+      // Single RPC call instead of two identical ones.
+      // RPC return type is defined dynamically; cast through unknown for safety.
+      type UserMessage = { is_for_all_users: boolean; has_read: boolean; author_id: string };
+      const result = await supabase.rpc('get_user_messages', { user_id_param: user.id });
+      const data = result.data as unknown as UserMessage[] | null;
+      const error = result.error;
 
       if (!error && data) {
         const unconfirmedBlackboardMessages = data

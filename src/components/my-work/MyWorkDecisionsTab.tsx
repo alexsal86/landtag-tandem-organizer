@@ -191,7 +191,7 @@ export function MyWorkDecisionsTab() {
                   onTogglePriority={actions.togglePriority}
                   onTogglePublic={actions.togglePublic}
                   onUpdateDeadline={actions.updateDeadline}
-                  tenantUsers={tenantUsers as any}
+                  tenantUsers={tenantUsers}
                 />
               </TabsContent>
             </div>

@@ -325,7 +325,8 @@ export function WidgetPalette({ onAddWidget, onClose, suggestions }: WidgetPalet
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleAddWidget(suggestion.type as any)}
+                      // @ts-expect-error suggestion.type is widened beyond the WidgetType union here
+                      onClick={() => handleAddWidget(suggestion.type)}
                     >
                       <Plus className="h-3 w-3" />
                     </Button>

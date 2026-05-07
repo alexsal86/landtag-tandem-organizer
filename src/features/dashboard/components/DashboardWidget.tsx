@@ -587,7 +587,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
       case 'messages':
         return <MessageSystem />;
       case 'combined-messages':
-        return <CombinedMessagesWidget configuration={widget.configuration as any} />;
+        return <CombinedMessagesWidget configuration={widget.configuration as unknown as Record<string, unknown>} />;
       case 'news':
         return <NewsWidget widgetId={widget.id} />;
       case 'appointmentfeedback':

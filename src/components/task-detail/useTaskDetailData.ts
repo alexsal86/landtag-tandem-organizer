@@ -293,7 +293,7 @@ const { data: fresh } = await supabase.from("tasks").select("id, title").eq("id"
         priority: task.priority || "medium",
         category: task.category || "personal",
         progress: 0,
-      }] as any).select("id").single();
+      }]).select("id").single();
       if (error) throw error;
       await syncTaskAssignees({ taskId: createdSubtask.id, assigneeIds, assignedBy: user.id });
       setNewSubtask({ description: "", assigned_to: "", due_date: "" });
