@@ -1,7 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+const notMock = vi.fn().mockResolvedValue({ error: null });
+const eqAfterDelete = vi.fn(() => ({ not: notMock, then: undefined }));
+// delete().eq() must support both await (clear-all) and .not() chain (partial delete)
+const deleteEqResult: Promise<{ error: null }> & { not: typeof notMock } = Object.assign(
+  Promise.resolve({ error: null }),
+  { not: notMock }
+);
+const deleteMock = vi.fn(() => ({ eq: vi.fn(() => deleteEqResult) }));
 const eqMock = vi.fn().mockResolvedValue({ error: null });
-const deleteMock = vi.fn(() => ({ eq: eqMock, not: vi.fn().mockResolvedValue({ error: null }) }));
 const updateMock = vi.fn(() => ({ eq: eqMock }));
 const upsertMock = vi.fn().mockResolvedValue({ error: null });
 const fromMock = vi.fn(() => ({
