@@ -65,21 +65,17 @@ export function DebriefPanel({ preparation, appointmentId, onUpdate }: DebriefPa
   const createTaskFromPoint = async (point: OpenPoint) => {
     if (!user || !point.text.trim()) return;
     try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
       const { error } = await supabase.from("tasks").insert({
         title: point.text.slice(0, 200),
         description: `Aus Nachbereitung: ${preparation.title}`,
         tenant_id: preparation.tenant_id,
-        created_by: profile?.id ?? user.id,
-        assigned_to: point.assignee ?? user.id,
-        due_date: point.due_date ?? null,
+        user_id: user.id,
+        assigned_to: user.id,
+        due_date: point.due_date ? new Date(point.due_date).toISOString() : null,
         status: "open",
         priority: "medium",
+        source_type: "appointment_preparation",
+        source_id: preparation.id,
       });
       if (error) throw error;
 
@@ -93,13 +89,8 @@ export function DebriefPanel({ preparation, appointmentId, onUpdate }: DebriefPa
   };
 
   const scheduleFollowupReminder = async () => {
-    if (!user || !appointmentId) return;
+    if (!user) return;
     try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + 28);
 
@@ -107,11 +98,13 @@ export function DebriefPanel({ preparation, appointmentId, onUpdate }: DebriefPa
         title: `Erfolgs-Check: ${preparation.title}`,
         description: "Hat das vereinbarte Ergebnis stattgefunden? (Auto-Reminder 4 Wochen nach Termin)",
         tenant_id: preparation.tenant_id,
-        created_by: profile?.id ?? user.id,
+        user_id: user.id,
         assigned_to: user.id,
-        due_date: dueDate.toISOString().slice(0, 10),
+        due_date: dueDate.toISOString(),
         status: "open",
         priority: "low",
+        source_type: "appointment_preparation",
+        source_id: preparation.id,
       });
       if (error) throw error;
       setFollowupScheduled(true);
