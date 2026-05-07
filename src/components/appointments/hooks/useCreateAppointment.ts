@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format, addHours } from 'date-fns';
@@ -108,8 +108,7 @@ export function useCreateAppointment(open: boolean, onOpenChange: (open: boolean
 
   const defaultStart = getDefaultStartTime();
   const form = useForm<AppointmentFormValues>({
-    // @ts-expect-error zodResolver generic mismatch with discriminated form schema
-    resolver: zodResolver(appointmentSchema),
+    resolver: zodResolver(appointmentSchema) as unknown as Resolver<AppointmentFormValues>,
     mode: "onSubmit" as const,
     defaultValues: {
       title: "", description: "",

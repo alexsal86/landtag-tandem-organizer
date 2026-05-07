@@ -60,7 +60,6 @@ export function AutomationRuleVersions({
     if (!currentTenant) return;
     setLoading(true);
     const { data, error } = await supabase
-      // @ts-expect-error table not yet in generated supabase types
       .from("automation_rule_versions")
       .select("*")
       .eq("rule_id", ruleId)
