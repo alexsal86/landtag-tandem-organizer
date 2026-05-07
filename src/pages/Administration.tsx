@@ -324,6 +324,9 @@ export default function Administration(): React.JSX.Element | null {
             </div>
           );
         case "stakeholder-network-tags": return <StakeholderNetworkTagSettings />;
+        case "data-quality": return <DataLintDashboard />;
+        case "duplicates": return <DuplicateScanDashboard />;
+        case "bulk-audit": return <BulkActionAuditViewer />;
         default: return <TopicSettings />;
       }
     }
