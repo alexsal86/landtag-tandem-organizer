@@ -46,12 +46,12 @@ export function useCelebrationSettings() {
       const [animationsRes, settingsRes] = await Promise.all([
         supabase
           .from('celebration_animations')
-          .select('*')
+          .select('id, name, type, animation_key, custom_svg, custom_gif_url, is_active, order_index')
           .eq('is_active', true)
           .order('order_index'),
         supabase
           .from('celebration_settings')
-          .select('*')
+          .select('id, user_id, enabled, mode, selected_animation, frequency, speed, size, created_at, updated_at')
           .eq('user_id', user.id)
           .single()
       ]);

@@ -54,7 +54,7 @@ export function useExpenseData() {
 
   const loadCategories = async () => {
     if (!currentTenant) return;
-    const { data, error } = await supabase.from("expense_categories").select("*").eq("tenant_id", currentTenant.id).eq("is_active", true).order("order_index");
+    const { data, error } = await supabase.from("expense_categories").select("id, name, description, color, is_active, order_index, created_at, updated_at, tenant_id").eq("tenant_id", currentTenant.id).eq("is_active", true).order("order_index");
     if (error) toast({ title: "Fehler", description: "Kategorien konnten nicht geladen werden", variant: "destructive" });
     else setCategories(data || []);
   };
@@ -71,7 +71,7 @@ export function useExpenseData() {
 
   const loadBudgets = async () => {
     if (!user || !currentTenant) return;
-    const { data, error } = await supabase.from("expense_budgets").select("*").eq("user_id", user.id).eq("tenant_id", currentTenant.id).order("year", { ascending: false }).order("month", { ascending: false });
+    const { data, error } = await supabase.from("expense_budgets").select("id, user_id, year, month, budget_amount, created_at, updated_at, tenant_id").eq("user_id", user.id).eq("tenant_id", currentTenant.id).order("year", { ascending: false }).order("month", { ascending: false });
     if (error) toast({ title: "Fehler", description: "Budgets konnten nicht geladen werden", variant: "destructive" });
     else setBudgets(data || []);
   };
