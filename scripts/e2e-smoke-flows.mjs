@@ -44,6 +44,8 @@ const createState = () => ({
   ]),
   appointmentsByTenant: new Map(),
   tasksByTenant: new Map(),
+  lettersByTenant: new Map(),
+  notificationsByUser: new Map(),
 });
 
 const setupTenantBucket = (state, tenantId) => {
