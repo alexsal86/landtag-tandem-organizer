@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Inbox, FolderOpen, FileText, Radio, ChevronRight, ChevronDown } from "lucide-react";
+import { Inbox, FolderOpen, FileText, Radio, ChevronRight, ChevronDown, Hash } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { QuickCapture } from "./QuickCapture";
