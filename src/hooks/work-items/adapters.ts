@@ -89,71 +89,45 @@ export function decisionToWorkItem(row: RawDecision): WorkItem {
 
 interface RawCaseItem {
   id: string;
-  title: string;
-  description: string | null;
+  subject: string;
+  summary?: string | null;
+  resolution_summary?: string | null;
   status: string | string[] | null;
-  priority: string | null;
-  due_date: string | null;
+  priority?: string | null;
+  due_at?: string | null;
+  follow_up_at?: string | null;
   created_at: string;
   updated_at?: string | null;
-  created_by: string;
-  assigned_to: string | null;
+  user_id?: string | null;
+  owner_user_id?: string | null;
   tenant_id?: string | null;
 }
 
+/**
+ * case_items in this project doubles as the "Vorgang" / ticket system
+ * (see memory: case-types-unification, vorgang-system-architecture).
+ * Both `case_item` and `vorgang` WorkItemKinds map through here.
+ */
 export function caseItemToWorkItem(row: RawCaseItem): WorkItem {
   // Cases use a status array (multi-status memory). Pick the most active one.
   const statusRaw = Array.isArray(row.status)
-    ? (row.status.find((s) => !['closed', 'archived', 'done'].includes(s)) ?? row.status[0])
+    ? (row.status.find((s) => !['erledigt', 'archiviert', 'closed', 'done'].includes(s)) ?? row.status[0])
     : row.status;
   return {
     uid: buildUid('case_item', row.id),
     id: row.id,
     kind: 'case_item',
-    title: row.title,
-    description: row.description,
+    title: row.subject,
+    description: row.summary ?? row.resolution_summary ?? null,
     status: normalizeStatus('case_item', statusRaw ?? null),
-    priority: normalizePriority(row.priority),
-    due_at: row.due_date,
+    priority: normalizePriority(row.priority ?? null),
+    due_at: row.due_at ?? row.follow_up_at ?? null,
     created_at: row.created_at,
     updated_at: row.updated_at ?? null,
-    created_by: row.created_by,
-    assignees: row.assigned_to ? [{ user_id: row.assigned_to }] : [],
+    created_by: row.owner_user_id ?? row.user_id ?? '',
+    assignees: row.owner_user_id ? [{ user_id: row.owner_user_id }] : [],
     tenant_id: row.tenant_id ?? null,
     meta: { raw: row, allStatuses: row.status },
-  };
-}
-
-interface RawVorgang {
-  id: string;
-  title: string;
-  description: string | null;
-  status: string;
-  priority: string | null;
-  deadline: string | null;
-  created_at: string;
-  updated_at?: string | null;
-  created_by: string;
-  assigned_to: string | null;
-  tenant_id?: string | null;
-}
-
-export function vorgangToWorkItem(row: RawVorgang): WorkItem {
-  return {
-    uid: buildUid('vorgang', row.id),
-    id: row.id,
-    kind: 'vorgang',
-    title: row.title,
-    description: row.description,
-    status: normalizeStatus('vorgang', row.status),
-    priority: normalizePriority(row.priority),
-    due_at: row.deadline,
-    created_at: row.created_at,
-    updated_at: row.updated_at ?? null,
-    created_by: row.created_by,
-    assignees: row.assigned_to ? [{ user_id: row.assigned_to }] : [],
-    tenant_id: row.tenant_id ?? null,
-    meta: { raw: row },
   };
 }
 
@@ -161,5 +135,6 @@ export const workItemAdapters: Record<WorkItemKind, (row: never) => WorkItem> = 
   task: taskToWorkItem as (row: never) => WorkItem,
   decision: decisionToWorkItem as (row: never) => WorkItem,
   case_item: caseItemToWorkItem as (row: never) => WorkItem,
-  vorgang: vorgangToWorkItem as (row: never) => WorkItem,
+  // vorgang shares the case_items table — same adapter, just rebrand kind upstream.
+  vorgang: caseItemToWorkItem as (row: never) => WorkItem,
 };
