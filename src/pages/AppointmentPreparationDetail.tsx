@@ -349,69 +349,36 @@ export default function AppointmentPreparationDetail() {
           </div>
         </Card>
 
-        {/* Tab Navigation */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="briefing">Briefing</TabsTrigger>
-            <TabsTrigger value="preparation">Vorbereitung</TabsTrigger>
-            <TabsTrigger value="checklist">
-              Checkliste
-              {preparation.checklist_items?.length ? (
-                <span className="ml-1.5 text-xs text-muted-foreground">
-                  ({preparation.checklist_items.filter(i => i.completed).length}/{preparation.checklist_items.length})
-                </span>
-              ) : null}
-            </TabsTrigger>
-            <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="dokumente">Dokumente</TabsTrigger>
-          </TabsList>
-
-          <div className="mt-6">
-            <TabsContent value="briefing">
-              <AppointmentBriefingView
-                preparation={preparation}
-                appointmentInfo={appointmentInfo}
-              />
-            </TabsContent>
-
-            <TabsContent value="preparation">
-              <AppointmentPreparationDataTab
-                preparation={preparation}
-                appointmentDetails={appointmentInfo}
-                onUpdate={updatePreparation}
-                onOpenAppointmentDetails={() => setShowAppointmentSidebar(true)}
-              />
-            </TabsContent>
-
-            <TabsContent value="checklist">
-              <AppointmentPreparationChecklistTab
-                preparation={preparation}
-                onUpdate={updatePreparation}
-              />
-            </TabsContent>
-
-            <TabsContent value="details">
-              <AppointmentPreparationDetailsTab
-                preparation={preparation}
-                onUpdate={updatePreparation}
-              />
-            </TabsContent>
-
-            <TabsContent value="dokumente">
-              <Card className="bg-card shadow-card border-border">
-                <CardHeader>
-                  <CardTitle>Dokumente</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <AppointmentPreparationFileUpload
-                    preparationId={preparation.id}
-                    tenantId={preparation.tenant_id}
-                  />
-                </CardContent>
-              </Card>
-            </TabsContent>
+        {/* Workflow Workspace */}
+        {briefingMode ? (
+          <div className="mt-4">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="section-label text-muted-foreground">Briefing-Ansicht</p>
+              <Button variant="ghost" size="sm" onClick={() => setBriefingMode(false)}>
+                Zur Vorbereitung
+              </Button>
+            </div>
+            <AppointmentBriefingView
+              preparation={preparation}
+              appointmentInfo={appointmentInfo ? {
+                title: appointmentInfo.title,
+                start_time: appointmentInfo.start_time,
+                end_time: appointmentInfo.end_time,
+                location: appointmentInfo.location ?? null,
+              } : null}
+            />
           </div>
-        </Tabs>
+        ) : (
+          <WorkflowWorkspace
+            preparation={preparation}
+            appointmentInfo={appointmentInfo}
+            updatePreparation={updatePreparation}
+            onOpenAppointmentDetails={() => setShowAppointmentSidebar(true)}
+            selectedPhase={selectedPhase}
+            setSelectedPhase={setSelectedPhase}
+            onShowBriefing={() => setBriefingMode(true)}
+          />
+        )}
       </div>
         {appointmentInfo && (
           <AppointmentDetailsSidebar
