@@ -19,7 +19,7 @@ describe('buildDeepLinkPath', () => {
   it('verlinkt Briefe per ID', () => {
     const path = buildDeepLinkPath(
       makeNotification({
-        notification_types: { name: 'letter_created', label: 'Brief' },
+        notification_types: { name: 'letter_sent', label: 'Brief' },
         data: { letter_id: 'abc' },
       }),
     );
@@ -29,7 +29,7 @@ describe('buildDeepLinkPath', () => {
   it('fällt für Briefe ohne ID auf Dokumente zurück', () => {
     const path = buildDeepLinkPath(
       makeNotification({
-        notification_types: { name: 'letter_created', label: 'Brief' },
+        notification_types: { name: 'letter_sent', label: 'Brief' },
         data: {},
       }),
     );
