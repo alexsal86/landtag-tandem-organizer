@@ -59,6 +59,10 @@ export function DossiersMainView() {
           <MeinRadarView onSelectDossier={handleSelectDossier} />
         ) : activeTab === "dossiers" ? (
           <DossierListView onSelect={handleSelectDossier} />
+        ) : activeTab === "fakten" ? (
+          <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="animate-spin h-6 w-6 text-muted-foreground" /></div>}>
+            <FactsLibraryView />
+          </Suspense>
         ) : (
           <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="animate-spin h-6 w-6 text-muted-foreground" /></div>}>
             <KnowledgeBaseView />
