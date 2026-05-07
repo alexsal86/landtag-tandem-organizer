@@ -3,7 +3,7 @@ import { Resend } from "https://esm.sh/resend@4.0.0";
 import { requireAppBaseUrl } from "../_shared/url.ts";
 import { createServiceRoleClient } from "../_shared/supabase.ts";
 
-import { withSafeHandler } from "../_shared/security.ts";
+import { withSafeHandler, requireAuth, unauthorizedResponse } from "../_shared/security.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
@@ -22,6 +22,9 @@ const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const auth = await requireAuth(req);
+  if (!auth) return unauthorizedResponse();
 
   try {
     const supabase = createServiceRoleClient();
