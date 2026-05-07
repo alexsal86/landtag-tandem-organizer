@@ -11,8 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { X, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { toast } from "@/hooks/use-toast";
-
+import { notify } from "@/lib/notify";
 interface NotificationProfile {
   user_id: string;
   display_name: string | null;
@@ -75,20 +74,16 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
   const handleSend = async (event?: FormEvent<HTMLFormElement>): Promise<void> => {
     event?.preventDefault();
     if (!user || !content.trim()) {
-      toast({
-        title: "Fehler",
-        description: "Bitte geben Sie eine Nachricht ein.",
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Bitte geben Sie eine Nachricht ein."
+});
       return;
     }
 
     if (!isForAllUsers && selectedRecipients.length === 0) {
-      toast({
-        title: "Fehler",
-        description: "Bitte wählen Sie mindestens einen Empfänger aus.",
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Bitte wählen Sie mindestens einen Empfänger aus."
+});
       return;
     }
 
@@ -108,19 +103,17 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
       }
 
 
-      toast({
-        title: "Nachricht gesendet",
+      notify.success("Nachricht gesendet", {
         description: "Ihre Nachricht wurde erfolgreich versendet."
-      });
+      
+});
 
       onSent();
     } catch (error) {
       debugConsole.error('Error sending message:', error);
-      toast({
-        title: "Fehler",
-        description: "Die Nachricht konnte nicht gesendet werden.",
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Die Nachricht konnte nicht gesendet werden."
+});
     } finally {
       setLoading(false);
     }

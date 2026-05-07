@@ -8,8 +8,8 @@ import { Check, Users, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useAuth } from "@/hooks/useAuth";
-import { toast } from "@/hooks/use-toast";
 import type { AppointmentPreparation } from "@/hooks/useAppointmentPreparation";
+import { notify } from "@/lib/notify";
 
 interface Member {
   user_id: string;
@@ -59,7 +59,7 @@ export function SharingPanel({ preparation, onUpdate }: Props) {
     try {
       await onUpdate({ shared_with: next });
     } catch {
-      toast({ title: "Fehler beim Teilen", variant: "destructive" });
+      notify.error("Fehler beim Teilen");
     }
   };
 

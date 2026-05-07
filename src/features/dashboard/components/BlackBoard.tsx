@@ -6,8 +6,8 @@ import { Clipboard, Check, AlertTriangle, Clock, Users, Pin } from "lucide-react
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMessagesRealtime } from "@/hooks/useMessagesRealtime";
-import { toast } from "@/hooks/use-toast";
 import { debugConsole } from '@/utils/debugConsole';
+import { notify } from "@/lib/notify";
 
 interface BlackBoardMessage {
   id: string;
@@ -82,19 +82,17 @@ export function BlackBoard() {
           is_for_all_param: true
         });
 
-      toast({
-        title: "Bekanntmachung bestätigt",
+      notify.success("Bekanntmachung bestätigt", {
         description: "Sie haben die Nachricht zur Kenntnis genommen."
-      });
+      
+});
 
       fetchPublicMessages();
     } catch (error) {
       debugConsole.error('Error confirming message:', error);
-      toast({
-        title: "Fehler",
-        description: "Die Bekanntmachung konnte nicht bestätigt werden.",
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Die Bekanntmachung konnte nicht bestätigt werden."
+});
     }
   };
 

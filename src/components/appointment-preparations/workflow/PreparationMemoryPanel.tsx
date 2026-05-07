@@ -5,8 +5,7 @@ import { Sparkles, Plus, Pin } from "lucide-react";
 import { useContactBriefingMemory, type MemoryKind } from "@/hooks/useContactBriefingMemory";
 import type { AppointmentPreparation } from "@/hooks/useAppointmentPreparation";
 import { getConversationPartnersFromPreparationData } from "@/hooks/useAppointmentPreparation";
-import { toast } from "@/hooks/use-toast";
-
+import { notify } from "@/lib/notify";
 interface Props {
   preparation: AppointmentPreparation;
   onUpdate: (updates: Partial<AppointmentPreparation>) => Promise<void>;
@@ -54,13 +53,15 @@ export function PreparationMemoryPanel({ preparation, onUpdate }: Props) {
     }
 
     await onUpdate({ preparation_data: updated as AppointmentPreparation["preparation_data"] });
-    toast({ title: "Übernommen", description: "Eintrag aus dem Briefing-Gedächtnis übernommen." });
+    notify.success("Übernommen", { description: "Eintrag aus dem Briefing-Gedächtnis übernommen." 
+});
   };
 
   const pinNewKeyTopic = async (topicText: string, contactId: string) => {
     if (!topicText.trim()) return;
     await add({ contact_id: contactId, kind: "talking_point", content: topicText, source_preparation_id: preparation.id });
-    toast({ title: "Gemerkt", description: "Eintrag im Briefing-Gedächtnis gespeichert." });
+    notify.success("Gemerkt", { description: "Eintrag im Briefing-Gedächtnis gespeichert." 
+});
   };
 
   const currentTopics = ((preparation.preparation_data?.key_topic_items ?? []) as Array<{ topic: string }>).filter((t) => t.topic?.trim());
