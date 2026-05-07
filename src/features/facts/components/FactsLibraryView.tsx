@@ -95,10 +95,61 @@ export function FactsLibraryView() {
             Wiederverwendbare Datenpunkte mit Quelle, Tags und Verknüpfung.
           </p>
         </div>
-        <Button size="sm" onClick={() => setEditing("new")}>
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Neuer Fakt
-        </Button>
+        <div className="flex items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (!file) return;
+              setImporting(true);
+              try {
+                const parsed = await parseFactsCsv(file);
+                if (!parsed.rows.length) {
+                  toast.error("Keine gültigen Zeilen gefunden.");
+                  return;
+                }
+                let ok = 0; let fail = 0;
+                for (const row of parsed.rows) {
+                  try { await upsert.mutateAsync(row); ok++; } catch { fail++; }
+                }
+                toast.success(`Import: ${ok} importiert, ${fail} fehlgeschlagen, ${parsed.skipped} übersprungen.`);
+              } finally {
+                setImporting(false);
+              }
+            }}
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+          >
+            <UploadIcon className="h-4 w-4 mr-2" />
+            {importing ? "Importiere…" : "CSV-Import"}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              if (!allFacts.length) {
+                toast.info("Keine Fakten zum Exportieren.");
+                return;
+              }
+              exportFactsToCsv(allFacts);
+            }}
+          >
+            <DownloadIcon className="h-4 w-4 mr-2" />
+            CSV-Export
+          </Button>
+          <Button size="sm" onClick={() => setEditing("new")}>
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Neuer Fakt
+          </Button>
+        </div>
       </div>
 
       <div className="flex gap-2 items-center">
