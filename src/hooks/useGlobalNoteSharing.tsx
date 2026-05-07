@@ -167,7 +167,7 @@ export const useGlobalNoteSharing = () => {
         debugConsole.warn("No rows updated - checking if share exists");
         const { data: existingShare } = await supabase
           .from("quick_note_global_shares")
-          .select("*")
+          .select("id, user_id, shared_with_user_id, permission_type, created_at")
           .eq("id", shareId)
           .single();
         
