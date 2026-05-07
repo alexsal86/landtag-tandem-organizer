@@ -14,7 +14,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { AppointmentPreparation, AppointmentConversationPartner, getConversationPartnersFromPreparationData } from "@/hooks/useAppointmentPreparation";
 import { debounce } from "@/utils/debounce";
-import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useAuth } from "@/hooks/useAuth";
@@ -41,6 +40,7 @@ import type {
   TalkingPointItem,
   TopicItem,
 } from "./appointment-preparation-data/types";
+import { notify } from "@/lib/notify";
 
 export function AppointmentPreparationDataTab({
   preparation,
@@ -197,11 +197,9 @@ export function AppointmentPreparationDataTab({
         await onUpdate({ preparation_data: data });
       } catch (error) {
         debugConsole.error("Error saving preparation data:", error);
-        toast({
-          title: "Fehler",
-          description: "Fehler beim Speichern der Änderungen.",
-          variant: "destructive",
-        });
+        notify.error("Fehler", {
+          description: "Fehler beim Speichern der Änderungen."
+});
       } finally {
         setSaving(false);
       }
@@ -287,10 +285,12 @@ export function AppointmentPreparationDataTab({
 
       setConversationPartners(updated);
       await onUpdate({ preparation_data: buildPreparationData(editData, { conversation_partners: updated, contact_person: undefined }) });
-      toast({ title: "Foto hochgeladen", description: "Das Foto wurde dem Gesprächspartner zugeordnet." });
+      notify.success("Foto hochgeladen", { description: "Das Foto wurde dem Gesprächspartner zugeordnet." 
+});
     } catch (error) {
       debugConsole.error("Error uploading conversation partner photo:", error);
-      toast({ title: "Fehler", description: "Das Foto konnte nicht hochgeladen werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Das Foto konnte nicht hochgeladen werden."
+});
     } finally {
       setSaving(false);
     }

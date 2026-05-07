@@ -3,8 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { STALE_TIME } from '@/lib/query-cache';
 import { useTenant } from './useTenant';
 import { useAuth } from './useAuth';
-import { toast } from '@/hooks/use-toast';
-
+import { notify } from "@/lib/notify";
 interface DistrictNote {
   id: string;
   tenant_id: string;
@@ -65,14 +64,12 @@ export const useDistrictNotes = (districtId?: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['district-notes', districtId] });
-      toast({ title: 'Notiz gespeichert' });
+      notify.success('Notiz gespeichert');
     },
     onError: (error) => {
-      toast({ 
-        title: 'Fehler beim Speichern', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      notify.error('Fehler beim Speichern', { 
+        description: error.message
+});
     },
   });
 

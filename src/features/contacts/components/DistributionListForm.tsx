@@ -11,8 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { X, Users, Save, Search, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
+import { notify } from "@/lib/notify";
 
 interface Contact {
   id: string;
@@ -40,7 +40,6 @@ export function DistributionListForm({ distributionListId, onSuccess, onBack }: 
   const [contactsLoading, setContactsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const { user } = useAuth();
-  const { toast } = useToast();
 
   useEffect(() => {
     fetchContacts();
@@ -70,11 +69,9 @@ export function DistributionListForm({ distributionListId, onSuccess, onBack }: 
       setFilteredContacts(data || []);
     } catch (error) {
       debugConsole.error('Error fetching contacts:', error);
-      toast({
-        title: "Fehler",
-        description: "Kontakte konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Kontakte konnten nicht geladen werden."
+});
     } finally {
       setContactsLoading(false);
     }
@@ -103,11 +100,9 @@ export function DistributionListForm({ distributionListId, onSuccess, onBack }: 
       setSelectedContactIds(members?.map((m: Record<string, any>) => m.contact_id) || []);
     } catch (error) {
       debugConsole.error('Error fetching distribution list:', error);
-      toast({
-        title: "Fehler",
-        description: "Verteiler konnte nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Verteiler konnte nicht geladen werden."
+});
     }
   };
 
@@ -121,12 +116,14 @@ export function DistributionListForm({ distributionListId, onSuccess, onBack }: 
 
   const handleSave = async () => {
     if (!name.trim()) {
-      toast({ title: "Fehler", description: "Bitte geben Sie einen Namen für den Verteiler ein.", variant: "destructive" });
+      notify.error("Fehler", { description: "Bitte geben Sie einen Namen für den Verteiler ein."
+});
       return;
     }
 
     if (selectedContactIds.length === 0) {
-      toast({ title: "Fehler", description: "Bitte wählen Sie mindestens einen Kontakt aus.", variant: "destructive" });
+      notify.error("Fehler", { description: "Bitte wählen Sie mindestens einen Kontakt aus."
+});
       return;
     }
 
@@ -171,17 +168,17 @@ export function DistributionListForm({ distributionListId, onSuccess, onBack }: 
 
       if (membersError) throw membersError;
 
-      toast({
-        title: "Erfolg",
+      notify.success("Erfolg", {
         description: distributionListId 
           ? "Verteiler wurde erfolgreich aktualisiert."
-          : "Verteiler wurde erfolgreich erstellt.",
-      });
+          : "Verteiler wurde erfolgreich erstellt."
+});
 
       onSuccess?.();
     } catch (error) {
       debugConsole.error('Error saving distribution list:', error);
-      toast({ title: "Fehler", description: "Verteiler konnte nicht gespeichert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Verteiler konnte nicht gespeichert werden."
+});
     } finally {
       setLoading(false);
     }

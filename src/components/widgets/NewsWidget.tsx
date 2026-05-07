@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { RefreshCw, ExternalLink, Filter, Rss, Share2, CheckSquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { NewsShareDialog } from './NewsShareDialog';
 import { NewsToTaskDialog } from './NewsToTaskDialog';
 import { EmptyState, LoadingState, ErrorState } from '@/components/ui-patterns';

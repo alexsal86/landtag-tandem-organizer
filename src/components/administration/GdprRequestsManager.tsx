@@ -21,6 +21,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Shield, Plus, Download, Play, Check } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { de } from "date-fns/locale";
+import { notify } from "@/lib/notify";
 
 type GdprRequest = {
   id: string;
@@ -50,7 +51,6 @@ const statusVariant = (s: GdprRequest["status"]) => {
 export function GdprRequestsManager(): JSX.Element {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     request_type: "export" as "export" | "delete",
@@ -80,7 +80,7 @@ export function GdprRequestsManager(): JSX.Element {
   const createRequest = async () => {
     if (!currentTenant?.id || !user) return;
     if (!form.subject_email && !form.subject_contact_id) {
-      toast({ title: "Bitte E-Mail oder Kontakt-ID angeben", variant: "destructive" });
+      notify.error("Bitte E-Mail oder Kontakt-ID angeben");
       return;
     }
     const { error } = await supabase.from("gdpr_requests").insert({
@@ -93,10 +93,11 @@ export function GdprRequestsManager(): JSX.Element {
       requested_by: user.id,
     });
     if (error) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      notify.error("Fehler", { description: error.message
+});
       return;
     }
-    toast({ title: "Anfrage erstellt" });
+    notify.success("Anfrage erstellt");
     setOpen(false);
     setForm({ request_type: "export", subject_email: "", subject_name: "", subject_contact_id: "", reason: "" });
     void requestsQuery.refetch();
@@ -105,7 +106,8 @@ export function GdprRequestsManager(): JSX.Element {
   const approveDelete = async (req: GdprRequest) => {
     if (!user) return;
     if (req.requested_by === user.id) {
-      toast({ title: "Vier-Augen-Prinzip", description: "Genehmigung erfordert zweiten Admin.", variant: "destructive" });
+      notify.error("Vier-Augen-Prinzip", { description: "Genehmigung erfordert zweiten Admin."
+});
       return;
     }
     const { error } = await supabase
@@ -113,10 +115,11 @@ export function GdprRequestsManager(): JSX.Element {
       .update({ status: "approved", approved_by: user.id, approved_at: new Date().toISOString() })
       .eq("id", req.id);
     if (error) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      notify.error("Fehler", { description: error.message
+});
       return;
     }
-    toast({ title: "Freigegeben" });
+    notify.success("Freigegeben");
     void requestsQuery.refetch();
   };
 
@@ -125,10 +128,11 @@ export function GdprRequestsManager(): JSX.Element {
       body: { request_id: req.id },
     });
     if (error) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      notify.error("Fehler", { description: error.message
+});
       return;
     }
-    toast({ title: "Verarbeitung abgeschlossen" });
+    notify.success("Verarbeitung abgeschlossen");
     void requestsQuery.refetch();
   };
 
@@ -138,7 +142,8 @@ export function GdprRequestsManager(): JSX.Element {
       .from("documents")
       .createSignedUrl(req.result_storage_path, 3600);
     if (error || !data) {
-      toast({ title: "Download nicht möglich", description: error?.message, variant: "destructive" });
+      notify.error("Download nicht möglich", { description: error?.message
+});
       return;
     }
     window.open(data.signedUrl, "_blank");

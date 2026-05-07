@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useTenant } from "@/hooks/useTenant";
 import { debugConsole } from '@/utils/debugConsole';
+import { notify } from "@/lib/notify";
 
 export interface Topic {
   id: string;
@@ -20,7 +21,6 @@ export interface Topic {
 export const useTopics = () => {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
   const { currentTenant } = useTenant();
 
   const fetchTopics = async () => {
@@ -50,11 +50,9 @@ export const useTopics = () => {
 
   const createTopic = async (topicData: Partial<Topic>) => {
     if (!topicData.name || !topicData.label) {
-      toast({
-        title: "Fehler",
-        description: "Name und Label sind Pflichtfelder.",
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Name und Label sind Pflichtfelder."
+});
       return null;
     }
     if (!currentTenant) return null;
@@ -82,15 +80,14 @@ export const useTopics = () => {
       if (error) throw error;
 
       setTopics(prev => [...prev, data]);
-      toast({ title: "Thema erstellt", description: `"${topicData.label}" wurde hinzugefügt.` });
+      notify.success("Thema erstellt", { description: `"${topicData.label}" wurde hinzugefügt.` 
+});
       return data;
     } catch (error: unknown) {
       debugConsole.error('Error creating topic:', error);
-      toast({ 
-        title: "Fehler", 
-        description: error instanceof Error ? error.message : "Thema konnte nicht erstellt werden.", 
-        variant: "destructive" 
-      });
+      notify.error("Fehler", { 
+        description: error instanceof Error ? error.message : "Thema konnte nicht erstellt werden."
+});
       return null;
     }
   };
@@ -107,15 +104,13 @@ export const useTopics = () => {
       if (error) throw error;
 
       setTopics(prev => prev.map(t => t.id === id ? data : t));
-      toast({ title: "Thema aktualisiert" });
+      notify.success("Thema aktualisiert");
       return data;
     } catch (error: unknown) {
       debugConsole.error('Error updating topic:', error);
-      toast({ 
-        title: "Fehler", 
-        description: error instanceof Error ? error.message : "Thema konnte nicht aktualisiert werden.", 
-        variant: "destructive" 
-      });
+      notify.error("Fehler", { 
+        description: error instanceof Error ? error.message : "Thema konnte nicht aktualisiert werden."
+});
       return null;
     }
   };
@@ -130,15 +125,13 @@ export const useTopics = () => {
       if (error) throw error;
 
       setTopics(prev => prev.filter(t => t.id !== id));
-      toast({ title: "Thema gelöscht" });
+      notify.success("Thema gelöscht");
       return true;
     } catch (error: unknown) {
       debugConsole.error('Error deleting topic:', error);
-      toast({ 
-        title: "Fehler", 
-        description: error instanceof Error ? error.message : "Thema konnte nicht gelöscht werden.", 
-        variant: "destructive" 
-      });
+      notify.error("Fehler", { 
+        description: error instanceof Error ? error.message : "Thema konnte nicht gelöscht werden."
+});
       return false;
     }
   };

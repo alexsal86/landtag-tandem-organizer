@@ -17,8 +17,8 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User, Mail, Phone, Building, MapPin, Calendar, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import type { MergeContact } from '@/types/contact';
+import { notify } from "@/lib/notify";
 
 interface MergeContactsDialogProps {
   contact1: MergeContact;
@@ -52,7 +52,6 @@ export function MergeContactsDialog({
   const [selectedValues, setSelectedValues] = useState<Record<string, string>>({});
   const [primaryContact, setPrimaryContact] = useState<string>(contact1.id);
   const [merging, setMerging] = useState(false);
-  const { toast } = useToast();
 
   const moveDistributionListMemberships = async (
     secondaryContactId: string,
@@ -209,20 +208,17 @@ export function MergeContactsDialog({
 
       if (deleteError) throw deleteError;
 
-      toast({
-        title: 'Kontakte zusammengeführt',
-        description: 'Die Kontakte wurden erfolgreich zusammengeführt.',
-      });
+      notify.success('Kontakte zusammengeführt', {
+        description: 'Die Kontakte wurden erfolgreich zusammengeführt.'
+});
 
       onMergeComplete();
       onClose();
     } catch (error) {
       debugConsole.error('Error merging contacts:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Kontakte konnten nicht zusammengeführt werden.',
-        variant: 'destructive',
-      });
+      notify.error('Fehler', {
+        description: 'Kontakte konnten nicht zusammengeführt werden.'
+});
     } finally {
       setMerging(false);
     }

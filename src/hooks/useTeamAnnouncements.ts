@@ -3,9 +3,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { toast } from "sonner";
 import { debugConsole } from "@/utils/debugConsole";
 import { STALE_TIME } from "@/lib/query-cache";
+import { notify } from "@/lib/notify";
 
 export interface TeamAnnouncement {
   id: string;
@@ -140,7 +140,7 @@ export function useTeamAnnouncements() {
 
   const createAnnouncement = async (input: CreateAnnouncementData) => {
     if (!userId || !tenantId) {
-      toast.error("Nicht angemeldet");
+      notify.error("Nicht angemeldet");
       return null;
     }
     try {
@@ -184,12 +184,12 @@ export function useTeamAnnouncements() {
         debugConsole.error("Error sending announcement notifications:", pushErr);
       }
 
-      toast.success("Mitteilung erstellt");
+      notify.success("Mitteilung erstellt");
       await refetch();
       return newAnnouncement;
     } catch (error) {
       debugConsole.error("Error creating announcement:", error);
-      toast.error("Fehler beim Erstellen der Mitteilung");
+      notify.error("Fehler beim Erstellen der Mitteilung");
       return null;
     }
   };
@@ -208,14 +208,14 @@ export function useTeamAnnouncements() {
       if (updateData) {
         patchCache((prev) => prev.map((a) => (a.id === id ? { ...a, ...updateData, priority: updateData.priority as TeamAnnouncement['priority'] } : a)));
       }
-      toast.success("Mitteilung aktualisiert");
+      notify.success("Mitteilung aktualisiert");
       await refetch();
       return true;
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'Unbekannter Fehler';
       debugConsole.error("Error updating announcement:", error);
       if (previous) queryClient.setQueryData(queryKey, previous);
-      toast.error(`Fehler: ${msg}`);
+      notify.error(`Fehler: ${msg}`);
       return false;
     }
   };
@@ -224,19 +224,19 @@ export function useTeamAnnouncements() {
     try {
       const { error } = await supabase.from("team_announcements").delete().eq("id", id);
       if (error) throw error;
-      toast.success("Mitteilung gelöscht");
+      notify.success("Mitteilung gelöscht");
       await refetch();
       return true;
     } catch (error) {
       debugConsole.error("Error deleting announcement:", error);
-      toast.error("Fehler beim Löschen");
+      notify.error("Fehler beim Löschen");
       return false;
     }
   };
 
   const dismissAnnouncement = async (announcementId: string) => {
     if (!userId) {
-      toast.error("Nicht angemeldet");
+      notify.error("Nicht angemeldet");
       return false;
     }
     try {
@@ -245,11 +245,11 @@ export function useTeamAnnouncements() {
         .insert([{ announcement_id: announcementId, user_id: userId }]);
       if (error) throw error;
       patchCache((prev) => prev.map((a) => (a.id === announcementId ? { ...a, is_dismissed: true } : a)));
-      toast.success("Als erledigt markiert");
+      notify.success("Als erledigt markiert");
       return true;
     } catch (error) {
       debugConsole.error("Error dismissing announcement:", error);
-      toast.error("Fehler beim Markieren");
+      notify.error("Fehler beim Markieren");
       return false;
     }
   };
@@ -264,7 +264,7 @@ export function useTeamAnnouncements() {
         .eq("user_id", userId);
       if (error) throw error;
       await refetch();
-      toast.success("Erledigt-Markierung aufgehoben");
+      notify.success("Erledigt-Markierung aufgehoben");
       return true;
     } catch (error) {
       debugConsole.error("Error undoing dismissal:", error);

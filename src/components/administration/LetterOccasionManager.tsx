@@ -11,7 +11,6 @@ import { Plus, Edit, Trash2, Save, X, GripVertical, Users, Building2, PartyPoppe
 import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
-import { useToast } from '@/hooks/use-toast';
 import { debugConsole } from '@/utils/debugConsole';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
@@ -46,6 +45,7 @@ const ICON_OPTIONS = [
 ];
 
 import { PALETTE_PRESETS, getPaletteSolidClass } from "@/lib/paletteStyles";
+import { notify } from "@/lib/notify";
 
 const COLOR_OPTIONS = PALETTE_PRESETS
   .filter((p) => ['blue','purple','amber','rose','teal','indigo','green','orange','gray'].includes(p.key))
@@ -75,7 +75,6 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
 
 export function LetterOccasionManager() {
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const [occasions, setOccasions] = useState<LetterOccasion[]>([]);
   const [templates, setTemplates] = useState<LetterTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -153,9 +152,10 @@ export function LetterOccasionManager() {
     }
     if (insertedOccasions.length > 0) {
       setOccasions(insertedOccasions);
-      toast({ title: 'Standard-Anlässe erstellt' });
+      notify.success('Standard-Anlässe erstellt');
     } else {
-      toast({ title: 'Hinweis', description: 'Anlässe konnten nicht erstellt werden. Prüfen Sie die Berechtigungen.', variant: 'destructive' });
+      notify.error('Hinweis', { description: 'Anlässe konnten nicht erstellt werden. Prüfen Sie die Berechtigungen.'
+});
     }
     setLoading(false);
   };
@@ -204,17 +204,19 @@ export function LetterOccasionManager() {
     if (editingId) {
       const { error } = await supabase.from('letter_occasions').update(payload).eq('id', editingId);
       if (error) {
-        toast({ title: 'Fehler', description: error.message, variant: 'destructive' });
+        notify.error('Fehler', { description: error.message
+});
         return;
       }
-      toast({ title: 'Anlass aktualisiert' });
+      notify.success('Anlass aktualisiert');
     } else {
       const { error } = await supabase.from('letter_occasions').insert(payload);
       if (error) {
-        toast({ title: 'Fehler', description: error.message, variant: 'destructive' });
+        notify.error('Fehler', { description: error.message
+});
         return;
       }
-      toast({ title: 'Anlass erstellt' });
+      notify.success('Anlass erstellt');
     }
     setEditingId(null);
     setShowCreate(false);
@@ -225,9 +227,10 @@ export function LetterOccasionManager() {
     if (!deletingId) return;
     const { error } = await supabase.from('letter_occasions').delete().eq('id', deletingId);
     if (error) {
-      toast({ title: 'Fehler', description: error.message, variant: 'destructive' });
+      notify.error('Fehler', { description: error.message
+});
     } else {
-      toast({ title: 'Anlass gelöscht' });
+      notify.success('Anlass gelöscht');
       loadOccasions();
     }
     setDeletingId(null);

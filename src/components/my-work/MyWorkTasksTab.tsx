@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { useViewPreference } from "@/hooks/useViewPreference";
@@ -23,12 +22,12 @@ import { MyWorkTaskDialogs } from "./MyWorkTaskDialogs";
 import { MyWorkEmptyState } from "./MyWorkEmptyState";
 import { ListTodo } from "lucide-react";
 import { useMyWorkTaskActions } from "./useMyWorkTaskActions";
+import { notify } from "@/lib/notify";
 
 export function MyWorkTasksTab() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const { viewType, setViewType } = useViewPreference({
     key: "mywork-tasks",
@@ -359,7 +358,7 @@ export function MyWorkTasksTab() {
         onMarkForNextJourFixe={actions.handleMarkForNextJourFixe}
         onSaveTaskEdit={actions.handleSaveTaskEdit}
         onDecisionCreated={() => {
-          toast({ title: "Entscheidungsanfrage erstellt" });
+          notify.success("Entscheidungsanfrage erstellt");
         }}
       />
 

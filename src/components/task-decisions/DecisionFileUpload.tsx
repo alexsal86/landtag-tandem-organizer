@@ -3,13 +3,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Upload, X, File, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import { isEmailFile, isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, buildEmlFromOutlookHtml, type EmailMetadata } from '@/utils/emlParser';
 import { useDecisionAttachmentUpload } from '@/hooks/useDecisionAttachmentUpload';
 import { EmailPreviewCard } from './EmailPreviewCard';
 import { EmailPreviewDialog } from './EmailPreviewDialog';
 import { debugConsole } from '@/utils/debugConsole';
 import type { ParticipantProfile } from '@/types/taskDecisions';
+import { notify } from "@/lib/notify";
 
 interface UploadedFile {
   id?: string;
@@ -58,7 +58,6 @@ export function DecisionFileUpload({
     open: false, filePath: '', fileName: ''
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
   const { uploadDecisionAttachments } = useDecisionAttachmentUpload();
 
   useEffect(() => {
@@ -164,10 +163,9 @@ export function DecisionFileUpload({
       return [...prev, ...dedupedIncoming];
     });
 
-    toast({
-      title: 'Dateien ausgewählt',
-      description: 'Ausgewählte Dateien werden nach Erstellung hochgeladen.',
-    });
+    notify.success('Dateien ausgewählt', {
+      description: 'Ausgewählte Dateien werden nach Erstellung hochgeladen.'
+});
   };
 
   const handleFileSelect = async (fileList: FileList | null) => {
@@ -206,18 +204,15 @@ export function DecisionFileUpload({
       });
 
       if (uploadResult.uploadedCount > 0) {
-        toast({
-          title: 'Dateien hochgeladen',
-          description: `${uploadResult.uploadedCount} Datei(en) wurden erfolgreich hochgeladen.`,
-        });
+        notify.success('Dateien hochgeladen', {
+          description: `${uploadResult.uploadedCount} Datei(en) wurden erfolgreich hochgeladen.`
+});
       }
 
       if (uploadResult.failed.length > 0) {
-        toast({
-          title: 'Upload teilweise fehlgeschlagen',
-          description: uploadResult.failed.map(f => `${f.fileName}: ${f.reason}`).join(' | '),
-          variant: 'destructive',
-        });
+        notify.error('Upload teilweise fehlgeschlagen', {
+          description: uploadResult.failed.map(f => `${f.fileName}: ${f.reason}`).join(' | ')
+});
       }
     } finally {
       setUploading(false);
@@ -239,10 +234,9 @@ export function DecisionFileUpload({
       const hasHtml = e.dataTransfer.types.includes('text/html');
       const hasText = e.dataTransfer.types.includes('text/plain');
       if (hasHtml || hasText) {
-        toast({
-          title: 'Outlook-Mail erkannt',
-          description: 'Direkt-Drag aus Outlook wird vom Browser nicht unterstützt. Bitte speichern Sie die Mail als .msg-Datei (Datei → Speichern unter) und ziehen Sie die gespeicherte Datei hierher, oder kopieren Sie die Mail (Strg+C) und fügen Sie sie hier ein (Strg+V).',
-        });
+        notify.success('Outlook-Mail erkannt', {
+          description: 'Direkt-Drag aus Outlook wird vom Browser nicht unterstützt. Bitte speichern Sie die Mail als .msg-Datei (Datei → Speichern unter) und ziehen Sie die gespeicherte Datei hierher, oder kopieren Sie die Mail (Strg+C) und fügen Sie sie hier ein (Strg+V).'
+});
       }
       return;
     }
@@ -302,10 +296,9 @@ export function DecisionFileUpload({
         if (syntheticEml) {
           event?.preventDefault();
           event?.stopPropagation();
-          toast({
-            title: 'E-Mail aus Zwischenablage erkannt',
-            description: 'Die kopierte E-Mail wird als .eml-Datei importiert.',
-          });
+          notify.success('E-Mail aus Zwischenablage erkannt', {
+            description: 'Die kopierte E-Mail wird als .eml-Datei importiert.'
+});
           if (mode === 'creation') {
             await addSelectedEntries([syntheticEml]);
           } else {
@@ -314,10 +307,9 @@ export function DecisionFileUpload({
           return;
         }
         // HTML present but doesn't look like email
-        toast({
-          title: 'Kein E-Mail-Inhalt erkannt',
-          description: 'Bitte speichern Sie die Mail in Outlook als .msg-Datei (Datei → Speichern unter) und ziehen Sie die Datei hierher.',
-        });
+        notify.success('Kein E-Mail-Inhalt erkannt', {
+          description: 'Bitte speichern Sie die Mail in Outlook als .msg-Datei (Datei → Speichern unter) und ziehen Sie die Datei hierher.'
+});
         event?.preventDefault();
         event?.stopPropagation();
         return;
@@ -362,17 +354,14 @@ export function DecisionFileUpload({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      toast({
-        title: 'Download gestartet',
-        description: `${fileName} wird heruntergeladen.`,
-      });
+      notify.success('Download gestartet', {
+        description: `${fileName} wird heruntergeladen.`
+});
     } catch (error) {
       debugConsole.error('Download error:', error);
-      toast({
-        title: 'Download fehlgeschlagen',
-        description: 'Die Datei konnte nicht heruntergeladen werden.',
-        variant: 'destructive',
-      });
+      notify.error('Download fehlgeschlagen', {
+        description: 'Die Datei konnte nicht heruntergeladen werden.'
+});
     }
   };
 
@@ -391,20 +380,17 @@ export function DecisionFileUpload({
 
       if (dbError) throw dbError;
 
-      toast({
-        title: 'Datei gelöscht',
-        description: 'Die Datei wurde erfolgreich gelöscht.',
-      });
+      notify.success('Datei gelöscht', {
+        description: 'Die Datei wurde erfolgreich gelöscht.'
+});
 
       loadExistingFiles();
       onFilesChange?.();
     } catch (error) {
       debugConsole.error('Delete error:', error);
-      toast({
-        title: 'Löschung fehlgeschlagen',
-        description: 'Die Datei konnte nicht gelöscht werden.',
-        variant: 'destructive',
-      });
+      notify.error('Löschung fehlgeschlagen', {
+        description: 'Die Datei konnte nicht gelöscht werden.'
+});
     }
   };
 
@@ -454,11 +440,9 @@ export function DecisionFileUpload({
             if (await canDelete(file.uploaded_by!)) {
               removeFile(file.id!, file.file_path);
             } else {
-              toast({
-                title: 'Keine Berechtigung',
-                description: 'Sie können nur Ihre eigenen Dateien löschen.',
-                variant: 'destructive',
-              });
+              notify.error('Keine Berechtigung', {
+                description: 'Sie können nur Ihre eigenen Dateien löschen.'
+});
             }
           } : undefined}
         />
@@ -488,7 +472,8 @@ export function DecisionFileUpload({
               if (await canDelete(file.uploaded_by!)) {
                 removeFile(file.id!, file.file_path);
               } else {
-                toast({ title: 'Keine Berechtigung', description: 'Sie können nur Ihre eigenen Dateien löschen.', variant: 'destructive' });
+                notify.error('Keine Berechtigung', { description: 'Sie können nur Ihre eigenen Dateien löschen.'
+});
               }
             }}>
               <X className="h-4 w-4" />

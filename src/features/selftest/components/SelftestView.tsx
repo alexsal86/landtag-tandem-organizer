@@ -7,10 +7,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, CheckCircle2, XCircle, Clock, SkipForward, Play, Trash2, AlertTriangle, Sparkles, ExternalLink } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { useToast } from "@/hooks/use-toast";
 import { SELFTEST_SCENARIOS } from "../registry";
 import { purgeAllSelftestData, runScenario } from "../runner";
 import type { ScenarioRunState, StepStatus } from "../types";
+import { notify } from "@/lib/notify";
 
 const StatusIcon = ({ status }: { status: StepStatus }) => {
   switch (status) {
@@ -30,7 +30,6 @@ const StatusIcon = ({ status }: { status: StepStatus }) => {
 export function SelftestView() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const navigate = useNavigate();
   const [runs, setRuns] = useState<Record<string, ScenarioRunState>>({});
   const [busy, setBusy] = useState<string | null>(null);
@@ -40,7 +39,8 @@ export function SelftestView() {
 
   const handleRun = async (scenarioId: string, keepData: boolean) => {
     if (!user || !currentTenant) {
-      toast({ title: "Nicht bereit", description: "Login und Tenant erforderlich.", variant: "destructive" });
+      notify.error("Nicht bereit", { description: "Login und Tenant erforderlich."
+});
       return;
     }
     const scenario = SELFTEST_SCENARIOS.find((s) => s.id === scenarioId);
@@ -59,11 +59,9 @@ export function SelftestView() {
         keepData,
         onUpdate: (state) => setRuns((prev) => ({ ...prev, [scenarioId]: state })),
       });
-      toast({
-        title: result.status === "ok" ? (keepData ? "Demo-Daten erzeugt" : "Selbsttest erfolgreich") : "Selbsttest mit Fehlern",
-        description: scenario.title,
-        variant: result.status === "ok" ? "default" : "destructive",
-      });
+      notify.success(result.status === "ok" ? (keepData ? "Demo-Daten erzeugt" : "Selbsttest erfolgreich") : "Selbsttest mit Fehlern", {
+        description: scenario.title
+});
     } finally {
       setBusy(null);
     }
@@ -76,11 +74,9 @@ export function SelftestView() {
     setPurging(true);
     try {
       const result = await purgeAllSelftestData(currentTenant.id);
-      toast({
-        title: result.ok ? "Aufräumen erfolgreich" : "Aufräumen mit Fehlern",
-        description: result.message,
-        variant: result.ok ? "default" : "destructive",
-      });
+      notify.success(result.ok ? "Aufräumen erfolgreich" : "Aufräumen mit Fehlern", {
+        description: result.message
+});
     } finally {
       setPurging(false);
     }

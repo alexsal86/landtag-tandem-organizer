@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
+import { notify } from "@/lib/notify";
 
 interface User {
   user_id: string;
@@ -37,7 +37,6 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
     : 'Wählen Sie die Benutzer aus, die diesen Brief zur Korrektur erhalten sollen.';
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
@@ -95,11 +94,9 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
       setUsers(formattedUsers);
     } catch (error) {
       debugConsole.error('Error fetching tenant users:', error);
-      toast({
-        title: "Fehler",
-        description: "Benutzer konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Benutzer konnten nicht geladen werden."
+});
     } finally {
       setLoading(false);
     }
@@ -157,20 +154,17 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
         if (insertError) throw insertError;
       }
 
-      toast({
-        title: isWriterMode ? "Mitbearbeiter zugewiesen" : "Prüfer zugewiesen",
-        description: `${selectedUsers.length} ${isWriterMode ? 'Mitbearbeiter' : 'Prüfer'} wurden erfolgreich zugewiesen.`,
-      });
+      notify.success(isWriterMode ? "Mitbearbeiter zugewiesen" : "Prüfer zugewiesen", {
+        description: `${selectedUsers.length} ${isWriterMode ? 'Mitbearbeiter' : 'Prüfer'} wurden erfolgreich zugewiesen.`
+});
 
       onAssignmentComplete();
       onClose();
     } catch (error) {
       debugConsole.error('Error saving collaborators:', error);
-      toast({
-        title: "Fehler",
-        description: "Prüfer konnten nicht zugewiesen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Prüfer konnten nicht zugewiesen werden."
+});
     } finally {
       setSaving(false);
     }

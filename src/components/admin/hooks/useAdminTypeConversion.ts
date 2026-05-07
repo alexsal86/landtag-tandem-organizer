@@ -1,11 +1,11 @@
 import { useState } from "react";
 import type { User } from "@supabase/supabase-js";
-import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { CombinedTimeEntry } from "@/hooks/useCombinedTimeEntries";
 import type { EntryType } from "@/features/timetracking/components/AdminTimeEntryEditor";
 import { debugConsole } from "@/utils/debugConsole";
 import { getTypeLabel } from "../utils/timeFormatting";
+import { notify } from "@/lib/notify";
 
 interface UseAdminTypeConversionOptions {
   user: User | null;
@@ -28,7 +28,7 @@ export function useAdminTypeConversion({ user, selectedUserId, onSuccess }: UseA
 
     const entry = editingCombinedEntry;
     if (!entry) {
-      toast.error("Kein Eintrag ausgewählt");
+      notify.error("Kein Eintrag ausgewählt");
       setIsSaving(false);
       return;
     }
@@ -65,7 +65,7 @@ export function useAdminTypeConversion({ user, selectedUserId, onSuccess }: UseA
           throw insertError;
         }
 
-        toast.success(`Eintrag zu ${getTypeLabel(newType)} umgewandelt`);
+        notify.success(`Eintrag zu ${getTypeLabel(newType)} umgewandelt`);
       } else if (originalType !== "work" && newType === "work") {
         if (!actualLeaveId) throw new Error("Keine gültige Abwesenheits-ID");
 
@@ -78,7 +78,7 @@ export function useAdminTypeConversion({ user, selectedUserId, onSuccess }: UseA
           throw error;
         }
 
-        toast.info("Abwesenheit entfernt. Mitarbeiter muss Arbeitszeit manuell erfassen.");
+        notify.info("Abwesenheit entfernt. Mitarbeiter muss Arbeitszeit manuell erfassen.");
       } else if (originalType !== "work" && newType !== "work" && originalType !== newType) {
         if (!actualLeaveId) throw new Error("Keine gültige Abwesenheits-ID");
 
@@ -94,14 +94,14 @@ export function useAdminTypeConversion({ user, selectedUserId, onSuccess }: UseA
           throw error;
         }
 
-        toast.success("Eintragstyp geändert");
+        notify.success("Eintragstyp geändert");
       }
 
       setTimeout(() => onSuccess(), 500);
     } catch (error: unknown) {
       debugConsole.error("Type change error:", error);
       const msg = error instanceof Error ? error.message : "";
-      toast.error(msg || "Fehler bei der Typänderung");
+      notify.error(msg || "Fehler bei der Typänderung");
       if (msg.includes("fetch")) {
         setTimeout(() => onSuccess(), 500);
       }

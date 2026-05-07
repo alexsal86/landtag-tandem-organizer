@@ -3,8 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { STALE_TIME } from '@/lib/query-cache';
 import { useTenant } from './useTenant';
 import { useAuth } from './useAuth';
-import { toast } from '@/hooks/use-toast';
-
+import { notify } from "@/lib/notify";
 export interface MapFlagType {
   id: string;
   tenant_id: string;
@@ -64,14 +63,12 @@ export const useMapFlagTypes = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['map-flag-types'] });
-      toast({ title: 'Flaggentyp erstellt' });
+      notify.success('Flaggentyp erstellt');
     },
     onError: (error) => {
-      toast({ 
-        title: 'Fehler beim Erstellen', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      notify.error('Fehler beim Erstellen', { 
+        description: error.message
+});
     },
   });
 
@@ -90,14 +87,12 @@ export const useMapFlagTypes = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['map-flag-types'] });
       queryClient.invalidateQueries({ queryKey: ['map-flags'] });
-      toast({ title: 'Flaggentyp aktualisiert' });
+      notify.success('Flaggentyp aktualisiert');
     },
     onError: (error) => {
-      toast({ 
-        title: 'Fehler beim Aktualisieren', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      notify.error('Fehler beim Aktualisieren', { 
+        description: error.message
+});
     },
   });
 
@@ -113,14 +108,12 @@ export const useMapFlagTypes = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['map-flag-types'] });
       queryClient.invalidateQueries({ queryKey: ['map-flags'] });
-      toast({ title: 'Flaggentyp gelöscht' });
+      notify.success('Flaggentyp gelöscht');
     },
     onError: (error) => {
-      toast({ 
-        title: 'Fehler beim Löschen', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      notify.error('Fehler beim Löschen', { 
+        description: error.message
+});
     },
   });
 

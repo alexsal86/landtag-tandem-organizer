@@ -8,13 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { Calendar, CheckCircle2, Loader2, X, AlertCircle } from "lucide-react";
 import { EmployeeMeetingScheduler } from "@/features/employees/components/EmployeeMeetingScheduler";
 import { debugConsole } from "@/utils/debugConsole";
 import { fetchPendingMeetingRequests, PendingMeetingRequest } from "@/components/employees/hooks/meetingRequests";
+import { notify } from "@/lib/notify";
 
 interface MeetingRequestManagerProps {
   onPendingCountChange?: (count: number) => void;
@@ -24,7 +24,6 @@ interface MeetingRequestManagerProps {
 export function EmployeeMeetingRequestManager({ onPendingCountChange, onMeetingScheduled }: MeetingRequestManagerProps) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState<PendingMeetingRequest[]>([]);
   const [declineDialogOpen, setDeclineDialogOpen] = useState(false);
@@ -44,11 +43,9 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange, onMeetingS
       onPendingCountChange?.(enrichedRequests.length);
     } catch (error: unknown) {
       debugConsole.error("Error loading requests:", error);
-      toast({
-        title: "Fehler",
-        description: "Anfragen konnten nicht geladen werden",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Anfragen konnten nicht geladen werden"
+});
     } finally {
       setLoading(false);
     }
@@ -109,10 +106,9 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange, onMeetingS
         priority_param: "medium",
       });
 
-      toast({
-        title: "Anfrage abgelehnt",
-        description: "Die Gesprächsanfrage wurde abgelehnt.",
-      });
+      notify.success("Anfrage abgelehnt", {
+        description: "Die Gesprächsanfrage wurde abgelehnt."
+});
 
       setDeclineDialogOpen(false);
       setDeclineReason("");
@@ -120,11 +116,9 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange, onMeetingS
       await loadRequests();
     } catch (error: unknown) {
       debugConsole.error("Error declining request:", error);
-      toast({
-        title: "Fehler",
-        description: "Anfrage konnte nicht abgelehnt werden",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Anfrage konnte nicht abgelehnt werden"
+});
     } finally {
       setDeclining(false);
     }
@@ -142,19 +136,16 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange, onMeetingS
 
       if (error) throw error;
 
-      toast({
-        title: "Als erledigt markiert",
-        description: "Die Anfrage wurde als erledigt markiert.",
-      });
+      notify.success("Als erledigt markiert", {
+        description: "Die Anfrage wurde als erledigt markiert."
+});
 
       await loadRequests();
     } catch (error: unknown) {
       debugConsole.error("Error marking as completed:", error);
-      toast({
-        title: "Fehler",
-        description: "Status konnte nicht aktualisiert werden",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Status konnte nicht aktualisiert werden"
+});
     }
   };
 

@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import { handleAppError } from "@/utils/errorHandler";
 import type { Json, Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
+import { notify } from "@/lib/notify";
 
 export interface CaseFile {
   id: string;
@@ -136,7 +137,6 @@ export const useCaseFiles = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
 
   const fetchCaseFiles = useCallback(async () => {
     if (!user || !currentTenant) {
@@ -198,10 +198,9 @@ export const useCaseFiles = () => {
         }
       }
 
-      toast({
-        title: "Erfolgreich",
-        description: "Fallakte wurde erstellt.",
-      });
+      notify.success("Erfolgreich", {
+        description: "Fallakte wurde erstellt."
+});
 
       await fetchCaseFiles();
       return newCaseFile;
@@ -210,13 +209,11 @@ export const useCaseFiles = () => {
       const participantsRollbackError =
         error instanceof Error && error.message === 'ROLLBACK_CASE_FILE_PARTICIPANTS';
 
-      toast({
-        title: "Fehler",
+      notify.error("Fehler", {
         description: participantsRollbackError
           ? "Fallakte-Erstellung wurde zurückgerollt, da Teilnehmer nicht gespeichert werden konnten."
-          : "Fallakte konnte nicht erstellt werden.",
-        variant: "destructive",
-      });
+          : "Fallakte konnte nicht erstellt werden."
+});
       return null;
     }
   };
@@ -242,22 +239,19 @@ export const useCaseFiles = () => {
         ),
       );
 
-      toast({
-        title: "Erfolgreich",
-        description: "Fallakte wurde aktualisiert.",
-      });
+      notify.success("Erfolgreich", {
+        description: "Fallakte wurde aktualisiert."
+});
 
       return true;
     } catch (error) {
       debugConsole.error('Error updating case file:', error);
       const errorMessage = error instanceof Error ? error.message : "";
-      toast({
-        title: "Fehler",
+      notify.error("Fehler", {
         description: errorMessage.includes("Abschlussinteraktion")
           ? "Zum Abschließen ist mindestens eine dokumentierte Abschlussinteraktion erforderlich."
-          : "Fallakte konnte nicht aktualisiert werden.",
-        variant: "destructive",
-      });
+          : "Fallakte konnte nicht aktualisiert werden."
+});
       return false;
     }
   };
@@ -273,19 +267,16 @@ export const useCaseFiles = () => {
 
       setCaseFiles((prev) => prev.filter((caseFile) => caseFile.id !== id));
 
-      toast({
-        title: "Erfolgreich",
-        description: "Fallakte wurde gelöscht.",
-      });
+      notify.success("Erfolgreich", {
+        description: "Fallakte wurde gelöscht."
+});
 
       return true;
     } catch (error) {
       debugConsole.error('Error deleting case file:', error);
-      toast({
-        title: "Fehler",
-        description: "Fallakte konnte nicht gelöscht werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Fallakte konnte nicht gelöscht werden."
+});
       return false;
     }
   };

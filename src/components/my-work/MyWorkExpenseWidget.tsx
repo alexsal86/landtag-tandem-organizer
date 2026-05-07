@@ -11,10 +11,10 @@ import { Receipt, Plus, ExternalLink, TrendingUp, Wallet, AlertTriangle } from "
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
+import { notify } from "@/lib/notify";
 
 interface ExpenseCategory {
   id: string;
@@ -38,7 +38,6 @@ interface Props {
 export function MyWorkExpenseWidget({ userRole }: Props) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
@@ -150,7 +149,7 @@ export function MyWorkExpenseWidget({ userRole }: Props) {
         expense_date: newDate,
       }]);
       if (error) throw error;
-      toast({ title: "Ausgabe erfasst" });
+      notify.success("Ausgabe erfasst");
       setDialogOpen(false);
       setNewAmount("");
       setNewCategoryId("");
@@ -158,7 +157,8 @@ export function MyWorkExpenseWidget({ userRole }: Props) {
       setNewDate(format(new Date(), "yyyy-MM-dd"));
       loadData();
     } catch (err: unknown) {
-      toast({ title: "Fehler", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
+      notify.error("Fehler", { description: err instanceof Error ? err.message : String(err)
+});
     } finally {
       setSubmitting(false);
     }

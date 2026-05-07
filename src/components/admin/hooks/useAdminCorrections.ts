@@ -1,7 +1,7 @@
 import type { User } from "@supabase/supabase-js";
-import { toast } from "sonner";
 import { getYear } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { notify } from "@/lib/notify";
 
 interface UseAdminCorrectionsOptions {
   user: User | null;
@@ -20,7 +20,7 @@ export function useAdminCorrections({
     if (!user || !selectedUserId || !reason.trim()) return;
 
     if (isNaN(minutes)) {
-      toast.error("Bitte gültige Minutenzahl eingeben");
+      notify.error("Bitte gültige Minutenzahl eingeben");
       return;
     }
 
@@ -36,10 +36,10 @@ export function useAdminCorrections({
 
       if (error) throw error;
 
-      toast.success("Korrektur hinzugefügt");
+      notify.success("Korrektur hinzugefügt");
       onSuccess();
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Fehler beim Speichern der Korrektur");
+      notify.error(error instanceof Error ? error.message : "Fehler beim Speichern der Korrektur");
     }
   };
 
@@ -47,7 +47,7 @@ export function useAdminCorrections({
     if (!user || !selectedUserId) return;
 
     if (isNaN(minutes)) {
-      toast.error("Bitte gültige Minutenzahl eingeben");
+      notify.error("Bitte gültige Minutenzahl eingeben");
       return;
     }
 
@@ -80,10 +80,10 @@ export function useAdminCorrections({
         if (error) throw error;
       }
 
-      toast.success("Anfangsbestand gespeichert");
+      notify.success("Anfangsbestand gespeichert");
       onSuccess();
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Fehler beim Speichern");
+      notify.error(error instanceof Error ? error.message : "Fehler beim Speichern");
     }
   };
 

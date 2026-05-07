@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, startOfDay } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import type { DeadlineItem } from '@/types/dashboardDeadlines';
+import { notify } from "@/lib/notify";
 
 interface SnoozePayload {
   item: DeadlineItem;
@@ -58,10 +58,10 @@ export const useSnoozeDeadline = () => {
       queryClient.invalidateQueries({ queryKey: ['dashboard-deadlines'] });
       const today = startOfDay(new Date());
       const safe = variables.newDate < today ? today : variables.newDate;
-      toast.success(`Frist verschoben auf ${format(safe, 'EEEE, dd.MM.yyyy', { locale: de })}`);
+      notify.success(`Frist verschoben auf ${format(safe, 'EEEE, dd.MM.yyyy', { locale: de })}`);
     },
     onError: (error: Error) => {
-      toast.error(`Verschieben fehlgeschlagen: ${error.message}`);
+      notify.error(`Verschieben fehlgeschlagen: ${error.message}`);
     },
   });
 };

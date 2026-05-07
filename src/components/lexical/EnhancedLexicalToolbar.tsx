@@ -18,7 +18,6 @@ import { INSERT_TABLE_COMMAND } from '@lexical/table';
 import { $setBlocksType } from '@lexical/selection';
 import { $createImageNode } from '@/components/nodes/ImageNode';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
 import {
   Bold,
@@ -71,6 +70,7 @@ import { useSpeechDictation } from '@/hooks/useSpeechDictation';
 
 import { SpeechCommandsDialog } from '@/components/shared/SpeechCommandsDialog';
 import { SpeechSessionStats } from '@/components/shared/SpeechSessionStats';
+import { notify } from "@/lib/notify";
 
 interface EnhancedLexicalToolbarProps {
   showFloatingToolbar?: boolean;
@@ -544,7 +544,7 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
           size="sm"
           onClick={() => {
             if (!speechSupported) {
-              toast.error('Spracherkennung wird in diesem Browser nicht unterstützt. Bitte verwende Chrome oder Edge.');
+              notify.error('Spracherkennung wird in diesem Browser nicht unterstützt. Bitte verwende Chrome oder Edge.');
               return;
             }
             toggleSpeechRecognition();

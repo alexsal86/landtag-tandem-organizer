@@ -2,10 +2,10 @@ import React from 'react';
 import { debugConsole } from '@/utils/debugConsole';
 import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
 import { usePDFData } from '@/components/letter-pdf/usePDFData';
 import { generatePDF } from '@/components/letter-pdf/pdfGenerator';
 import type { LetterPDFExportProps, InformationBlockContract, AttachmentContract } from '@/components/letter-pdf/types';
+import { notify } from "@/lib/notify";
 
 const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
   letter,
@@ -16,7 +16,6 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
   size = 'default',
   onPDFGenerated
 }) => {
-  const { toast } = useToast();
   const { template, senderInfo, informationBlock, attachments, contact } = usePDFData(letter);
 
   const exportToPDF = async () => {
@@ -32,10 +31,9 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         contact,
       });
 
-      toast({
-        title: "PDF erstellt",
-        description: `Der Brief wurde als PDF gespeichert.`,
-      });
+      notify.success("PDF erstellt", {
+        description: `Der Brief wurde als PDF gespeichert.`
+});
 
       if (onPDFGenerated) {
         const blobResult = await generatePDF({
@@ -46,11 +44,9 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       }
     } catch (error) {
       debugConsole.error('Error exporting PDF:', error);
-      toast({
-        title: "Export-Fehler",
-        description: "Der Brief konnte nicht als PDF exportiert werden.",
-        variant: "destructive",
-      });
+      notify.error("Export-Fehler", {
+        description: "Der Brief konnte nicht als PDF exportiert werden."
+});
     }
   };
 

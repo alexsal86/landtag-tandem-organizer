@@ -2,10 +2,10 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { useToast } from "@/hooks/use-toast";
 import { debounce } from "@/utils/debounce";
 import { debugConsole } from '@/utils/debugConsole';
 import type { Contact } from "@/types/contact";
+import { notify } from "@/lib/notify";
 export type { Contact } from "@/types/contact";
 
 interface UseInfiniteContactsProps {
@@ -41,7 +41,6 @@ export const useInfiniteContacts = ({
 
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
 
   const buildQuery = useCallback((offset: number, limit: number) => {
     let query = supabase
@@ -119,19 +118,16 @@ export const useInfiniteContacts = ({
 
       if (error) throw error;
 
-      toast({
-        title: "Willkommen!",
-        description: "Beispielkontakte wurden zu Ihrem Account hinzugefügt.",
-      });
+      notify.success("Willkommen!", {
+        description: "Beispielkontakte wurden zu Ihrem Account hinzugefügt."
+});
 
       return true;
     } catch (error) {
       debugConsole.error('Error inserting sample contacts:', error);
-      toast({
-        title: "Fehler",
-        description: "Beispielkontakte konnten nicht erstellt werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Beispielkontakte konnten nicht erstellt werden."
+});
       return false;
     }
   }, [user, toast]);
@@ -239,11 +235,9 @@ export const useInfiniteContacts = ({
     } catch (error) {
       if (generation !== fetchGenerationRef.current) return;
       debugConsole.error('Error fetching contacts:', error);
-      toast({
-        title: "Fehler",
-        description: "Kontakte konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Kontakte konnten nicht geladen werden."
+});
     } finally {
       if (generation === fetchGenerationRef.current) {
         setLoading(false);
@@ -274,19 +268,16 @@ export const useInfiniteContacts = ({
           : contact
       ));
 
-      toast({
-        title: "Erfolg",
+      notify.success("Erfolg", {
         description: isFavorite
           ? "Kontakt zu Favoriten hinzugefügt"
-          : "Kontakt aus Favoriten entfernt",
-      });
+          : "Kontakt aus Favoriten entfernt"
+});
     } catch (error) {
       debugConsole.error('Error toggling favorite:', error);
-      toast({
-        title: "Fehler",
-        description: "Favorit konnte nicht aktualisiert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Favorit konnte nicht aktualisiert werden."
+});
     }
   }, [toast]);
 

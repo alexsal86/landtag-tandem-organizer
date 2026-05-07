@@ -5,11 +5,11 @@ import { useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import type { RecurrenceData, NewMeetingParticipant, AgendaItem, Meeting, MeetingTemplate, Profile, LinkedTask, MeetingParticipant, AgendaDocument } from "@/components/meetings/types";
 import { useMeetingSidebarData } from "./useMeetingSidebarData";
+import { notify } from "@/lib/notify";
 
 interface MeetingTemplateRow extends Omit<MeetingTemplate, "template_items" | "default_recurrence"> {
   template_items: MeetingTemplate["template_items"] | null;
@@ -37,7 +37,6 @@ export function useMeetingsData() {
   const { isHighlighted, highlightRef } = useNotificationHighlight();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   const [agendaItems, setAgendaItems] = useState<AgendaItem[]>([]);
@@ -458,7 +457,8 @@ export function useMeetingsData() {
       const { error: dbError } = await supabase.from('meeting_agenda_documents').delete().eq('id', documentId);
       if (dbError) throw dbError;
       setAgendaDocuments(prev => ({ ...prev, [agendaItemId]: (prev[agendaItemId] || []).filter(doc => doc.id !== documentId) }));
-      toast({ title: "Dokument entfernt", description: "Das Dokument wurde erfolgreich entfernt." });
+      notify.success("Dokument entfernt", { description: "Das Dokument wurde erfolgreich entfernt." 
+});
     } catch (error) {
       handleAppError(error, { context: 'deleteAgendaDocument', toast: { fn: toast, title: 'Fehler', description: 'Dokument konnte nicht entfernt werden.' } });
     }
@@ -541,10 +541,12 @@ export function useMeetingsData() {
           title: updates.title, description: updates.description, location: updates.location,
         }).eq('meeting_id', meetingId);
       }
-      toast({ title: "Meeting aktualisiert", description: "Das Meeting wurde erfolgreich aktualisiert." });
+      notify.success("Meeting aktualisiert", { description: "Das Meeting wurde erfolgreich aktualisiert." 
+});
     } catch (error) {
       await loadMeetings();
-      toast({ title: "Fehler", description: "Das Meeting konnte nicht aktualisiert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Das Meeting konnte nicht aktualisiert werden."
+});
     }
   };
 
@@ -571,7 +573,8 @@ export function useMeetingsData() {
       setMeetings(prev => prev.filter(m => m.id !== meetingId));
       if (selectedMeeting?.id === meetingId) { setSelectedMeeting(null); setAgendaItems([]); }
       if (activeMeetingId === meetingId) { setActiveMeeting(null); setActiveMeetingId(null); sidebar.setLinkedQuickNotes([]); }
-      toast({ title: "Meeting gelöscht", description: "Das Meeting wurde erfolgreich gelöscht." });
+      notify.success("Meeting gelöscht", { description: "Das Meeting wurde erfolgreich gelöscht." 
+});
     } catch (error: unknown) {
       debugConsole.error('Delete meeting error:', error);
       const msg = error instanceof Error ? error.message : '';
@@ -579,7 +582,8 @@ export function useMeetingsData() {
       if (msg.includes('violates foreign key constraint')) {
         errorMessage = 'Das Meeting kann nicht gelöscht werden, da noch verknüpfte Daten existieren.';
       }
-      toast({ title: "Fehler", description: errorMessage, variant: "destructive" });
+      notify.error("Fehler", { description: errorMessage
+});
     }
   };
 

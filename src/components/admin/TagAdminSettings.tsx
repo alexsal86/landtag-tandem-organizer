@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { TagIconPicker } from "@/components/contacts/TagIconPicker";
 import { useTenant } from "@/hooks/useTenant";
+import { notify } from "@/lib/notify";
 
 type Tag = {
   id: string;
@@ -26,7 +27,6 @@ type Tag = {
 };
 
 export function TagAdminSettings() {
-  const { toast } = useToast();
   const { currentTenant } = useTenant();
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +49,8 @@ export function TagAdminSettings() {
       setTags(data || []);
     } catch (error) {
       debugConsole.error('Error loading tags:', error);
-      toast({ title: "Fehler", description: "Tags konnten nicht geladen werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Tags konnten nicht geladen werden."
+});
     } finally {
       setLoading(false);
     }
@@ -72,10 +73,12 @@ export function TagAdminSettings() {
       
       await loadTags();
       setNewTag(null);
-      toast({ title: "Erfolg", description: "Tag wurde erfolgreich hinzugefügt." });
+      notify.success("Erfolg", { description: "Tag wurde erfolgreich hinzugefügt." 
+});
     } catch (error: unknown) {
       debugConsole.error('Error adding tag:', error);
-      toast({ title: "Fehler", description: "Tag konnte nicht hinzugefügt werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Tag konnte nicht hinzugefügt werden."
+});
     }
   };
 
@@ -94,10 +97,12 @@ export function TagAdminSettings() {
       
       await loadTags();
       setEditingTag(null);
-      toast({ title: "Erfolg", description: "Tag wurde erfolgreich aktualisiert." });
+      notify.success("Erfolg", { description: "Tag wurde erfolgreich aktualisiert." 
+});
     } catch (error: unknown) {
       debugConsole.error('Error updating tag:', error);
-      toast({ title: "Fehler", description: "Tag konnte nicht aktualisiert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Tag konnte nicht aktualisiert werden."
+});
     }
   };
 
@@ -112,10 +117,12 @@ export function TagAdminSettings() {
       if (error) throw error;
       
       await loadTags();
-      toast({ title: "Erfolg", description: "Tag wurde erfolgreich gelöscht." });
+      notify.success("Erfolg", { description: "Tag wurde erfolgreich gelöscht." 
+});
     } catch (error: unknown) {
       debugConsole.error('Error deleting tag:', error);
-      toast({ title: "Fehler", description: "Tag konnte nicht gelöscht werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Tag konnte nicht gelöscht werden."
+});
     }
   };
 
@@ -125,10 +132,12 @@ export function TagAdminSettings() {
       if (error) throw error;
       
       await loadTags();
-      toast({ title: "Erfolg", description: `Tag wurde ${!isActive ? 'aktiviert' : 'deaktiviert'}.` });
+      notify.success("Erfolg", { description: `Tag wurde ${!isActive ? 'aktiviert' : 'deaktiviert'}.` 
+});
     } catch (error: unknown) {
       debugConsole.error('Error toggling tag:', error);
-      toast({ title: "Fehler", description: "Status konnte nicht geändert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Status konnte nicht geändert werden."
+});
     }
   };
 
@@ -152,10 +161,12 @@ export function TagAdminSettings() {
       for (const item of updatedItems) {
         await supabase.from('tags').update({ order_index: item.order_index }).eq('id', item.id);
       }
-      toast({ title: "Erfolg", description: "Reihenfolge wurde gespeichert." });
+      notify.success("Erfolg", { description: "Reihenfolge wurde gespeichert." 
+});
     } catch (error) {
       debugConsole.error('Error updating order:', error);
-      toast({ title: "Fehler", description: "Reihenfolge konnte nicht gespeichert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Reihenfolge konnte nicht gespeichert werden."
+});
       loadTags(); // Reload on error
     }
   };

@@ -16,6 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, RotateCcw, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
+import { notify } from "@/lib/notify";
 
 interface VersionRow {
   id: string;
@@ -47,7 +48,6 @@ export function AutomationRuleVersions({
   onRestore,
 }: AutomationRuleVersionsProps) {
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const [versions, setVersions] = useState<VersionRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState<string | null>(null);
@@ -68,7 +68,8 @@ export function AutomationRuleVersions({
       .order("version_number", { ascending: false });
 
     if (error) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      notify.error("Fehler", { description: error.message
+});
     } else {
       setVersions((data || []) as unknown as VersionRow[]);
     }
@@ -93,10 +94,11 @@ export function AutomationRuleVersions({
 
     setRestoring(null);
     if (error) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      notify.error("Fehler", { description: error.message
+});
       return;
     }
-    toast({ title: `Version ${version.version_number} wiederhergestellt` });
+    notify.success(`Version ${version.version_number} wiederhergestellt`);
     onRestore();
     onOpenChange(false);
   };

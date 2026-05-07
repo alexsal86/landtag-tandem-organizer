@@ -4,10 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { debugConsole } from '@/utils/debugConsole';
 import { useAuth } from '@/hooks/useAuth';
+import { notify } from "@/lib/notify";
 
 interface PomodoroSession {
   id: string;
@@ -140,11 +140,11 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
       setIsRunning(true);
       
       if (notifications) {
-        toast.success(`${getSessionTypeName(sessionType)} gestartet!`);
+        notify.success(`${getSessionTypeName(sessionType)} gestartet!`);
       }
     } catch (error) {
       debugConsole.error('Error starting session:', error);
-      toast.error('Fehler beim Starten der Session');
+      notify.error('Fehler beim Starten der Session');
     }
   };
 
@@ -188,7 +188,7 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
         loadTodaySessions();
 
         if (notifications) {
-          toast.success(`${getSessionTypeName(sessionType)} abgeschlossen!`);
+          notify.success(`${getSessionTypeName(sessionType)} abgeschlossen!`);
           
           // Browser notification if permission granted
           if (Notification.permission === 'granted') {

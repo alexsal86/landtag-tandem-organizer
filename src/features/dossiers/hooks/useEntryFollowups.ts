@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
-import { toast } from "sonner";
 import type { DossierEntry } from "../types";
+import { notify } from "@/lib/notify";
 
 /** Entry-followups across all dossiers, due in the next N days (or overdue) */
 export function useEntryFollowups(daysAhead: number = 14) {
@@ -42,8 +42,8 @@ export function useUpdateEntryFollowup() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dossier-entry-followups"] });
       qc.invalidateQueries({ queryKey: ["dossier-entries"] });
-      toast.success("Wiedervorlage aktualisiert");
+      notify.success("Wiedervorlage aktualisiert");
     },
-    onError: (err: Error) => toast.error(`Fehler: ${err.message}`),
+    onError: (err: Error) => notify.error(`Fehler: ${err.message}`),
   });
 }

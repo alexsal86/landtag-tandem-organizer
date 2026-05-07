@@ -15,7 +15,6 @@ import { DecisionArchivedCard } from "./DecisionArchivedCard";
 import { useDecisionComments } from "@/hooks/useDecisionComments";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
-import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useMyWorkSettings } from "@/hooks/useMyWorkSettings";
@@ -25,12 +24,12 @@ import { useDecisionSidebarData } from "./hooks/useDecisionSidebarData";
 import { useDecisionFiltering } from "./hooks/useDecisionFiltering";
 import { getResponseSummary } from "./utils/decisionOverview";
 import type { DecisionRequest } from "./utils/decisionOverview";
+import { notify } from "@/lib/notify";
 
 export const DecisionOverview = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const { decisionTabOrder, hiddenDecisionTabs, updateDecisionTabSettings } = useMyWorkSettings();
   const { isHighlighted, highlightRef } = useNotificationHighlight();
   const { decisions, loadDecisionRequests } = useDecisionOverviewData();
@@ -84,11 +83,9 @@ export const DecisionOverview = () => {
 
     const decision = decisions.find((d) => d.id === highlightId);
     if (!decision) {
-      toast({
-        title: "Element nicht gefunden",
-        description: "Diese Entscheidung existiert nicht mehr oder wurde gelöscht.",
-        variant: "destructive",
-      });
+      notify.error("Element nicht gefunden", {
+        description: "Diese Entscheidung existiert nicht mehr oder wurde gelöscht."
+});
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
         next.delete("highlight");
@@ -161,7 +158,8 @@ export const DecisionOverview = () => {
 
     if (error) {
       debugConsole.error("Error loading attachment files:", error);
-      toast({ title: "Fehler", description: "Anhänge konnten nicht geladen werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Anhänge konnten nicht geladen werden."
+});
       return;
     }
 

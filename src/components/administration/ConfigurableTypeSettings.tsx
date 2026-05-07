@@ -14,6 +14,7 @@ import { getLucideIcon } from "@/utils/iconUtils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { TagIconPicker } from "@/components/contacts/TagIconPicker";
+import { notify } from "@/lib/notify";
 
 type ConfigurableType = {
   id: string;
@@ -61,7 +62,6 @@ export function ConfigurableTypeSettings({
   defaultIcon = 'Folder',
   defaultColor = '#3b82f6'
 }: ConfigurableTypeSettingsProps) {
-  const { toast } = useToast();
   const { currentTenant } = useTenant();
   const [items, setItems] = useState<ConfigurableType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,7 +93,8 @@ export function ConfigurableTypeSettings({
       setItems(data || []);
     } catch (error) {
       debugConsole.error(`Error loading ${tableName}:`, error);
-      toast({ title: "Fehler", description: `${title} konnten nicht geladen werden.`, variant: "destructive" });
+      notify.error("Fehler", { description: `${title} konnten nicht geladen werden.`
+});
     } finally {
       setLoading(false);
     }
@@ -122,10 +123,12 @@ export function ConfigurableTypeSettings({
       const reorderPayload = updatedItems.map((item) => ({ id: item.id, order_index: item.order_index }));
       const { error } = await supabase.from(tableName).upsert(reorderPayload as never[], { onConflict: 'id' });
       if (error) throw error;
-      toast({ title: "Erfolg", description: "Reihenfolge wurde gespeichert." });
+      notify.success("Erfolg", { description: "Reihenfolge wurde gespeichert." 
+});
     } catch (error) {
       debugConsole.error('Error updating order:', error);
-      toast({ title: "Fehler", description: "Reihenfolge konnte nicht gespeichert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Reihenfolge konnte nicht gespeichert werden."
+});
       loadItems();
     }
   };
@@ -159,10 +162,12 @@ export function ConfigurableTypeSettings({
 
       await loadItems();
       setNewItem(null);
-      toast({ title: "Erfolg", description: `${entityName} wurde erfolgreich hinzugefügt.` });
+      notify.success("Erfolg", { description: `${entityName} wurde erfolgreich hinzugefügt.` 
+});
     } catch (error: unknown) {
       debugConsole.error(`Error adding ${entityName}:`, error);
-      toast({ title: "Fehler", description: `${entityName} konnte nicht hinzugefügt werden.`, variant: "destructive" });
+      notify.error("Fehler", { description: `${entityName} konnte nicht hinzugefügt werden.`
+});
     }
   };
 
@@ -200,10 +205,12 @@ export function ConfigurableTypeSettings({
         throw error;
       }
 
-      toast({ title: "Erfolg", description: `${entityName} wurde erfolgreich aktualisiert.` });
+      notify.success("Erfolg", { description: `${entityName} wurde erfolgreich aktualisiert.` 
+});
     } catch (error: unknown) {
       debugConsole.error(`Error updating ${entityName}:`, error);
-      toast({ title: "Fehler", description: `${entityName} konnte nicht aktualisiert werden.`, variant: "destructive" });
+      notify.error("Fehler", { description: `${entityName} konnte nicht aktualisiert werden.`
+});
     }
   };
 
@@ -213,10 +220,12 @@ export function ConfigurableTypeSettings({
       if (error) throw error;
 
       await loadItems();
-      toast({ title: "Erfolg", description: `${entityName} wurde erfolgreich gelöscht.` });
+      notify.success("Erfolg", { description: `${entityName} wurde erfolgreich gelöscht.` 
+});
     } catch (error: unknown) {
       debugConsole.error(`Error deleting ${entityName}:`, error);
-      toast({ title: "Fehler", description: `${entityName} konnte nicht gelöscht werden.`, variant: "destructive" });
+      notify.error("Fehler", { description: `${entityName} konnte nicht gelöscht werden.`
+});
     }
   };
 
@@ -237,10 +246,12 @@ export function ConfigurableTypeSettings({
         throw error;
       }
 
-      toast({ title: "Erfolg", description: `${entityName} wurde ${!isActive ? 'aktiviert' : 'deaktiviert'}.` });
+      notify.success("Erfolg", { description: `${entityName} wurde ${!isActive ? 'aktiviert' : 'deaktiviert'}.` 
+});
     } catch (error: unknown) {
       debugConsole.error(`Error toggling ${entityName}:`, error);
-      toast({ title: "Fehler", description: "Status konnte nicht geändert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Status konnte nicht geändert werden."
+});
     }
   };
 

@@ -15,8 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
-
+import { notify } from "@/lib/notify";
 interface QuickAction {
   id: string;
   label: string;
@@ -259,12 +258,12 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
     // Call callback if provided (for future integration)
     onConfigurationChange?.(newConfig);
     setIsEditMode(false);
-    toast.success('Konfiguration gespeichert');
+    notify.success('Konfiguration gespeichert');
   };
 
   const handleAddAction = () => {
     if (!newAction.label || !newAction.link) {
-      toast.error('Label und Link sind erforderlich');
+      notify.error('Label und Link sind erforderlich');
       return;
     }
 

@@ -2,10 +2,10 @@ import { useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { debugConsole } from "@/utils/debugConsole";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { getResponseSummary } from "../utils/decisionOverview";
 import type { DecisionRequest } from "../utils/decisionOverview";
 import type { DecisionResponseNotificationLookup } from "@/types/taskDecisions";
+import { notify } from "@/lib/notify";
 
 type NotificationResponseRow = Pick<DecisionResponseNotificationLookup, "task_decision_participants" | "task_decisions"> & {
   decision_id: string;
@@ -57,7 +57,6 @@ export function useDecisionActions({
   currentTenant,
   onRefresh,
 }: UseDecisionActionsOptions) {
-  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [creatorResponses, setCreatorResponses] = useState<Record<string, string>>({});
   const [creatingTaskFromDecisionId, setCreatingTaskFromDecisionId] = useState<string | null>(null);
@@ -113,13 +112,12 @@ export function useDecisionActions({
 
       if (actionError) throw actionError;
 
-      toast({
-        title: "Erfolgreich",
+      notify.success("Erfolgreich", {
         description:
           mode === "creator_response"
             ? "Antwort wurde gesendet."
-            : "Rückmeldung wurde gesendet.",
-      });
+            : "Rückmeldung wurde gesendet."
+});
 
       setCreatorResponses((prev) => ({ ...prev, [responseId]: "" }));
       refresh();
@@ -161,11 +159,9 @@ export function useDecisionActions({
       }
     } catch (error) {
       debugConsole.error("Creator response core action failed:", error);
-      toast({
-        title: "Fehler",
-        description: "Antwort konnte nicht gesendet werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Antwort konnte nicht gesendet werden."
+});
     } finally {
       setIsLoading(false);
     }
@@ -173,7 +169,8 @@ export function useDecisionActions({
 
   const archiveDecision = async (decisionId: string) => {
     if (!user?.id) {
-      toast({ title: "Fehler", description: "Nicht angemeldet.", variant: "destructive" });
+      notify.error("Fehler", { description: "Nicht angemeldet."
+});
       return;
     }
 
@@ -189,15 +186,14 @@ export function useDecisionActions({
 
       if (error) throw error;
 
-      toast({ title: "Archiviert", description: "Entscheidung wurde archiviert." });
+      notify.success("Archiviert", { description: "Entscheidung wurde archiviert." 
+});
       refresh();
     } catch (error) {
       debugConsole.error("Error archiving decision:", error);
-      toast({
-        title: "Fehler",
-        description: "Entscheidung konnte nicht archiviert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Entscheidung konnte nicht archiviert werden."
+});
     }
   };
 
@@ -210,15 +206,14 @@ export function useDecisionActions({
 
       if (error) throw error;
 
-      toast({ title: "Gelöscht", description: "Entscheidung wurde endgültig gelöscht." });
+      notify.success("Gelöscht", { description: "Entscheidung wurde endgültig gelöscht." 
+});
       refresh();
     } catch (error) {
       debugConsole.error("Error deleting decision:", error);
-      toast({
-        title: "Fehler",
-        description: "Entscheidung konnte nicht gelöscht werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Entscheidung konnte nicht gelöscht werden."
+});
     }
   };
 
@@ -231,21 +226,21 @@ export function useDecisionActions({
 
       if (error) throw error;
 
-      toast({ title: "Erfolgreich", description: "Entscheidung wurde wiederhergestellt." });
+      notify.success("Erfolgreich", { description: "Entscheidung wurde wiederhergestellt." 
+});
       refresh();
     } catch (error) {
       debugConsole.error("Error restoring decision:", error);
-      toast({
-        title: "Fehler",
-        description: "Entscheidung konnte nicht wiederhergestellt werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Entscheidung konnte nicht wiederhergestellt werden."
+});
     }
   };
 
   const createTaskFromDecision = async (decision: DecisionRequest) => {
     if (!user?.id || !currentTenant?.id) {
-      toast({ title: "Fehler", description: "Nicht angemeldet", variant: "destructive" });
+      notify.error("Fehler", { description: "Nicht angemeldet"
+});
       return;
     }
 
@@ -279,16 +274,15 @@ export function useDecisionActions({
 
       if (error) throw error;
 
-      toast({ title: "Aufgabe erstellt", description: "Die Aufgabe wurde aus der Entscheidung erstellt." });
+      notify.success("Aufgabe erstellt", { description: "Die Aufgabe wurde aus der Entscheidung erstellt." 
+});
       setCreatingTaskFromDecisionId(null);
       refresh();
     } catch (error) {
       debugConsole.error("Error creating task from decision:", error);
-      toast({
-        title: "Fehler",
-        description: "Aufgabe konnte nicht erstellt werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Aufgabe konnte nicht erstellt werden."
+});
       setCreatingTaskFromDecisionId(null);
     }
   };

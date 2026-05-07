@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { MeetingProtocolView } from "@/features/meetings/components/MeetingProtocolView";
 import { debugConsole } from "@/utils/debugConsole";
+import { notify } from "@/lib/notify";
 
 interface ArchivedMeeting {
   id: string;
@@ -34,7 +35,6 @@ interface MeetingArchiveViewProps {
 export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const [archivedMeetings, setArchivedMeetings] = useState<ArchivedMeeting[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
@@ -105,11 +105,9 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
       setArchivedMeetings(allMeetings);
     } catch (error) {
       debugConsole.error('Error loading archived meetings:', error);
-      toast({
-        title: "Fehler",
-        description: "Archivierte Besprechungen konnten nicht geladen werden.",
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Archivierte Besprechungen konnten nicht geladen werden."
+});
     } finally {
       setLoading(false);
     }
@@ -133,17 +131,15 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
 
       await loadArchivedMeetings();
       
-      toast({
-        title: "Besprechung gelöscht",
+      notify.success("Besprechung gelöscht", {
         description: "Die archivierte Besprechung wurde erfolgreich gelöscht."
-      });
+      
+});
     } catch (error) {
       debugConsole.error('Error deleting meeting:', error);
-      toast({
-        title: "Fehler",
-        description: "Die Besprechung konnte nicht gelöscht werden.",
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Die Besprechung konnte nicht gelöscht werden."
+});
     }
   };
 
@@ -156,17 +152,15 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
 
       await loadArchivedMeetings();
       
-      toast({
-        title: "Besprechung wiederhergestellt",
+      notify.success("Besprechung wiederhergestellt", {
         description: "Die Besprechung wurde aus dem Archiv wiederhergestellt."
-      });
+      
+});
     } catch (error) {
       debugConsole.error('Error restoring meeting:', error);
-      toast({
-        title: "Fehler",
-        description: "Die Besprechung konnte nicht wiederhergestellt werden.",
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Die Besprechung konnte nicht wiederhergestellt werden."
+});
     }
   };
 

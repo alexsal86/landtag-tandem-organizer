@@ -11,11 +11,11 @@ import { StandaloneDecisionCreator } from "@/components/task-decisions/Standalon
 import { MessageCircle, Bell, Search, Send, Reply, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { debugConsole } from "@/utils/debugConsole";
 import { SidebarDiscussionComment } from "./types";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
+import { notify } from "@/lib/notify";
 
 interface OpenQuestion {
   id: string;
@@ -155,13 +155,13 @@ export function MyWorkDecisionSidebar({
         }
       }
       
-      toast.success("Antwort gesendet");
+      notify.success("Antwort gesendet");
       setResponseText("");
       setRespondingTo(null);
       onResponseSent?.();
     } catch (error) {
       debugConsole.error('Error sending response:', error);
-      toast.error("Fehler beim Senden");
+      notify.error("Fehler beim Senden");
     } finally {
       setIsLoading(false);
     }

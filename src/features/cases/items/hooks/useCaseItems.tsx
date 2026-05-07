@@ -7,6 +7,7 @@ import type { CaseItemIntakePayload } from "@/features/cases/items/types";
 import { buildCaseItemUpdatePayload } from "@/features/cases/shared/utils/caseInteropAdapters";
 import { debugConsole } from "@/utils/debugConsole";
 import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
+import { notify } from "@/lib/notify";
 
 type CaseItemRow = Tables<"case_items">;
 type CaseItemInsert = TablesInsert<"case_items">;
@@ -125,7 +126,6 @@ export const useCaseItems = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
 
   const fetchCaseItems = useCallback(async () => {
     if (!user || !currentTenant) {
@@ -145,11 +145,9 @@ export const useCaseItems = () => {
       setCaseItems(((data ?? []) as CaseItemRow[]).map((row) => normalizeCaseItem(row)).sort(caseItemComparator));
     } catch (error) {
       debugConsole.error("Error fetching case items:", error);
-      toast({
-        title: "Fehler",
-        description: "Vorgänge konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Vorgänge konnten nicht geladen werden."
+});
     } finally {
       setLoading(false);
     }
@@ -157,11 +155,9 @@ export const useCaseItems = () => {
 
   const createCaseItem = async (data: CaseItemFormData) => {
     if (!user || !currentTenant) {
-      toast({
-        title: "Fehlender Kontext",
-        description: "Keine aktive Mandanten-/Sitzungskontext. Bitte neu anmelden oder Mandant auswählen.",
-        variant: "destructive",
-      });
+      notify.error("Fehlender Kontext", {
+        description: "Keine aktive Mandanten-/Sitzungskontext. Bitte neu anmelden oder Mandant auswählen."
+});
       return null;
     }
 
@@ -212,10 +208,9 @@ export const useCaseItems = () => {
 
       debugConsole.log("[createCaseItem] inserted with id:", caseItemId);
 
-      toast({
-        title: "Erfolgreich",
-        description: "Vorgang wurde erstellt.",
-      });
+      notify.success("Erfolgreich", {
+        description: "Vorgang wurde erstellt."
+});
 
       // Notify assigned owner (if different from creator)
       if (data.owner_user_id && data.owner_user_id !== user.id) {
@@ -241,11 +236,9 @@ export const useCaseItems = () => {
       } else if (error && typeof error === "object" && "message" in error) {
         detail = String((error as { message?: unknown }).message ?? detail);
       }
-      toast({
-        title: "Fehler beim Erstellen",
-        description: detail,
-        variant: "destructive",
-      });
+      notify.error("Fehler beim Erstellen", {
+        description: detail
+});
       return null;
     }
   };
@@ -262,10 +255,9 @@ export const useCaseItems = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Erfolgreich",
-        description: "Vorgang wurde aktualisiert.",
-      });
+      notify.success("Erfolgreich", {
+        description: "Vorgang wurde aktualisiert."
+});
 
       const subject = data.subject ?? existing?.subject ?? "Ohne Betreff";
 
@@ -306,11 +298,9 @@ export const useCaseItems = () => {
       return true;
     } catch (error) {
       debugConsole.error("Error updating case item:", error);
-      toast({
-        title: "Fehler",
-        description: "Vorgang konnte nicht aktualisiert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Vorgang konnte nicht aktualisiert werden."
+});
       return false;
     }
   };
@@ -321,20 +311,17 @@ export const useCaseItems = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Erfolgreich",
-        description: "Vorgang wurde gelöscht.",
-      });
+      notify.success("Erfolgreich", {
+        description: "Vorgang wurde gelöscht."
+});
 
       await fetchCaseItems();
       return true;
     } catch (error) {
       debugConsole.error("Error deleting case item:", error);
-      toast({
-        title: "Fehler",
-        description: "Vorgang konnte nicht gelöscht werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Vorgang konnte nicht gelöscht werden."
+});
       return false;
     }
   };
@@ -355,10 +342,9 @@ export const useCaseItems = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Erfolgreich",
-        description: "Interaktion wurde hinzugefügt.",
-      });
+      notify.success("Erfolgreich", {
+        description: "Interaktion wurde hinzugefügt."
+});
 
       // Notify case item owner/creator about the new comment
       const caseItem = caseItems.find(ci => ci.id === data.case_item_id);
@@ -383,11 +369,9 @@ export const useCaseItems = () => {
       return interaction as unknown as CaseItemInteraction;
     } catch (error) {
       debugConsole.error("Error creating case item interaction:", error);
-      toast({
-        title: "Fehler",
-        description: "Interaktion konnte nicht gespeichert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Interaktion konnte nicht gespeichert werden."
+});
       return null;
     }
   };
@@ -408,11 +392,9 @@ export const useCaseItems = () => {
         return (data ?? []) as unknown as CaseItemInteraction[];
       } catch (error) {
         debugConsole.error("Error fetching case item interactions:", error);
-        toast({
-          title: "Fehler",
-          description: "Interaktionen konnten nicht geladen werden.",
-          variant: "destructive",
-        });
+        notify.error("Fehler", {
+          description: "Interaktionen konnten nicht geladen werden."
+});
         return [];
       }
     },

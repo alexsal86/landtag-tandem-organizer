@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
 import { Badge } from "@/components/ui/badge";
+import { notify } from "@/lib/notify";
 
 interface ProtocolAgendaItem {
   id: string;
@@ -89,7 +90,6 @@ interface MeetingProtocolViewProps {
 }
 
 export function MeetingProtocolView({ meetingId, onBack, isPostArchive }: MeetingProtocolViewProps) {
-  const { toast } = useToast();
   const [meeting, setMeeting] = useState<ProtocolMeeting | null>(null);
   const [agendaItems, setAgendaItems] = useState<ProtocolAgendaItem[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -235,11 +235,9 @@ export function MeetingProtocolView({ meetingId, onBack, isPostArchive }: Meetin
       setStarredAppointments(starredList);
     } catch (error) {
       debugConsole.error('Error loading meeting protocol:', error);
-      toast({
-        title: "Fehler",
-        description: "Das Besprechungsprotokoll konnte nicht geladen werden.",
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Das Besprechungsprotokoll konnte nicht geladen werden."
+});
     } finally {
       setLoading(false);
     }

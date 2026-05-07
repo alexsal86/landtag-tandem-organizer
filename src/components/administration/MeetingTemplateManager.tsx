@@ -21,10 +21,10 @@ import {
   getAgendaIconColor,
   getAgendaToggleClass,
 } from "@/components/administration/agendaSystemStyles";
+import { notify } from "@/lib/notify";
 
 export function MeetingTemplateManager() {
   const { user } = useAuth();
-  const { toast } = useToast();
 
   const [meetingTemplates, setMeetingTemplates] = useState<MeetingTemplateRecord[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<MeetingTemplateRecord | null>(null);
@@ -63,10 +63,12 @@ export function MeetingTemplateManager() {
       setMeetingTemplates([...meetingTemplates, data as MeetingTemplateRecord]);
       loadTemplate(data as MeetingTemplateRecord);
       setEditingTemplateName({ id: data.id, value: data.name });
-      toast({ title: "Template erstellt", description: "Neues Meeting-Template wurde angelegt." });
+      notify.success("Template erstellt", { description: "Neues Meeting-Template wurde angelegt." 
+});
     } catch (error) {
       debugConsole.error('Error creating template:', error);
-      toast({ title: "Fehler", description: "Template konnte nicht erstellt werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Template konnte nicht erstellt werden."
+});
     }
   };
 
@@ -83,11 +85,9 @@ export function MeetingTemplateManager() {
         await new Promise(r => setTimeout(r, 500 * (retryCount + 1)));
         return saveTemplateItems(items, retryCount + 1);
       }
-      toast({
-        title: isNetworkError ? "Netzwerkfehler" : "Fehler",
-        description: isNetworkError ? "Änderungen konnten nach mehreren Versuchen nicht gespeichert werden. Bitte erneut versuchen." : "Fehler beim Speichern.",
-        variant: "destructive",
-      });
+      notify.error(isNetworkError ? "Netzwerkfehler" : "Fehler", {
+        description: isNetworkError ? "Änderungen konnten nach mehreren Versuchen nicht gespeichert werden. Bitte erneut versuchen." : "Fehler beim Speichern."
+});
       return false;
     }
   };
@@ -192,7 +192,8 @@ export function MeetingTemplateManager() {
     const existsInMain = templateItems.find(item => item.system_type === systemType);
     const existsInChildren = templateItems.some(item => item.children?.some((child) => child.system_type === systemType));
     if (existsInMain || existsInChildren) {
-      toast({ title: "Bereits vorhanden", description: `"${getTitleForSystemType(systemType)}" ist bereits in der Agenda.`, variant: "destructive" });
+      notify.error("Bereits vorhanden", { description: `"${getTitleForSystemType(systemType)}" ist bereits in der Agenda.`
+});
       return;
     }
     const title = getTitleForSystemType(systemType);
@@ -230,7 +231,8 @@ export function MeetingTemplateManager() {
     }));
     setTemplateItems(reindexedItems);
     saveTemplateItems(reindexedItems);
-    toast({ title: "Verschoben", description: "Element wurde erfolgreich verschoben." });
+    notify.success("Verschoben", { description: "Element wurde erfolgreich verschoben." 
+});
   };
 
   const addSeparator = () => {
@@ -358,8 +360,10 @@ export function MeetingTemplateManager() {
                               setSelectedTemplate({ ...selectedTemplate, name: editingTemplateName!.value });
                               await loadTemplates();
                               setEditingTemplateName(null);
-                              toast({ title: "Gespeichert", description: "Template-Name aktualisiert." });
-                            } catch { toast({ title: "Fehler", description: "Fehler beim Speichern.", variant: "destructive" }); }
+                              notify.success("Gespeichert", { description: "Template-Name aktualisiert." 
+});
+                            } catch { notify.error("Fehler", { description: "Fehler beim Speichern."
+}); }
                           }}><Check className="h-3 w-3" /></Button>
                           <Button size="sm" variant="outline" className="h-8 w-8 p-0" onClick={() => setEditingTemplateName(null)}><X className="h-3 w-3" /></Button>
                         </>
@@ -389,7 +393,8 @@ export function MeetingTemplateManager() {
                             default_visibility: visibility || 'private'
                           }).eq('id', selectedTemplate.id);
                           setSelectedTemplate({ ...selectedTemplate, default_participants: normalizedParticipants, default_recurrence: normalizedRecurrence, auto_create_count: autoCreateCount, default_visibility: visibility });
-                        } catch { toast({ title: "Fehler", description: "Speichern fehlgeschlagen.", variant: "destructive" }); }
+                        } catch { notify.error("Fehler", { description: "Speichern fehlgeschlagen."
+}); }
                       }}
                     />
                   </div>

@@ -16,6 +16,7 @@ import {
   normalizeGeoPoint,
   normalizeStringArray,
 } from "./geoContracts";
+import { notify } from "@/lib/notify";
 
 interface ElectionRepresentative {
   id: string;
@@ -67,7 +68,6 @@ export interface ElectionDistrictNote {
 
 export function useElectionDistricts() {
   const { user } = useAuth();
-  const { toast } = useToast();
 
   const normalizeRepresentative = (value: unknown): ElectionRepresentative | null => {
     if (!isRecord(value)) {
@@ -181,11 +181,9 @@ export function useElectionDistricts() {
   useEffect(() => {
     if (districtsError) {
       debugConsole.error("Error fetching election districts:", districtsError);
-      toast({
-        title: "Fehler beim Laden der Wahlkreise",
-        description: "Die Wahlkreisdaten konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler beim Laden der Wahlkreise", {
+        description: "Die Wahlkreisdaten konnten nicht geladen werden."
+});
     }
   }, [districtsError, toast]);
 
@@ -201,7 +199,6 @@ export function useElectionDistrictNotes(districtId?: string) {
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
 
   const fetchNotes = async () => {
     if (!districtId || !user || !currentTenant) return;
@@ -218,11 +215,9 @@ export function useElectionDistrictNotes(districtId?: string) {
       setNotes(data || []);
     } catch (error) {
       debugConsole.error("Error fetching district notes:", error);
-      toast({
-        title: "Fehler beim Laden der Notizen",
-        description: "Die Notizen konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler beim Laden der Notizen", {
+        description: "Die Notizen konnten nicht geladen werden."
+});
     } finally {
       setLoading(false);
     }
@@ -253,19 +248,16 @@ export function useElectionDistrictNotes(districtId?: string) {
       if (error) throw error;
       
       setNotes(prev => [data, ...prev]);
-      toast({
-        title: "Notiz erstellt",
-        description: "Die Notiz wurde erfolgreich erstellt.",
-      });
+      notify.success("Notiz erstellt", {
+        description: "Die Notiz wurde erfolgreich erstellt."
+});
       
       return data;
     } catch (error) {
       debugConsole.error("Error creating note:", error);
-      toast({
-        title: "Fehler beim Erstellen der Notiz",
-        description: "Die Notiz konnte nicht erstellt werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler beim Erstellen der Notiz", {
+        description: "Die Notiz konnte nicht erstellt werden."
+});
     }
   };
 
@@ -281,19 +273,16 @@ export function useElectionDistrictNotes(districtId?: string) {
       if (error) throw error;
       
       setNotes(prev => prev.map(note => note.id === noteId ? data : note));
-      toast({
-        title: "Notiz aktualisiert",
-        description: "Die Notiz wurde erfolgreich aktualisiert.",
-      });
+      notify.success("Notiz aktualisiert", {
+        description: "Die Notiz wurde erfolgreich aktualisiert."
+});
       
       return data;
     } catch (error) {
       debugConsole.error("Error updating note:", error);
-      toast({
-        title: "Fehler beim Aktualisieren der Notiz",
-        description: "Die Notiz konnte nicht aktualisiert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler beim Aktualisieren der Notiz", {
+        description: "Die Notiz konnte nicht aktualisiert werden."
+});
     }
   };
 
@@ -307,17 +296,14 @@ export function useElectionDistrictNotes(districtId?: string) {
       if (error) throw error;
       
       setNotes(prev => prev.filter(note => note.id !== noteId));
-      toast({
-        title: "Notiz gelöscht",
-        description: "Die Notiz wurde erfolgreich gelöscht.",
-      });
+      notify.success("Notiz gelöscht", {
+        description: "Die Notiz wurde erfolgreich gelöscht."
+});
     } catch (error) {
       debugConsole.error("Error deleting note:", error);
-      toast({
-        title: "Fehler beim Löschen der Notiz",
-        description: "Die Notiz konnte nicht gelöscht werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler beim Löschen der Notiz", {
+        description: "Die Notiz konnte nicht gelöscht werden."
+});
     }
   };
 

@@ -8,9 +8,9 @@ import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { TopicSelector } from "@/components/topics/TopicSelector";
 import { useDecisionTopics } from "@/hooks/useDecisionTopics";
+import { notify } from "@/lib/notify";
 
 interface DecisionEditDialogProps {
   decisionId: string;
@@ -32,7 +32,6 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
   const { assignedTopics, setTopics } = useDecisionTopics(decisionId);
 
   useEffect(() => {
@@ -116,31 +115,25 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
       setSelectedUsers(participants.map((p: Record<string, any>) => p.user_id));
     } catch (error) {
       debugConsole.error('Error loading decision data:', error);
-      toast({
-        title: "Fehler",
-        description: "Entscheidungsdaten konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Entscheidungsdaten konnten nicht geladen werden."
+});
     }
   };
 
   const handleUpdate = async () => {
     if (!title.trim()) {
-      toast({
-        title: "Fehler",
-        description: "Bitte geben Sie einen Titel ein.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Bitte geben Sie einen Titel ein."
+});
       return;
     }
 
     // For non-public decisions, at least one user must be selected
     if (!visibleToAll && selectedUsers.length === 0) {
-      toast({
-        title: "Fehler",
-        description: "Bitte wählen Sie mindestens einen Benutzer aus oder machen Sie die Entscheidung öffentlich.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Bitte wählen Sie mindestens einen Benutzer aus oder machen Sie die Entscheidung öffentlich."
+});
       return;
     }
 
@@ -172,11 +165,9 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
       const validSelectedUsers = selectedUsers.filter(id => tenantUserIds.has(id));
 
       if (!visibleToAll && validSelectedUsers.length === 0) {
-        toast({
-          title: "Fehler",
-          description: "Bitte wählen Sie mindestens einen Benutzer aus Ihrem Tenant aus oder machen Sie die Entscheidung öffentlich.",
-          variant: "destructive",
-        });
+        notify.error("Fehler", {
+          description: "Bitte wählen Sie mindestens einen Benutzer aus Ihrem Tenant aus oder machen Sie die Entscheidung öffentlich."
+});
         return;
       }
 
@@ -248,20 +239,17 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
       // Update topics
       await setTopics(assignedTopics);
 
-      toast({
-        title: "Erfolgreich",
-        description: "Entscheidung wurde aktualisiert.",
-      });
+      notify.success("Erfolgreich", {
+        description: "Entscheidung wurde aktualisiert."
+});
 
       onUpdated();
       onClose();
     } catch (error) {
       debugConsole.error('Error updating decision:', error);
-      toast({
-        title: "Fehler",
-        description: "Entscheidung konnte nicht aktualisiert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Entscheidung konnte nicht aktualisiert werden."
+});
     } finally {
       setIsLoading(false);
     }

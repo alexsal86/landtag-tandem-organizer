@@ -8,7 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMessagesRealtime } from "@/hooks/useMessagesRealtime";
 import { MessageComposer } from "./MessageComposer";
-import { toast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import { ReceivedMessageCard, SentMessageCard, ArchivedMessageCard, PaginationControls } from "@/components/messages/MessageCard";
 import type {
@@ -20,6 +19,7 @@ import type {
   RecipientRow,
   RpcMessageRow,
 } from "@/types/messages";
+import { notify } from "@/lib/notify";
 
 const emptyParticipant = (userId: string): ParticipantSummary => ({
   userId,
@@ -207,15 +207,14 @@ export function MessageSystem() {
         user_id_param: user.id,
         is_for_all_param: isForAllUsers,
       });
-      toast({ title: "Nachricht als gelesen markiert", description: "Die Nachricht wurde bestätigt." });
+      notify.success("Nachricht als gelesen markiert", { description: "Die Nachricht wurde bestätigt." 
+});
       await fetchMessages();
     } catch (error) {
       debugConsole.error("Error marking message as read:", error);
-      toast({
-        title: "Fehler",
-        description: "Die Nachricht konnte nicht als gelesen markiert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Die Nachricht konnte nicht als gelesen markiert werden."
+});
     }
   };
 

@@ -3,8 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { STALE_TIME } from '@/lib/query-cache';
 import { useTenant } from './useTenant';
 import { useAuth } from './useAuth';
-import { toast } from '@/hooks/use-toast';
-
+import { notify } from "@/lib/notify";
 export interface MapFlag {
   id: string;
   tenant_id: string;
@@ -62,14 +61,12 @@ export const useMapFlags = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['map-flags'] });
-      toast({ title: 'Flagge gesetzt' });
+      notify.success('Flagge gesetzt');
     },
     onError: (error) => {
-      toast({ 
-        title: 'Fehler beim Setzen der Flagge', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      notify.error('Fehler beim Setzen der Flagge', { 
+        description: error.message
+});
     },
   });
 
@@ -87,14 +84,12 @@ export const useMapFlags = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['map-flags'] });
-      toast({ title: 'Flagge aktualisiert' });
+      notify.success('Flagge aktualisiert');
     },
     onError: (error) => {
-      toast({ 
-        title: 'Fehler beim Aktualisieren', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      notify.error('Fehler beim Aktualisieren', { 
+        description: error.message
+});
     },
   });
 
@@ -109,14 +104,12 @@ export const useMapFlags = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['map-flags'] });
-      toast({ title: 'Flagge gelöscht' });
+      notify.success('Flagge gelöscht');
     },
     onError: (error) => {
-      toast({ 
-        title: 'Fehler beim Löschen', 
-        description: error.message,
-        variant: 'destructive' 
-      });
+      notify.error('Fehler beim Löschen', { 
+        description: error.message
+});
     },
   });
 

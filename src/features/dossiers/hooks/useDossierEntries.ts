@@ -2,8 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useCurrentProfileId } from "@/hooks/useCurrentProfileId";
-import { toast } from "sonner";
 import type { DossierEntry } from "../types";
+import { notify } from "@/lib/notify";
 
 /** Map raw row to DossierEntry with safe defaults */
 function mapEntry(d: Record<string, unknown>): DossierEntry {
@@ -167,9 +167,9 @@ export function useCreateEntry() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dossier-entries"] });
       qc.invalidateQueries({ queryKey: ["dossier-entry-counts"] });
-      toast.success("Eintrag gespeichert");
+      notify.success("Eintrag gespeichert");
     },
-    onError: (err) => toast.error(`Fehler: ${err.message}`),
+    onError: (err) => notify.error(`Fehler: ${err.message}`),
   });
 }
 
@@ -187,9 +187,9 @@ export function useAssignEntryToDossier() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dossier-entries"] });
       qc.invalidateQueries({ queryKey: ["dossier-entry-counts"] });
-      toast.success("Eintrag zugeordnet");
+      notify.success("Eintrag zugeordnet");
     },
-    onError: (err) => toast.error(`Fehler: ${err.message}`),
+    onError: (err) => notify.error(`Fehler: ${err.message}`),
   });
 }
 
@@ -207,9 +207,9 @@ export function useDeleteEntry() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dossier-entries"] });
       qc.invalidateQueries({ queryKey: ["dossier-entry-counts"] });
-      toast.success("Eintrag gelöscht");
+      notify.success("Eintrag gelöscht");
     },
-    onError: (err) => toast.error(`Fehler: ${err.message}`),
+    onError: (err) => notify.error(`Fehler: ${err.message}`),
   });
 }
 
@@ -226,9 +226,9 @@ export function usePinEntry() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dossier-entries"] });
-      toast.success("Eintrag aktualisiert");
+      notify.success("Eintrag aktualisiert");
     },
-    onError: (err) => toast.error(`Fehler: ${err.message}`),
+    onError: (err) => notify.error(`Fehler: ${err.message}`),
   });
 }
 
@@ -246,6 +246,6 @@ export function useUpdateEntryTags() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dossier-entries"] });
     },
-    onError: (err) => toast.error(`Fehler: ${err.message}`),
+    onError: (err) => notify.error(`Fehler: ${err.message}`),
   });
 }

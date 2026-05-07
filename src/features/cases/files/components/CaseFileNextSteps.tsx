@@ -14,8 +14,7 @@ import { getCaseTaskDescription, isMatchingCaseParentTaskLink } from "@/features
 import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { useToast } from "@/hooks/use-toast";
-
+import { notify } from "@/lib/notify";
 interface CaseFileNextStepsProps {
   tasks: CaseFileTask[];
   caseFileId: string;
@@ -41,7 +40,6 @@ export function CaseFileNextSteps({
   const [isAdding, setIsAdding] = useState(false);
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const resolvedTenantId = currentTenant?.id || tenantId;
 
   // Filter for open tasks only
@@ -73,21 +71,17 @@ export function CaseFileNextSteps({
 
     if (error) {
       debugConsole.error("Error checking child tasks before completion:", error);
-      toast({
-        title: "Aufgabe konnte nicht abgeschlossen werden",
-        description: "Bitte versuchen Sie es erneut.",
-        variant: "destructive",
-      });
+      notify.error("Aufgabe konnte nicht abgeschlossen werden", {
+        description: "Bitte versuchen Sie es erneut."
+});
       return;
     }
 
     if ((childTasks || []).length > 0) {
-      toast({
-        title: "Container-Aufgabe kann nicht geschlossen werden",
+      notify.error("Container-Aufgabe kann nicht geschlossen werden", {
         description:
-          "Solange Child-Tasks existieren, bleibt die Hauptaufgabe offen. Sonst werden Child-Tasks nicht mehr sichtbar.",
-        variant: "destructive",
-      });
+          "Solange Child-Tasks existieren, bleibt die Hauptaufgabe offen. Sonst werden Child-Tasks nicht mehr sichtbar."
+});
       return;
     }
 
@@ -146,11 +140,9 @@ export function CaseFileNextSteps({
 
   const handleQuickAdd = async () => {
     if (!quickTaskTitle.trim() || !user || !resolvedTenantId) {
-      toast({
-        title: "Schnellaufgabe konnte nicht erstellt werden",
-        description: "Bitte prüfen Sie die Mandantenzuordnung der Fallakte.",
-        variant: "destructive",
-      });
+      notify.error("Schnellaufgabe konnte nicht erstellt werden", {
+        description: "Bitte prüfen Sie die Mandantenzuordnung der Fallakte."
+});
       return;
     }
     setIsAdding(true);
@@ -159,11 +151,9 @@ export function CaseFileNextSteps({
       // Find or create parent task
       const parentTaskId = await findOrCreateParentTask();
       if (!parentTaskId) {
-        toast({
-          title: "Schnellaufgabe konnte nicht erstellt werden",
-          description: "Die Hauptaufgabe der Fallakte konnte nicht ermittelt werden.",
-          variant: "destructive",
-        });
+        notify.error("Schnellaufgabe konnte nicht erstellt werden", {
+          description: "Die Hauptaufgabe der Fallakte konnte nicht ermittelt werden."
+});
         return;
       }
 
@@ -191,10 +181,7 @@ export function CaseFileNextSteps({
       onRefresh();
     } catch (error) {
       debugConsole.error("Error creating quick task:", error);
-      toast({
-        title: "Schnellaufgabe konnte nicht erstellt werden",
-        variant: "destructive",
-      });
+      notify.error("Schnellaufgabe konnte nicht erstellt werden");
     } finally {
       setIsAdding(false);
     }

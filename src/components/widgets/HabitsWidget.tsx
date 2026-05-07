@@ -4,11 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { debugConsole } from '@/utils/debugConsole';
 import { EmptyState, LoadingState } from '@/components/ui-patterns';
+import { notify } from "@/lib/notify";
 
 interface Habit {
   id: string;
@@ -93,7 +93,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
       setHabits(habitsWithStats);
     } catch (error) {
       debugConsole.error('Error loading habits:', error);
-      toast.error('Fehler beim Laden der Gewohnheiten');
+      notify.error('Fehler beim Laden der Gewohnheiten');
     } finally {
       setLoading(false);
     }
@@ -207,10 +207,10 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
       setHabits(prev => [newHabitWithStats, ...prev]);
       setNewHabitName('');
       setShowAddForm(false);
-      toast.success('Gewohnheit erstellt');
+      notify.success('Gewohnheit erstellt');
     } catch (error) {
       debugConsole.error('Error creating habit:', error);
-      toast.error('Fehler beim Erstellen der Gewohnheit');
+      notify.error('Fehler beim Erstellen der Gewohnheit');
     }
   };
 
@@ -261,13 +261,13 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
       loadCompletions();
       
       if (habit.todayCount + 1 >= (habit.target_count ?? 1)) {
-        toast.success(`${habit.name} für heute abgeschlossen! 🎉`);
+        notify.success(`${habit.name} für heute abgeschlossen! 🎉`);
       } else {
-        toast.success(`${habit.name} markiert (${habit.todayCount + 1}/${habit.target_count ?? 1})`);
+        notify.success(`${habit.name} markiert (${habit.todayCount + 1}/${habit.target_count ?? 1})`);
       }
     } catch (error) {
       debugConsole.error('Error completing habit:', error);
-      toast.error('Fehler beim Markieren der Gewohnheit');
+      notify.error('Fehler beim Markieren der Gewohnheit');
     }
   };
 

@@ -20,9 +20,8 @@ import { Vote, Loader2, Mail, MessageSquare, Globe, Paperclip, Star } from "luci
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { toast } from "sonner";
-
 import type { QuickNote } from "./QuickNotesList";
+import { notify } from "@/lib/notify";
 
 interface NoteDecisionCreatorProps {
   note: QuickNote;
@@ -179,7 +178,7 @@ export function NoteDecisionCreator({
       }
     } catch (error) {
       debugConsole.error('Error loading profiles:', error);
-      toast.error("Fehler beim Laden der Benutzer");
+      notify.error("Fehler beim Laden der Benutzer");
     } finally {
       setProfilesLoading(false);
     }
@@ -228,17 +227,17 @@ export function NoteDecisionCreator({
     const sanitizedTitle = stripHtml(title);
 
     if (!sanitizedTitle) {
-      toast.error("Bitte geben Sie einen Titel ein");
+      notify.error("Bitte geben Sie einen Titel ein");
       return;
     }
 
     if (!visibleToAll && selectedUsers.length === 0) {
-      toast.error("Bitte wählen Sie mindestens einen Teilnehmer aus oder machen Sie die Anfrage öffentlich");
+      notify.error("Bitte wählen Sie mindestens einen Teilnehmer aus oder machen Sie die Anfrage öffentlich");
       return;
     }
 
     if (!user?.id || !currentTenant?.id) {
-      toast.error("Nicht angemeldet");
+      notify.error("Nicht angemeldet");
       return;
     }
 
@@ -356,7 +355,7 @@ export function NoteDecisionCreator({
         await saveDecisionTopics(decision.id, selectedTopicIds);
       }
 
-      toast.success("Entscheidungsanfrage erstellt");
+      notify.success("Entscheidungsanfrage erstellt");
       onOpenChange(false);
       onDecisionCreated();
 
@@ -376,7 +375,7 @@ export function NoteDecisionCreator({
     } catch (error) {
       setUploadStatus(null);
       debugConsole.error('Error creating decision:', error);
-      toast.error(error instanceof Error ? error.message : "Fehler beim Erstellen der Entscheidungsanfrage");
+      notify.error(error instanceof Error ? error.message : "Fehler beim Erstellen der Entscheidungsanfrage");
     } finally {
       setLoading(false);
       setUploadStatus(null);

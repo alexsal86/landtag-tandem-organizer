@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
+import { notify } from "@/lib/notify";
 
 type AppRole = "abgeordneter" | "bueroleitung" | "mitarbeiter" | "praktikant" | "gast";
 const ALL_ROLES: AppRole[] = ["abgeordneter", "bueroleitung", "mitarbeiter", "praktikant", "gast"];
@@ -47,7 +48,6 @@ interface FieldPerm { can_read: boolean; can_write: boolean }
 
 export function PermissionsManager() {
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const tenantId = currentTenant?.id;
 
   const [flags, setFlags] = useState<Map<string, boolean>>(new Map());
@@ -97,7 +97,8 @@ export function PermissionsManager() {
       .from("tenant_feature_flags")
       .upsert({ tenant_id: tenantId, feature_key: key, enabled }, { onConflict: "tenant_id,feature_key" });
     if (error) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      notify.error("Fehler", { description: error.message
+});
       next.set(key, !enabled);
       setFlags(new Map(next));
     }
@@ -117,7 +118,8 @@ export function PermissionsManager() {
         { tenant_id: tenantId, action_key: actionKey, allowed_roles: nextRoles },
         { onConflict: "tenant_id,action_key" },
       );
-    if (error) toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    if (error) notify.error("Fehler", { description: error.message
+});
   };
 
   const toggleField = async (table: string, column: string, role: AppRole, key: "can_read" | "can_write") => {
@@ -144,7 +146,8 @@ export function PermissionsManager() {
         },
         { onConflict: "tenant_id,table_name,column_name,role" },
       );
-    if (error) toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    if (error) notify.error("Fehler", { description: error.message
+});
   };
 
 

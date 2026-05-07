@@ -1,9 +1,9 @@
 import { useState, type Dispatch, type SetStateAction } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import type { AppUserRef, TenantRef } from "@/components/shared/featureDomainTypes";
 import type { Subtask, Task } from "../types";
+import { notify } from "@/lib/notify";
 
 interface CallLogRecord {
   id: string;
@@ -58,7 +58,6 @@ export function useTaskOperations({
   loadAssignedSubtasks, loadTodos, loadAllSnoozes,
   assignedSubtasks,
 }: UseTaskOperationsProps): UseTaskOperationsReturn {
-  const { toast } = useToast();
   const [processingTaskIds, setProcessingTaskIds] = useState<Set<string>>(new Set());
   const [showCelebration, setShowCelebration] = useState(false);
 
@@ -166,12 +165,11 @@ export function useTaskOperations({
         await loadTasks();
       }
 
-      toast({
-        title: "Status aktualisiert",
+      notify.success("Status aktualisiert", {
         description: newStatus === "completed"
           ? "Aufgabe wurde als erledigt markiert und archiviert."
-          : "Aufgabe wurde als offen markiert.",
-      });
+          : "Aufgabe wurde als offen markiert."
+});
     } catch (error: unknown) {
       debugConsole.error("Error updating task:", error);
       const msg = error instanceof Error ? error.message : String(error);
@@ -186,7 +184,8 @@ export function useTaskOperations({
         return;
       }
       setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: originalStatus } : t));
-      toast({ title: "Fehler", description: msg || "Status konnte nicht aktualisiert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: msg || "Status konnte nicht aktualisiert werden."
+});
     } finally {
       setProcessingTaskIds(prev => {
         const next = new Set(prev);
@@ -202,11 +201,12 @@ export function useTaskOperations({
       const { error } = await supabase.from("task_comments").insert([{ task_id: taskId, user_id: user.id, content: content.trim() }]);
       if (error) throw error;
       await loadTaskComments();
-      toast({ title: "Kommentar hinzugefügt" });
+      notify.success("Kommentar hinzugefügt");
       return true;
     } catch (error: unknown) {
       debugConsole.error("Error adding comment:", error);
-      toast({ title: "Fehler", description: "Kommentar konnte nicht hinzugefügt werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Kommentar konnte nicht hinzugefügt werden."
+});
       return false;
     }
   };
@@ -223,10 +223,12 @@ export function useTaskOperations({
         if (error) throw error;
       }
       await loadTaskSnoozes();
-      toast({ title: "Wiedervorlage gesetzt", description: `Aufgabe wird bis ${new Date(snoozeUntil).toLocaleDateString("de-DE")} ausgeblendet.` });
+      notify.success("Wiedervorlage gesetzt", { description: `Aufgabe wird bis ${new Date(snoozeUntil).toLocaleDateString("de-DE")} ausgeblendet.` 
+});
     } catch (error: unknown) {
       debugConsole.error("Error snoozing task:", error);
-      toast({ title: "Fehler", description: "Wiedervorlage konnte nicht gesetzt werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Wiedervorlage konnte nicht gesetzt werden."
+});
     }
   };
 
@@ -243,10 +245,12 @@ export function useTaskOperations({
       }
       await loadTaskSnoozes();
       await loadAssignedSubtasks();
-      toast({ title: "Wiedervorlage gesetzt", description: `Unteraufgabe wird bis ${new Date(snoozeUntil).toLocaleDateString("de-DE")} ausgeblendet.` });
+      notify.success("Wiedervorlage gesetzt", { description: `Unteraufgabe wird bis ${new Date(snoozeUntil).toLocaleDateString("de-DE")} ausgeblendet.` 
+});
     } catch (error: unknown) {
       debugConsole.error("Error snoozing subtask:", error);
-      toast({ title: "Fehler", description: "Wiedervorlage konnte nicht gesetzt werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Wiedervorlage konnte nicht gesetzt werden."
+});
     }
   };
 
@@ -256,10 +260,12 @@ export function useTaskOperations({
       if (error) throw error;
       await loadAllSnoozes();
       await loadTaskSnoozes();
-      toast({ title: "Erfolgreich", description: "Wiedervorlage wurde aktualisiert." });
+      notify.success("Erfolgreich", { description: "Wiedervorlage wurde aktualisiert." 
+});
     } catch (error) {
       debugConsole.error("Error updating snooze:", error);
-      toast({ title: "Fehler", description: "Wiedervorlage konnte nicht aktualisiert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Wiedervorlage konnte nicht aktualisiert werden."
+});
     }
   };
 
@@ -269,10 +275,12 @@ export function useTaskOperations({
       if (error) throw error;
       await loadAllSnoozes();
       await loadTaskSnoozes();
-      toast({ title: "Erfolgreich", description: "Wiedervorlage wurde gelöscht." });
+      notify.success("Erfolgreich", { description: "Wiedervorlage wurde gelöscht." 
+});
     } catch (error) {
       debugConsole.error("Error deleting snooze:", error);
-      toast({ title: "Fehler", description: "Wiedervorlage konnte nicht gelöscht werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Wiedervorlage konnte nicht gelöscht werden."
+});
     }
   };
 
@@ -299,13 +307,13 @@ export function useTaskOperations({
 
       await loadAssignedSubtasks();
       if (isCompleted) setShowCelebration(true);
-      toast({
-        title: isCompleted ? "Unteraufgabe erledigt" : "Unteraufgabe wieder geöffnet",
-        description: isCompleted ? "Die Unteraufgabe wurde als erledigt markiert." : "Die Unteraufgabe wurde wieder geöffnet.",
-      });
+      notify.success(isCompleted ? "Unteraufgabe erledigt" : "Unteraufgabe wieder geöffnet", {
+        description: isCompleted ? "Die Unteraufgabe wurde als erledigt markiert." : "Die Unteraufgabe wurde wieder geöffnet."
+});
     } catch (error: unknown) {
       debugConsole.error("Error updating subtask:", error);
-      toast({ title: "Fehler", description: "Unteraufgabe konnte nicht aktualisiert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Unteraufgabe konnte nicht aktualisiert werden."
+});
     }
   };
 
@@ -388,11 +396,13 @@ export function useTaskOperations({
         tags: ["task", task.category],
       }]);
       if (error) throw error;
-      toast({ title: "Notiz erstellt", description: "Quick Note wurde erfolgreich erstellt." });
+      notify.success("Notiz erstellt", { description: "Quick Note wurde erfolgreich erstellt." 
+});
       return true;
     } catch (error) {
       debugConsole.error("Error creating quick note:", error);
-      toast({ title: "Fehler", description: "Notiz konnte nicht erstellt werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Notiz konnte nicht erstellt werden."
+});
       return false;
     }
   };
@@ -403,10 +413,12 @@ export function useTaskOperations({
       if (error) throw error;
       await loadTodos();
       setShowCelebration(true);
-      toast({ title: "ToDo erledigt", description: "Das ToDo wurde als erledigt markiert." });
+      notify.success("ToDo erledigt", { description: "Das ToDo wurde als erledigt markiert." 
+});
     } catch (error) {
       debugConsole.error("Error completing todo:", error);
-      toast({ title: "Fehler", description: "ToDo konnte nicht als erledigt markiert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "ToDo konnte nicht als erledigt markiert werden."
+});
     }
   };
 

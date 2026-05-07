@@ -4,13 +4,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
-import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { format, addMinutes, addMonths, startOfDay, type Locale } from "date-fns";
 import { de } from "date-fns/locale";
 import { debugConsole } from "@/utils/debugConsole";
+import { notify } from "@/lib/notify";
 
 const DEFAULT_TENANT_TIME_ZONE = "Europe/Berlin";
 
@@ -55,7 +55,6 @@ export function EmployeeMeetingScheduler({
   const navigate = useNavigate();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [meetingDate, setMeetingDate] = useState<Date | undefined>(undefined);
   const [meetingType, setMeetingType] = useState<string>("regular");
@@ -97,11 +96,9 @@ export function EmployeeMeetingScheduler({
 
   const handleSchedule = async () => {
     if (!user || !currentTenant || !meetingDate) {
-      toast({
-        title: "Fehler",
-        description: "Bitte wählen Sie ein Datum aus",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Bitte wählen Sie ein Datum aus"
+});
       return;
     }
 
@@ -199,18 +196,15 @@ export function EmployeeMeetingScheduler({
 
         if (calendarError) {
           debugConsole.error("Calendar entry error:", calendarError);
-          toast({
-            title: "Hinweis",
-            description: "Gespräch erstellt, aber Kalendereintrag konnte nicht angelegt werden",
-            variant: "default",
-          });
+          notify.success("Hinweis", {
+            description: "Gespräch erstellt, aber Kalendereintrag konnte nicht angelegt werden"
+});
         }
       }
 
-      toast({
-        title: "Gespräch geplant",
-        description: `Mitarbeitergespräch mit ${employeeName} für ${meetingDateLabel} um ${meetingTimeLabel} Uhr (${tenantTimeZone}) geplant${addToCalendar ? ' und im Kalender eingetragen' : ''}.`,
-      });
+      notify.success("Gespräch geplant", {
+        description: `Mitarbeitergespräch mit ${employeeName} für ${meetingDateLabel} um ${meetingTimeLabel} Uhr (${tenantTimeZone}) geplant${addToCalendar ? ' und im Kalender eingetragen' : ''}.`
+});
 
       await onScheduled?.(meeting.id);
       onOpenChange(false);
@@ -224,11 +218,9 @@ export function EmployeeMeetingScheduler({
       navigate(`/employee-meeting/${meeting.id}`);
     } catch (error: unknown) {
       debugConsole.error("Error scheduling meeting:", error);
-      toast({
-        title: "Fehler",
-        description: error instanceof Error ? error.message : "Gespräch konnte nicht geplant werden",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: error instanceof Error ? error.message : "Gespräch konnte nicht geplant werden"
+});
     } finally {
       setLoading(false);
     }

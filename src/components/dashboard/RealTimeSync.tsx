@@ -26,8 +26,7 @@ import type {
   LayoutUpdatePayload,
   WidgetUpdatePayload,
 } from '@/types/dashboard';
-import { toast } from 'sonner';
-
+import { notify } from "@/lib/notify";
 interface RealTimeSyncProps {
   currentLayout: DashboardLayout;
   onLayoutUpdate: (layout: DashboardLayout) => void;
@@ -161,7 +160,7 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
             online_at: new Date().toISOString()
           });
           
-          toast.success('Real-time sync activated');
+          notify.success('Real-time sync activated');
         }
       });
 
@@ -224,7 +223,7 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
     try {
       onLayoutUpdate(payload.payload.layout);
       setLastSyncTime(new Date());
-      toast.info(`Layout updated by ${payload.payload.user_email}`);
+      notify.info(`Layout updated by ${payload.payload.user_email}`);
     } catch (error) {
       debugConsole.error('Failed to apply remote layout update:', error);
       setSyncErrors(prev => [...prev, 'Failed to apply layout update']);

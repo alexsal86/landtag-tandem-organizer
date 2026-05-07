@@ -3,7 +3,6 @@ import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { debugConsole } from '@/utils/debugConsole';
@@ -11,6 +10,7 @@ import {
   PRESS_EMAIL_TEMPLATE_BODY_DEFAULT,
   PRESS_EMAIL_TEMPLATE_SUBJECT_DEFAULT,
 } from "@/lib/pressEmailTemplateDefaults";
+import { notify } from "@/lib/notify";
 
 // ── Types ────────────────────────────────────────────────────
 export interface Contact {
@@ -62,7 +62,6 @@ export interface RecipientEntry {
 export function useEmailComposer() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Form
@@ -239,10 +238,12 @@ export function useEmailComposer() {
         });
       }
 
-      toast({ title: "Presse-E-Mail vorbereitet", description: `Daten aus "${pr.title}" wurden geladen.` });
+      notify.success("Presse-E-Mail vorbereitet", { description: `Daten aus "${pr.title}" wurden geladen.` 
+});
     } catch (error: unknown) {
       debugConsole.error("Error loading press release for email:", error);
-      toast({ title: "Fehler", description: "Pressemitteilung konnte nicht geladen werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Pressemitteilung konnte nicht geladen werden."
+});
     }
   };
 
@@ -328,13 +329,15 @@ export function useEmailComposer() {
       setBodyHtml(template.body_html);
       setEditorKey((k) => k + 1);
       setSelectedTemplate(templateId);
-      toast({ title: "Template geladen", description: `"${template.name}" wurde geladen` });
+      notify.success("Template geladen", { description: `"${template.name}" wurde geladen` 
+});
     }
   };
 
   const handleSaveAsTemplate = async () => {
     if (!subject.trim() || !bodyHtml.trim()) {
-      toast({ title: "Fehler", description: "Betreff und Nachricht müssen ausgefüllt sein", variant: "destructive" });
+      notify.error("Fehler", { description: "Betreff und Nachricht müssen ausgefüllt sein"
+});
       return;
     }
     const templateName = prompt("Template-Name eingeben:");
@@ -342,10 +345,12 @@ export function useEmailComposer() {
     try {
       const { error } = await supabase.from("email_templates").insert([{ tenant_id: currentTenant!.id, created_by: user!.id, name: templateName, subject, body_html: bodyHtml, is_active: true }]);
       if (error) throw error;
-      toast({ title: "Template gespeichert", description: `"${templateName}" wurde erstellt` });
+      notify.success("Template gespeichert", { description: `"${templateName}" wurde erstellt` 
+});
       fetchEmailTemplates();
     } catch (error: unknown) {
-      toast({ title: "Fehler beim Speichern", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+      notify.error("Fehler beim Speichern", { description: error instanceof Error ? error.message : String(error)
+});
     }
   };
 
@@ -366,11 +371,13 @@ export function useEmailComposer() {
   const addManualRecipient = () => {
     const email = manualEmailInput.trim();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      toast({ title: "Ungültige E-Mail", description: "Bitte geben Sie eine gültige E-Mail-Adresse ein.", variant: "destructive" });
+      notify.error("Ungültige E-Mail", { description: "Bitte geben Sie eine gültige E-Mail-Adresse ein."
+});
       return;
     }
     if (recipients.some((r) => r.email === email && r.type === activeRecipientField)) {
-      toast({ title: "Bereits vorhanden", description: "Diese E-Mail ist bereits hinzugefügt.", variant: "destructive" });
+      notify.error("Bereits vorhanden", { description: "Diese E-Mail ist bereits hinzugefügt."
+});
       return;
     }
     setRecipients((prev) => [...prev, { id: `manual-${Date.now()}-${Math.random()}`, type: activeRecipientField, label: email, email, source: "manual" }]);
@@ -405,10 +412,14 @@ export function useEmailComposer() {
 
   // ── Send ───────────────────────────────────────────────────
   const handleSend = async () => {
-    if (!subject.trim()) { toast({ title: "Fehler", description: "Bitte geben Sie einen Betreff ein.", variant: "destructive" }); return; }
-    if (!bodyHtml.trim()) { toast({ title: "Fehler", description: "Bitte geben Sie eine Nachricht ein.", variant: "destructive" }); return; }
-    if (getTotalRecipients() === 0) { toast({ title: "Fehler", description: "Bitte wählen Sie mindestens einen Empfänger aus.", variant: "destructive" }); return; }
-    if (isScheduled && !scheduledFor) { toast({ title: "Fehler", description: "Bitte wählen Sie einen Zeitpunkt für den geplanten Versand.", variant: "destructive" }); return; }
+    if (!subject.trim()) { notify.error("Fehler", { description: "Bitte geben Sie einen Betreff ein."
+}); return; }
+    if (!bodyHtml.trim()) { notify.error("Fehler", { description: "Bitte geben Sie eine Nachricht ein."
+}); return; }
+    if (getTotalRecipients() === 0) { notify.error("Fehler", { description: "Bitte wählen Sie mindestens einen Empfänger aus."
+}); return; }
+    if (isScheduled && !scheduledFor) { notify.error("Fehler", { description: "Bitte wählen Sie einen Zeitpunkt für den geplanten Versand."
+}); return; }
 
     setLoading(true);
     try {
@@ -444,14 +455,17 @@ export function useEmailComposer() {
       if (isScheduled && scheduledFor) {
         const { error } = await supabase.from("scheduled_emails").insert([{ ...emailData, scheduled_for: scheduledFor.toISOString(), status: "scheduled" }]);
         if (error) throw error;
-        toast({ title: "E-Mail geplant", description: `E-Mail wird am ${format(scheduledFor, "dd.MM.yyyy 'um' HH:mm", { locale: de })} versendet.` });
+        notify.success("E-Mail geplant", { description: `E-Mail wird am ${format(scheduledFor, "dd.MM.yyyy 'um' HH:mm", { locale: de })} versendet.` 
+});
       } else {
         const { data, error } = await supabase.functions.invoke("send-document-email", { body: emailData });
         if (error) throw error;
         if (data.failed > 0) {
-          toast({ title: "Teilweise versendet", description: `${data.sent} von ${data.total} E-Mails erfolgreich versendet. ${data.failed} fehlgeschlagen.`, variant: "destructive" });
+          notify.error("Teilweise versendet", { description: `${data.sent} von ${data.total} E-Mails erfolgreich versendet. ${data.failed} fehlgeschlagen.`
+});
         } else {
-          toast({ title: "E-Mails versendet", description: `${data.sent} von ${data.total} E-Mails erfolgreich versendet.` });
+          notify.success("E-Mails versendet", { description: `${data.sent} von ${data.total} E-Mails erfolgreich versendet.` 
+});
         }
         if (pressReleaseId && user) {
           await supabase.from("press_releases").update({ email_sent_at: new Date().toISOString(), email_sent_by: user.id }).eq("id", pressReleaseId);
@@ -462,7 +476,8 @@ export function useEmailComposer() {
       setSubject(""); setBodyHtml(""); setReplyTo(""); setIsScheduled(false); setScheduledFor(undefined); setRecipients([]); setSelectedDocuments([]);
     } catch (error: unknown) {
       debugConsole.error("Error sending emails:", error);
-      toast({ title: "Fehler beim Versenden", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+      notify.error("Fehler beim Versenden", { description: error instanceof Error ? error.message : String(error)
+});
     } finally {
       setLoading(false);
     }

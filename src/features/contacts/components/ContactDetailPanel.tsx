@@ -17,7 +17,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { ContactEditForm } from "@/features/contacts/components/ContactEditForm";
 import { CallLogWidget } from "@/components/widgets/CallLogWidget";
 import { ActivityTimeline } from "@/components/contacts/ActivityTimeline";
@@ -30,6 +29,7 @@ import { useContactFundings } from "@/hooks/useContactFundings";
 import { ContactInfoTab } from "@/components/contacts/ContactInfoTab";
 import { Facebook, Instagram, Linkedin, Twitter } from "@/components/icons/SocialIcons";
 import { User, Calendar, Tag } from "lucide-react";
+import { notify } from "@/lib/notify";
 
 interface CallLog {
   id: string; contact_id?: string; caller_name?: string; caller_phone?: string;
@@ -138,7 +138,6 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
   const [fundingsExpanded, setFundingsExpanded] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [favoriteUpdating, setFavoriteUpdating] = useState(false);
-  const { toast } = useToast();
 
   const { directDocuments, taggedDocuments, loading: documentsLoading, removeDocumentLink } = useContactDocuments(contactId || undefined, [...(allTags.direct || []), ...(allTags.inherited || [])]);
   const { data: fundings = [], isLoading: fundingsLoading } = useContactFundings(contactId || undefined);
@@ -168,12 +167,15 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
         if (!orgError && orgData?.tags) inheritedTags = orgData.tags;
       }
       setAllTags({ direct: data.tags || [], inherited: inheritedTags });
-    } catch (error) { debugConsole.error('Error fetching contact:', error); toast({ title: "Fehler", description: "Kontakt konnte nicht geladen werden.", variant: "destructive" }); } finally { setLoading(false); }
+    } catch (error) { debugConsole.error('Error fetching contact:', error); notify.error("Fehler", { description: "Kontakt konnte nicht geladen werden."
+}); } finally { setLoading(false); }
   };
 
   const handleDelete = async () => {
     if (!contact) return;
-    try { const { error } = await supabase.from('contacts').delete().eq('id', contact.id); if (error) throw error; toast({ title: "Kontakt gelöscht", description: `${contact.name} wurde erfolgreich gelöscht.` }); onContactUpdate(); onClose(); } catch (error) { debugConsole.error('Error deleting contact:', error); toast({ title: "Fehler", description: "Kontakt konnte nicht gelöscht werden.", variant: "destructive" }); }
+    try { const { error } = await supabase.from('contacts').delete().eq('id', contact.id); if (error) throw error; notify.success("Kontakt gelöscht", { description: `${contact.name} wurde erfolgreich gelöscht.` 
+}); onContactUpdate(); onClose(); } catch (error) { debugConsole.error('Error deleting contact:', error); notify.error("Fehler", { description: "Kontakt konnte nicht gelöscht werden."
+}); }
   };
   const handleToggleFavorite = async () => {
     if (!contact || favoriteUpdating) return;
@@ -186,15 +188,15 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
         .eq("id", contact.id);
       if (error) throw error;
       setContact((prev) => (prev ? { ...prev, is_favorite: nextFavorite } : prev));
-      toast({
-        title: "Erfolg",
+      notify.success("Erfolg", {
         description: nextFavorite
           ? "Kontakt zu Favoriten hinzugefügt"
-          : "Kontakt aus Favoriten entfernt",
-      });
+          : "Kontakt aus Favoriten entfernt"
+});
     } catch (error) {
       debugConsole.error("Error toggling favorite:", error);
-      toast({ title: "Fehler", description: "Favorit konnte nicht aktualisiert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Favorit konnte nicht aktualisiert werden."
+});
     } finally {
       setFavoriteUpdating(false);
     }

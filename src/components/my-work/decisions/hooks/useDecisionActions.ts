@@ -3,9 +3,9 @@ import type { Dispatch, SetStateAction } from "react";
 import type { User } from "@supabase/supabase-js";
 import { debugConsole } from "@/utils/debugConsole";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import type { MyWorkDecision } from "../types";
 import { getResponseSummary } from "../types";
+import { notify } from "@/lib/notify";
 
 interface UseDecisionActionsOptions {
   currentTenantId: string | null | undefined;
@@ -28,7 +28,6 @@ export function useDecisionActions({
   setDecisions,
   user,
 }: UseDecisionActionsOptions) {
-  const { toast } = useToast();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingDecisionId, setEditingDecisionId] = useState<string | null>(null);
   const [deletingDecisionId, setDeletingDecisionId] = useState<string | null>(null);
@@ -95,16 +94,15 @@ export function useDecisionActions({
 
       if (error) throw error;
 
-      toast({ title: "Archiviert", description: "Entscheidung wurde archiviert." });
+      notify.success("Archiviert", { description: "Entscheidung wurde archiviert." 
+});
       refreshNow();
     } catch (error) {
       setDecisions(previousDecisions);
       debugConsole.error("Error archiving decision:", error);
-      toast({
-        title: "Fehler",
-        description: "Archivierung fehlgeschlagen.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Archivierung fehlgeschlagen."
+});
     } finally {
       setArchivingDecisionId(null);
     }
@@ -121,17 +119,16 @@ export function useDecisionActions({
       const { error } = await supabase.from("task_decisions").delete().eq("id", decisionId);
       if (error) throw error;
 
-      toast({ title: "Gelöscht", description: "Entscheidung wurde gelöscht." });
+      notify.success("Gelöscht", { description: "Entscheidung wurde gelöscht." 
+});
       setDeletingDecisionId(null);
       refreshNow();
     } catch (error) {
       setDecisions(previousDecisions);
       debugConsole.error("Error deleting decision:", error);
-      toast({
-        title: "Fehler",
-        description: "Löschen fehlgeschlagen.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Löschen fehlgeschlagen."
+});
     }
   };
 
@@ -162,17 +159,14 @@ export function useDecisionActions({
 
       if (error) throw error;
 
-      toast({
-        title: "Aufgabe erstellt",
-        description: "Aufgabe wurde aus der Entscheidung erstellt.",
-      });
+      notify.success("Aufgabe erstellt", {
+        description: "Aufgabe wurde aus der Entscheidung erstellt."
+});
     } catch (error) {
       debugConsole.error("Error creating task from decision:", error);
-      toast({
-        title: "Fehler",
-        description: "Aufgabe konnte nicht erstellt werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Aufgabe konnte nicht erstellt werden."
+});
     } finally {
       setCreatingTaskId(null);
     }
@@ -189,15 +183,14 @@ export function useDecisionActions({
 
       if (error) throw error;
 
-      toast({ title: "Zugeordnet", description: "Entscheidung wurde dem Jour Fixe zugeordnet." });
+      notify.success("Zugeordnet", { description: "Entscheidung wurde dem Jour Fixe zugeordnet." 
+});
       refreshNow();
     } catch (error) {
       debugConsole.error("Error assigning decision to meeting:", error);
-      toast({
-        title: "Fehler",
-        description: "Zuordnung fehlgeschlagen.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Zuordnung fehlgeschlagen."
+});
     } finally {
       setMeetingSelectorDecisionId(null);
     }
@@ -214,18 +207,15 @@ export function useDecisionActions({
 
       if (error) throw error;
 
-      toast({
-        title: "Vorgemerkt",
-        description: "Entscheidung wurde für den nächsten Jour Fixe vorgemerkt.",
-      });
+      notify.success("Vorgemerkt", {
+        description: "Entscheidung wurde für den nächsten Jour Fixe vorgemerkt."
+});
       refreshNow();
     } catch (error) {
       debugConsole.error("Error marking decision for jour fixe:", error);
-      toast({
-        title: "Fehler",
-        description: "Vormerkung fehlgeschlagen.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Vormerkung fehlgeschlagen."
+});
     } finally {
       setMeetingSelectorDecisionId(null);
     }
@@ -275,21 +265,18 @@ export function useDecisionActions({
         }
       }
 
-      toast({
-        title: "Erfolgreich",
+      notify.success("Erfolgreich", {
         description:
           mode === "creator_response"
             ? "Antwort wurde gesendet."
-            : "Deine Rückfrage wurde gesendet.",
-      });
+            : "Deine Rückfrage wurde gesendet."
+});
       refreshNow();
     } catch (error) {
       debugConsole.error("Error sending activity reply:", error);
-      toast({
-        title: "Fehler",
-        description: "Antwort konnte nicht gesendet werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Antwort konnte nicht gesendet werden."
+});
       throw error;
     }
   };
@@ -308,18 +295,15 @@ export function useDecisionActions({
 
       if (error) throw error;
 
-      toast({
-        title: "Gespeichert",
-        description: date ? "Antwortfrist wurde geändert." : "Antwortfrist wurde entfernt.",
-      });
+      notify.success("Gespeichert", {
+        description: date ? "Antwortfrist wurde geändert." : "Antwortfrist wurde entfernt."
+});
     } catch (error) {
       setDecisions(previousDecisions);
       debugConsole.error("Error updating deadline:", error);
-      toast({
-        title: "Fehler",
-        description: "Frist konnte nicht geändert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Frist konnte nicht geändert werden."
+});
     }
   };
 
@@ -338,20 +322,17 @@ export function useDecisionActions({
 
       if (error) throw error;
 
-      toast({
-        title: newValue ? "Öffentlich" : "Nicht öffentlich",
+      notify.success(newValue ? "Öffentlich" : "Nicht öffentlich", {
         description: newValue
           ? "Entscheidung ist jetzt öffentlich."
-          : "Entscheidung ist jetzt nicht mehr öffentlich.",
-      });
+          : "Entscheidung ist jetzt nicht mehr öffentlich."
+});
     } catch (error) {
       setDecisions(previousDecisions);
       debugConsole.error("Error toggling decision visibility:", error);
-      toast({
-        title: "Fehler",
-        description: "Sichtbarkeit konnte nicht geändert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Sichtbarkeit konnte nicht geändert werden."
+});
     }
   };
 
@@ -365,18 +346,15 @@ export function useDecisionActions({
 
       if (error) throw error;
 
-      toast({
-        title: "Hinzugefügt",
-        description: `${userIds.length} Teilnehmer hinzugefügt.`,
-      });
+      notify.success("Hinzugefügt", {
+        description: `${userIds.length} Teilnehmer hinzugefügt.`
+});
       refreshNow();
     } catch (error) {
       debugConsole.error("Error adding participants:", error);
-      toast({
-        title: "Fehler",
-        description: "Teilnehmer konnten nicht hinzugefügt werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Teilnehmer konnten nicht hinzugefügt werden."
+});
     }
   };
 
@@ -390,15 +368,14 @@ export function useDecisionActions({
 
       if (error) throw error;
 
-      toast({ title: "Entfernt", description: "Teilnehmer wurde entfernt." });
+      notify.success("Entfernt", { description: "Teilnehmer wurde entfernt." 
+});
       refreshNow();
     } catch (error) {
       debugConsole.error("Error removing participant:", error);
-      toast({
-        title: "Fehler",
-        description: "Teilnehmer konnte nicht entfernt werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Teilnehmer konnte nicht entfernt werden."
+});
     }
   };
 
@@ -417,15 +394,13 @@ export function useDecisionActions({
 
       if (error) throw error;
 
-      toast({ title: newPriority > 0 ? "Prioritär" : "Priorität entfernt" });
+      notify.success(newPriority > 0 ? "Prioritär" : "Priorität entfernt");
     } catch (error) {
       setDecisions(previousDecisions);
       debugConsole.error("Error toggling priority:", error);
-      toast({
-        title: "Fehler",
-        description: "Priorität konnte nicht geändert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Priorität konnte nicht geändert werden."
+});
     }
   };
 

@@ -3,8 +3,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
 import type { SocialContentVariant, SocialPlannerItem } from "@/features/redaktion/hooks/useSocialPlannerItems";
+import { notify } from "@/lib/notify";
 
 interface MarkPublishedDialogProps {
   item: SocialPlannerItem | null;
@@ -24,7 +24,6 @@ function nowLocalDatetime(): string {
 }
 
 export function MarkPublishedDialog({ item, channels, open, onOpenChange, onConfirm }: MarkPublishedDialogProps) {
-  const { toast } = useToast();
   const [publishedAt, setPublishedAt] = useState(nowLocalDatetime());
   const [links, setLinks] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -49,10 +48,10 @@ export function MarkPublishedDialog({ item, channels, open, onOpenChange, onConf
         publishedAt: new Date(publishedAt).toISOString(),
         perChannelLinks: links,
       });
-      toast({ title: "Als veröffentlicht markiert" });
+      notify.success("Als veröffentlicht markiert");
       onOpenChange(false);
     } catch {
-      toast({ title: "Fehler beim Markieren", variant: "destructive" });
+      notify.error("Fehler beim Markieren");
     } finally {
       setSaving(false);
     }

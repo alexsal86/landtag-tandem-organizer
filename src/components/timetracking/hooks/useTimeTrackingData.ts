@@ -6,8 +6,8 @@ import { useCombinedTimeEntries } from "@/hooks/useCombinedTimeEntries";
 import { useYearlyBalance } from "@/hooks/useYearlyBalance";
 import { calculateVacationBalance } from "@/utils/vacationCalculations";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, getYear } from "date-fns";
-import { toast } from "sonner";
 import type { TimeEntryRow, EmployeeSettingsRow, LeaveRow, HolidayRow } from "../types";
+import { notify } from "@/lib/notify";
 
 interface TimeTrackingBaseData {
   entries: TimeEntryRow[];
@@ -227,7 +227,7 @@ export function useMyWorkTimeTrackingData(userId: string | null, selectedMonth: 
   const loadData = useCallback(async () => {
     const result = await refetch();
     if (result.error) {
-      toast.error("Fehler: " + (result.error instanceof Error ? result.error.message : String(result.error)));
+      notify.error("Fehler: " + (result.error instanceof Error ? result.error.message : String(result.error)));
     }
     return result.data;
   }, [refetch]);

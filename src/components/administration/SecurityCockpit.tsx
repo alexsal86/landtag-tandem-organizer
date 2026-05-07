@@ -16,6 +16,7 @@ import { Shield, AlertTriangle, RefreshCw, Database, Camera } from "lucide-react
 import { format, parseISO } from "date-fns";
 import { de } from "date-fns/locale";
 import { useState } from "react";
+import { notify } from "@/lib/notify";
 
 type Gap = {
   table_name: string;
@@ -49,7 +50,6 @@ const sevVariant = (s: Gap["severity"]): "default" | "secondary" | "destructive"
 };
 
 export function SecurityCockpit(): JSX.Element {
-  const { toast } = useToast();
   const [filter, setFilter] = useState("");
   const [onlyIssues, setOnlyIssues] = useState(true);
 
@@ -113,10 +113,11 @@ export function SecurityCockpit(): JSX.Element {
   const takeSnapshot = async () => {
     const { error } = await supabase.rpc("snapshot_rls_coverage");
     if (error) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      notify.error("Fehler", { description: error.message
+});
       return;
     }
-    toast({ title: "Snapshot erstellt" });
+    notify.success("Snapshot erstellt");
     void snapshotsQuery.refetch();
   };
 

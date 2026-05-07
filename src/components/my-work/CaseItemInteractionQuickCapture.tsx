@@ -10,9 +10,9 @@ import { extractMentionedUserIds } from "@/utils/noteMentions";
 import { notifyQuickNoteShared } from "@/utils/shareNotifications";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { TimelineInteractionType } from "@/components/my-work/hooks/useCaseItemEdit";
+import { notify } from "@/lib/notify";
 
 export type InteractionType = "call" | "email" | "social" | "meeting" | "note" | "letter" | "system";
 export type InteractionDirection = "inbound" | "outbound" | "internal";
@@ -55,7 +55,6 @@ interface Props {
 export function CaseItemInteractionQuickCapture({ title, interactionType, defaultDirection, caseFileId, onCreate }: Props) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
 
   const [subject, setSubject] = useState("");
   const [details, setDetails] = useState("");
@@ -147,7 +146,7 @@ export function CaseItemInteractionQuickCapture({ title, interactionType, defaul
         )
     );
 
-    toast({ title: "Erwähnte Personen wurden benachrichtigt" });
+    notify.success("Erwähnte Personen wurden benachrichtigt");
   };
 
   return (

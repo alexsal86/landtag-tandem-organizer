@@ -11,8 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Edit, Save, X, Trash2, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
-import { toast } from "sonner";
-
+import { notify } from "@/lib/notify";
 interface DefaultGuest {
   id: string;
   name: string;
@@ -57,7 +56,7 @@ export const DefaultGuestsAdmin: React.FC = () => {
       setGuests(data || []);
     } catch (error: unknown) {
       debugConsole.error('Error fetching default guests:', error);
-      toast.error('Fehler beim Laden der Standard-Gäste');
+      notify.error('Fehler beim Laden der Standard-Gäste');
     } finally {
       setLoading(false);
     }
@@ -65,13 +64,13 @@ export const DefaultGuestsAdmin: React.FC = () => {
 
   const handleAdd = async () => {
     if (!addForm.name.trim() || !addForm.email.trim()) {
-      toast.error('Bitte alle Felder ausfüllen');
+      notify.error('Bitte alle Felder ausfüllen');
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(addForm.email)) {
-      toast.error('Bitte gültige E-Mail-Adresse eingeben');
+      notify.error('Bitte gültige E-Mail-Adresse eingeben');
       return;
     }
 
@@ -94,13 +93,13 @@ export const DefaultGuestsAdmin: React.FC = () => {
 
       if (error) throw error;
 
-      toast.success('Standard-Gast hinzugefügt');
+      notify.success('Standard-Gast hinzugefügt');
       setShowAddDialog(false);
       setAddForm({ name: '', email: '', is_active: true });
       fetchDefaultGuests();
     } catch (error: unknown) {
       debugConsole.error('Error adding default guest:', error);
-      toast.error('Fehler beim Hinzufügen des Standard-Gastes');
+      notify.error('Fehler beim Hinzufügen des Standard-Gastes');
     }
   };
 
@@ -115,13 +114,13 @@ export const DefaultGuestsAdmin: React.FC = () => {
 
   const handleSave = async (id: string) => {
     if (!editForm.name.trim() || !editForm.email.trim()) {
-      toast.error('Bitte alle Felder ausfüllen');
+      notify.error('Bitte alle Felder ausfüllen');
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(editForm.email)) {
-      toast.error('Bitte gültige E-Mail-Adresse eingeben');
+      notify.error('Bitte gültige E-Mail-Adresse eingeben');
       return;
     }
 
@@ -137,12 +136,12 @@ export const DefaultGuestsAdmin: React.FC = () => {
 
       if (error) throw error;
 
-      toast.success('Standard-Gast aktualisiert');
+      notify.success('Standard-Gast aktualisiert');
       setEditingId(null);
       fetchDefaultGuests();
     } catch (error: unknown) {
       debugConsole.error('Error updating default guest:', error);
-      toast.error('Fehler beim Aktualisieren des Standard-Gastes');
+      notify.error('Fehler beim Aktualisieren des Standard-Gastes');
     }
   };
 
@@ -159,11 +158,11 @@ export const DefaultGuestsAdmin: React.FC = () => {
 
       if (error) throw error;
 
-      toast.success('Standard-Gast gelöscht');
+      notify.success('Standard-Gast gelöscht');
       fetchDefaultGuests();
     } catch (error: unknown) {
       debugConsole.error('Error deleting default guest:', error);
-      toast.error('Fehler beim Löschen des Standard-Gastes');
+      notify.error('Fehler beim Löschen des Standard-Gastes');
     }
   };
 
@@ -176,11 +175,11 @@ export const DefaultGuestsAdmin: React.FC = () => {
 
       if (error) throw error;
 
-      toast.success(!currentActive ? 'Standard-Gast aktiviert' : 'Standard-Gast deaktiviert');
+      notify.success(!currentActive ? 'Standard-Gast aktiviert' : 'Standard-Gast deaktiviert');
       fetchDefaultGuests();
     } catch (error: unknown) {
       debugConsole.error('Error toggling guest status:', error);
-      toast.error('Fehler beim Ändern des Status');
+      notify.error('Fehler beim Ändern des Status');
     }
   };
 

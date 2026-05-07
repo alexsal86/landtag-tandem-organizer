@@ -11,9 +11,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
-import { useToast } from '@/hooks/use-toast';
 import type { Database, Json } from '@/integrations/supabase/types';
 import type { LetterTemplate } from '@/components/letters/types';
+import { notify } from "@/lib/notify";
 
 type LetterTemplateRow = Database['public']['Tables']['letter_templates']['Row'];
 type LetterTemplateUpdate = Database['public']['Tables']['letter_templates']['Update'];
@@ -39,7 +39,6 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
   showManagement = false
 }) => {
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   
   const [templates, setTemplates] = useState<LetterTemplate[]>([]);
   const [loading, setLoading] = useState(false);
@@ -92,11 +91,9 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
       setTemplates(typedTemplates);
     } catch (error) {
       debugConsole.error('Error fetching templates:', error);
-      toast({
-        title: "Fehler",
-        description: "Vorlagen konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Vorlagen konnten nicht geladen werden."
+});
     } finally {
       setLoading(false);
     }
@@ -153,20 +150,17 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
 
       if (error) throw error;
 
-      toast({
-        title: "Erfolg",
-        description: "Header wurde aktualisiert.",
-      });
+      notify.success("Erfolg", {
+        description: "Header wurde aktualisiert."
+});
 
       setShowHeaderEditor(false);
       fetchTemplates();
     } catch (error) {
       debugConsole.error('Error saving header:', error);
-      toast({
-        title: "Fehler",
-        description: "Header konnte nicht gespeichert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Header konnte nicht gespeichert werden."
+});
     }
   };
 
@@ -181,30 +175,25 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
 
       if (error) throw error;
 
-      toast({
-        title: "Erfolg",
-        description: "Footer wurde aktualisiert.",
-      });
+      notify.success("Erfolg", {
+        description: "Footer wurde aktualisiert."
+});
 
       setShowFooterEditor(false);
       fetchTemplates();
     } catch (error) {
       debugConsole.error('Error saving footer:', error);
-      toast({
-        title: "Fehler",
-        description: "Footer konnte nicht gespeichert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Footer konnte nicht gespeichert werden."
+});
     }
   };
 
   const handleSaveTemplate = async () => {
     if (!currentTenant || !formData.name.trim()) {
-      toast({
-        title: "Fehler",
-        description: "Name ist erforderlich.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Name ist erforderlich."
+});
       return;
     }
 
@@ -226,10 +215,9 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
 
         if (error) throw error;
 
-        toast({
-          title: "Erfolg",
-          description: "Vorlage wurde aktualisiert.",
-        });
+        notify.success("Erfolg", {
+          description: "Vorlage wurde aktualisiert."
+});
       } else {
         // Create new template
         const { error } = await supabase
@@ -247,21 +235,18 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
 
         if (error) throw error;
 
-        toast({
-          title: "Erfolg",
-          description: "Vorlage wurde erstellt.",
-        });
+        notify.success("Erfolg", {
+          description: "Vorlage wurde erstellt."
+});
       }
 
       setIsDialogOpen(false);
       fetchTemplates();
     } catch (error) {
       debugConsole.error('Error saving template:', error);
-      toast({
-        title: "Fehler",
-        description: "Vorlage konnte nicht gespeichert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Vorlage konnte nicht gespeichert werden."
+});
     }
   };
 
@@ -276,19 +261,16 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
 
       if (error) throw error;
 
-      toast({
-        title: "Erfolg",
-        description: "Vorlage wurde gelöscht.",
-      });
+      notify.success("Erfolg", {
+        description: "Vorlage wurde gelöscht."
+});
 
       fetchTemplates();
     } catch (error) {
       debugConsole.error('Error deleting template:', error);
-      toast({
-        title: "Fehler",
-        description: "Vorlage konnte nicht gelöscht werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Vorlage konnte nicht gelöscht werden."
+});
     }
   };
 

@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Copy, Printer } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { useUpdateDossier } from "../hooks/useDossiers";
 import { supabase } from "@/integrations/supabase/client";
+import { notify } from "@/lib/notify";
 
 interface DossierBriefingTabProps {
   dossier: Dossier;
@@ -108,7 +108,7 @@ export function DossierBriefingTab({ dossier, entries }: DossierBriefingTabProps
   const handleCopy = async () => {
     const text = buildTextBriefing();
     await navigator.clipboard.writeText(text);
-    toast.success("Briefing in Zwischenablage kopiert");
+    notify.success("Briefing in Zwischenablage kopiert");
   };
 
   const handlePrint = () => {

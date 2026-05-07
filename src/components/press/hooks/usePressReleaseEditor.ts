@@ -5,8 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-
+import { notify } from "@/lib/notify";
 const generateSlug = (title: string): string => {
   return title
     .toLowerCase()
@@ -59,7 +58,6 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
   const { user } = useAuth();
   const { isAdminClaim: isAdmin } = useResolvedUserRole();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
 
   const [pressRelease, setPressRelease] = useState<PressRelease | null>(null);
   const [loading, setLoading] = useState(false);
@@ -144,7 +142,8 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
       if (msg?.includes("Failed to fetch") || msg?.includes("NetworkError")) return;
-      toast({ title: "Fehler beim Laden", description: msg, variant: "destructive" });
+      notify.error("Fehler beim Laden", { description: msg
+});
     } finally {
       setLoading(false);
     }
@@ -175,7 +174,7 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
   };
 
   const handleSave = async () => {
-    if (!user || !currentTenant || !title.trim()) { toast({ title: "Titel erforderlich", variant: "destructive" }); return; }
+    if (!user || !currentTenant || !title.trim()) { notify.error("Titel erforderlich"); return; }
     setSaving(true);
     try {
       const tags = parseTags(tagsInput);
@@ -211,7 +210,7 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
 
         await loadPressRelease(pressRelease.id);
         setHasUnsyncedChanges(false);
-        toast({ title: "Gespeichert" });
+        notify.success("Gespeichert");
       } else {
         const { data: newPr, error } = await supabase
           .from("press_releases")
@@ -220,20 +219,19 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
         if (error) throw error;
         setPressRelease(newPr);
         setHasUnsyncedChanges(false);
-        toast({ title: "Pressemitteilung erstellt" });
+        notify.success("Pressemitteilung erstellt");
       }
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
       if (msg?.includes("Failed to fetch") || msg?.includes("NetworkError")) {
         setHasUnsyncedChanges(true);
-        toast({
-          title: "Speicherstatus unsicher",
-          description: "Netzwerkfehler: Änderungen sind nur lokal vorhanden. Bitte erneut speichern, sobald die Verbindung wieder stabil ist.",
-          variant: "destructive",
-        });
+        notify.error("Speicherstatus unsicher", {
+          description: "Netzwerkfehler: Änderungen sind nur lokal vorhanden. Bitte erneut speichern, sobald die Verbindung wieder stabil ist."
+});
         return;
       }
-      toast({ title: "Fehler beim Speichern", description: msg, variant: "destructive" });
+      notify.error("Fehler beim Speichern", { description: msg
+});
     } finally {
       setSaving(false);
     }
@@ -245,12 +243,13 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
     try {
       const { error } = await supabase.from("press_releases").update({ status: "pending_approval", submitted_at: new Date().toISOString(), submitted_by: user.id, revision_comment: null }).eq("id", pressRelease.id);
       if (error) throw error;
-      toast({ title: "Zur Freigabe gesendet" });
+      notify.success("Zur Freigabe gesendet");
       await loadPressRelease(pressRelease.id);
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
-      if (msg?.includes("Failed to fetch") || msg?.includes("NetworkError")) { setTimeout(() => loadPressRelease(pressRelease.id), 500); toast({ title: "Zur Freigabe gesendet" }); return; }
-      toast({ title: "Fehler", description: msg, variant: "destructive" });
+      if (msg?.includes("Failed to fetch") || msg?.includes("NetworkError")) { setTimeout(() => loadPressRelease(pressRelease.id), 500); notify.success("Zur Freigabe gesendet"); return; }
+      notify.error("Fehler", { description: msg
+});
     }
   };
 
@@ -259,12 +258,13 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
     try {
       const { error } = await supabase.from("press_releases").update({ status: "approved", approved_at: new Date().toISOString(), approved_by: user.id }).eq("id", pressRelease.id);
       if (error) throw error;
-      toast({ title: "Pressemitteilung freigegeben" });
+      notify.success("Pressemitteilung freigegeben");
       await loadPressRelease(pressRelease.id);
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
-      if (msg?.includes("Failed to fetch") || msg?.includes("NetworkError")) { setTimeout(() => loadPressRelease(pressRelease.id), 500); toast({ title: "Pressemitteilung freigegeben" }); return; }
-      toast({ title: "Fehler", description: msg, variant: "destructive" });
+      if (msg?.includes("Failed to fetch") || msg?.includes("NetworkError")) { setTimeout(() => loadPressRelease(pressRelease.id), 500); notify.success("Pressemitteilung freigegeben"); return; }
+      notify.error("Fehler", { description: msg
+});
     }
   };
 
@@ -274,10 +274,11 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
       const { error } = await supabase.from("press_releases").update({ status: "revision_requested", revision_comment: comment, revision_requested_at: new Date().toISOString(), revision_requested_by: user.id }).eq("id", pressRelease.id);
       if (error) throw error;
       setShowRevisionDialog(false);
-      toast({ title: "Zurückgewiesen mit Kommentar" });
+      notify.success("Zurückgewiesen mit Kommentar");
       await loadPressRelease(pressRelease.id);
     } catch (error: unknown) {
-      toast({ title: "Fehler", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+      notify.error("Fehler", { description: error instanceof Error ? error.message : String(error)
+});
     }
   };
 
@@ -289,10 +290,12 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
       if (error) throw error;
       if (data?.error) throw new Error(data.details || data.error);
       setShowGhostDialog(false);
-      toast({ title: "Veröffentlicht!", description: "Die Pressemitteilung wurde erfolgreich auf Ghost veröffentlicht." });
+      notify.success("Veröffentlicht!", { description: "Die Pressemitteilung wurde erfolgreich auf Ghost veröffentlicht." 
+});
       await loadPressRelease(pressRelease.id);
     } catch (error: unknown) {
-      toast({ title: "Fehler bei der Veröffentlichung", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+      notify.error("Fehler bei der Veröffentlichung", { description: error instanceof Error ? error.message : String(error)
+});
     } finally {
       setIsPublishing(false);
     }

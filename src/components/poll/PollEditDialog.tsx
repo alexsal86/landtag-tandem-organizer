@@ -12,9 +12,9 @@ import { debugConsole } from '@/utils/debugConsole';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import { isValidEmail } from '@/lib/utils';
 import { ContactSelector, type ContactSelectorContact } from '@/features/contacts/components/ContactSelector';
+import { notify } from "@/lib/notify";
 
 interface PollParticipant {
   id: string;
@@ -39,7 +39,6 @@ export const PollEditDialog = ({
   currentDeadline, 
   onUpdate 
 }: PollEditDialogProps) => {
-  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [loading, setSaving] = useState(false);
   const [title, setTitle] = useState(currentTitle);
@@ -88,13 +87,15 @@ export const PollEditDialog = ({
 
   const addParticipantFromContact = (contact: ContactSelectorContact) => {
     if (!contact.email) {
-      toast({ title: "Keine E-Mail", description: "Kontakt hat keine E-Mail-Adresse.", variant: "destructive" });
+      notify.error("Keine E-Mail", { description: "Kontakt hat keine E-Mail-Adresse."
+});
       return;
     }
     const normalizedContactEmail = normalizeEmail(contact.email);
 
     if (participants.find(p => normalizeEmail(p.email) === normalizedContactEmail && !removedParticipantIds.includes(p.id))) {
-      toast({ title: "Bereits vorhanden", description: "Dieser Teilnehmer ist bereits hinzugefügt.", variant: "destructive" });
+      notify.error("Bereits vorhanden", { description: "Dieser Teilnehmer ist bereits hinzugefügt."
+});
       return;
     }
     setParticipants(prev => [...prev, {
@@ -112,12 +113,14 @@ export const PollEditDialog = ({
     if (!normalizedEmail) return;
 
     if (!isValidEmail(normalizedEmail)) {
-      toast({ title: "Ungültige E-Mail", description: "Bitte geben Sie eine gültige E-Mail-Adresse ein.", variant: "destructive" });
+      notify.error("Ungültige E-Mail", { description: "Bitte geben Sie eine gültige E-Mail-Adresse ein."
+});
       return;
     }
 
     if (participants.find(p => normalizeEmail(p.email) === normalizedEmail && !removedParticipantIds.includes(p.id))) {
-      toast({ title: "Bereits vorhanden", description: "Dieser Teilnehmer ist bereits hinzugefügt.", variant: "destructive" });
+      notify.error("Bereits vorhanden", { description: "Dieser Teilnehmer ist bereits hinzugefügt."
+});
       return;
     }
     setParticipants(prev => [...prev, {
@@ -157,7 +160,8 @@ export const PollEditDialog = ({
       if (newParticipants.length > 0) changes.push(`${newParticipants.length} Teilnehmer hinzugefügt`);
 
       if (changes.length === 0) {
-        toast({ title: "Keine Änderungen", description: "Es wurden keine Änderungen vorgenommen." });
+        notify.success("Keine Änderungen", { description: "Es wurden keine Änderungen vorgenommen." 
+});
         setOpen(false);
         return;
       }
@@ -220,20 +224,16 @@ export const PollEditDialog = ({
             const { data: tokenData, error: tokenError } = await supabase.rpc('generate_participant_token');
 
             if (tokenError) {
-              toast({
-                title: 'Fehler bei Token-Erstellung',
-                description: `Für den externen Teilnehmer ${p.email} konnte kein Token erstellt werden.`,
-                variant: 'destructive',
-              });
+              notify.error('Fehler bei Token-Erstellung', {
+                description: `Für den externen Teilnehmer ${p.email} konnte kein Token erstellt werden.`
+});
               return;
             }
 
             if (!tokenData || !tokenData.trim()) {
-              toast({
-                title: 'Ungültiger Teilnehmer-Token',
-                description: `Für den externen Teilnehmer ${p.email} wurde ein leerer Token zurückgegeben.`,
-                variant: 'destructive',
-              });
+              notify.error('Ungültiger Teilnehmer-Token', {
+                description: `Für den externen Teilnehmer ${p.email} wurde ein leerer Token zurückgegeben.`
+});
               return;
             }
 
@@ -271,21 +271,18 @@ export const PollEditDialog = ({
         }
       });
 
-      toast({
-        title: "Abstimmung aktualisiert",
-        description: "Die Änderungen wurden gespeichert und Teilnehmer benachrichtigt.",
-      });
+      notify.success("Abstimmung aktualisiert", {
+        description: "Die Änderungen wurden gespeichert und Teilnehmer benachrichtigt."
+});
 
       setOpen(false);
       onUpdate();
 
     } catch (error) {
       debugConsole.error('Error updating poll:', error);
-      toast({
-        title: "Fehler",
-        description: "Die Änderungen konnten nicht gespeichert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Die Änderungen konnten nicht gespeichert werden."
+});
     } finally {
       setSaving(false);
     }

@@ -2,8 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useCurrentProfileId } from "@/hooks/useCurrentProfileId";
-import { toast } from "sonner";
 import type { FactsFilters, FactInput, FactRow } from "../types";
+import { notify } from "@/lib/notify";
 
 export function useFacts(filters: FactsFilters = {}) {
   const { currentTenant } = useTenant();
@@ -129,7 +129,7 @@ export function useUpsertFact() {
     onSuccess: () => {
       (qc.invalidateQueries({ queryKey: ["facts"] }), qc.invalidateQueries({ queryKey: ["facts-paginated"] }));
     },
-    onError: (e: Error) => toast.error(`Fehler: ${e.message}`),
+    onError: (e: Error) => notify.error(`Fehler: ${e.message}`),
   });
 }
 
@@ -141,7 +141,7 @@ export function useArchiveFact() {
       if (error) throw error;
     },
     onSuccess: () => (qc.invalidateQueries({ queryKey: ["facts"] }), qc.invalidateQueries({ queryKey: ["facts-paginated"] })),
-    onError: (e: Error) => toast.error(`Fehler: ${e.message}`),
+    onError: (e: Error) => notify.error(`Fehler: ${e.message}`),
   });
 }
 
@@ -154,9 +154,9 @@ export function useDeleteFact() {
     },
     onSuccess: () => {
       (qc.invalidateQueries({ queryKey: ["facts"] }), qc.invalidateQueries({ queryKey: ["facts-paginated"] }));
-      toast.success("Fakt gelöscht");
+      notify.success("Fakt gelöscht");
     },
-    onError: (e: Error) => toast.error(`Fehler: ${e.message}`),
+    onError: (e: Error) => notify.error(`Fehler: ${e.message}`),
   });
 }
 

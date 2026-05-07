@@ -21,12 +21,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { Plus, Edit, Trash2, GripVertical, Palette } from 'lucide-react';
 import { StatusOption } from '@/hooks/useUserStatus';
 import { EmojiPicker } from '@/components/lexical/EmojiPicker';
 import { debugConsole } from '@/utils/debugConsole';
 import { useTenant } from "@/hooks/useTenant";
+import { notify } from "@/lib/notify";
 
 export const StatusAdminSettings: React.FC = () => {
   const { currentTenant } = useTenant();
@@ -55,7 +55,7 @@ export const StatusAdminSettings: React.FC = () => {
 
     if (error) {
       debugConsole.error('Error loading status options:', error);
-      toast.error('Fehler beim Laden der Status-Optionen');
+      notify.error('Fehler beim Laden der Status-Optionen');
     } else {
       setStatusOptions(data || []);
     }
@@ -76,7 +76,7 @@ export const StatusAdminSettings: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    if (!formData.name.trim()) { toast.error('Name ist erforderlich'); return; }
+    if (!formData.name.trim()) { notify.error('Name ist erforderlich'); return; }
 
     try {
       debugConsole.log('Attempting to save status option:', formData);
@@ -93,12 +93,12 @@ export const StatusAdminSettings: React.FC = () => {
         debugConsole.log('Updating existing option with ID:', editingOption.id);
         const { error } = await supabase.from('admin_status_options').update(statusData).eq('id', editingOption.id);
         if (error) { debugConsole.error('Update error:', error); throw error; }
-        toast.success('Status-Option aktualisiert');
+        notify.success('Status-Option aktualisiert');
       } else {
         debugConsole.log('Creating new status option');
         const { error } = await supabase.from('admin_status_options').insert([{ ...statusData, tenant_id: currentTenant!.id }]);
         if (error) { debugConsole.error('Insert error:', error); throw error; }
-        toast.success('Status-Option erstellt');
+        notify.success('Status-Option erstellt');
       }
 
       setIsCreateDialogOpen(false);
@@ -107,7 +107,7 @@ export const StatusAdminSettings: React.FC = () => {
     } catch (error) {
       debugConsole.error('Error saving status option:', error);
       debugConsole.error('Error details:', JSON.stringify(error, null, 2));
-      toast.error(`Fehler beim Speichern der Status-Option: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
+      notify.error(`Fehler beim Speichern der Status-Option: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
     }
   };
 
@@ -116,11 +116,11 @@ export const StatusAdminSettings: React.FC = () => {
     try {
       const { error } = await supabase.from('admin_status_options').delete().eq('id', id);
       if (error) throw error;
-      toast.success('Status-Option gelöscht');
+      notify.success('Status-Option gelöscht');
       loadStatusOptions();
     } catch (error) {
       debugConsole.error('Error deleting status option:', error);
-      toast.error('Fehler beim Löschen der Status-Option');
+      notify.error('Fehler beim Löschen der Status-Option');
     }
   };
 
@@ -128,11 +128,11 @@ export const StatusAdminSettings: React.FC = () => {
     try {
       const { error } = await supabase.from('admin_status_options').update({ is_active: !isActive }).eq('id', id);
       if (error) throw error;
-      toast.success(`Status-Option ${!isActive ? 'aktiviert' : 'deaktiviert'}`);
+      notify.success(`Status-Option ${!isActive ? 'aktiviert' : 'deaktiviert'}`);
       loadStatusOptions();
     } catch (error) {
       debugConsole.error('Error toggling status option:', error);
-      toast.error('Fehler beim Ändern der Status-Option');
+      notify.error('Fehler beim Ändern der Status-Option');
     }
   };
 

@@ -31,10 +31,10 @@ import {
   type UserWithTenants,
 } from "./superadminTenant/constants";
 import { useSuperadminTenantData } from "./superadminTenant/useSuperadminTenantData";
+import { notify } from "@/lib/notify";
 
 export function SuperadminTenantManagement(): React.JSX.Element {
   const { user } = useAuth();
-  const { toast } = useToast();
 
   const {
     isPlatformAdmin,
@@ -96,7 +96,8 @@ export function SuperadminTenantManagement(): React.JSX.Element {
 
   const handleSaveTenant = async (): Promise<void> => {
     if (!formName.trim()) {
-      toast({ title: "Fehler", description: "Name ist erforderlich", variant: "destructive" });
+      notify.error("Fehler", { description: "Name ist erforderlich"
+});
       return;
     }
 
@@ -157,7 +158,8 @@ export function SuperadminTenantManagement(): React.JSX.Element {
           }
         }
 
-        toast({ title: "Gespeichert", description: "Tenant wurde aktualisiert" });
+        notify.success("Gespeichert", { description: "Tenant wurde aktualisiert" 
+});
       } else {
         // Create new tenant
         const { data: newTenant, error } = await supabase
@@ -189,7 +191,8 @@ export function SuperadminTenantManagement(): React.JSX.Element {
           }
         }
 
-        toast({ title: "Erstellt", description: "Neuer Tenant wurde angelegt und initialisiert" });
+        notify.success("Erstellt", { description: "Neuer Tenant wurde angelegt und initialisiert" 
+});
       }
 
       setDialogOpen(false);
@@ -197,7 +200,8 @@ export function SuperadminTenantManagement(): React.JSX.Element {
       loadTenants();
     } catch (error: unknown) {
       debugConsole.error("Save tenant error:", error);
-      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Speichern fehlgeschlagen", variant: "destructive" });
+      notify.error("Fehler", { description: error instanceof Error ? error.message : "Speichern fehlgeschlagen"
+});
     }
   };
 
@@ -205,11 +209,9 @@ export function SuperadminTenantManagement(): React.JSX.Element {
     const assignedUsersCount = usersByTenantId.get(tenant.id)?.length || 0;
 
     if (assignedUsersCount > 0) {
-      toast({ 
-        title: "Nicht möglich", 
-        description: `Tenant hat noch ${assignedUsersCount} Benutzer. Bitte erst alle Benutzer entfernen.`,
-        variant: "destructive" 
-      });
+      notify.error("Nicht möglich", { 
+        description: `Tenant hat noch ${assignedUsersCount} Benutzer. Bitte erst alle Benutzer entfernen.`
+});
       return;
     }
 
@@ -220,16 +222,19 @@ export function SuperadminTenantManagement(): React.JSX.Element {
         .eq("id", tenant.id);
 
       if (error) throw error;
-      toast({ title: "Gelöscht", description: "Tenant wurde entfernt" });
+      notify.success("Gelöscht", { description: "Tenant wurde entfernt" 
+});
       loadTenants();
     } catch (error: unknown) {
-      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Löschen fehlgeschlagen", variant: "destructive" });
+      notify.error("Fehler", { description: error instanceof Error ? error.message : "Löschen fehlgeschlagen"
+});
     }
   };
 
   const handleCreateUser = async (): Promise<void> => {
     if (!newUserEmail.trim() || !newUserName.trim() || !newUserTenantId) {
-      toast({ title: "Fehler", description: "Alle Felder sind erforderlich", variant: "destructive" });
+      notify.error("Fehler", { description: "Alle Felder sind erforderlich"
+});
       return;
     }
 
@@ -248,20 +253,23 @@ export function SuperadminTenantManagement(): React.JSX.Element {
       if (!data.success) throw new Error(data.error);
 
       setCreatedUserPassword(data.user.password);
-      toast({ title: "Benutzer erstellt", description: `${newUserEmail} wurde erfolgreich angelegt` });
+      notify.success("Benutzer erstellt", { description: `${newUserEmail} wurde erfolgreich angelegt` 
+});
       
       // Reload data
       loadTenants();
       loadAllUsers();
     } catch (error: unknown) {
       debugConsole.error("Create user error:", error);
-      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Erstellen fehlgeschlagen", variant: "destructive" });
+      notify.error("Fehler", { description: error instanceof Error ? error.message : "Erstellen fehlgeschlagen"
+});
     }
   };
 
   const handleAssignTenant = async (): Promise<void> => {
     if (!assigningUser || !assignTenantId) {
-      toast({ title: "Fehler", description: "Tenant ist erforderlich", variant: "destructive" });
+      notify.error("Fehler", { description: "Tenant ist erforderlich"
+});
       return;
     }
 
@@ -278,13 +286,15 @@ export function SuperadminTenantManagement(): React.JSX.Element {
       if (error) throw error;
       if (!data.success) throw new Error(data.error);
 
-      toast({ title: "Zugewiesen", description: `${assigningUser.display_name} wurde dem Tenant zugewiesen` });
+      notify.success("Zugewiesen", { description: `${assigningUser.display_name} wurde dem Tenant zugewiesen` 
+});
       setAssignDialogOpen(false);
       setAssigningUser(null);
       loadTenants();
       loadAllUsers();
     } catch (error: unknown) {
-      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Zuweisung fehlgeschlagen", variant: "destructive" });
+      notify.error("Fehler", { description: error instanceof Error ? error.message : "Zuweisung fehlgeschlagen"
+});
     }
   };
 
@@ -300,11 +310,13 @@ export function SuperadminTenantManagement(): React.JSX.Element {
       if (error) throw error;
       if (!data.success) throw new Error(data.error);
 
-      toast({ title: "Gelöscht", description: `${userToDelete.display_name} wurde entfernt` });
+      notify.success("Gelöscht", { description: `${userToDelete.display_name} wurde entfernt` 
+});
       loadTenants();
       loadAllUsers();
     } catch (error: unknown) {
-      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Löschen fehlgeschlagen", variant: "destructive" });
+      notify.error("Fehler", { description: error instanceof Error ? error.message : "Löschen fehlgeschlagen"
+});
     }
   };
 

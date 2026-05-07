@@ -16,6 +16,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { NewUserForm } from "@/components/admin/NewUserForm";
 import { CreateDemoUsers } from "@/dev/CreateDemoUsers";
 import { Users, Plus, Trash2 } from "lucide-react";
+import { notify } from "@/lib/notify";
 
 const ROLE_OPTIONS = [
   { value: "abgeordneter", label: "Abgeordneter (Admin)" },
@@ -40,7 +41,6 @@ type UserRole = {
 export function UserRolesManager() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
 
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [roles, setRoles] = useState<UserRole[]>([]);
@@ -92,10 +92,12 @@ export function UserRolesManager() {
       }
       const { data: newRoles } = await supabase.from("user_roles").select("user_id, role");
       setRoles((newRoles as UserRole[]) || []);
-      toast({ title: "Gespeichert", description: "Rolle erfolgreich aktualisiert." });
+      notify.success("Gespeichert", { description: "Rolle erfolgreich aktualisiert." 
+});
     } catch (error: unknown) {
       debugConsole.error(error);
-      toast({ title: "Fehler", description: getErrorMessage(error) || "Änderung fehlgeschlagen.", variant: "destructive" });
+      notify.error("Fehler", { description: getErrorMessage(error) || "Änderung fehlgeschlagen."
+});
     } finally {
       setBusyUserId(null);
     }
@@ -182,10 +184,11 @@ export function UserRolesManager() {
                               try {
                                 const { data, error } = await supabase.functions.invoke('manage-tenant-user', { body: { action: 'deleteUser', userId: p.user_id, tenantId: currentTenant?.id } });
                                 if (error || !data?.success) throw new Error(data?.error || 'Löschen fehlgeschlagen');
-                                toast({ title: "Benutzer gelöscht" });
+                                notify.success("Benutzer gelöscht");
                                 loadData();
                               } catch (error: unknown) {
-                                toast({ title: "Fehler", description: getErrorMessage(error), variant: "destructive" });
+                                notify.error("Fehler", { description: getErrorMessage(error)
+});
                               }
                             }}>Unwiderruflich löschen</AlertDialogAction>
                           </AlertDialogFooter>

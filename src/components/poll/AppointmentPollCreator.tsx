@@ -14,9 +14,9 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
 import { isValidEmail } from '@/lib/utils';
 import { ContactSelector, type ContactSelectorContact } from '@/features/contacts/components/ContactSelector';
+import { notify } from "@/lib/notify";
 
 interface TimeSlot {
   id: string;
@@ -35,7 +35,6 @@ interface Participant {
 
 export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   
   // Form state
@@ -55,11 +54,9 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
 
   const addTimeSlot = () => {
     if (!selectedDate) {
-      toast({
-        title: "Datum erforderlich",
-        description: "Bitte wählen Sie ein Datum für den Zeitslot aus.",
-        variant: "destructive",
-      });
+      notify.error("Datum erforderlich", {
+        description: "Bitte wählen Sie ein Datum für den Zeitslot aus."
+});
       return;
     }
 
@@ -71,11 +68,9 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
     );
 
     if (isDuplicate) {
-      toast({
-        title: "Duplikat",
-        description: "Dieser Zeitslot wurde bereits hinzugefügt.",
-        variant: "destructive",
-      });
+      notify.error("Duplikat", {
+        description: "Dieser Zeitslot wurde bereits hinzugefügt."
+});
       return;
     }
 
@@ -98,11 +93,9 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
 
   const addParticipantFromContact = (contact: ContactSelectorContact) => {
     if (!contact.email) {
-      toast({
-        title: "Keine E-Mail-Adresse",
-        description: "Dieser Kontakt hat keine E-Mail-Adresse.",
-        variant: "destructive",
-      });
+      notify.error("Keine E-Mail-Adresse", {
+        description: "Dieser Kontakt hat keine E-Mail-Adresse."
+});
       return;
     }
 
@@ -110,11 +103,9 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
     const normalizedContactEmail = normalizeEmail(contact.email);
 
     if (participants.find(p => normalizeEmail(p.email) === normalizedContactEmail)) {
-      toast({
-        title: "Bereits hinzugefügt",
-        description: "Dieser Kontakt wurde bereits hinzugefügt.",
-        variant: "destructive",
-      });
+      notify.error("Bereits hinzugefügt", {
+        description: "Dieser Kontakt wurde bereits hinzugefügt."
+});
       return;
     }
 
@@ -134,20 +125,16 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
     if (!normalizedEmail) return;
 
     if (!isValidEmail(normalizedEmail)) {
-      toast({
-        title: "Ungültige E-Mail-Adresse",
-        description: "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
-        variant: "destructive",
-      });
+      notify.error("Ungültige E-Mail-Adresse", {
+        description: "Bitte geben Sie eine gültige E-Mail-Adresse ein."
+});
       return;
     }
 
     if (participants.find(p => normalizeEmail(p.email) === normalizedEmail)) {
-      toast({
-        title: "Bereits hinzugefügt",
-        description: "Dieser Teilnehmer wurde bereits hinzugefügt.",
-        variant: "destructive",
-      });
+      notify.error("Bereits hinzugefügt", {
+        description: "Dieser Teilnehmer wurde bereits hinzugefügt."
+});
       return;
     }
 
@@ -168,11 +155,9 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
 
   const createPoll = async () => {
     if (!user || !title || timeSlots.length === 0 || participants.length === 0) {
-      toast({
-        title: "Fehlende Angaben",
-        description: "Bitte füllen Sie alle erforderlichen Felder aus.",
-        variant: "destructive",
-      });
+      notify.error("Fehlende Angaben", {
+        description: "Bitte füllen Sie alle erforderlichen Felder aus."
+});
       return;
     }
 
@@ -231,34 +216,28 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
 
         if (emailError) {
           debugConsole.error('Error sending emails:', emailError);
-          toast({
-            title: "E-Mail-Versendung fehlgeschlagen",
-            description: `Die Abstimmung wurde erstellt, aber E-Mails konnten nicht versendet werden: ${emailError.message}`,
-            variant: "destructive",
-          });
+          notify.error("E-Mail-Versendung fehlgeschlagen", {
+            description: `Die Abstimmung wurde erstellt, aber E-Mails konnten nicht versendet werden: ${emailError.message}`
+});
         } else {
           
-          toast({
-            title: "Abstimmung erstellt",
-            description: "Die Terminabstimmung wurde erfolgreich erstellt und Einladungen versendet.",
-          });
+          notify.success("Abstimmung erstellt", {
+            description: "Die Terminabstimmung wurde erfolgreich erstellt und Einladungen versendet."
+});
         }
       } else {
-        toast({
-          title: "Abstimmung erstellt",
-          description: "Die Terminabstimmung wurde erfolgreich erstellt.",
-        });
+        notify.success("Abstimmung erstellt", {
+          description: "Die Terminabstimmung wurde erfolgreich erstellt."
+});
       }
 
       onClose();
     } catch (error) {
       debugConsole.error('Error creating poll:', error);
       const errorMessage = error instanceof Error ? error.message : 'Die Abstimmung konnte nicht erstellt werden.';
-      toast({
-        title: "Fehler",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: errorMessage
+});
     } finally {
       setLoading(false);
     }

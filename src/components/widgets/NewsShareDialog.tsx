@@ -7,10 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { debugConsole } from '@/utils/debugConsole';
-import { toast } from 'sonner';
 import { Mail, Send, Loader2 } from 'lucide-react';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { useTenant } from '@/hooks/useTenant';
+import { notify } from "@/lib/notify";
 
 interface NewsArticle {
   id: string;
@@ -104,7 +104,7 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
       .filter(e => e && e.includes('@'));
 
     if (selectedUserIds.length === 0 && emails.length === 0) {
-      toast.error('Bitte wählen Sie mindestens einen Empfänger aus');
+      notify.error('Bitte wählen Sie mindestens einen Empfänger aus');
       return;
     }
 
@@ -148,7 +148,7 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
           deliveredEmailRecipients = emailData?.recipients ?? 0;
 
           if (emailData?.partialFailure?.message) {
-            toast.warning(emailData.partialFailure.message);
+            notify.warning(emailData.partialFailure.message);
           }
         }
       }
@@ -210,13 +210,13 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
       const totalRecipients = internalRecipients + externalRecipients;
 
       if (totalRecipients === 0) {
-        toast.success('News erfolgreich geteilt');
+        notify.success('News erfolgreich geteilt');
       } else if (emailDeliveryFailed && internalRecipients > 0 && externalRecipients === 0) {
-        toast.success(`News erfolgreich mit ${internalRecipients} internen Empfänger${internalRecipients === 1 ? '' : 'n'} geteilt`);
+        notify.success(`News erfolgreich mit ${internalRecipients} internen Empfänger${internalRecipients === 1 ? '' : 'n'} geteilt`);
       } else if (deliveredEmailRecipients > 0) {
-        toast.success(`News erfolgreich an ${deliveredEmailRecipients} Empfänger per E-Mail gesendet`);
+        notify.success(`News erfolgreich an ${deliveredEmailRecipients} Empfänger per E-Mail gesendet`);
       } else {
-        toast.success(`News erfolgreich mit ${totalRecipients} Empfänger${totalRecipients === 1 ? '' : 'n'} geteilt`);
+        notify.success(`News erfolgreich mit ${totalRecipients} Empfänger${totalRecipients === 1 ? '' : 'n'} geteilt`);
       }
       
       // Reset form
@@ -227,7 +227,7 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
       onOpenChange(false);
     } catch (error) {
       debugConsole.error('Error sharing news:', error);
-      toast.error('Fehler beim Versenden der News');
+      notify.error('Fehler beim Versenden der News');
     } finally {
       setLoading(false);
     }

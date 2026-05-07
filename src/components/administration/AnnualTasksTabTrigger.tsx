@@ -5,6 +5,7 @@ import { TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { RefreshCcw } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { notify } from "@/lib/notify";
 
 interface AnnualTasksTabTriggerProps {
   tenantId: string | undefined;
@@ -12,7 +13,6 @@ interface AnnualTasksTabTriggerProps {
 
 export function AnnualTasksTabTrigger({ tenantId }: AnnualTasksTabTriggerProps) {
   const [count, setCount] = useState(0);
-  const { toast } = useToast();
   
   useEffect(() => {
     let active = true;
@@ -66,11 +66,9 @@ export function AnnualTasksTabTrigger({ tenantId }: AnnualTasksTabTriggerProps) 
     } catch (error) {
       debugConsole.error("Error loading annual tasks count:", error);
       if (active) {
-        toast({
-          title: "Jährliche Aufgaben konnten nicht geladen werden",
-          description: error instanceof Error ? error.message : "Bitte erneut versuchen.",
-          variant: "destructive",
-        });
+        notify.error("Jährliche Aufgaben konnten nicht geladen werden", {
+          description: error instanceof Error ? error.message : "Bitte erneut versuchen."
+});
       }
     }
   };

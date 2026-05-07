@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useNotifications } from '@/hooks/useNotifications';
-import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { debugConsole } from '@/utils/debugConsole';
+import { notify } from "@/lib/notify";
 
 interface TestResult {
   step: string;
@@ -31,7 +31,6 @@ export const PushNotificationTest = (): JSX.Element => {
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [isRealTestRunning, setIsRealTestRunning] = useState<boolean>(false);
   const { pushSupported, pushPermission, requestPushPermission, subscribeToPush } = useNotifications();
-  const { toast } = useToast();
 
   const runRealPushTest = async (): Promise<void> => {
     debugConsole.log('=== ECHTER PUSH TEST GESTARTET ===');
@@ -116,26 +115,30 @@ export const PushNotificationTest = (): JSX.Element => {
           status: 'success',
           message: `✅ ${responseData?.sent ?? 0} echte Push-Notification(en) erfolgreich gesendet! Schau in deine Browser-Benachrichtigungen.`,
         });
-        toast({ title: 'Echter Push-Test erfolgreich!', description: 'Du solltest jetzt eine echte Browser-Push-Notification sehen.' });
+        notify.success('Echter Push-Test erfolgreich!', { description: 'Du solltest jetzt eine echte Browser-Push-Notification sehen.' 
+});
       } else if (responseData?.message?.includes('noch in Entwicklung')) {
         setRealTestResult({
           step: 'Echte Push-Notifications in Entwicklung',
           status: 'pending',
           message: `ℹ️ ${responseData.message}`,
         });
-        toast({ title: 'Feature in Entwicklung', description: 'Echte Browser-Push-Notifications werden gerade implementiert.', variant: 'default' });
+        notify.success('Feature in Entwicklung', { description: 'Echte Browser-Push-Notifications werden gerade implementiert.'
+});
       } else {
         setRealTestResult({
           step: 'Echter Test fehlgeschlagen',
           status: 'error',
           message: `⚠️ Keine echten Benachrichtigungen erfolgreich gesendet. ${responseData?.failed ?? 'Unbekannt'} von ${responseData?.total_subscriptions ?? 'unbekannt'} fehlgeschlagen.`,
         });
-        toast({ title: 'Echter Push-Test fehlgeschlagen', description: 'Echte Push-Notifications konnten nicht gesendet werden.', variant: 'destructive' });
+        notify.error('Echter Push-Test fehlgeschlagen', { description: 'Echte Push-Notifications konnten nicht gesendet werden.'
+});
       }
     } catch (error: unknown) {
       debugConsole.error('❌ Real push test error:', error);
       setRealTestResult({ step: 'Echter Test fehlgeschlagen', status: 'error', message: getErrorMessage(error) });
-      toast({ title: 'Echter Push-Test fehlgeschlagen', description: 'Es ist ein unerwarteter Fehler beim echten Push-Test aufgetreten.', variant: 'destructive' });
+      notify.error('Echter Push-Test fehlgeschlagen', { description: 'Es ist ein unerwarteter Fehler beim echten Push-Test aufgetreten.'
+});
     } finally {
       setIsRealTestRunning(false);
     }
@@ -290,19 +293,22 @@ export const PushNotificationTest = (): JSX.Element => {
           status: 'success',
           message: `✅ ${responseData?.sent ?? 0} Benachrichtigung(en) erfolgreich gesendet!`,
         });
-        toast({ title: 'Test erfolgreich!', description: 'Push-Benachrichtigungen funktionieren korrekt.' });
+        notify.success('Test erfolgreich!', { description: 'Push-Benachrichtigungen funktionieren korrekt.' 
+});
       } else {
         setTestResult({
           step: 'Test abgeschlossen',
           status: 'error',
           message: `⚠️ Test abgeschlossen, aber keine Benachrichtigungen erfolgreich gesendet. ${responseData?.failed ?? 'Unbekannt'} von ${responseData?.total_subscriptions ?? 'unbekannt'} fehlgeschlagen.`,
         });
-        toast({ title: 'Test teilweise erfolgreich', description: 'Test durchgeführt, aber Benachrichtigungen konnten nicht gesendet werden.', variant: 'destructive' });
+        notify.error('Test teilweise erfolgreich', { description: 'Test durchgeführt, aber Benachrichtigungen konnten nicht gesendet werden.'
+});
       }
     } catch (error: unknown) {
       debugConsole.error('❌ Overall test error:', error);
       setTestResult({ step: 'Test fehlgeschlagen', status: 'error', message: getErrorMessage(error) });
-      toast({ title: 'Test fehlgeschlagen', description: 'Es ist ein unerwarteter Fehler beim Push-Test aufgetreten.', variant: 'destructive' });
+      notify.error('Test fehlgeschlagen', { description: 'Es ist ein unerwarteter Fehler beim Push-Test aufgetreten.'
+});
     } finally {
       setIsRunning(false);
     }

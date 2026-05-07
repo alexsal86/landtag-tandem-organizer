@@ -43,10 +43,10 @@ import { Search, Mail, Eye, CheckCircle, XCircle, Clock, Download, RefreshCw, Fi
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { useToast } from "@/hooks/use-toast";
 import { format, startOfToday, startOfWeek, startOfMonth } from "date-fns";
 import { de } from "date-fns/locale";
 import { EmailRetryDialog } from "./EmailRetryDialog";
+import { notify } from "@/lib/notify";
 
 interface EmailLog {
   id: string;
@@ -65,7 +65,6 @@ interface EmailLog {
 export function EmailHistory() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
 
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -115,7 +114,8 @@ export function EmailHistory() {
       setEmailLogs(typedData);
     } catch (error: unknown) {
       debugConsole.error("Error fetching email logs:", error);
-      toast({ title: "Fehler beim Laden", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+      notify.error("Fehler beim Laden", { description: error instanceof Error ? error.message : String(error)
+});
     } finally {
       setLoading(false);
     }
@@ -146,10 +146,12 @@ export function EmailHistory() {
         .eq("id", emailId);
 
       if (error) throw error;
-      toast({ title: "Abgebrochen", description: "Geplante E-Mail wurde abgebrochen" });
+      notify.success("Abgebrochen", { description: "Geplante E-Mail wurde abgebrochen" 
+});
       fetchScheduledEmails();
     } catch (error: unknown) {
-      toast({ title: "Fehler", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+      notify.error("Fehler", { description: error instanceof Error ? error.message : String(error)
+});
     }
   };
 
@@ -169,11 +171,13 @@ export function EmailHistory() {
         throw new Error("Der Eintrag konnte nicht gelöscht werden. Bitte Seite neu laden und erneut versuchen.");
       }
 
-      toast({ title: "Gelöscht", description: "E-Mail-Eintrag wurde gelöscht." });
+      notify.success("Gelöscht", { description: "E-Mail-Eintrag wurde gelöscht." 
+});
       setEmailLogs(prev => prev.filter(l => l.id !== deleteTarget));
       setDeleteTarget(null);
     } catch (error: unknown) {
-      toast({ title: "Fehler", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+      notify.error("Fehler", { description: error instanceof Error ? error.message : String(error)
+});
     }
   };
 
@@ -251,7 +255,8 @@ export function EmailHistory() {
     link.download = `email-verlauf-${format(new Date(), "yyyy-MM-dd")}.csv`;
     link.click();
     
-    toast({ title: "Export erfolgreich", description: "CSV-Datei wurde heruntergeladen" });
+    notify.success("Export erfolgreich", { description: "CSV-Datei wurde heruntergeladen" 
+});
   };
 
   const handleRetry = (email: EmailLog) => {

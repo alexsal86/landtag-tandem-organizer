@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { DialogClose } from '@/components/ui/dialog';
 import { Loader2, Copy, Eye, EyeOff } from 'lucide-react';
+import { notify } from "@/lib/notify";
 
 const ROLE_OPTIONS = [
   { value: "praktikant", label: "Praktikant" },
@@ -36,11 +36,9 @@ export const NewUserForm: React.FC<NewUserFormProps> = ({ onSuccess }) => {
     e.preventDefault();
     
     if (!email || !displayName) {
-      toast({
-        title: 'Fehler',
-        description: 'E-Mail und Anzeigename sind erforderlich.',
-        variant: 'destructive',
-      });
+      notify.error('Fehler', {
+        description: 'E-Mail und Anzeigename sind erforderlich.'
+});
       return;
     }
 
@@ -65,18 +63,15 @@ export const NewUserForm: React.FC<NewUserFormProps> = ({ onSuccess }) => {
 
       setCreatedUser(data.user);
       
-      toast({
-        title: 'Benutzer erfolgreich erstellt',
-        description: `${displayName} wurde erfolgreich erstellt.`,
-      });
+      notify.success('Benutzer erfolgreich erstellt', {
+        description: `${displayName} wurde erfolgreich erstellt.`
+});
 
     } catch (error: unknown) {
       debugConsole.error('Error creating user:', error);
-      toast({
-        title: 'Fehler beim Erstellen des Benutzers',
-        description: error instanceof Error ? error.message : 'Ein unbekannter Fehler ist aufgetreten.',
-        variant: 'destructive',
-      });
+      notify.error('Fehler beim Erstellen des Benutzers', {
+        description: error instanceof Error ? error.message : 'Ein unbekannter Fehler ist aufgetreten.'
+});
     } finally {
       setIsLoading(false);
     }
@@ -84,10 +79,9 @@ export const NewUserForm: React.FC<NewUserFormProps> = ({ onSuccess }) => {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast({
-      title: 'Kopiert',
-      description: 'In die Zwischenablage kopiert.',
-    });
+    notify.success('Kopiert', {
+      description: 'In die Zwischenablage kopiert.'
+});
   };
 
   const handleClose = () => {

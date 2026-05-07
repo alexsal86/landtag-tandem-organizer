@@ -12,11 +12,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import { supabase } from "@/integrations/supabase/client";
 import { MatrixMorningSettings } from "./MatrixMorningSettings";
 import { MatrixLoginForm } from "@/components/chat/MatrixLoginForm";
+import { notify } from "@/lib/notify";
 
 interface MatrixSubscription {
   id: string;
@@ -33,7 +33,6 @@ interface MatrixSettings {
 
 export const MatrixSettings: React.FC = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
 
   const [subscriptions, setSubscriptions] = useState<MatrixSubscription[]>([]);
   const [settings, setSettings] = useState<MatrixSettings>({
@@ -82,11 +81,9 @@ export const MatrixSettings: React.FC = () => {
         }
       } catch (error) {
         debugConsole.error("Error loading Matrix data:", error);
-        toast({
-          title: "Fehler",
-          description: "Matrix-Einstellungen konnten nicht geladen werden.",
-          variant: "destructive",
-        });
+        notify.error("Fehler", {
+          description: "Matrix-Einstellungen konnten nicht geladen werden."
+});
       }
     };
 
@@ -96,22 +93,18 @@ export const MatrixSettings: React.FC = () => {
   // Add new Matrix subscription
   const addSubscription = async () => {
     if (!user || !newRoom.trim() || !newUsername.trim()) {
-      toast({
-        title: "Fehler",
-        description: "Bitte füllen Sie alle Felder aus.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Bitte füllen Sie alle Felder aus."
+});
       return;
     }
 
     // Validate room ID format
     if (!newRoom.startsWith("!") || !newRoom.includes(":")) {
-      toast({
-        title: "Ungültige Raum-ID",
+      notify.error("Ungültige Raum-ID", {
         description:
-          "Matrix-Raum-IDs müssen mit ! beginnen und einen Doppelpunkt enthalten (z.B. !example:matrix.org)",
-        variant: "destructive",
-      });
+          "Matrix-Raum-IDs müssen mit ! beginnen und einen Doppelpunkt enthalten (z.B. !example:matrix.org)"
+});
       return;
     }
 
@@ -130,13 +123,11 @@ export const MatrixSettings: React.FC = () => {
 
       if (error) {
         debugConsole.error("Error adding Matrix subscription:", error);
-        toast({
-          title: "Fehler",
+        notify.error("Fehler", {
           description:
             "Matrix-Abonnement konnte nicht hinzugefügt werden: " +
-            error.message,
-          variant: "destructive",
-        });
+            error.message
+});
         return;
       }
 
@@ -144,17 +135,14 @@ export const MatrixSettings: React.FC = () => {
       setNewRoom("");
       setNewUsername("");
 
-      toast({
-        title: "Erfolgreich",
-        description: "Matrix-Abonnement wurde hinzugefügt.",
-      });
+      notify.success("Erfolgreich", {
+        description: "Matrix-Abonnement wurde hinzugefügt."
+});
     } catch (error) {
       debugConsole.error("Error adding subscription:", error);
-      toast({
-        title: "Fehler",
-        description: "Ein unerwarteter Fehler ist aufgetreten.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Ein unerwarteter Fehler ist aufgetreten."
+});
     } finally {
       setLoading(false);
     }
@@ -171,28 +159,23 @@ export const MatrixSettings: React.FC = () => {
 
       if (error) {
         debugConsole.error("Error removing subscription:", error);
-        toast({
-          title: "Fehler",
-          description: "Abonnement konnte nicht entfernt werden.",
-          variant: "destructive",
-        });
+        notify.error("Fehler", {
+          description: "Abonnement konnte nicht entfernt werden."
+});
         return;
       }
 
       setSubscriptions((prev) =>
         prev.filter((sub) => sub.id !== subscriptionId),
       );
-      toast({
-        title: "Entfernt",
-        description: "Matrix-Abonnement wurde entfernt.",
-      });
+      notify.success("Entfernt", {
+        description: "Matrix-Abonnement wurde entfernt."
+});
     } catch (error) {
       debugConsole.error("Error removing subscription:", error);
-      toast({
-        title: "Fehler",
-        description: "Ein unerwarteter Fehler ist aufgetreten.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Ein unerwarteter Fehler ist aufgetreten."
+});
     } finally {
       setLoading(false);
     }
@@ -212,11 +195,9 @@ export const MatrixSettings: React.FC = () => {
 
       if (error) {
         debugConsole.error("Error updating subscription:", error);
-        toast({
-          title: "Fehler",
-          description: "Abonnement-Status konnte nicht geändert werden.",
-          variant: "destructive",
-        });
+        notify.error("Fehler", {
+          description: "Abonnement-Status konnte nicht geändert werden."
+});
         return;
       }
 
@@ -226,17 +207,14 @@ export const MatrixSettings: React.FC = () => {
         ),
       );
 
-      toast({
-        title: "Aktualisiert",
-        description: `Matrix-Abonnement wurde ${isActive ? "aktiviert" : "deaktiviert"}.`,
-      });
+      notify.success("Aktualisiert", {
+        description: `Matrix-Abonnement wurde ${isActive ? "aktiviert" : "deaktiviert"}.`
+});
     } catch (error) {
       debugConsole.error("Error updating subscription:", error);
-      toast({
-        title: "Fehler",
-        description: "Ein unerwarteter Fehler ist aufgetreten.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Ein unerwarteter Fehler ist aufgetreten."
+});
     } finally {
       setLoading(false);
     }
@@ -266,26 +244,21 @@ export const MatrixSettings: React.FC = () => {
 
       if (error) {
         debugConsole.error("Error updating Matrix settings:", error);
-        toast({
-          title: "Fehler",
-          description: "Matrix-Einstellungen konnten nicht gespeichert werden.",
-          variant: "destructive",
-        });
+        notify.error("Fehler", {
+          description: "Matrix-Einstellungen konnten nicht gespeichert werden."
+});
         return;
       }
 
       setSettings({ matrix_enabled: enabled });
-      toast({
-        title: "Gespeichert",
-        description: `Matrix-Benachrichtigungen wurden ${enabled ? "aktiviert" : "deaktiviert"}.`,
-      });
+      notify.success("Gespeichert", {
+        description: `Matrix-Benachrichtigungen wurden ${enabled ? "aktiviert" : "deaktiviert"}.`
+});
     } catch (error) {
       debugConsole.error("Error updating settings:", error);
-      toast({
-        title: "Fehler",
-        description: "Ein unerwarteter Fehler ist aufgetreten.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Ein unerwarteter Fehler ist aufgetreten."
+});
     } finally {
       setLoading(false);
     }
@@ -301,12 +274,10 @@ export const MatrixSettings: React.FC = () => {
       (subscription) => subscription.is_active,
     );
     if (!activeSubscription) {
-      toast({
-        title: "Keine aktiven Räume",
+      notify.error("Keine aktiven Räume", {
         description:
-          "Bitte aktivieren Sie mindestens einen Matrix-Raum für den Test.",
-        variant: "destructive",
-      });
+          "Bitte aktivieren Sie mindestens einen Matrix-Raum für den Test."
+});
       return;
     }
 
@@ -327,27 +298,22 @@ export const MatrixSettings: React.FC = () => {
 
       if (error) {
         debugConsole.error("Error testing Matrix:", error);
-        toast({
-          title: "Test fehlgeschlagen",
+        notify.error("Test fehlgeschlagen", {
           description:
-            "Matrix-Test konnte nicht durchgeführt werden: " + error.message,
-          variant: "destructive",
-        });
+            "Matrix-Test konnte nicht durchgeführt werden: " + error.message
+});
         return;
       }
 
-      toast({
-        title: "Test erfolgreich",
+      notify.success("Test erfolgreich", {
         description:
-          data.message || "Matrix-Test wurde erfolgreich durchgeführt!",
-      });
+          data.message || "Matrix-Test wurde erfolgreich durchgeführt!"
+});
     } catch (error) {
       debugConsole.error("Error testing Matrix:", error);
-      toast({
-        title: "Test fehlgeschlagen",
-        description: "Ein unerwarteter Fehler ist aufgetreten.",
-        variant: "destructive",
-      });
+      notify.error("Test fehlgeschlagen", {
+        description: "Ein unerwarteter Fehler ist aufgetreten."
+});
     } finally {
       setTestLoading(false);
     }

@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { debugConsole } from '@/utils/debugConsole';
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Save, RefreshCw, Copy, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { notify } from "@/lib/notify";
 
 interface EmailTemplate {
   id: string;
@@ -26,7 +26,6 @@ export const DecisionEmailTemplates = () => {
   const [template, setTemplate] = useState<EmailTemplate | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setSaving] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     loadTemplate();
@@ -50,11 +49,9 @@ export const DecisionEmailTemplates = () => {
       }
     } catch (error) {
       debugConsole.error('Error loading email template:', error);
-      toast({
-        title: "Fehler",
-        description: "E-Mail-Template konnte nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "E-Mail-Template konnte nicht geladen werden."
+});
     } finally {
       setIsLoading(false);
     }
@@ -131,17 +128,14 @@ export const DecisionEmailTemplates = () => {
         if (fallbackError) throw fallbackError;
       }
 
-      toast({
-        title: "Gespeichert",
-        description: "E-Mail-Template wurde erfolgreich aktualisiert.",
-      });
+      notify.success("Gespeichert", {
+        description: "E-Mail-Template wurde erfolgreich aktualisiert."
+});
     } catch (error) {
       debugConsole.error('Error saving template:', error);
-      toast({
-        title: "Fehler",
-        description: "E-Mail-Template konnte nicht gespeichert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "E-Mail-Template konnte nicht gespeichert werden."
+});
     } finally {
       setSaving(false);
     }
@@ -199,10 +193,9 @@ export const DecisionEmailTemplates = () => {
 
   const copyVariable = (variable: string) => {
     navigator.clipboard.writeText(variable);
-    toast({
-      title: "Kopiert",
-      description: `${variable} wurde in die Zwischenablage kopiert.`,
-    });
+    notify.success("Kopiert", {
+      description: `${variable} wurde in die Zwischenablage kopiert.`
+});
   };
 
   return (

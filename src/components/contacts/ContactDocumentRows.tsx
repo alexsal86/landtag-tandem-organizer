@@ -5,8 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { FileText, Download, ExternalLink } from "lucide-react";
 import { LoadingState } from "@/components/ui-patterns";
 import { useContactDocuments } from "@/hooks/useContactDocuments";
-import { useToast } from "@/hooks/use-toast";
 import { downloadDocument } from "./utils/downloadDocument";
+import { notify } from "@/lib/notify";
 
 interface ContactDocumentRowsProps {
   contactId: string;
@@ -15,7 +15,6 @@ interface ContactDocumentRowsProps {
 
 export function ContactDocumentRows({ contactId, contactTags }: ContactDocumentRowsProps) {
   const { directDocuments, taggedDocuments, loading } = useContactDocuments(contactId, contactTags);
-  const { toast } = useToast();
 
   const handleDownload = async (filePath: string, fileName: string) => {
     await downloadDocument({
@@ -23,11 +22,9 @@ export function ContactDocumentRows({ contactId, contactTags }: ContactDocumentR
       fileName,
       onError: (error) => {
         debugConsole.error('Error downloading document:', error);
-        toast({
-          title: "Fehler",
-          description: "Fehler beim Herunterladen des Dokuments",
-          variant: "destructive",
-        });
+        notify.error("Fehler", {
+          description: "Fehler beim Herunterladen des Dokuments"
+});
       },
     });
   };

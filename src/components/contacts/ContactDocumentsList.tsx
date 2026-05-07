@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useContactDocuments } from "@/hooks/useContactDocuments";
-import { useToast } from "@/hooks/use-toast";
 import { downloadDocument } from "./utils/downloadDocument";
+import { notify } from "@/lib/notify";
 
 interface ContactDocumentsListProps {
   contactId: string;
@@ -21,24 +21,20 @@ interface ContactDocumentsListProps {
 export function ContactDocumentsList({ contactId, contactTags = [], documentCount }: ContactDocumentsListProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { directDocuments, taggedDocuments, loading } = useContactDocuments(contactId, contactTags);
-  const { toast } = useToast();
 
   const handleDownload = async (filePath: string, fileName: string) => {
     await downloadDocument({
       filePath,
       fileName,
       onSuccess: () => {
-        toast({
-          title: "Download erfolgreich",
-          description: `${fileName} wurde heruntergeladen.`,
-        });
+        notify.success("Download erfolgreich", {
+          description: `${fileName} wurde heruntergeladen.`
+});
       },
       onError: (error) => {
-        toast({
-          title: "Download-Fehler",
-          description: error instanceof Error ? error.message : "Download fehlgeschlagen",
-          variant: "destructive",
-        });
+        notify.error("Download-Fehler", {
+          description: error instanceof Error ? error.message : "Download fehlgeschlagen"
+});
       },
     });
   };

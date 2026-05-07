@@ -4,7 +4,6 @@ import { getErrorMessage } from '@/utils/errorHandler';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { toast } from "sonner";
 import { format, addDays, isToday, isPast, isBefore, isAfter, startOfDay } from "date-fns";
 import { de } from "date-fns/locale";
 import type { QuickNote } from "@/components/shared/QuickNotesList";
@@ -18,6 +17,7 @@ import {
   normalizeMeetingLink,
 } from "./quickNotes/utils";
 import type { GroupedNotes } from "./quickNotes/types";
+import { notify } from "@/lib/notify";
 
 // Re-exports for backwards compatibility
 export { noteColors, stripHtml, toEditorHtml, getCardBackground };
@@ -394,7 +394,7 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
   // ── Action Handlers ───────────────────────────────────────────────────
 
   const handleTogglePin = async (note: QuickNote) => {
-    if (!user?.id) { toast.error("Nicht angemeldet"); return; }
+    if (!user?.id) { notify.error("Nicht angemeldet"); return; }
     try {
       const { data, error } = await supabase
         .from("quick_notes")
@@ -403,17 +403,17 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
         .eq("user_id", user.id)
         .select();
       if (error) throw error;
-      if (!data || data.length === 0) { toast.error("Keine Berechtigung zum Ändern dieser Notiz"); return; }
-      toast.success(note.is_pinned ? "Notiz losgelöst" : "Notiz angepinnt");
+      if (!data || data.length === 0) { notify.error("Keine Berechtigung zum Ändern dieser Notiz"); return; }
+      notify.success(note.is_pinned ? "Notiz losgelöst" : "Notiz angepinnt");
       loadNotes();
     } catch (error) {
       debugConsole.error("Error toggling pin:", error);
-      toast.error("Fehler beim Ändern");
+      notify.error("Fehler beim Ändern");
     }
   };
 
   const handleDelete = async (noteId: string) => {
-    if (!user?.id) { toast.error("Nicht angemeldet"); return; }
+    if (!user?.id) { notify.error("Nicht angemeldet"); return; }
     try {
       const permanentDeleteAt = addDays(new Date(), 30);
       const { data, error } = await supabase
@@ -426,17 +426,17 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
         .eq("user_id", user.id)
         .select();
       if (error) throw error;
-      if (!data || data.length === 0) { toast.error("Notiz konnte nicht gelöscht werden"); return; }
-      toast.success("Notiz in Papierkorb verschoben (wird nach 30 Tagen gelöscht)");
+      if (!data || data.length === 0) { notify.error("Notiz konnte nicht gelöscht werden"); return; }
+      notify.success("Notiz in Papierkorb verschoben (wird nach 30 Tagen gelöscht)");
       loadNotes();
     } catch (error) {
       debugConsole.error("Error deleting note:", error);
-      toast.error("Fehler beim Löschen");
+      notify.error("Fehler beim Löschen");
     }
   };
 
   const handleArchive = async (noteId: string) => {
-    if (!user?.id) { toast.error("Nicht angemeldet"); return; }
+    if (!user?.id) { notify.error("Nicht angemeldet"); return; }
     try {
       const { data, error } = await supabase
         .from("quick_notes")
@@ -445,17 +445,17 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
         .eq("user_id", user.id)
         .select();
       if (error) throw error;
-      if (!data || data.length === 0) { toast.error("Notiz konnte nicht archiviert werden"); return; }
-      toast.success("Notiz archiviert");
+      if (!data || data.length === 0) { notify.error("Notiz konnte nicht archiviert werden"); return; }
+      notify.success("Notiz archiviert");
       loadNotes();
     } catch (error) {
       debugConsole.error("Error archiving note:", error);
-      toast.error("Fehler beim Archivieren");
+      notify.error("Fehler beim Archivieren");
     }
   };
 
   const handleSetPriority = async (noteId: string, level: number) => {
-    if (!user?.id) { toast.error("Nicht angemeldet"); return; }
+    if (!user?.id) { notify.error("Nicht angemeldet"); return; }
     try {
       const { data, error } = await supabase
         .from("quick_notes")
@@ -464,42 +464,42 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
         .eq("user_id", user.id)
         .select();
       if (error) throw error;
-      if (!data || data.length === 0) { toast.error("Keine Berechtigung zum Ändern dieser Notiz"); return; }
-      toast.success(level > 0 ? `Level ${level} gesetzt` : "Priorität entfernt");
+      if (!data || data.length === 0) { notify.error("Keine Berechtigung zum Ändern dieser Notiz"); return; }
+      notify.success(level > 0 ? `Level ${level} gesetzt` : "Priorität entfernt");
       loadNotes();
     } catch (error) {
       debugConsole.error("Error setting priority:", error);
-      toast.error("Fehler beim Setzen der Priorität");
+      notify.error("Fehler beim Setzen der Priorität");
     }
   };
 
   const handleSetColor = async (noteId: string, color: string | null) => {
-    if (!user?.id) { toast.error("Nicht angemeldet"); return; }
+    if (!user?.id) { notify.error("Nicht angemeldet"); return; }
     const note = notes.find(n => n.id === noteId);
-    if (!note) { toast.error("Notiz nicht gefunden"); return; }
+    if (!note) { notify.error("Notiz nicht gefunden"); return; }
     const canModify = note.user_id === user.id || note.can_edit === true;
-    if (!canModify) { toast.error("Keine Berechtigung zum Ändern dieser Notiz"); return; }
+    if (!canModify) { notify.error("Keine Berechtigung zum Ändern dieser Notiz"); return; }
     try {
       const { data, error } = note.user_id === user.id
         ? await supabase.from("quick_notes").update({ color }).eq("id", noteId).eq("user_id", user.id).select()
         : await supabase.from("quick_notes").update({ color }).eq("id", noteId).select();
       if (error) throw error;
-      if (!data || data.length === 0) { toast.error("Farbe konnte nicht geändert werden"); return; }
-      toast.success(color ? "Farbe gesetzt" : "Farbe entfernt");
+      if (!data || data.length === 0) { notify.error("Farbe konnte nicht geändert werden"); return; }
+      notify.success(color ? "Farbe gesetzt" : "Farbe entfernt");
       loadNotes();
     } catch (error) {
       debugConsole.error("Error setting color:", error);
-      toast.error("Fehler beim Setzen der Farbe");
+      notify.error("Fehler beim Setzen der Farbe");
     }
   };
 
   const handleSetColorMode = async (noteId: string, fullCard: boolean) => {
     if (colorModeUpdating) return;
-    if (!user?.id) { toast.error("Nicht angemeldet"); return; }
+    if (!user?.id) { notify.error("Nicht angemeldet"); return; }
     const note = notes.find(n => n.id === noteId);
-    if (!note) { toast.error("Notiz nicht gefunden"); return; }
+    if (!note) { notify.error("Notiz nicht gefunden"); return; }
     const canModify = note.user_id === user.id || note.can_edit === true;
-    if (!canModify) { toast.error("Keine Berechtigung zum Ändern dieser Notiz"); return; }
+    if (!canModify) { notify.error("Keine Berechtigung zum Ändern dieser Notiz"); return; }
 
     setColorModeUpdating(noteId);
     const previousValue = note.color_full_card;
@@ -513,14 +513,14 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
         .select();
       if (error || !data || data.length === 0) {
         setNotes(prev => prev.map(n => n.id === noteId ? { ...n, color_full_card: previousValue } : n));
-        toast.error("Fehler beim Setzen des Farbmodus");
+        notify.error("Fehler beim Setzen des Farbmodus");
         return;
       }
-      toast.success(fullCard ? "Ganze Card eingefärbt" : "Nur Kante eingefärbt");
+      notify.success(fullCard ? "Ganze Card eingefärbt" : "Nur Kante eingefärbt");
     } catch (error) {
       debugConsole.error("Error setting color mode:", error);
       setNotes(prev => prev.map(n => n.id === noteId ? { ...n, color_full_card: previousValue } : n));
-      toast.error("Fehler beim Setzen des Farbmodus");
+      notify.error("Fehler beim Setzen des Farbmodus");
     } finally {
       setTimeout(() => setColorModeUpdating(null), 300);
     }
@@ -534,17 +534,17 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
       await supabase.from('task_decisions').update({ archived_at: new Date().toISOString() }).eq('id', note.decision_id);
       const archivedInfo = decisionData ? { id: note.decision_id, title: decisionData.title, archived_at: new Date().toISOString() } : null;
       await supabase.from("quick_notes").update({ decision_id: null, decision_archived_info: archivedInfo }).eq("id", note.id).eq("user_id", user.id);
-      toast.success("Entscheidungsanfrage zurückgenommen");
+      notify.success("Entscheidungsanfrage zurückgenommen");
       setConfirmRemoveDecision(null);
       loadNotes();
     } catch (error) {
       debugConsole.error("Error removing decision:", error);
-      toast.error("Fehler beim Zurücknehmen der Entscheidung");
+      notify.error("Fehler beim Zurücknehmen der Entscheidung");
     }
   };
 
   const handleSetFollowUp = async (noteId: string, date: Date | null) => {
-    if (!user?.id) { toast.error("Nicht angemeldet"); return; }
+    if (!user?.id) { notify.error("Nicht angemeldet"); return; }
     try {
       const { data, error } = await supabase
         .from("quick_notes")
@@ -553,19 +553,19 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
         .eq("user_id", user.id)
         .select();
       if (error) throw error;
-      if (!data || data.length === 0) { toast.error("Wiedervorlage konnte nicht gesetzt werden"); return; }
-      toast.success(date ? `Wiedervorlage für ${format(date, "dd.MM.yyyy", { locale: de })}` : "Wiedervorlage entfernt");
+      if (!data || data.length === 0) { notify.error("Wiedervorlage konnte nicht gesetzt werden"); return; }
+      notify.success(date ? `Wiedervorlage für ${format(date, "dd.MM.yyyy", { locale: de })}` : "Wiedervorlage entfernt");
       loadNotes();
       setDatePickerOpen(false);
       setNoteForDatePicker(null);
     } catch (error) {
       debugConsole.error("Error setting follow-up:", error);
-      toast.error("Fehler beim Setzen der Wiedervorlage");
+      notify.error("Fehler beim Setzen der Wiedervorlage");
     }
   };
 
   const createTaskFromNote = async (note: QuickNote) => {
-    if (!user || !currentTenant) { toast.error("Nicht angemeldet"); return; }
+    if (!user || !currentTenant) { notify.error("Nicht angemeldet"); return; }
     try {
       const plainContent = stripHtml(note.content);
       const taskTitle = note.title
@@ -587,11 +587,11 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
         .select().single();
       if (taskError) throw taskError;
       await supabase.from("quick_notes").update({ task_id: task.id }).eq("id", note.id);
-      toast.success("Aufgabe erstellt");
+      notify.success("Aufgabe erstellt");
       loadNotes();
     } catch (error) {
       debugConsole.error('Error creating task from note:', error);
-      toast.error("Fehler beim Erstellen der Aufgabe");
+      notify.error("Fehler beim Erstellen der Aufgabe");
     }
   };
 
@@ -605,12 +605,12 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
       const { error: noteError } = await supabase
         .from("quick_notes").update({ task_id: null }).eq("id", note.id).eq("user_id", user.id);
       if (noteError) debugConsole.warn('Note update warning:', noteError);
-      toast.success("Aufgabe entfernt");
+      notify.success("Aufgabe entfernt");
       setConfirmDeleteTaskNote(null);
       loadNotes();
     } catch (error) {
       debugConsole.error('Error removing task from note:', error);
-      toast.error("Fehler beim Entfernen der Aufgabe");
+      notify.error("Fehler beim Entfernen der Aufgabe");
     }
   };
 
@@ -647,41 +647,41 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
       setConfirmDeleteLinkedNote(null);
     } catch (error) {
       debugConsole.error("Error deleting note with links:", error);
-      toast.error("Fehler beim Löschen");
+      notify.error("Fehler beim Löschen");
     }
   };
 
   const addNoteToMeeting = async (noteId: string, meetingId: string, _meetingTitle: string) => {
-    if (!user?.id) { toast.error("Nicht angemeldet"); return; }
+    if (!user?.id) { notify.error("Nicht angemeldet"); return; }
     try {
       const { data, error } = await supabase
         .from('quick_notes')
         .update({ meeting_id: meetingId, added_to_meeting_at: new Date().toISOString(), pending_for_jour_fixe: false })
         .eq('id', noteId).eq('user_id', user.id).select();
       if (error) throw error;
-      if (!data || data.length === 0) { toast.error("Notiz konnte nicht zugewiesen werden"); return; }
-      toast.success(`Notiz zum Jour Fixe hinzugefügt`);
+      if (!data || data.length === 0) { notify.error("Notiz konnte nicht zugewiesen werden"); return; }
+      notify.success(`Notiz zum Jour Fixe hinzugefügt`);
       setMeetingSelectorOpen(false);
       setNoteForMeeting(null);
       loadNotes();
     } catch (error) {
       debugConsole.error('Error adding note to meeting:', error);
-      toast.error("Fehler beim Hinzufügen zum Jour Fixe");
+      notify.error("Fehler beim Hinzufügen zum Jour Fixe");
     }
   };
 
   const markForNextJourFixe = async (noteId: string) => {
-    if (!user?.id) { toast.error("Nicht angemeldet"); return; }
+    if (!user?.id) { notify.error("Nicht angemeldet"); return; }
     try {
       const { data, error } = await supabase
         .from('quick_notes').update({ pending_for_jour_fixe: true }).eq('id', noteId).eq('user_id', user.id).select();
       if (error) throw error;
-      if (!data || data.length === 0) { toast.error("Notiz konnte nicht vorgemerkt werden"); return; }
-      toast.success("Notiz für nächsten Jour Fixe vorgemerkt");
+      if (!data || data.length === 0) { notify.error("Notiz konnte nicht vorgemerkt werden"); return; }
+      notify.success("Notiz für nächsten Jour Fixe vorgemerkt");
       loadNotes();
     } catch (error) {
       debugConsole.error('Error marking for Jour Fixe:', error);
-      toast.error("Fehler beim Vormerken");
+      notify.error("Fehler beim Vormerken");
     }
   };
 
@@ -689,26 +689,26 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
     try {
       const { error } = await supabase.from('quick_notes').update({ pending_for_jour_fixe: false }).eq('id', noteId);
       if (error) throw error;
-      toast.success("Vormerkung entfernt");
+      notify.success("Vormerkung entfernt");
       loadNotes();
     } catch (error) {
       debugConsole.error('Error removing from Jour Fixe queue:', error);
-      toast.error("Fehler beim Entfernen der Vormerkung");
+      notify.error("Fehler beim Entfernen der Vormerkung");
     }
   };
 
   const removeNoteFromMeeting = async (noteId: string) => {
-    if (!user?.id) { toast.error("Nicht angemeldet"); return; }
+    if (!user?.id) { notify.error("Nicht angemeldet"); return; }
     try {
       const { data, error } = await supabase
         .from('quick_notes').update({ meeting_id: null, added_to_meeting_at: null }).eq('id', noteId).eq('user_id', user.id).select();
       if (error) throw error;
-      if (!data || data.length === 0) { toast.error("Notiz konnte nicht entfernt werden"); return; }
-      toast.success("Notiz vom Jour Fixe entfernt");
+      if (!data || data.length === 0) { notify.error("Notiz konnte nicht entfernt werden"); return; }
+      notify.success("Notiz vom Jour Fixe entfernt");
       loadNotes();
     } catch (error) {
       debugConsole.error('Error removing note from meeting:', error);
-      toast.error("Fehler beim Entfernen");
+      notify.error("Fehler beim Entfernen");
     }
   };
 
@@ -721,28 +721,28 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
 
   const handleSaveEdit = async () => {
     if (!editingNote || !user?.id) return;
-    if (!stripHtml(editTitle) && !stripHtml(editContent)) { toast.error("Bitte Titel oder Inhalt eingeben"); return; }
+    if (!stripHtml(editTitle) && !stripHtml(editContent)) { notify.error("Bitte Titel oder Inhalt eingeben"); return; }
     try {
       await supabase.from("quick_note_versions").insert([{ note_id: editingNote.id, title: editingNote.title, content: editingNote.content, user_id: user.id }]);
       let updateQuery = supabase.from("quick_notes").update({ title: editTitle.trim() || null, content: editContent.trim() }).eq("id", editingNote.id);
       if (editingNote.user_id === user.id) updateQuery = updateQuery.eq("user_id", user.id);
       const { data, error } = await updateQuery.select();
       if (error) throw error;
-      if (!data || data.length === 0) { toast.error("Keine Berechtigung zum Bearbeiten dieser Notiz"); return; }
-      toast.success("Notiz aktualisiert");
+      if (!data || data.length === 0) { notify.error("Keine Berechtigung zum Bearbeiten dieser Notiz"); return; }
+      notify.success("Notiz aktualisiert");
       setEditDialogOpen(false);
       setEditingNote(null);
       loadNotes();
     } catch (error) {
       debugConsole.error("Error updating note:", error);
-      toast.error("Fehler beim Speichern");
+      notify.error("Fehler beim Speichern");
     }
   };
 
   const openVersionHistory = async (note: QuickNote) => {
     const { data, error } = await supabase
       .from("quick_note_versions").select("id, note_id, title, content, created_at, user_id").eq("note_id", note.id).order("created_at", { ascending: false });
-    if (error) { debugConsole.error("Error loading versions:", error); toast.error("Fehler beim Laden der Versionen"); return; }
+    if (error) { debugConsole.error("Error loading versions:", error); notify.error("Fehler beim Laden der Versionen"); return; }
     setVersions((data || []).map((v: Record<string, any>) => ({ ...v, created_at: v.created_at ?? '' })));
     setVersionHistoryNote(note);
     setVersionHistoryOpen(true);
@@ -754,17 +754,17 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
       await supabase.from("quick_note_versions").insert([{ note_id: versionHistoryNote.id, title: versionHistoryNote.title, content: versionHistoryNote.content, user_id: user.id }]);
       const { error } = await supabase.from("quick_notes").update({ title: version.title, content: version.content }).eq("id", versionHistoryNote.id).eq("user_id", user.id);
       if (error) throw error;
-      toast.success("Version wiederhergestellt");
+      notify.success("Version wiederhergestellt");
       setVersionHistoryOpen(false);
       loadNotes();
     } catch (error) {
       debugConsole.error("Error restoring version:", error);
-      toast.error("Fehler beim Wiederherstellen");
+      notify.error("Fehler beim Wiederherstellen");
     }
   };
 
   const createCaseItemFromNote = async (note: QuickNote) => {
-    if (!user || !currentTenant) { toast.error("Nicht angemeldet"); return; }
+    if (!user || !currentTenant) { notify.error("Nicht angemeldet"); return; }
     try {
       const plainContent = stripHtml(note.content);
       const itemSubject = note.title
@@ -809,11 +809,11 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
 
       if (linkError) throw linkError;
 
-      toast.success("Vorgang erstellt");
+      notify.success("Vorgang erstellt");
       loadNotes();
     } catch (error) {
       debugConsole.error('Error creating case item from note:', error);
-      toast.error(getErrorMessage(error));
+      notify.error(getErrorMessage(error));
     }
   };
 
@@ -822,12 +822,12 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
     try {
       await supabase.from('case_items').update({ status: 'archiviert' }).eq('id', note.case_item_id);
       await supabase.from("quick_notes").update({ case_item_id: null }).eq("id", note.id).eq("user_id", user.id);
-      toast.success("Vorgang archiviert und von Notiz entfernt");
+      notify.success("Vorgang archiviert und von Notiz entfernt");
       setConfirmRemoveCaseItem(null);
       loadNotes();
     } catch (error) {
       debugConsole.error('Error removing case item from note:', error);
-      toast.error("Fehler beim Entfernen des Vorgangs");
+      notify.error("Fehler beim Entfernen des Vorgangs");
     }
   };
 
@@ -853,7 +853,7 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
       if (lines.length > 1) items = lines;
     }
     if (items.length <= 1) {
-      toast.info("Keine Aufzählungspunkte gefunden", { description: "Die Notiz enthält keine Aufzählung oder Liste zum Aufteilen." });
+      notify.info("Keine Aufzählungspunkte gefunden", { description: "Die Notiz enthält keine Aufzählung oder Liste zum Aufteilen." });
       return;
     }
     try {
@@ -865,11 +865,11 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
       }));
       const { error } = await supabase.from('quick_notes').insert(newNotes);
       if (error) throw error;
-      toast.success(`${items.length} Notizen erstellt`, { description: "Die Aufzählungspunkte wurden in separate Notizen aufgeteilt." });
+      notify.success(`${items.length} Notizen erstellt`, { description: "Die Aufzählungspunkte wurden in separate Notizen aufgeteilt." });
       loadNotes();
     } catch (error) {
       debugConsole.error('Error splitting note:', error);
-      toast.error("Fehler beim Aufteilen der Notiz");
+      notify.error("Fehler beim Aufteilen der Notiz");
     }
   };
 
@@ -880,13 +880,13 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
     const noteId = result.draggableId;
     const note = notes.find(n => n.id === noteId);
     if (!note) return;
-    if (note.user_id !== user.id) { toast.error("Nur eigene Notizen können verschoben werden"); return; }
-    if (sourceLevel === destLevel) { toast.info("Reihenfolge wird durch Erstelldatum bestimmt"); return; }
+    if (note.user_id !== user.id) { notify.error("Nur eigene Notizen können verschoben werden"); return; }
+    if (sourceLevel === destLevel) { notify.info("Reihenfolge wird durch Erstelldatum bestimmt"); return; }
     setNotes(prev => prev.map(n => n.id === noteId ? { ...n, priority_level: destLevel } : n));
     try {
       const { error } = await supabase.from("quick_notes").update({ priority_level: destLevel }).eq("id", noteId).eq("user_id", user.id);
-      if (error) { debugConsole.error("Error updating priority via drag:", error); loadNotes(); toast.error("Fehler beim Verschieben"); }
-      else { toast.success(destLevel > 0 ? `Level ${destLevel} gesetzt` : "Priorität entfernt"); }
+      if (error) { debugConsole.error("Error updating priority via drag:", error); loadNotes(); notify.error("Fehler beim Verschieben"); }
+      else { notify.success(destLevel > 0 ? `Level ${destLevel} gesetzt` : "Priorität entfernt"); }
     } catch (error) {
       debugConsole.error("Error in drag handler:", error);
       loadNotes();

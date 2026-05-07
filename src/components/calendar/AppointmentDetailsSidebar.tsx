@@ -9,12 +9,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarEvent } from "./types";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { formatEventDisplay } from "@/lib/timeUtils";
 import { GuestManager } from "@/features/appointments/components/GuestManager";
 import { useTenant } from "@/hooks/useTenant";
 import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
+import { notify } from "@/lib/notify";
 
 interface AppointmentDetailsSidebarProps {
   appointment: CalendarEvent | null;
@@ -29,7 +29,6 @@ export function AppointmentDetailsSidebar({
   onClose,
   onUpdate 
 }: AppointmentDetailsSidebarProps) {
-  const { toast } = useToast();
   const { currentTenant } = useTenant();
   const navigate = useNavigate();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -156,20 +155,18 @@ export function AppointmentDetailsSidebar({
         .update({ last_invitation_sent_at: new Date().toISOString() })
         .eq('id', appointment.id);
 
-      toast({
-        title: "Einladungen versendet",
+      notify.success("Einladungen versendet", {
         description: `${guests.length} Einladung(en) wurden erfolgreich versendet.`
-      });
+      
+});
 
       onUpdate();
       fetchGuests();
     } catch (error) {
       debugConsole.error('Error sending invitations:', error);
-      toast({
-        title: "Fehler",
-        description: `Die Einladungen konnten nicht versendet werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: `Die Einladungen konnten nicht versendet werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
+});
     } finally {
       setIsSendingInvitations(false);
     }
@@ -308,42 +305,36 @@ export function AppointmentDetailsSidebar({
 
             if (invitationError) {
               debugConsole.error('Error sending invitations:', invitationError);
-              toast({
-                title: "Warnung",
-                description: "Gäste wurden gespeichert, aber Einladungen konnten nicht versendet werden.",
-                variant: "destructive"
-              });
+              notify.error("Warnung", {
+                description: "Gäste wurden gespeichert, aber Einladungen konnten nicht versendet werden."
+});
             } else {
-              toast({
-                title: "Einladungen versendet",
+              notify.success("Einladungen versendet", {
                 description: `Einladungen wurden an ${guests.length} Gäste versendet.`
-              });
+              
+});
             }
           } catch (error) {
             debugConsole.error('Error sending invitations:', error);
-            toast({
-              title: "Warnung",
-              description: "Gäste wurden gespeichert, aber Einladungen konnten nicht versendet werden.",
-              variant: "destructive"
-            });
+            notify.error("Warnung", {
+              description: "Gäste wurden gespeichert, aber Einladungen konnten nicht versendet werden."
+});
           }
         }
       }
 
-      toast({
-        title: "Termin aktualisiert",
+      notify.success("Termin aktualisiert", {
         description: "Die Änderungen wurden erfolgreich gespeichert."
-      });
+      
+});
       
       setIsEditing(false);
       onUpdate();
     } catch (error) {
       debugConsole.error('Error updating appointment:', error);
-      toast({
-        title: "Fehler",
-        description: "Der Termin konnte nicht aktualisiert werden.",
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Der Termin konnte nicht aktualisiert werden."
+});
     }
   };
 
@@ -354,11 +345,9 @@ export function AppointmentDetailsSidebar({
     try {
       // Don't delete blocked appointments (they come from event planning)
       if (!appointment.id || appointment.id.startsWith('blocked-')) {
-        toast({
-          title: "Warnung",
-          description: "Geplante Termine können nicht direkt gelöscht werden.",
-          variant: "destructive"
-        });
+        notify.error("Warnung", {
+          description: "Geplante Termine können nicht direkt gelöscht werden."
+});
         return;
       }
 
@@ -371,20 +360,18 @@ export function AppointmentDetailsSidebar({
         throw error;
       }
 
-      toast({
-        title: "Termin gelöscht",
+      notify.success("Termin gelöscht", {
         description: "Der Termin wurde erfolgreich gelöscht."
-      });
+      
+});
       
       onUpdate();
       onClose();
     } catch (error) {
       debugConsole.error('Error deleting appointment:', error);
-      toast({
-        title: "Fehler",
-        description: "Der Termin konnte nicht gelöscht werden.",
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Der Termin konnte nicht gelöscht werden."
+});
     } finally {
       setIsDeleting(false);
     }

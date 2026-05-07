@@ -4,12 +4,12 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { debugConsole } from '@/utils/debugConsole';
 import { useTenant } from '@/hooks/useTenant';
 import { Loader2, Archive, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { notify } from "@/lib/notify";
 
 interface ArchiveSettings {
   id?: string;
@@ -23,7 +23,6 @@ interface ArchiveSettings {
 }
 
 export const DecisionArchiveSettings = () => {
-  const { toast } = useToast();
   const { currentTenant } = useTenant();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -63,11 +62,9 @@ export const DecisionArchiveSettings = () => {
       }
     } catch (error: unknown) {
       debugConsole.error('Error loading settings:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Einstellungen konnten nicht geladen werden.',
-        variant: 'destructive'
-      });
+      notify.error('Fehler', {
+        description: 'Einstellungen konnten nicht geladen werden.'
+});
     } finally {
       setLoading(false);
     }
@@ -98,17 +95,15 @@ export const DecisionArchiveSettings = () => {
 
       if (error) throw error;
 
-      toast({
-        title: 'Gespeichert',
+      notify.success('Gespeichert', {
         description: 'Archivierungseinstellungen wurden erfolgreich gespeichert.'
-      });
+      
+});
     } catch (error: unknown) {
       debugConsole.error('Error saving settings:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Einstellungen konnten nicht gespeichert werden.',
-        variant: 'destructive'
-      });
+      notify.error('Fehler', {
+        description: 'Einstellungen konnten nicht gespeichert werden.'
+});
     } finally {
       setSaving(false);
     }

@@ -31,9 +31,9 @@ import { cn } from '@/lib/utils';
 import { MentionNode } from '@/components/nodes/MentionNode';
 import { MentionsPlugin } from '@/components/plugins/MentionsPlugin';
 import { useSpeechDictation } from '@/hooks/useSpeechDictation';
-import { toast } from 'sonner';
 import { SpeechCommandsDialog } from '@/components/shared/SpeechCommandsDialog';
 import { SpeechSessionStats } from '@/components/shared/SpeechSessionStats';
+import { notify } from "@/lib/notify";
 
 interface SimpleRichTextEditorProps {
   /**
@@ -138,7 +138,7 @@ const Toolbar = () => {
   // Show toast on speech errors
   useEffect(() => {
     if (speechError) {
-      toast.error(speechError.message);
+      notify.error(speechError.message);
     }
   }, [speechError]);
 
@@ -285,7 +285,7 @@ const Toolbar = () => {
         size="sm"
         onClick={() => {
           if (!speechSupported) {
-            toast.error('Spracherkennung wird in diesem Browser nicht unterstützt. Bitte verwende Chrome oder Edge.');
+            notify.error('Spracherkennung wird in diesem Browser nicht unterstützt. Bitte verwende Chrome oder Edge.');
             return;
           }
           toggleSpeechRecognition();

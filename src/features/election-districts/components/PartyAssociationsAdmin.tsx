@@ -22,11 +22,11 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { debugConsole } from '@/utils/debugConsole';
 import { Plus, Edit, Trash2, MapPin } from 'lucide-react';
 import { PartyAssociation } from '@/hooks/usePartyAssociations';
 import { useTenant } from '@/hooks/useTenant';
+import { notify } from "@/lib/notify";
 
 interface District {
   id: string;
@@ -77,7 +77,7 @@ export const PartyAssociationsAdmin: React.FC = () => {
       setDistricts(districtsRes.data || []);
     } catch (error) {
       debugConsole.error('Error loading data:', error);
-      toast.error('Fehler beim Laden der Daten');
+      notify.error('Fehler beim Laden der Daten');
     } finally {
       setLoading(false);
     }
@@ -125,12 +125,12 @@ export const PartyAssociationsAdmin: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
-      toast.error('Name ist erforderlich');
+      notify.error('Name ist erforderlich');
       return;
     }
 
     if (!currentTenant?.id) {
-      toast.error('Kein Tenant verfügbar');
+      notify.error('Kein Tenant verfügbar');
       return;
     }
 
@@ -163,14 +163,14 @@ export const PartyAssociationsAdmin: React.FC = () => {
           .eq('id', editingAssociation.id);
 
         if (error) throw error;
-        toast.success('Kreisverband aktualisiert');
+        notify.success('Kreisverband aktualisiert');
       } else {
         const { error } = await supabase
           .from('party_associations')
           .insert(associationData);
 
         if (error) throw error;
-        toast.success('Kreisverband erstellt');
+        notify.success('Kreisverband erstellt');
       }
 
       setIsDialogOpen(false);
@@ -178,7 +178,7 @@ export const PartyAssociationsAdmin: React.FC = () => {
       loadData();
     } catch (error) {
       debugConsole.error('Error saving association:', error);
-      toast.error('Fehler beim Speichern des Kreisverbands');
+      notify.error('Fehler beim Speichern des Kreisverbands');
     }
   };
 
@@ -194,11 +194,11 @@ export const PartyAssociationsAdmin: React.FC = () => {
         .eq('id', id);
 
       if (error) throw error;
-      toast.success('Kreisverband gelöscht');
+      notify.success('Kreisverband gelöscht');
       loadData();
     } catch (error) {
       debugConsole.error('Error deleting association:', error);
-      toast.error('Fehler beim Löschen des Kreisverbands');
+      notify.error('Fehler beim Löschen des Kreisverbands');
     }
   };
 

@@ -24,6 +24,7 @@ import * as RechartsPrimitive from "recharts";
 import { Activity, AlertTriangle, Database, RefreshCw, TrendingUp } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { de } from "date-fns/locale";
+import { notify } from "@/lib/notify";
 
 type TableSize = { table_name: string; total_bytes: number; row_count: number };
 type Growth = TableSize & { delta_bytes: number; delta_pct: number | null };
@@ -68,7 +69,6 @@ const severityVariant = (s: Anomaly["severity"]): "default" | "secondary" | "des
 };
 
 export function PerformanceDashboard(): JSX.Element {
-  const { toast } = useToast();
 
   const metricsQuery = useQuery({
     queryKey: ["egress_metrics"],
@@ -123,14 +123,13 @@ export function PerformanceDashboard(): JSX.Element {
     try {
       const { error } = await supabase.functions.invoke("collect-egress-metrics", { body: {} });
       if (error) throw error;
-      toast({ title: "Sammlung gestartet", description: "Aktuelle Metriken werden erfasst." });
+      notify.success("Sammlung gestartet", { description: "Aktuelle Metriken werden erfasst." 
+});
       void metricsQuery.refetch();
     } catch (e) {
-      toast({
-        title: "Fehler",
-        description: e instanceof Error ? e.message : "Unbekannt",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: e instanceof Error ? e.message : "Unbekannt"
+});
     }
   };
 
@@ -140,7 +139,8 @@ export function PerformanceDashboard(): JSX.Element {
       .update({ acknowledged_at: new Date().toISOString() })
       .eq("id", id);
     if (error) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      notify.error("Fehler", { description: error.message
+});
       return;
     }
     void anomaliesQuery.refetch();

@@ -5,8 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CalendarPlus, Keyboard, Loader2 } from "lucide-react";
 import { useAppointmentRequest } from "@/hooks/useAppointmentRequest";
-import { toast } from "sonner";
-
+import { notify } from "@/lib/notify";
 interface GlobalAppointmentRequestDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -29,12 +28,12 @@ export function GlobalAppointmentRequestDialog({ open, onOpenChange }: GlobalApp
     createRequest,
   } = useAppointmentRequest({
     onSuccess: (message) => {
-      toast.success(message);
+      notify.success(message);
       onOpenChange(false);
     },
     onError: (message, description) => {
       const fullMessage = description ? `${message}: ${description}` : message;
-      toast.error(fullMessage);
+      notify.error(fullMessage);
     },
   });
 

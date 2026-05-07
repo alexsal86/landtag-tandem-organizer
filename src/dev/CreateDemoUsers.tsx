@@ -4,9 +4,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { debugConsole } from '@/utils/debugConsole';
 import { Users, Copy, Eye, EyeOff } from "lucide-react";
+import { notify } from "@/lib/notify";
 
 interface DemoUser {
   email: string;
@@ -27,19 +27,19 @@ export const CreateDemoUsers = () => {
       
       if (error) {
         debugConsole.error('Error creating demo users:', error);
-        toast.error('Fehler beim Erstellen der Demo-Benutzer');
+        notify.error('Fehler beim Erstellen der Demo-Benutzer');
         return;
       }
 
       if (data.success) {
         setCreatedUsers(data.users);
-        toast.success(data.message);
+        notify.success(data.message);
       } else {
-        toast.error('Unbekannter Fehler beim Erstellen der Demo-Benutzer');
+        notify.error('Unbekannter Fehler beim Erstellen der Demo-Benutzer');
       }
     } catch (error) {
       debugConsole.error('Function call error:', error);
-      toast.error('Fehler beim Aufruf der Funktion');
+      notify.error('Fehler beim Aufruf der Funktion');
     } finally {
       setIsCreating(false);
     }
@@ -47,7 +47,7 @@ export const CreateDemoUsers = () => {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast.success('In Zwischenablage kopiert');
+    notify.success('In Zwischenablage kopiert');
   };
 
   const copyAllCredentials = () => {

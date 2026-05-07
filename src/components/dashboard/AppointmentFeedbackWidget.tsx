@@ -16,7 +16,6 @@ import { useAppointmentCategories } from '@/hooks/useAppointmentCategories';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import {
@@ -35,6 +34,7 @@ import SimpleRichTextEditor from '@/components/ui/SimpleRichTextEditor';
 import { AppointmentFeedbackSettings } from './AppointmentFeedbackSettings';
 import { createFeedbackContext } from '@/types/feedbackContext';
 import { AppointmentBriefingView } from '@/components/appointment-preparations/AppointmentBriefingView';
+import { notify } from "@/lib/notify";
 
 interface AppointmentFeedbackWidgetProps {
   widgetSize?: string;
@@ -144,7 +144,8 @@ export const AppointmentFeedbackWidget = ({
 
   const handleSaveNote = async (feedbackId: string, userName: string, appointmentTitle: string) => {
     if (!noteText || noteText === '<p></p>' || noteText.trim() === '') {
-      toast({ title: 'Fehler', description: 'Bitte geben Sie eine Notiz ein.', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Bitte geben Sie eine Notiz ein.'
+});
       return;
     }
     // Wrap note with username prefix
@@ -189,7 +190,8 @@ export const AppointmentFeedbackWidget = ({
 
     setNoteText('');
     setNoteDialogOpen(null);
-    toast({ title: 'Notiz gespeichert', description: 'Die Rückmeldung wurde am Termin gespeichert und alle Mitarbeiter wurden benachrichtigt.' });
+    notify.success('Notiz gespeichert', { description: 'Die Rückmeldung wurde am Termin gespeichert und alle Mitarbeiter wurden benachrichtigt.' 
+});
   };
 
   const handleFileUpload = async (appointmentId: string, feedbackId: string, file: File) => {
@@ -210,12 +212,13 @@ export const AppointmentFeedbackWidget = ({
           completed_at: new Date().toISOString()
         }
       });
-      toast({
-        title: 'Anhang hochgeladen',
+      notify.success('Anhang hochgeladen', {
         description: `${file.name} wurde gespeichert. Sie finden ihn in Ihren Dokumenten.`
-      });
+      
+});
     } catch (error) {
-      toast({ title: 'Upload fehlgeschlagen', description: 'Das Dokument konnte nicht hochgeladen werden.', variant: 'destructive' });
+      notify.error('Upload fehlgeschlagen', { description: 'Das Dokument konnte nicht hochgeladen werden.'
+});
     } finally {
       setIsUploading(false);
       setActiveFileAppointment(null);
@@ -224,7 +227,8 @@ export const AppointmentFeedbackWidget = ({
 
   const handleCreateTask = async (feedbackId: string, appointmentTitle: string) => {
     if (!taskTitle.trim()) {
-      toast({ title: 'Fehler', description: 'Bitte geben Sie einen Aufgabentitel ein.', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Bitte geben Sie einen Aufgabentitel ein.'
+});
       return;
     }
     if (!user?.id || !currentTenant?.id) return;
@@ -297,12 +301,13 @@ export const AppointmentFeedbackWidget = ({
       setTaskPriority('medium');
       setTaskDialogOpen(null);
 
-      toast({
-        title: 'Aufgabe erstellt',
+      notify.success('Aufgabe erstellt', {
         description: `Die Aufgabe wurde erstellt und an alle ${mitarbeiterIds.length} Mitarbeiter zugewiesen.`
-      });
+      
+});
     } catch (error) {
-      toast({ title: 'Fehler', description: 'Die Aufgabe konnte nicht erstellt werden.', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Die Aufgabe konnte nicht erstellt werden.'
+});
     }
   };
 

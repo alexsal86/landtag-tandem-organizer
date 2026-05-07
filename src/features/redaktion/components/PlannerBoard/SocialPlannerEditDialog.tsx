@@ -13,7 +13,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { TagInput } from "@/components/ui/tag-input";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
 import {
   type SocialContentMediaType,
   type SocialContentPlatformStatus,
@@ -43,6 +42,7 @@ import { HashtagSetPicker } from "./HashtagSetPicker";
 import { MarkPublishedDialog } from "./MarkPublishedDialog";
 import { AssetLibraryDialog } from "./AssetLibraryDialog";
 import { ApprovalCommentsTab } from "./ApprovalCommentsTab";
+import { notify } from "@/lib/notify";
 
 export interface SocialPlannerEditDialogProps {
   item: SocialPlannerItem | null;
@@ -57,7 +57,6 @@ export interface SocialPlannerEditDialogProps {
 
 export default function SocialPlannerEditDialog({ item, open, users, channels, campaigns, tagSuggestions, onOpenChange, onSave }: SocialPlannerEditDialogProps) {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [selectedTemplate, setSelectedTemplate] = useState<string>("none");
   const [topic, setTopic] = useState("");
   const [tagsValue, setTagsValue] = useState<string[]>([]);
@@ -168,7 +167,8 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
     if (!item) return;
 
     if (!topic.trim()) {
-      toast({ title: "Thema fehlt", description: "Bitte ein Thema eintragen.", variant: "destructive" });
+      notify.error("Thema fehlt", { description: "Bitte ein Thema eintragen."
+});
       return;
     }
 
@@ -177,7 +177,8 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
       return validateVariant(variantsByChannel[channelId], channelSlug).map((error) => `${channels.find((channel) => channel.id === channelId)?.name || channelId}: ${error}`);
     });
     if (variantErrors.length > 0) {
-      toast({ title: "Varianten unvollständig", description: variantErrors[0], variant: "destructive" });
+      notify.error("Varianten unvollständig", { description: variantErrors[0]
+});
       return;
     }
 
@@ -239,7 +240,7 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
       });
       onOpenChange(false);
     } catch {
-      toast({ title: "Änderungen konnten nicht gespeichert werden", variant: "destructive" });
+      notify.error("Änderungen konnten nicht gespeichert werden");
     } finally {
       setIsSaving(false);
     }
@@ -349,7 +350,7 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
                           onClick={() => {
                             const baseCaption = variant?.caption || "";
                             if (!baseCaption.trim()) {
-                              toast({ title: "Caption ist leer", variant: "destructive" });
+                              notify.error("Caption ist leer");
                               return;
                             }
                             setVariantsByChannel((current) => {
@@ -361,7 +362,7 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
                               });
                               return next;
                             });
-                            toast({ title: "Caption auf alle Kanäle übernommen" });
+                            notify.success("Caption auf alle Kanäle übernommen");
                           }}
                         >
                           <Send className="h-3 w-3 mr-1" />Auf alle Kanäle
@@ -682,10 +683,11 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
                         if (uploadError) throw uploadError;
                         const { data } = supabase.storage.from('documents').getPublicUrl(filePath);
                         setImageUrl(data.publicUrl);
-                        toast({ title: "Bild hochgeladen" });
+                        notify.success("Bild hochgeladen");
                       } catch (err) {
                         console.error("Image upload error:", err);
-                        toast({ title: "Upload fehlgeschlagen", description: String(err instanceof Error ? err.message : err), variant: "destructive" });
+                        notify.error("Upload fehlgeschlagen", { description: String(err instanceof Error ? err.message : err)
+});
                       } finally {
                         setUploadingImage(false);
                       }

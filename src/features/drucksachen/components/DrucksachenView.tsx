@@ -12,8 +12,7 @@ import { ProtocolsList } from '@/components/drucksachen/ProtocolsList';
 import { ProtocolViewer } from '@/components/drucksachen/ProtocolViewer';
 import { ProtocolSearch } from '@/components/drucksachen/ProtocolSearch';
 import { ProtocolAnalytics } from '@/components/drucksachen/ProtocolAnalytics';
-import { toast } from 'sonner';
-
+import { notify } from "@/lib/notify";
 interface Protocol {
   id: string;
   protocol_date: string;
@@ -52,7 +51,7 @@ export function DrucksachenView() {
       setProtocols(data || []);
     } catch (error) {
       debugConsole.error('Error loading protocols:', error);
-      toast.error('Fehler beim Laden der Protokolle');
+      notify.error('Fehler beim Laden der Protokolle');
     } finally {
       setLoading(false);
     }
@@ -66,7 +65,7 @@ export function DrucksachenView() {
   const handleUploadSuccess = (newProtocol: Protocol) => {
     setProtocols(prev => [newProtocol, ...prev]);
     setActiveTab('protocols');
-    toast.success('Protokoll erfolgreich hochgeladen');
+    notify.success('Protokoll erfolgreich hochgeladen');
   };
 
   // Handle protocol selection

@@ -3,7 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { useToast } from "@/hooks/use-toast";
 import {
   Card,
   CardContent,
@@ -41,6 +40,7 @@ import {
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { notify } from "@/lib/notify";
 
 interface AnnualTask {
   id: string;
@@ -131,7 +131,6 @@ const FUNCTION_DESCRIPTIONS: Record<string, { title: string; actions: string[] }
 export function AnnualTasksView() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState<AnnualTaskWithStatus[]>([]);
   const [selectedTask, setSelectedTask] = useState<AnnualTaskWithStatus | null>(null);
@@ -265,11 +264,9 @@ export function AnnualTasksView() {
 
         if (error) {
           debugConsole.error("Function execution error:", error);
-          toast({ 
-            title: "Fehler bei der Ausführung", 
-            description: error.message,
-            variant: "destructive" 
-          });
+          notify.error("Fehler bei der Ausführung", { 
+            description: error.message
+});
           setCompleting(false);
           return;
         }
@@ -305,7 +302,8 @@ export function AnnualTasksView() {
         ? `${result.message || 'Aufgabe erledigt'} (${result.affected_employees || 0} Mitarbeiter betroffen)`
         : "Aufgabe als erledigt markiert";
 
-      toast({ title: "Erfolgreich", description: successMessage });
+      notify.success("Erfolgreich", { description: successMessage 
+});
       
       // Close dialog after short delay to show result
       setTimeout(() => {
@@ -317,7 +315,8 @@ export function AnnualTasksView() {
 
     } catch (error: unknown) {
       debugConsole.error("Error completing task:", error);
-      toast({ title: "Fehler", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+      notify.error("Fehler", { description: error instanceof Error ? error.message : String(error)
+});
     } finally {
       setCompleting(false);
     }
@@ -367,17 +366,15 @@ export function AnnualTasksView() {
       if (error) throw error;
 
       const result = data as ExecutionResult;
-      toast({ 
-        title: "Jahresstatistik erstellt", 
+      notify.success("Jahresstatistik erstellt", { 
         description: `${result.affected_employees || 0} Mitarbeiter wurden aktualisiert.`
-      });
+      
+});
     } catch (error: unknown) {
       debugConsole.error("Error generating stats:", error);
-      toast({ 
-        title: "Fehler", 
-        description: error instanceof Error ? error.message : String(error), 
-        variant: "destructive" 
-      });
+      notify.error("Fehler", { 
+        description: error instanceof Error ? error.message : String(error)
+});
     } finally {
       setGeneratingStats(false);
     }
@@ -396,17 +393,15 @@ export function AnnualTasksView() {
       if (error) throw error;
 
       const result = data as { success: boolean; year: number; affected_employees: number };
-      toast({ 
-        title: `Jahresstatistik ${currentYear - 1} erstellt`, 
+      notify.success(`Jahresstatistik ${currentYear - 1} erstellt`, { 
         description: `${result.affected_employees || 0} Mitarbeiter wurden archiviert.`
-      });
+      
+});
     } catch (error: unknown) {
       debugConsole.error("Error generating previous year stats:", error);
-      toast({ 
-        title: "Fehler", 
-        description: error instanceof Error ? error.message : String(error), 
-        variant: "destructive" 
-      });
+      notify.error("Fehler", { 
+        description: error instanceof Error ? error.message : String(error)
+});
     } finally {
       setGeneratingPreviousStats(false);
     }

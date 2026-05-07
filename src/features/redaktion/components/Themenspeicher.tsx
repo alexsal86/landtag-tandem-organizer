@@ -5,7 +5,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useCurrentProfileId } from "@/hooks/useCurrentProfileId";
-import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/utils/errorHandler";
 import { TopicBacklogEntry, TopicEditorialStatus, useTopicBacklog } from "@/features/redaktion/hooks/useTopicBacklog";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSocialCampaigns } from "@/features/redaktion/hooks/useSocialCampaigns";
+import { notify } from "@/lib/notify";
 
 interface TemplateDefinition {
   key: string;
@@ -49,7 +49,6 @@ interface Props {
 export function Themenspeicher({ onContentCreated }: Props) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const profileId = useCurrentProfileId();
   const { createTopic: createBacklogTopic, topics, loading, channels, loadTopics, updateTopic, deleteTopic } = useTopicBacklog();
   const { campaigns } = useSocialCampaigns();
@@ -166,7 +165,8 @@ export function Themenspeicher({ onContentCreated }: Props) {
     if (itemError) {
       console.error("createFromTopic insert failed:", itemError);
       const msg = getErrorMessage(itemError);
-      toast({ title: "Fehler", description: `Beitrag konnte nicht erstellt werden: ${msg}`, variant: "destructive" });
+      notify.error("Fehler", { description: `Beitrag konnte nicht erstellt werden: ${msg}`
+});
       setIsSubmitting(false);
       return;
     }
@@ -181,11 +181,13 @@ export function Themenspeicher({ onContentCreated }: Props) {
       } as never);
 
       if (channelError) {
-        toast({ title: "Hinweis", description: "Beitrag erstellt, aber Kanal-Verknüpfung fehlgeschlagen.", variant: "destructive" });
+        notify.error("Hinweis", { description: "Beitrag erstellt, aber Kanal-Verknüpfung fehlgeschlagen."
+});
       }
     }
 
-    toast({ title: "Übernommen", description: `Thema wurde als ${selectedTemplate.label.toLowerCase()} in die Redaktionsplanung übernommen.` });
+    notify.success("Übernommen", { description: `Thema wurde als ${selectedTemplate.label.toLowerCase()} in die Redaktionsplanung übernommen.` 
+});
     setSelectedTopic(null);
     resetDialogState();
     setIsSubmitting(false);
@@ -226,7 +228,8 @@ export function Themenspeicher({ onContentCreated }: Props) {
           content_pillar: newTopicContentPillar === "none" ? null : newTopicContentPillar,
         });
 
-        toast({ title: "Aktualisiert", description: "Thema wurde im Themenspeicher aktualisiert." });
+        notify.success("Aktualisiert", { description: "Thema wurde im Themenspeicher aktualisiert." 
+});
       } else {
         await createBacklogTopic({
           topic: newTopicTitle.trim(),
@@ -238,7 +241,8 @@ export function Themenspeicher({ onContentCreated }: Props) {
           content_pillar: newTopicContentPillar === "none" ? null : newTopicContentPillar,
         });
 
-        toast({ title: "Erstellt", description: "Neues Thema wurde im Themenspeicher angelegt." });
+        notify.success("Erstellt", { description: "Neues Thema wurde im Themenspeicher angelegt." 
+});
       }
 
       resetTopicForm();
@@ -248,7 +252,8 @@ export function Themenspeicher({ onContentCreated }: Props) {
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
       const isRls = msg.includes("row-level security") || msg.includes("42501");
-      toast({ title: "Fehler", description: isRls ? "Keine Berechtigung – bitte Rolle prüfen." : msg, variant: "destructive" });
+      notify.error("Fehler", { description: isRls ? "Keine Berechtigung – bitte Rolle prüfen." : msg
+});
     } finally {
       setIsSubmitting(false);
     }
@@ -260,7 +265,8 @@ export function Themenspeicher({ onContentCreated }: Props) {
     setIsSubmitting(true);
     try {
       await deleteTopic(deleteTopicCandidate.id);
-      toast({ title: "Gelöscht", description: "Thema wurde aus dem Themenspeicher entfernt." });
+      notify.success("Gelöscht", { description: "Thema wurde aus dem Themenspeicher entfernt." 
+});
       if (selectedTopic?.id === deleteTopicCandidate.id) {
         setSelectedTopic(null);
         resetDialogState();
@@ -269,7 +275,8 @@ export function Themenspeicher({ onContentCreated }: Props) {
       onContentCreated?.();
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
-      toast({ title: "Fehler", description: msg, variant: "destructive" });
+      notify.error("Fehler", { description: msg
+});
     } finally {
       setIsSubmitting(false);
     }

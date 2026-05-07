@@ -4,8 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Upload, X, File, AlertCircle, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-
+import { notify } from "@/lib/notify";
 interface UploadedFile {
   id?: string;
   file_name: string;
@@ -30,7 +29,6 @@ export function AppointmentPreparationFileUpload({
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
 
   // Load existing files
   useEffect(() => {
@@ -60,11 +58,9 @@ export function AppointmentPreparationFileUpload({
       setFiles(loadedFiles);
     } catch (error) {
       debugConsole.error('Error loading files:', error);
-      toast({
-        title: "Fehler",
-        description: "Dateien konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Dateien konnten nicht geladen werden."
+});
     } finally {
       setLoading(false);
     }
@@ -136,10 +132,9 @@ export function AppointmentPreparationFileUpload({
           } : f
         ));
 
-        toast({
-          title: "Datei hochgeladen",
-          description: `${file.name} wurde erfolgreich hochgeladen.`,
-        });
+        notify.success("Datei hochgeladen", {
+          description: `${file.name} wurde erfolgreich hochgeladen.`
+});
 
       } catch (error) {
         debugConsole.error('Upload error:', error);
@@ -152,11 +147,9 @@ export function AppointmentPreparationFileUpload({
           } : f
         ));
 
-        toast({
-          title: "Upload fehlgeschlagen",
-          description: `${file.name} konnte nicht hochgeladen werden.`,
-          variant: "destructive",
-        });
+        notify.error("Upload fehlgeschlagen", {
+          description: `${file.name} konnte nicht hochgeladen werden.`
+});
       }
     }
 
@@ -181,17 +174,14 @@ export function AppointmentPreparationFileUpload({
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      toast({
-        title: "Download gestartet",
-        description: `${file.file_name} wird heruntergeladen.`,
-      });
+      notify.success("Download gestartet", {
+        description: `${file.file_name} wird heruntergeladen.`
+});
     } catch (error) {
       debugConsole.error('Download error:', error);
-      toast({
-        title: "Download fehlgeschlagen",
-        description: "Die Datei konnte nicht heruntergeladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Download fehlgeschlagen", {
+        description: "Die Datei konnte nicht heruntergeladen werden."
+});
     }
   };
 
@@ -216,17 +206,14 @@ export function AppointmentPreparationFileUpload({
 
       setFiles(prev => prev.filter(f => f.id !== file.id));
 
-      toast({
-        title: "Datei gelöscht",
-        description: `${file.file_name} wurde gelöscht.`,
-      });
+      notify.success("Datei gelöscht", {
+        description: `${file.file_name} wurde gelöscht.`
+});
     } catch (error) {
       debugConsole.error('Delete error:', error);
-      toast({
-        title: "Löschung fehlgeschlagen",
-        description: "Die Datei konnte nicht gelöscht werden.",
-        variant: "destructive",
-      });
+      notify.error("Löschung fehlgeschlagen", {
+        description: "Die Datei konnte nicht gelöscht werden."
+});
     }
   };
 

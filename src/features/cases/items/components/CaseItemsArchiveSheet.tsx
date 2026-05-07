@@ -14,8 +14,8 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
-import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
+import { notify } from "@/lib/notify";
 
 interface ArchivedItem {
   id: string;
@@ -48,7 +48,6 @@ interface CaseItemsArchiveSheetProps {
 
 export function CaseItemsArchiveSheet({ open, onOpenChange, onRestore }: CaseItemsArchiveSheetProps) {
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const [items, setItems] = useState<ArchivedItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [restoringId, setRestoringId] = useState<string | null>(null);
@@ -88,12 +87,14 @@ export function CaseItemsArchiveSheet({ open, onOpenChange, onRestore }: CaseIte
 
       if (error) throw error;
 
-      toast({ title: "Wiederhergestellt", description: "Vorgang wurde wiederhergestellt." });
+      notify.success("Wiederhergestellt", { description: "Vorgang wurde wiederhergestellt." 
+});
       setItems((prev) => prev.filter((i) => i.id !== id));
       onRestore?.();
     } catch (e) {
       debugConsole.error("Error restoring case item:", e);
-      toast({ title: "Fehler", description: "Vorgang konnte nicht wiederhergestellt werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Vorgang konnte nicht wiederhergestellt werden."
+});
     } finally {
       setRestoringId(null);
     }

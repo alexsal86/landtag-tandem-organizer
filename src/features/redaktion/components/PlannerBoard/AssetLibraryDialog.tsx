@@ -5,8 +5,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
 import { useSocialAssets } from "@/features/redaktion/hooks/useSocialAssets";
+import { notify } from "@/lib/notify";
 
 interface AssetLibraryDialogProps {
   open: boolean;
@@ -15,7 +15,6 @@ interface AssetLibraryDialogProps {
 }
 
 export function AssetLibraryDialog({ open, onOpenChange, onSelect }: AssetLibraryDialogProps) {
-  const { toast } = useToast();
   const { assets, loading, allTags, uploadAsset, updateTags } = useSocialAssets();
   const [filterTag, setFilterTag] = useState<string>("all");
   const [uploading, setUploading] = useState(false);
@@ -33,9 +32,10 @@ export function AssetLibraryDialog({ open, onOpenChange, onSelect }: AssetLibrar
       const tags = uploadTags.split(",").map((t) => t.trim()).filter(Boolean);
       await uploadAsset(file, tags);
       setUploadTags("");
-      toast({ title: "Asset hochgeladen" });
+      notify.success("Asset hochgeladen");
     } catch (err) {
-      toast({ title: "Upload fehlgeschlagen", description: String(err instanceof Error ? err.message : err), variant: "destructive" });
+      notify.error("Upload fehlgeschlagen", { description: String(err instanceof Error ? err.message : err)
+});
     } finally {
       setUploading(false);
     }

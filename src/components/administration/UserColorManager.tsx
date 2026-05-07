@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { debugConsole } from '@/utils/debugConsole';
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { notify } from "@/lib/notify";
 
 interface UserProfile {
   user_id: string;
@@ -26,7 +26,6 @@ export const UserColorManager = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
-  const { toast } = useToast();
   const { currentTenant } = useTenant();
 
   const loadUsers = async () => {
@@ -65,11 +64,9 @@ export const UserColorManager = () => {
       setUsers(data || []);
     } catch (error) {
       debugConsole.error('Error loading users:', error);
-      toast({
-        title: "Fehler beim Laden",
-        description: "Benutzer konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler beim Laden", {
+        description: "Benutzer konnten nicht geladen werden."
+});
     } finally {
       setLoading(false);
     }
@@ -93,17 +90,14 @@ export const UserColorManager = () => {
         u.user_id === userId ? { ...u, badge_color: color } : u
       ));
 
-      toast({
-        title: "Farbe aktualisiert",
-        description: "Die Benutzerfarbe wurde erfolgreich gespeichert.",
-      });
+      notify.success("Farbe aktualisiert", {
+        description: "Die Benutzerfarbe wurde erfolgreich gespeichert."
+});
     } catch (error) {
       debugConsole.error('Error updating user color:', error);
-      toast({
-        title: "Fehler",
-        description: "Farbe konnte nicht aktualisiert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Farbe konnte nicht aktualisiert werden."
+});
     } finally {
       setUpdating(null);
     }
@@ -126,17 +120,14 @@ export const UserColorManager = () => {
 
       await loadUsers();
       
-      toast({
-        title: "Farben zugewiesen",
-        description: `${users.length} Benutzern wurden automatisch Farben zugewiesen.`,
-      });
+      notify.success("Farben zugewiesen", {
+        description: `${users.length} Benutzern wurden automatisch Farben zugewiesen.`
+});
     } catch (error) {
       debugConsole.error('Error auto-assigning colors:', error);
-      toast({
-        title: "Fehler",
-        description: "Automatische Farbzuweisung fehlgeschlagen.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Automatische Farbzuweisung fehlgeschlagen."
+});
     } finally {
       setLoading(false);
     }
@@ -154,17 +145,14 @@ export const UserColorManager = () => {
 
       await loadUsers();
       
-      toast({
-        title: "Farben zurückgesetzt",
-        description: "Alle Benutzerfarben wurden entfernt.",
-      });
+      notify.success("Farben zurückgesetzt", {
+        description: "Alle Benutzerfarben wurden entfernt."
+});
     } catch (error) {
       debugConsole.error('Error resetting colors:', error);
-      toast({
-        title: "Fehler",
-        description: "Farben konnten nicht zurückgesetzt werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Farben konnten nicht zurückgesetzt werden."
+});
     } finally {
       setLoading(false);
     }

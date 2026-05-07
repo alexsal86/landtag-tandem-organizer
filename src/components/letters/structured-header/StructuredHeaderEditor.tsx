@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Trash2, Type, Image as ImageIcon, GripVertical, Upload, Plus, FolderOpen, Square, Circle, Minus, LayoutGrid, Keyboard, ArrowUp, ArrowDown } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import type { BlockElement, HeaderElement, ImageElement, ShapeElement, ShapeType, TextElement } from '@/components/canvas-engine/types';
@@ -38,7 +37,6 @@ interface StructuredHeaderEditorProps {
 }
 
 export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ initialElements = [], onElementsChange, actionButtons, layoutSettings, canvasWidthMm, canvasHeightMm, blockKey }) => {
-  const { toast } = useToast();
   const { currentTenant } = useTenant();
   const {
     elements, setElements, applyElements, pushHistorySnapshot, undo, redo, canUndo, canRedo,

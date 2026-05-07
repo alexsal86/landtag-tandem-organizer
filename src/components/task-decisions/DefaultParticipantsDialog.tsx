@@ -15,9 +15,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
 import { useDefaultDecisionSettings } from "@/hooks/useDefaultDecisionSettings";
 import { DecisionTabId, DEFAULT_DECISION_TAB_ORDER } from "@/hooks/useMyWorkSettings";
-import { useToast } from "@/hooks/use-toast";
 import { Settings, Globe, Mail, MessageSquare, Users, ArrowDown, ArrowUp } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { notify } from "@/lib/notify";
 
 interface DefaultParticipantsDialogProps {
   open: boolean;
@@ -43,7 +43,6 @@ const decisionTabLabels: Record<DecisionTabId, string> = {
 
 export function DefaultParticipantsDialog({ open, onOpenChange, decisionTabSettings }: DefaultParticipantsDialogProps) {
   const { settings, setSettings } = useDefaultDecisionSettings();
-  const { toast } = useToast();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<string[]>(settings.participants);
   const [visibleToAll, setVisibleToAll] = useState(settings.visibleToAll);
@@ -127,19 +126,16 @@ export function DefaultParticipantsDialog({ open, onOpenChange, decisionTabSetti
       });
 
       if (!success) {
-        toast({
-          title: "Fehler",
-          description: "Tab-Einstellungen konnten nicht gespeichert werden.",
-          variant: "destructive",
-        });
+        notify.error("Fehler", {
+          description: "Tab-Einstellungen konnten nicht gespeichert werden."
+});
         return;
       }
     }
 
-    toast({
-      title: "Gespeichert",
-      description: "Standard-Einstellungen für neue Entscheidungen gespeichert.",
-    });
+    notify.success("Gespeichert", {
+      description: "Standard-Einstellungen für neue Entscheidungen gespeichert."
+});
     onOpenChange(false);
   };
 

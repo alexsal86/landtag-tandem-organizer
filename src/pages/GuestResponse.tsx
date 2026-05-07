@@ -8,8 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle, XCircle, Calendar, MapPin, Clock, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { debugConsole } from "@/utils/debugConsole";
+import { notify } from "@/lib/notify";
 
 interface AppointmentData {
   id: string;
@@ -117,7 +117,7 @@ function GuestResponse() {
 
       if (error) throw error;
 
-      toast.success(
+      notify.success(
         response === 'confirmed' 
           ? 'Teilnahme bestätigt! Vielen Dank.' 
           : 'Absage registriert. Vielen Dank für Ihre Rückmeldung.'
@@ -128,7 +128,7 @@ function GuestResponse() {
 
     } catch (error: unknown) {
       debugConsole.error('Error submitting response:', error);
-      toast.error('Fehler beim Übermitteln der Antwort');
+      notify.error('Fehler beim Übermitteln der Antwort');
     } finally {
       setSubmitting(false);
     }

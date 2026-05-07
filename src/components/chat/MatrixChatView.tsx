@@ -3,7 +3,6 @@ import { MessageSquare, Settings, Wifi, WifiOff, Loader2, AlertCircle, Search, P
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useMatrixClient } from '@/contexts/MatrixClientContext';
-import { useToast } from '@/hooks/use-toast';
 import { RoomList } from './RoomList';
 import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
@@ -16,9 +15,9 @@ import { ReplyPreview } from './ReplyPreview';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { MatrixReplyPreview } from '@/types/matrix';
+import { notify } from "@/lib/notify";
 
 export function MatrixChatView() {
-  const { toast } = useToast();
   const {
     isConnected,
     isConnecting,
@@ -131,11 +130,9 @@ export function MatrixChatView() {
       await sendMessage(selectedRoomId, message, replyTo?.eventId);
       setReplyTo(null);
     } catch (error) {
-      toast({
-        title: 'Fehler beim Senden',
-        description: error instanceof Error ? error.message : 'Nachricht konnte nicht gesendet werden',
-        variant: 'destructive'
-      });
+      notify.error('Fehler beim Senden', {
+        description: error instanceof Error ? error.message : 'Nachricht konnte nicht gesendet werden'
+});
     }
   }, [selectedRoomId, sendMessage, replyTo, toast]);
 

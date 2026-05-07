@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { ChangeEvent } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/hooks/useTenant';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -28,6 +27,7 @@ import type {
   PreparationStatus,
   TemplateSection,
 } from '@/types/appointmentPreparation';
+import { notify } from "@/lib/notify";
 
 
 interface AppointmentPreparationSidebarProps {
@@ -155,7 +155,6 @@ export default function AppointmentPreparationSidebar({
   const [templates, setTemplates] = useState<AppointmentPreparationTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const { toast } = useToast();
   const { currentTenant } = useTenant();
   const handleSheetOpenChange = (nextOpen: boolean): void => {
     if (!nextOpen) {
@@ -189,11 +188,9 @@ export default function AppointmentPreparationSidebar({
       }
     } catch (error) {
       debugConsole.error('Error fetching preparation:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Vorbereitung konnte nicht geladen werden.',
-        variant: 'destructive',
-      });
+      notify.error('Fehler', {
+        description: 'Vorbereitung konnte nicht geladen werden.'
+});
     } finally {
       setLoading(false);
     }
@@ -266,17 +263,14 @@ export default function AppointmentPreparationSidebar({
       if (data) {
         setPreparation(normalizePreparationRow(data as AppointmentPreparationRow));
       }
-      toast({
-        title: 'Erfolg',
-        description: 'Terminvorbereitung wurde erstellt.',
-      });
+      notify.success('Erfolg', {
+        description: 'Terminvorbereitung wurde erstellt.'
+});
     } catch (error) {
       debugConsole.error('Error creating preparation:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Vorbereitung konnte nicht erstellt werden.',
-        variant: 'destructive',
-      });
+      notify.error('Fehler', {
+        description: 'Vorbereitung konnte nicht erstellt werden.'
+});
     }
   };
 
@@ -297,17 +291,14 @@ export default function AppointmentPreparationSidebar({
 
       if (error) throw error;
 
-      toast({
-        title: 'Erfolg',
-        description: 'Vorbereitung wurde gespeichert.',
-      });
+      notify.success('Erfolg', {
+        description: 'Vorbereitung wurde gespeichert.'
+});
     } catch (error) {
       debugConsole.error('Error saving preparation:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Vorbereitung konnte nicht gespeichert werden.',
-        variant: 'destructive',
-      });
+      notify.error('Fehler', {
+        description: 'Vorbereitung konnte nicht gespeichert werden.'
+});
     } finally {
       setSaving(false);
     }
@@ -424,17 +415,14 @@ export default function AppointmentPreparationSidebar({
       const filename = `Terminvorbereitung_${appointmentTitle?.replace(/[^a-zA-Z0-9]/g, '_') || 'Termin'}_${format(new Date(), 'yyyy-MM-dd', { locale: de })}.pdf`;
       pdf.save(filename);
 
-      toast({
-        title: 'Erfolg',
-        description: 'PDF wurde erfolgreich erstellt und heruntergeladen.',
-      });
+      notify.success('Erfolg', {
+        description: 'PDF wurde erfolgreich erstellt und heruntergeladen.'
+});
     } catch (error) {
       debugConsole.error('Error generating PDF:', error);
-      toast({
-        title: 'Fehler',
-        description: 'PDF konnte nicht erstellt werden.',
-        variant: 'destructive',
-      });
+      notify.error('Fehler', {
+        description: 'PDF konnte nicht erstellt werden.'
+});
     }
   };
 

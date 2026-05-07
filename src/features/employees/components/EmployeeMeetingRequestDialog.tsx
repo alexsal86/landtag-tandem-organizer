@@ -4,17 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { MessageCircle } from "lucide-react";
 import { debugConsole } from "@/utils/debugConsole";
+import { notify } from "@/lib/notify";
 
 export function EmployeeMeetingRequestDialog() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [reason, setReason] = useState("");
@@ -23,11 +22,9 @@ export function EmployeeMeetingRequestDialog() {
   const handleSubmit = async () => {
     if (!user || !currentTenant) return;
     if (!reason.trim()) {
-      toast({
-        title: "Fehler",
-        description: "Bitte geben Sie einen Grund für den Gesprächswunsch an",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Bitte geben Sie einen Grund für den Gesprächswunsch an"
+});
       return;
     }
 
@@ -43,21 +40,18 @@ export function EmployeeMeetingRequestDialog() {
 
       if (error) throw error;
 
-      toast({
-        title: "Gesprächswunsch eingereicht",
-        description: "Ihr Vorgesetzter wurde über Ihren Gesprächswunsch informiert.",
-      });
+      notify.success("Gesprächswunsch eingereicht", {
+        description: "Ihr Vorgesetzter wurde über Ihren Gesprächswunsch informiert."
+});
 
       setOpen(false);
       setReason("");
       setUrgency("medium");
     } catch (error: unknown) {
       debugConsole.error("Error creating meeting request:", error);
-      toast({
-        title: "Fehler",
-        description: error instanceof Error ? error.message : "Gesprächswunsch konnte nicht erstellt werden",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: error instanceof Error ? error.message : "Gesprächswunsch konnte nicht erstellt werden"
+});
     } finally {
       setLoading(false);
     }

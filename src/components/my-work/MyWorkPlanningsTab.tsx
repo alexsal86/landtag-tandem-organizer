@@ -11,17 +11,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import type { EventPlanningCollaborationRow, EventPlanningRow, PlanningCard } from "@/components/my-work/types";
 import { MyWorkEmptyState } from "@/components/my-work/MyWorkEmptyState";
+import { notify } from "@/lib/notify";
 
 export function MyWorkPlanningsTab() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   
@@ -218,11 +217,11 @@ export function MyWorkPlanningsTab() {
       if (error) throw error;
 
       setNewChecklistTitles((prev) => ({ ...prev, [planning.id]: "" }));
-      toast({ title: "Checklisten-Eintrag hinzugefügt" });
+      notify.success("Checklisten-Eintrag hinzugefügt");
       await loadPlannings();
     } catch (error) {
       debugConsole.error("Error adding checklist item:", error);
-      toast({ title: "Fehler beim Hinzufügen", variant: "destructive" });
+      notify.error("Fehler beim Hinzufügen");
     }
   };
 
@@ -238,7 +237,7 @@ export function MyWorkPlanningsTab() {
       await loadPlannings();
     } catch (error) {
       debugConsole.error("Error toggling checklist item:", error);
-      toast({ title: "Fehler beim Aktualisieren", variant: "destructive" });
+      notify.error("Fehler beim Aktualisieren");
     }
   };
 
@@ -255,11 +254,11 @@ export function MyWorkPlanningsTab() {
 
       if (error) throw error;
       
-      toast({ title: isCompleted ? "Planung als erledigt markiert" : "Markierung entfernt" });
+      notify.success(isCompleted ? "Planung als erledigt markiert" : "Markierung entfernt");
       loadPlannings();
     } catch (error) {
       debugConsole.error('Error toggling completed:', error);
-      toast({ title: "Fehler", variant: "destructive" });
+      notify.error("Fehler");
     }
   };
 
@@ -276,11 +275,11 @@ export function MyWorkPlanningsTab() {
 
       if (error) throw error;
       
-      toast({ title: "Planung archiviert" });
+      notify.success("Planung archiviert");
       loadPlannings();
     } catch (error) {
       debugConsole.error('Error archiving planning:', error);
-      toast({ title: "Fehler", variant: "destructive" });
+      notify.error("Fehler");
     }
   };
 

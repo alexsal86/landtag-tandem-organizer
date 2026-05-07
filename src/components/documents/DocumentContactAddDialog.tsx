@@ -4,11 +4,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
 import { useDocumentContacts } from "@/hooks/useDocumentContacts";
 import { useAllPersonContacts } from "@/hooks/useAllPersonContacts";
 import { useStakeholderPreload } from "@/hooks/useStakeholderPreload";
 import { UserPlus } from "lucide-react";
+import { notify } from "@/lib/notify";
 
 interface DocumentContactAddDialogProps {
   documentId: string;
@@ -17,7 +17,6 @@ interface DocumentContactAddDialogProps {
 }
 
 export function DocumentContactAddDialog({ documentId, trigger, onContactAdded }: DocumentContactAddDialogProps) {
-  const { toast } = useToast();
   const { addDocumentContact } = useDocumentContacts(documentId);
   const { personContacts } = useAllPersonContacts();
   const { stakeholders } = useStakeholderPreload();
@@ -31,31 +30,26 @@ export function DocumentContactAddDialog({ documentId, trigger, onContactAdded }
 
   const handleAddContact = async () => {
     if (!selectedContactId) {
-      toast({
-        title: "Fehler",
-        description: "Bitte wählen Sie einen Kontakt aus.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Bitte wählen Sie einen Kontakt aus."
+});
       return;
     }
 
     try {
       await addDocumentContact(selectedContactId, relationshipType, notes || undefined);
-      toast({
-        title: "Kontakt hinzugefügt",
-        description: "Der Kontakt wurde erfolgreich mit dem Dokument verknüpft.",
-      });
+      notify.success("Kontakt hinzugefügt", {
+        description: "Der Kontakt wurde erfolgreich mit dem Dokument verknüpft."
+});
       setShowDialog(false);
       setSelectedContactId("");
       setRelationshipType("related");
       setNotes("");
       onContactAdded?.();
     } catch (error: unknown) {
-      toast({
-        title: "Fehler",
-        description: error instanceof Error ? error.message : String(error),
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: error instanceof Error ? error.message : String(error)
+});
     }
   };
 

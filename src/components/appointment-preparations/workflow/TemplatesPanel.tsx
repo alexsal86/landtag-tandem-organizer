@@ -8,8 +8,8 @@ import {
 } from "@/components/ui/dialog";
 import { BookmarkPlus, Library, Trash2 } from "lucide-react";
 import { usePreparationTemplates } from "@/hooks/usePreparationTemplates";
-import { toast } from "@/hooks/use-toast";
 import type { AppointmentPreparation } from "@/hooks/useAppointmentPreparation";
+import { notify } from "@/lib/notify";
 
 interface Props {
   preparation: AppointmentPreparation;
@@ -26,16 +26,17 @@ export function TemplatesPanel({ preparation, onApply }: Props) {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      toast({ title: "Name fehlt", variant: "destructive" });
+      notify.error("Name fehlt");
       return;
     }
     try {
       await saveAsTemplate({ name: name.trim(), description, anlasstyp, preparation });
-      toast({ title: "Vorlage gespeichert" });
+      notify.success("Vorlage gespeichert");
       setSaveOpen(false);
       setName(""); setDescription(""); setAnlasstyp("");
     } catch (e) {
-      toast({ title: "Fehler", description: "Vorlage konnte nicht gespeichert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Vorlage konnte nicht gespeichert werden."
+});
     }
   };
 
@@ -46,7 +47,8 @@ export function TemplatesPanel({ preparation, onApply }: Props) {
       preparation_data: { ...preparation.preparation_data, ...tpl.preparation_data },
       checklist_items: tpl.checklist_items?.length ? tpl.checklist_items : preparation.checklist_items,
     });
-    toast({ title: "Vorlage angewendet", description: tpl.name });
+    notify.success("Vorlage angewendet", { description: tpl.name 
+});
     setBrowseOpen(false);
   };
 
@@ -92,8 +94,8 @@ export function TemplatesPanel({ preparation, onApply }: Props) {
                       variant="ghost"
                       aria-label="Vorlage löschen"
                       onClick={async () => {
-                        try { await deleteTemplate(t.id); toast({ title: "Gelöscht" }); }
-                        catch { toast({ title: "Fehler", variant: "destructive" }); }
+                        try { await deleteTemplate(t.id); notify.success("Gelöscht"); }
+                        catch { notify.error("Fehler"); }
                       }}
                     >
                       <Trash2 className="h-3.5 w-3.5" />

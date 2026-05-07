@@ -1,12 +1,11 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, CheckSquare, ChevronDown, ChevronUp, Palette, Square } from "lucide-react";
-import { toast } from "sonner";
-
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { notify } from "@/lib/notify";
 
 interface InternalCalendarRow {
   id: string;
@@ -126,11 +125,11 @@ export function CalendarSidebarSources({
         if (error) throw error;
       }
 
-      toast.success(`Farbe für „${calendar.name}“ aktualisiert`);
+      notify.success(`Farbe für „${calendar.name}“ aktualisiert`);
       await invalidateCalendars();
     } catch (error) {
       console.error("Failed to update calendar color", error);
-      toast.error("Die Kalenderfarbe konnte nicht gespeichert werden");
+      notify.error("Die Kalenderfarbe konnte nicht gespeichert werden");
     } finally {
       setSavingIds((prev) => {
         const next = new Set(prev);

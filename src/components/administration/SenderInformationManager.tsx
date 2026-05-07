@@ -12,8 +12,8 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, Building, Star, MapPin, Phone, Globe } from "lucide-react";
+import { notify } from "@/lib/notify";
 
 interface SenderFormData {
   name: string;
@@ -81,7 +81,6 @@ function SenderFormField({ label, value, onChange, type = "text", placeholder }:
 
 export function SenderInformationManager() {
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const [senderInfos, setSenderInfos] = useState<SenderInformationRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
@@ -105,7 +104,8 @@ export function SenderInformationManager() {
       if (error) throw error;
       setSenderInfos(data || []);
     } catch (error: unknown) {
-      toast({ title: "Fehler", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+      notify.error("Fehler", { description: error instanceof Error ? error.message : String(error)
+});
     } finally {
       setLoading(false);
     }
@@ -183,7 +183,7 @@ export function SenderInformationManager() {
       if (editingInfo) {
         const { error } = await supabase.from('sender_information').update(payload).eq('id', editingInfo.id);
         if (error) throw error;
-        toast({ title: "Absender aktualisiert" });
+        notify.success("Absender aktualisiert");
       } else {
         const { error } = await supabase.from('sender_information').insert([{
           ...payload,
@@ -192,13 +192,14 @@ export function SenderInformationManager() {
           created_by: user.id,
         }]);
         if (error) throw error;
-        toast({ title: "Absender erstellt" });
+        notify.success("Absender erstellt");
       }
       setShowDialog(false);
       setEditingInfo(null);
       fetchSenderInfos();
     } catch (error: unknown) {
-      toast({ title: "Fehler", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+      notify.error("Fehler", { description: error instanceof Error ? error.message : String(error)
+});
     } finally {
       setLoading(false);
     }
@@ -208,11 +209,12 @@ export function SenderInformationManager() {
     try {
       const { error } = await supabase.from('sender_information').update({ is_active: false }).eq('id', id);
       if (error) throw error;
-      toast({ title: "Absender gelöscht" });
+      notify.success("Absender gelöscht");
       setDeleteConfirmId(null);
       fetchSenderInfos();
     } catch (error: unknown) {
-      toast({ title: "Fehler", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+      notify.error("Fehler", { description: error instanceof Error ? error.message : String(error)
+});
     }
   };
 
@@ -222,10 +224,11 @@ export function SenderInformationManager() {
       await supabase.from('sender_information').update({ is_default: false }).eq('tenant_id', currentTenant.id).eq('is_active', true);
       const { error } = await supabase.from('sender_information').update({ is_default: true }).eq('id', id);
       if (error) throw error;
-      toast({ title: "Standard-Absender gesetzt" });
+      notify.success("Standard-Absender gesetzt");
       fetchSenderInfos();
     } catch (error: unknown) {
-      toast({ title: "Fehler", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+      notify.error("Fehler", { description: error instanceof Error ? error.message : String(error)
+});
     }
   };
 

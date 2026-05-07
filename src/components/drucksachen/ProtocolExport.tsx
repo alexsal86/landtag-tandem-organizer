@@ -9,8 +9,7 @@ import {
   Database 
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-
+import { notify } from "@/lib/notify";
 interface ProtocolExportProps {
   protocolId: string;
   protocolTitle: string;
@@ -64,10 +63,10 @@ export function ProtocolExport({ protocolId, protocolTitle }: ProtocolExportProp
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      toast.success('JSON-Export erfolgreich erstellt');
+      notify.success('JSON-Export erfolgreich erstellt');
     } catch (error) {
       debugConsole.error('Error exporting JSON:', error);
-      toast.error('Fehler beim JSON-Export');
+      notify.error('Fehler beim JSON-Export');
     } finally {
       setIsExporting(false);
     }
@@ -109,10 +108,10 @@ export function ProtocolExport({ protocolId, protocolTitle }: ProtocolExportProp
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      toast.success('CSV-Export erfolgreich erstellt');
+      notify.success('CSV-Export erfolgreich erstellt');
     } catch (error) {
       debugConsole.error('Error exporting CSV:', error);
-      toast.error('Fehler beim CSV-Export');
+      notify.error('Fehler beim CSV-Export');
     } finally {
       setIsExporting(false);
     }
@@ -145,11 +144,11 @@ export function ProtocolExport({ protocolId, protocolTitle }: ProtocolExportProp
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
-        toast.success('PDF-Download gestartet');
+        notify.success('PDF-Download gestartet');
       }
     } catch (error) {
       debugConsole.error('Error downloading PDF:', error);
-      toast.error('Fehler beim PDF-Download');
+      notify.error('Fehler beim PDF-Download');
     } finally {
       setIsExporting(false);
     }

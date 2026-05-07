@@ -16,8 +16,7 @@ import { NoteCard } from "@/components/shared/NoteCard";
 import { NoteDialogs } from "@/components/shared/NoteDialogs";
 import { useTopicBacklog } from "@/features/redaktion/hooks/useTopicBacklog";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-
+import { notify } from "@/lib/notify";
 // Type for archived info from database (JSON)
 type ArchivedInfo = { id: string; title: string; archived_at: string } | null;
 
@@ -132,7 +131,7 @@ export function QuickNotesList({
 
   const ensureTopicBacklogLink = async (note: QuickNote) => {
     if (!hook.user?.id) {
-      toast.error("Nicht angemeldet");
+      notify.error("Nicht angemeldet");
       return null;
     }
 
@@ -143,7 +142,7 @@ export function QuickNotesList({
     const { topicTitle, shortDescription } = buildTopicPayload(note);
 
     if (!topicTitle) {
-      toast.error("Die Notiz enthält keinen übernehmbaren Titel");
+      notify.error("Die Notiz enthält keinen übernehmbaren Titel");
       return null;
     }
 
@@ -174,11 +173,11 @@ export function QuickNotesList({
       }
 
       await hook.loadNotes();
-      toast.success("Notiz in den Themenspeicher kopiert");
+      notify.success("Notiz in den Themenspeicher kopiert");
       return createdTopic.id;
     } catch (error) {
       console.error("Error transferring quick note to themenspeicher:", error);
-      toast.error("Notiz konnte nicht in den Themenspeicher kopiert werden");
+      notify.error("Notiz konnte nicht in den Themenspeicher kopiert werden");
       return null;
     } finally {
       setTopicActionNoteId(null);
@@ -214,10 +213,10 @@ export function QuickNotesList({
       }
 
       await hook.loadNotes();
-      toast.success("Notiz in den Themenspeicher verschoben");
+      notify.success("Notiz in den Themenspeicher verschoben");
     } catch (error) {
       console.error("Error moving quick note to themenspeicher:", error);
-      toast.error("Notiz konnte nicht in den Themenspeicher verschoben werden");
+      notify.error("Notiz konnte nicht in den Themenspeicher verschoben werden");
     } finally {
       setTopicActionNoteId(null);
     }

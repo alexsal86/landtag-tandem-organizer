@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
 import { debugConsole } from '@/utils/debugConsole';
+import { notify } from "@/lib/notify";
 
 export interface KnowledgeDocument {
   id: string;
@@ -96,7 +96,6 @@ export const parseKnowledgeContent = (raw: string | null | undefined): LexicalCh
 
 export function useKnowledgeData() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const navigate = useNavigate();
 
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
@@ -160,7 +159,8 @@ export function useKnowledgeData() {
       } else { setDocuments([]); }
     } catch (error) {
       debugConsole.error('Error fetching documents:', error);
-      toast({ title: "Fehler beim Laden der Dokumente", description: "Die Dokumente konnten nicht geladen werden.", variant: "destructive" });
+      notify.error("Fehler beim Laden der Dokumente", { description: "Die Dokumente konnten nicht geladen werden."
+});
     } finally { setLoading(false); }
   }, [user, hydrateDocuments, fetchAllDocumentTopics, toast]);
 
@@ -205,7 +205,8 @@ export function useKnowledgeData() {
       if (newDoc.selectedTopics.length > 0) {
         await supabase.from('knowledge_document_topics').insert(newDoc.selectedTopics.map(t => ({ document_id: data.id, topic_id: t })));
       }
-      toast({ title: "Dokument erstellt", description: "Das neue Dokument wurde erfolgreich erstellt." });
+      notify.success("Dokument erstellt", { description: "Das neue Dokument wurde erfolgreich erstellt." 
+});
       const parsed = parseKnowledgeContent(data.content);
       const doc = {
         ...data,
@@ -222,7 +223,8 @@ export function useKnowledgeData() {
       navigate(`/knowledge/${data.id}`, { replace: true });
     } catch (error) {
       debugConsole.error('Error creating document:', error);
-      toast({ title: "Fehler beim Erstellen", description: "Das Dokument konnte nicht erstellt werden.", variant: "destructive" });
+      notify.error("Fehler beim Erstellen", { description: "Das Dokument konnte nicht erstellt werden."
+});
     }
   };
 
@@ -234,7 +236,8 @@ export function useKnowledgeData() {
       if (error) throw error;
       await setTopicsFn(topicIds);
       setHasUnsavedChanges(false);
-      toast({ title: "Gespeichert", description: "Das Dokument wurde gespeichert." });
+      notify.success("Gespeichert", { description: "Das Dokument wurde gespeichert." 
+});
       setSelectedDocument(prev => prev ? {
         ...prev,
         content: persistedContent,
@@ -244,22 +247,26 @@ export function useKnowledgeData() {
       } : null);
     } catch (error) {
       debugConsole.error('Error saving document:', error);
-      toast({ title: "Fehler beim Speichern", description: "Das Dokument konnte nicht gespeichert werden.", variant: "destructive" });
+      notify.error("Fehler beim Speichern", { description: "Das Dokument konnte nicht gespeichert werden."
+});
     }
   };
 
   const handleToggleLock = async () => {
     if (!selectedDocument || !user) return;
-    if (selectedDocument.created_by !== user.id) { toast({ title: "Keine Berechtigung", description: "Nur der Ersteller kann den Sperrstatus ändern.", variant: "destructive" }); return; }
+    if (selectedDocument.created_by !== user.id) { notify.error("Keine Berechtigung", { description: "Nur der Ersteller kann den Sperrstatus ändern."
+}); return; }
     try {
       const newLock = !selectedDocument.is_locked;
       const { error } = await supabase.from('knowledge_documents').update({ is_locked: newLock }).eq('id', selectedDocument.id);
       if (error) throw error;
       setSelectedDocument(prev => prev ? { ...prev, is_locked: newLock } : null);
       setDocuments(prev => prev.map(d => d.id === selectedDocument.id ? { ...d, is_locked: newLock } : d));
-      toast({ title: newLock ? "Dokument gesperrt" : "Dokument entsperrt", description: newLock ? "Das Dokument ist jetzt schreibgeschützt." : "Das Dokument kann jetzt bearbeitet werden." });
+      notify.success(newLock ? "Dokument gesperrt" : "Dokument entsperrt", { description: newLock ? "Das Dokument ist jetzt schreibgeschützt." : "Das Dokument kann jetzt bearbeitet werden." 
+});
     } catch (error) {
-      toast({ title: "Fehler", description: "Der Sperrstatus konnte nicht geändert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Der Sperrstatus konnte nicht geändert werden."
+});
     }
   };
 
@@ -267,10 +274,12 @@ export function useKnowledgeData() {
     try {
       const { error } = await supabase.from('knowledge_documents').delete().eq('id', docId);
       if (error) throw error;
-      toast({ title: "Dokument gelöscht", description: "Das Dokument wurde erfolgreich gelöscht." });
+      notify.success("Dokument gelöscht", { description: "Das Dokument wurde erfolgreich gelöscht." 
+});
       if (selectedDocument?.id === docId) navigate('/knowledge', { replace: true });
     } catch (error) {
-      toast({ title: "Fehler beim Löschen", description: "Das Dokument konnte nicht gelöscht werden.", variant: "destructive" });
+      notify.error("Fehler beim Löschen", { description: "Das Dokument konnte nicht gelöscht werden."
+});
     }
   };
 

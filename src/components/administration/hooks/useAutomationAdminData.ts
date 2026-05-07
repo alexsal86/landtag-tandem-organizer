@@ -10,6 +10,7 @@ import {
   toAutomationRunStepRecordView,
   type AutomationRuleMutationPayload,
 } from "../automationShared";
+import { notify } from "@/lib/notify";
 
 const automationKeys = {
   membership: (tenantId: string, userId: string) => ["automation-admin", tenantId, "membership", userId] as const,
@@ -110,7 +111,6 @@ export function useAutomationRunSteps(runId?: string) {
 
 export function useAutomationAdminMutations(tenantId?: string, userId?: string) {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   const invalidateAll = async () => {
     if (!tenantId) return;
@@ -181,10 +181,9 @@ export function useAutomationAdminMutations(tenantId?: string, userId?: string) 
       if (error) throw error;
     },
     onSuccess: async (_, variables) => {
-      toast({
-        title: variables.dryRun ? "Dry-Run erstellt" : "Regel ausgeführt",
-        description: variables.dryRun ? "Ausführung wurde in der Historie protokolliert." : "Die Ausführung wurde protokolliert.",
-      });
+      notify.success(variables.dryRun ? "Dry-Run erstellt" : "Regel ausgeführt", {
+        description: variables.dryRun ? "Ausführung wurde in der Historie protokolliert." : "Die Ausführung wurde protokolliert."
+});
       await invalidateAll();
     },
   });

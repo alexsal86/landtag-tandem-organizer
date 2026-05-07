@@ -8,7 +8,6 @@ import { Calendar, Users, CheckSquare, Clock, FileText, Phone, AlertCircle, Circ
 import { DashboardWidget as WidgetType } from '@/hooks/useDashboardLayout';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import { MessageSystem } from '@/components/messages/MessageSystem';
 import { BlackBoard } from '@/features/dashboard/components/BlackBoard';
@@ -21,6 +20,7 @@ import { CallLogWidget } from '@/components/widgets/CallLogWidget';
 import { QuickActionsWidget } from '@/components/widgets/QuickActionsWidget';
 import { AppointmentFeedbackWidget } from '@/components/dashboard/AppointmentFeedbackWidget';
 import { StakeholderNetworkWidget } from '@/components/dashboard/StakeholderNetworkWidget';
+import { notify } from "@/lib/notify";
 
 interface WidgetProps {
   widget: WidgetType;
@@ -179,7 +179,6 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
   const [showOverlayMenu, setShowOverlayMenu] = useState(false);
   
   const { user } = useAuth();
-  const { toast } = useToast();
 
   // Helper function to check if a date is overdue
   const isOverdue = (dueDate: string) => {
@@ -488,10 +487,10 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
                                       snoozed_until: snoozeDate + 'T00:00:00.000Z'
                                     });
                                   loadAssignedTasksAndSubtasks();
-                                  toast({
-                                    title: "Wiedervorlage gesetzt",
+                                  notify.success("Wiedervorlage gesetzt", {
                                     description: `${isTask ? 'Aufgabe' : 'Unteraufgabe'} wird bis ${new Date(snoozeDate).toLocaleDateString('de-DE')} ausgeblendet.`
-                                  });
+                                  
+});
                                 } catch (error) {
                                   debugConsole.error('Error setting snooze:', error);
                                 }

@@ -7,8 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Filter, X, Calendar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-
+import { notify } from "@/lib/notify";
 interface SearchResult {
   id: string;
   type: 'agenda_item' | 'speech' | 'session';
@@ -68,7 +67,7 @@ export function ProtocolSearch({ protocolId, onResultSelect }: ProtocolSearchPro
 
   const performSearch = async () => {
     if (!searchTerm.trim()) {
-      toast.error('Bitte geben Sie einen Suchbegriff ein');
+      notify.error('Bitte geben Sie einen Suchbegriff ein');
       return;
     }
 
@@ -149,13 +148,13 @@ export function ProtocolSearch({ protocolId, onResultSelect }: ProtocolSearchPro
       setResults(searchResults);
       
       if (searchResults.length === 0) {
-        toast.info('Keine Ergebnisse gefunden');
+        notify.info('Keine Ergebnisse gefunden');
       } else {
-        toast.success(`${searchResults.length} Ergebnisse gefunden`);
+        notify.success(`${searchResults.length} Ergebnisse gefunden`);
       }
     } catch (error) {
       debugConsole.error('Error performing search:', error);
-      toast.error('Fehler bei der Suche');
+      notify.error('Fehler bei der Suche');
     } finally {
       setIsSearching(false);
     }

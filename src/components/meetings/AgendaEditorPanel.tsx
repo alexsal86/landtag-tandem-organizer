@@ -21,9 +21,9 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { SUBPOINT_OPTIONS } from "@/components/meetings/types";
 import type { AgendaItem, Meeting, Profile, LinkedQuickNote, LinkedTask, LinkedCaseItem, RelevantDecision, AgendaDocument } from "@/components/meetings/types";
+import { notify } from "@/lib/notify";
 
 interface AgendaEditorPanelProps {
   selectedMeeting: Meeting;
@@ -61,7 +61,6 @@ export function AgendaEditorPanel({
   onToggleVisibility, onDragEnd, onUploadAgendaDocument, onDeleteAgendaDocument,
   onSetAgendaItems, meetingLinkedTasks, meetingLinkedCaseItems, meetingRelevantDecisions,
 }: AgendaEditorPanelProps) {
-  const { toast } = useToast();
   const [editingField, setEditingField] = useState<Record<string, 'description' | 'notes' | null>>({});
   const [collapsedMainItems, setCollapsedMainItems] = useState<Record<string, boolean>>({});
 
@@ -107,11 +106,9 @@ export function AgendaEditorPanel({
       delete: 'Lösch-Fehler',
     };
 
-    toast({
-      title: titleText[action],
-      description: actionText[action],
-      variant: 'destructive',
-    });
+    notify.error(titleText[action], {
+      description: actionText[action]
+});
   };
 
   const persistAgendaItemIfNeeded = async (item: AgendaItem, index: number) => {
@@ -156,7 +153,8 @@ export function AgendaEditorPanel({
       try {
         const itemId = await persistAgendaItemIfNeeded(item, index);
         await onUploadAgendaDocument(itemId, file);
-        toast({ title: 'Dokument hochgeladen', description: 'Das Dokument wurde erfolgreich hinzugefügt.' });
+        notify.success('Dokument hochgeladen', { description: 'Das Dokument wurde erfolgreich hinzugefügt.' 
+});
       } catch (error) {
         showDocumentActionError('upload', error);
       }

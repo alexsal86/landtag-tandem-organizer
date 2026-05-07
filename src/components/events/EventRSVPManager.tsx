@@ -15,10 +15,10 @@ import { Users, Plus, Mail, Send, Check, X, AlertCircle, Clock, Bell, MessageSqu
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/hooks/useTenant';
 import { ContactSelector } from '@/features/contacts/components/ContactSelector';
 import { debugConsole } from '@/utils/debugConsole';
+import { notify } from "@/lib/notify";
 
 interface EventRSVP {
   id: string;
@@ -96,7 +96,6 @@ function computePublicLinkExpiry(confirmedDate: string | null | undefined): stri
 }
 
 export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManagerProps) => {
-  const { toast } = useToast();
   const { currentTenant } = useTenant();
   const [rsvps, setRsvps] = useState<EventRSVP[]>([]);
   const [publicLinksByRsvpId, setPublicLinksByRsvpId] = useState<Record<string, PublicInvitationLink | null>>({});
@@ -228,12 +227,13 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
 
   const addFromContact = (contact: { name: string; email?: string | null }) => {
     if (!contact.email) {
-      toast({ title: 'Keine E-Mail', description: 'Kontakt hat keine E-Mail-Adresse.', variant: 'destructive' });
+      notify.error('Keine E-Mail', { description: 'Kontakt hat keine E-Mail-Adresse.'
+});
       return;
     }
     const email = contact.email;
     if (pendingInvites.find((p) => p.email === email) || rsvps.find((r) => r.email === email)) {
-      toast({ title: 'Bereits vorhanden', variant: 'destructive' });
+      notify.error('Bereits vorhanden');
       return;
     }
     setPendingInvites((prev) => [...prev, { name: contact.name, email }]);
@@ -244,7 +244,8 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
       const { data: members } = await supabase.from('distribution_list_members').select('contact_id').eq('distribution_list_id', listId);
 
       if (!members?.length) {
-        toast({ title: 'Leere Liste', description: 'Die Verteilerliste hat keine Mitglieder.', variant: 'destructive' });
+        notify.error('Leere Liste', { description: 'Die Verteilerliste hat keine Mitglieder.'
+});
         return;
       }
 
@@ -260,7 +261,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
         added++;
       });
 
-      toast({ title: `${added} Kontakt(e) hinzugefügt` });
+      notify.success(`${added} Kontakt(e) hinzugefügt`);
       setSelectedDistList('');
     } catch (e) {
       debugConsole.error('Error loading distribution list members:', e);
@@ -270,7 +271,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
   const addExternalEmail = () => {
     if (!newEmail) return;
     if (pendingInvites.find((p) => p.email === newEmail) || rsvps.find((r) => r.email === newEmail)) {
-      toast({ title: 'Bereits vorhanden', variant: 'destructive' });
+      notify.error('Bereits vorhanden');
       return;
     }
     setPendingInvites((prev) => [...prev, { name: newEmail.split('@')[0], email: newEmail }]);
@@ -320,13 +321,15 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
       const { error: insertError } = await supabase.from('event_rsvps').insert(rsvpData);
       if (insertError) throw insertError;
 
-      toast({ title: 'Vorgemerkt', description: `${pendingInvites.length} Gast/Gäste vorgemerkt. Einladungen können später versendet werden.` });
+      notify.success('Vorgemerkt', { description: `${pendingInvites.length} Gast/Gäste vorgemerkt. Einladungen können später versendet werden.` 
+});
       setPendingInvites([]);
       setDialogOpen(false);
       await loadRSVPs();
     } catch (error) {
       debugConsole.error('Error saving draft:', error);
-      toast({ title: 'Fehler', description: 'Vormerken fehlgeschlagen.', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Vormerken fehlgeschlagen.'
+});
     } finally {
       setSending(false);
     }
@@ -362,14 +365,16 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
           .in('id', idsToSend);
       }
 
-      toast({ title: 'Einladungen versendet', description: `${idsToSend?.length || pendingInvites.length} Einladung(en) wurden versendet.` });
+      notify.success('Einladungen versendet', { description: `${idsToSend?.length || pendingInvites.length} Einladung(en) wurden versendet.` 
+});
       setPendingInvites([]);
       setDialogOpen(false);
       setShowEmailEditor(false);
       await loadRSVPs();
     } catch (error) {
       debugConsole.error('Error sending invitations:', error);
-      toast({ title: 'Fehler', description: 'Einladungen konnten nicht versendet werden.', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Einladungen konnten nicht versendet werden.'
+});
     } finally {
       setSending(false);
     }
@@ -378,7 +383,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
   const sendUnsentInvitations = async () => {
     const unsent = rsvps.filter((r) => !r.invitation_sent);
     if (unsent.length === 0) {
-      toast({ title: 'Keine ausstehenden Einladungen' });
+      notify.success('Keine ausstehenden Einladungen');
       return;
     }
     await sendInvitations(unsent.map((r) => r.id));
@@ -411,12 +416,14 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
           .eq('id', id);
       }
 
-      toast({ title: 'Erinnerung versendet', description: `${reminderTargetIds.length} Erinnerung(en) versendet.` });
+      notify.success('Erinnerung versendet', { description: `${reminderTargetIds.length} Erinnerung(en) versendet.` 
+});
       setReminderDialogOpen(false);
       await loadRSVPs();
     } catch (error) {
       debugConsole.error('Error sending reminder:', error);
-      toast({ title: 'Fehler', description: 'Erinnerung konnte nicht versendet werden.', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Erinnerung konnte nicht versendet werden.'
+});
     } finally {
       setSendingReminder(false);
     }
@@ -438,15 +445,15 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
       const { error: insertError } = await supabase.from('event_rsvp_public_links').insert({ event_rsvp_id: rsvp.id, expires_at: expiresAt });
       if (insertError) throw insertError;
 
-      toast({
-        title: 'Öffentlicher Link neu generiert',
-        description: `Der bisherige Link für ${rsvp.name} wurde gesperrt und ein neuer Link unter alexander-salomon.de erzeugt.`,
-      });
+      notify.success('Öffentlicher Link neu generiert', {
+        description: `Der bisherige Link für ${rsvp.name} wurde gesperrt und ein neuer Link unter alexander-salomon.de erzeugt.`
+});
 
       await loadRSVPs();
     } catch (error) {
       debugConsole.error('Error regenerating public invitation link:', error);
-      toast({ title: 'Fehler', description: 'Öffentlicher Link konnte nicht neu generiert werden.', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Öffentlicher Link konnte nicht neu generiert werden.'
+});
     } finally {
       setActionRsvpId(null);
     }
@@ -463,15 +470,15 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
 
       if (error) throw error;
 
-      toast({
-        title: 'Öffentlicher Link deaktiviert',
-        description: `Der öffentliche Einladungslink für ${rsvp.name} wurde gesperrt. Gäste sehen damit keinen aktiven Plattform-Link mehr.`,
-      });
+      notify.success('Öffentlicher Link deaktiviert', {
+        description: `Der öffentliche Einladungslink für ${rsvp.name} wurde gesperrt. Gäste sehen damit keinen aktiven Plattform-Link mehr.`
+});
 
       await loadRSVPs();
     } catch (error) {
       debugConsole.error('Error revoking public invitation link:', error);
-      toast({ title: 'Fehler', description: 'Öffentlicher Link konnte nicht deaktiviert werden.', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Öffentlicher Link konnte nicht deaktiviert werden.'
+});
     } finally {
       setActionRsvpId(null);
     }
@@ -483,15 +490,15 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
       await sendEventEmails({ rsvpIds: [rsvp.id], type: 'invitation', customMessage: customEmailText });
       await supabase.from('event_rsvps').update({ invitation_sent: true, invited_at: new Date().toISOString() }).eq('id', rsvp.id);
 
-      toast({
-        title: 'Einladung erneut versendet',
-        description: `Die Einladung an ${rsvp.name} wurde erneut über alexander-salomon.de verschickt.`,
-      });
+      notify.success('Einladung erneut versendet', {
+        description: `Die Einladung an ${rsvp.name} wurde erneut über alexander-salomon.de verschickt.`
+});
 
       await loadRSVPs();
     } catch (error) {
       debugConsole.error('Error resending invitation:', error);
-      toast({ title: 'Fehler', description: 'Einladung konnte nicht erneut versendet werden.', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Einladung konnte nicht erneut versendet werden.'
+});
     } finally {
       setActionRsvpId(null);
     }
@@ -504,7 +511,8 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
       const targetStatuses = noteTarget === 'everyone' ? ['accepted', 'tentative'] : [noteTarget];
       const targetRsvps = rsvps.filter((r) => targetStatuses.includes(r.status));
       if (targetRsvps.length === 0) {
-        toast({ title: 'Keine Empfänger', description: 'Keine Gäste mit dem gewählten Status.', variant: 'destructive' });
+        notify.error('Keine Empfänger', { description: 'Keine Gäste mit dem gewählten Status.'
+});
         setSendingNote(false);
         return;
       }
@@ -520,13 +528,15 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
         await supabase.from('event_rsvps').update({ notes_sent: [...existingNotes, noteEntry] }).eq('id', rsvp.id);
       }
 
-      toast({ title: 'Hinweis versendet', description: `${targetRsvps.length} Nachricht(en) versendet.` });
+      notify.success('Hinweis versendet', { description: `${targetRsvps.length} Nachricht(en) versendet.` 
+});
       setNoteDialogOpen(false);
       setNoteText('');
       await loadRSVPs();
     } catch (error) {
       debugConsole.error('Error sending note:', error);
-      toast({ title: 'Fehler', description: 'Hinweis konnte nicht versendet werden.', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Hinweis konnte nicht versendet werden.'
+});
     } finally {
       setSendingNote(false);
     }
@@ -537,7 +547,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
       const { error } = await supabase.from('event_rsvps').delete().eq('id', rsvpId);
       if (error) throw error;
       setRsvps((prev) => prev.filter((r) => r.id !== rsvpId));
-      toast({ title: 'Einladung entfernt' });
+      notify.success('Einladung entfernt');
     } catch (error) {
       debugConsole.error('Error deleting RSVP:', error);
     }

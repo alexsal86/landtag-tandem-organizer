@@ -6,10 +6,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2, Smile, Meh, Frown, ListPlus, BellRing } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { AppointmentPreparation } from "@/hooks/useAppointmentPreparation";
+import { notify } from "@/lib/notify";
 
 interface DebriefPanelProps {
   preparation: AppointmentPreparation;
@@ -28,7 +28,6 @@ interface OpenPoint {
 }
 
 export function DebriefPanel({ preparation, appointmentId, onUpdate }: DebriefPanelProps) {
-  const { toast } = useToast();
   const { user } = useAuth();
   const data = preparation.preparation_data ?? {};
   const [summary, setSummary] = useState(data.debrief_summary ?? "");
@@ -82,9 +81,10 @@ export function DebriefPanel({ preparation, appointmentId, onUpdate }: DebriefPa
       updatePoint(point.id, { task_created: true });
       const next = openPoints.map((p) => (p.id === point.id ? { ...p, task_created: true } : p));
       await persist({ debrief_open_points: next });
-      toast({ title: "Aufgabe erstellt" });
+      notify.success("Aufgabe erstellt");
     } catch (e) {
-      toast({ title: "Fehler", description: "Aufgabe konnte nicht erstellt werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Aufgabe konnte nicht erstellt werden."
+});
     }
   };
 
@@ -109,9 +109,10 @@ export function DebriefPanel({ preparation, appointmentId, onUpdate }: DebriefPa
       if (error) throw error;
       setFollowupScheduled(true);
       await persist({ debrief_followup_scheduled: true });
-      toast({ title: "Erfolgs-Check in 4 Wochen geplant" });
+      notify.success("Erfolgs-Check in 4 Wochen geplant");
     } catch (e) {
-      toast({ title: "Fehler", description: "Reminder konnte nicht erstellt werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Reminder konnte nicht erstellt werden."
+});
     }
   };
 
@@ -119,7 +120,7 @@ export function DebriefPanel({ preparation, appointmentId, onUpdate }: DebriefPa
     setSaving(true);
     try {
       await persist();
-      toast({ title: "Nachbereitung gespeichert" });
+      notify.success("Nachbereitung gespeichert");
     } finally {
       setSaving(false);
     }

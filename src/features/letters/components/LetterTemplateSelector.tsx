@@ -12,11 +12,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
 import LetterTemplateManager from '@/features/letters/components/LetterTemplateManager';
 import { debugConsole } from '@/utils/debugConsole';
 import type { Database } from '@/integrations/supabase/types';
 import type { LetterTemplate } from '@/components/letters/types';
+import { notify } from "@/lib/notify";
 
 type SenderInfo = Pick<Database['public']['Tables']['sender_information']['Row'], 'id' | 'name' | 'organization' | 'is_default'>;
 type InformationBlock = Pick<Database['public']['Tables']['information_blocks']['Row'], 'id' | 'name' | 'label' | 'is_default'>;
@@ -32,7 +32,6 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
 }) => {
   const { currentTenant } = useTenant();
   const { user } = useAuth();
-  const { toast } = useToast();
   
   const [templates, setTemplates] = useState<LetterTemplate[]>([]);
   const [senderInfos, setSenderInfos] = useState<SenderInfo[]>([]);
@@ -74,11 +73,9 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
       setTemplates(data || []);
     } catch (error) {
       debugConsole.error('Error fetching templates:', error);
-      toast({
-        title: "Fehler",
-        description: "Templates konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Templates konnten nicht geladen werden."
+});
     } finally {
       setLoading(false);
     }
@@ -139,10 +136,9 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
 
       if (error) throw error;
 
-      toast({
-        title: "Template erstellt",
-        description: "Das neue Template wurde erfolgreich erstellt.",
-      });
+      notify.success("Template erstellt", {
+        description: "Das neue Template wurde erfolgreich erstellt."
+});
 
       setShowCreateDialog(false);
       setNewTemplate({
@@ -156,11 +152,9 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
       fetchTemplates();
     } catch (error) {
       debugConsole.error('Error creating template:', error);
-      toast({
-        title: "Fehler",
-        description: "Template konnte nicht erstellt werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Template konnte nicht erstellt werden."
+});
     }
   };
 

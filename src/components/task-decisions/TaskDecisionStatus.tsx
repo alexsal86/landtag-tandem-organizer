@@ -6,8 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Check, X, MessageCircle, Archive } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-
+import { notify } from "@/lib/notify";
 interface TaskDecisionStatusProps {
   taskId: string;
   createdBy: string;
@@ -38,7 +37,6 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
   const [decisions, setDecisions] = useState<DecisionWithResponses[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const { toast } = useToast();
 
   useEffect(() => {
     loadDecisions();
@@ -141,19 +139,16 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
 
       if (error) throw error;
 
-      toast({
-        title: "Erfolgreich",
-        description: "Entscheidung wurde archiviert.",
-      });
+      notify.success("Erfolgreich", {
+        description: "Entscheidung wurde archiviert."
+});
 
       loadDecisions();
     } catch (error) {
       debugConsole.error('Error archiving decision:', error);
-      toast({
-        title: "Fehler",
-        description: "Entscheidung konnte nicht archiviert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Entscheidung konnte nicht archiviert werden."
+});
     } finally {
       setIsLoading(false);
     }

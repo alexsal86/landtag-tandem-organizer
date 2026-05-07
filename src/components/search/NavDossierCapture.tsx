@@ -4,8 +4,8 @@ import { useCreateEntry } from "@/features/dossiers/hooks/useDossierEntries";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useCurrentProfileId } from "@/hooks/useCurrentProfileId";
-import { toast } from "sonner";
 import { isEmailFile, isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, buildEmlFromOutlookHtml } from "@/utils/emlParser";
+import { notify } from "@/lib/notify";
 
 const URL_REGEX = /^https?:\/\//i;
 
@@ -76,7 +76,7 @@ export function NavDossierCapture() {
         });
       }
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Upload fehlgeschlagen");
+      notify.error(err instanceof Error ? err.message : "Upload fehlgeschlagen");
     } finally {
       setUploading(false);
     }
@@ -117,9 +117,9 @@ export function NavDossierCapture() {
             content: parsed.textBody || parsed.htmlBody || "",
             metadata,
           });
-          toast.success("E-Mail aus Outlook eingefügt");
+          notify.success("E-Mail aus Outlook eingefügt");
         } catch {
-          toast.error("E-Mail konnte nicht verarbeitet werden");
+          notify.error("E-Mail konnte nicht verarbeitet werden");
         }
       }
     }

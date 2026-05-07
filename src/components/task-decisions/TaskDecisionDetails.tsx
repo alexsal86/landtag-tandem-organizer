@@ -12,7 +12,6 @@ import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { Check, X, MessageCircle, Send, Archive, History, Paperclip, Vote, CheckCircle2, XCircle, HelpCircle, Reply, Edit, CornerDownRight, CalendarDays } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { ResponseHistoryTimeline } from "./ResponseHistoryTimeline";
 import { CommentThread, CommentData } from "./CommentThread";
 import { DecisionFileUpload } from "./DecisionFileUpload";
@@ -33,6 +32,7 @@ import {
   type Participant,
   type TaskDecisionDetailsProps,
 } from "./taskDecisionDetails/types";
+import { notify } from "@/lib/notify";
 
 export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, highlightCommentId = null, highlightResponseId = null }: TaskDecisionDetailsProps) => {
   const [decision, setDecision] = useState<DecisionDetailsState | null>(null);
@@ -52,7 +52,6 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
   const [meetingSelectorOpen, setMeetingSelectorOpen] = useState(false);
   const [activeHighlightCommentId, setActiveHighlightCommentId] = useState<string | null>(null);
   const [activeHighlightResponseId, setActiveHighlightResponseId] = useState<string | null>(null);
-  const { toast } = useToast();
 
   useEffect(() => {
     getCurrentUser();
@@ -110,10 +109,9 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
       if (decisionError) throw decisionError;
       
       if (!decisionData) {
-        toast({
-          title: "Info",
-          description: "Diese Entscheidung ist nicht mehr verfügbar.",
-        });
+        notify.success("Info", {
+          description: "Diese Entscheidung ist nicht mehr verfügbar."
+});
         onClose();
         return;
       }
@@ -271,11 +269,9 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
       setParticipants(formattedParticipants);
     } catch (error) {
       debugConsole.error('Error loading decision details:', error);
-      toast({
-        title: "Fehler",
-        description: "Entscheidungsdetails konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Entscheidungsdetails konnten nicht geladen werden."
+});
     }
   };
 
@@ -292,20 +288,17 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
 
       if (error) throw error;
 
-      toast({
-        title: "Erfolgreich",
-        description: "Antwort wurde gesendet.",
-      });
+      notify.success("Erfolgreich", {
+        description: "Antwort wurde gesendet."
+});
 
       setCreatorResponses(prev => ({ ...prev, [responseId]: '' }));
       loadDecisionDetails();
     } catch (error) {
       debugConsole.error('Error sending creator response:', error);
-      toast({
-        title: "Fehler",
-        description: "Antwort konnte nicht gesendet werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Antwort konnte nicht gesendet werden."
+});
     } finally {
       setIsLoading(false);
     }
@@ -329,13 +322,15 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
 
       if (error) throw error;
 
-      toast({ title: "Erfolgreich", description: "Antwort wurde gesendet." });
+      notify.success("Erfolgreich", { description: "Antwort wurde gesendet." 
+});
       setReplyText("");
       setReplyingToId(null);
       loadDecisionDetails();
     } catch (error) {
       debugConsole.error('Error sending participant reply:', error);
-      toast({ title: "Fehler", description: "Antwort konnte nicht gesendet werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Antwort konnte nicht gesendet werden."
+});
     } finally {
       setIsLoading(false);
     }
@@ -396,21 +391,18 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
         }
       }
 
-      toast({
-        title: 'Erfolg',
-        description: 'Diskussionsbeitrag wurde hinzugefügt.',
-      });
+      notify.success('Erfolg', {
+        description: 'Diskussionsbeitrag wurde hinzugefügt.'
+});
 
       setNewComment('');
       setNewCommentEditorKey((prev) => prev + 1);
       await loadDecisionDetails();
     } catch (error) {
       debugConsole.error('Error submitting comment:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Kommentar konnte nicht gespeichert werden.',
-        variant: 'destructive',
-      });
+      notify.error('Fehler', {
+        description: 'Kommentar konnte nicht gespeichert werden.'
+});
     } finally {
       setIsCommentSubmitting(false);
     }
@@ -432,15 +424,13 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
 
       if (error) throw error;
 
-      toast({ title: 'Kommentar aktualisiert' });
+      notify.success('Kommentar aktualisiert');
       await loadDecisionDetails();
     } catch (error) {
       debugConsole.error('Error updating comment:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Kommentar konnte nicht bearbeitet werden.',
-        variant: 'destructive',
-      });
+      notify.error('Fehler', {
+        description: 'Kommentar konnte nicht bearbeitet werden.'
+});
     }
   };
 
@@ -466,15 +456,13 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
         if (error) throw error;
       }
 
-      toast({ title: hasReplies ? 'Kommentar als gelöscht markiert' : 'Kommentar gelöscht' });
+      notify.success(hasReplies ? 'Kommentar als gelöscht markiert' : 'Kommentar gelöscht');
       await loadDecisionDetails();
     } catch (error) {
       debugConsole.error('Error deleting comment:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Kommentar konnte nicht gelöscht werden.',
-        variant: 'destructive',
-      });
+      notify.error('Fehler', {
+        description: 'Kommentar konnte nicht gelöscht werden.'
+});
     }
   };
 
@@ -495,10 +483,9 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
       if (error) throw error;
 
       // Erfolg melden BEVOR optionale Operationen laufen
-      toast({
-        title: "Erfolgreich",
-        description: "Entscheidung wurde archiviert.",
-      });
+      notify.success("Erfolgreich", {
+        description: "Entscheidung wurde archiviert."
+});
 
       onArchived?.();
       onClose();
@@ -515,11 +502,9 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
       }
     } catch (error) {
       debugConsole.error('Error archiving decision:', error);
-      toast({
-        title: "Fehler",
-        description: "Entscheidung konnte nicht archiviert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Entscheidung konnte nicht archiviert werden."
+});
     } finally {
       setIsLoading(false);
     }
@@ -535,10 +520,12 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
         .eq('id', decision.id);
       if (error) throw error;
       setDecision((prev) => prev ? { ...prev, meeting_id: meetingId, pending_for_jour_fixe: false } : prev);
-      toast({ title: "Zugeordnet", description: "Entscheidung wurde dem Jour Fixe zugeordnet." });
+      notify.success("Zugeordnet", { description: "Entscheidung wurde dem Jour Fixe zugeordnet." 
+});
     } catch (error) {
       debugConsole.error('Error assigning to meeting:', error);
-      toast({ title: "Fehler", description: "Zuordnung fehlgeschlagen.", variant: "destructive" });
+      notify.error("Fehler", { description: "Zuordnung fehlgeschlagen."
+});
     }
     setMeetingSelectorOpen(false);
   };
@@ -552,10 +539,12 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
         .eq('id', decision.id);
       if (error) throw error;
       setDecision((prev) => prev ? { ...prev, meeting_id: null, pending_for_jour_fixe: true } : prev);
-      toast({ title: "Vorgemerkt", description: "Entscheidung wurde für den nächsten Jour Fixe vorgemerkt." });
+      notify.success("Vorgemerkt", { description: "Entscheidung wurde für den nächsten Jour Fixe vorgemerkt." 
+});
     } catch (error) {
       debugConsole.error('Error marking for jour fixe:', error);
-      toast({ title: "Fehler", description: "Vormerkung fehlgeschlagen.", variant: "destructive" });
+      notify.error("Fehler", { description: "Vormerkung fehlgeschlagen."
+});
     }
     setMeetingSelectorOpen(false);
   };

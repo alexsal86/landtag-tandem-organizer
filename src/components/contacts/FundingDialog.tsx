@@ -11,8 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
 import { ContactSelector } from "@/features/contacts/components/ContactSelector";
+import { notify } from "@/lib/notify";
 
 interface FundingFormData {
   title: string;
@@ -50,16 +50,13 @@ export function FundingDialog({ open, onOpenChange, initialContactId }: FundingD
   const { currentTenant } = useTenant();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   const onSubmit = async (data: FundingFormData) => {
     if (!currentTenant || !user) return;
     if (participants.length === 0) {
-      toast({
-        title: "Fehler",
-        description: "Bitte mindestens einen Teilnehmer hinzufügen",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Bitte mindestens einen Teilnehmer hinzufügen"
+});
       return;
     }
 
@@ -99,21 +96,18 @@ export function FundingDialog({ open, onOpenChange, initialContactId }: FundingD
 
       if (participantsError) throw participantsError;
 
-      toast({
-        title: "Erfolg",
-        description: "Förderung erfolgreich erstellt",
-      });
+      notify.success("Erfolg", {
+        description: "Förderung erfolgreich erstellt"
+});
       queryClient.invalidateQueries({ queryKey: ['contact-fundings'] });
       reset();
       setParticipants(initialContactId ? [{ contact_id: initialContactId }] : []);
       onOpenChange(false);
     } catch (error) {
       debugConsole.error('Error creating funding:', error);
-      toast({
-        title: "Fehler",
-        description: "Fehler beim Erstellen der Förderung",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Fehler beim Erstellen der Förderung"
+});
     } finally {
       setLoading(false);
     }

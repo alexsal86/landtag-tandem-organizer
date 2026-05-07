@@ -9,8 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
-import { useToast } from "@/hooks/use-toast";
-
+import { notify } from "@/lib/notify";
 interface ChecklistItemEmailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -26,7 +25,6 @@ export function ChecklistItemEmailDialog({
   checklistItemTitle,
   onSaved,
 }: ChecklistItemEmailDialogProps) {
-  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
   const [isEnabled, setIsEnabled] = useState(true);
@@ -87,11 +85,9 @@ export function ChecklistItemEmailDialog({
 
   const handleSave = async () => {
     if (recipients.length === 0) {
-      toast({
-        title: "Fehler",
-        description: "Mindestens ein Empfänger muss angegeben werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Mindestens ein Empfänger muss angegeben werden."
+});
       return;
     }
 
@@ -131,20 +127,17 @@ export function ChecklistItemEmailDialog({
         if (error) throw error;
       }
 
-      toast({
-        title: "Erfolg",
-        description: "E-Mail-Automatisierung wurde gespeichert.",
-      });
+      notify.success("Erfolg", {
+        description: "E-Mail-Automatisierung wurde gespeichert."
+});
 
       onSaved();
       onOpenChange(false);
     } catch (error: unknown) {
       debugConsole.error("Error saving email action:", error);
-      toast({
-        title: "Fehler",
-        description: "E-Mail-Automatisierung konnte nicht gespeichert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "E-Mail-Automatisierung konnte nicht gespeichert werden."
+});
     } finally {
       setLoading(false);
     }
@@ -162,20 +155,17 @@ export function ChecklistItemEmailDialog({
 
       if (error) throw error;
 
-      toast({
-        title: "Erfolg",
-        description: "E-Mail-Automatisierung wurde gelöscht.",
-      });
+      notify.success("Erfolg", {
+        description: "E-Mail-Automatisierung wurde gelöscht."
+});
 
       onSaved();
       onOpenChange(false);
     } catch (error: unknown) {
       debugConsole.error("Error deleting email action:", error);
-      toast({
-        title: "Fehler",
-        description: "E-Mail-Automatisierung konnte nicht gelöscht werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "E-Mail-Automatisierung konnte nicht gelöscht werden."
+});
     } finally {
       setLoading(false);
     }

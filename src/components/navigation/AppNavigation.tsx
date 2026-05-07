@@ -88,6 +88,7 @@ import type {
   NavigationProps,
   UpcomingAppointmentItem,
 } from "./appNavigation/types";
+import { notify } from "@/lib/notify";
 
 // Available pages for quick access
 const availableQuickPages: QuickAccessPage[] = [
@@ -119,7 +120,6 @@ export function AppNavigation({
   const { user, signOut } = useAuth();
   const { currentStatus, getStatusDisplay } = useUserStatus();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const navigate = useNavigate();
   
   // Appointment request hook
@@ -133,8 +133,10 @@ export function AppNavigation({
     resetForm: resetRequestForm,
     createRequest,
   } = useAppointmentRequest({
-    onSuccess: (message, description) => toast({ title: message, description }),
-    onError: (message, description) => toast({ title: message, description, variant: 'destructive' }),
+    onSuccess: (message, description) => notify.success(message, { description 
+}),
+    onError: (message, description) => notify.error(message, { description
+}),
   });
   const [isQuickRequestOpen, setIsQuickRequestOpen] = useState(false);
   
@@ -284,10 +286,12 @@ export function AppNavigation({
   const handleSignOut = async () => {
     try {
       await signOut();
-      toast({ title: 'Erfolgreich abgemeldet', description: 'Sie wurden erfolgreich abgemeldet.' });
+      notify.success('Erfolgreich abgemeldet', { description: 'Sie wurden erfolgreich abgemeldet.' 
+});
       navigate('/auth');
     } catch {
-      toast({ title: 'Fehler beim Abmelden', description: 'Ein Fehler ist beim Abmelden aufgetreten.', variant: 'destructive' });
+      notify.error('Fehler beim Abmelden', { description: 'Ein Fehler ist beim Abmelden aufgetreten.'
+});
     }
   };
 

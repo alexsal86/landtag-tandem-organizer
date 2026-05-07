@@ -14,8 +14,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { useToast } from '@/hooks/use-toast';
 import type { MatrixCreateRoomOptions } from '@/types/matrix';
+import { notify } from "@/lib/notify";
 
 interface CreateRoomDialogProps {
   onCreateRoom: (options: MatrixCreateRoomOptions) => Promise<string>;
@@ -23,7 +23,6 @@ interface CreateRoomDialogProps {
 }
 
 export function CreateRoomDialog({ onCreateRoom, trigger }: CreateRoomDialogProps) {
-  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [name, setName] = useState('');
@@ -34,11 +33,9 @@ export function CreateRoomDialog({ onCreateRoom, trigger }: CreateRoomDialogProp
 
   const handleCreate = async (): Promise<void> => {
     if (!name.trim()) {
-      toast({
-        title: 'Name erforderlich',
-        description: 'Bitte geben Sie einen Namen für den Raum ein.',
-        variant: 'destructive',
-      });
+      notify.error('Name erforderlich', {
+        description: 'Bitte geben Sie einen Namen für den Raum ein.'
+});
       return;
     }
 
@@ -57,10 +54,9 @@ export function CreateRoomDialog({ onCreateRoom, trigger }: CreateRoomDialogProp
         inviteUserIds: inviteUserIds.length > 0 ? inviteUserIds : undefined,
       });
 
-      toast({
-        title: 'Raum erstellt',
-        description: `"${name}" wurde erfolgreich erstellt.`,
-      });
+      notify.success('Raum erstellt', {
+        description: `"${name}" wurde erfolgreich erstellt.`
+});
 
       // Reset form
       setName('');
@@ -70,11 +66,9 @@ export function CreateRoomDialog({ onCreateRoom, trigger }: CreateRoomDialogProp
       setInviteUsers('');
       setOpen(false);
     } catch (error) {
-      toast({
-        title: 'Fehler',
-        description: error instanceof Error ? error.message : 'Raum konnte nicht erstellt werden',
-        variant: 'destructive',
-      });
+      notify.error('Fehler', {
+        description: error instanceof Error ? error.message : 'Raum konnte nicht erstellt werden'
+});
     } finally {
       setIsCreating(false);
     }

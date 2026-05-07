@@ -6,11 +6,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
 import { useDocumentContacts } from "@/hooks/useDocumentContacts";
 import { X, Building2, User, Mail, Phone, Edit } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DocumentContactAddDialog } from "./DocumentContactAddDialog";
+import { notify } from "@/lib/notify";
 
 interface DocumentContactManagerProps {
   documentId: string;
@@ -18,23 +18,19 @@ interface DocumentContactManagerProps {
 }
 
 export function DocumentContactManager({ documentId, compact = false }: DocumentContactManagerProps) {
-  const { toast } = useToast();
   const { documentContacts, removeDocumentContact, updateDocumentContact } = useDocumentContacts(documentId);
   const [editingContactId, setEditingContactId] = useState<string | null>(null);
 
   const handleRemoveContact = async (documentContactId: string) => {
     try {
       await removeDocumentContact(documentContactId);
-      toast({
-        title: "Kontakt entfernt",
-        description: "Die Verknüpfung wurde erfolgreich entfernt.",
-      });
+      notify.success("Kontakt entfernt", {
+        description: "Die Verknüpfung wurde erfolgreich entfernt."
+});
     } catch (error: unknown) {
-      toast({
-        title: "Fehler",
-        description: error instanceof Error ? error.message : String(error),
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: error instanceof Error ? error.message : String(error)
+});
     }
   };
 

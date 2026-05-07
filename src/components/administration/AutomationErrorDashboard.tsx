@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertTriangle, Loader2, RefreshCw, RotateCcw } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
+import { notify } from "@/lib/notify";
 
 interface FailedRun {
   id: string;
@@ -27,7 +28,6 @@ interface AutomationErrorDashboardProps {
 
 export function AutomationErrorDashboard({ onRetrigger }: AutomationErrorDashboardProps) {
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const [failedRuns, setFailedRuns] = useState<FailedRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [retrying, setRetrying] = useState<string | null>(null);
@@ -45,7 +45,8 @@ export function AutomationErrorDashboard({ onRetrigger }: AutomationErrorDashboa
       .limit(50);
 
     if (error) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      notify.error("Fehler", { description: error.message
+});
       setLoading(false);
       return;
     }
@@ -94,11 +95,12 @@ export function AutomationErrorDashboard({ onRetrigger }: AutomationErrorDashboa
 
     setRetrying(null);
     if (error) {
-      toast({ title: "Retry fehlgeschlagen", description: error.message, variant: "destructive" });
+      notify.error("Retry fehlgeschlagen", { description: error.message
+});
       return;
     }
 
-    toast({ title: "Regel erneut ausgeführt" });
+    notify.success("Regel erneut ausgeführt");
     loadFailedRuns();
     onRetrigger?.();
   };

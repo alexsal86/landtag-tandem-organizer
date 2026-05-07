@@ -9,14 +9,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
-import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useMatrixClient } from '@/contexts/MatrixClientContext';
+import { notify } from "@/lib/notify";
 
 export function MatrixLoginForm() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const {
     isConnected,
     connect,
@@ -89,21 +88,17 @@ export function MatrixLoginForm() {
   const handlePasswordLogin = async () => {
     const trimmedUserId = matrixUserId.trim();
     if (!trimmedUserId || !trimmedUserId.startsWith('@') || !trimmedUserId.includes(':')) {
-      toast({
-        title: 'Ungültige Matrix User ID',
-        description: 'Format: @benutzername:server.tld',
-        variant: 'destructive',
-      });
+      notify.error('Ungültige Matrix User ID', {
+        description: 'Format: @benutzername:server.tld'
+});
       return;
     }
 
     const loginPassword = password.trim();
     if (!loginPassword) {
-      toast({
-        title: 'Fehler',
-        description: 'Bitte geben Sie Ihr Passwort ein',
-        variant: 'destructive',
-      });
+      notify.error('Fehler', {
+        description: 'Bitte geben Sie Ihr Passwort ein'
+});
       return;
     }
 
@@ -173,17 +168,14 @@ export function MatrixLoginForm() {
         { uiaPassword: loginPassword },
       );
 
-      toast({
-        title: 'Angemeldet',
-        description: `Verbunden als ${confirmedUserId}`,
-      });
+      notify.success('Angemeldet', {
+        description: `Verbunden als ${confirmedUserId}`
+});
     } catch (error) {
       debugConsole.error('Matrix password login failed:', error instanceof Error ? error.message : 'Unbekannter Fehler');
-      toast({
-        title: 'Anmeldung fehlgeschlagen',
-        description: error instanceof Error ? error.message : 'Login konnte nicht durchgeführt werden',
-        variant: 'destructive',
-      });
+      notify.error('Anmeldung fehlgeschlagen', {
+        description: error instanceof Error ? error.message : 'Login konnte nicht durchgeführt werden'
+});
     } finally {
       setIsLoggingIn(false);
     }
@@ -191,19 +183,23 @@ export function MatrixLoginForm() {
 
   const validateInputs = () => {
     if (!matrixUserId.trim()) {
-      toast({ title: 'Fehler', description: 'Bitte geben Sie Ihre Matrix User ID ein', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Bitte geben Sie Ihre Matrix User ID ein'
+});
       return false;
     }
     if (!matrixUserId.startsWith('@') || !matrixUserId.includes(':')) {
-      toast({ title: 'Ungültige Matrix User ID', description: 'Format: @benutzername:server.tld', variant: 'destructive' });
+      notify.error('Ungültige Matrix User ID', { description: 'Format: @benutzername:server.tld'
+});
       return false;
     }
     if (!accessToken.trim()) {
-      toast({ title: 'Fehler', description: 'Bitte geben Sie Ihren Access Token ein', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Bitte geben Sie Ihren Access Token ein'
+});
       return false;
     }
     if (!homeserverUrl.trim() || !homeserverUrl.startsWith('http')) {
-      toast({ title: 'Ungültige Homeserver URL', description: 'Format: https://matrix.example.org', variant: 'destructive' });
+      notify.error('Ungültige Homeserver URL', { description: 'Format: https://matrix.example.org'
+});
       return false;
     }
     return true;
@@ -240,7 +236,8 @@ export function MatrixLoginForm() {
         localStorage.removeItem(`matrix_recovery_key:${sanitizedUserId}`);
       }
 
-      toast({ title: 'Gespeichert', description: 'Matrix-Zugangsdaten wurden gespeichert' });
+      notify.success('Gespeichert', { description: 'Matrix-Zugangsdaten wurden gespeichert' 
+});
 
       await connect({
         userId: matrixUserId.trim(),
@@ -250,7 +247,8 @@ export function MatrixLoginForm() {
       });
     } catch (error) {
       debugConsole.error('Error saving Matrix credentials:', error);
-      toast({ title: 'Fehler', description: 'Zugangsdaten konnten nicht gespeichert werden', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Zugangsdaten konnten nicht gespeichert werden'
+});
     } finally {
       setIsSaving(false);
     }
@@ -271,15 +269,14 @@ export function MatrixLoginForm() {
       });
       await new Promise(resolve => setTimeout(resolve, 2000));
       setTestResult('success');
-      toast({ title: 'Test erfolgreich', description: 'Verbindung zu Matrix wurde hergestellt' });
+      notify.success('Test erfolgreich', { description: 'Verbindung zu Matrix wurde hergestellt' 
+});
     } catch (error) {
       debugConsole.error('Matrix connection test failed:', error);
       setTestResult('error');
-      toast({
-        title: 'Test fehlgeschlagen',
-        description: error instanceof Error ? error.message : 'Verbindung konnte nicht hergestellt werden',
-        variant: 'destructive',
-      });
+      notify.error('Test fehlgeschlagen', {
+        description: error instanceof Error ? error.message : 'Verbindung konnte nicht hergestellt werden'
+});
     } finally {
       setIsTesting(false);
     }
@@ -287,21 +284,22 @@ export function MatrixLoginForm() {
 
   const handleStartVerification = async () => {
     if (!isConnected) {
-      toast({ title: 'Nicht verbunden', description: 'Bitte zuerst mit Matrix verbinden.', variant: 'destructive' });
+      notify.error('Nicht verbunden', { description: 'Bitte zuerst mit Matrix verbinden.'
+});
       return;
     }
     setIsStartingVerification(true);
     try {
       await requestSelfVerification(verificationTargetDeviceId.trim() || undefined);
-      toast({
-        title: 'Verifizierung gestartet',
-        description: 'Öffnen Sie Ihren zweiten Element-Login und bestätigen Sie die Geräte-Verifizierung.',
-      });
+      notify.success('Verifizierung gestartet', {
+        description: 'Öffnen Sie Ihren zweiten Element-Login und bestätigen Sie die Geräte-Verifizierung.'
+});
     } catch (error) {
       const description = error instanceof Error
         ? `${error.message} Falls der Fehler bleibt: Chat einmal trennen, Browserdaten für diese App löschen und erneut verbinden.`
         : 'Verifizierung konnte nicht gestartet werden';
-      toast({ title: 'Verifizierung fehlgeschlagen', description, variant: 'destructive' });
+      notify.error('Verifizierung fehlgeschlagen', { description
+});
     } finally {
       setIsStartingVerification(false);
     }
@@ -309,20 +307,20 @@ export function MatrixLoginForm() {
 
   const handleDisconnect = () => {
     disconnect();
-    toast({ title: 'Getrennt', description: 'Matrix-Verbindung wurde getrennt' });
+    notify.success('Getrennt', { description: 'Matrix-Verbindung wurde getrennt' 
+});
   };
 
   const handleConfirmSas = async () => {
     setIsConfirmingSas(true);
     try {
       await confirmSasVerification();
-      toast({ title: 'Verifizierung bestätigt', description: 'Emoji-Code bestätigt. Die Geräte werden als vertrauenswürdig markiert.' });
+      notify.success('Verifizierung bestätigt', { description: 'Emoji-Code bestätigt. Die Geräte werden als vertrauenswürdig markiert.' 
+});
     } catch (error) {
-      toast({
-        title: 'Bestätigung fehlgeschlagen',
-        description: error instanceof Error ? error.message : 'Emoji-Verifizierung konnte nicht bestätigt werden',
-        variant: 'destructive',
-      });
+      notify.error('Bestätigung fehlgeschlagen', {
+        description: error instanceof Error ? error.message : 'Emoji-Verifizierung konnte nicht bestätigt werden'
+});
     } finally {
       setIsConfirmingSas(false);
     }
@@ -330,7 +328,8 @@ export function MatrixLoginForm() {
 
   const handleRejectSas = () => {
     rejectSasVerification();
-    toast({ title: 'Verifizierung abgebrochen', description: 'Die Emoji-Codes haben nicht übereingestimmt.', variant: 'destructive' });
+    notify.error('Verifizierung abgebrochen', { description: 'Die Emoji-Codes haben nicht übereingestimmt.'
+});
   };
 
   return (
@@ -551,16 +550,13 @@ export function MatrixLoginForm() {
                   setIsStartingVerification(true);
                   try {
                     await resetCryptoStore();
-                    toast({
-                      title: 'Crypto zurückgesetzt',
-                      description: 'Der Verschlüsselungs-Speicher wurde gelöscht und die Verbindung neu aufgebaut. Bitte starten Sie die Geräte-Verifizierung erneut.',
-                    });
+                    notify.success('Crypto zurückgesetzt', {
+                      description: 'Der Verschlüsselungs-Speicher wurde gelöscht und die Verbindung neu aufgebaut. Bitte starten Sie die Geräte-Verifizierung erneut.'
+});
                   } catch (error) {
-                    toast({
-                      title: 'Fehler',
-                      description: error instanceof Error ? error.message : 'Crypto-Reset fehlgeschlagen',
-                      variant: 'destructive',
-                    });
+                    notify.error('Fehler', {
+                      description: error instanceof Error ? error.message : 'Crypto-Reset fehlgeschlagen'
+});
                   } finally {
                     setIsStartingVerification(false);
                   }

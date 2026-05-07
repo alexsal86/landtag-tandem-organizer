@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
+import { notify } from "@/lib/notify";
 
 const SETTINGS_KEY = "stakeholder_network_tag_synonyms";
 
@@ -23,7 +23,6 @@ const DEFAULT_SYNONYMS: Record<string, string> = {
 
 export function StakeholderNetworkTagSettings() {
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -43,11 +42,9 @@ export function StakeholderNetworkTagSettings() {
         .maybeSingle();
 
       if (error) {
-        toast({
-          title: "Fehler",
-          description: "Tag-Synonyme konnten nicht geladen werden.",
-          variant: "destructive",
-        });
+        notify.error("Fehler", {
+          description: "Tag-Synonyme konnten nicht geladen werden."
+});
         setLoading(false);
         return;
       }
@@ -98,14 +95,13 @@ export function StakeholderNetworkTagSettings() {
 
       if (error) throw error;
 
-      toast({ title: "Gespeichert", description: "Tag-Synonyme wurden aktualisiert." });
+      notify.success("Gespeichert", { description: "Tag-Synonyme wurden aktualisiert." 
+});
     } catch (error) {
       debugConsole.error("Error saving stakeholder network tag synonyms:", error);
-      toast({
-        title: "Fehler",
-        description: "Tag-Synonyme konnten nicht gespeichert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Tag-Synonyme konnten nicht gespeichert werden."
+});
     } finally {
       setSaving(false);
     }

@@ -5,7 +5,6 @@ import { Archive, ArrowLeft, Briefcase, CalendarClock, CheckSquare, Clock3, Load
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { useToast } from "@/hooks/use-toast";
 import { classifyCaseScale } from "@/features/cases/shared/utils";
 import { useCaseFileDetails } from "@/features/cases/files/hooks";
 import {
@@ -28,6 +27,7 @@ import { AppHeader } from "@/components/layout/AppHeader";
 import { SubNavigation } from "@/components/layout/SubNavigation";
 import { MobileHeader } from "@/components/navigation/MobileHeader";
 import { MobileSubNavigation } from "@/components/layout/MobileSubNavigation";
+import { notify } from "@/lib/notify";
 
 type CaseScale = "small" | "large";
 
@@ -69,7 +69,6 @@ const CaseItemDetail = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const { currentTenant, loading: tenantLoading } = useTenant();
-  const { toast } = useToast();
 
   const [caseItem, setCaseItem] = useState<CaseItemRecord | null>(null);
   const [caseFile, setCaseFile] = useState<CaseFileRecord | null>(null);
@@ -284,7 +283,8 @@ const CaseItemDetail = () => {
                   {caseItem.status === "archiviert" ? (
                     <Button variant="outline" onClick={async () => {
                       await supabase.from("case_items").update({ status: "neu" }).eq("id", caseItem.id);
-                      toast({ title: "Wiederhergestellt", description: "Vorgang wurde wiederhergestellt." });
+                      notify.success("Wiederhergestellt", { description: "Vorgang wurde wiederhergestellt." 
+});
                       loadData();
                     }}>
                       <RotateCcw className="h-4 w-4 mr-2" /> Wiederherstellen
@@ -292,7 +292,8 @@ const CaseItemDetail = () => {
                   ) : (
                     <Button variant="outline" onClick={async () => {
                       await supabase.from("case_items").update({ status: "archiviert" }).eq("id", caseItem.id);
-                      toast({ title: "Archiviert", description: "Vorgang wurde archiviert." });
+                      notify.success("Archiviert", { description: "Vorgang wurde archiviert." 
+});
                       navigate("/mywork");
                     }}>
                       <Archive className="h-4 w-4 mr-2" /> Archivieren

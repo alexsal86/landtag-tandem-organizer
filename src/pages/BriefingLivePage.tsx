@@ -13,7 +13,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { toast } from '@/hooks/use-toast';
 import { createFeedbackContext } from '@/types/feedbackContext';
 import { debugConsole } from '@/utils/debugConsole';
 import { format } from 'date-fns';
@@ -31,6 +30,7 @@ import {
   Plus,
   Check,
 } from 'lucide-react';
+import { notify } from "@/lib/notify";
 
 interface CreatedTask {
   id: string;
@@ -138,7 +138,8 @@ export default function BriefingLivePage() {
 
   const handleSaveNote = async () => {
     if (!noteText || noteText === '<p></p>') {
-      toast({ title: 'Fehler', description: 'Bitte geben Sie eine Notiz ein.', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Bitte geben Sie eine Notiz ein.'
+});
       return;
     }
     setNoteSaving(true);
@@ -154,10 +155,12 @@ export default function BriefingLivePage() {
 
       queryClient.invalidateQueries({ queryKey: ['appointment-feedback-appointments'] });
       setNoteSaved(true);
-      toast({ title: 'Notiz gespeichert', description: 'Ihre Rückmeldung wurde gespeichert.' });
+      notify.success('Notiz gespeichert', { description: 'Ihre Rückmeldung wurde gespeichert.' 
+});
     } catch (err) {
       debugConsole.error('Error saving note:', err);
-      toast({ title: 'Fehler', description: 'Notiz konnte nicht gespeichert werden.', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Notiz konnte nicht gespeichert werden.'
+});
     } finally {
       setNoteSaving(false);
     }
@@ -165,7 +168,8 @@ export default function BriefingLivePage() {
 
   const handleCreateTask = async () => {
     if (!taskTitle.trim()) {
-      toast({ title: 'Fehler', description: 'Bitte geben Sie einen Aufgabentitel ein.', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Bitte geben Sie einen Aufgabentitel ein.'
+});
       return;
     }
     if (!user?.id || !currentTenant?.id) return;
@@ -207,10 +211,11 @@ export default function BriefingLivePage() {
       setTaskDescription('');
       setTaskDueDate('');
       setTaskPriority('medium');
-      toast({ title: 'Aufgabe erstellt' });
+      notify.success('Aufgabe erstellt');
     } catch (err) {
       debugConsole.error('Error creating task:', err);
-      toast({ title: 'Fehler', description: 'Aufgabe konnte nicht erstellt werden.', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Aufgabe konnte nicht erstellt werden.'
+});
     } finally {
       setTaskSaving(false);
     }
@@ -222,10 +227,10 @@ export default function BriefingLivePage() {
       await ensureFeedbackCompleted();
       setFeedbackCompleted(true);
       queryClient.invalidateQueries({ queryKey: ['appointment-feedback-appointments'] });
-      toast({ title: 'Termin als erledigt markiert' });
+      notify.success('Termin als erledigt markiert');
     } catch (err) {
       debugConsole.error('Error marking completed:', err);
-      toast({ title: 'Fehler', variant: 'destructive' });
+      notify.error('Fehler');
     } finally {
       setCompletingSaving(false);
     }

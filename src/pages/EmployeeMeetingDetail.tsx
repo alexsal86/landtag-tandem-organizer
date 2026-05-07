@@ -5,16 +5,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft } from "lucide-react";
 import { EmployeeMeetingProtocol } from "@/features/employees/components/EmployeeMeetingProtocol";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { debugConsole } from "@/utils/debugConsole";
+import { notify } from "@/lib/notify";
 
 export default function EmployeeMeetingDetail() {
   const { meetingId, subId } = useParams<{ meetingId?: string; subId?: string }>();
   const resolvedMeetingId = meetingId || subId;
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
 
@@ -34,7 +33,8 @@ export default function EmployeeMeetingDetail() {
 
         if (error) throw error;
         if (!meeting) {
-          toast({ title: "Nicht gefunden", description: "Gespräch konnte nicht gefunden werden.", variant: "destructive" });
+          notify.error("Nicht gefunden", { description: "Gespräch konnte nicht gefunden werden."
+});
           navigate("/employee");
           return;
         }
@@ -43,20 +43,16 @@ export default function EmployeeMeetingDetail() {
         setHasAccess(canAccess);
 
         if (!canAccess) {
-          toast({
-            title: "Zugriff verweigert",
-            description: "Sie haben keinen Zugriff auf dieses Gespräch.",
-            variant: "destructive",
-          });
+          notify.error("Zugriff verweigert", {
+            description: "Sie haben keinen Zugriff auf dieses Gespräch."
+});
           navigate("/employee");
         }
       } catch (error: unknown) {
         debugConsole.error("Error checking access:", error);
-        toast({
-          title: "Fehler",
-          description: "Gespräch konnte nicht geladen werden.",
-          variant: "destructive",
-        });
+        notify.error("Fehler", {
+          description: "Gespräch konnte nicht geladen werden."
+});
         navigate("/employee");
       } finally {
         setLoading(false);

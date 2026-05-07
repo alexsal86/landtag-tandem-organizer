@@ -4,7 +4,6 @@ import {
   ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, DownloadIcon, UploadIcon,
 } from "lucide-react";
 import { exportFactsToCsv, parseFactsCsv } from "../csvIo";
-import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +21,7 @@ import {
 import { FactEditDialog } from "./FactEditDialog";
 import { useDossiers } from "@/features/dossiers/hooks/useDossiers";
 import type { FactRow, FactSortField, FactSortDir } from "../types";
+import { notify } from "@/lib/notify";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -111,14 +111,14 @@ export function FactsLibraryView() {
               try {
                 const parsed = await parseFactsCsv(file);
                 if (!parsed.rows.length) {
-                  toast.error("Keine gültigen Zeilen gefunden.");
+                  notify.error("Keine gültigen Zeilen gefunden.");
                   return;
                 }
                 let ok = 0; let fail = 0;
                 for (const row of parsed.rows) {
                   try { await upsert.mutateAsync(row); ok++; } catch { fail++; }
                 }
-                toast.success(`Import: ${ok} importiert, ${fail} fehlgeschlagen, ${parsed.skipped} übersprungen.`);
+                notify.success(`Import: ${ok} importiert, ${fail} fehlgeschlagen, ${parsed.skipped} übersprungen.`);
               } finally {
                 setImporting(false);
               }
@@ -138,7 +138,7 @@ export function FactsLibraryView() {
             variant="outline"
             onClick={async () => {
               if (!allFacts.length) {
-                toast.info("Keine Fakten zum Exportieren.");
+                notify.info("Keine Fakten zum Exportieren.");
                 return;
               }
               exportFactsToCsv(allFacts);

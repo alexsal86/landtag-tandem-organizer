@@ -2,8 +2,8 @@ import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { toast } from "sonner";
 import { format, addDays } from "date-fns";
+import { notify } from "@/lib/notify";
 
 /**
  * Hook that checks for vacation checklist reminders:
@@ -49,7 +49,7 @@ export function useVacationReminders() {
             const unchecked = templates.filter((t: Record<string, any>) => !responseMap.get(t.id));
 
             if (unchecked.length > 0) {
-              toast.warning(
+              notify.warning(
                 `Dein Urlaub beginnt morgen! ${unchecked.length} Checklisten-Punkt(e) noch offen: ${unchecked.map((u: Record<string, any>) => u.label).join(", ")}`,
                 { duration: 10000 }
               );
@@ -87,7 +87,7 @@ export function useVacationReminders() {
             const toReverse = reminderTemplates.filter((t: Record<string, any>) => completedMap.get(t.id));
 
             if (toReverse.length > 0) {
-              toast.info(
+              notify.info(
                 `Willkommen zurück! Bitte rückgängig machen: ${toReverse.map((t: Record<string, any>) => t.label).join(", ")}`,
                 { duration: 15000 }
               );

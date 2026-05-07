@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import { debugConsole } from '@/utils/debugConsole';
 import type { MeetingParticipantProfileRow, ParticipantRole } from '@/components/meetings/types';
+import { notify } from "@/lib/notify";
 
 export interface MeetingParticipant {
   id: string;
@@ -58,7 +58,6 @@ const mapParticipant = (item: MeetingParticipantRow): MeetingParticipant => {
 export function useMeetingParticipants(meetingId?: string) {
   const [participants, setParticipants] = useState<MeetingParticipant[]>([]);
   const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
 
   const loadParticipants = useCallback(async () => {
     if (!meetingId) {
@@ -114,11 +113,9 @@ export function useMeetingParticipants(meetingId?: string) {
 
       if (error) {
         if (error.code === '23505') {
-          toast({
-            title: "Teilnehmer existiert bereits",
-            description: "Dieses Teammitglied ist bereits als Teilnehmer hinzugefügt.",
-            variant: "destructive"
-          });
+          notify.error("Teilnehmer existiert bereits", {
+            description: "Dieses Teammitglied ist bereits als Teilnehmer hinzugefügt."
+});
           return null;
         }
         throw error;
@@ -130,11 +127,9 @@ export function useMeetingParticipants(meetingId?: string) {
       return newParticipant;
     } catch (error) {
       debugConsole.error('Error adding participant:', error);
-      toast({
-        title: "Fehler",
-        description: "Teilnehmer konnte nicht hinzugefügt werden.",
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Teilnehmer konnte nicht hinzugefügt werden."
+});
       return null;
     }
   };
@@ -153,11 +148,9 @@ export function useMeetingParticipants(meetingId?: string) {
       );
     } catch (error) {
       debugConsole.error('Error updating participant:', error);
-      toast({
-        title: "Fehler",
-        description: "Teilnehmer konnte nicht aktualisiert werden.",
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Teilnehmer konnte nicht aktualisiert werden."
+});
     }
   };
 
@@ -173,11 +166,9 @@ export function useMeetingParticipants(meetingId?: string) {
       setParticipants(prev => prev.filter(p => p.id !== participantId));
     } catch (error) {
       debugConsole.error('Error removing participant:', error);
-      toast({
-        title: "Fehler",
-        description: "Teilnehmer konnte nicht entfernt werden.",
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Teilnehmer konnte nicht entfernt werden."
+});
     }
   };
 

@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
 import { debugConsole } from '@/utils/debugConsole';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +13,7 @@ import { useTenant } from '@/hooks/useTenant';
 import { AppointmentBriefingView } from '@/components/appointment-preparations/AppointmentBriefingView';
 import { generateBriefingPdf } from '@/components/appointment-preparations/briefingPdfGenerator';
 import type { AppointmentPreparation } from '@/hooks/useAppointmentPreparation';
+import { notify } from "@/lib/notify";
 
 interface Appointment {
   id: string;
@@ -180,7 +180,7 @@ export const TodaySchedule = ({ onCountChange }: TodayScheduleProps) => {
   const handleDownloadPdf = async (apt: Appointment) => {
     const prep = preparations.get(apt.id);
     if (!prep) {
-      toast.error('Für diesen Termin liegt kein Briefing vor.');
+      notify.error('Für diesen Termin liegt kein Briefing vor.');
       return;
     }
 
@@ -195,7 +195,7 @@ export const TodaySchedule = ({ onCountChange }: TodayScheduleProps) => {
       });
     } catch (error) {
       debugConsole.error('Error generating briefing PDF:', error);
-      toast.error('Das Briefing-PDF konnte nicht erstellt werden.');
+      notify.error('Das Briefing-PDF konnte nicht erstellt werden.');
     } finally {
       setGeneratingPdfId((currentId) => currentId === apt.id ? null : currentId);
     }

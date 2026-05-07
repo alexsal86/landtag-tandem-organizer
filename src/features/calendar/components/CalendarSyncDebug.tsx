@@ -6,8 +6,8 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, RefreshCw, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { debugConsole } from '@/utils/debugConsole';
+import { notify } from "@/lib/notify";
 
 interface ValidationResult {
   icsEventCount: number;
@@ -60,10 +60,10 @@ export function CalendarSyncDebug() {
       if (error) throw error;
 
       setValidationResult(data);
-      toast.success('Kalender-Validierung abgeschlossen');
+      notify.success('Kalender-Validierung abgeschlossen');
     } catch (error) {
       debugConsole.error('Validation error:', error);
-      toast.error('Fehler bei der Validierung: ' + (error as Error).message);
+      notify.error('Fehler bei der Validierung: ' + (error as Error).message);
     } finally {
       setLoading(false);
     }
@@ -82,11 +82,11 @@ export function CalendarSyncDebug() {
       if (error) throw error;
 
       if (!data || data.status === 'error') {
-        toast.error(data?.message ?? 'Fehler beim Neuaufbau');
+        notify.error(data?.message ?? 'Fehler beim Neuaufbau');
         return;
       }
 
-      const method = data.status === 'partial' ? toast.warning : toast.success;
+      const method = data.status === 'partial' ? notify.warning : notify.success;
       method(data.message ?? 'Kalender-Neuaufbau erfolgreich gestartet');
       
       // Re-validate after sync
@@ -95,7 +95,7 @@ export function CalendarSyncDebug() {
       }, 2000);
     } catch (error) {
       debugConsole.error('Force resync error:', error);
-      toast.error('Fehler beim Neuaufbau: ' + (error as Error).message);
+      notify.error('Fehler beim Neuaufbau: ' + (error as Error).message);
     } finally {
       setSyncLoading(false);
     }

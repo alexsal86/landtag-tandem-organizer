@@ -15,7 +15,6 @@ import { type DashboardData } from '@/hooks/useDashboardData';
 import { useDashboardMessages } from '@/hooks/useDashboardMessages';
 import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -112,7 +111,6 @@ const getRequesterFromDescription = (description: string | null | undefined): st
 
 export const DashboardAppointments = ({ data }: Props) => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { currentTenant } = useTenant();
   const {
     userRole, appointments, isShowingTomorrow,

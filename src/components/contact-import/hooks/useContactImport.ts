@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from '@/utils/debugConsole';
 import { useAuth } from "@/hooks/useAuth";
@@ -13,6 +12,7 @@ import type { ContactDuplicateCandidate } from "@/types/contact";
 import type { DuplicateMatch } from "@/utils/duplicateDetection";
 import type { ParsedVCard, SpreadsheetRow } from "@/types/contactImport";
 import { ImportData, FieldMapping, FIELD_MAPPINGS } from "../types";
+import { notify } from "@/lib/notify";
 
 export function useContactImport() {
   const [file, setFile] = useState<File | null>(null);
@@ -30,7 +30,6 @@ export function useContactImport() {
   const [duplicateStrategy, setDuplicateStrategy] = useState<"ask" | "skip" | "overwrite" | "merge" | "import">("ask");
   const [importQueue, setImportQueue] = useState<number[]>([]);
 
-  const { toast } = useToast();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
 
@@ -69,7 +68,8 @@ export function useContactImport() {
       Papa.parse(uploadedFile, {
         header: true, skipEmptyLines: true,
         complete: (result) => { setData(result.data as ImportData[]); autoMapFields(Object.keys(result.data[0] || {})); setStep("mapping"); },
-        error: (error) => { toast({ title: "Fehler beim CSV-Import", description: error.message, variant: "destructive" }); },
+        error: (error) => { notify.error("Fehler beim CSV-Import", { description: error.message
+}); },
       });
     } else if (["xlsx", "xls", "ods"].includes(ext || "")) {
       const reader = new FileReader();
@@ -77,7 +77,8 @@ export function useContactImport() {
         try {
           const wb = XLSX.read(e.target?.result, { type: "binary" });
           const jsonData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
-          if (jsonData.length < 2) { toast({ title: "Fehler", description: "Die Datei enthält keine gültigen Daten", variant: "destructive" }); return; }
+          if (jsonData.length < 2) { notify.error("Fehler", { description: "Die Datei enthält keine gültigen Daten"
+}); return; }
           const headers = jsonData[0] as string[];
           const parsed = (jsonData.slice(1) as SpreadsheetRow[]).map((row) => {
             const obj: ImportData = {};
@@ -85,7 +86,8 @@ export function useContactImport() {
             return obj;
           });
           setData(parsed); autoMapFields(headers); setStep("mapping");
-        } catch { toast({ title: "Fehler beim Excel-Import", description: "Die Datei konnte nicht gelesen werden", variant: "destructive" }); }
+        } catch { notify.error("Fehler beim Excel-Import", { description: "Die Datei konnte nicht gelesen werden"
+}); }
       };
       reader.readAsBinaryString(uploadedFile);
     } else if (ext === "vcf") {
@@ -133,11 +135,13 @@ export function useContactImport() {
             return d;
           });
           setData(parsed); autoMapFields(Object.keys(parsed[0] || {})); setStep("mapping");
-        } catch (error) { debugConsole.error("VCF parse error:", error); toast({ title: "Fehler beim VCF-Import", description: "Die VCF-Datei konnte nicht gelesen werden", variant: "destructive" }); }
+        } catch (error) { debugConsole.error("VCF parse error:", error); notify.error("Fehler beim VCF-Import", { description: "Die VCF-Datei konnte nicht gelesen werden"
+}); }
       };
       reader.readAsText(uploadedFile);
     } else {
-      toast({ title: "Nicht unterstütztes Dateiformat", description: "Bitte verwenden Sie CSV, Excel, ODS oder VCF Dateien", variant: "destructive" });
+      notify.error("Nicht unterstütztes Dateiformat", { description: "Bitte verwenden Sie CSV, Excel, ODS oder VCF Dateien"
+});
     }
   }, [toast]);
 
@@ -149,7 +153,8 @@ export function useContactImport() {
 
   const proceedToPreview = () => {
     if (fieldMappings.filter((m) => m.targetField).length === 0) {
-      toast({ title: "Keine Feldzuordnung", description: "Bitte ordnen Sie mindestens ein Feld zu", variant: "destructive" });
+      notify.error("Keine Feldzuordnung", { description: "Bitte ordnen Sie mindestens ein Feld zu"
+});
       return;
     }
     setStep("preview");
@@ -292,7 +297,8 @@ export function useContactImport() {
   };
 
   const startImport = async (): Promise<void> => {
-    if (!user || !currentTenant) { toast({ title: "Fehler", description: "Sie müssen angemeldet sein", variant: "destructive" }); return; }
+    if (!user || !currentTenant) { notify.error("Fehler", { description: "Sie müssen angemeldet sein"
+}); return; }
     setStep("importing"); setProgress(0); setImportedCount(0); setSkippedCount(0); setErrors([]); setDuplicateWarnings([]);
     const queue = data.map((_, i) => i);
     setImportQueue(queue);
@@ -300,7 +306,8 @@ export function useContactImport() {
   };
 
   const finishImport = (): void => {
-    toast({ title: "Import abgeschlossen", description: `${importedCount} importiert${skippedCount > 0 ? `, ${skippedCount} übersprungen` : ""}${errors.length > 0 ? `, ${errors.length} Fehler` : ""}`, variant: errors.length > 0 ? "destructive" : "default" });
+    notify.success("Import abgeschlossen", { description: `${importedCount} importiert${skippedCount > 0 ? `, ${skippedCount} übersprungen` : ""}${errors.length > 0 ? `, ${errors.length} Fehler` : ""}`
+});
     setStep("complete");
   };
 

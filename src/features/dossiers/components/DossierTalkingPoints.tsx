@@ -7,8 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, Loader2, Mic, X, Save, Copy } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { toast } from "sonner";
-
+import { notify } from "@/lib/notify";
 interface DossierTalkingPointsProps {
   dossierId: string;
   dossierTitle: string;
@@ -107,7 +106,7 @@ export function DossierTalkingPoints({ dossierId, dossierTitle }: DossierTalking
       lines.push(tp.content.sources);
     }
     await navigator.clipboard.writeText(lines.join("\n"));
-    toast.success("Sprechzettel kopiert");
+    notify.success("Sprechzettel kopiert");
   };
 
   const isEditing = isNew || editingId !== null;

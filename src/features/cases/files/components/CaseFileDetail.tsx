@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { trackPageVisit } from "@/hooks/useRecentlyVisited";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { useCaseFileDetails } from "@/features/cases/files/hooks";
 import { useCaseFiles } from "@/features/cases/files/hooks";
 import { useCaseFileTopics } from "@/hooks/useTopics";
@@ -107,10 +106,10 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
     const nextStatus = caseFile.status === "archived" ? "active" : "archived";
     const { error } = await supabase.from("case_files").update({ status: nextStatus }).eq("id", caseFile.id);
     if (error) {
-      toast.error("Fallakte konnte nicht archiviert werden.");
+      notify.error("Fallakte konnte nicht archiviert werden.");
       return;
     }
-    toast.success(nextStatus === "archived" ? "Fallakte archiviert." : "Fallakte wiederhergestellt.");
+    notify.success(nextStatus === "archived" ? "Fallakte archiviert." : "Fallakte wiederhergestellt.");
     await details.refresh();
     if (nextStatus === "archived") onBack();
   };
@@ -354,6 +353,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { notify } from "@/lib/notify";
 
 function DialogWrapper({
   open,

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { debugConsole } from '@/utils/debugConsole';
-import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/hooks/useTenant';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { notify } from "@/lib/notify";
 
 interface TemplateField {
   id: string;
@@ -46,7 +46,6 @@ export default function AppointmentPreparationTemplateAdmin() {
   const [loading, setLoading] = useState(true);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const { toast } = useToast();
   const { currentTenant } = useTenant();
 
   useEffect(() => {
@@ -70,11 +69,9 @@ export default function AppointmentPreparationTemplateAdmin() {
       })));
     } catch (error) {
       debugConsole.error('Error fetching templates:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Templates konnten nicht geladen werden.',
-        variant: 'destructive',
-      });
+      notify.error('Fehler', {
+        description: 'Templates konnten nicht geladen werden.'
+});
     } finally {
       setLoading(false);
     }
@@ -97,10 +94,9 @@ export default function AppointmentPreparationTemplateAdmin() {
 
         if (error) throw error;
 
-        toast({
-          title: 'Erfolg',
-          description: 'Template wurde aktualisiert.',
-        });
+        notify.success('Erfolg', {
+          description: 'Template wurde aktualisiert.'
+});
       } else {
         // Create new template
         const { error } = await supabase
@@ -117,10 +113,9 @@ export default function AppointmentPreparationTemplateAdmin() {
 
         if (error) throw error;
 
-        toast({
-          title: 'Erfolg',
-          description: 'Template wurde erstellt.',
-        });
+        notify.success('Erfolg', {
+          description: 'Template wurde erstellt.'
+});
       }
 
       setIsDialogOpen(false);
@@ -128,11 +123,9 @@ export default function AppointmentPreparationTemplateAdmin() {
       fetchTemplates();
     } catch (error) {
       debugConsole.error('Error saving template:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Template konnte nicht gespeichert werden.',
-        variant: 'destructive',
-      });
+      notify.error('Fehler', {
+        description: 'Template konnte nicht gespeichert werden.'
+});
     }
   };
 
@@ -149,19 +142,16 @@ export default function AppointmentPreparationTemplateAdmin() {
 
       if (error) throw error;
 
-      toast({
-        title: 'Erfolg',
-        description: 'Template wurde gelöscht.',
-      });
+      notify.success('Erfolg', {
+        description: 'Template wurde gelöscht.'
+});
 
       fetchTemplates();
     } catch (error) {
       debugConsole.error('Error deleting template:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Template konnte nicht gelöscht werden.',
-        variant: 'destructive',
-      });
+      notify.error('Fehler', {
+        description: 'Template konnte nicht gelöscht werden.'
+});
     }
   };
 
@@ -181,19 +171,16 @@ export default function AppointmentPreparationTemplateAdmin() {
 
       if (error) throw error;
 
-      toast({
-        title: 'Erfolg',
-        description: 'Standard-Template wurde gesetzt.',
-      });
+      notify.success('Erfolg', {
+        description: 'Standard-Template wurde gesetzt.'
+});
 
       fetchTemplates();
     } catch (error) {
       debugConsole.error('Error setting default template:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Standard-Template konnte nicht gesetzt werden.',
-        variant: 'destructive',
-      });
+      notify.error('Fehler', {
+        description: 'Standard-Template konnte nicht gesetzt werden.'
+});
     }
   };
 

@@ -25,9 +25,9 @@ import type { NotificationDisplayPreferences } from '@/hooks/useNotificationDisp
 import { NotificationSettings } from '@/components/notifications/NotificationSettings';
 import { useNotificationDisplayPreferences } from '@/hooks/useNotificationDisplayPreferences';
 import { NOTIFICATION_SOUNDS, playNotificationSound, hasCustomSound, saveCustomSound, removeCustomSound } from '@/utils/notificationSounds';
-import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { isLetterNotificationType } from '@/utils/letterNotificationTypes';
+import { notify } from "@/lib/notify";
 
 
 type NotificationPosition = NotificationDisplayPreferences['position'];
@@ -112,9 +112,9 @@ function NotificationDisplaySettings(): JSX.Element {
 
   const handlePreview = (): void => {
     // Dismiss existing toasts first so new position/size is visible
-    toast.dismiss();
+    notify.dismiss();
     setTimeout(() => {
-      toast('Beispiel-Benachrichtigung', {
+      notify.message('Beispiel-Benachrichtigung', {
         description: preferences.persist
           ? 'So werden Ihre Benachrichtigungen angezeigt. Schließen Sie diese mit dem X-Button.'
           : 'So werden Ihre Benachrichtigungen angezeigt.',
@@ -133,7 +133,7 @@ function NotificationDisplaySettings(): JSX.Element {
     if (!file) return;
 
     if (file.size > 500 * 1024) {
-      toast.error('Datei zu groß', { description: 'Maximale Größe: 500 KB' });
+      notify.error('Datei zu groß', { description: 'Maximale Größe: 500 KB' });
       return;
     }
 
@@ -143,7 +143,7 @@ function NotificationDisplaySettings(): JSX.Element {
       saveCustomSound(dataUrl);
       setCustomSoundLoaded(true);
       setPreferences({ soundName: 'custom' });
-      toast.success('Eigener Ton gespeichert');
+      notify.success('Eigener Ton gespeichert');
     };
     reader.readAsDataURL(file);
 
@@ -157,7 +157,7 @@ function NotificationDisplaySettings(): JSX.Element {
     if (preferences.soundName === 'custom') {
       setPreferences({ soundName: 'ping' });
     }
-    toast.success('Eigener Ton entfernt');
+    notify.success('Eigener Ton entfernt');
   };
 
   return (

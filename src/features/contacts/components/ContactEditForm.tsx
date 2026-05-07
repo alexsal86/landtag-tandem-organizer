@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { isValidEmail, findPotentialDuplicates, DuplicateMatch, type Contact as UtilContact } from "@/lib/utils";
@@ -18,6 +17,7 @@ import { ImageCropper } from "@/components/ui/ImageCropper";
 
 import { TagInput } from "@/components/ui/tag-input";
 import type { ContactDuplicateCandidate, EditableContact } from "@/types/contact";
+import { notify } from "@/lib/notify";
 
 interface ContactEditFormProps {
   contact: EditableContact;
@@ -43,7 +43,6 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [imageToEdit, setImageToEdit] = useState<string | null>(null);
   const [cropperOpen, setCropperOpen] = useState(false);
-  const { toast } = useToast();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
 
@@ -199,21 +198,17 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
     // Early validation
     if (!user) {
       debugConsole.error('No user available');
-      toast({
-        title: "Fehler",
-        description: "Benutzer nicht authentifiziert. Bitte melden Sie sich erneut an.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Benutzer nicht authentifiziert. Bitte melden Sie sich erneut an."
+});
       return;
     }
 
     if (!currentTenant) {
       debugConsole.error('No tenant available');
-      toast({
-        title: "Fehler", 
-        description: "Mandant nicht verfügbar. Bitte wählen Sie einen Mandanten aus.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", { 
+        description: "Mandant nicht verfügbar. Bitte wählen Sie einen Mandanten aus."
+});
       return;
     }
 
@@ -296,20 +291,17 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
           code: error.code
         });
         
-        toast({
-          title: "Fehler beim Speichern",
-          description: `Fehler: ${error.message}${error.hint ? ' - ' + error.hint : ''}`,
-          variant: "destructive",
-        });
+        notify.error("Fehler beim Speichern", {
+          description: `Fehler: ${error.message}${error.hint ? ' - ' + error.hint : ''}`
+});
         return;
       }
 
       debugConsole.log('Contact updated successfully:', data);
 
-      toast({
-        title: "Kontakt aktualisiert",
-        description: `${formData.name} wurde erfolgreich aktualisiert.`,
-      });
+      notify.success("Kontakt aktualisiert", {
+        description: `${formData.name} wurde erfolgreich aktualisiert.`
+});
 
       // Trigger geocoding if business address exists
       const hasBusinessAddress = (formData.business_street && formData.business_street.trim() !== '') ||
@@ -330,11 +322,9 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       onSuccess();
     } catch (error) {
       debugConsole.error('Error updating contact:', error);
-      toast({
-        title: "Fehler",
-        description: "Kontakt konnte nicht aktualisiert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Kontakt konnte nicht aktualisiert werden."
+});
     } finally {
       setLoading(false);
       setShowDuplicateWarning(false);
@@ -375,20 +365,16 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      toast({
-        title: "Ungültiger Dateityp",
-        description: "Bitte wählen Sie eine Bilddatei aus.",
-        variant: "destructive",
-      });
+      notify.error("Ungültiger Dateityp", {
+        description: "Bitte wählen Sie eine Bilddatei aus."
+});
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "Fehler",
-        description: "Die Datei ist zu groß. Maximale Größe: 5MB.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Die Datei ist zu groß. Maximale Größe: 5MB."
+});
       return;
     }
 
@@ -406,11 +392,9 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
 
   const handleCropComplete = async (croppedBlob: Blob) => {
     if (!user) {
-      toast({
-        title: "Fehler",
-        description: "Benutzer nicht authentifiziert.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Benutzer nicht authentifiziert."
+});
       return;
     }
 
@@ -445,17 +429,14 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       debugConsole.log('Avatar uploaded successfully:', avatarUrl);
       setFormData(prev => ({ ...prev, avatar_url: avatarUrl }));
 
-      toast({
-        title: "Erfolg",
-        description: "Profilbild wurde hochgeladen.",
-      });
+      notify.success("Erfolg", {
+        description: "Profilbild wurde hochgeladen."
+});
     } catch (error: unknown) {
       debugConsole.error('Error uploading avatar:', error);
-      toast({
-        title: "Fehler",
-        description: `Profilbild konnte nicht hochgeladen werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: `Profilbild konnte nicht hochgeladen werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
+});
     } finally {
       setUploading(false);
     }

@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, RefreshCw } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { notify } from "@/lib/notify";
 
 interface FailedRecipient {
   email: string;
@@ -31,7 +31,6 @@ export function EmailRetryDialog({
   emailBody,
   onRetrySuccess
 }: EmailRetryDialogProps) {
-  const { toast } = useToast();
   const [selectedEmails, setSelectedEmails] = useState<string[]>(
     failedRecipients.map(r => r.email)
   );
@@ -47,11 +46,9 @@ export function EmailRetryDialog({
 
   const handleRetry = async () => {
     if (selectedEmails.length === 0) {
-      toast({
-        title: "Keine Empfänger ausgewählt",
-        description: "Bitte wählen Sie mindestens einen Empfänger aus.",
-        variant: "destructive"
-      });
+      notify.error("Keine Empfänger ausgewählt", {
+        description: "Bitte wählen Sie mindestens einen Empfänger aus."
+});
       return;
     }
 
@@ -72,25 +69,21 @@ export function EmailRetryDialog({
       const response = data as { success: boolean; sent: number; failed: number };
 
       if (response.success) {
-        toast({
-          title: "E-Mails erneut versendet",
+        notify.success("E-Mails erneut versendet", {
           description: `${response.sent} von ${selectedEmails.length} E-Mails erfolgreich versendet.`
-        });
+        
+});
         onRetrySuccess();
         onOpenChange(false);
       } else {
-        toast({
-          title: "Teilweise fehlgeschlagen",
-          description: `${response.sent} erfolgreich, ${response.failed} fehlgeschlagen.`,
-          variant: "destructive"
-        });
+        notify.error("Teilweise fehlgeschlagen", {
+          description: `${response.sent} erfolgreich, ${response.failed} fehlgeschlagen.`
+});
       }
     } catch (error: unknown) {
-      toast({
-        title: "Fehler beim erneuten Versenden",
-        description: error instanceof Error ? error.message : String(error),
-        variant: "destructive"
-      });
+      notify.error("Fehler beim erneuten Versenden", {
+        description: error instanceof Error ? error.message : String(error)
+});
     } finally {
       setRetrying(false);
     }

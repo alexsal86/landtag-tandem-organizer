@@ -4,7 +4,6 @@ import { ArrowLeft, Calendar, Clock, MapPin, ExternalLink, Notebook, Download, A
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
 import { useAppointmentPreparation } from "@/hooks/useAppointmentPreparation";
 import { AppointmentPreparationFileUpload } from "@/components/appointments/AppointmentPreparationFileUpload";
 import { AppointmentDetailsSidebar } from "@/components/calendar/AppointmentDetailsSidebar";
@@ -25,6 +24,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { format, formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { notify } from "@/lib/notify";
 
 export interface AppointmentPreparationAppointmentDetails {
   id: string;
@@ -44,7 +44,6 @@ export default function AppointmentPreparationDetail() {
   const { id, subId } = useParams();
   const preparationId = id ?? subId;
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
@@ -171,11 +170,9 @@ export default function AppointmentPreparationDetail() {
           navigate(`/appointment-preparation/${data.id}`, { replace: true });
         } catch (error) {
           debugConsole.error('Error creating preparation:', error);
-          toast({
-            title: "Fehler",
-            description: "Terminplanung konnte nicht erstellt werden.",
-            variant: "destructive",
-          });
+          notify.error("Fehler", {
+            description: "Terminplanung konnte nicht erstellt werden."
+});
         } finally {
           setIsCreating(false);
         }
@@ -332,7 +329,8 @@ export default function AppointmentPreparationDetail() {
                           appointmentEndTime: appointmentInfo?.end_time,
                         });
                       } catch (e) {
-                        toast({ title: "Fehler", description: "PDF konnte nicht erstellt werden.", variant: "destructive" });
+                        notify.error("Fehler", { description: "PDF konnte nicht erstellt werden."
+});
                       } finally {
                         setPdfLoading(false);
                       }

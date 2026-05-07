@@ -3,9 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Copy, Check } from 'lucide-react';
-import { toast } from 'sonner';
 import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 import type { ProtocolStructuredData } from './types';
+import { notify } from "@/lib/notify";
 
 interface ProtocolRawDataProps {
   structuredData: ProtocolStructuredData | null | undefined;
@@ -32,10 +32,10 @@ export function ProtocolRawData({ structuredData }: ProtocolRawDataProps) {
     try {
       await navigator.clipboard.writeText(formatJSON(structuredData));
       setCopied(true);
-      toast.success('JSON in die Zwischenablage kopiert');
+      notify.success('JSON in die Zwischenablage kopiert');
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      toast.error('Fehler beim Kopieren');
+      notify.error('Fehler beim Kopieren');
     }
   };
 

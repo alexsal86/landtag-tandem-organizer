@@ -22,13 +22,13 @@ import { CaseItemCreateDialog } from "@/components/my-work/CaseItemCreateDialog"
 import { CaseItemMeetingSelector } from "@/components/my-work/CaseItemMeetingSelector";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useCaseItems } from "@/features/cases/items/hooks";
 import type { CaseItemListEntry, EscalationSuggestion } from "@/features/cases/items/types";
 import { debugConsole } from "@/utils/debugConsole";
 import { useCaseFileTypes } from "@/features/cases/files/hooks/useCaseFileTypes";
+import { notify } from "@/lib/notify";
 
 type SortBy = "updated_desc" | "due_asc" | "priority_desc";
 
@@ -74,7 +74,6 @@ export function MyWorkCaseItemsTab() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { caseFileTypes } = useCaseFileTypes();
-  const { toast } = useToast();
   const navigate = useNavigate();
 
   const [items, setItems] = useState<CaseItemListEntry[]>([]);
@@ -198,21 +197,17 @@ export function MyWorkCaseItemsTab() {
   const handleEscalation = async (itemId: string, mode: "create" | "assign") => {
     const suggestion = escalationSuggestionByItemId[itemId];
     if (!suggestion) {
-      toast({
-        title: "Kein Eskalationsvorschlag",
-        description: "Für dieses Anliegen liegt aktuell kein Eskalationsvorschlag vor.",
-        variant: "destructive",
-      });
+      notify.error("Kein Eskalationsvorschlag", {
+        description: "Für dieses Anliegen liegt aktuell kein Eskalationsvorschlag vor."
+});
       return;
     }
 
     const selectedCaseFileId = selectedCaseFileByItemId[itemId] ?? "";
     if (mode === "assign" && !selectedCaseFileId) {
-      toast({
-        title: "Akte wählen",
-        description: "Bitte zuerst eine bestehende Akte auswählen.",
-        variant: "destructive",
-      });
+      notify.error("Akte wählen", {
+        description: "Bitte zuerst eine bestehende Akte auswählen."
+});
       return;
     }
 
@@ -228,19 +223,16 @@ export function MyWorkCaseItemsTab() {
       });
       if (error) throw error;
 
-      toast({
-        title: "Eskalation bestätigt",
-        description: mode === "create" ? "Anliegen wurde in eine neue Akte überführt." : "Anliegen wurde einer bestehenden Akte zugeordnet.",
-      });
+      notify.success("Eskalation bestätigt", {
+        description: mode === "create" ? "Anliegen wurde in eine neue Akte überführt." : "Anliegen wurde einer bestehenden Akte zugeordnet."
+});
 
       await loadCaseItems();
     } catch (error) {
       debugConsole.error("Error escalating case item:", error);
-      toast({
-        title: "Fehler",
-        description: "Eskalation konnte nicht verarbeitet werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Eskalation konnte nicht verarbeitet werden."
+});
     } finally {
       setProcessingItemId(null);
     }
@@ -327,11 +319,13 @@ export function MyWorkCaseItemsTab() {
         .update({ status: "archiviert" })
         .eq("id", itemId);
       if (error) throw error;
-      toast({ title: "Archiviert", description: "Vorgang wurde archiviert." });
+      notify.success("Archiviert", { description: "Vorgang wurde archiviert." 
+});
       await loadCaseItems();
     } catch (e) {
       debugConsole.error("Error archiving case item:", e);
-      toast({ title: "Fehler", description: "Vorgang konnte nicht archiviert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Vorgang konnte nicht archiviert werden."
+});
     }
   };
 
@@ -377,7 +371,8 @@ export function MyWorkCaseItemsTab() {
 
           if (error) {
             debugConsole.error("Error linking case item to meeting:", error);
-            toast({ title: "Fehler", description: "Zuordnung zum Jour Fixe fehlgeschlagen.", variant: "destructive" });
+            notify.error("Fehler", { description: "Zuordnung zum Jour Fixe fehlgeschlagen."
+});
             return;
           }
 
@@ -386,7 +381,8 @@ export function MyWorkCaseItemsTab() {
               row.id === meetingSelectorItemId ? { ...row, meeting_id: meetingId, pending_for_jour_fixe: false } : row
             )
           );
-          toast({ title: "Zugeordnet", description: `Vorgang dem Meeting „${meetingTitle}“ zugeordnet.` });
+          notify.success("Zugeordnet", { description: `Vorgang dem Meeting „${meetingTitle}“ zugeordnet.` 
+});
         }}
         onMarkForNextJourFixe={async () => {
           if (!meetingSelectorItemId) return;
@@ -398,12 +394,14 @@ export function MyWorkCaseItemsTab() {
 
           if (error) {
             debugConsole.error("Error marking case item for next Jour Fixe:", error);
-            toast({ title: "Fehler", description: "Vormerken für Jour Fixe fehlgeschlagen.", variant: "destructive" });
+            notify.error("Fehler", { description: "Vormerken für Jour Fixe fehlgeschlagen."
+});
             return;
           }
 
           setItems((prev) => prev.map((row) => (row.id === meetingSelectorItemId ? { ...row, pending_for_jour_fixe: true } : row)));
-          toast({ title: "Vorgemerkt", description: "Vorgang für den nächsten Jour Fixe vorgemerkt." });
+          notify.success("Vorgemerkt", { description: "Vorgang für den nächsten Jour Fixe vorgemerkt." 
+});
         }}
       />
 

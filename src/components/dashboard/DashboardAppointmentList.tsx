@@ -20,12 +20,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from '@/hooks/use-toast';
 import { AppointmentBriefingView } from '@/components/appointment-preparations/AppointmentBriefingView';
 import SimpleRichTextEditor from '@/components/ui/SimpleRichTextEditor';
 
 import type { AppointmentPreparation } from '@/hooks/useAppointmentPreparation';
 import type { AppointmentData } from '@/hooks/useDashboardAppointmentsData';
+import { notify } from "@/lib/notify";
 
 interface Props {
   appointments: AppointmentData[];
@@ -145,7 +145,8 @@ export function DashboardAppointmentList({ appointments, isShowingTomorrow, brie
 
   const handleSaveNote = async () => {
     if (!noteDialogAppointment || !noteText || noteText === '<p></p>') {
-      toast({ title: 'Fehler', description: 'Bitte geben Sie eine Notiz ein.', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Bitte geben Sie eine Notiz ein.'
+});
       return;
     }
     setSaving(true);
@@ -163,9 +164,11 @@ export function DashboardAppointmentList({ appointments, isShowingTomorrow, brie
       queryClient.invalidateQueries({ queryKey: ['appointment-feedback-appointments'] });
       setNoteText('');
       setNoteDialogAppointment(null);
-      toast({ title: 'Notiz gespeichert', description: 'Die Rückmeldung wurde gespeichert.' });
+      notify.success('Notiz gespeichert', { description: 'Die Rückmeldung wurde gespeichert.' 
+});
     } catch {
-      toast({ title: 'Fehler', description: 'Notiz konnte nicht gespeichert werden.', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Notiz konnte nicht gespeichert werden.'
+});
     } finally {
       setSaving(false);
     }
@@ -173,7 +176,8 @@ export function DashboardAppointmentList({ appointments, isShowingTomorrow, brie
 
   const handleCreateTask = async () => {
     if (!taskDialogAppointment || !taskTitle.trim()) {
-      toast({ title: 'Fehler', description: 'Bitte geben Sie einen Aufgabentitel ein.', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Bitte geben Sie einen Aufgabentitel ein.'
+});
       return;
     }
     if (!user?.id || !currentTenant?.id) return;
@@ -208,9 +212,11 @@ export function DashboardAppointmentList({ appointments, isShowingTomorrow, brie
       setTaskDueDate('');
       setTaskPriority('medium');
       setTaskDialogAppointment(null);
-      toast({ title: 'Aufgabe erstellt', description: 'Die Aufgabe wurde erstellt.' });
+      notify.success('Aufgabe erstellt', { description: 'Die Aufgabe wurde erstellt.' 
+});
     } catch {
-      toast({ title: 'Fehler', description: 'Die Aufgabe konnte nicht erstellt werden.', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Die Aufgabe konnte nicht erstellt werden.'
+});
     } finally {
       setSaving(false);
     }
@@ -222,9 +228,10 @@ export function DashboardAppointmentList({ appointments, isShowingTomorrow, brie
       await ensureFeedbackCompleted(appointment.id);
       setCompletedIds(prev => new Set(prev).add(appointment.id));
       queryClient.invalidateQueries({ queryKey: ['appointment-feedback-appointments'] });
-      toast({ title: 'Erledigt', description: 'Briefing als gelesen markiert.' });
+      notify.success('Erledigt', { description: 'Briefing als gelesen markiert.' 
+});
     } catch {
-      toast({ title: 'Fehler', variant: 'destructive' });
+      notify.error('Fehler');
     } finally {
       setSaving(false);
     }

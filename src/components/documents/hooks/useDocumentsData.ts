@@ -2,14 +2,13 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import type { Document, DocumentFolder, Letter } from "../types";
+import { notify } from "@/lib/notify";
 
 export function useDocumentsData(activeTab: string) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
 
   const [documents, setDocuments] = useState<Document[]>([]);
   const [letters, setLetters] = useState<Letter[]>([]);
@@ -60,7 +59,8 @@ export function useDocumentsData(activeTab: string) {
       setHasMore((data?.length || 0) >= PAGE_SIZE);
       setCurrentPage(page);
     } catch (error: unknown) {
-      toast({ title: "Fehler beim Laden", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+      notify.error("Fehler beim Laden", { description: error instanceof Error ? error.message : String(error)
+});
     } finally {
       setLoading(false);
     }
@@ -120,7 +120,8 @@ export function useDocumentsData(activeTab: string) {
       if (error) throw error;
       setLetters((data || []) as Letter[]);
     } catch (error: unknown) {
-      toast({ title: "Fehler beim Laden der Briefe", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+      notify.error("Fehler beim Laden der Briefe", { description: error instanceof Error ? error.message : String(error)
+});
     } finally {
       setLoading(false);
     }

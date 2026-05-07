@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { debugConsole } from "@/utils/debugConsole";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { useDecisionAttachmentUpload } from "@/hooks/useDecisionAttachmentUpload";
 import type { EmailMetadata } from "@/utils/emlParser";
 import { saveDecisionTopics } from "@/hooks/useDecisionTopics";
@@ -11,6 +10,7 @@ import {
   getTemplateById,
 } from "@/lib/decisionTemplates";
 import type { DecisionParticipantProfile } from "../types/domain";
+import { notify } from "@/lib/notify";
 
 type Profile = Pick<DecisionParticipantProfile, "user_id" | "display_name">;
 
@@ -101,7 +101,6 @@ export const useDecisionCreator = ({
         ],
   );
 
-  const { toast } = useToast();
   const { uploadDecisionAttachments } = useDecisionAttachmentUpload();
 
   const currentOptions = useMemo(() => customOptions, [customOptions]);
@@ -251,20 +250,16 @@ export const useDecisionCreator = ({
 
   const handleSubmit = useCallback(async () => {
     if (!title.trim()) {
-      toast({
-        title: "Fehler",
-        description: "Bitte geben Sie einen Titel ein.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Bitte geben Sie einen Titel ein."
+});
       return;
     }
 
     if (!visibleToAll && selectedUsers.length === 0) {
-      toast({
-        title: "Fehler",
-        description: "Bitte wählen Sie mindestens einen Benutzer aus oder machen Sie die Entscheidung öffentlich.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Bitte wählen Sie mindestens einen Benutzer aus oder machen Sie die Entscheidung öffentlich."
+});
       return;
     }
 
@@ -303,11 +298,9 @@ export const useDecisionCreator = ({
       const validSelectedUsers = selectedUsers.filter((userId) => tenantUserIds.has(userId));
 
       if (!visibleToAll && validSelectedUsers.length === 0) {
-        toast({
-          title: "Fehler",
-          description: "Bitte wählen Sie mindestens einen Benutzer aus Ihrem Tenant aus oder machen Sie die Entscheidung öffentlich.",
-          variant: "destructive",
-        });
+        notify.error("Fehler", {
+          description: "Bitte wählen Sie mindestens einen Benutzer aus Ihrem Tenant aus oder machen Sie die Entscheidung öffentlich."
+});
         return;
       }
 
@@ -393,10 +386,9 @@ export const useDecisionCreator = ({
 
       if (sendViaMatrix) {
         try {
-          toast({
-            title: "Matrix-Nachrichten werden versendet...",
-            description: "Die Matrix-Entscheidungsanfragen werden an die ausgewählten Teilnehmer gesendet.",
-          });
+          notify.success("Matrix-Nachrichten werden versendet...", {
+            description: "Die Matrix-Entscheidungsanfragen werden an die ausgewählten Teilnehmer gesendet."
+});
 
           const { data: matrixResult, error: matrixError } = await supabase.functions.invoke("matrix-bot-handler", {
             body: {
@@ -410,50 +402,40 @@ export const useDecisionCreator = ({
 
           if (matrixError) {
             debugConsole.error("Error sending Matrix decisions:", matrixError);
-            toast({
-              title: "Matrix-Fehler",
-              description: `Matrix-Nachrichten konnten nicht versendet werden: ${matrixError.message}`,
-              variant: "destructive",
-            });
+            notify.error("Matrix-Fehler", {
+              description: `Matrix-Nachrichten konnten nicht versendet werden: ${matrixError.message}`
+});
           } else if (isMatrixInvokeResult(matrixResult)) {
             const successCount = matrixResult.sent;
             const totalCount = matrixResult.total_participants || validSelectedUsers.length;
 
             if (successCount > 0) {
-              toast({
-                title: "Matrix-Nachrichten versendet",
-                description: `${successCount}/${totalCount} Matrix-Entscheidungen erfolgreich versendet.`,
-              });
+              notify.success("Matrix-Nachrichten versendet", {
+                description: `${successCount}/${totalCount} Matrix-Entscheidungen erfolgreich versendet.`
+});
             } else {
-              toast({
-                title: "Matrix-Warnung",
-                description: "Keine Matrix-Nachrichten konnten versendet werden. Überprüfen Sie die Matrix-Konfiguration.",
-                variant: "destructive",
-              });
+              notify.error("Matrix-Warnung", {
+                description: "Keine Matrix-Nachrichten konnten versendet werden. Überprüfen Sie die Matrix-Konfiguration."
+});
             }
           } else {
-            toast({
-              title: "Matrix-Warnung",
-              description: "Matrix-Rückgabe hatte ein unerwartetes Format.",
-              variant: "destructive",
-            });
+            notify.error("Matrix-Warnung", {
+              description: "Matrix-Rückgabe hatte ein unerwartetes Format."
+});
           }
         } catch (matrixError: unknown) {
           debugConsole.error("Error sending Matrix decisions:", matrixError);
-          toast({
-            title: "Matrix-Fehler",
-            description: `Unerwarteter Fehler beim Matrix-Versand: ${getErrorMessage(matrixError)}`,
-            variant: "destructive",
-          });
+          notify.error("Matrix-Fehler", {
+            description: `Unerwarteter Fehler beim Matrix-Versand: ${getErrorMessage(matrixError)}`
+});
         }
       }
 
       if (sendByEmail) {
         try {
-          toast({
-            title: "E-Mails werden versendet...",
-            description: "Die E-Mail-Einladungen werden an die ausgewählten Teilnehmer gesendet.",
-          });
+          notify.success("E-Mails werden versendet...", {
+            description: "Die E-Mail-Einladungen werden an die ausgewählten Teilnehmer gesendet."
+});
 
           const { data: emailResult, error: emailError } = await supabase.functions.invoke("send-decision-email", {
             body: {
@@ -468,51 +450,41 @@ export const useDecisionCreator = ({
 
           if (emailError) {
             debugConsole.error("Error sending decision emails:", emailError);
-            toast({
-              title: "E-Mail-Fehler",
-              description: `E-Mails konnten nicht versendet werden: ${emailError.message}`,
-              variant: "destructive",
-            });
+            notify.error("E-Mail-Fehler", {
+              description: `E-Mails konnten nicht versendet werden: ${emailError.message}`
+});
           } else if (isEmailInvokeResult(emailResult)) {
             const successCount = emailResult.results.filter((result) => result.success).length;
             const totalCount = emailResult.results.length || validSelectedUsers.length;
 
             if (successCount > 0) {
-              toast({
-                title: "E-Mails versendet",
-                description: `${successCount}/${totalCount} E-Mail-Einladungen erfolgreich versendet.`,
-              });
+              notify.success("E-Mails versendet", {
+                description: `${successCount}/${totalCount} E-Mail-Einladungen erfolgreich versendet.`
+});
             } else {
-              toast({
-                title: "E-Mail-Warnung",
-                description: "Keine E-Mails konnten versendet werden. Überprüfen Sie die E-Mail-Konfiguration.",
-                variant: "destructive",
-              });
+              notify.error("E-Mail-Warnung", {
+                description: "Keine E-Mails konnten versendet werden. Überprüfen Sie die E-Mail-Konfiguration."
+});
             }
           } else {
-            toast({
-              title: "E-Mail-Warnung",
-              description: "E-Mail-Rückgabe hatte ein unerwartetes Format.",
-              variant: "destructive",
-            });
+            notify.error("E-Mail-Warnung", {
+              description: "E-Mail-Rückgabe hatte ein unerwartetes Format."
+});
           }
         } catch (emailError: unknown) {
           debugConsole.error("Error sending decision emails:", emailError);
-          toast({
-            title: "E-Mail-Fehler",
-            description: `Unerwarteter Fehler beim E-Mail-Versand: ${getErrorMessage(emailError)}`,
-            variant: "destructive",
-          });
+          notify.error("E-Mail-Fehler", {
+            description: `Unerwarteter Fehler beim E-Mail-Versand: ${getErrorMessage(emailError)}`
+});
         }
       }
 
-      toast({
-        title: "Erfolgreich",
+      notify.success("Erfolgreich", {
         description:
           sendByEmail || sendViaMatrix
             ? "Entscheidungsanfrage wurde erstellt und Versand wird geprüft."
-            : "Entscheidungsanfrage wurde erstellt.",
-      });
+            : "Entscheidungsanfrage wurde erstellt."
+});
 
       resetForm();
       handleOpenChange(false);
@@ -521,12 +493,10 @@ export const useDecisionCreator = ({
     } catch (error) {
       setUploadStatus(null);
       debugConsole.error("Error creating decision:", error);
-      toast({
-        title: "Fehler",
+      notify.error("Fehler", {
         description:
-          error instanceof Error ? error.message : "Entscheidungsanfrage konnte nicht erstellt werden.",
-        variant: "destructive",
-      });
+          error instanceof Error ? error.message : "Entscheidungsanfrage konnte nicht erstellt werden."
+});
     } finally {
       setIsLoading(false);
       setUploadStatus(null);

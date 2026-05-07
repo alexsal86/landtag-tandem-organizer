@@ -4,7 +4,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from '@/utils/debugConsole';
 import { getErrorMessage } from '@/utils/errorHandler';
 import { startOfYear, endOfYear } from "date-fns";
@@ -18,6 +17,7 @@ import {
   PendingLeaveRequest,
   calculateWorkingDays, initLeaveAgg,
 } from "../types";
+import { notify } from "@/lib/notify";
 
 type AdminOverviewResponse = {
   employees: Array<Employee & { leave_agg?: LeaveAgg; sick_days_count?: number }>;
@@ -58,7 +58,6 @@ const ADMIN_OVERVIEW_GC_TIME_MS = 10 * 60 * 1000;
 export function useEmployeesData(): UseEmployeesDataResult {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const [isAdmin, setIsAdmin] = useState(false);
@@ -150,7 +149,8 @@ export function useEmployeesData(): UseEmployeesDataResult {
     if (adminOverviewQuery.error) {
       debugConsole.error(adminOverviewQuery.error);
       setError({ message: "Admin-Daten konnten nicht geladen werden.", cause: adminOverviewQuery.error });
-      toast({ title: "Fehler beim Laden", description: "Daten konnten nicht geladen werden.", variant: "destructive" });
+      notify.error("Fehler beim Laden", { description: "Daten konnten nicht geladen werden."
+});
       setLoading(false);
       return;
     }
@@ -287,12 +287,16 @@ export function useEmployeesData(): UseEmployeesDataResult {
           supabase.rpc("get_latest_employee_meetings", { p_employee_ids: [user.id] }).maybeSingle(),
         ]);
 
-        if (settingsRes.error) { debugConsole.error(settingsRes.error); toast({ title: "Fehler", description: "Fehler beim Laden der Mitarbeitereinstellungen", variant: "destructive" }); return; }
-        if (profileRes.error) { debugConsole.error(profileRes.error); toast({ title: "Fehler", description: "Fehler beim Laden des Profils", variant: "destructive" }); return; }
-        if (leavesRes.error) { debugConsole.error(leavesRes.error); toast({ title: "Fehler", description: "Fehler beim Laden der Urlaubsanträge", variant: "destructive" }); return; }
+        if (settingsRes.error) { debugConsole.error(settingsRes.error); notify.error("Fehler", { description: "Fehler beim Laden der Mitarbeitereinstellungen"
+}); return; }
+        if (profileRes.error) { debugConsole.error(profileRes.error); notify.error("Fehler", { description: "Fehler beim Laden des Profils"
+}); return; }
+        if (leavesRes.error) { debugConsole.error(leavesRes.error); notify.error("Fehler", { description: "Fehler beim Laden der Urlaubsanträge"
+}); return; }
 
         if (!settingsRes.data) {
-          toast({ title: "Keine Mitarbeitereinstellungen", description: "Falls der Administrator soeben Daten eingetragen hat, laden Sie die Seite neu (F5).", variant: "destructive" });
+          notify.error("Keine Mitarbeitereinstellungen", { description: "Falls der Administrator soeben Daten eingetragen hat, laden Sie die Seite neu (F5)."
+});
         }
 
         setSelfSettings((settingsRes.data as EmployeeSettingsRow) || null);
@@ -314,7 +318,8 @@ export function useEmployeesData(): UseEmployeesDataResult {
         debugConsole.error(e);
         const message = e instanceof Error ? e.message : "Eigene Daten konnten nicht geladen werden.";
         setError({ message, cause: e });
-        toast({ title: "Fehler beim Laden", description: message, variant: "destructive" });
+        notify.error("Fehler beim Laden", { description: message
+});
       } finally {
         setLoading(false);
       }

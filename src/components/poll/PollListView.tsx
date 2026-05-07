@@ -20,11 +20,11 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
 import { PollResultsDashboard } from './PollResultsDashboard';
 import { PollEditDialog } from './PollEditDialog';
 import { debugConsole } from '@/utils/debugConsole';
 import { AppointmentPollCreator } from './AppointmentPollCreator';
+import { notify } from "@/lib/notify";
 
 interface Poll {
   id: string;
@@ -41,7 +41,6 @@ interface Poll {
 
 export const PollListView = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [polls, setPolls] = useState<Poll[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPoll, setSelectedPoll] = useState<string | null>(null);
@@ -102,11 +101,9 @@ export const PollListView = () => {
       setPolls(sortedPolls);
     } catch (error) {
       debugConsole.error('Error loading polls:', error);
-      toast({
-        title: "Fehler",
-        description: "Die Abstimmungen konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Die Abstimmungen konnten nicht geladen werden."
+});
     } finally {
       setLoading(false);
     }
@@ -159,19 +156,16 @@ export const PollListView = () => {
         priority_param: 'medium'
       });
 
-      toast({
-        title: "Abstimmung wiederhergestellt",
-        description: "Die Terminabstimmung ist jetzt wieder aktiv.",
-      });
+      notify.success("Abstimmung wiederhergestellt", {
+        description: "Die Terminabstimmung ist jetzt wieder aktiv."
+});
 
       loadPolls();
     } catch (error) {
       debugConsole.error('Error restoring poll:', error);
-      toast({
-        title: "Fehler",
-        description: "Die Abstimmung konnte nicht wiederhergestellt werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Die Abstimmung konnte nicht wiederhergestellt werden."
+});
     }
   };
 
@@ -184,19 +178,16 @@ export const PollListView = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Abstimmung endgültig gelöscht",
-        description: "Die Terminabstimmung wurde unwiderruflich gelöscht.",
-      });
+      notify.success("Abstimmung endgültig gelöscht", {
+        description: "Die Terminabstimmung wurde unwiderruflich gelöscht."
+});
 
       loadPolls();
     } catch (error) {
       debugConsole.error('Error permanently deleting poll:', error);
-      toast({
-        title: "Fehler",
-        description: "Die Abstimmung konnte nicht gelöscht werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Die Abstimmung konnte nicht gelöscht werden."
+});
     }
   };
 
@@ -204,17 +195,14 @@ export const PollListView = () => {
     try {
       const pollUrl = `${window.location.origin}/poll-guest/${pollId}?preview=true`;
       await navigator.clipboard.writeText(pollUrl);
-      toast({
-        title: "Link kopiert",
-        description: "Der Abstimmungslink wurde in die Zwischenablage kopiert.",
-      });
+      notify.success("Link kopiert", {
+        description: "Der Abstimmungslink wurde in die Zwischenablage kopiert."
+});
     } catch (error) {
       debugConsole.error('Error copying poll link:', error);
-      toast({
-        title: "Fehler",
-        description: "Der Link konnte nicht kopiert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Der Link konnte nicht kopiert werden."
+});
     }
   };
 
@@ -236,20 +224,17 @@ export const PollListView = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Abstimmung gelöscht",
-        description: "Die Terminabstimmung wurde erfolgreich gelöscht und alle Teilnehmer benachrichtigt.",
-      });
+      notify.success("Abstimmung gelöscht", {
+        description: "Die Terminabstimmung wurde erfolgreich gelöscht und alle Teilnehmer benachrichtigt."
+});
 
       // Reload polls
       loadPolls();
     } catch (error) {
       debugConsole.error('Error deleting poll:', error);
-      toast({
-        title: "Fehler",
-        description: "Die Abstimmung konnte nicht gelöscht werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Die Abstimmung konnte nicht gelöscht werden."
+});
     }
   };
 

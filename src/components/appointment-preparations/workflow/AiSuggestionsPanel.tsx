@@ -2,10 +2,10 @@ import { useState } from "react";
 import { Sparkles, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useContactBriefingMemory } from "@/hooks/useContactBriefingMemory";
 import type { AppointmentPreparation } from "@/hooks/useAppointmentPreparation";
+import { notify } from "@/lib/notify";
 
 interface AiSuggestionsPanelProps {
   preparation: AppointmentPreparation;
@@ -22,7 +22,6 @@ interface Suggestions {
 }
 
 export function AiSuggestionsPanel({ preparation, appointmentTitle, phase, onUpdate }: AiSuggestionsPanelProps) {
-  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestions | null>(null);
 
@@ -56,7 +55,8 @@ export function AiSuggestionsPanel({ preparation, appointmentTitle, phase, onUpd
       setSuggestions(data as Suggestions);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unbekannter Fehler";
-      toast({ title: "KI-Vorschläge fehlgeschlagen", description: msg, variant: "destructive" });
+      notify.error("KI-Vorschläge fehlgeschlagen", { description: msg
+});
     } finally {
       setLoading(false);
     }
@@ -74,7 +74,7 @@ export function AiSuggestionsPanel({ preparation, appointmentTitle, phase, onUpd
       const list = [...(data.qa_pairs ?? []), { id: crypto.randomUUID(), question: payload.question ?? "", answer: payload.answer ?? "" }];
       await onUpdate({ preparation_data: { ...data, qa_pairs: list } });
     }
-    toast({ title: "Übernommen" });
+    notify.success("Übernommen");
   };
 
   return (

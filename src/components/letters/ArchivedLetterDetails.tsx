@@ -10,9 +10,9 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Database, Json } from '@/integrations/supabase/types';
 import { debugConsole } from '@/utils/debugConsole';
 import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
-import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { notify } from "@/lib/notify";
 
 interface ArchivedLetterDetailsProps {
   document: Database['public']['Tables']['documents']['Row'];
@@ -37,7 +37,6 @@ export const ArchivedLetterDetails: React.FC<ArchivedLetterDetailsProps> = ({
   isOpen,
   onClose
 }) => {
-  const { toast } = useToast();
   const [workflow, setWorkflow] = useState<WorkflowEntry[]>([]);
   const [letterDetails, setLetterDetails] = useState<LetterDetails | null>(null);
   const [attachments, setAttachments] = useState<DocumentAttachment[]>([]);
@@ -101,11 +100,9 @@ export const ArchivedLetterDetails: React.FC<ArchivedLetterDetailsProps> = ({
 
     } catch (error: unknown) {
       debugConsole.error('Error fetching letter details:', error);
-      toast({
-        title: "Fehler",
-        description: "Brief-Details konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Brief-Details konnten nicht geladen werden."
+});
     } finally {
       setLoading(false);
     }
@@ -128,11 +125,9 @@ export const ArchivedLetterDetails: React.FC<ArchivedLetterDetailsProps> = ({
       URL.revokeObjectURL(url);
       window.document.body.removeChild(link);
     } catch (error: unknown) {
-      toast({
-        title: "Download-Fehler",
-        description: error instanceof Error ? error.message : String(error),
-        variant: "destructive",
-      });
+      notify.error("Download-Fehler", {
+        description: error instanceof Error ? error.message : String(error)
+});
     }
   };
 
