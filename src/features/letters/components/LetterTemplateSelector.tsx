@@ -356,7 +356,7 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
               selectedTemplate?.id === template.id ? 'ring-2 ring-primary' : ''
             }`}
             onClick={() => {
-              onSelect(template as any);
+              onSelect(template);
             }}
           >
             <CardHeader className="pb-3">

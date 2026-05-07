@@ -84,7 +84,7 @@ export const UserStatusSelector: React.FC<UserStatusSelectorProps> = ({ children
     const until = statusUntil ? new Date(statusUntil) : undefined;
     
     await updateStatus(
-      selectedType as any,
+      selectedType,
       selectedType === 'custom' ? customMessage : undefined,
       selectedEmoji,
       until,

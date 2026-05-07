@@ -164,7 +164,7 @@ export function DrucksachenView() {
 
         <TabsContent value="protocols" className="space-y-6">
           <ProtocolsList 
-            protocols={protocols as any}
+            protocols={protocols}
             onProtocolSelect={handleProtocolSelect}
             onProtocolsRefresh={loadProtocols}
           />
