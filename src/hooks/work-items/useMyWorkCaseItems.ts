@@ -7,7 +7,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
-import { STALE_TIME, GC_TIME } from '@/lib/query-cache';
+import { STALE_TIME } from '@/lib/query-cache';
 
 export interface MyWorkCaseItemRow {
   id: string;
@@ -34,8 +34,7 @@ export function useMyWorkCaseItems(userId?: string) {
   return useQuery<MyWorkCaseItemRow[]>({
     queryKey: ['my-work-case-items', tenantId, userId],
     enabled: Boolean(tenantId && userId),
-    staleTime: STALE_TIME.LIST,
-    gcTime: GC_TIME.LIST,
+      staleTime: STALE_TIME.LIST,
     queryFn: async () => {
       const userFilter = `owner_user_id.eq.${userId},user_id.eq.${userId}`;
       const { data, error } = await supabase
