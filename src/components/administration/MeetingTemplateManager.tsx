@@ -597,18 +597,11 @@ export function MeetingTemplateManager() {
                     {selectedTemplate && (
                       <>
                         {(['upcoming_appointments', 'quick_notes', 'tasks', 'birthdays', 'decisions'] as const).map(type => {
-                          const styles: Record<string, string> = {
-                            upcoming_appointments: 'border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950',
-                            quick_notes: 'border-amber-200 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-950',
-                            tasks: 'border-green-200 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-950',
-                            birthdays: 'border-pink-200 text-pink-700 hover:bg-pink-50 dark:border-pink-800 dark:text-pink-300 dark:hover:bg-pink-950',
-                            decisions: 'border-violet-200 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950',
-                          };
                           const labels: Record<string, string> = {
                             upcoming_appointments: 'Termine', quick_notes: 'Notizen', tasks: 'Aufgaben', birthdays: 'Geburtstage', decisions: 'Entscheidungen',
                           };
                           return (
-                            <Button key={type} variant="outline" size="sm" className={styles[type]} onClick={() => addSystemTemplateItem(type)}>
+                            <Button key={type} variant="outline" size="sm" className={getAgendaToggleClass(type)} onClick={() => addSystemTemplateItem(type)}>
                               {getSystemIcon(type)}<span className="ml-2">{labels[type]}</span>
                             </Button>
                           );
