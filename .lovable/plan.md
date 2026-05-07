@@ -1,59 +1,89 @@
-## Ziel
+# Mobile App – Quick Actions Startscreen + erweiterter Login
 
-Das Selbsttest-Center bekommt einen **Demo-Modus**: Statt Daten zu erzeugen und sofort wieder zu löschen, kannst du pro Szenario realistische Datensätze in der Datenbank belassen und sie an ihrem normalen Ort im System ansehen (Kalender, Briefing-Widget, Event-Planung). Alle Demo-Datensätze tragen weiterhin das Prefix `[SELFTEST]` und werden über den bestehenden Notfall-Aufräumknopf entfernt.
+## Schema-Klärung quick_notes (erledigt)
 
-## Änderungen im Selbsttest-Center
+`public.quick_notes` hat `user_id` (NOT NULL, auth user) und `content` (NOT NULL). Kein `tenant_id` nötig. Wir schreiben minimal: `{ user_id, content, title?, category: 'mobile' }`.
 
-1. **Neuer Button „Demo-Daten erzeugen"** pro Szenario, neben „Ausführen".
-   - Führt dieselben Steps aus wie der Test, aber **überspringt das Cleanup** am Ende.
-   - Zeigt nach Abschluss eine Liste mit Deep-Links zu den erzeugten Datensätzen (z. B. „Termin öffnen", „Briefing ansehen", „Event-Planung öffnen").
-2. **Aufräumen erweitern**: Der Notfall-Button räumt zusätzlich `daily_briefings`, `event_plannings`, `event_planning_*`-Kindtabellen sowie `appointment_preparations` mit `[SELFTEST]`-Prefix auf.
-3. **Ausführen-Button** bleibt unverändert (Test mit Cleanup).
+## Erweiterter Login (Antwort auf Frage 3)
 
-## Drei neue Szenarien
+Vorschlag für die mobile App, **mehrstufig** angeordnet:
 
-### A) Termine eigenständig (`appointment-lifecycle`)
-Erzeugt einen vollständigen Termin, wie er im Kalender erscheint:
-- `appointments` (Titel, Beschreibung, Start/Ende heute +2h, Ort, Kategorie, Priorität, `is_all_day`, optional `is_private`).
-- `appointment_contacts` (1 Kontakt-Verknüpfung, falls vorhanden — sonst übersprungen).
-- `appointment_preparations` mit strukturiertem `preparation_data` (visit_reason, conversation_partners, companions, program, sections) → testet das gesamte Briefing-/Vorbereitungs-System.
-- Optional: `appointment_feedback` mit Bewertung 1–5 und Notizen.
-- Verify: zurücklesen, Felder prüfen.
-- Deep-Link: `/kalender` und `/termine/<id>`.
+1. **Erstanmeldung** – mehrere Wege zur Auswahl auf dem Login-Screen:
+   - **E-Mail + Passwort** (wie bisher, bleibt als Fallback)
+   - **Magic Link** – ein Tipp auf "Login-Link per Mail", User klickt im Mail-Programm, Deep-Link `landtagmobile://auth/callback` öffnet die App und legt die Session an
+   - **Google Sign-In** – nativer Button via `expo-auth-session` / Google Provider (in Supabase Dashboard zu aktivieren)
+   - *(Apple Sign-In als Folgeschritt sobald iOS-Build relevant wird – auf Android nicht erlaubt von Apple)*
+2. **Folgeanmeldungen auf demselben Gerät** – nach erstem erfolgreichem Login:
+   - **Biometrie** (Face ID / Fingerprint) via `expo-local-authentication`
+   - Refresh-Token liegt verschlüsselt im `expo-secure-store`, Biometrie schaltet ihn nur frei
+   - User kann Biometrie in den App-Einstellungen wieder ausschalten
+3. **Logout** löscht Refresh-Token und Biometrie-Flag aus SecureStore.
 
-### B) Tages-Briefings (`daily-briefing-lifecycle`)
-- `daily_briefings` für **heute** und **gestern** (zwei Datensätze mit unterschiedlichem Inhalt, damit die Vortag-Regel sichtbar wird).
-- Verify: per RPC/Query prüfen, dass beide für `tenant_id` lesbar sind.
-- Deep-Link: `/` (Dashboard) bzw. Briefing-Widget.
+Damit hat man: bequem (Magic Link/Google beim ersten Mal), schnell (Biometrie ab dem zweiten Mal), sicher (kein Passwort dauerhaft auf dem Gerät).
 
-### C) Event-Planung (`event-planning-lifecycle`)
-- `event_plannings` (Titel, Beschreibung, Ort, `is_digital`, optional digitale Felder).
-- `event_planning_dates` (2 Terminoptionen, eine als `is_confirmed=true`).
-- `event_planning_speakers` (1–2 Redner mit Bio/Topic/Order).
-- `event_planning_contacts` (1 Ansprechpartner mit Rolle).
-- `event_planning_checklist_items` (3–4 Items inkl. eines `type='social_media'` und `type='rsvp'` Punkts → testet Auto-Verlinkung).
-- `event_planning_timeline_assignments` für eine Checkliste.
-- Verify: alle Kindtabellen pro `event_planning_id` zählen und Felder stichprobenartig prüfen.
-- Deep-Link: `/veranstaltungsplanung/<id>`.
+## Quick-Actions-Startscreen
 
-## Technisches
+Nach Login einziger Hauptscreen, 6 Touch-Kacheln (2 Spalten):
 
-- Neue Datei `src/features/selftest/scenarios/appointment-lifecycle.ts`, `daily-briefing-lifecycle.ts`, `event-planning-lifecycle.ts`.
-- Registry erweitern.
-- Runner: neue Option `runScenario(scenario, { …, keepData: true })`. Bei `keepData=true` wird `cleanupCreated` übersprungen und `state.cleanup.status='skipped'` mit Message „Demo-Modus: Daten behalten" gesetzt; zusätzlich wird `state.createdLinks` gefüllt.
-- `TestScenario` erhält optional `links?: (ctx) => Array<{ label; href }>` zum Aufbau der Deep-Links nach erfolgreichem Lauf.
-- `SelftestView`:
-  - Zweiter Button „Demo-Daten erzeugen" (Variant `secondary`) ruft `runScenario` mit `keepData: true` auf.
-  - Nach Abschluss eines Demo-Laufs wird unter den Steps eine Card „Im System ansehen" mit den Links angezeigt (öffnet via `useNavigate`).
-- `purgeAllSelftestData`: Tabellen ergänzen — `appointment_feedback`, `appointment_preparations`, `appointment_contacts`, `event_planning_timeline_assignments`, `event_planning_checklist_items`, `event_planning_contacts`, `event_planning_speakers`, `event_planning_dates`, `event_plannings`, `daily_briefings`. Reihenfolge: Kinder vor Eltern.
-- `CLEANUP_ORDER` im Runner entsprechend ergänzen, damit auch der reguläre Test-Modus die neuen Szenarien sauber abräumen kann.
-- Coverage-Snapshot (`scripts/check-selftest-coverage.mjs` + `__schema-snapshot__/public-tables.json`) um die neuen Tabellen erweitern und in `docs/selftest-coverage.md` dokumentieren.
+```text
+┌──────────────┬──────────────┐
+│ 📝 Notiz     │ 🎙 Sprach-   │
+│              │ notiz        │
+├──────────────┼──────────────┤
+│ ✅ Aufgabe   │ 📅 Termin    │
+├──────────────┼──────────────┤
+│ 👤 Kontakt   │ 📞 Anruf     │
+│ suchen       │ erfassen     │
+└──────────────┴──────────────┘
+```
 
-## Sicherheit / RLS
+Header: aktiver Tenant + Settings-Icon (Logout, Biometrie an/aus).
 
-Alle neuen INSERTs setzen `tenant_id`, `created_by`/`user_id` korrekt (analog zu den bestehenden Szenarien) und nutzen die bereits laufende Preflight-Prüfung (Session + aktive Membership). Keine neuen Migrationen nötig.
+### v1-Umfang (echt funktionierend)
 
-## Was es **nicht** gibt
+- **📝 Notiz**: Bottom-Sheet → Titel (optional) + Inhalt → Insert in `quick_notes`
+- **✅ Aufgabe**: Titel + Fälligkeit (optional) → Insert in `tasks` (`category='mobile'`, `created_by=profiles.id`, `tenant_id` aus aktivem Tenant)
+- **👤 Kontakt suchen**: Suchfeld → Live-Suche `contacts` (Tenant-gefiltert) → Trefferliste → Detail mit "Anrufen" (`tel:`) und "Mailen" (`mailto:`)
 
-- Kein zusätzliches farbiges Badge in Listen (Prefix reicht laut deiner Antwort).
-- Kein Auto-Cleanup-Toggle pro Lauf — bewusst zwei klar unterscheidbare Buttons.
+### v1-Platzhalter (Kachel sichtbar, "Bald verfügbar"-Toast)
+
+- 🎙 Sprachnotiz, 📅 Termin, 📞 Anruf erfassen
+
+## Umsetzungsschritte
+
+1. **Dependencies** in `apps/mobile`:
+   - `@supabase/supabase-js`
+   - `@react-native-async-storage/async-storage`
+   - `expo-secure-store`
+   - `expo-local-authentication`
+   - `expo-auth-session` + `expo-crypto` + `expo-web-browser` (für Google + Magic-Link-Callback)
+   - `expo-linking` (für `landtagmobile://` Deep-Links)
+2. **Supabase-Client** in `packages/api-client/src/supabase.ts` – mit AsyncStorage als Auth-Storage, `autoRefreshToken: true`, `persistSession: true`
+3. **AuthContext** in `apps/mobile/src/state/AuthContext.tsx` – hält `session`, `profileId`, lädt beim App-Start `getSession()`, hört auf `onAuthStateChange`
+4. **TenantContext** – lädt Memberships (`tenant_users` + `tenants`), persistiert aktive Tenant-ID in SecureStore
+5. **Routing** mit Expo Router Gruppen:
+   - `app/(auth)/login.tsx` (E-Mail/Passwort + Magic Link + Google + Biometrie-Schnellzugang)
+   - `app/(auth)/callback.tsx` (Deep-Link-Handler für Magic-Link)
+   - `app/(app)/_layout.tsx` (Guard: ohne Session → Redirect)
+   - `app/(app)/index.tsx` → Quick-Actions-Grid
+   - `app/(app)/settings.tsx` (Biometrie an/aus, Tenant wechseln, Logout)
+6. **Quick-Action-Sheets** – React-Native Modals (`Modal` aus `react-native`), kein extra Lib
+7. **App-Identität minimal** – Platzhalter-Icon/Splash via Expo-CLI, damit `eas build` durchläuft
+8. **`app.json` ergänzen** – `scheme: 'landtagmobile'`, iOS/Android Intent-Filter für Deep-Links, Google-OAuth-`androidClientId`/`iosClientId` (kommen später aus Google Cloud Console)
+
+## Was du außerhalb von Code noch tun musst
+
+- **Google OAuth** in Supabase aktivieren (Dashboard → Authentication → Providers) und Client-IDs für Android/iOS in der Google Cloud Console anlegen. Ich kann erst integrieren, wenn die Client-IDs da sind – bis dahin liefere ich den Button mit Hinweis "noch nicht konfiguriert" aus.
+- **Magic Link Redirect** in Supabase erlauben: `landtagmobile://auth/callback` zur Liste der erlaubten Redirect-URLs hinzufügen.
+
+## Aus Scope ausgenommen (kommt später)
+
+Push-Notifications, Offline-Cache, MyWork-Listen, Kalenderansicht, Briefings, Sprachnotiz-Recording, native Termin-Erfassung, native Anrufaufzeichnung.
+
+## Bestätigung
+
+OK so? Speziell:
+- Login-Mix **E-Mail+Passwort + Magic Link + Google + Biometrie ab 2. Login** – passt das?
+- Kachel-Auswahl wie oben (3 echt, 3 Platzhalter)?
+
+Wenn ja, setze ich um.
