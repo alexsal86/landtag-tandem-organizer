@@ -339,7 +339,7 @@ export function PressOccasionManager() {
                     {COLOR_OPTIONS.map((o) => (
                       <SelectItem key={o.value} value={o.value}>
                         <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded-full ${o.value}`} />
+                          <div className={`w-3 h-3 rounded-full ${getPaletteSolidClass(o.value)}`} />
                           {o.label}
                         </div>
                       </SelectItem>
@@ -390,7 +390,7 @@ export function PressOccasionManager() {
           return (
             <div key={occasion.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50">
               <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-md flex items-center justify-center text-white ${occasion.color || 'bg-muted-foreground'}`}>
+                <div className={`w-8 h-8 rounded-md flex items-center justify-center text-white ${getPaletteSolidClass(occasion.color)}`}>
                   <OccasionIcon className="h-4 w-4" />
                 </div>
                 <div>
