@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Calendar, Clock, MapPin, ExternalLink, Notebook, Download } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft, Calendar, Clock, MapPin, ExternalLink, Notebook, Download, ArrowRight } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAppointmentPreparation } from "@/hooks/useAppointmentPreparation";
 import { AppointmentPreparationFileUpload } from "@/components/appointments/AppointmentPreparationFileUpload";
@@ -45,7 +44,8 @@ export default function AppointmentPreparationDetail() {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const [activeTab, setActiveTab] = useState("preparation");
+  const [selectedPhase, setSelectedPhase] = useState<PhaseId | null>(null);
+  const [briefingMode, setBriefingMode] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [appointmentInfo, setAppointmentInfo] = useState<AppointmentPreparationAppointmentDetails | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
