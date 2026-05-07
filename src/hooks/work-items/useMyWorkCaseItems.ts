@@ -34,7 +34,7 @@ export function useMyWorkCaseItems(userId?: string) {
   return useQuery<MyWorkCaseItemRow[]>({
     queryKey: ['my-work-case-items', tenantId, userId],
     enabled: Boolean(tenantId && userId),
-      staleTime: STALE_TIME.LIST,
+    staleTime: STALE_TIME.LIST,
     queryFn: async () => {
       const userFilter = `owner_user_id.eq.${userId},user_id.eq.${userId}`;
       const { data, error } = await supabase
