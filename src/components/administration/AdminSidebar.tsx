@@ -124,7 +124,9 @@ export const adminMenuItems: AdminMenuItem[] = [
       { id: "archiving", label: "Archivierung", icon: Archive },
       { id: "documents", label: "Dokumenttypen", icon: File },
       { id: "casefiles", label: "Fallakten-Typen", icon: Briefcase },
-      
+      { id: "data-quality", label: "Datenqualität", icon: ClipboardCheck },
+      { id: "duplicates", label: "Duplikate", icon: Users2 },
+      { id: "bulk-audit", label: "Sammelaktionen-Audit", icon: History },
       { id: "stakeholder-network-tags", label: "Stakeholder-Netzwerk", icon: Network },
     ],
   },
