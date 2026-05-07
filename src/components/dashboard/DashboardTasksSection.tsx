@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { GripVertical, CheckSquare, StickyNote, Briefcase, Vote, CalendarPlus, ChevronDown, ChevronRight } from 'lucide-react';
-import { format } from 'date-fns';
-import { de } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import type { DeadlineItem, GroupedDeadlineItems } from '@/types/dashboardDeadlines';
 import { DeadlineSnoozeButton } from './DeadlineSnoozeButton';
+import {
+  formatDeadlineDateLabel,
+  getDeadlineContextLabel,
+  getDeadlineStatus,
+  DEADLINE_STATUS_BAR_CLASS,
+} from '@/utils/deadlineFormatting';
 
 const TYPE_CONFIG = {
   task: { icon: CheckSquare, label: 'Aufgabe', tabBase: '/mywork?tab=tasks', color: 'text-blue-500' },
