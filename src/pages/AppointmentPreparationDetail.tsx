@@ -1,18 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Calendar, Clock, MapPin, ExternalLink, Notebook, Download } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft, Calendar, Clock, MapPin, ExternalLink, Notebook, Download, ArrowRight } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAppointmentPreparation } from "@/hooks/useAppointmentPreparation";
-import { AppointmentPreparationDataTab } from "@/components/appointment-preparations/AppointmentPreparationDataTab";
-import { AppointmentPreparationChecklistTab } from "@/components/appointment-preparations/AppointmentPreparationChecklistTab";
-import { AppointmentPreparationDetailsTab } from "@/components/appointment-preparations/AppointmentPreparationDetailsTab";
 import { AppointmentPreparationFileUpload } from "@/components/appointments/AppointmentPreparationFileUpload";
 import { AppointmentDetailsSidebar } from "@/components/calendar/AppointmentDetailsSidebar";
 import { AppointmentBriefingView } from "@/components/appointment-preparations/AppointmentBriefingView";
+import { PhaseSidebar } from "@/components/appointment-preparations/workflow/PhaseSidebar";
+import { PhaseContent } from "@/components/appointment-preparations/workflow/PhaseContent";
+import { LiveBriefingPane } from "@/components/appointment-preparations/workflow/LiveBriefingPane";
+import { usePhaseStatus, type PhaseId } from "@/components/appointment-preparations/workflow/usePhaseStatus";
 import { supabase } from "@/integrations/supabase/client";
 import { generateBriefingPdf } from "@/components/appointment-preparations/briefingPdfGenerator";
 import { useAuth } from "@/hooks/useAuth";
@@ -44,7 +44,8 @@ export default function AppointmentPreparationDetail() {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const [activeTab, setActiveTab] = useState("preparation");
+  const [selectedPhase, setSelectedPhase] = useState<PhaseId | null>(null);
+  const [briefingMode, setBriefingMode] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [appointmentInfo, setAppointmentInfo] = useState<AppointmentPreparationAppointmentDetails | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -77,7 +78,7 @@ export default function AppointmentPreparationDetail() {
       const role = data?.role || null;
       setUserRole(role);
       if (role === 'abgeordneter') {
-        setActiveTab('briefing');
+        setBriefingMode(true);
       }
     };
     fetchRole();
@@ -208,7 +209,7 @@ export default function AppointmentPreparationDetail() {
   }
 
   const getStatusBadge = (status: string) => {
-    if (activeTab === "preparation" && status === "draft") {
+    if (status === "draft" && !briefingMode) {
       return null;
     }
 
@@ -348,69 +349,36 @@ export default function AppointmentPreparationDetail() {
           </div>
         </Card>
 
-        {/* Tab Navigation */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="briefing">Briefing</TabsTrigger>
-            <TabsTrigger value="preparation">Vorbereitung</TabsTrigger>
-            <TabsTrigger value="checklist">
-              Checkliste
-              {preparation.checklist_items?.length ? (
-                <span className="ml-1.5 text-xs text-muted-foreground">
-                  ({preparation.checklist_items.filter(i => i.completed).length}/{preparation.checklist_items.length})
-                </span>
-              ) : null}
-            </TabsTrigger>
-            <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="dokumente">Dokumente</TabsTrigger>
-          </TabsList>
-
-          <div className="mt-6">
-            <TabsContent value="briefing">
-              <AppointmentBriefingView
-                preparation={preparation}
-                appointmentInfo={appointmentInfo}
-              />
-            </TabsContent>
-
-            <TabsContent value="preparation">
-              <AppointmentPreparationDataTab
-                preparation={preparation}
-                appointmentDetails={appointmentInfo}
-                onUpdate={updatePreparation}
-                onOpenAppointmentDetails={() => setShowAppointmentSidebar(true)}
-              />
-            </TabsContent>
-
-            <TabsContent value="checklist">
-              <AppointmentPreparationChecklistTab
-                preparation={preparation}
-                onUpdate={updatePreparation}
-              />
-            </TabsContent>
-
-            <TabsContent value="details">
-              <AppointmentPreparationDetailsTab
-                preparation={preparation}
-                onUpdate={updatePreparation}
-              />
-            </TabsContent>
-
-            <TabsContent value="dokumente">
-              <Card className="bg-card shadow-card border-border">
-                <CardHeader>
-                  <CardTitle>Dokumente</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <AppointmentPreparationFileUpload
-                    preparationId={preparation.id}
-                    tenantId={preparation.tenant_id}
-                  />
-                </CardContent>
-              </Card>
-            </TabsContent>
+        {/* Workflow Workspace */}
+        {briefingMode ? (
+          <div className="mt-4">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="section-label text-muted-foreground">Briefing-Ansicht</p>
+              <Button variant="ghost" size="sm" onClick={() => setBriefingMode(false)}>
+                Zur Vorbereitung
+              </Button>
+            </div>
+            <AppointmentBriefingView
+              preparation={preparation}
+              appointmentInfo={appointmentInfo ? {
+                title: appointmentInfo.title,
+                start_time: appointmentInfo.start_time,
+                end_time: appointmentInfo.end_time,
+                location: appointmentInfo.location ?? null,
+              } : null}
+            />
           </div>
-        </Tabs>
+        ) : (
+          <WorkflowWorkspace
+            preparation={preparation}
+            appointmentInfo={appointmentInfo}
+            updatePreparation={updatePreparation}
+            onOpenAppointmentDetails={() => setShowAppointmentSidebar(true)}
+            selectedPhase={selectedPhase}
+            setSelectedPhase={setSelectedPhase}
+            onShowBriefing={() => setBriefingMode(true)}
+          />
+        )}
       </div>
         {appointmentInfo && (
           <AppointmentDetailsSidebar
@@ -433,6 +401,78 @@ export default function AppointmentPreparationDetail() {
             onUpdate={() => preparation.appointment_id ? fetchAppointmentInfo(preparation.appointment_id) : Promise.resolve()}
           />
         )}
+    </div>
+  );
+}
+
+interface WorkflowWorkspaceProps {
+  preparation: NonNullable<ReturnType<typeof useAppointmentPreparation>['preparation']>;
+  appointmentInfo: AppointmentPreparationAppointmentDetails | null;
+  updatePreparation: (updates: Parameters<ReturnType<typeof useAppointmentPreparation>['updatePreparation']>[0]) => Promise<void>;
+  onOpenAppointmentDetails: () => void;
+  selectedPhase: PhaseId | null;
+  setSelectedPhase: (id: PhaseId | null) => void;
+  onShowBriefing: () => void;
+}
+
+function WorkflowWorkspace({
+  preparation,
+  appointmentInfo,
+  updatePreparation,
+  onOpenAppointmentDetails,
+  selectedPhase,
+  setSelectedPhase,
+  onShowBriefing,
+}: WorkflowWorkspaceProps) {
+  const { phases, activePhase, blockers } = usePhaseStatus(preparation, selectedPhase);
+  const currentIdx = phases.findIndex((p) => p.id === activePhase);
+  const nextPhase = phases[currentIdx + 1];
+
+  return (
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 mt-4">
+      <div className="lg:col-span-3 lg:sticky lg:top-4 lg:self-start">
+        <PhaseSidebar
+          phases={phases}
+          activePhase={activePhase}
+          onSelect={(id) => setSelectedPhase(id)}
+          blockers={blockers}
+        />
+      </div>
+
+      <div className="lg:col-span-6">
+        <PhaseContent
+          phase={activePhase}
+          preparation={preparation}
+          appointmentDetails={appointmentInfo}
+          onUpdate={updatePreparation}
+          onOpenAppointmentDetails={onOpenAppointmentDetails}
+        />
+        {nextPhase && (
+          <div className="mt-6 flex justify-end">
+            <Button variant="default" size="sm" onClick={() => setSelectedPhase(nextPhase.id)}>
+              Phase abschließen
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
+
+      <div className="hidden lg:block lg:col-span-3 lg:sticky lg:top-4 lg:self-start">
+        <LiveBriefingPane
+          preparation={preparation}
+          appointmentInfo={appointmentInfo ? {
+            title: appointmentInfo.title,
+            start_time: appointmentInfo.start_time,
+            end_time: appointmentInfo.end_time,
+            location: appointmentInfo.location ?? null,
+          } : null}
+        />
+        <div className="mt-3 text-right">
+          <Button variant="ghost" size="sm" onClick={onShowBriefing}>
+            Vollbild-Briefing →
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
