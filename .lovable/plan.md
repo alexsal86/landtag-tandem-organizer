@@ -1,34 +1,128 @@
-# Dashboard-Anpassungen
+## Ziel
 
-## 1. Layout umbauen (`MyWorkDashboardTab.tsx`)
+Drei große Arbeitspakete, die deutlich Credits verbrauchen und langfristig Stabilität, Kosten und mobilen Mehrwert verbessern:
 
-Neue Spaltenaufteilung (3 Spalten, items-start):
+1. **Performance & Egress** – vollständiger Audit + persistentes Monitoring
+2. **Test-Coverage** – kritische Pfade tief + Smoke-Tests breit
+3. **Mobile-App** – Offline-Notizen/Sprachmemos, Foto-OCR, Termine/Briefings
 
-- **Linke Spalte:** Fristen → darunter Entscheidungen
-- **Mittlere Spalte:** Termine heute/morgen
-- **Rechte Spalte:** Jour fixe → darunter News
+Reihenfolge: 1 → 2 → 3 (Performance zuerst, damit neue Tests/Mobile auf optimierter Basis laufen).
 
-## 2. Fristen kompakter & paginiert (`DashboardTasksSection.tsx`)
+---
 
-- Pro Gruppe (Überfällig, Heute, Diese Woche, Später) initial **max. 5 Einträge**.
-- Wenn mehr vorhanden: Button „+N weitere anzeigen" am Ende der Gruppe; Klick erhöht den Sichtbarkeits-Counter dieser Gruppe um 5 (lokaler `useState<Record<groupKey, number>>`).
-- Vertikale Abstände reduzieren: `py-3` → `py-1.5`, Bar-Position entsprechend anpassen, Gruppentitel-Margin `mt-4` → `mt-3`.
-- Titel-Zeile: `font-semibold` → `font-medium` (Titel bleibt klar, wirkt aber leichter); Meta-Zeile bleibt `text-xs text-muted-foreground`, zusätzlich `opacity` belassen — Schrift unter Titel wird durch reduzierten Kontrast (muted-foreground bleibt, aber kein font-weight) grauer wirken. Falls nötig zusätzlich `text-muted-foreground/80`.
-- „Heute"/„Diese Woche" werden nicht mehr collapsible behandelt — nur „Später" bleibt collapsible (wie zuvor), innerhalb davon ebenfalls 5er-Pagination.
+## 1) Performance & Egress – voll inkl. Monitoring
 
-## 3. Entscheidungen-Widget: Undo-Fenster verlängern/sicherstellen (`DashboardDecisionsWidget.tsx`)
+### 1.1 Audit (read-only, dokumentiert in `docs/performance-audit-2026-05.md`)
+- Alle `useQuery`-Hooks scannen: fehlende `staleTime`, `select('*')` statt expliziter Spalten, fehlende Realtime-Filter.
+- Bundle-Analyse via `scripts/report-bundle-size.mjs`: Top-20 größter Chunks identifizieren.
+- Realtime-Channels prüfen: doppelte Subscriptions, fehlende `tenant_id`-Filter, nicht-eindeutige Channelnamen.
+- React-Profiler-Pass auf Dashboard, Kalender, Vorgänge, Meine Arbeit.
 
-Aktuell: Nach Klick auf Ja/Nein/Frage erscheint Prompt mit Undo. Nach 10 s wird `loadDecisions({ silent: true })` aufgerufen — dadurch verschwindet der Eintrag (da `hasResponded=true`) und Undo ist nicht mehr möglich. Ergebnis bleibt erhalten.
+### 1.2 Quick Fixes (Top-Treffer aus Audit)
+- Explizite Spaltenlisten in den 20 teuersten Queries (Vorgänge, Decisions, Tasks, Letters, Briefings, Contacts, Calendar).
+- Einheitliche `staleTime` (60–300 s) und `gcTime` für stabile Daten (profiles, tenant_users, categories, statuses).
+- Realtime-Subscriptions: scoped Filter (`tenant_id`, `user_id`) + 250 ms Debounce.
+- Lazy-Loading: Lexical-Plugins, Letter-Designer, Map-Layer, Knowledge-Dossier, Charts (recharts) erst on-demand.
+- Icon-Tree-Shake: `lucide-react` nur Named-Imports, keine Sammel-Re-Exports.
+- Memoization: `useCallback`/`useMemo` für teure Callbacks in Dashboard-Widgets.
 
-Fix:
-- Auto-Refresh-Timer entfernen bzw. nur Prompt schließen, **Refresh erst beim nächsten manuellen Trigger / beim Verlassen / beim Öffnen** durchführen.
-- Konkret: Nach Submit Prompt einblenden; Timeout schließt nur den Prompt-State (nicht den Eintrag) und ruft **kein** `loadDecisions` auf. Undo bleibt über die direkte Aktion „Rückgängig" so lange möglich, wie der Eintrag in der Liste sichtbar ist.
-- Da der Eintrag nach Submit `hasResponded=true` ist (durch Realtime/Reload), würde er beim nächsten Daten-Refresh verschwinden. Lösung: Lokales Set `recentlyAnswered` pro DecisionRow; solange Prompt offen ODER Row im Set ist, Eintrag in der Liste behalten und Undo-Button anzeigen, auch wenn Antwort gespeichert ist.
-- Ein expliziter „Fertig"-Button im Prompt schließt Prompt + entfernt Eintrag aus `recentlyAnswered` → nächste Datenladung versteckt ihn.
+### 1.3 Monitoring (neu)
+- Tabelle `egress_metrics` (tenant_id, day, requests, bytes_in, bytes_out, slow_query_count, source).
+- Edge Function `collect-egress-metrics` (täglicher Cron 02:00) liest pg_stat_statements + storage logs aggregiert pro Tenant.
+- Admin-Dashboard `/admin/performance`: Diagramm Egress/Tag, Top-Queries, Top-Tabellen, Realtime-Auslastung, Bundle-History.
+- Alerting: Edge Function `check-egress-anomaly` (täglich) erstellt eine Notification an Platform-Admins, wenn ein Tenant 2× Median überschreitet.
+
+### 1.4 Definition of Done
+- Audit-Report committet, Top-20 Quick Fixes umgesetzt.
+- `/admin/performance` zeigt 14-Tage-Egress live.
+- Mindestens 30 % Reduktion der durchschnittlichen Response-Größe der Top-5 Queries (gemessen vorher/nachher).
+
+---
+
+## 2) Test-Coverage – kritische Pfade tief + Smoke breit
+
+### 2.1 Kritische Pfade (Vitest + React Testing Library)
+- `useAuth`, `tenant`-Switching, `ProtectedRoute`, Rollen-Guards.
+- Vorgänge: Anlage, Status-Wechsel, Verlinkung Decision/Task/Letter.
+- Decisions: `get_my_work_decisions`, Antworten, Archivierung, Sync zu Meeting-Archiv.
+- Tasks: Multi-Assign, Snooze, Subtask-Logik, Jour-Fixe-Verknüpfung.
+- Letters: Workflow Draft → Approval → Versand, DOCX/PDF-Export-Helper.
+- Briefings: Vortag-Regel, Empfänger-Auflösung, Read-Tracking.
+- Time-Tracking: Soll/Ist, Überstunden, Stellvertreter.
+
+### 2.2 Smoke-Tests breit
+- `scripts/e2e-smoke-flows.mjs` ausbauen: jede Hauptseite (Dashboard, Meine Arbeit, Kalender, Vorgänge, Kontakte, Wissen, Briefe, Redaktion, Zeit, Wahlkreise, Admin) lädt fehlerfrei für jede Rolle.
+- Edge-Function-Smoke: alle deployten Functions auf 200/401-Verhalten.
+- Snapshot-Tests für Empty-States (`MyWorkEmptyState`-Varianten).
+
+### 2.3 Quality Gates
+- CI-Schwelle: Coverage kritischer Module ≥ 70 % Lines, ≥ 60 % Branches.
+- Pre-merge: Smoke-Suite muss grün sein.
+- Report `docs/test-coverage-2026-05.md` mit Heatmap pro Feature.
+
+### 2.4 Definition of Done
+- ≥ 60 neue Tests, alle 7 kritischen Pfade abgedeckt.
+- Smoke-Suite läuft < 3 min und deckt alle Hauptseiten + alle Rollen ab.
+- CI-Gate aktiv.
+
+---
+
+## 3) Mobile-App ausbauen (Capacitor, bestehende `apps/mobile`)
+
+Fokus laut deiner Auswahl: Offline-Notizen/Sprachmemos, Foto-OCR, Termine & Briefings.
+
+### 3.1 Offline-Notizen & Sprachmemos
+- Lokaler Store (SQLite via Capacitor-SQLite oder WatermelonDB) für `quick_notes` mit `sync_state` (pending/synced/error).
+- Sprachaufnahme via `@capacitor/voice-recorder` → m4a-Datei lokal, Upload + Transkription per Edge Function `transcribe-voice-note` (Lovable AI: Gemini 2.5 Flash für Transkription/Zusammenfassung; ElevenLabs Scribe optional, falls bessere Qualität gewünscht).
+- Konflikt-Strategie: server-wins mit lokaler Backup-Kopie der überschriebenen Version.
+- Sync-Indikator (Sidebar-Footer der Mobile-App): „X ausstehend, zuletzt synchronisiert HH:MM".
+
+### 3.2 Foto-OCR (Visitenkarten / Briefe)
+- `@capacitor/camera` Foto → komprimiert (WebP 80 %, max. 1600 px Längsseite).
+- Upload nach Storage-Bucket `mobile-captures/${user_id}/...`.
+- Edge Function `ocr-extract` ruft Lovable AI (Gemini 2.5 Pro vision) mit Tool-Calling für strukturierte Ausgabe:
+  - **Visitenkarte** → Vorschlag `contacts`-Eintrag (Name, Org, Mail, Telefon, Adresse).
+  - **Brief/Schreiben** → Vorschlag `case_items` (Betreff, Absender, Datum, Klassifizierung).
+- Mobile-Sheet zeigt Vorschau + „Übernehmen / Bearbeiten / Verwerfen".
+
+### 3.3 Termine & Briefings
+- Heute-View: nächste 5 Termine, jeweils mit „Check-in", „Briefing öffnen", „Rückmeldung erfassen".
+- Briefings: Read-Only Lexical-Renderer + Sprachmemo-Anhang als Rückmeldung.
+- Rückmeldung: Kurzformular (Erfolg 1–5, Stichworte, optional Sprachnotiz) → schreibt in bestehendes `appointment_feedback`.
+- Push: bestehende `create_notification`-RPC nutzt FCM-Token → 30 min vor Termin Reminder.
+
+### 3.4 Infrastruktur
+- Neuer Bucket `mobile-captures` (private, Pfad `${user_id}/...`).
+- Neue Tabelle `mobile_capture_drafts` (id, user_id, tenant_id, type, raw_url, parsed_jsonb, status, created_at).
+- RLS: nur Owner liest/schreibt eigene Drafts; Admins lesen tenant-weit.
+- Edge Functions: `transcribe-voice-note`, `ocr-extract`, `mobile-sync-pull`, `mobile-sync-push`.
+
+### 3.5 Definition of Done
+- Mobile-App zeigt Heute-Briefing, kann offline Notizen/Sprachmemos erfassen und syncen.
+- Foto-OCR erstellt brauchbare Vorschläge für mind. 80 % der Test-Visitenkarten.
+- Push-Reminder für Termine funktioniert in Android-Emulator.
+
+---
+
+## Reihenfolge & Lieferschritte
+
+1. **Performance-Audit + Quick Fixes** (kein DB-Schema)
+2. **Egress-Monitoring** (Tabelle + Edge Functions + `/admin/performance`)
+3. **Test-Suite kritische Pfade**
+4. **Smoke-Suite breit + CI-Gate**
+5. **Mobile: Offline-Notizen + Sprachmemos** (Bucket, Tabelle, Edge Functions, UI)
+6. **Mobile: Foto-OCR**
+7. **Mobile: Termine/Briefings + Push**
+
+Jeder Schritt wird einzeln implementiert und getestet, bevor der nächste beginnt – so behältst du Kontrolle über Credits und kannst nach jedem Schritt stoppen.
+
+---
 
 ## Technische Details
 
-- `DashboardTasksSection`: ersetze `showLater` durch `visibleCounts: Record<'overdue'|'today'|'thisWeek'|'later', number>` mit Default 5; Helper `renderGroup(key, label, list, labelClass)` slict `list.slice(0, visibleCounts[key])` und rendert „+N weitere" wenn `list.length > visible`.
-- Spacing: `py-1.5 pl-3 pr-2`, Bar `top-1.5 bottom-1.5`.
-- Layout-Grid bleibt `lg:grid-cols-[35fr_35fr_30fr]`; nur Inhalte der Spalten umsortieren.
-- Decisions-Widget: neuer State `Set<string>` `keepVisibleIds`; `items` Memo erweitert um Decisions, deren ID in `keepVisibleIds` ist (auch wenn schon resolved/responded). Undo entfernt aus Set + ruft `loadDecisions`.
+- **AI-Provider**: Lovable AI Gateway, Default `google/gemini-3-flash-preview`; Vision/OCR `google/gemini-2.5-pro`. Kein Direkt-Call vom Client, alles via Edge Functions.
+- **Mobile-Stack**: bestehender Capacitor-Setup unter `apps/mobile`, Expo Router, Supabase-JS bereits eingerichtet.
+- **Storage**: alle Uploads `${user_id}/...` (Memory-Regel).
+- **Realtime**: `crypto.randomUUID()`-Channelnamen, Debounce 250 ms.
+- **TypeScript**: kein `as any`, JSX-Imports gemäß Memory-Regeln.
+- **Sync-Bibliothek Mobile**: vorzugsweise SQLite + eigene Push/Pull-Edge-Functions (kein WatermelonDB-Lock-in).
