@@ -13,7 +13,7 @@ import {
 import { CheckSquare, Vote, Briefcase, StickyNote, Calendar, Plus } from "lucide-react";
 import { PageHelpButton } from "@/components/shared/PageHelpButton";
 import { MYWORK_HELP_CONTENT } from "@/config/helpContent";
-import { useMyWorkSettings } from "@/hooks/useMyWorkSettings";
+
 import { useMyWorkNewCounts } from "@/hooks/useMyWorkNewCounts";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { MyWorkTabErrorState } from "@/components/my-work/MyWorkTabErrorState";
