@@ -116,7 +116,9 @@ export function MyWorkCasesWorkspace() {
     return true;
   }, [setCaseItems]);
 
-  // Decision integration state extracted to hook (see below)
+  // Decision integration state
+  const [isDecisionCreatorOpen, setIsDecisionCreatorOpen] = useState(false);
+  const [decisionCreatorItemId, setDecisionCreatorItemId] = useState<string | null>(null);
 
 
   // Jour Fixe meeting selector state
