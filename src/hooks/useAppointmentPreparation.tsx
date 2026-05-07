@@ -87,12 +87,25 @@ export interface AppointmentPreparation {
       item: string;
       notes: string;
     }>;
+    // Debrief / Nachbereitung
+    debrief_summary?: string;
+    debrief_outcomes?: string;
+    debrief_mood?: 'positive' | 'neutral' | 'negative';
+    debrief_open_points?: Array<{
+      id: string;
+      text: string;
+      assignee?: string;
+      due_date?: string;
+      task_created?: boolean;
+    }>;
+    debrief_followup_scheduled?: boolean;
   };
   checklist_items: Array<{
     id: string;
     label: string;
     completed: boolean;
   }>;
+  shared_with?: string[];
 }
 
 
