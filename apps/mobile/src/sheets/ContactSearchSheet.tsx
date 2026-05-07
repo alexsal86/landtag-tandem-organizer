@@ -49,7 +49,10 @@ export function ContactSearchSheet({
         keyExtractor={(item) => item.id}
         keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => (
-          <View style={styles.row}>
+          <Pressable
+            onPress={() => { onClose(); setTimeout(() => router.push({ pathname: '/contacts/[id]', params: { id: item.id } }), 50); }}
+            style={styles.row}
+          >
             <Text style={styles.name}>{item.name}</Text>
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 6 }}>
               {(item.mobile_phone || item.business_phone || item.phone) ? (
@@ -63,7 +66,7 @@ export function ContactSearchSheet({
                 </Pressable>
               ) : null}
             </View>
-          </View>
+          </Pressable>
         )}
         ListEmptyComponent={
           q.trim().length >= 2 ? (
