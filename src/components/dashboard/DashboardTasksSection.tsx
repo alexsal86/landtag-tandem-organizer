@@ -16,6 +16,9 @@ const TYPE_CONFIG = {
   eventPlanning: { label: 'Veranstaltungsplanung', tabBase: '/eventplanning', barClass: 'bg-rose-500' },
 };
 
+type GroupKey = 'overdue' | 'today' | 'thisWeek' | 'later';
+const PAGE_SIZE = 5;
+
 interface DashboardTasksSectionProps {
   items: DeadlineItem[];
   grouped: GroupedDeadlineItems;
@@ -26,6 +29,15 @@ const stripOverduePrefix = (label: string) => label.replace(/^überfällig\s·\s
 export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionProps) => {
   const navigate = useNavigate();
   const [showLater, setShowLater] = useState(false);
+  const [visibleCounts, setVisibleCounts] = useState<Record<GroupKey, number>>({
+    overdue: PAGE_SIZE,
+    today: PAGE_SIZE,
+    thisWeek: PAGE_SIZE,
+    later: PAGE_SIZE,
+  });
+
+  const showMore = (key: GroupKey) =>
+    setVisibleCounts((v) => ({ ...v, [key]: v[key] + PAGE_SIZE }));
 
   const handleDragStart = (event: React.DragEvent<HTMLElement>, title: string, id?: string, type?: string) => {
     event.dataTransfer.effectAllowed = 'copy';
@@ -52,7 +64,7 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
     return (
       <div
         key={`${item.type}-${item.id}`}
-        className={`group relative flex items-start gap-3 py-3 pl-3 pr-2 cursor-pointer hover:bg-muted/30 transition-colors ${index > 0 ? 'border-t border-border/60' : ''}`}
+        className={`group relative flex items-start gap-3 py-1.5 pl-3 pr-2 cursor-pointer hover:bg-muted/30 transition-colors ${index > 0 ? 'border-t border-border/40' : ''}`}
         onClick={() =>
           navigate(
             item.type === 'eventPlanning' && item.planningId
@@ -62,7 +74,7 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
         }
         title={`${cfg.label} – Klicken zum Öffnen, oder per Handle in den Tageszettel ziehen`}
       >
-        <span aria-hidden className={`absolute left-0 top-3 bottom-3 w-[3px] rounded-r ${cfg.barClass}`} />
+        <span aria-hidden className={`absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r ${cfg.barClass}`} />
 
         <span
           draggable
@@ -74,9 +86,9 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
           <GripVertical className="h-4 w-4 shrink-0" />
         </span>
 
-        <div className="flex-1 min-w-0 space-y-0.5">
-          <div className="text-sm font-semibold text-foreground truncate">{item.title}</div>
-          <div className="text-xs text-muted-foreground tabular-nums">
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium text-foreground truncate leading-tight">{item.title}</div>
+          <div className="text-xs text-muted-foreground/80 tabular-nums leading-tight mt-0.5">
             {dateLabel} · {contextLabel}
           </div>
         </div>
@@ -86,16 +98,28 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
     );
   };
 
-  const renderGroup = (label: string, list: DeadlineItem[], labelClass = 'text-muted-foreground') => {
+  const renderGroup = (key: GroupKey, label: string, list: DeadlineItem[], labelClass = 'text-muted-foreground') => {
     if (list.length === 0) return null;
+    const visible = visibleCounts[key];
+    const slice = list.slice(0, visible);
+    const remaining = list.length - slice.length;
     return (
-      <div className="mt-4 first:mt-0">
+      <div className="mt-3 first:mt-0">
         <div className={`section-label flex items-center gap-2 px-3 pb-1 ${labelClass}`}>
           <span>{label}</span>
           <span className="tabular-nums opacity-70">{list.length}</span>
           <span className="flex-1 h-px bg-border/60" aria-hidden />
         </div>
-        <div>{list.map(renderItem)}</div>
+        <div>{slice.map(renderItem)}</div>
+        {remaining > 0 && (
+          <button
+            type="button"
+            onClick={() => showMore(key)}
+            className="ml-3 mt-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            +{remaining} weitere anzeigen
+          </button>
+        )}
       </div>
     );
   };
@@ -104,6 +128,10 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
     return <p className="text-sm text-muted-foreground">Keine offenen Fristen.</p>;
   }
 
+  const laterVisible = visibleCounts.later;
+  const laterSlice = grouped.later.slice(0, laterVisible);
+  const laterRemaining = grouped.later.length - laterSlice.length;
+
   return (
     <div>
       <div className="flex justify-end mb-2 text-xs text-muted-foreground tabular-nums">
@@ -111,12 +139,12 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
         {overdueCount > 0 && <> · <span className="text-destructive ml-1">{overdueCount} überfällig</span></>}
       </div>
 
-      {renderGroup('Überfällig', grouped.overdue, 'text-destructive')}
-      {renderGroup('Heute', grouped.today, 'text-emerald-600 dark:text-emerald-400')}
-      {renderGroup('Diese Woche', grouped.thisWeek)}
+      {renderGroup('overdue', 'Überfällig', grouped.overdue, 'text-destructive')}
+      {renderGroup('today', 'Heute', grouped.today, 'text-emerald-600 dark:text-emerald-400')}
+      {renderGroup('thisWeek', 'Diese Woche', grouped.thisWeek)}
 
       {grouped.later.length > 0 && (
-        <div className="mt-4">
+        <div className="mt-3">
           <button
             type="button"
             onClick={() => setShowLater((v) => !v)}
@@ -131,7 +159,20 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
             <span className="tabular-nums opacity-70">{grouped.later.length}</span>
             <span className="flex-1 h-px bg-border/60" aria-hidden />
           </button>
-          {showLater && <div>{grouped.later.map(renderItem)}</div>}
+          {showLater && (
+            <>
+              <div>{laterSlice.map(renderItem)}</div>
+              {laterRemaining > 0 && (
+                <button
+                  type="button"
+                  onClick={() => showMore('later')}
+                  className="ml-3 mt-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  +{laterRemaining} weitere anzeigen
+                </button>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>
