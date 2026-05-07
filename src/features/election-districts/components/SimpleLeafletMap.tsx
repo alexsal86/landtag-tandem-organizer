@@ -102,6 +102,8 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
     // Create separate layer groups for polygons and markers
     districtLayerRef.current = L.layerGroup().addTo(map);
     markerLayerRef.current = L.layerGroup().addTo(map);
+    hasFittedBoundsRef.current = false;
+    setMapReady((n) => n + 1);
 
     return () => {
       map.remove();
