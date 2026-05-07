@@ -165,10 +165,16 @@ export function DashboardDecisionsWidget() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { decisions, loading, loadDecisions } = useMyWorkDecisionsData(user?.id);
+  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
+
+  const handlePromptOpen = (id: string) =>
+    setPendingIds((prev) => { const n = new Set(prev); n.add(id); return n; });
+  const handlePromptClose = (id: string) =>
+    setPendingIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
 
   const items = useMemo(() => {
     return [...decisions]
-      .filter((d) => d.status !== 'resolved')
+      .filter((d) => d.status !== 'resolved' && (!d.hasResponded || pendingIds.has(d.id)))
       .sort((a, b) => {
         if (!a.response_deadline && !b.response_deadline) return 0;
         if (!a.response_deadline) return 1;
@@ -176,7 +182,7 @@ export function DashboardDecisionsWidget() {
         return new Date(a.response_deadline).getTime() - new Date(b.response_deadline).getTime();
       })
       .slice(0, 3);
-  }, [decisions]);
+  }, [decisions, pendingIds]);
 
   const goToDecision = (id: string) => {
     navigate(`/mywork?tab=decisions&highlight=${id}`);
@@ -196,6 +202,9 @@ export function DashboardDecisionsWidget() {
           decision={d}
           onRefresh={() => loadDecisions({ silent: true })}
           onOpen={goToDecision}
+          onPromptOpen={handlePromptOpen}
+          onPromptClose={handlePromptClose}
+          forcePrompt={pendingIds.has(d.id) && d.hasResponded ? { color: 'green' } : null}
         />
       ))}
     </div>
