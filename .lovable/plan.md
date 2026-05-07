@@ -1,114 +1,89 @@
-## Pakete A–E ohne KI-Funktionen
+## Umsetzung Paket 5 (Sicherheit & DSGVO) + Paket 6 (Performance/Egress)
 
-KI-Aktionen (Themencluster, Antwortentwürfe, Trend-Erkennung per LLM) sind aus allen Paketen entfernt. Alle Funktionen arbeiten rein deterministisch mit SQL, Heuristiken und klassischen Algorithmen.
-
-Reihenfolge: A → B → E → C → D (Mehrwert vor Scope-Risiko).
+Beide Pakete laufen rein deterministisch (keine KI), nutzen vorhandene Infrastruktur (Workflow-Engine, Audit-Log, Cron, Edge Functions, Admin-Bereich) und greifen tief ins Backend.
 
 ---
 
-### A) Mobile Phase 2 — Vom Capture-Tool zum Arbeitsgerät
+### Paket 5 — Sicherheit, DSGVO & Resilienz
 
-**Scope**
-- Mobile **Aufgabenliste**: Tabs Inbox / Heute / Diese Woche, Erledigen, Snoozen (1h/heute Abend/morgen), Delegieren (Sheet mit Team-Mitgliedern).
-- Mobile **Vorgangs-Detail**: Lesen, Status ändern, Interaktion erfassen, Verlauf anzeigen.
-- Mobile **Kontakt-Detail**: Stammdaten, Briefing-Memory anzeigen, Schnellaktion „Anruf protokollieren" (Erstellt `call_log` + verlinkten Vorgang/Task).
-- **Server-Push**: Edge-Function `dispatch-mobile-push` (Expo Push API), getriggert in `create_notification` RPC für alle Mobile-Tokens des Empfängers.
-- **Tiefe Deep-Links**: `landtagmobile://vorgang/{id}`, `…/task/{id}`, `…/contact/{id}` → Expo Linking → entsprechende Screens.
+#### 5.1 RLS-Re-Audit (Datenbank)
+- View `v_rls_coverage`: listet alle Tabellen in `public` mit Status (RLS an/aus, Anzahl Policies, `tenant_id`-Spalte vorhanden).
+- RPC `audit_rls_gaps()`: liefert kritische Lücken (Tabelle hat `tenant_id` aber keine Policy darauf).
+- Tägliches Cron `rls-coverage-snapshot` schreibt Resultate nach `security_audit_snapshots`.
 
-**Technik**
-- Expo Router neue Screens `app/tasks/index.tsx`, `app/tasks/[id].tsx`, `app/cases/[id].tsx`, `app/contacts/[id].tsx`.
-- Reuse der bestehenden `useTasks`/`useCases`/`useContacts` Hooks, nur Mobile-Wrapper-Komponenten.
-- `expo-server-sdk` als Deno-kompatibler Fetch in `dispatch-mobile-push`.
+#### 5.2 Security-Cockpit (Admin-UI)
+Neuer Eintrag **Administration → Sicherheit**.
+- Tab **RLS-Coverage**: Tabelle aller Public-Tabellen, Filter „nur Probleme", Severity-Badges.
+- Tab **Linter-Findings**: Live-Abruf via `supabase--linter` über Edge Function `security-linter-snapshot`.
+- Tab **Audit-Trail**: Filterbare Liste aus bestehender `audit_log`-Tabelle (User, Aktion, Tabelle, Zeitfenster).
+- Tab **Aktive Sessions**: Liste aktiver Sessions je User mit Force-Logout.
 
-**DoD**
-- 4 Hauptscreens nutzbar, Push erreicht Gerät in < 5 s, Deep-Link öffnet korrekten Screen.
+#### 5.3 DSGVO-Werkzeuge
+- Tabelle `gdpr_requests` (`subject_email`, `subject_contact_id`, `type` enum: `export|delete`, `status`, `requested_by`, `tenant_id`).
+- Edge Function `gdpr-export`: sammelt für Person alle `contacts`, `case_items`, `case_item_interactions`, `letters`, `appointments`, `call_logs`, `contact_briefing_memory`, `notifications`. Schreibt ZIP (JSON + PDFs der Briefe) in `documents/{tenant}/gdpr-exports/{request_id}.zip` und liefert Signed URL.
+- Edge Function `gdpr-delete`: kaskadierende Anonymisierung (Name → „Gelöscht", E-Mail/Telefon `NULL`, freie Texte → `[entfernt nach DSGVO]`); Vorgänge bleiben strukturell erhalten, Bezug auf Person wird gekappt; Audit-Eintrag pflicht.
+- Vier-Augen-Prinzip: Lösch-Request muss von zweitem Admin via Workflow-Engine 2.0 freigegeben werden.
+- UI **Administration → Datenschutz**: Request-Liste, „Neue Anfrage", Download-Link nach Export, Genehmigungs-Workflow.
 
----
+#### 5.4 Resilienz
+- `disaster-recovery.md` im Repo (`docs/`) mit Restore-Runbook (Backup-Quellen, Reihenfolge, Smoke-Tests).
+- Edge Function `selftest-backup-pointer` prüft täglich, dass mindestens 1 Backup < 24 h existiert (über Supabase Management API), schreibt Status nach `system_health`.
 
-### B) Datenqualität & Duplikat-Hygiene
-
-**Scope**
-- **Duplikat-Erkennung Kontakte**: SQL-Function `find_contact_duplicates(tenant_id)` mit Score aus normalisierter Email/Telefon (exakt) + Name (trigram `pg_trgm` similarity) + Adresse (PLZ+Hausnr).
-- **Merge-UI** unter `/admin/datenqualitaet/duplikate`: Master wählen, Felder feldweise übernehmen, alle Verknüpfungen (Vorgänge, Briefe, Termine, Tasks) automatisch umhängen.
-- **Daten-Lint Dashboard** `/admin/datenqualitaet/lint`: Kontakte ohne Kategorie, Vorgänge ohne Owner/Status, Briefe ohne Empfänger, verwaiste Tasks (Owner gelöscht), Termine in der Vergangenheit ohne Feedback. Score pro Tenant.
-- **Bulk-Aktionen**: Tags zuweisen, Owner umhängen, Kategorie setzen, archivieren — Tabelle mit Filter + Mehrfachauswahl.
-- **Audit & Reverse**: jede Merge/Bulk-Aktion in `data_quality_audit` (snapshot_before JSONB), 30 Tage Reverse-Möglichkeit.
-
-**Technik**
-- Edge-Function `merge-contacts` mit transaktionalem Update (`UPDATE … FROM`) und Audit-Insert.
-- `pg_trgm` Extension aktivieren, GIN-Index auf normalisiertem Namen.
-
-**DoD**
-- Duplikat-Score messbar reduziert (Vorher/Nachher-Report), Lint-Dashboard live, Reverse einer Merge funktioniert.
+#### 5.5 Akzeptanzkriterien Paket 5
+- RLS-Coverage-View funktioniert, alle aktuellen Critical-Findings sind sichtbar.
+- DSGVO-Export für Test-Kontakt liefert ZIP < 30 s.
+- DSGVO-Lösch-Workflow erzeugt Audit-Einträge und Vier-Augen-Freigabe.
+- Security-Cockpit zeigt Linter-Findings + Audit-Trail.
 
 ---
 
-### E) Workflow-Engine 2.0 (vorgezogen, da Plattform-Hebel)
+### Paket 6 — Performance- & Egress-Cockpit
 
-**Scope** (**ohne** KI-Aktion „Antwortentwurf")
-- Domain-Modell: `workflow_definitions` (trigger_type, conditions JSONB, actions JSONB[], is_active), `workflow_runs` (status, payload, error, dry_run).
-- **Trigger-Typen**: `case_created`, `case_status_changed`, `task_due_soon`, `letter_approved`, `appointment_created`, `cron` (täglich/wöchentlich).
-- **Bedingungen**: einfacher JSON-Logic-Builder (Feld, Operator, Wert; AND/OR).
-- **Aktionen**: Task anlegen, Notification senden, Brief aus Vorlage erzeugen, Vorgang-Status ändern, Tag setzen, Kontakt-Kategorie setzen, E-Mail (transactional) versenden.
-- **UI-Builder** unter `/admin/workflows`: Definition anlegen, Aktionen sortierbar, Live-Validierung.
-- **Dry-Run-Modus**: Lauf simulieren, alle Side-Effects nur loggen.
-- **Audit-Log** + Run-History pro Definition.
+#### 6.1 Metriken-Sammler
+- Tabelle `egress_metrics` (`tenant_id`, `metric_date`, `table_name`, `bytes_egress`, `row_reads`, `realtime_subscribers`, `top_queries jsonb`).
+- Tabelle `query_perf_snapshots` (`captured_at`, `tenant_id`, `query_fingerprint`, `mean_exec_ms`, `calls`, `total_rows`).
+- Edge Function `collect-egress-metrics` (täglich 03:15 UTC):
+  - liest `pg_stat_statements` (Top-50 Queries je Tenant via `tenant_id` aus `current_setting`-Kontext bzw. Tabellen-Heuristik),
+  - liest `pg_stat_user_tables` (`seq_tup_read + idx_tup_fetch` als Proxy für Row-Reads),
+  - schätzt Bytes-Egress aus Avg-Row-Size × Reads.
+- Cron via `pg_cron`.
 
-**Technik**
-- Trigger über DB-Trigger → `pg_notify` → Edge-Function `workflow-dispatcher`, Cron-Trigger über `pg_cron`.
-- Pre-built Workflows als Seed: „Neuer Bürger-Vorgang → Eingangsbestätigung", „Brief genehmigt → Task ‚Versenden'", „Termin in 24h → Briefing-Reminder".
+#### 6.2 Anomalie-Erkennung (deterministisch)
+- Edge Function `check-egress-anomaly` (täglich 04:00 UTC):
+  - berechnet 7-Tage-Median je `(tenant_id, table_name)`,
+  - flaggt Werte > 1,3 × Median **und** absoluter Schwellwert,
+  - schreibt Befund nach `egress_anomalies` und triggert `create_notification` an Tenant-Admins.
 
-**DoD**
-- 5 vorgefertigte Workflows aktiv, Builder voll funktional, Dry-Run + Audit getestet.
+#### 6.3 Performance-Cockpit (Admin-UI)
+Neuer Eintrag **Administration → Performance**.
+- **Übersicht** (Karten): Egress letzte 24 h, Egress letzte 7 Tage, aktive Realtime-Channels, langsamste 5 Queries.
+- **Tenants-Tab**: Tabelle mit Tenant, Egress 7 d, Trend-Sparkline, Status (OK / Warnung / Anomalie).
+- **Tabellen-Tab**: Top-Tabellen nach Bytes, Liniendiagramm 30 Tage.
+- **Queries-Tab**: Top-Queries nach `total_rows`, Vorschlag „Index prüfen" wenn `seq_scan` dominiert.
+- **Anomalien-Tab**: Liste offener Anomalien, Aktion „Bestätigt/Ignoriert".
 
----
+#### 6.4 Tenant-Hinweise
+- Auf Tenant-Detailseite (Superadmin) Block „Performance-Status" mit aktuellem Wert vs. Median und ggf. Hinweistext.
+- Optionaler Push/Notification an `bueroleitung` des Tenants bei Warnung.
 
-### C) Wahlkreis-Analytics (rein deterministisch)
-
-**Scope** (**ohne** KI-Themencluster, **ohne** LLM-Trends)
-- **Heatmap Wahlkreis**: Vorgänge & Kontakte pro Stadtteil/PLZ als Choropleth auf bestehender Karte (`react-leaflet`), Toggle Vorgänge/Kontakte/Briefe.
-- **Themen-Statistik**: Auswertung über vorhandene Kategorien & Tags (keine KI), Top-10 pro Zeitraum, Vergleich Vormonat (% Δ).
-- **Trend-Erkennung deterministisch**: Z-Score je Kategorie über 8-Wochen-Median; Markierung wenn aktuelle Woche > 2σ.
-- **Stakeholder-Graph**: Sigma.js-Graph über geteilte Vorgänge/Briefe/Termine, Filter nach Beziehungsstärke (Anzahl gemeinsamer Objekte).
-- **Quartalsbericht-PDF**: Knopfdruck-Export mit Kennzahlen, Top-Stadtteilen, Top-Kategorien, Trend-Markern (`pdf-lib`, A4, DIN-konform).
-
-**Technik**
-- Materialized Views `mv_district_stats`, `mv_category_weekly` mit nightly Refresh (`pg_cron`).
-- Bestehende GeoJSON-Layer wiederverwenden.
-
-**DoD**
-- 3 neue Dashboards live, PDF-Export erzeugt korrekten Bericht, Materialized Views < 500 ms.
-
----
-
-### D) Bürger-Self-Service-Portal (öffentlich)
-
-**Scope**
-- **Öffentliche Landingpage** `/buergeranliegen/{tenant-slug}`: Formular Name, E-Mail, PLZ, Anliegen (Kategorie-Dropdown), Freitext, optional Anhang.
-- **Magic-Link-Statusseite** `/buergeranliegen/status/{token}`: aktueller Stand (öffentlich sichtbarer Statustext), History der öffentlich freigegebenen Updates — kein Login.
-- **E-Mail-Benachrichtigung** an Bürger bei Statuswechsel via bestehender `send-transactional-email` Queue.
-- **Anti-Spam**: Cloudflare Turnstile, Honey-Pot-Feld, IP-Rate-Limit (5/Std), max. 5MB Anhang.
-- **Admin-Moderationsqueue** unter `/admin/buergeranliegen`: eingehende Submissions prüfen → Spam markieren oder als regulären Vorgang anlegen (Mapping auf bestehende `cases`).
-- **DSGVO**: Pflicht-Checkbox, Datenschutz-Hinweistext, Lösch-Frist 6 Monate für Spam.
-
-**Technik**
-- Public route ohne Auth, eigene RLS-Policy (insert-only `public_case_submissions`).
-- Edge-Functions `submit-public-case`, `public-case-status`, beide ohne JWT, mit Turnstile-Validierung.
-- Tenant-Slug-Resolver via `tenant_public_settings.slug`.
-
-**DoD**
-- End-to-End-Journey funktioniert, Spam < 5%, DSGVO-Texte vorhanden, Moderationsqueue im Einsatz.
+#### 6.5 Akzeptanzkriterien Paket 6
+- Sammler läuft täglich, `egress_metrics` füllt sich.
+- Cockpit lädt < 1 s, zeigt Diagramme über 30 Tage sobald Daten existieren.
+- Anomalien werden nach Schwellwert-Überschreitung sichtbar erzeugt.
+- Keine Service-Role-Keys oder Roh-SQL im Frontend.
 
 ---
 
-### Aufwand grob
+### Reihenfolge
 
-| Paket | Datei-Touches | Migrationen | Edge-Funcs | Risiko |
-|---|---|---|---|---|
-| A Mobile Phase 2 | ~25 | 1 | 1 | mittel |
-| B Datenqualität | ~15 | 2 | 1 | mittel |
-| E Workflow-Engine | ~30 | 3 | 2 | hoch |
-| C Analytics | ~20 | 2 (MV) | 1 (Cron) | mittel |
-| D Bürger-Portal | ~20 | 2 | 3 | hoch |
+1. **Paket 5.1 + 5.2** (RLS-Audit + Cockpit) — sofortiger Mehrwert, keine Drittabhängigkeit.
+2. **Paket 5.3** (DSGVO-Tools) — nutzt Workflow-Engine 2.0 für Freigaben.
+3. **Paket 5.4** (Resilienz-Doku & Backup-Selftest).
+4. **Paket 6.1–6.2** (Sammler + Anomalie).
+5. **Paket 6.3–6.4** (Cockpit + Tenant-Hinweise).
 
-Sage **„weiter"** und ich starte mit **Paket A (Mobile Phase 2)**, oder nenn die Reihenfolge die du bevorzugst.
+### Technische Notizen
+- Alle neuen Tabellen mit `tenant_id` + RLS, Zugriff nur für Rollen `superadmin`/`bueroleitung` (5.x) bzw. `superadmin` (6.x globale Sicht).
+- Nutzt bestehende Patterns: `is_tenant_member`, `has_role`, `create_notification`, Workflow-Engine 2.0.
+- Keine externen Dienste, keine KI-Abhängigkeit.
+- ZIP-Erzeugung in Edge Function via `jszip` (NPM-kompatibel via `npm:` import).
