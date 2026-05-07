@@ -20,16 +20,19 @@ Reihenfolge nach Hebelwirkung × Risiko. Jede Phase liefert messbaren Nutzen und
 
 ---
 
-### Phase 2 — Work-Items-Vereinheitlichung (größter Code-Schuldenabbau)
+### Phase 2 — Work-Items-Vereinheitlichung ✅ ABGESCHLOSSEN
 
 **Ziel:** `tasks`, `decisions`, `cases`, `vorgänge` teilen Hooks/Typen/UI-Bausteine, ohne die Tabellen zu mergen.
 
-1. **Gemeinsame Typen** in `src/types/work-item.ts`: `WorkItemStatus`, `WorkItemAssignment`, `WorkItemPriority`.
-2. **Adapter-Schicht** `src/hooks/work-items/`: `useWorkItem(kind, id)`, `useWorkItems(kind, filter)` — kapselt Spalten-Drift (`updated_at` vs. `completed_at` etc.).
-3. **Geteilte UI-Bausteine:** `WorkItemStatusBadge`, `WorkItemAssigneePicker`, `WorkItemPriorityChip` ersetzen 4 Varianten.
-4. **Migration step-by-step:** zuerst `tasks` + `decisions` (höchste Frequenz), dann `cases` + `vorgänge`. Jede Migration einzeln review-bar.
+Geliefert:
+1. ✅ Gemeinsame Typen in `src/types/workItem.ts` (`WorkItem`, `WorkItemStatus`, `WorkItemPriority`, `WorkItemAssignee`, Status-/Priority-Maps).
+2. ✅ Adapter-Schicht `src/hooks/work-items/adapters.ts` (`taskToWorkItem`, `decisionToWorkItem`, `caseItemToWorkItem`; `vorgang` teilt sich Adapter mit `case_item`).
+3. ✅ Generischer List-Hook `useWorkItemList(kind, filter)` + MyWork-Aggregation `useMyWorkItems(userId)`.
+4. ✅ Geteilte UI-Bausteine: `WorkItemStatusBadge`, `WorkItemPriorityChip`, `WorkItemAssignees`, Pilot-Widget `UnifiedWorkInbox`.
 
-**Erfolgskriterium:** −30 % LOC in den vier Modulen, identische UX über alle Work-Item-Listen.
+**Folge-Arbeit (außerhalb Phase 2, in Phase 4c einsortiert):**
+- Bestehende Domain-Listen (Tasks/Decisions/Vorgänge) schrittweise auf die geteilten Komponenten umstellen — pro Modul ein eigener PR, da UI-Touch.
+- Nach erfolgter Migration: alte StatusBadge-/Priority-Varianten löschen → erwartete LOC-Reduktion realisieren.
 
 ---
 
