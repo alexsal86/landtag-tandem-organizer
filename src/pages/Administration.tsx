@@ -29,6 +29,7 @@ import { VacationChecklistAdmin } from "@/components/administration/VacationChec
 import { NewsEmailTemplateManager } from "@/components/administration/NewsEmailTemplateManager";
 import { EventEmailTemplateManager } from "@/components/administration/EventEmailTemplateManager";
 import { AuditLogViewer } from "@/components/administration/AuditLogViewer";
+import { PermissionsManager } from "@/components/administration/PermissionsManager";
 import { TopicSettings } from "@/components/administration/TopicSettings";
 import { ConfigurableTypeSettings } from "@/components/administration/ConfigurableTypeSettings";
 import { AnnualTasksView } from "@/features/timetracking/components/AnnualTasksView";
@@ -250,6 +251,7 @@ export default function Administration(): React.JSX.Element | null {
           return <UserRolesManager />;
         case "tenants": return <SuperadminTenantManagement />;
         case "auditlogs": return <AuditLogViewer />;
+        case "permissions": return <PermissionsManager />;
         case "security-cockpit":
           if (!isSuperAdmin) return null;
           return <SecurityCockpit />;
