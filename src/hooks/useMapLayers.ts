@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { STALE_TIME } from '@/lib/query-cache';
 import { useTenant } from '@/hooks/useTenant';
 import { toast } from 'sonner';
 

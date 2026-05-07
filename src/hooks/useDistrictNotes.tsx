@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { STALE_TIME } from '@/lib/query-cache';
 import { useTenant } from './useTenant';
 import { useAuth } from './useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -21,6 +22,8 @@ export const useDistrictNotes = (districtId?: string) => {
 
   const { data: note, isLoading } = useQuery({
     queryKey: ['district-notes', districtId, currentTenant?.id],
+    staleTime: STALE_TIME.GEO,
+    gcTime: STALE_TIME.GEO * 2,
     queryFn: async () => {
       if (!districtId || !currentTenant?.id) return null;
       
@@ -86,6 +89,8 @@ export const useAllDistrictNotes = () => {
 
   const { data: notes, isLoading } = useQuery({
     queryKey: ['all-district-notes', currentTenant?.id],
+    staleTime: STALE_TIME.GEO,
+    gcTime: STALE_TIME.GEO * 2,
     queryFn: async () => {
       if (!currentTenant?.id) return {};
       

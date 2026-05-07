@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { STALE_TIME } from '@/lib/query-cache';
 import { useTenant } from './useTenant';
 
 export interface Funding {
@@ -22,6 +23,8 @@ export const useContactFundings = (contactId?: string) => {
 
   return useQuery({
     queryKey: ['contact-fundings', contactId, currentTenant?.id],
+    staleTime: STALE_TIME.LIST,
+    gcTime: STALE_TIME.LIST * 2,
     queryFn: async () => {
       if (!contactId || !currentTenant?.id) return [];
 

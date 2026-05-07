@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { STALE_TIME } from '@/lib/query-cache';
 import { useTenant } from './useTenant';
 
 export interface StakeholderContact {
@@ -23,6 +24,8 @@ export const useMapFlagStakeholders = (flagTags?: string[]) => {
 
   const { data: stakeholders, isLoading } = useQuery({
     queryKey: ['map-flag-stakeholders', currentTenant?.id, flagTags],
+    staleTime: STALE_TIME.GEO,
+    gcTime: STALE_TIME.GEO * 2,
     queryFn: async () => {
       if (!currentTenant?.id || !flagTags || flagTags.length === 0) return [];
 

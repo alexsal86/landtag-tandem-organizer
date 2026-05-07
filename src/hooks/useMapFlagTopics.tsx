@@ -1,11 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { STALE_TIME } from '@/lib/query-cache';
 
 export const useMapFlagTopics = (flagId?: string) => {
   const queryClient = useQueryClient();
 
   const { data: topicIds, isLoading } = useQuery({
     queryKey: ['map-flag-topics', flagId],
+    staleTime: STALE_TIME.GEO,
+    gcTime: STALE_TIME.GEO * 2,
     queryFn: async () => {
       if (!flagId) return [];
       
@@ -54,6 +57,8 @@ export const useMapFlagTopics = (flagId?: string) => {
 export const useMapFlagsTopics = (flagIds: string[]) => {
   const { data, isLoading } = useQuery({
     queryKey: ['map-flags-topics', flagIds],
+    staleTime: STALE_TIME.GEO,
+    gcTime: STALE_TIME.GEO * 2,
     queryFn: async () => {
       if (flagIds.length === 0) return {};
       
