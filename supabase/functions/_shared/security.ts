@@ -131,6 +131,26 @@ export function requireServiceRole(req: Request): boolean {
   return token === serviceRoleKey && serviceRoleKey.length > 0;
 }
 
+// ─── Shared-Secret Guard (Webhooks) ───────────────────────────────────────────
+// Constant-time comparison of a header value against an env-stored secret.
+// Use for webhook endpoints (Matrix, third-party callbacks) that cannot present
+// a Supabase JWT but can be configured with a long random shared secret.
+export function requireSharedSecret(
+  req: Request,
+  envName: string,
+  headerName = "x-webhook-secret",
+): boolean {
+  const expected = Deno.env.get(envName) ?? "";
+  if (expected.length < 16) return false; // Refuse weak/missing secrets
+  const received = req.headers.get(headerName) ?? "";
+  if (received.length !== expected.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < expected.length; i++) {
+    mismatch |= expected.charCodeAt(i) ^ received.charCodeAt(i);
+  }
+  return mismatch === 0;
+}
+
 // ─── Safe Error Responses ─────────────────────────────────────────────────────
 
 export function badRequestResponse(message = "Bad request"): Response {
