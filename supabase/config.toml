@@ -169,3 +169,6 @@ schedule = "*/5 * * * *"
 
 [functions.automation-webhook]
 verify_jwt = false
+
+[functions.generate-preparation-suggestions]
+verify_jwt = true
