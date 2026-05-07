@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { PRIORITY_STYLES, STATUS_STYLES, STATUS_FALLBACK } from "@/lib/paletteStyles";
 
 interface TaskBadgesProps {
   priority: string;
@@ -12,18 +13,6 @@ interface TaskBadgesProps {
   className?: string;
 }
 
-const priorityConfig = {
-  high: { color: "bg-red-500", label: "Hoch", textColor: "text-red-600", borderColor: "border-red-300", bgLight: "bg-red-50 dark:bg-red-900/30" },
-  medium: { color: "bg-orange-500", label: "Mittel", textColor: "text-orange-600", borderColor: "border-orange-300", bgLight: "bg-orange-50 dark:bg-orange-900/30" },
-  low: { color: "bg-green-500", label: "Niedrig", textColor: "text-green-600", borderColor: "border-green-300", bgLight: "bg-green-50 dark:bg-green-900/30" },
-};
-
-const statusConfig = {
-  todo: { color: "bg-gray-500", label: "Offen", textColor: "text-gray-600", borderColor: "border-gray-300", bgLight: "bg-gray-50 dark:bg-gray-900/30" },
-  "in-progress": { color: "bg-blue-500", label: "In Arbeit", textColor: "text-blue-600", borderColor: "border-blue-300", bgLight: "bg-blue-50 dark:bg-blue-900/30" },
-  completed: { color: "bg-green-500", label: "Erledigt", textColor: "text-green-600", borderColor: "border-green-300", bgLight: "bg-green-50 dark:bg-green-900/30" },
-};
-
 const formatStatusLabel = (status: string) =>
   status
     .replace(/[_-]+/g, " ")
@@ -31,16 +20,9 @@ const formatStatusLabel = (status: string) =>
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
 const getStatusConfig = (status: string) => {
-  const knownStatus = statusConfig[status as keyof typeof statusConfig];
-  if (knownStatus) return knownStatus;
-
-  return {
-    color: "bg-amber-500",
-    label: formatStatusLabel(status),
-    textColor: "text-amber-700",
-    borderColor: "border-amber-300",
-    bgLight: "bg-amber-50 dark:bg-amber-900/30",
-  };
+  const known = STATUS_STYLES[status as keyof typeof STATUS_STYLES];
+  if (known) return { ...known, label: known.label };
+  return { ...STATUS_FALLBACK, label: formatStatusLabel(status) };
 };
 
 export function TaskBadges({ 
@@ -52,8 +34,9 @@ export function TaskBadges({
   isHovered = false,
   className 
 }: TaskBadgesProps) {
-  const priorityCfg = priorityConfig[priority as keyof typeof priorityConfig] || priorityConfig.low;
+  const priorityCfg = PRIORITY_STYLES[priority as keyof typeof PRIORITY_STYLES] || PRIORITY_STYLES.low;
   const statusCfg = getStatusConfig(status);
+
 
   // Small squares view (default)
   if (!isHovered) {
