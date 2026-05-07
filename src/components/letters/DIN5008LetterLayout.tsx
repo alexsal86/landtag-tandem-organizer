@@ -8,6 +8,14 @@ import { FoldHoleMarks, PaginationFooter, TemplateFooterBlocks } from './DIN5008
 import { DIN5008AddressInfoSection } from './DIN5008AddressInfoSection';
 import { getLetterAssetPublicUrl } from './letterAssetUrls';
 import type { DIN5008LetterLayoutProps } from './din5008/types';
+import type {
+  InformationBlockRecord,
+  LetterBlockLine,
+  LetterCanvasElement,
+  LetterLayoutSettings,
+  RecipientAddress,
+  SenderInformationRecord,
+} from '@/types/letterLayout';
 
 export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   template,
