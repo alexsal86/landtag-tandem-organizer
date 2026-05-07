@@ -7,48 +7,7 @@ import { LetterAttachmentList, LetterClosingBlock, getLetterAttachmentNames } fr
 import { FoldHoleMarks, PaginationFooter, TemplateFooterBlocks } from './DIN5008LayoutChrome';
 import { DIN5008AddressInfoSection } from './DIN5008AddressInfoSection';
 import { getLetterAssetPublicUrl } from './letterAssetUrls';
-import type {
-  InformationBlockRecord,
-  LetterBlockLine,
-  LetterCanvasElement,
-  LetterAttachmentRecord,
-  LetterLayoutTemplateLike,
-  LetterLayoutSettings,
-  RecipientAddress,
-  SenderInformationRecord,
-} from '@/types/letterLayout';
-
-interface DIN5008LetterLayoutProps {
-  template?: LetterLayoutTemplateLike;
-  senderInfo?: SenderInformationRecord | null;
-  informationBlock?: InformationBlockRecord[] | null;
-  recipientAddress?: RecipientAddress | string;
-  content: string;
-  subject?: string;
-  letterDate?: string;
-  referenceNumber?: string;
-  attachments?: LetterAttachmentRecord[];
-  className?: string;
-  debugMode?: boolean;
-  showPagination?: boolean;
-  layoutSettings?: LetterLayoutSettings;
-  salutation?: string;
-  hideClosing?: boolean;
-  // Canvas-based block elements (substituted)
-  addressFieldElements?: LetterCanvasElement[];
-  returnAddressElements?: LetterCanvasElement[];
-  infoBlockElements?: LetterCanvasElement[];
-  subjectElements?: LetterCanvasElement[];
-  attachmentElements?: LetterCanvasElement[];
-  footerTextElements?: LetterCanvasElement[];
-  // Line-mode block data (substituted)
-  addressFieldLines?: LetterBlockLine[];
-  returnAddressLines?: LetterBlockLine[];
-  infoBlockLines?: LetterBlockLine[];
-  // Multi-page support
-  allowContentOverflow?: boolean;
-  contentRef?: React.Ref<HTMLDivElement>;
-}
+import type { DIN5008LetterLayoutProps } from './din5008/types';
 
 export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   template,
