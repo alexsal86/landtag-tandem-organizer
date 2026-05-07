@@ -41,17 +41,11 @@ const ICON_OPTIONS = [
   { value: 'FileText', label: 'Dokument' },
 ];
 
-const COLOR_OPTIONS = [
-  { value: 'bg-blue-500', label: 'Blau' },
-  { value: 'bg-purple-500', label: 'Lila' },
-  { value: 'bg-amber-500', label: 'Amber' },
-  { value: 'bg-rose-500', label: 'Rose' },
-  { value: 'bg-teal-500', label: 'Teal' },
-  { value: 'bg-indigo-500', label: 'Indigo' },
-  { value: 'bg-green-500', label: 'Grün' },
-  { value: 'bg-orange-500', label: 'Orange' },
-  { value: 'bg-muted-foreground', label: 'Grau' },
-];
+import { PALETTE_PRESETS, getPaletteSolidClass } from "@/lib/paletteStyles";
+
+const COLOR_OPTIONS = PALETTE_PRESETS
+  .filter((p) => ['blue','purple','amber','rose','teal','indigo','green','orange','gray'].includes(p.key))
+  .map((p) => ({ value: p.legacyValue, label: p.label }));
 
 const DEFAULT_OCCASIONS = [
   { key: 'statement', label: 'Stellungnahme', description: 'Politische Einordnung zu aktuellen Themen', icon: 'Megaphone', color: 'bg-blue-500', patterns: ['stellungnahme', 'einordnung', 'kommentar'] },
