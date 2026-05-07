@@ -71,7 +71,40 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
 
     const loadPollData = async () => {
       try {
-        // Load poll information
+        // Guest path: token-based access goes through the edge function
+        // (Phase 3 hardening — anon RLS reads on poll_participants/poll_responses removed).
+        if (token && !participantId && !isPreview) {
+          const { data, error } = await supabase.functions.invoke('get-poll-by-token', {
+            body: { poll_id: pollId, token },
+          });
+          if (!isEffectActive) return;
+          if (error || !data || data.error) {
+            const code = data?.error;
+            const msg =
+              code === 'invalid_token'
+                ? 'Ungültiger oder abgelaufener Teilnehmer-Token.'
+                : code === 'poll_not_found'
+                  ? 'Abstimmung nicht gefunden oder ungültiger Link.'
+                  : 'Die Abstimmung konnte nicht geladen werden.';
+            throw new Error(msg);
+          }
+          setPoll(data.poll);
+          setTimeSlots(data.time_slots ?? []);
+          setParticipant(data.participant);
+          const responsesMap: Record<string, Response> = {};
+          for (const r of data.responses ?? []) {
+            responsesMap[r.time_slot_id] = {
+              time_slot_id: r.time_slot_id,
+              status: r.status,
+              comment: r.comment ?? '',
+            };
+          }
+          setResponses(responsesMap);
+          return;
+        }
+
+        // Authenticated / preview / internal-participant path stays on the
+        // RLS-protected SDK queries.
         const { data: pollData, error: pollError } = await supabase
           .from('appointment_polls')
           .select('id, title, description, deadline, status')
@@ -89,7 +122,6 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
         if (!isEffectActive) return;
         setPoll(pollData);
 
-        // Load time slots
         const { data: slotsData, error: slotsError } = await supabase
           .from('poll_time_slots')
           .select('id, start_time, end_time, order_index')
@@ -104,15 +136,13 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
         if (!isEffectActive) return;
         setTimeSlots(slotsData || []);
 
-        // Load participant for response access
         let currentParticipant: Participant | null = null;
 
-        if (!isPreview && !participantId && !token) {
+        if (!isPreview && !participantId) {
           throw new Error('Fehlende Zugriffsdaten. Bitte öffnen Sie den Link erneut oder melden Sie sich intern mit einer gültigen Teilnehmer-ID an.');
         }
 
         if (participantId) {
-          // Internal participant
           const { data: participantData, error: participantError } = await supabase
             .from('poll_participants')
             .select('id, name, email, is_external, token')
@@ -126,21 +156,6 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
             throw new Error('Ungültige oder nicht autorisierte interne Teilnehmer-ID.');
           }
           currentParticipant = participantData;
-        } else if (token) {
-          // External participant with token
-          const { data: participantData, error: participantError } = await supabase
-            .from('poll_participants')
-            .select('id, name, email, is_external, token')
-            .eq('poll_id', pollId)
-            .eq('token', token)
-            .abortSignal(abortController.signal)
-            .maybeSingle();
-
-          if (participantError) throw participantError;
-          if (!participantData) {
-            throw new Error('Ungültiger oder abgelaufener Teilnehmer-Token.');
-          }
-          currentParticipant = participantData;
         }
 
         if (!isPreview && !currentParticipant) {
@@ -150,7 +165,6 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
         if (!isEffectActive) return;
         setParticipant(currentParticipant);
 
-        // Load existing responses
         if (currentParticipant) {
           const { data: responsesData, error: responsesError } = await supabase
             .from('poll_responses')
@@ -201,7 +215,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
       isEffectActive = false;
       abortController.abort();
     };
-  }, [pollId, token, participantId, toast]);
+  }, [pollId, token, participantId, isPreview, toast]);
 
   const updateResponse = (timeSlotId: string, status: 'available' | 'tentative' | 'unavailable') => {
     setResponses(prev => ({
@@ -231,27 +245,44 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
 
     setSaving(true);
     try {
-      // Delete existing responses
-      await supabase
-        .from('poll_responses')
-        .delete()
-        .eq('poll_id', pollId)
-        .eq('participant_id', participant.id);
+      // Guest path uses the edge function (no anon RLS writes anymore).
+      if (token && !participantId) {
+        const { data, error } = await supabase.functions.invoke('submit-poll-response-by-token', {
+          body: {
+            poll_id: pollId,
+            token,
+            responses: Object.values(responses).map((r) => ({
+              time_slot_id: r.time_slot_id,
+              status: r.status,
+              comment: r.comment || null,
+            })),
+            general_comment: generalComment || null,
+          },
+        });
+        if (error || !data || data.error) {
+          throw new Error(data?.error ?? error?.message ?? 'save_failed');
+        }
+      } else {
+        await supabase
+          .from('poll_responses')
+          .delete()
+          .eq('poll_id', pollId)
+          .eq('participant_id', participant.id);
 
-      // Insert new responses
-      const responsesToInsert = Object.values(responses).map(response => ({
-        poll_id: pollId,
-        time_slot_id: response.time_slot_id,
-        participant_id: participant.id,
-        status: response.status,
-        comment: response.comment || null
-      }));
+        const responsesToInsert = Object.values(responses).map(response => ({
+          poll_id: pollId,
+          time_slot_id: response.time_slot_id,
+          participant_id: participant.id,
+          status: response.status,
+          comment: response.comment || null
+        }));
 
-      const { error } = await supabase
-        .from('poll_responses')
-        .insert(responsesToInsert);
+        const { error } = await supabase
+          .from('poll_responses')
+          .insert(responsesToInsert);
 
-      if (error) throw error;
+        if (error) throw error;
+      }
 
       toast({
         title: "Antworten gespeichert",
