@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTenant } from "@/hooks/useTenant";
+import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -378,7 +379,7 @@ export function SenderInformationManager() {
           );
         })}
         {senderInfos.length === 0 && !loading && (
-          <p className="text-sm text-muted-foreground text-center py-4">Noch keine Absender angelegt.</p>
+          <EmptyState size="sm" title="Noch keine Absender" description="Lege einen Absender für deine Korrespondenz an." />
         )}
       </div>
     </div>

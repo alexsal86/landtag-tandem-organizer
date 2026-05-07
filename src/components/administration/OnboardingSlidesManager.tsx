@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -282,11 +283,9 @@ export function OnboardingSlidesManager(): React.JSX.Element {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-muted-foreground">Lade…</p>
+            <LoadingState variant="list" rows={3} />
           ) : rows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Noch keine büro-spezifischen Slides. Nutzer:innen sehen aktuell nur die Standard-Einführung.
-            </p>
+            <EmptyState size="sm" title="Noch keine eigenen Slides" description="Nutzer:innen sehen aktuell nur die Standard-Einführung." />
           ) : (
             <div className="space-y-2">
               {rows.map((row, i) => (

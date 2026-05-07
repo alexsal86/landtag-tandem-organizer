@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -139,9 +140,9 @@ export function VacationChecklistAdmin() {
 
         {/* Existing items */}
         {loading ? (
-          <p className="text-sm text-muted-foreground">Lade…</p>
+          <LoadingState variant="list" rows={3} />
         ) : items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Noch keine Checklisten-Punkte vorhanden.</p>
+          <EmptyState size="sm" title="Noch keine Checklisten-Punkte" description="Lege oben den ersten Punkt an." />
         ) : (
           <div className="space-y-2">
             {items.map(item => (

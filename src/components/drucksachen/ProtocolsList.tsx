@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { debugConsole } from '@/utils/debugConsole';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -268,11 +269,8 @@ export function ProtocolsList({ protocols, onProtocolSelect, onProtocolsRefresh 
               <TableBody>
                 {filteredProtocols.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                      {searchTerm || statusFilter !== 'all' 
-                        ? 'Keine Protokolle gefunden' 
-                        : 'Noch keine Protokolle hochgeladen'
-                      }
+                    <TableCell colSpan={8} className="py-md">
+                      <EmptyState size="sm" title={searchTerm || statusFilter !== 'all' ? 'Keine Protokolle gefunden' : 'Noch keine Protokolle hochgeladen'} description={searchTerm || statusFilter !== 'all' ? 'Passe Suche oder Filter an.' : undefined} />
                     </TableCell>
                   </TableRow>
                 ) : (

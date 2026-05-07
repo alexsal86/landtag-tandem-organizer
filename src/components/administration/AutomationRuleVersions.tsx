@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -113,13 +114,9 @@ export function AutomationRuleVersions({
         </DialogHeader>
 
         {loading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          </div>
+          <LoadingState variant="list" rows={3} />
         ) : versions.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4">
-            Noch keine Versionen vorhanden. Versionen werden beim Speichern automatisch erstellt.
-          </p>
+          <EmptyState size="sm" title="Noch keine Versionen" description="Versionen werden beim Speichern automatisch erstellt." />
         ) : (
           <ScrollArea className="max-h-[400px]">
             <div className="space-y-3 pr-3">
