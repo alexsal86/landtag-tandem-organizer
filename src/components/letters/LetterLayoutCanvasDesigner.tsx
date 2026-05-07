@@ -41,27 +41,20 @@ interface Props {
   actionButtons?: React.ReactNode;
 }
 
+import { PALETTE_SOFT, PALETTE_PRESETS } from "@/lib/paletteStyles";
+
 const DEFAULT_BLOCKS: LetterLayoutBlockConfig[] = [
-  { key: 'header', label: 'Header', color: 'bg-cyan-500/20 border-cyan-600 text-cyan-900', jumpTo: 'header-designer' },
-  { key: 'addressField', label: 'Adressfeld', color: 'bg-blue-500/20 border-blue-600 text-blue-900', canMoveX: true, canResize: true, jumpTo: 'block-address' },
-  { key: 'infoBlock', label: 'Info-Block', color: 'bg-purple-500/20 border-purple-600 text-purple-900', canMoveX: true, canResize: true, jumpTo: 'block-info' },
-  { key: 'content', label: 'Inhaltsbereich', color: 'bg-orange-500/20 border-orange-600 text-orange-900', canResize: true, jumpTo: 'layout-settings' },
-  { key: 'pagination', label: 'Paginierung', color: 'bg-rose-500/20 border-rose-600 text-rose-900', jumpTo: 'layout-settings' },
-  { key: 'footer', label: 'Footer', color: 'bg-pink-500/20 border-pink-600 text-pink-900', jumpTo: 'footer-designer' },
+  { key: 'header',       label: 'Header',        color: PALETTE_SOFT.cyan,   jumpTo: 'header-designer' },
+  { key: 'addressField', label: 'Adressfeld',    color: PALETTE_SOFT.blue,   canMoveX: true, canResize: true, jumpTo: 'block-address' },
+  { key: 'infoBlock',    label: 'Info-Block',    color: PALETTE_SOFT.purple, canMoveX: true, canResize: true, jumpTo: 'block-info' },
+  { key: 'content',      label: 'Inhaltsbereich',color: PALETTE_SOFT.orange, canResize: true, jumpTo: 'layout-settings' },
+  { key: 'pagination',   label: 'Paginierung',   color: PALETTE_SOFT.rose,   jumpTo: 'layout-settings' },
+  { key: 'footer',       label: 'Footer',        color: PALETTE_SOFT.pink,   jumpTo: 'footer-designer' },
 ];
 
-const COLOR_PRESETS = [
-  { value: 'bg-cyan-500/20 border-cyan-600 text-cyan-900', label: 'Cyan' },
-  { value: 'bg-blue-500/20 border-blue-600 text-blue-900', label: 'Blau' },
-  { value: 'bg-indigo-500/20 border-indigo-600 text-indigo-900', label: 'Indigo' },
-  { value: 'bg-purple-500/20 border-purple-600 text-purple-900', label: 'Lila' },
-  { value: 'bg-green-500/20 border-green-600 text-green-900', label: 'Grün' },
-  { value: 'bg-orange-500/20 border-orange-600 text-orange-900', label: 'Orange' },
-  { value: 'bg-amber-500/20 border-amber-600 text-amber-900', label: 'Amber' },
-  { value: 'bg-pink-500/20 border-pink-600 text-pink-900', label: 'Pink' },
-  { value: 'bg-red-500/20 border-red-600 text-red-900', label: 'Rot' },
-  { value: 'bg-teal-500/20 border-teal-600 text-teal-900', label: 'Teal' },
-];
+const COLOR_PRESETS = PALETTE_PRESETS
+  .filter((p) => ['cyan','blue','indigo','purple','green','orange','amber','pink','red','teal'].includes(p.key))
+  .map((p) => ({ value: PALETTE_SOFT[p.key], label: p.label }));
 
 const BASE_SCALE = CSS_PX_PER_MM;
 const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2];
