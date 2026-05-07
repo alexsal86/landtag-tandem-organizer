@@ -13344,6 +13344,7 @@ export type Database = {
         Returns: undefined
       }
       snapshot_rls_coverage: { Args: never; Returns: string }
+      snapshot_rls_coverage_internal: { Args: never; Returns: string }
       sync_birthday_appointments: { Args: never; Returns: undefined }
       sync_existing_contact_tags: { Args: never; Returns: undefined }
       update_contact_usage: {
