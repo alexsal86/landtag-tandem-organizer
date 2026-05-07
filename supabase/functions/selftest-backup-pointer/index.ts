@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
   const url = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const projectRef = Deno.env.get("SUPABASE_PROJECT_REF") ?? "wawofclbehbkebjivdte";
-  const mgmtToken = Deno.env.get("SUPABASE_MGMT_TOKEN");
+  const mgmtToken = Deno.env.get("MGMT_API_TOKEN");
   const admin = createClient(url, serviceKey);
 
   let status: "ok" | "warning" | "critical" = "ok";
