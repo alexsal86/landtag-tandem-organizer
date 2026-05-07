@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleTrigger } from "@/components/ui/collapsible";
