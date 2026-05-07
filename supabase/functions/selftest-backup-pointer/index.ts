@@ -3,6 +3,7 @@
 // Kann Supabase Management API aufrufen, falls MGMT_API_TOKEN gesetzt ist;
 // sonst macht der Selftest einen DB-Lebendcheck und markiert das Backup als "unverified".
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireServiceRole, forbiddenResponse } from "../_shared/security.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +12,8 @@ const corsHeaders = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  if (!requireServiceRole(req)) return forbiddenResponse("Service role required");
 
   const url = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;

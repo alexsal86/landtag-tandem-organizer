@@ -1,6 +1,7 @@
 // Erkennt Anomalien (>50% Wachstum gegenüber 7-Tage-Mittelwert) und legt Einträge in egress_anomalies an.
 // Bei "critical" wird zusätzlich eine Notification an alle Superadmins gesendet.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireServiceRole, forbiddenResponse } from "../_shared/security.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,6 +13,8 @@ const CRIT_PCT = 150;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  if (!requireServiceRole(req)) return forbiddenResponse("Service role required");
 
   try {
     const supabase = createClient(

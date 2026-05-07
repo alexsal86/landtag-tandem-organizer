@@ -1,6 +1,7 @@
 // Sammelt tägliche Egress- und Datenbankgrößen-Metriken.
 // Wird via pg_cron einmal täglich um 02:00 aufgerufen.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireServiceRole, forbiddenResponse } from "../_shared/security.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,6 +10,8 @@ const corsHeaders = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  if (!requireServiceRole(req)) return forbiddenResponse("Service role required");
 
   try {
     const supabase = createClient(
