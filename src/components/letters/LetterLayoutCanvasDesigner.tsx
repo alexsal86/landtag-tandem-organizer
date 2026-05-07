@@ -146,7 +146,7 @@ const renderCanvasElementPreview = (element: LetterCanvasElement, left: number, 
       <div
         key={element.id}
         style={{ ...style, fontSize: `${Math.max(9, 10 * scale)}px`, lineHeight: `${1.2}` }}
-        className={`px-1 py-0.5 text-gray-700 whitespace-pre-wrap ${plainPreview ? '' : 'border border-gray-400/70 bg-gray-100/50'}`}
+        className={`px-1 py-0.5 text-foreground/80 whitespace-pre-wrap ${plainPreview ? '' : 'border border-border bg-muted/40'}`}
       >
         {element.blockContent || element.content}
       </div>
@@ -176,7 +176,7 @@ const renderCanvasElementPreview = (element: LetterCanvasElement, left: number, 
         borderRadius: !plainPreview && isVariable ? '4px' : undefined,
         padding: !plainPreview && isVariable ? '1px 4px' : undefined,
       }}
-      className="text-gray-800"
+      className="text-foreground/90"
     >
       {!plainPreview && isVariable && <span className="mr-0.5">⚡</span>}
       {displayText}
@@ -553,7 +553,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                     onClick={() => toggleLock(block.key)}
                     title={lockedBlocks.has(block.key) ? 'Sperre lösen' : 'Element sperren'}
                   >
-                    {lockedBlocks.has(block.key) ? <Lock className="h-4 w-4 text-amber-600" /> : <Unlock className="h-4 w-4 text-muted-foreground" />}
+                    {lockedBlocks.has(block.key) ? <Lock className="h-4 w-4 text-palette-amber" /> : <Unlock className="h-4 w-4 text-muted-foreground" />}
                   </Button>
                   <Button type="button" variant="outline" size="sm" className={`h-9 flex-1 min-w-0 justify-start px-3 overflow-hidden ${selected === block.key ? 'ring-2 ring-primary' : ''} ${block.color}`} onClick={() => { setSelected(block.key); canvasWrapRef.current?.focus(); }}>
                     <span className="block w-full truncate text-left">{block.label}</span>
@@ -632,7 +632,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               className="absolute bg-white shadow-xl relative select-none"
               style={{ left: RULER_SIZE, top: RULER_SIZE, width: pagePx.w, height: pagePx.h, fontFamily: 'Calibri, Carlito, "Segoe UI", Arial, sans-serif' }}
             >
-              {!plainPreview && <div className="absolute border border-dashed border-gray-400 pointer-events-none" style={{ left: localLayout.margins.left * SCALE, top: localLayout.margins.top * SCALE, width: (localLayout.pageWidth - localLayout.margins.left - localLayout.margins.right) * SCALE, height: (localLayout.pageHeight - localLayout.margins.top - localLayout.margins.bottom) * SCALE }} />}
+              {!plainPreview && <div className="absolute border border-dashed border-border pointer-events-none" style={{ left: localLayout.margins.left * SCALE, top: localLayout.margins.top * SCALE, width: (localLayout.pageWidth - localLayout.margins.left - localLayout.margins.right) * SCALE, height: (localLayout.pageHeight - localLayout.margins.top - localLayout.margins.bottom) * SCALE }} />}
 
               {(localLayout.foldHoleMarks?.enabled ?? true) && (
                 <>
@@ -643,7 +643,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                   ].map((mark) => (
                     <div
                       key={mark.key}
-                      className="absolute bg-gray-600 pointer-events-none"
+                      className="absolute bg-muted-foreground pointer-events-none"
                       style={{
                         left: `${(localLayout.foldHoleMarks?.left ?? 3) * SCALE}px`,
                         top: `${mark.y * SCALE}px`,
@@ -729,7 +729,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                       <span className="inline-flex items-center gap-0.5" style={underlineThisLine ? { borderBottom: '1px solid #000' } : undefined}>
                         {line.label && <span className={line.labelBold !== false ? 'font-semibold' : ''}>{line.label}</span>}
                         <span className={line.valueBold ? 'font-semibold' : ''}>{resolvedValue}</span>
-                        {!plainPreview && isVar && <span className="inline-flex items-center text-amber-600" style={{ fontSize: fontSizePx * 0.75 }}>⚡</span>}
+                        {!plainPreview && isVar && <span className="inline-flex items-center text-palette-amber" style={{ fontSize: fontSizePx * 0.75 }}>⚡</span>}
                       </span>
                     </div>
                   );
@@ -740,7 +740,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
               const returnAddressHeightMm = localLayout.addressField.returnAddressHeight || 17.7;
               
               return (
-                <div key={block.key} onMouseDown={(e) => startDrag(e, block.key, 'move')} onDoubleClick={() => onJumpToTab?.(block.jumpTo)} className={`absolute text-[11px] font-medium ${(plainPreview || block.key === 'content') ? 'p-0 text-gray-900' : 'px-1 py-0.5'} ${plainPreview ? '' : 'border'} ${isDisabled ? `opacity-40 cursor-not-allowed ${plainPreview ? '' : 'bg-gray-100 border-dashed'} text-gray-500` : `${plainPreview ? 'cursor-default' : `cursor-move ${block.color}`}`} ${isLocked ? (plainPreview ? 'cursor-not-allowed' : 'cursor-not-allowed border-amber-500') : ''} ${isSelected && !plainPreview ? 'ring-2 ring-primary' : ''}`} style={{ left: rect.x * SCALE, top: rect.y * SCALE, width: rect.w * SCALE, height: rect.h * SCALE, overflow: 'hidden' }}>
+                <div key={block.key} onMouseDown={(e) => startDrag(e, block.key, 'move')} onDoubleClick={() => onJumpToTab?.(block.jumpTo)} className={`absolute text-[11px] font-medium ${(plainPreview || block.key === 'content') ? 'p-0 text-foreground' : 'px-1 py-0.5'} ${plainPreview ? '' : 'border'} ${isDisabled ? `opacity-40 cursor-not-allowed ${plainPreview ? '' : 'bg-muted border-dashed'} text-muted-foreground` : `${plainPreview ? 'cursor-default' : `cursor-move ${block.color}`}`} ${isLocked ? (plainPreview ? 'cursor-not-allowed' : 'cursor-not-allowed border-palette-amber') : ''} ${isSelected && !plainPreview ? 'ring-2 ring-primary' : ''}`} style={{ left: rect.x * SCALE, top: rect.y * SCALE, width: rect.w * SCALE, height: rect.h * SCALE, overflow: 'hidden' }}>
                   {block.key === 'addressField' && (hasReturnData || hasAddressData) ? (
                     <>
                       {/* Vermerkzone (return address) */}
@@ -794,7 +794,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                                 {localLayout.closing.signatureName}
                               </div>
                               {localLayout.closing.signatureTitle && (
-                                <div className="text-gray-400" style={{ fontSize: `${(localLayout.closing?.fontSize || 11) * (25.4 / 72) * SCALE * 0.9}px` }}>
+                                <div className="text-muted-foreground/70" style={{ fontSize: `${(localLayout.closing?.fontSize || 11) * (25.4 / 72) * SCALE * 0.9}px` }}>
                                   {localLayout.closing.signatureTitle}
                                 </div>
                               )}
@@ -822,7 +822,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                   ) : block.key === 'pagination' ? (
                     <div className="flex items-center h-full w-full">
                       <span
-                        className="text-gray-500 w-full"
+                        className="text-muted-foreground w-full"
                         style={{
                           textAlign: (localLayout.pagination?.align || 'right'),
                           fontFamily: 'Calibri, Carlito, "Segoe UI", Arial, sans-serif',
@@ -869,7 +869,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
                     })()
                   ) : (
                     <>
-                      {!previewText && blockElements.length === 0 && !isLineModeBlock && !plainPreview && <div className="flex items-center justify-between"><span>{block.label}</span><div className="flex items-center gap-1">{isLocked && <Lock className="h-3 w-3 text-amber-700" />}<Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge></div></div>}
+                      {!previewText && blockElements.length === 0 && !isLineModeBlock && !plainPreview && <div className="flex items-center justify-between"><span>{block.label}</span><div className="flex items-center gap-1">{isLocked && <Lock className="h-3 w-3 text-palette-amber" />}<Badge variant="outline" className="text-[10px]">{Math.round(rect.y)}mm</Badge></div></div>}
                       {previewText && <div className="mt-1 text-[10px] line-clamp-2">{previewText}</div>}
                       {isLineModeBlock && renderLineItems(lineData)}
                       {blockElements.map((element) => renderCanvasElementPreview(element, 0, 0, SCALE, plainPreview))}
