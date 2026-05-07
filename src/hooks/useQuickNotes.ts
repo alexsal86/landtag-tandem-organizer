@@ -9,56 +9,18 @@ import { format, addDays, isToday, isPast, isBefore, isAfter, startOfDay } from 
 import { de } from "date-fns/locale";
 import type { QuickNote } from "@/components/shared/QuickNotesList";
 import type { DropResult } from "@hello-pangea/dnd";
+import { noteColors } from "./quickNotes/constants";
+import {
+  stripHtml,
+  toEditorHtml,
+  getCardBackground,
+  hasInactiveMeetingLink,
+  normalizeMeetingLink,
+} from "./quickNotes/utils";
 
-export interface GroupedNotes {
-  level: number;
-  label: string;
-  notes: QuickNote[];
-}
-
-// Note colors for picker
-export const noteColors = [
-  { value: '#f59e0b', bg: '#fef3c7', label: 'Gold' },
-  { value: '#3b82f6', bg: '#dbeafe', label: 'Blau' },
-  { value: '#22c55e', bg: '#dcfce7', label: 'Grün' },
-  { value: '#ec4899', bg: '#fce7f3', label: 'Pink' },
-  { value: '#8b5cf6', bg: '#ede9fe', label: 'Lila' },
-  { value: '#f97316', bg: '#fed7aa', label: 'Orange' },
-  { value: '#06b6d4', bg: '#cffafe', label: 'Türkis' },
-  { value: '#ef4444', bg: '#fee2e2', label: 'Rot' },
-  { value: null, bg: null, label: 'Standard' }
-];
-
-export const stripHtml = (value: string) => value.replace(/<[^>]*>/g, "").trim();
-export const toEditorHtml = (value: string | null | undefined) => {
-  if (!value) return "";
-  if (/<[^>]+>/.test(value)) return value;
-  return `<p>${value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")}</p>`;
-};
-
-export const getCardBackground = (color: string | null): string | undefined => {
-  if (!color) return undefined;
-  const found = noteColors.find(c => c.value === color);
-  return found?.bg || `${color}30`;
-};
-
-const hasInactiveMeetingLink = (note: QuickNote) => {
-  if (!note.meeting_id) return false;
-  return !note.meetings || note.meetings.status === 'archived';
-};
-
-const normalizeMeetingLink = (note: QuickNote): QuickNote => {
-  if (!hasInactiveMeetingLink(note)) return note;
-  return {
-    ...note,
-    meeting_id: undefined,
-    meetings: null,
-    pending_for_jour_fixe: false,
-  };
-};
+// Re-exports for backwards compatibility
+export { noteColors, stripHtml, toEditorHtml, getCardBackground };
+export type { GroupedNotes } from "./quickNotes/types";
 
 export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: string) {
   const { user } = useAuth();
