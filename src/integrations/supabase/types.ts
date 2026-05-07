@@ -11274,6 +11274,56 @@ export type Database = {
           },
         ]
       }
+      tenant_onboarding_slides: {
+        Row: {
+          accent: string | null
+          active: boolean
+          body: string
+          created_at: string
+          created_by: string | null
+          icon: string | null
+          id: string
+          position: number
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          accent?: string | null
+          active?: boolean
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          icon?: string | null
+          id?: string
+          position?: number
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          accent?: string | null
+          active?: boolean
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          icon?: string | null
+          id?: string
+          position?: number
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_onboarding_slides_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           automations_paused: boolean
@@ -11770,6 +11820,38 @@ export type Database = {
             columns: ["notification_type_id"]
             isOneToOne: false
             referencedRelation: "notification_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_onboarding_state: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_onboarding_state_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
