@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      action_permissions: {
+        Row: {
+          action_key: string
+          allowed_roles: Database["public"]["Enums"]["app_role"][]
+          created_at: string
+          id: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          action_key: string
+          allowed_roles?: Database["public"]["Enums"]["app_role"][]
+          created_at?: string
+          id?: string
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          action_key?: string
+          allowed_roles?: Database["public"]["Enums"]["app_role"][]
+          created_at?: string
+          id?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "action_permissions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_status_options: {
         Row: {
           color: string
@@ -5960,6 +5998,53 @@ export type Database = {
           },
         ]
       }
+      field_permissions: {
+        Row: {
+          can_read: boolean
+          can_write: boolean
+          column_name: string
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          table_name: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          can_read?: boolean
+          can_write?: boolean
+          column_name: string
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          table_name: string
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          can_read?: boolean
+          can_write?: boolean
+          column_name?: string
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          table_name?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "field_permissions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       funding_participants: {
         Row: {
           allocated_amount: number | null
@@ -11798,6 +11883,47 @@ export type Database = {
           },
         ]
       }
+      tenant_feature_flags: {
+        Row: {
+          config: Json
+          created_at: string
+          enabled: boolean
+          feature_key: string
+          id: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          feature_key: string
+          id?: string
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          feature_key?: string
+          id?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_feature_flags_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_onboarding_slides: {
         Row: {
           accent: string | null
@@ -13044,6 +13170,10 @@ export type Database = {
         Args: { dashboard_id: string; user_id: string }
         Returns: boolean
       }
+      can_read_field: {
+        Args: { _column: string; _table: string; _user_id: string }
+        Returns: boolean
+      }
       can_view_event_planning: {
         Args: { _planning_id: string; _user_id: string }
         Returns: boolean
@@ -13054,6 +13184,10 @@ export type Database = {
       }
       can_view_message_recipients: {
         Args: { message_id_param: string }
+        Returns: boolean
+      }
+      can_write_field: {
+        Args: { _column: string; _table: string; _user_id: string }
         Returns: boolean
       }
       check_and_archive_decision: {
@@ -13320,11 +13454,19 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: undefined
       }
+      is_action_allowed: {
+        Args: { _action_key: string; _user_id: string }
+        Returns: boolean
+      }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_admin_for_audit_logs: { Args: { _user_id: string }; Returns: boolean }
       is_admin_of: { Args: { employee: string }; Returns: boolean }
       is_deputy_for: {
         Args: { _absent_user_id: string; _deputy_id: string }
+        Returns: boolean
+      }
+      is_feature_enabled: {
+        Args: { _feature_key: string; _tenant_id: string }
         Returns: boolean
       }
       is_meeting_participant: {
