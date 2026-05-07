@@ -53,7 +53,6 @@ export async function cleanupCreated(
 
   for (const rec of sorted) {
     try {
-      // @ts-expect-error dynamic table name not in Supabase generated table union
       const { error } = await supabase.from(rec.table)
         .delete()
         .eq("id", rec.id);
@@ -247,7 +246,6 @@ export async function purgeAllSelftestData(tenantId: string): Promise<{
 
   for (const t of tables) {
     try {
-      // @ts-expect-error dynamic table name not in Supabase generated table union
       let query = supabase.from(t.name).delete({ count: "exact" })
         .ilike(t.column, `${SELFTEST_PREFIX}%`);
       if (t.hasTenant) query = query.eq("tenant_id", tenantId);

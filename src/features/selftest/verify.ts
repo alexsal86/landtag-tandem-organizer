@@ -9,7 +9,6 @@ export async function expectFields(
   label = "Felder",
 ): Promise<StepResult> {
   const columns = Object.keys(expected).join(",");
-  // @ts-expect-error dynamic table name not in Supabase generated table union
   const { data, error } = await supabase.from(table)
     .select(columns)
     .eq("id", id)
