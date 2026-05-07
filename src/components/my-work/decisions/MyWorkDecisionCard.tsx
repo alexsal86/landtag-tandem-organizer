@@ -26,6 +26,25 @@ import { DecisionCardActivity } from "./card/DecisionCardActivity";
 import { CalendarDays, ChevronDown, ChevronUp, Info } from "lucide-react";
 import { getPalettePromptClasses } from "@/lib/paletteStyles";
 
+interface MyWorkDecisionCardProps {
+  decision: MyWorkDecision;
+  isHighlighted?: boolean;
+  highlightRef?: (el: HTMLElement | null) => void;
+  onOpenDetails: (decisionId: string) => void;
+  onEdit: (decisionId: string) => void;
+  onArchive: (decisionId: string) => void;
+  onDelete: (decisionId: string) => void;
+  onCreateTask: (decision: MyWorkDecision) => void;
+  onResponseSubmitted: () => void;
+  onOpenComments: (decisionId: string, title: string) => void;
+  onReply?: (payload: { responseId: string; text: string; mode: "creator_response" | "participant_followup" }) => Promise<void>;
+  commentCount: number;
+  creatingTaskId: string | null;
+  archivingDecisionId?: string | null;
+  deletingDecisionId?: string | null;
+  currentUserId: string;
+}
+
 const getPromptColorClasses = (color: string) => getPalettePromptClasses(color);
 
 const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpenDetails, onEdit, onArchive, onDelete, onCreateTask, onResponseSubmitted, onOpenComments, onReply, commentCount, creatingTaskId, archivingDecisionId, deletingDecisionId, currentUserId }: MyWorkDecisionCardProps) => {
