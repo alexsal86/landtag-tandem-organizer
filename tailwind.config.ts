@@ -60,6 +60,32 @@ export default {
 					DEFAULT: 'hsl(var(--warning))',
 					foreground: 'hsl(var(--warning-foreground))'
 				},
+				info: {
+					DEFAULT: 'hsl(var(--info))',
+					foreground: 'hsl(var(--info-foreground))'
+				},
+				event: {
+					appointment: 'hsl(var(--event-appointment))',
+					meeting: 'hsl(var(--event-meeting))',
+					task: 'hsl(var(--event-task))',
+					personal: 'hsl(var(--event-personal))',
+					deadline: 'hsl(var(--event-deadline))',
+					session: 'hsl(var(--event-session))',
+					blocked: 'hsl(var(--event-blocked))',
+					veranstaltung: 'hsl(var(--event-veranstaltung))',
+					vacation: 'hsl(var(--event-vacation))',
+					'vacation-request': 'hsl(var(--event-vacation-request))',
+					birthday: 'hsl(var(--event-birthday))',
+					foreground: 'hsl(var(--event-foreground))',
+					'foreground-dark': 'hsl(var(--event-foreground-dark))'
+				},
+				agenda: {
+					appointments: 'hsl(var(--agenda-appointments))',
+					notes: 'hsl(var(--agenda-notes))',
+					tasks: 'hsl(var(--agenda-tasks))',
+					birthdays: 'hsl(var(--agenda-birthdays))',
+					decisions: 'hsl(var(--agenda-decisions))'
+				},
 				muted: {
 					DEFAULT: 'hsl(var(--muted))',
 					foreground: 'hsl(var(--muted-foreground))'

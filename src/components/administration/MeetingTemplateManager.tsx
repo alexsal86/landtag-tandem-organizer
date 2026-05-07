@@ -15,6 +15,12 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { MeetingTemplateParticipantsEditor } from "@/components/meetings/MeetingTemplateParticipantsEditor";
 import { Plus, Save, X, Check, GripVertical, Minus, Edit, Trash2, CalendarDays, StickyNote, ListTodo, Cake, Scale, MoveVertical, ArrowUp, ArrowDown, CornerUpLeft } from "lucide-react";
 import type { MeetingTemplateChildItem, MeetingTemplateItem, MeetingTemplateRecord } from "@/types/meetingTemplate";
+import {
+  getAgendaSystemItemClass,
+  getAgendaChildClass,
+  getAgendaIconColor,
+  getAgendaToggleClass,
+} from "@/components/administration/agendaSystemStyles";
 
 export function MeetingTemplateManager() {
   const { user } = useAuth();
@@ -249,47 +255,33 @@ export function MeetingTemplateManager() {
   };
 
   const getSystemIcon = (systemType: string) => {
+    const cls = `h-4 w-4 ${getAgendaIconColor(systemType)}`;
     switch (systemType) {
-      case 'upcoming_appointments': return <CalendarDays className="h-4 w-4 text-blue-600" />;
-      case 'quick_notes': return <StickyNote className="h-4 w-4 text-amber-600" />;
-      case 'tasks': return <ListTodo className="h-4 w-4 text-green-600" />;
-      case 'birthdays': return <Cake className="h-4 w-4 text-pink-600" />;
-      case 'decisions': return <Scale className="h-4 w-4 text-violet-600" />;
+      case 'upcoming_appointments': return <CalendarDays className={cls} />;
+      case 'quick_notes': return <StickyNote className={cls} />;
+      case 'tasks': return <ListTodo className={cls} />;
+      case 'birthdays': return <Cake className={cls} />;
+      case 'decisions': return <Scale className={cls} />;
       default: return null;
     }
   };
 
-  const getSystemItemClass = (systemType: string) => {
-    switch (systemType) {
-      case 'upcoming_appointments': return 'border-l-4 border-l-blue-500 bg-blue-50/50 dark:bg-blue-950/20';
-      case 'quick_notes': return 'border-l-4 border-l-amber-500 bg-amber-50/50 dark:bg-amber-950/20';
-      case 'tasks': return 'border-l-4 border-l-green-500 bg-green-50/50 dark:bg-green-950/20';
-      case 'birthdays': return 'border-l-4 border-l-pink-500 bg-pink-50/50 dark:bg-pink-950/20';
-      case 'decisions': return 'border-l-4 border-l-violet-500 bg-violet-50/50 dark:bg-violet-950/20';
-      default: return '';
-    }
-  };
+  const getSystemItemClass = (systemType: string) => getAgendaSystemItemClass(systemType);
 
-  const getChildSystemClass = (systemType: string) => {
-    switch (systemType) {
-      case 'upcoming_appointments': return 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800';
-      case 'tasks': return 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800';
-      case 'birthdays': return 'bg-pink-50 border-pink-200 dark:bg-pink-950/30 dark:border-pink-800';
-      case 'decisions': return 'bg-violet-50 border-violet-200 dark:bg-violet-950/30 dark:border-violet-800';
-      default: return 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800';
-    }
-  };
+  const getChildSystemClass = (systemType: string) => getAgendaChildClass(systemType);
 
   const getSmallIcon = (systemType: string, size = "h-3 w-3") => {
+    const colorCls = `${size} ${getAgendaIconColor(systemType)} shrink-0`;
     switch (systemType) {
-      case 'upcoming_appointments': return <CalendarDays className={`${size} text-blue-600 shrink-0`} />;
-      case 'quick_notes': return <StickyNote className={`${size} text-amber-600 shrink-0`} />;
-      case 'tasks': return <ListTodo className={`${size} text-green-600 shrink-0`} />;
-      case 'birthdays': return <Cake className={`${size} text-pink-600 shrink-0`} />;
-      case 'decisions': return <Scale className={`${size} text-violet-600 shrink-0`} />;
+      case 'upcoming_appointments': return <CalendarDays className={colorCls} />;
+      case 'quick_notes': return <StickyNote className={colorCls} />;
+      case 'tasks': return <ListTodo className={colorCls} />;
+      case 'birthdays': return <Cake className={colorCls} />;
+      case 'decisions': return <Scale className={colorCls} />;
       default: return null;
     }
   };
+
 
   return (
     <>
@@ -501,18 +493,11 @@ export function MeetingTemplateManager() {
                                               <p className="text-xs text-muted-foreground mb-2">Dynamische Inhalte:</p>
                                               <div className="flex flex-wrap gap-1">
                                                 {(['upcoming_appointments', 'quick_notes', 'tasks', 'birthdays', 'decisions'] as const).map(type => {
-                                                  const colors: Record<string, string> = {
-                                                    upcoming_appointments: 'border-blue-200 text-blue-700',
-                                                    quick_notes: 'border-amber-200 text-amber-700',
-                                                    tasks: 'border-green-200 text-green-700',
-                                                    birthdays: 'border-pink-200 text-pink-700',
-                                                    decisions: 'border-violet-200 text-violet-700',
-                                                  };
                                                   const labels: Record<string, string> = {
                                                     upcoming_appointments: 'Termine', quick_notes: 'Notizen', tasks: 'Aufgaben', birthdays: 'Geburtstage', decisions: 'Entscheidungen',
                                                   };
                                                   return (
-                                                    <Button key={type} variant="outline" size="sm" className={`flex-1 justify-start ${colors[type]} h-7 text-xs`} onClick={() => { addSystemTemplateItem(type, index); setChildPopoverOpen(null); }}>
+                                                    <Button key={type} variant="outline" size="sm" className={`flex-1 justify-start ${getAgendaToggleClass(type)} h-7 text-xs`} onClick={() => { addSystemTemplateItem(type, index); setChildPopoverOpen(null); }}>
                                                       {getSmallIcon(type)}<span className="ml-1">{labels[type]}</span>
                                                     </Button>
                                                   );
@@ -613,18 +598,11 @@ export function MeetingTemplateManager() {
                     {selectedTemplate && (
                       <>
                         {(['upcoming_appointments', 'quick_notes', 'tasks', 'birthdays', 'decisions'] as const).map(type => {
-                          const styles: Record<string, string> = {
-                            upcoming_appointments: 'border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950',
-                            quick_notes: 'border-amber-200 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-950',
-                            tasks: 'border-green-200 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-950',
-                            birthdays: 'border-pink-200 text-pink-700 hover:bg-pink-50 dark:border-pink-800 dark:text-pink-300 dark:hover:bg-pink-950',
-                            decisions: 'border-violet-200 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950',
-                          };
                           const labels: Record<string, string> = {
                             upcoming_appointments: 'Termine', quick_notes: 'Notizen', tasks: 'Aufgaben', birthdays: 'Geburtstage', decisions: 'Entscheidungen',
                           };
                           return (
-                            <Button key={type} variant="outline" size="sm" className={styles[type]} onClick={() => addSystemTemplateItem(type)}>
+                            <Button key={type} variant="outline" size="sm" className={getAgendaToggleClass(type)} onClick={() => addSystemTemplateItem(type)}>
                               {getSystemIcon(type)}<span className="ml-2">{labels[type]}</span>
                             </Button>
                           );

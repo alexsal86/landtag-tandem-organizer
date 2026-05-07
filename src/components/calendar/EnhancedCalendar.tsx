@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks, addDays, subDays, startOfDay, endOfDay, isSameDay, parseISO, addMinutes } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { getEventTypeClass } from './eventTypeStyles';
 
 interface CalendarEvent {
   id: string;
@@ -129,17 +130,8 @@ export function EnhancedCalendar({
         key={event.id}
         className={`
           absolute left-1 right-1 px-2 py-1 rounded text-xs cursor-move
-          ${event.type === 'appointment' ? 'bg-blue-500 text-white' : ''}
-          ${event.type === 'meeting' ? 'bg-green-500 text-white' : ''}
-          ${event.type === 'task' ? 'bg-orange-500 text-white' : ''}
-          ${event.type === 'personal' ? 'bg-purple-500 text-white' : ''}
-          ${event.type === 'deadline' ? 'bg-red-500 text-white' : ''}
-          ${event.type === 'session' ? 'bg-indigo-500 text-white' : ''}
-          ${event.type === 'blocked' ? 'bg-orange-600 text-white' : ''}
-          ${event.type === 'veranstaltung' ? 'bg-purple-600 text-white' : ''}
-          ${event.type === 'vacation' ? 'bg-green-600 text-white' : ''}
-          ${event.type === 'vacation_request' ? 'bg-yellow-500 text-black' : ''}
-          ${event.type === 'birthday' ? 'bg-pink-500 text-white' : ''}
+          ${getEventTypeClass(event.type)}
+
           ${isBeingDragged ? 'opacity-70 z-50' : 'hover:opacity-80'}
           transition-all duration-200
         `}
@@ -173,18 +165,9 @@ export function EnhancedCalendar({
                 key={event.id}
                 className={`
                   mb-1 px-2 py-1 rounded text-sm cursor-pointer
-                  ${event.type === 'appointment' ? 'bg-blue-500 text-white' : ''}
-                  ${event.type === 'meeting' ? 'bg-green-500 text-white' : ''}
-                  ${event.type === 'task' ? 'bg-orange-500 text-white' : ''}
-                  ${event.type === 'personal' ? 'bg-purple-500 text-white' : ''}
-                  ${event.type === 'deadline' ? 'bg-red-500 text-white' : ''}
-                  ${event.type === 'session' ? 'bg-indigo-500 text-white' : ''}
-                  ${event.type === 'blocked' ? 'bg-orange-600 text-white' : ''}
-                  ${event.type === 'veranstaltung' ? 'bg-purple-600 text-white' : ''}
-                  ${event.type === 'vacation' ? 'bg-green-600 text-white' : ''}
-                  ${event.type === 'vacation_request' ? 'bg-yellow-500 text-black' : ''}
-                  ${event.type === 'birthday' ? 'bg-pink-500 text-white' : ''}
-                `}
+                  ${getEventTypeClass(event.type)}
+
+                  `}
                 onClick={() => onSelectEvent?.(event)}
               >
                 {event.title}
@@ -261,18 +244,9 @@ export function EnhancedCalendar({
                     key={event.id}
                     className={`
                       mb-1 px-2 py-1 rounded text-xs cursor-pointer
-                      ${event.type === 'appointment' ? 'bg-blue-500 text-white' : ''}
-                      ${event.type === 'meeting' ? 'bg-green-500 text-white' : ''}
-                      ${event.type === 'task' ? 'bg-orange-500 text-white' : ''}
-                      ${event.type === 'personal' ? 'bg-purple-500 text-white' : ''}
-                      ${event.type === 'deadline' ? 'bg-red-500 text-white' : ''}
-                      ${event.type === 'session' ? 'bg-indigo-500 text-white' : ''}
-                      ${event.type === 'blocked' ? 'bg-orange-600 text-white' : ''}
-                      ${event.type === 'veranstaltung' ? 'bg-purple-600 text-white' : ''}
-                      ${event.type === 'vacation' ? 'bg-green-600 text-white' : ''}
-                      ${event.type === 'vacation_request' ? 'bg-yellow-500 text-black' : ''}
-                      ${event.type === 'birthday' ? 'bg-pink-500 text-white' : ''}
-                    `}
+                      ${getEventTypeClass(event.type)}
+
+                      `}
                     onClick={() => onSelectEvent?.(event)}
                   >
                     {event.title}
@@ -380,18 +354,9 @@ export function EnhancedCalendar({
                       key={event.id}
                       className={`
                         text-xs px-1 py-0.5 rounded cursor-pointer truncate
-                        ${event.type === 'appointment' ? 'bg-blue-500 text-white' : ''}
-                        ${event.type === 'meeting' ? 'bg-green-500 text-white' : ''}
-                        ${event.type === 'task' ? 'bg-orange-500 text-white' : ''}
-                        ${event.type === 'personal' ? 'bg-purple-500 text-white' : ''}
-                        ${event.type === 'deadline' ? 'bg-red-500 text-white' : ''}
-                        ${event.type === 'session' ? 'bg-indigo-500 text-white' : ''}
-                        ${event.type === 'blocked' ? 'bg-orange-600 text-white' : ''}
-                        ${event.type === 'veranstaltung' ? 'bg-purple-600 text-white' : ''}
-                        ${event.type === 'vacation' ? 'bg-green-600 text-white' : ''}
-                        ${event.type === 'vacation_request' ? 'bg-yellow-500 text-black' : ''}
-                        ${event.type === 'birthday' ? 'bg-pink-500 text-white' : ''}
-                      `}
+                        ${getEventTypeClass(event.type)}
+
+                        `}
                       onClick={() => onSelectEvent?.(event)}
                     >
                       {event.allDay ? (
