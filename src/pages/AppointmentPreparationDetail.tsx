@@ -388,8 +388,12 @@ export default function AppointmentPreparationDetail() {
             selectedPhase={selectedPhase}
             setSelectedPhase={setSelectedPhase}
             onShowBriefing={() => setBriefingMode(true)}
+            focusMode={focusMode}
+            onToggleFocus={() => setFocusMode((v) => !v)}
+            onShowShortcutsHelp={() => setShortcutsHelpOpen(true)}
           />
         )}
+        <KeyboardShortcutsHelp open={shortcutsHelpOpen} onOpenChange={setShortcutsHelpOpen} />
       </div>
         {appointmentInfo && (
           <AppointmentDetailsSidebar
