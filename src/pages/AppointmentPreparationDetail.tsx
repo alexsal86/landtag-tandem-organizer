@@ -78,7 +78,7 @@ export default function AppointmentPreparationDetail() {
       const role = data?.role || null;
       setUserRole(role);
       if (role === 'abgeordneter') {
-        setActiveTab('briefing');
+        setBriefingMode(true);
       }
     };
     fetchRole();
@@ -209,7 +209,7 @@ export default function AppointmentPreparationDetail() {
   }
 
   const getStatusBadge = (status: string) => {
-    if (activeTab === "preparation" && status === "draft") {
+    if (status === "draft" && !briefingMode) {
       return null;
     }
 
