@@ -27,72 +27,15 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { RichTextDisplay } from '@/components/ui/RichTextDisplay';
 
-import type { LinkedQuickNote, LinkedTask, LinkedCaseItem, RelevantDecision, MeetingUpcomingAppointment } from './types';
-
-interface AgendaItem {
-  id?: string;
-  title: string;
-  description?: string | null;
-  assigned_to?: string[] | null;
-  notes?: string | null;
-  is_completed: boolean;
-  result_text?: string | null;
-  carry_over_to_next?: boolean | null;
-  order_index: number;
-  parent_id?: string | null;
-  parentLocalKey?: string;
-  system_type?: string | null;
-}
-
-interface Meeting {
-  id?: string;
-  title: string;
-  meeting_date: string | Date;
-  meeting_time?: string | null;
-}
-
-interface Profile {
-  user_id: string;
-  display_name: string | null;
-  avatar_url?: string | null;
-}
-
-interface NavigableItem {
-  item: AgendaItem;
-  isSubItem: boolean;
-  parentItem: AgendaItem | null;
-  globalIndex: number;
-  isSystemSubItem?: boolean;
-  sourceId?: string;
-  sourceType?: 'quick_note' | 'appointment' | 'task' | 'decision';
-  sourceData?: unknown;
-}
-
-type SystemSubItemResultEntry = string | { result?: string; completed?: boolean };
-
-interface FocusModeViewProps {
-  meeting: Meeting;
-  agendaItems: AgendaItem[];
-  profiles: Profile[];
-  linkedQuickNotes?: LinkedQuickNote[];
-  linkedTasks?: LinkedTask[];
-  linkedCaseItems?: LinkedCaseItem[];
-  relevantDecisions?: RelevantDecision[];
-  upcomingAppointments?: MeetingUpcomingAppointment[];
-  starredAppointmentIds?: Set<string>;
-  onToggleStar?: (appt: MeetingUpcomingAppointment) => void;
-  onClose: () => void;
-  onUpdateItem: (index: number, field: keyof AgendaItem, value: unknown) => void;
-  onUpdateResult: (itemId: string, field: 'result_text' | 'carry_over_to_next', value: unknown) => void;
-  onUpdateNoteResult?: (noteId: string, result: string) => void;
-  onArchive: () => void;
-}
-
-// Helper function to format time without seconds
-const formatMeetingTime = (time: string | undefined) => {
-  if (!time) return null;
-  return time.substring(0, 5);
-};
+import type {
+  AgendaItem,
+  Meeting,
+  Profile,
+  NavigableItem,
+  SystemSubItemResultEntry,
+  FocusModeViewProps,
+} from './focusMode/types';
+import { formatMeetingTime } from './focusMode/types';
 
 export function FocusModeView({
   meeting,
