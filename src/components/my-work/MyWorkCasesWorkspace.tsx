@@ -40,6 +40,7 @@ import {
   interactionTypeOptions,
   priorityOptions,
 } from "./myWorkCasesWorkspace/constants";
+import { useLinkedDecisions } from "./myWorkCasesWorkspace/useLinkedDecisions";
 
 export function MyWorkCasesWorkspace() {
   const { user } = useAuth();
@@ -116,27 +117,10 @@ export function MyWorkCasesWorkspace() {
     return true;
   }, [setCaseItems]);
 
-  // Decision integration types
-  type LinkedDecision = {
-    id: string;
-    title: string;
-    description: string | null;
-    status: string;
-    created_at: string;
-    response_deadline: string | null;
-    created_by: string | null;
-    task_decision_participants: Array<{
-      id: string;
-      user_id: string;
-      task_decision_responses: Array<{ id: string; response_type: string }>;
-    }>;
-  };
-
   // Decision integration state
   const [isDecisionCreatorOpen, setIsDecisionCreatorOpen] = useState(false);
   const [decisionCreatorItemId, setDecisionCreatorItemId] = useState<string | null>(null);
-  const [linkedDecisions, setLinkedDecisions] = useState<Record<string, LinkedDecision[]>>({});
-  const [loadingDecisions, setLoadingDecisions] = useState(false);
+
 
   // Jour Fixe meeting selector state
   const [isMeetingSelectorOpen, setIsMeetingSelectorOpen] = useState(false);
@@ -238,48 +222,12 @@ export function MyWorkCasesWorkspace() {
     }
   }, [clearActionParam, searchParams]);
 
-  // Load linked decisions for a case item
-  const loadLinkedDecisions = useCallback(async (itemId: string) => {
-    setLoadingDecisions(true);
-    try {
-      const { data, error } = await supabase
-        .from("task_decisions")
-        .select(`
-          id,
-          title,
-          description,
-          status,
-          created_at,
-          response_deadline,
-          created_by,
-          task_decision_participants (
-            id,
-            user_id,
-            task_decision_responses (id, response_type)
-          )
-        `)
-        .eq("case_item_id", itemId)
-        .order("created_at", { ascending: false });
+  // Load linked decisions for a case item (extracted hook)
+  const { linkedDecisions, loadingDecisions, loadLinkedDecisions } = useLinkedDecisions({
+    detailItemId,
+    runAsync,
+  });
 
-      if (!error) {
-        setLinkedDecisions((prev) => ({
-          ...prev,
-          [itemId]: ((data ?? []) as unknown as LinkedDecision[]),
-        }));
-      }
-    } catch (e) {
-      debugConsole.error("Error loading linked decisions:", e);
-    } finally {
-      setLoadingDecisions(false);
-    }
-  }, []);
-
-  // Load decisions when detail item changes
-  useEffect(() => {
-    if (detailItemId) {
-      runAsync(() => loadLinkedDecisions(detailItemId));
-    }
-  }, [detailItemId, loadLinkedDecisions]);
 
   const getAssigneeIds = useCallback((item: CaseItem) => {
     const payloadAssigneeIds = Array.isArray(item.intake_payload?.assignee_ids)
