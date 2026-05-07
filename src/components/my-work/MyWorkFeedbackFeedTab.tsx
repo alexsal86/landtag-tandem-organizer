@@ -14,6 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { TransferToThemenspeicherDialog } from '@/features/redaktion/components/TransferToThemenspeicherDialog';
 import type { TeamFeedbackEntry } from '@/hooks/useTeamFeedbackFeed';
+import { MyWorkEmptyState } from '@/components/my-work/MyWorkEmptyState';
 
 const PERIOD_PRESETS = {
   '3d': 3,
