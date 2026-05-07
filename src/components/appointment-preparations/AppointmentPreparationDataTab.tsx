@@ -576,7 +576,7 @@ export function AppointmentPreparationDataTab({
         </div>
 
         {/* Mittelspalte */}
-        <div className="space-y-4 xl:col-span-5">
+        <div className="space-y-4 xl:col-span-4">
           <ProgramCard
             programRows={programRows}
             expandedSection={expandedSections.programm}
