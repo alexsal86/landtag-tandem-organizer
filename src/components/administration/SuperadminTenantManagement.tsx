@@ -17,6 +17,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/components/ui/use-toast";
 import { Building2, Plus, Edit, Trash2, Users, UserPlus, RefreshCw, Copy, Check, MapPin, ChevronDown, Sparkles } from "lucide-react";
+import { LoadingState } from "@/components/ui-patterns";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { TenantProvisioningWizard } from "./tenant-wizard/TenantProvisioningWizard";

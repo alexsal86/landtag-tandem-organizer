@@ -3,6 +3,7 @@ import { debugConsole } from '@/utils/debugConsole';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Download, ExternalLink } from "lucide-react";
+import { LoadingState } from "@/components/ui-patterns";
 import { useContactDocuments } from "@/hooks/useContactDocuments";
 import { useToast } from "@/hooks/use-toast";
 import { downloadDocument } from "./utils/downloadDocument";

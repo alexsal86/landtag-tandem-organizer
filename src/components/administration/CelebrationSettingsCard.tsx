@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Separator } from "@/components/ui/separator";
 import { Sparkles, Eye } from "lucide-react";
+import { LoadingState } from "@/components/ui-patterns";
 import { useCelebrationSettings } from "@/hooks/useCelebrationSettings";
 import { CelebrationAnimationSystem } from "@/components/celebrations";
 

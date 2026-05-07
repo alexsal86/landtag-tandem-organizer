@@ -13,6 +13,7 @@ import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2 } from 'lucide-react';
+import { EmptyState, LoadingState } from '@/components/ui-patterns';
 
 interface InformationBlock {
   id: string;

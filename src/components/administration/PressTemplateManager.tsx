@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Edit, Save, Trash2, X, LayoutTemplate } from 'lucide-react';
+import { Plus, Edit, Save, Trash2, X, LayoutTemplate, FileText } from 'lucide-react';
+import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
