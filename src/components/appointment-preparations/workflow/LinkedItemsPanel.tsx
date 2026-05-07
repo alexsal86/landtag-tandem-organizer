@@ -110,7 +110,7 @@ export function LinkedItemsPanel({ preparation }: Props) {
                   size="sm"
                   variant="ghost"
                   className="h-7 px-2"
-                  onClick={() => navigate(`/cases/${c.id}`)}
+                  onClick={() => navigate(`/casefiles?caseFileId=${c.id}`)}
                   aria-label="Vorgang öffnen"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
@@ -133,7 +133,7 @@ export function LinkedItemsPanel({ preparation }: Props) {
                   size="sm"
                   variant="ghost"
                   className="h-7 px-2"
-                  onClick={() => navigate(`/knowledge/${d.id}`)}
+                  onClick={() => navigate(`/dossiers?id=${d.id}`)}
                   aria-label="Dossier öffnen"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
