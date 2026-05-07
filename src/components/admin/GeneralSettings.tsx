@@ -304,6 +304,7 @@ export function GeneralSettings() {
       </Card>
 
       <OnboardingResetCard />
+      <OnboardingChecklistCard forceShow />
     </div>
   );
 }
