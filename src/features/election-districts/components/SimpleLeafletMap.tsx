@@ -468,7 +468,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
         map.setView([48.7758, 9.1829], 8);
       }
     }
-  }, [districts, selectedDistrict, showPartyAssociations, associations]);
+  }, [districts, selectedDistrict, showPartyAssociations, associations, mapReady]);
 
   return (
     <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] bg-card rounded-lg overflow-hidden border border-border z-0">
