@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Inbox, FolderOpen, FileText, Radio, ChevronRight, ChevronDown } from "lucide-react";
+import { Inbox, FolderOpen, FileText, Radio, ChevronRight, ChevronDown, Hash } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { QuickCapture } from "./QuickCapture";
@@ -8,7 +8,7 @@ import { useInboxEntries } from "../hooks/useDossierEntries";
 import { useDossiers } from "../hooks/useDossiers";
 import type { Dossier } from "../types";
 
-type DossierTab = "eingang" | "radar" | "dossiers" | "artikel";
+type DossierTab = "eingang" | "radar" | "dossiers" | "artikel" | "fakten";
 
 interface DossiersSidePanelProps {
   activeTab: DossierTab;
@@ -34,6 +34,7 @@ export function DossiersSidePanel({
     { key: "radar" as DossierTab, label: "Mein Radar", icon: Radio, count: null },
     { key: "dossiers" as DossierTab, label: "Dossiers", icon: FolderOpen, count: dossiersCount },
     { key: "artikel" as DossierTab, label: "Artikel", icon: FileText, count: null },
+    { key: "fakten" as DossierTab, label: "Fakten", icon: Hash, count: null },
   ];
 
   return (

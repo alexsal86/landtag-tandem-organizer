@@ -9,14 +9,16 @@ import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { Loader2 } from "lucide-react";
 
 const KnowledgeBaseView = lazyWithRetry(() => import("@/features/knowledge"));
+const FactsLibraryView = lazyWithRetry(() => import("@/features/facts/components/FactsLibraryView").then(m => ({ default: m.FactsLibraryView })));
 
-type DossierTab = "eingang" | "radar" | "dossiers" | "artikel";
+type DossierTab = "eingang" | "radar" | "dossiers" | "artikel" | "fakten";
 
 const DOSSIER_TAB_LABELS: Record<DossierTab, string> = {
   eingang: "Eingang",
   radar: "Mein Radar",
   dossiers: "Dossiers",
   artikel: "Artikel",
+  fakten: "Fakten",
 };
 
 export function DossiersMainView() {
@@ -57,6 +59,10 @@ export function DossiersMainView() {
           <MeinRadarView onSelectDossier={handleSelectDossier} />
         ) : activeTab === "dossiers" ? (
           <DossierListView onSelect={handleSelectDossier} />
+        ) : activeTab === "fakten" ? (
+          <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="animate-spin h-6 w-6 text-muted-foreground" /></div>}>
+            <FactsLibraryView />
+          </Suspense>
         ) : (
           <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="animate-spin h-6 w-6 text-muted-foreground" /></div>}>
             <KnowledgeBaseView />
