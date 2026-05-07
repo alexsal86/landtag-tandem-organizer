@@ -4094,6 +4094,96 @@ export type Database = {
           },
         ]
       }
+      egress_anomalies: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          anomaly_type: string
+          baseline_value: number | null
+          created_at: string
+          current_value: number | null
+          delta_pct: number | null
+          detected_at: string
+          id: string
+          message: string
+          metric_date: string
+          severity: string
+          table_name: string | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          anomaly_type: string
+          baseline_value?: number | null
+          created_at?: string
+          current_value?: number | null
+          delta_pct?: number | null
+          detected_at?: string
+          id?: string
+          message: string
+          metric_date?: string
+          severity?: string
+          table_name?: string | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          anomaly_type?: string
+          baseline_value?: number | null
+          created_at?: string
+          current_value?: number | null
+          delta_pct?: number | null
+          detected_at?: string
+          id?: string
+          message?: string
+          metric_date?: string
+          severity?: string
+          table_name?: string | null
+        }
+        Relationships: []
+      }
+      egress_metrics: {
+        Row: {
+          collected_at: string
+          created_at: string
+          db_size_bytes: number | null
+          edge_function_invocations: Json
+          id: string
+          metric_date: string
+          notes: string | null
+          realtime_channels_count: number | null
+          storage_size_bytes: number | null
+          table_sizes: Json
+          top_tables_by_growth: Json
+        }
+        Insert: {
+          collected_at?: string
+          created_at?: string
+          db_size_bytes?: number | null
+          edge_function_invocations?: Json
+          id?: string
+          metric_date?: string
+          notes?: string | null
+          realtime_channels_count?: number | null
+          storage_size_bytes?: number | null
+          table_sizes?: Json
+          top_tables_by_growth?: Json
+        }
+        Update: {
+          collected_at?: string
+          created_at?: string
+          db_size_bytes?: number | null
+          edge_function_invocations?: Json
+          id?: string
+          metric_date?: string
+          notes?: string | null
+          realtime_channels_count?: number | null
+          storage_size_bytes?: number | null
+          table_sizes?: Json
+          top_tables_by_growth?: Json
+        }
+        Relationships: []
+      }
       election_district_municipalities: {
         Row: {
           county: string | null
@@ -12670,6 +12760,7 @@ export type Database = {
         Args: { p_tenant_id: string; p_user_id: string }
         Returns: Json
       }
+      get_database_size: { Args: never; Returns: number }
       get_employee_admin_overview: {
         Args: { p_tenant_id: string }
         Returns: Json
@@ -12688,6 +12779,14 @@ export type Database = {
         Returns: Json
       }
       get_shared_note_ids: { Args: { _user_id: string }; Returns: string[] }
+      get_table_size_metrics: {
+        Args: never
+        Returns: {
+          row_count: number
+          table_name: string
+          total_bytes: number
+        }[]
+      }
       get_unread_notification_counts: {
         Args: { p_user_id: string }
         Returns: Json
