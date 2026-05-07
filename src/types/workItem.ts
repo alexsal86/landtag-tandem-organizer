@@ -82,6 +82,17 @@ const DECISION_STATUS_MAP: Record<string, WorkItemStatus> = {
 };
 
 const CASE_STATUS_MAP: Record<string, WorkItemStatus> = {
+  // German (case_items / Vorgänge)
+  neu: 'open',
+  offen: 'open',
+  in_bearbeitung: 'in_progress',
+  wartet: 'waiting',
+  warten: 'waiting',
+  erledigt: 'done',
+  abgeschlossen: 'done',
+  archiviert: 'done',
+  abgelehnt: 'cancelled',
+  // English fallbacks
   open: 'open',
   in_progress: 'in_progress',
   waiting: 'waiting',
@@ -90,15 +101,7 @@ const CASE_STATUS_MAP: Record<string, WorkItemStatus> = {
   cancelled: 'cancelled',
 };
 
-const VORGANG_STATUS_MAP: Record<string, WorkItemStatus> = {
-  neu: 'open',
-  offen: 'open',
-  in_bearbeitung: 'in_progress',
-  wartet: 'waiting',
-  erledigt: 'done',
-  abgeschlossen: 'done',
-  abgelehnt: 'cancelled',
-};
+const VORGANG_STATUS_MAP = CASE_STATUS_MAP;
 
 export function normalizeStatus(kind: WorkItemKind, raw: string | null | undefined): WorkItemStatus {
   if (!raw) return 'open';
