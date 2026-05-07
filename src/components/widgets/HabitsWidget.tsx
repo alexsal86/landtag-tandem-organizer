@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { debugConsole } from '@/utils/debugConsole';
+import { EmptyState, LoadingState } from '@/components/ui-patterns';
 
 interface Habit {
   id: string;
@@ -279,8 +280,8 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
   if (loading) {
     return (
       <Card className={`h-full flex flex-col ${className}`}>
-        <CardContent className="flex-1 flex items-center justify-center">
-          <div className="text-sm text-muted-foreground">Laden...</div>
+        <CardContent className="flex-1 p-md">
+          <LoadingState variant="list" rows={3} />
         </CardContent>
       </Card>
     );
@@ -336,9 +337,13 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
 
         {/* Habits List */}
         {habits.length === 0 ? (
-          <div className="text-center text-sm text-muted-foreground py-4">
-            Noch keine Gewohnheiten vorhanden
-          </div>
+          <EmptyState
+            icon={TrendingUp}
+            size="sm"
+            title="Noch keine Gewohnheiten"
+            description="Lege deine erste Gewohnheit an, um deinen Fortschritt zu verfolgen."
+            action={{ label: 'Gewohnheit anlegen', icon: Plus, onClick: () => setShowAddForm(true) }}
+          />
         ) : (
           <div className="space-y-2">
             {habits.map(habit => (
