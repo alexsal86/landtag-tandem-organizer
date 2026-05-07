@@ -265,37 +265,22 @@ export function MeetingTemplateManager() {
     }
   };
 
-  const getSystemItemClass = (systemType: string) => {
-    switch (systemType) {
-      case 'upcoming_appointments': return 'border-l-4 border-l-blue-500 bg-blue-50/50 dark:bg-blue-950/20';
-      case 'quick_notes': return 'border-l-4 border-l-amber-500 bg-amber-50/50 dark:bg-amber-950/20';
-      case 'tasks': return 'border-l-4 border-l-green-500 bg-green-50/50 dark:bg-green-950/20';
-      case 'birthdays': return 'border-l-4 border-l-pink-500 bg-pink-50/50 dark:bg-pink-950/20';
-      case 'decisions': return 'border-l-4 border-l-violet-500 bg-violet-50/50 dark:bg-violet-950/20';
-      default: return '';
-    }
-  };
+  const getSystemItemClass = (systemType: string) => getAgendaSystemItemClass(systemType);
 
-  const getChildSystemClass = (systemType: string) => {
-    switch (systemType) {
-      case 'upcoming_appointments': return 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800';
-      case 'tasks': return 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800';
-      case 'birthdays': return 'bg-pink-50 border-pink-200 dark:bg-pink-950/30 dark:border-pink-800';
-      case 'decisions': return 'bg-violet-50 border-violet-200 dark:bg-violet-950/30 dark:border-violet-800';
-      default: return 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800';
-    }
-  };
+  const getChildSystemClass = (systemType: string) => getAgendaChildClass(systemType);
 
   const getSmallIcon = (systemType: string, size = "h-3 w-3") => {
+    const colorCls = `${size} ${getAgendaIconColor(systemType)} shrink-0`;
     switch (systemType) {
-      case 'upcoming_appointments': return <CalendarDays className={`${size} text-blue-600 shrink-0`} />;
-      case 'quick_notes': return <StickyNote className={`${size} text-amber-600 shrink-0`} />;
-      case 'tasks': return <ListTodo className={`${size} text-green-600 shrink-0`} />;
-      case 'birthdays': return <Cake className={`${size} text-pink-600 shrink-0`} />;
-      case 'decisions': return <Scale className={`${size} text-violet-600 shrink-0`} />;
+      case 'upcoming_appointments': return <CalendarDays className={colorCls} />;
+      case 'quick_notes': return <StickyNote className={colorCls} />;
+      case 'tasks': return <ListTodo className={colorCls} />;
+      case 'birthdays': return <Cake className={colorCls} />;
+      case 'decisions': return <Scale className={colorCls} />;
       default: return null;
     }
   };
+
 
   return (
     <>
