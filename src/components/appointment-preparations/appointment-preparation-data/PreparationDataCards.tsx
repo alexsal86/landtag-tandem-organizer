@@ -1,4 +1,5 @@
-import { CheckCircleIcon, ChevronDownIcon, ChevronRightIcon, FileTextIcon, PlusIcon, TrashIcon } from "lucide-react";
+import { CheckCircleIcon, ChevronDownIcon, ChevronRightIcon, FileTextIcon, GripVertical, PlusIcon, TrashIcon } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -29,6 +30,7 @@ interface PreparationDataCardsProps {
   onUpdateTalkingPointItem: (idx: number, field: 'point' | 'background', value: string) => void;
   onRemoveTalkingPointItem: (idx: number) => void;
   onTalkingPointKeyDown: (e: KeyboardEvent<HTMLInputElement>, idx: number) => void;
+  onReorderTalkingPoints?: (fromIdx: number, toIdx: number) => void;
 }
 
 function PreparationSection({
