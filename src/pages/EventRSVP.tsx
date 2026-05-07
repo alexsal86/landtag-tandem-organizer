@@ -253,7 +253,7 @@ export default function EventRSVP() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white px-4 py-4 sm:px-6 sm:py-8">
+    <div className="min-h-screen bg-gradient-to-b from-muted/30 to-white px-4 py-4 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-2xl space-y-4">
         <Alert>
           <Info className="h-4 w-4" />
@@ -345,7 +345,7 @@ export default function EventRSVP() {
 
           <CardContent className="space-y-6 p-5 sm:p-8">
             {confirmationVisible ? (
-              <div className="space-y-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4 sm:p-5">
+              <div className="space-y-4 rounded-2xl border border-palette-green/20 bg-palette-green/10 p-4 sm:p-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h2 className="text-lg font-semibold text-foreground">

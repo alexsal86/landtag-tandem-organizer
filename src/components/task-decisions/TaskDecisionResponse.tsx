@@ -72,22 +72,22 @@ const getIcon = (iconName?: string) => {
 const getSolidColorClasses = (color: string) => {
   switch (color) {
     case "red":
-      return "bg-palette-red hover:bg-palette-red border-red-700 text-white";
+      return "bg-palette-red hover:bg-palette-red border-palette-red text-white";
     case "orange":
-      return "bg-palette-orange hover:bg-palette-orange border-orange-700 text-white";
+      return "bg-palette-orange hover:bg-palette-orange border-palette-orange text-white";
     case "yellow":
       return "bg-palette-yellow hover:bg-palette-yellow border-palette-yellow text-black";
     case "blue":
-      return "bg-palette-blue hover:bg-palette-blue border-blue-700 text-white";
+      return "bg-palette-blue hover:bg-palette-blue border-palette-blue text-white";
     case "purple":
-      return "bg-palette-purple hover:bg-palette-purple border-purple-700 text-white";
+      return "bg-palette-purple hover:bg-palette-purple border-palette-purple text-white";
     case "lime":
-      return "bg-palette-lime hover:bg-palette-lime border-lime-700 text-white";
+      return "bg-palette-lime hover:bg-palette-lime border-palette-lime text-white";
     case "gray":
-      return "bg-gray-600 hover:bg-gray-700 border-gray-700 text-white";
+      return "bg-palette-gray hover:bg-palette-gray border-palette-gray text-white";
     case "green":
     default:
-      return "bg-palette-green hover:bg-palette-green border-green-700 text-white";
+      return "bg-palette-green hover:bg-palette-green border-palette-green text-white";
   }
 };
 
@@ -640,7 +640,7 @@ export const TaskDecisionResponse = ({
 
     const baseButtonClasses = isSelected
       ? `${solidColorClasses} border`
-      : `${colorClasses.textClass} ${colorClasses.borderClass} hover:${colorClasses.bgClass} ${option.recommended ? "ring-1 ring-amber-400/70" : ""}`;
+      : `${colorClasses.textClass} ${colorClasses.borderClass} hover:${colorClasses.bgClass} ${option.recommended ? "ring-1 ring-palette-amber/70" : ""}`;
 
     const button = option.requires_comment ? (
       <Dialog key={option.key} open={isQuestionDialogOpen} onOpenChange={setIsQuestionDialogOpen}>
