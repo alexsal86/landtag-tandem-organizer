@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { RULE_TEMPLATES } from "./AutomationRuleWizard";
+import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -100,9 +101,7 @@ export function AutomationTemplateGallery({ onUseTemplate }: AutomationTemplateG
 
         {/* Template grid */}
         {filtered.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">
-            Keine Templates gefunden.
-          </p>
+          <EmptyState size="sm" title="Keine Templates gefunden" description="Wähle ein anderes Modul oder lege eine eigene Regel an." />
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((template) => (

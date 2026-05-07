@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
+import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { useElectionDistricts } from '@/hooks/useElectionDistricts';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -264,9 +265,7 @@ export const DistrictSupportManager = () => {
               </div>
             ))
           ) : (
-            <p className="text-muted-foreground text-center py-8">
-              Noch keine Betreuungswahlkreise konfiguriert.
-            </p>
+            <EmptyState title="Noch keine Betreuungswahlkreise" description="Wähle oben einen Wahlkreis und füge ihn hinzu." />
           )}
         </div>
       </CardContent>

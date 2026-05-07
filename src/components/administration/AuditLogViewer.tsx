@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -171,8 +172,8 @@ export function AuditLogViewer() {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                        Keine Logs gefunden
+                      <TableCell colSpan={4} className="py-md">
+                        <EmptyState size="sm" title="Keine Logs gefunden" description="Passe Filter oder Zeitraum an." />
                       </TableCell>
                     </TableRow>
                   )}

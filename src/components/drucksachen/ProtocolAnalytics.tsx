@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
+import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -216,16 +217,7 @@ export function ProtocolAnalytics({ protocolId, tenantId }: ProtocolAnalyticsPro
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[1, 2, 3, 4, 5, 6].map(i => (
-          <Card key={i}>
-            <CardContent className="p-6">
-              <div className="animate-pulse">
-                <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
-                <div className="h-8 bg-muted rounded w-1/2"></div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        <div className="col-span-full"><LoadingState variant="card" rows={6} /></div>
       </div>
     );
   }
@@ -234,10 +226,7 @@ export function ProtocolAnalytics({ protocolId, tenantId }: ProtocolAnalyticsPro
     return (
       <Card>
         <CardContent className="flex items-center justify-center h-96">
-          <div className="text-center text-muted-foreground">
-            <BarChart className="h-12 w-12 mx-auto mb-4" />
-            <p>Keine Daten für Analyse verfügbar</p>
-          </div>
+          <EmptyState title="Keine Daten verfügbar" description="Für dieses Protokoll liegen noch keine Analysedaten vor." />
         </CardContent>
       </Card>
     );

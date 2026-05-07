@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -182,10 +183,8 @@ export function WorkflowEngineManager() {
         </div>
       </CardHeader>
       <CardContent>
-        {loading ? <p className="text-muted-foreground">Lade…</p> : defs.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            Noch keine Workflows. Klicken Sie auf „Neu", um zu starten.
-          </div>
+        {loading ? <LoadingState variant="list" rows={3} /> : defs.length === 0 ? (
+          <EmptyState title="Noch keine Workflows" description='Klicke auf „Neu", um zu starten.' />
         ) : (
           <div className="space-y-2">
             {defs.map(def => (
@@ -245,7 +244,7 @@ export function WorkflowEngineManager() {
                   </div>
                 );
               })}
-              {runs.length === 0 && <p className="text-center text-muted-foreground py-8">Noch keine Läufe.</p>}
+              {runs.length === 0 && <EmptyState size="sm" title="Noch keine Läufe" />}
             </div>
           </ScrollArea>
         </DialogContent>

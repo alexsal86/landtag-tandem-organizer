@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
+import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -485,14 +486,7 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
                         ))}
                       </Accordion>
                     ) : (
-                      <div className="text-center py-12">
-                        <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                        <p className="text-muted-foreground">
-                          {searchQuery || partyFilter
-                            ? 'Keine Reden mit den aktuellen Filtern gefunden'
-                            : 'Keine Reden zu diesem Tagesordnungspunkt'}
-                        </p>
-                      </div>
+                      <EmptyState title={searchQuery || partyFilter ? 'Keine Reden gefunden' : 'Keine Reden zu diesem Tagesordnungspunkt'} description={searchQuery || partyFilter ? 'Passe Suche oder Filter an.' : undefined} />
                     )}
                   </ScrollArea>
                 </CardContent>

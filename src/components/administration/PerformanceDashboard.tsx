@@ -1,5 +1,6 @@
 import type { JSX } from "react";
 import { useMemo } from "react";
+import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -199,9 +200,7 @@ export function PerformanceDashboard(): JSX.Element {
         </CardHeader>
         <CardContent>
           {series.length === 0 ? (
-            <p className="text-body text-muted-foreground">
-              Noch keine Daten. Klicke „Jetzt sammeln", um eine erste Erfassung zu starten.
-            </p>
+            <EmptyState size="sm" title="Noch keine Daten" description='Klicke „Jetzt sammeln", um eine erste Erfassung zu starten.' />
           ) : (
             <ChartContainer
               config={{ size: { label: "DB-Größe", color: "hsl(var(--primary))" } }}

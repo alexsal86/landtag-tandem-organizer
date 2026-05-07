@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import type { Json } from "@/integrations/supabase/types";
+import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -601,7 +602,7 @@ export function AutomationRulesManager() {
         </CardHeader>
         <CardContent className="space-y-3">
           {rules.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Noch keine Regeln vorhanden.</p>
+            <EmptyState size="sm" title="Noch keine Regeln" description='Lege eine neue Automationsregel an.' />
           ) : (
             rules.map((rule: RuleRow) => {
               const stats = ruleStats[rule.id];
@@ -754,7 +755,7 @@ export function AutomationRulesManager() {
         </CardHeader>
         <CardContent className="space-y-2">
           {filteredRuns.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Noch keine Ausführungen protokolliert.</p>
+            <EmptyState size="sm" title="Noch keine Ausführungen" description="Hier erscheinen Läufe, sobald deine Regeln triggern." />
           ) : (
             filteredRuns.map((run: Record<string, any>) => (
               <div key={run.id} className="border rounded-md p-2 space-y-2">

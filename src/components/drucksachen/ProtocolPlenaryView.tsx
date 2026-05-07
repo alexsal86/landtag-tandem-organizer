@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -212,9 +213,7 @@ export function ProtocolPlenaryView({ protocol, structuredData }: ProtocolPlenar
             <CardContent>
               <ScrollArea className="h-[800px] pr-4">
                 {speeches.length === 0 ? (
-                  <div className="text-center text-muted-foreground py-12">
-                    Keine Reden gefunden
-                  </div>
+                  <EmptyState title="Keine Reden gefunden" description="Für dieses Protokoll liegen noch keine Reden vor." />
                 ) : (
                   <div className="space-y-6">
                     {speeches.map((speech, idx: number) => {

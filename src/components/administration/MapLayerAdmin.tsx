@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMapLayers, MapLayer, MapLayerInsert } from '@/hooks/useMapLayers';
+import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { useTenant } from '@/hooks/useTenant';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -127,9 +128,7 @@ export const MapLayerAdmin = () => {
         </CardHeader>
         <CardContent>
           {layers.length === 0 ? (
-            <p className="text-muted-foreground text-sm text-center py-8">
-              Noch keine Layer konfiguriert. Fügen Sie einen neuen Layer hinzu.
-            </p>
+            <EmptyState title="Noch keine Layer" description="Lege einen neuen Karten-Layer an." />
           ) : (
             <Table>
               <TableHeader>

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -58,13 +59,9 @@ export function BulkActionAuditViewer() {
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
-            <Loader2 className="h-4 w-4 animate-spin" /> Lade Verlauf…
-          </div>
+          <LoadingState variant="list" rows={3} />
         ) : rows.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            Noch keine Sammelaktionen erfasst.
-          </div>
+          <EmptyState size="sm" title="Noch keine Sammelaktionen" />
         ) : (
           <ScrollArea className="h-[60vh]">
             <div className="space-y-2 pr-4">

@@ -1,5 +1,6 @@
 import type { JSX } from "react";
 import { useMemo } from "react";
+import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -263,8 +264,8 @@ export function SecurityCockpit(): JSX.Element {
                   ))}
                   {(snapshotsQuery.data ?? []).length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
-                        Noch keine Snapshots.
+                      <TableCell colSpan={5} className="py-md">
+                        <EmptyState size="sm" title="Noch keine Snapshots" />
                       </TableCell>
                     </TableRow>
                   )}
