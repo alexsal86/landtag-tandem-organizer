@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { debugConsole } from "@/utils/debugConsole";
 import { useOnboardingGate } from "@/hooks/useOnboardingGate";
+import { OnboardingChecklistCard } from "@/components/onboarding/OnboardingChecklistCard";
 
 interface AppSettings {
   app_name: string;
@@ -304,6 +305,7 @@ export function GeneralSettings() {
       </Card>
 
       <OnboardingResetCard />
+      <OnboardingChecklistCard forceShow />
     </div>
   );
 }

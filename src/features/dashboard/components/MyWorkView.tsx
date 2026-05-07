@@ -23,6 +23,7 @@ import { useMyWorkActiveTab } from "@/components/my-work/hooks/useMyWorkActiveTa
 import { useMyWorkShellData } from "@/components/my-work/hooks/useMyWorkShellData";
 import { trackPageVisit } from "@/hooks/useRecentlyVisited";
 import { MY_WORK_TABS } from "@/components/my-work/myWorkTabs";
+import { OnboardingChecklistCard } from "@/components/onboarding/OnboardingChecklistCard";
 
 const MyWorkQuickCapture = lazyWithRetry(() => import("@/components/my-work/MyWorkQuickCapture").then(m => ({ default: m.MyWorkQuickCapture })));
 const MyWorkNotesList = lazyWithRetry(() => import("@/components/my-work/MyWorkNotesList").then(m => ({ default: m.MyWorkNotesList })));
@@ -108,6 +109,7 @@ export function MyWorkView() {
 
   return (
     <div className="min-h-[calc(100vh-8rem)] p-6">
+      <OnboardingChecklistCard className="mb-4" />
       {countLoadError && (
         <Alert className="mb-4" variant="destructive">
           <AlertDescription className="flex items-center justify-between gap-3">
