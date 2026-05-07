@@ -4172,6 +4172,27 @@ export type Database = {
           },
         ]
       }
+      edge_function_cache: {
+        Row: {
+          cache_key: string
+          cache_value: Json
+          created_at: string
+          expires_at: string
+        }
+        Insert: {
+          cache_key: string
+          cache_value: Json
+          created_at?: string
+          expires_at: string
+        }
+        Update: {
+          cache_key?: string
+          cache_value?: Json
+          created_at?: string
+          expires_at?: string
+        }
+        Relationships: []
+      }
       egress_anomalies: {
         Row: {
           acknowledged_at: string | null
@@ -13021,6 +13042,7 @@ export type Database = {
         Returns: undefined
       }
       cleanup_bulk_action_audit: { Args: never; Returns: number }
+      cleanup_edge_function_cache: { Args: never; Returns: number }
       cleanup_workflow_runs: { Args: never; Returns: number }
       create_appointment_poll_with_details: {
         Args: {

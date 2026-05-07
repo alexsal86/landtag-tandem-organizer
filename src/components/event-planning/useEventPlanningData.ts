@@ -411,7 +411,7 @@ export function useEventPlanningData() {
   };
 
   const loadGeneralDocuments = async (planningId: string) => {
-    const { data, error } = await supabase.from('event_planning_documents').select('*').eq('event_planning_id', planningId).order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('event_planning_documents').select('id, event_planning_id, file_name, file_path, file_size, file_type, uploaded_by, created_at, updated_at, tenant_id').eq('event_planning_id', planningId).order('created_at', { ascending: false });
     if (!error && data) setGeneralDocuments(data);
   };
 

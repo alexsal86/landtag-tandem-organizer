@@ -236,7 +236,7 @@ export const NotificationSettings = (): JSX.Element => {
       try {
         const { data: types, error: typesError } = await supabase
           .from('notification_types')
-          .select('*')
+          .select('id, name, label, description, category, is_active')
           .eq('is_active', true);
 
         if (typesError) {
@@ -245,7 +245,7 @@ export const NotificationSettings = (): JSX.Element => {
 
         const { data: userSettings, error: settingsError } = await supabase
           .from('user_notification_settings')
-          .select('*')
+          .select('id, user_id, notification_type_id, is_enabled, email_enabled, push_enabled, matrix_enabled, quiet_hours_start, quiet_hours_end')
           .eq('user_id', user.id);
 
         if (settingsError) {

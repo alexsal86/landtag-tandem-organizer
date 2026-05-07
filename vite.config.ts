@@ -200,15 +200,19 @@ export default defineConfig(({ mode }) => ({
           // Router & data-fetching split from core so a React Query upgrade doesn't bust the core cache
           'vendor-react-router': ['react-router-dom'],
           'vendor-react-query': ['@tanstack/react-query'],
-          'vendor-editor': ['lexical', '@lexical/rich-text', '@lexical/list', '@lexical/link', '@lexical/markdown', '@lexical/html', '@lexical/code', '@lexical/table', '@lexical/yjs'],
+          // Lexical Core (immer geladen wenn Editor sichtbar)
+          'vendor-lexical-core': ['lexical', '@lexical/react', '@lexical/utils', '@lexical/selection'],
+          // Lexical-Plugins (Letter-Designer / Tageszettel laden on-demand)
+          'vendor-lexical-plugins': ['@lexical/rich-text', '@lexical/list', '@lexical/link', '@lexical/markdown', '@lexical/html', '@lexical/code', '@lexical/table'],
+          'vendor-lexical-collab': ['@lexical/yjs'],
           'vendor-matrix': ['matrix-js-sdk', 'yjs', 'y-websocket', 'y-indexeddb'],
           'vendor-pdf': ['pdfjs-dist', 'jspdf', 'docx'],
-          'vendor-charts-maps': ['recharts', 'leaflet', 'react-leaflet', 'proj4'],
+          // recharts, leaflet, proj4 jeweils separat — selten gleichzeitig genutzt
+          'vendor-charts': ['recharts'],
+          'vendor-maps': ['leaflet', 'react-leaflet', 'proj4'],
           'vendor-date': ['date-fns', 'rrule'],
           'vendor-motion': ['framer-motion'],
           'vendor-dnd': ['@hello-pangea/dnd'],
-          // cmdk (command palette) is only needed when the search dialog is open — kept separate
-          // so it doesn't inflate the always-loaded vendor-ui bundle
           'vendor-search': ['cmdk'],
           'vendor-ui': ['class-variance-authority', 'clsx', 'tailwind-merge', 'input-otp', 'embla-carousel-react', 'vaul', 'sonner'],
         },

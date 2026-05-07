@@ -1,0 +1,7 @@
+{
+  "$comment": "Bundle-Budget für CI-Gate. report-bundle-size.mjs --check schlägt fehl, wenn Werte überschritten werden. Größen in KiB (gzip).",
+  "totalGzipKiB": 1800,
+  "initialGzipKiB": 350,
+  "perChunkGzipKiB": 400,
+  "initialChunkPattern": "^index-"
+}

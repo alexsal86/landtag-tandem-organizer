@@ -140,7 +140,7 @@ export const TodaySchedule = ({ onCountChange }: TodayScheduleProps) => {
         if (internalIds.length > 0) {
           const { data: preps } = await supabase
             .from('appointment_preparations')
-            .select('*')
+            .select('id, appointment_id, title, preparation_data, checklist_items, status, notes, tenant_id, created_by, created_at, updated_at, is_archived, archived_at, template_id')
             .in('appointment_id', internalIds)
             .eq('is_archived', false);
 

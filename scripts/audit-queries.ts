@@ -19,10 +19,19 @@ const asJson = args.has("--json");
 const topArg = [...args].find((a) => a.startsWith("--top="));
 const TOP = topArg ? parseInt(topArg.split("=")[1], 10) : 30;
 
+type Rule =
+  | "select-star"
+  | "no-limit"
+  | "no-stale-time"
+  | "realtime-no-filter"
+  | "count-without-head"
+  | "no-range-pagination"
+  | "effect-without-cleanup";
+
 type Finding = {
   file: string;
   line: number;
-  rule: "select-star" | "no-limit" | "no-stale-time" | "realtime-no-filter";
+  rule: Rule;
   snippet: string;
 };
 
@@ -94,6 +103,47 @@ function scan(file: string) {
           file: rel,
           line: ln,
           rule: "realtime-no-filter",
+          snippet: trimmed.slice(0, 120),
+        });
+      }
+    }
+
+    // 5. count: 'exact' ohne head: true (lädt unnötig Zeilen)
+    if (/count:\s*['"`]exact['"`]/.test(line)) {
+      const window = lines.slice(Math.max(0, i - 1), i + 4).join("\n");
+      if (!/head:\s*true/.test(window)) {
+        findings.push({
+          file: rel,
+          line: ln,
+          rule: "count-without-head",
+          snippet: trimmed.slice(0, 120),
+        });
+      }
+    }
+
+    // 6. .order(...) ohne .range() oder .limit() (potenzielle Riesen-Liste)
+    if (/\.order\(/.test(line)) {
+      const window = lines.slice(Math.max(0, i - 6), i + 6).join("\n");
+      if (!/\.range\(|\.limit\(|\.maybeSingle\(|\.single\(/.test(window)) {
+        findings.push({
+          file: rel,
+          line: ln,
+          rule: "no-range-pagination",
+          snippet: trimmed.slice(0, 120),
+        });
+      }
+    }
+
+    // 7. useEffect mit supabase-Aufruf ohne Cleanup-Return
+    if (/\buseEffect\s*\(/.test(line)) {
+      const window = lines.slice(i, i + 40).join("\n");
+      const hasSupabase = /supabase\.(channel|from|auth\.onAuthStateChange)/.test(window);
+      const hasCleanup = /return\s*\(\s*\)\s*=>|return\s+function/.test(window);
+      if (hasSupabase && !hasCleanup) {
+        findings.push({
+          file: rel,
+          line: ln,
+          rule: "effect-without-cleanup",
           snippet: trimmed.slice(0, 120),
         });
       }
