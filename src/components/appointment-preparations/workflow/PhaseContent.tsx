@@ -6,6 +6,9 @@ import { AppointmentPreparationFileUpload } from "@/components/appointments/Appo
 import { PreparationMemoryPanel } from "./PreparationMemoryPanel";
 import { AiSuggestionsPanel } from "./AiSuggestionsPanel";
 import { DebriefPanel } from "./DebriefPanel";
+import { TemplatesPanel } from "./TemplatesPanel";
+import { SharingPanel } from "./SharingPanel";
+import { LinkedItemsPanel } from "./LinkedItemsPanel";
 import type { PhaseId } from "./usePhaseStatus";
 import type { AppointmentPreparation } from "@/hooks/useAppointmentPreparation";
 import type { AppointmentPreparationAppointmentDetails } from "@/pages/AppointmentPreparationDetail";
@@ -43,6 +46,15 @@ export function PhaseContent({ phase, preparation, appointmentDetails, onUpdate,
 
       {(phase === "anlass" || phase === "team" || phase === "fakten" || phase === "themen") && (
         <>
+          {phase === "anlass" && (
+            <TemplatesPanel preparation={preparation} onApply={onUpdate} />
+          )}
+          {phase === "team" && (
+            <SharingPanel preparation={preparation} onUpdate={onUpdate} />
+          )}
+          {(phase === "fakten" || phase === "themen") && (
+            <LinkedItemsPanel preparation={preparation} />
+          )}
           {(phase === "themen" || phase === "fakten") && (
             <PreparationMemoryPanel preparation={preparation} onUpdate={onUpdate} />
           )}
