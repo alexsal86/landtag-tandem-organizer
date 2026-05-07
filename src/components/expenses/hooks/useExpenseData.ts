@@ -54,7 +54,7 @@ export function useExpenseData() {
 
   const loadCategories = async () => {
     if (!currentTenant) return;
-    const { data, error } = await supabase.from("expense_categories").select("*").eq("tenant_id", currentTenant.id).eq("is_active", true).order("order_index");
+    const { data, error } = await supabase.from("expense_categories").select("id, name, description, color, is_active, order_index, created_at, updated_at, tenant_id").eq("tenant_id", currentTenant.id).eq("is_active", true).order("order_index");
     if (error) toast({ title: "Fehler", description: "Kategorien konnten nicht geladen werden", variant: "destructive" });
     else setCategories(data || []);
   };
