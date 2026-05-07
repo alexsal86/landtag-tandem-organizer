@@ -66,7 +66,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { navigationGroups, getNavigationGroups, NavGroup } from "@/components/navigation/navigationConfig";
 import { HelpDialog } from "@/components/navigation/HelpDialog";
-import { formatDistanceToNow, format, isToday, isYesterday, isTomorrow, addDays } from "date-fns";
+import { formatDistanceToNow, format, isToday, isYesterday, isTomorrow } from "date-fns";
 import { de } from "date-fns/locale";
 import { Clock } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
