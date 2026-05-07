@@ -208,7 +208,7 @@ export function PreparationDataCards({
             </>
           )}
 
-          {/* Wichtige Themen */}
+          {showFacts && (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <h4 className="text-sm font-medium">Wichtige Themen</h4>
@@ -249,8 +249,9 @@ export function PreparationDataCards({
               Thema hinzufügen
             </Button>
           </div>
+          )}
 
-          {/* Ergänzende Gesprächspunkte */}
+          {showTalkingPoints && (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <h4 className="text-sm font-medium">Ergänzende Gesprächspunkte</h4>
@@ -310,8 +311,9 @@ export function PreparationDataCards({
               Gesprächspunkt hinzufügen
             </Button>
           </div>
+          )}
 
-          {/* Fragen & Antworten */}
+          {showQa && (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <h4 className="text-sm font-medium">Fragen & Antworten</h4>
@@ -358,10 +360,12 @@ export function PreparationDataCards({
               Frage hinzufügen
             </Button>
           </div>
+          )}
         </CardContent>
       </Card>
+      )}
 
-      {/* Personen, Unterlagen & Rahmen */}
+      {showInhalteRahmen && (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -400,6 +404,7 @@ export function PreparationDataCards({
           )}
         </CardContent>
       </Card>
+      )}
     </>
   );
 }
