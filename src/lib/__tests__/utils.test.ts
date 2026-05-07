@@ -27,8 +27,10 @@ describe('isValidEmail', () => {
   });
 
   it('handles null/undefined gracefully', () => {
-    expect(isValidEmail(null as any)).toBe(false);
-    expect(isValidEmail(undefined as any)).toBe(false);
+    // @ts-expect-error testing runtime guard with invalid input types
+    expect(isValidEmail(null)).toBe(false);
+    // @ts-expect-error testing runtime guard with invalid input types
+    expect(isValidEmail(undefined)).toBe(false);
   });
 });
 

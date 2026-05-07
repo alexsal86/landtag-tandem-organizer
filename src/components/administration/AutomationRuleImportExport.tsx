@@ -206,7 +206,7 @@ export function AutomationRuleImportDialog({ open, onOpenChange, onImported }: I
       enabled: r.enabled ?? false,
     }));
 
-    const { error } = await supabase.from("automation_rules").insert(rows as any);
+    const { error } = await supabase.from("automation_rules").insert(rows);
     setImporting(false);
 
     if (error) {

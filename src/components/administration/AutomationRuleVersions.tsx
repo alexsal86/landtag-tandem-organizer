@@ -59,8 +59,9 @@ export function AutomationRuleVersions({
   const loadVersions = async () => {
     if (!currentTenant) return;
     setLoading(true);
+    // @ts-expect-error table not yet in generated supabase types
     const { data, error } = await supabase
-      .from("automation_rule_versions" as any)
+      .from("automation_rule_versions")
       .select("*")
       .eq("rule_id", ruleId)
       .eq("tenant_id", currentTenant.id)
@@ -87,7 +88,7 @@ export function AutomationRuleVersions({
         conditions: version.conditions,
         actions: version.actions,
         enabled: version.enabled,
-      } as any)
+      })
       .eq("id", ruleId);
 
     setRestoring(null);

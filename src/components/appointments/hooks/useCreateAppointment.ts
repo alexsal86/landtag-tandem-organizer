@@ -108,7 +108,8 @@ export function useCreateAppointment(open: boolean, onOpenChange: (open: boolean
 
   const defaultStart = getDefaultStartTime();
   const form = useForm<AppointmentFormValues>({
-    resolver: zodResolver(appointmentSchema) as any,
+    // @ts-expect-error zodResolver generic mismatch with discriminated form schema
+    resolver: zodResolver(appointmentSchema),
     mode: "onSubmit" as const,
     defaultValues: {
       title: "", description: "",

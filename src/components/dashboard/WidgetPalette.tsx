@@ -325,7 +325,7 @@ export function WidgetPalette({ onAddWidget, onClose, suggestions }: WidgetPalet
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleAddWidget(suggestion.type as any)}
+                      onClick={() => handleAddWidget(suggestion.type)}
                     >
                       <Plus className="h-3 w-3" />
                     </Button>
