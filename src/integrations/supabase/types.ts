@@ -2654,6 +2654,56 @@ export type Database = {
           },
         ]
       }
+      contact_briefing_memory: {
+        Row: {
+          answer: string | null
+          contact_id: string
+          content: string | null
+          created_at: string
+          id: string
+          kind: string
+          pinned_by: string | null
+          question: string | null
+          source_preparation_id: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          answer?: string | null
+          contact_id: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          pinned_by?: string | null
+          question?: string | null
+          source_preparation_id?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          answer?: string | null
+          contact_id?: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          pinned_by?: string | null
+          question?: string | null
+          source_preparation_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_briefing_memory_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_topics: {
         Row: {
           contact_id: string
