@@ -2,7 +2,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { getSyncExternalErrorResponse } from './sync-external-calendar.utils.ts'
 
-import { withSafeHandler } from "../_shared/security.ts";
+import { withSafeHandler, requireAuth, unauthorizedResponse } from "../_shared/security.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -337,6 +337,9 @@ Deno.serve(withSafeHandler("sync-external-calendar", async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const auth = await requireAuth(req);
+  if (!auth) return unauthorizedResponse();
 
   try {
     const supabase = createClient(

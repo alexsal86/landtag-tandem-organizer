@@ -2,7 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.52.0';
 
-import { withSafeHandler } from "../_shared/security.ts";
+import { withSafeHandler, requireAuth, unauthorizedResponse } from "../_shared/security.ts";
 console.log("Push notification worker initialized");
 
 const corsHeaders = {
@@ -16,6 +16,9 @@ serve(withSafeHandler("push-notification-worker", async (req) => {
     console.log('📋 Handling OPTIONS request');
     return new Response(null, { headers: corsHeaders });
   }
+
+  const auth = await requireAuth(req);
+  if (!auth) return unauthorizedResponse();
 
   try {
     console.log('🔗 Initializing Supabase...');

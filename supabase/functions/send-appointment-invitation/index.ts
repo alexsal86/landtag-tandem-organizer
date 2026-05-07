@@ -4,7 +4,7 @@ import { requireAppBaseUrl } from "../_shared/url.ts";
 import { createServiceRoleClient } from "../_shared/supabase.ts";
 import { encode } from "https://deno.land/std@0.190.0/encoding/base64.ts";
 
-import { withSafeHandler } from "../_shared/security.ts";
+import { withSafeHandler, requireAuth, unauthorizedResponse } from "../_shared/security.ts";
 console.log('🚀 send-appointment-invitation function starting...');
 
 // Initialize Resend with error handling
@@ -97,6 +97,9 @@ const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const auth = await requireAuth(req);
+  if (!auth) return unauthorizedResponse();
 
   try {
     const supabase = createServiceRoleClient();
