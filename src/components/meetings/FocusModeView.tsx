@@ -36,6 +36,7 @@ import type {
   FocusModeViewProps,
 } from './focusMode/types';
 import { formatMeetingTime } from './focusMode/types';
+import type { MeetingUpcomingAppointment } from './types';
 
 export function FocusModeView({
   meeting,
