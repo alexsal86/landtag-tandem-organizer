@@ -6,7 +6,7 @@ import path from "path";
 // import { nodePolyfills } from 'vite-plugin-node-polyfills';
 
 const securityHeaders = {
-  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-eval' https://cdn.gpteng.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss: ws:; object-src 'none'; frame-ancestors https://*.lovable.app https://*.lovableproject.com https://lovable.dev; base-uri 'self'",  
+  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-eval' https://cdn.gpteng.co https://gptengineer.app; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss: ws:; object-src 'none'; frame-src 'self' https://gptengineer.app https://*.lovable.dev; frame-ancestors 'self' https://*.lovable.app https://*.lovableproject.com https://lovable.dev https://*.lovable.dev https://gptengineer.app https://*.gptengineer.app; base-uri 'self'",  
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'camera=(), microphone=(self), geolocation=()',
