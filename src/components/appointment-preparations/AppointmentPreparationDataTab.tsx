@@ -411,209 +411,232 @@ export function AppointmentPreparationDataTab({
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-card sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <CardTitle className="text-xl">
-            Vorbereitung: {appointmentDetails?.title || preparation.title || "Termin"}
-          </CardTitle>
-          <div className="mt-1 flex items-center gap-2">
-            {getStatusBadge(preparation.status)}
-            {saving && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <div className="animate-spin h-3 w-3 border border-primary border-t-transparent rounded-full" />
-                Speichert...
-              </div>
-            )}
-          </div>
+      {/* Speichert-Indikator (Titel/Status sind im Seiten-Header) */}
+      {saving && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="animate-spin h-3 w-3 border border-primary border-t-transparent rounded-full" />
+          Speichert...
         </div>
-      </div>
+      )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* 1. Gesprächspartner */}
-        <ConversationPartnersCard
-          conversationPartners={conversationPartners}
-          contacts={contacts}
-          selectedContactId={selectedContactId}
-          showCustomContact={showCustomContact}
-          partnerSearchTexts={partnerSearchTexts}
-          editData={editData}
-          expandedSection={expandedSections.gespraechspartner}
-          appointmentDetails={appointmentDetails}
-          onOpenAppointmentDetails={onOpenAppointmentDetails}
-          onToggleSection={() => toggleSection('gespraechspartner')}
-          onContactSelect={handleContactSelect}
-          onAddPartner={addConversationPartner}
-          onSelectContactForPartner={selectContactForPartner}
-          onUnlinkContactFromPartner={unlinkContactFromPartner}
-          onUpdatePartner={updateConversationPartner}
-          onRemovePartner={removeConversationPartner}
-          onPhotoUpload={handleConversationPartnerPhotoUpload}
-          onPartnerSearchChange={(partnerId, value) => setPartnerSearchTexts((prev) => ({ ...prev, [partnerId]: value }))}
-          onFieldChange={handleFieldChange}
-        />
-
-        {/* 2. Anlass des Besuchs */}
-        <Card>
-          <CardContent className="pt-6">
-            <Collapsible open={expandedSections.anlass} onOpenChange={() => toggleSection('anlass')}>
-              <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <TagIcon className="h-5 w-5 text-primary" />
-                  <h3 className="font-medium">Anlass des Besuchs</h3>
-                  {visitReason && (
-                    <Badge variant="secondary" className="text-xs">
-                      {VISIT_REASON_OPTIONS.find((o) => o.value === visitReason)?.label ?? visitReason}
-                    </Badge>
-                  )}
-                </div>
-                {expandedSections.anlass ? <ChevronDownIcon className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pt-4">
-                <div className="space-y-4 px-1">
-                  <div className="flex flex-wrap gap-3">
-                    {VISIT_REASON_OPTIONS.map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => handleVisitReasonChange(option.value)}
-                        className={`px-4 py-2 rounded-full border text-sm font-medium transition-colors ${visitReason === option.value ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border hover:bg-muted'}`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-12">
+        {/* Linke Spalte */}
+        <div className="space-y-4 xl:col-span-4">
+          {/* Anlass des Besuchs */}
+          <Card>
+            <CardContent className="pt-6">
+              <Collapsible open={expandedSections.anlass} onOpenChange={() => toggleSection('anlass')}>
+                <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <TagIcon className="h-5 w-5 text-primary" />
+                    <h3 className="font-medium">Anlass des Besuchs</h3>
+                    {visitReason && (
+                      <Badge variant="secondary" className="text-xs">
+                        {VISIT_REASON_OPTIONS.find((o) => o.value === visitReason)?.label ?? visitReason}
+                      </Badge>
+                    )}
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Freifeld zum Anlass</label>
-                    <Textarea
-                      value={(editData.visit_reason_details as string) ?? ''}
-                      onChange={(e) => handleFieldChange('visit_reason_details', e.target.value)}
-                      placeholder="Weitere Details zum Anlass des Besuchs"
-                      rows={3}
-                      className="resize-none"
-                    />
-                  </div>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          </CardContent>
-        </Card>
-
-        {/* 3. Begleitpersonen */}
-        <CompanionsCard
-          companions={companions}
-          expandedSection={expandedSections.begleitpersonen}
-          onToggleSection={() => toggleSection('begleitpersonen')}
-          onAdd={addCompanion}
-          onUpdate={updateCompanion}
-          onRemove={removeCompanion}
-        />
-
-        {/* 4. Logistik */}
-        <Card>
-          <CardContent className="pt-6">
-            <Collapsible open={expandedSections.logistik} onOpenChange={() => toggleSection('logistik')}>
-              <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <CarIcon className="h-5 w-5 text-primary" />
-                  <h3 className="font-medium">Logistik & Anreise</h3>
-                </div>
-                {expandedSections.logistik ? <ChevronDownIcon className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pt-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 px-1">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium flex items-center gap-2">
-                      <ClockIcon className="h-4 w-4 text-muted-foreground" />
-                      Fahrtzeit
-                    </label>
-                    <Input value={(editData.travel_time as string) ?? ''} onChange={(e) => handleFieldChange('travel_time', e.target.value)} placeholder="z.B. 45 Minuten" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium flex items-center gap-2">
-                      <MapIcon className="h-4 w-4 text-muted-foreground" />
-                      PKW-Stellplatz
-                    </label>
-                    <div className="flex items-center gap-3 pt-1">
-                      <Switch id="has-parking" checked={hasParking} onCheckedChange={handleParkingChange} />
-                      <Label htmlFor="has-parking" className="text-sm">{hasParking ? 'Parkplatz vorhanden' : 'Kein Parkplatz'}</Label>
+                  {expandedSections.anlass ? <ChevronDownIcon className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-4">
+                  <div className="space-y-4 px-1">
+                    <div className="flex flex-wrap gap-3">
+                      {VISIT_REASON_OPTIONS.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => handleVisitReasonChange(option.value)}
+                          className={`px-4 py-2 rounded-full border text-sm font-medium transition-colors ${visitReason === option.value ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border hover:bg-muted'}`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Freifeld zum Anlass</label>
+                      <Textarea
+                        value={(editData.visit_reason_details as string) ?? ''}
+                        onChange={(e) => handleFieldChange('visit_reason_details', e.target.value)}
+                        placeholder="Weitere Details zum Anlass des Besuchs"
+                        rows={3}
+                        className="resize-none"
+                      />
                     </div>
                   </div>
-                  <div className="md:col-span-2 space-y-2">
-                    <label className="text-sm font-medium flex items-center gap-2">
-                      <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                      Folgetermin / Rückfahrt
-                    </label>
-                    <Textarea value={(editData.follow_up as string) ?? ''} onChange={(e) => handleFieldChange('follow_up', e.target.value)} placeholder="Was passiert nach dem Termin? Rückfahrt, nächster Termin, Nachbereitung..." rows={3} className="resize-none" />
+                </CollapsibleContent>
+              </Collapsible>
+            </CardContent>
+          </Card>
+
+          <ConversationPartnersCard
+            conversationPartners={conversationPartners}
+            contacts={contacts}
+            selectedContactId={selectedContactId}
+            showCustomContact={showCustomContact}
+            partnerSearchTexts={partnerSearchTexts}
+            editData={editData}
+            expandedSection={expandedSections.gespraechspartner}
+            appointmentDetails={appointmentDetails}
+            onOpenAppointmentDetails={onOpenAppointmentDetails}
+            onToggleSection={() => toggleSection('gespraechspartner')}
+            onContactSelect={handleContactSelect}
+            onAddPartner={addConversationPartner}
+            onSelectContactForPartner={selectContactForPartner}
+            onUnlinkContactFromPartner={unlinkContactFromPartner}
+            onUpdatePartner={updateConversationPartner}
+            onRemovePartner={removeConversationPartner}
+            onPhotoUpload={handleConversationPartnerPhotoUpload}
+            onPartnerSearchChange={(partnerId, value) => setPartnerSearchTexts((prev) => ({ ...prev, [partnerId]: value }))}
+            onFieldChange={handleFieldChange}
+          />
+
+          <CompanionsCard
+            companions={companions}
+            expandedSection={expandedSections.begleitpersonen}
+            onToggleSection={() => toggleSection('begleitpersonen')}
+            onAdd={addCompanion}
+            onUpdate={updateCompanion}
+            onRemove={removeCompanion}
+          />
+
+          {/* Logistik */}
+          <Card>
+            <CardContent className="pt-6">
+              <Collapsible open={expandedSections.logistik} onOpenChange={() => toggleSection('logistik')}>
+                <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <CarIcon className="h-5 w-5 text-primary" />
+                    <h3 className="font-medium">Logistik & Anreise</h3>
+                  </div>
+                  {expandedSections.logistik ? <ChevronDownIcon className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 px-1">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <ClockIcon className="h-4 w-4 text-muted-foreground" />
+                        Fahrtzeit
+                      </label>
+                      <Input value={(editData.travel_time as string) ?? ''} onChange={(e) => handleFieldChange('travel_time', e.target.value)} placeholder="z.B. 45 Minuten" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <MapIcon className="h-4 w-4 text-muted-foreground" />
+                        PKW-Stellplatz
+                      </label>
+                      <div className="flex items-center gap-3 pt-1">
+                        <Switch id="has-parking" checked={hasParking} onCheckedChange={handleParkingChange} />
+                        <Label htmlFor="has-parking" className="text-sm">{hasParking ? 'Parkplatz vorhanden' : 'Kein Parkplatz'}</Label>
+                      </div>
+                    </div>
+                    <div className="md:col-span-2 space-y-2">
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                        Folgetermin / Rückfahrt
+                      </label>
+                      <Textarea value={(editData.follow_up as string) ?? ''} onChange={(e) => handleFieldChange('follow_up', e.target.value)} placeholder="Was passiert nach dem Termin? Rückfahrt, nächster Termin, Nachbereitung..." rows={3} className="resize-none" />
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            </CardContent>
+          </Card>
+
+          {/* Öffentlichkeitsarbeit */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <MessageSquareIcon className="h-5 w-5 text-primary" />
+                  <div>
+                    <h3 className="font-medium">Öffentlichkeitsarbeit</h3>
+                    <p className="text-sm text-muted-foreground">Planung für Social Media und Presse rund um den Termin.</p>
                   </div>
                 </div>
-              </CollapsibleContent>
-            </Collapsible>
-          </CardContent>
-        </Card>
-
-        {/* 5. Öffentlichkeitsarbeit */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <MessageSquareIcon className="h-5 w-5 text-primary" />
-                <div>
-                  <h3 className="font-medium">Öffentlichkeitsarbeit</h3>
-                  <p className="text-sm text-muted-foreground">Planung für Social Media und Presse rund um den Termin.</p>
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/20">
+                    <div className="space-y-1 pr-4">
+                      <Label htmlFor="social-media-planned" className="text-sm font-medium">Social Media geplant</Label>
+                      <p className="text-sm text-muted-foreground">Markiert, ob Beiträge oder Begleitung auf Social Media vorgesehen sind.</p>
+                    </div>
+                    <Switch id="social-media-planned" checked={(editData.social_media_planned as boolean) ?? false} onCheckedChange={(checked) => handleBooleanFieldChange('social_media_planned', checked)} />
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/20">
+                    <div className="space-y-1 pr-4">
+                      <Label htmlFor="press-planned" className="text-sm font-medium">Presse geplant</Label>
+                      <p className="text-sm text-muted-foreground">Markiert, ob Pressearbeit oder Pressebegleitung eingeplant ist.</p>
+                    </div>
+                    <Switch id="press-planned" checked={(editData.press_planned as boolean) ?? false} onCheckedChange={(checked) => handleBooleanFieldChange('press_planned', checked)} />
+                  </div>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/20">
-                  <div className="space-y-1 pr-4">
-                    <Label htmlFor="social-media-planned" className="text-sm font-medium">Social Media geplant</Label>
-                    <p className="text-sm text-muted-foreground">Markiert, ob Beiträge oder Begleitung auf Social Media vorgesehen sind.</p>
-                  </div>
-                  <Switch id="social-media-planned" checked={(editData.social_media_planned as boolean) ?? false} onCheckedChange={(checked) => handleBooleanFieldChange('social_media_planned', checked)} />
-                </div>
-                <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/20">
-                  <div className="space-y-1 pr-4">
-                    <Label htmlFor="press-planned" className="text-sm font-medium">Presse geplant</Label>
-                    <p className="text-sm text-muted-foreground">Markiert, ob Pressearbeit oder Pressebegleitung eingeplant ist.</p>
-                  </div>
-                  <Switch id="press-planned" checked={(editData.press_planned as boolean) ?? false} onCheckedChange={(checked) => handleBooleanFieldChange('press_planned', checked)} />
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
 
-        {/* 6. Programm */}
-        <ProgramCard
-          programRows={programRows}
-          expandedSection={expandedSections.programm}
-          onToggleSection={() => toggleSection('programm')}
-          onAdd={addProgramRow}
-          onUpdate={updateProgramRow}
-          onRemove={removeProgramRow}
-        />
+        {/* Mittelspalte */}
+        <div className="space-y-4 xl:col-span-5">
+          <ProgramCard
+            programRows={programRows}
+            expandedSection={expandedSections.programm}
+            onToggleSection={() => toggleSection('programm')}
+            onAdd={addProgramRow}
+            onUpdate={updateProgramRow}
+            onRemove={removeProgramRow}
+          />
 
-        {/* 7 & 8. Vorbereitungsdaten */}
-        <PreparationDataCards
-          qaPairs={qaPairs}
-          keyTopicItems={keyTopicItems}
-          talkingPointItems={talkingPointItems}
-          editData={editData}
-          expandedSections={expandedSections}
-          onToggleSection={toggleSection}
-          onFieldChange={handleFieldChange}
-          onAddQaPair={addQaPair}
-          onUpdateQaPair={updateQaPair}
-          onRemoveQaPair={removeQaPair}
-          onAddKeyTopicItem={addKeyTopicItem}
-          onUpdateKeyTopicItem={updateKeyTopicItem}
-          onRemoveKeyTopicItem={removeKeyTopicItem}
-          onKeyTopicKeyDown={handleKeyTopicKeyDown}
-          onAddTalkingPointItem={addTalkingPointItem}
-          onUpdateTalkingPointItem={updateTalkingPointItem}
-          onRemoveTalkingPointItem={removeTalkingPointItem}
-          onTalkingPointKeyDown={handleTalkingPointKeyDown}
-        />
+          <PreparationDataCards
+            qaPairs={qaPairs}
+            keyTopicItems={keyTopicItems}
+            talkingPointItems={talkingPointItems}
+            editData={editData}
+            expandedSections={expandedSections}
+            onToggleSection={toggleSection}
+            onFieldChange={handleFieldChange}
+            onAddQaPair={addQaPair}
+            onUpdateQaPair={updateQaPair}
+            onRemoveQaPair={removeQaPair}
+            onAddKeyTopicItem={addKeyTopicItem}
+            onUpdateKeyTopicItem={updateKeyTopicItem}
+            onRemoveKeyTopicItem={removeKeyTopicItem}
+            onKeyTopicKeyDown={handleKeyTopicKeyDown}
+            onAddTalkingPointItem={addTalkingPointItem}
+            onUpdateTalkingPointItem={updateTalkingPointItem}
+            onRemoveTalkingPointItem={removeTalkingPointItem}
+            onTalkingPointKeyDown={handleTalkingPointKeyDown}
+          />
+        </div>
+
+        {/* Live-Vorschau (sticky) */}
+        <div className="hidden xl:block xl:col-span-3">
+          <div className="sticky top-4">
+            <Card className="bg-muted/20 border-dashed">
+              <CardContent className="pt-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Live-Vorschau</h3>
+                </div>
+                <div className="max-h-[calc(100vh-8rem)] overflow-y-auto rounded-md bg-background p-3 text-xs origin-top scale-[0.85]">
+                  <AppointmentBriefingView
+                    preparation={{
+                      ...preparation,
+                      preparation_data: buildPreparationData(editData),
+                    }}
+                    appointmentInfo={appointmentDetails ? {
+                      id: appointmentDetails.id,
+                      title: appointmentDetails.title,
+                      start_time: appointmentDetails.start_time,
+                      end_time: appointmentDetails.end_time,
+                      location: appointmentDetails.location ?? null,
+                      description: appointmentDetails.description ?? null,
+                      category: appointmentDetails.category ?? null,
+                      priority: appointmentDetails.priority ?? null,
+                    } : null}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
