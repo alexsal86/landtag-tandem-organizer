@@ -154,9 +154,32 @@ export default {
 				}
 			},
 			borderRadius: {
-				lg: 'var(--radius)',
-				md: 'calc(var(--radius) - 2px)',
-				sm: 'calc(var(--radius) - 4px)'
+				sm: 'var(--radius-sm)',
+				md: 'var(--radius-md)',
+				lg: 'var(--radius-lg)',
+				xl: 'var(--radius-xl)',
+				'2xl': 'var(--radius-2xl)',
+				pill: 'var(--radius-pill)'
+			},
+			spacing: {
+				'2xs': 'var(--space-2xs)',
+				xs: 'var(--space-xs)',
+				sm: 'var(--space-sm)',
+				md: 'var(--space-md)',
+				lg: 'var(--space-lg)',
+				xl: 'var(--space-xl)',
+				'2xl': 'var(--space-2xl)',
+				'3xl': 'var(--space-3xl)'
+			},
+			transitionTimingFunction: {
+				standard: 'var(--ease-standard)',
+				emphasized: 'var(--ease-emphasized)',
+				decelerate: 'var(--ease-decelerate)'
+			},
+			transitionDuration: {
+				fast: 'var(--duration-fast)',
+				base: 'var(--duration-base)',
+				slow: 'var(--duration-slow)'
 			},
 			keyframes: {
 				'accordion-down': {
