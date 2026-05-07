@@ -94,11 +94,12 @@ Deno.serve(async (req) => {
         for (const admin of admins ?? []) {
           for (const a of critical) {
             await supabase.rpc("create_notification", {
-              p_user_id: admin.user_id,
-              p_title: "Egress-Anomalie erkannt",
-              p_message: a.message,
-              p_type: "system",
-              p_link: "/administration?adminSection=security&adminSubSection=performance",
+              user_id_param: admin.user_id,
+              type_name: "system",
+              title_param: "Egress-Anomalie erkannt",
+              message_param: a.message,
+              data_param: { table: a.table_name, delta_pct: a.delta_pct, link: "/administration?adminSection=security&adminSubSection=performance" },
+              priority_param: "high",
             }).catch((e: unknown) => console.error("notif", e));
           }
         }
