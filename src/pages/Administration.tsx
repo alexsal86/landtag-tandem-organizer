@@ -52,6 +52,7 @@ import { PushNotificationTest } from "@/dev/PushNotificationTest";
 import { VapidKeyTest } from "@/dev/VapidKeyTest";
 import { DirectPushTest } from "@/dev/DirectPushTest";
 import { AutomationRulesManager } from "@/components/administration/AutomationRulesManager";
+import { WorkflowEngineManager } from "@/components/administration/WorkflowEngineManager";
 import { MeetingTemplateManager } from "@/components/administration/MeetingTemplateManager";
 import { PlanningTemplateManager } from "@/components/administration/PlanningTemplateManager";
 import { UserRolesManager } from "@/components/administration/UserRolesManager";
@@ -436,6 +437,8 @@ export default function Administration(): React.JSX.Element | null {
       switch (activeSubSection) {
         case "rules":
           return <div><h3 className="text-lg font-medium mb-4">No-Code Regel-Builder</h3><AutomationRulesManager /></div>;
+        case "engine":
+          return <WorkflowEngineManager />;
         case "rss-sources":
           return <div><h3 className="text-lg font-medium mb-4">RSS-Quellen verwalten</h3><RSSSourceManager /></div>;
         case "rss-settings":

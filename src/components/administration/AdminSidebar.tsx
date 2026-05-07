@@ -152,6 +152,7 @@ export const adminMenuItems: AdminMenuItem[] = [
     icon: Workflow,
     children: [
       { id: "rules", label: "Regel-Builder", icon: Workflow },
+      { id: "engine", label: "Workflow-Engine 2.0", icon: Workflow },
       { id: "rss-sources", label: "RSS-Quellen", icon: Rss },
       { id: "rss-settings", label: "RSS-Einstellungen", icon: Settings },
       { id: "annual", label: "Jährliche Aufgaben", icon: CircleCheck },

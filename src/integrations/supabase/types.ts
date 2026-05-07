@@ -12648,6 +12648,145 @@ export type Database = {
         }
         Relationships: []
       }
+      workflow_action_log: {
+        Row: {
+          action_config: Json
+          action_type: string
+          created_at: string
+          error: string | null
+          id: string
+          result: Json | null
+          run_id: string
+          status: string
+          step_index: number
+        }
+        Insert: {
+          action_config?: Json
+          action_type: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          result?: Json | null
+          run_id: string
+          status?: string
+          step_index: number
+        }
+        Update: {
+          action_config?: Json
+          action_type?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          result?: Json | null
+          run_id?: string
+          status?: string
+          step_index?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_action_log_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_definitions: {
+        Row: {
+          actions: Json
+          conditions: Json
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          tenant_id: string
+          trigger_config: Json
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          actions?: Json
+          conditions?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          tenant_id: string
+          trigger_config?: Json
+          trigger_type: string
+          updated_at?: string
+        }
+        Update: {
+          actions?: Json
+          conditions?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          tenant_id?: string
+          trigger_config?: Json
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      workflow_runs: {
+        Row: {
+          error: string | null
+          finished_at: string | null
+          id: string
+          is_dry_run: boolean
+          result: Json | null
+          started_at: string
+          status: string
+          tenant_id: string
+          trigger_payload: Json | null
+          trigger_type: string
+          workflow_id: string
+        }
+        Insert: {
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          is_dry_run?: boolean
+          result?: Json | null
+          started_at?: string
+          status?: string
+          tenant_id: string
+          trigger_payload?: Json | null
+          trigger_type: string
+          workflow_id: string
+        }
+        Update: {
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          is_dry_run?: boolean
+          result?: Json | null
+          started_at?: string
+          status?: string
+          tenant_id?: string
+          trigger_payload?: Json | null
+          trigger_type?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_runs_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_definitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       matrix_widget_feedback_admin_stats: {
@@ -12726,6 +12865,7 @@ export type Database = {
         Returns: undefined
       }
       cleanup_bulk_action_audit: { Args: never; Returns: number }
+      cleanup_workflow_runs: { Args: never; Returns: number }
       create_appointment_poll_with_details: {
         Args: {
           p_deadline?: string
@@ -12780,6 +12920,15 @@ export type Database = {
       }
       delete_employee_meeting: {
         Args: { p_meeting_id: string }
+        Returns: undefined
+      }
+      dispatch_workflow_trigger: {
+        Args: {
+          _entity_id: string
+          _payload: Json
+          _tenant_id: string
+          _trigger_type: string
+        }
         Returns: undefined
       }
       dossier_is_duplicate_entry: {
