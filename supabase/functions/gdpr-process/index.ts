@@ -175,7 +175,8 @@ async function runExport(admin: any, request: any) {
   zip.file("_meta.json", JSON.stringify(meta, null, 2));
 
   const blob = await zip.generateAsync({ type: "uint8array" });
-  const path = `${tenantId}/gdpr-exports/${request.id}.zip`;
+  // Storage convention: paths MUST start with user_id/
+  const path = `${request.requested_by}/gdpr-exports/${tenantId}/${request.id}.zip`;
 
   const { error: upErr } = await admin.storage
     .from("documents")
