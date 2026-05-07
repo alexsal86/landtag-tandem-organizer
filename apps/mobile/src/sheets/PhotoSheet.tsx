@@ -170,4 +170,7 @@ const styles = StyleSheet.create({
   primaryBtn: { backgroundColor: '#155EEF', borderRadius: 10, alignItems: 'center', paddingVertical: 12 },
   primaryBtnText: { color: '#fff', fontWeight: '700' },
   discard: { color: '#6B7280', textAlign: 'center', marginTop: 8 },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4 },
+  rowLabel: { color: '#374151', fontSize: 14 },
+  ocrHint: { color: '#155EEF', fontSize: 13, fontStyle: 'italic' },
 });
