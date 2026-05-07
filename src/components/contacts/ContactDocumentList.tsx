@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import type { Document, DirectDocument } from "@/hooks/useContactDocuments";
 import { downloadDocument } from "./utils/downloadDocument";
+import { EmptyState } from "@/components/ui-patterns";
 
 interface ContactDocumentListProps {
   documents: (Document | DirectDocument)[];
@@ -107,12 +108,14 @@ export function ContactDocumentList({ documents, type, contactTags = [], onRemov
 
   if (documents.length === 0) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        {type === 'direct' 
-          ? "Noch keine Dokumente direkt verknüpft"
-          : "Keine Dokumente mit gemeinsamen Tags gefunden"
-        }
-      </div>
+      <EmptyState
+        icon={FileText}
+        size="sm"
+        title={type === 'direct' ? "Noch keine Dokumente verknüpft" : "Keine Dokumente mit gemeinsamen Tags"}
+        description={type === 'direct'
+          ? "Verknüpfe ein Dokument direkt mit diesem Kontakt."
+          : "Vergib Tags am Kontakt und an Dokumenten, um sie hier zusammenzuführen."}
+      />
     );
   }
 
