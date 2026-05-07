@@ -324,6 +324,8 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
     error,
     updatePreparation,
     archivePreparation,
-    refetch: fetchPreparation
+    refetch: fetchPreparation,
+    saveStatus,
+    lastSavedAt,
   };
 }
