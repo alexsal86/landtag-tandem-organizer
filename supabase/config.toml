@@ -172,3 +172,8 @@ verify_jwt = false
 
 [functions.generate-preparation-suggestions]
 verify_jwt = true
+
+[functions.run-workflow-cron]
+verify_jwt = false
+schedule = "* * * * *"
+

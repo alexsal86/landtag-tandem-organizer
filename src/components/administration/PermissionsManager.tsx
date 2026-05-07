@@ -31,6 +31,20 @@ const ACTION_KEYS: Array<{ key: string; label: string }> = [
   { key: "tenant.invite_user", label: "Mitarbeiter einladen" },
 ];
 
+// Vorgeschlagene sensible Felder. Admin kann pro Rolle read/write togglen.
+const FIELD_TARGETS: Array<{ table: string; column: string; label: string }> = [
+  { table: "contacts", column: "phone", label: "Kontakt · Telefon" },
+  { table: "contacts", column: "email", label: "Kontakt · E-Mail" },
+  { table: "contacts", column: "notes", label: "Kontakt · Notizen" },
+  { table: "employees", column: "salary", label: "Mitarbeiter · Gehalt" },
+  { table: "employees", column: "private_notes", label: "Mitarbeiter · Private Notizen" },
+  { table: "case_items", column: "internal_notes", label: "Vorgang · Interne Notizen" },
+  { table: "letters", column: "draft_content", label: "Brief · Entwurfsinhalt" },
+];
+
+interface FieldPerm { can_read: boolean; can_write: boolean }
+
+
 export function PermissionsManager() {
   const { currentTenant } = useTenant();
   const { toast } = useToast();
@@ -38,6 +52,8 @@ export function PermissionsManager() {
 
   const [flags, setFlags] = useState<Map<string, boolean>>(new Map());
   const [actions, setActions] = useState<Map<string, AppRole[]>>(new Map());
+  // key = `${table}.${column}.${role}`
+  const [fields, setFields] = useState<Map<string, FieldPerm>>(new Map());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -45,21 +61,32 @@ export function PermissionsManager() {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const [flagsRes, actionsRes] = await Promise.all([
+      const [flagsRes, actionsRes, fieldsRes] = await Promise.all([
         supabase.from("tenant_feature_flags").select("feature_key, enabled").eq("tenant_id", tenantId),
         supabase.from("action_permissions").select("action_key, allowed_roles").eq("tenant_id", tenantId),
+        supabase.from("field_permissions")
+          .select("table_name, column_name, role, can_read, can_write")
+          .eq("tenant_id", tenantId),
       ]);
       if (cancelled) return;
       const fmap = new Map<string, boolean>();
       for (const r of flagsRes.data ?? []) fmap.set(r.feature_key, r.enabled);
       const amap = new Map<string, AppRole[]>();
       for (const r of actionsRes.data ?? []) amap.set(r.action_key, (r.allowed_roles ?? []) as AppRole[]);
+      const fdmap = new Map<string, FieldPerm>();
+      for (const r of fieldsRes.data ?? []) {
+        fdmap.set(`${r.table_name}.${r.column_name}.${r.role}`, {
+          can_read: r.can_read, can_write: r.can_write,
+        });
+      }
       setFlags(fmap);
       setActions(amap);
+      setFields(fdmap);
       setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [tenantId]);
+
 
   const toggleFlag = async (key: string, enabled: boolean) => {
     if (!tenantId) return;
@@ -93,6 +120,34 @@ export function PermissionsManager() {
     if (error) toast({ title: "Fehler", description: error.message, variant: "destructive" });
   };
 
+  const toggleField = async (table: string, column: string, role: AppRole, key: "can_read" | "can_write") => {
+    if (!tenantId) return;
+    const mapKey = `${table}.${column}.${role}`;
+    const current = fields.get(mapKey) ?? { can_read: true, can_write: true };
+    const nextVal = !current[key];
+    const nextPerm = { ...current, [key]: nextVal };
+    // Wenn Lesen verweigert wird, kann auch nicht geschrieben werden.
+    if (key === "can_read" && nextVal === false) nextPerm.can_write = false;
+    const next = new Map(fields);
+    next.set(mapKey, nextPerm);
+    setFields(next);
+    const { error } = await supabase
+      .from("field_permissions")
+      .upsert(
+        {
+          tenant_id: tenantId,
+          table_name: table,
+          column_name: column,
+          role,
+          can_read: nextPerm.can_read,
+          can_write: nextPerm.can_write,
+        },
+        { onConflict: "tenant_id,table_name,column_name,role" },
+      );
+    if (error) toast({ title: "Fehler", description: error.message, variant: "destructive" });
+  };
+
+
   if (!tenantId) return null;
 
   return (
@@ -109,7 +164,7 @@ export function PermissionsManager() {
           <TabsList>
             <TabsTrigger value="features">Module</TabsTrigger>
             <TabsTrigger value="actions">Aktionen</TabsTrigger>
-            <TabsTrigger value="fields" disabled>Felder (folgt)</TabsTrigger>
+            <TabsTrigger value="fields">Felder</TabsTrigger>
           </TabsList>
 
           <TabsContent value="features" className="space-y-3 pt-4">
@@ -157,6 +212,49 @@ export function PermissionsManager() {
                 </div>
               );
             })}
+          </TabsContent>
+
+          <TabsContent value="fields" className="space-y-3 pt-4">
+            {loading && <p className="text-caption text-muted-foreground">Lade…</p>}
+            <p className="text-caption text-muted-foreground">
+              Pro Rolle festlegen, ob ein sensibles Feld gelesen oder geschrieben werden darf.
+              Standard ist Vollzugriff. Lese-Verbot impliziert Schreib-Verbot.
+            </p>
+            {FIELD_TARGETS.map((t) => (
+              <div key={`${t.table}.${t.column}`} className="border rounded-md p-3">
+                <div className="flex items-baseline justify-between mb-2">
+                  <Label className="font-medium">{t.label}</Label>
+                  <code className="text-caption text-muted-foreground">{t.table}.{t.column}</code>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {ALL_ROLES.map((role) => {
+                    const perm = fields.get(`${t.table}.${t.column}.${role}`) ?? { can_read: true, can_write: true };
+                    return (
+                      <div key={role} className="flex items-center justify-between border rounded-md px-2 py-1.5">
+                        <span className="text-caption">{role}</span>
+                        <div className="flex gap-3">
+                          <label className="flex items-center gap-1 text-caption">
+                            <Switch
+                              checked={perm.can_read}
+                              onCheckedChange={() => toggleField(t.table, t.column, role, "can_read")}
+                            />
+                            Lesen
+                          </label>
+                          <label className="flex items-center gap-1 text-caption">
+                            <Switch
+                              checked={perm.can_write}
+                              disabled={!perm.can_read}
+                              onCheckedChange={() => toggleField(t.table, t.column, role, "can_write")}
+                            />
+                            Schreiben
+                          </label>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </TabsContent>
         </Tabs>
       </CardContent>
