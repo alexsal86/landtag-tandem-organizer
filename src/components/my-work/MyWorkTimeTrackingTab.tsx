@@ -608,6 +608,8 @@ export function MyWorkTimeTrackingTab() {
           </CardContent>
         </Card>
       </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
