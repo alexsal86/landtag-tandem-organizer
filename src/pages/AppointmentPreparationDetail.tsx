@@ -10,8 +10,12 @@ import { AppointmentPreparationFileUpload } from "@/components/appointments/Appo
 import { AppointmentDetailsSidebar } from "@/components/calendar/AppointmentDetailsSidebar";
 import { AppointmentBriefingView } from "@/components/appointment-preparations/AppointmentBriefingView";
 import { PhaseSidebar } from "@/components/appointment-preparations/workflow/PhaseSidebar";
+import { PhaseStepper } from "@/components/appointment-preparations/workflow/PhaseStepper";
 import { PhaseContent } from "@/components/appointment-preparations/workflow/PhaseContent";
 import { LiveBriefingPane } from "@/components/appointment-preparations/workflow/LiveBriefingPane";
+import { AutosaveIndicator } from "@/components/appointment-preparations/workflow/AutosaveIndicator";
+import { KeyboardShortcutsHelp } from "@/components/appointment-preparations/workflow/KeyboardShortcutsHelp";
+import { useAppointmentPreparationShortcuts } from "@/hooks/useAppointmentPreparationShortcuts";
 import { usePhaseStatus, type PhaseId } from "@/components/appointment-preparations/workflow/usePhaseStatus";
 import { supabase } from "@/integrations/supabase/client";
 import { generateBriefingPdf } from "@/components/appointment-preparations/briefingPdfGenerator";
@@ -63,8 +67,12 @@ export default function AppointmentPreparationDetail() {
     preparation,
     loading,
     error,
-    updatePreparation
+    updatePreparation,
+    saveStatus,
+    lastSavedAt,
   } = useAppointmentPreparation(preparationId);
+  const [focusMode, setFocusMode] = useState(false);
+  const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
 
   // Fetch user role to determine default tab
   useEffect(() => {
