@@ -1,7 +1,9 @@
-import { useEffect, useState, useCallback } from "react";
+import { useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import { STALE_TIME } from "@/lib/query-cache";
 import { debugConsole } from "@/utils/debugConsole";
 import type { AppointmentPreparation } from "@/hooks/useAppointmentPreparation";
 
@@ -20,28 +22,32 @@ export interface PreparationTemplate {
 export function usePreparationTemplates() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const [templates, setTemplates] = useState<PreparationTemplate[]>([]);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
+  const tenantId = currentTenant?.id;
+  const queryKey = ["preparation-templates", tenantId] as const;
 
-  const fetchTemplates = useCallback(async () => {
-    if (!currentTenant) return;
-    setLoading(true);
-    try {
+  const { data, isLoading, refetch } = useQuery({
+    queryKey,
+    enabled: !!tenantId,
+    staleTime: STALE_TIME.LIST,
+    gcTime: STALE_TIME.LIST * 2,
+    queryFn: async (): Promise<PreparationTemplate[]> => {
       const { data, error } = await supabase
         .from("preparation_templates")
         .select("id,name,description,anlasstyp,is_global,preparation_data,checklist_items,created_by,tenant_id")
-        .eq("tenant_id", currentTenant.id)
+        .eq("tenant_id", tenantId as string)
         .order("name");
-      if (error) throw error;
-      setTemplates((data as unknown as PreparationTemplate[]) ?? []);
-    } catch (e) {
-      debugConsole.error("preparation_templates fetch", e);
-    } finally {
-      setLoading(false);
-    }
-  }, [currentTenant]);
+      if (error) {
+        debugConsole.error("preparation_templates fetch", error);
+        throw error;
+      }
+      return (data as unknown as PreparationTemplate[]) ?? [];
+    },
+  });
 
-  useEffect(() => { void fetchTemplates(); }, [fetchTemplates]);
+  const invalidate = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey });
+  }, [queryClient, queryKey]);
 
   const saveAsTemplate = useCallback(
     async (input: { name: string; description?: string; anlasstyp?: string; preparation: AppointmentPreparation }) => {
@@ -57,19 +63,25 @@ export function usePreparationTemplates() {
         is_global: false,
       });
       if (error) throw error;
-      await fetchTemplates();
+      invalidate();
     },
-    [currentTenant, user, fetchTemplates],
+    [currentTenant, user, invalidate],
   );
 
   const deleteTemplate = useCallback(
     async (id: string) => {
       const { error } = await supabase.from("preparation_templates").delete().eq("id", id);
       if (error) throw error;
-      await fetchTemplates();
+      invalidate();
     },
-    [fetchTemplates],
+    [invalidate],
   );
 
-  return { templates, loading, saveAsTemplate, deleteTemplate, refetch: fetchTemplates };
+  return {
+    templates: data ?? [],
+    loading: isLoading,
+    saveAsTemplate,
+    deleteTemplate,
+    refetch,
+  };
 }
