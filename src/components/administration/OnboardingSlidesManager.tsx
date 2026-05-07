@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { ArrowDown, ArrowUp, Eye, Pencil, Plus, Save, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Download, Eye, Pencil, Plus, Save, Trash2, Upload, X } from "lucide-react";
+import { useRef } from "react";
 import { OnboardingDialog } from "@/components/onboarding/OnboardingDialog";
 import { DEFAULT_SLIDES, type OnboardingSlide } from "@/hooks/useOnboardingGate";
 
