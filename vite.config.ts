@@ -197,14 +197,8 @@ export default defineConfig(({ mode }) => ({
         manualChunks(id: string) {
           if (!id.includes('node_modules')) return undefined;
           // Lexical: subpath-only exports — must match by path, not bare name
-          if (/node_modules\/(lexical|@lexical\/yjs)/.test(id)) {
-            if (id.includes('@lexical/yjs')) return 'vendor-lexical-collab';
-            return 'vendor-lexical-core';
-          }
-          if (/node_modules\/@lexical\/(rich-text|list|link|markdown|html|code|table)/.test(id)) {
-            return 'vendor-lexical-plugins';
-          }
-          if (/node_modules\/@lexical\//.test(id)) return 'vendor-lexical-core';
+          if (/node_modules\/@lexical\/yjs/.test(id)) return 'vendor-lexical-collab';
+          if (/node_modules\/(lexical|@lexical)\//.test(id)) return 'vendor-lexical';
           if (/node_modules\/(matrix-js-sdk|yjs|y-websocket|y-indexeddb)/.test(id)) return 'vendor-matrix';
           if (/node_modules\/(pdfjs-dist|jspdf|docx)/.test(id)) return 'vendor-pdf';
           if (/node_modules\/recharts/.test(id)) return 'vendor-charts';
