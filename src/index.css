@@ -134,6 +134,23 @@ All colors MUST be HSL.
     --success-foreground: 0 0% 13%;
     --warning: 38 92% 60%;
     --warning-foreground: 0 0% 13%;
+    --info: 217 91% 65%;
+    --info-foreground: 0 0% 100%;
+
+    /* Event category tokens — slightly brighter for dark mode */
+    --event-appointment: 217 91% 65%;
+    --event-meeting: 142 71% 50%;
+    --event-task: 25 95% 58%;
+    --event-personal: 271 91% 70%;
+    --event-deadline: 0 84% 65%;
+    --event-session: 239 84% 72%;
+    --event-blocked: 21 90% 55%;
+    --event-veranstaltung: 271 81% 62%;
+    --event-vacation: 142 71% 42%;
+    --event-vacation-request: 48 96% 60%;
+    --event-birthday: 330 81% 65%;
+    --event-foreground: 0 0% 100%;
+    --event-foreground-dark: 0 0% 13%;
 
     --border: 217.2 32.6% 20%;           /* Etwas heller */
     --input: 217.2 32.6% 20%;
