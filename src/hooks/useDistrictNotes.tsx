@@ -26,7 +26,7 @@ export const useDistrictNotes = (districtId?: string) => {
       
       const { data, error } = await supabase
         .from('district_notes')
-        .select('*')
+        .select('id, tenant_id, district_id, content, updated_by, created_at, updated_at')
         .eq('district_id', districtId)
         .eq('tenant_id', currentTenant.id)
         .maybeSingle();
