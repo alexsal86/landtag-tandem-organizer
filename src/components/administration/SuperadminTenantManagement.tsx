@@ -29,6 +29,7 @@ import {
   type TenantWithStats,
   type UserWithTenants,
 } from "./superadminTenant/constants";
+import { useSuperadminTenantData } from "./superadminTenant/useSuperadminTenantData";
 
 export function SuperadminTenantManagement(): React.JSX.Element {
   const { user } = useAuth();
