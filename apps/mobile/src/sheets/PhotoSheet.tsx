@@ -137,6 +137,15 @@ export function PhotoSheet({
             style={styles.input}
             editable={!busy}
           />
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>OCR (Visitenkarte/Brief)</Text>
+            <Switch value={ocrEnabled} onValueChange={setOcrEnabled} disabled={busy} />
+          </View>
+          {ocr ? (
+            <Text style={styles.ocrHint}>
+              Erkannt: {ocr.kind === 'contact' ? 'Visitenkarte' : ocr.kind === 'letter' ? 'Brief' : 'Unbekannt'}
+            </Text>
+          ) : null}
           <Pressable onPress={save} disabled={busy} style={styles.primaryBtn}>
             {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Speichern</Text>}
           </Pressable>
