@@ -74,7 +74,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useQuery } from "@tanstack/react-query";
+
 import { useAppointmentRequest } from "@/hooks/useAppointmentRequest";
 import { buildDeepLinkPath } from "@/utils/notificationDeepLinks";
 
