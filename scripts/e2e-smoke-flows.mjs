@@ -20,6 +20,18 @@ const FIXTURES = Object.freeze({
     initialStatus: 'offen',
     nextStatus: 'erledigt',
   },
+  letter: {
+    id: 'letter-smoke-001',
+    title: 'SMOKE_BRIEF_001',
+    initialStatus: 'draft',
+    reviewStatus: 'review',
+    approvedStatus: 'approved',
+    sentStatus: 'sent',
+  },
+  notification: {
+    id: 'notification-smoke-001',
+    title: 'SMOKE_BENACHRICHTIGUNG_001',
+  },
 });
 
 const createState = () => ({
