@@ -87,15 +87,15 @@ const LetterBriefDetails: React.FC<LetterBriefDetailsProps> = ({
         <CardContent className="space-y-6">
           {/* Revision Banner */}
           {status === 'revision_requested' && (
-            <div className="p-4 border border-orange-200 rounded-lg bg-orange-50 dark:bg-orange-950/30 dark:border-orange-800">
+            <div className="p-4 border border-palette-orange/30 rounded-lg bg-palette-orange/10">
               <div className="flex items-start gap-2">
-                <AlertTriangle className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                <AlertTriangle className="h-4 w-4 text-palette-orange mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-orange-800 dark:text-orange-200">Überarbeitung angefordert</p>
+                  <p className="text-sm font-medium text-palette-orange">Überarbeitung angefordert</p>
                   {revisionComment ? (
-                    <p className="text-sm text-orange-700 dark:text-orange-300 mt-1 whitespace-pre-wrap">{revisionComment}</p>
+                    <p className="text-sm text-palette-orange mt-1 whitespace-pre-wrap">{revisionComment}</p>
                   ) : (
-                    <p className="text-sm text-orange-600 dark:text-orange-400 mt-1">Keine Begründung angegeben.</p>
+                    <p className="text-sm text-palette-orange mt-1">Keine Begründung angegeben.</p>
                   )}
                 </div>
               </div>
@@ -139,7 +139,7 @@ const LetterBriefDetails: React.FC<LetterBriefDetailsProps> = ({
             )}
 
             {(status === 'review' || status === 'pending_approval') && isReviewer && (
-              <Button size="sm" variant="outline" onClick={onReturnLetter} className="justify-start text-orange-600 hover:text-orange-700 mt-2">
+              <Button size="sm" variant="outline" onClick={onReturnLetter} className="justify-start text-palette-orange hover:text-palette-orange mt-2">
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Brief zurückgeben
               </Button>
@@ -203,7 +203,7 @@ const LetterBriefDetails: React.FC<LetterBriefDetailsProps> = ({
 
             return (
               <div className={`p-4 border rounded-lg ${
-                isOverdue ? 'border-destructive/50 bg-destructive/5' : isUrgent ? 'border-orange-300 bg-orange-50 dark:bg-orange-950/20' : 'bg-card/50'
+                isOverdue ? 'border-destructive/50 bg-destructive/5' : isUrgent ? 'border-palette-orange/40 bg-palette-orange/10' : 'bg-card/50'
               }`}>
                 <div className="flex items-center gap-2 mb-2">
                   <Clock className="h-4 w-4 text-primary" />
@@ -221,7 +221,7 @@ const LetterBriefDetails: React.FC<LetterBriefDetailsProps> = ({
                         {Math.abs(daysUntil)} Tag{Math.abs(daysUntil) !== 1 ? 'e' : ''} überfällig
                       </Badge>
                     ) : isUrgent ? (
-                      <Badge className="text-xs bg-orange-500 text-white">
+                      <Badge className="text-xs bg-palette-orange text-white">
                         Noch {daysUntil} Tag{daysUntil !== 1 ? 'e' : ''}
                       </Badge>
                     ) : (

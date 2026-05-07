@@ -466,7 +466,7 @@ export function AppNavigation({
                   )}
                   aria-label={quickAccessActive ? "Aus Schnellzugriff entfernen" : "Zum Schnellzugriff hinzufügen"}
                 >
-                  <Star className={cn("h-3 w-3", quickAccessActive ? "fill-current text-amber-500" : "text-[hsl(var(--nav-muted))]")} />
+                  <Star className={cn("h-3 w-3", quickAccessActive ? "fill-current text-palette-amber" : "text-[hsl(var(--nav-muted))]")} />
                 </button>
               </div>
             );
@@ -894,13 +894,13 @@ export function AppNavigation({
 
         {/* Pending feedbacks banner */}
         {pendingFeedbacks.length > 0 && (
-          <div className="mx-2 mt-2 p-2 rounded-md bg-amber-500/10 border border-amber-500/20">
-            <p className="text-[12px] font-medium text-amber-700 dark:text-amber-400">
+          <div className="mx-2 mt-2 p-2 rounded-md bg-palette-amber/10 border border-palette-amber/20">
+            <p className="text-[12px] font-medium text-palette-amber">
               ⚠ {pendingFeedbacks.length} offene Termin-Rückmeldung{pendingFeedbacks.length > 1 ? 'en' : ''}
             </p>
             <button
               onClick={() => handleNavigationClick('mywork')}
-              className="text-[11px] text-amber-600 dark:text-amber-500 hover:underline mt-0.5"
+              className="text-[11px] text-palette-amber hover:underline mt-0.5"
             >
               Zur Übersicht
             </button>

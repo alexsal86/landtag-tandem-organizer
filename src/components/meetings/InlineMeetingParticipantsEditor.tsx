@@ -24,8 +24,8 @@ interface InlineMeetingParticipantsEditorProps {
 }
 
 const roleLabels: Record<string, { label: string; color: string }> = {
-  organizer: { label: 'Org', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300' },
-  participant: { label: 'Teiln', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' },
+  organizer: { label: 'Org', color: 'bg-palette-purple/20 text-palette-purple' },
+  participant: { label: 'Teiln', color: 'bg-palette-blue/20 text-palette-blue' },
   optional: { label: 'Opt', color: 'bg-muted text-muted-foreground' }
 };
 

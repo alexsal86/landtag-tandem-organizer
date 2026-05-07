@@ -256,7 +256,7 @@ export function AppointmentBriefingView({ preparation, appointmentInfo, compact 
                 {publicRelationsStatus.map((status) => (
                   <p
                     key={status.key}
-                    className={`flex items-center gap-2 text-sm ${status.active ? "text-green-700" : "text-red-700"}`}
+                    className={`flex items-center gap-2 text-sm ${status.active ? "text-palette-green" : "text-palette-red"}`}
                   >
                     {status.active ? <CheckIcon className="h-4 w-4" /> : <XIcon className="h-4 w-4" />}
                     <span>{status.label}</span>

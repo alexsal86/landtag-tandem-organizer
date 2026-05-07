@@ -132,7 +132,7 @@ function PreparationSection({
               )}
 
               {(editData[field.key] as React.ReactNode) && (
-                <div className="flex items-center gap-1 text-xs text-green-600">
+                <div className="flex items-center gap-1 text-xs text-palette-green">
                   <CheckCircleIcon className="h-3 w-3" />
                   Ausgefüllt
                 </div>

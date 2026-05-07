@@ -120,13 +120,13 @@ export function ActiveMeetingPanel({
     const apptResults = (() => { try { return JSON.parse(parentItem.result_text || '{}'); } catch { return {}; } })();
     return upcomingAppointments.length > 0 ? (
       upcomingAppointments.map((appt, apptIdx) => (
-        <div key={appt.id} className={cn("ml-[0.8rem] pl-4 border-l-2 border-muted space-y-2", starredAppointmentIds.has(appt.id) && "bg-amber-50/50 dark:bg-amber-950/20")}>
+        <div key={appt.id} className={cn("ml-[0.8rem] pl-4 border-l-2 border-muted space-y-2", starredAppointmentIds.has(appt.id) && "bg-palette-amber/5")}>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0" onClick={(e) => { e.stopPropagation(); onToggleStar(appt); }}>
               <Star className={cn("h-3.5 w-3.5", starredAppointmentIds.has(appt.id) ? "fill-amber-400 text-amber-400" : "text-muted-foreground")} />
             </Button>
             <span className="text-xs font-medium text-muted-foreground">{String.fromCharCode(97 + apptIdx)})</span>
-            <CalendarDays className="h-3.5 w-3.5 text-blue-500" />
+            <CalendarDays className="h-3.5 w-3.5 text-palette-blue" />
             <span className="text-sm font-medium">{appt.title}</span>
           </div>
           <p className="text-xs text-muted-foreground ml-8">
@@ -156,7 +156,7 @@ export function ActiveMeetingPanel({
       <div key={note.id} className="ml-[0.8rem] pl-4 border-l-2 border-muted space-y-2">
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-muted-foreground">{String.fromCharCode(97 + noteIdx)})</span>
-          <StickyNote className="h-3.5 w-3.5 text-amber-500" />
+          <StickyNote className="h-3.5 w-3.5 text-palette-amber" />
           <span className="text-sm font-medium">{note.title || `Notiz ${noteIdx + 1}`}</span>
         </div>
         <RichTextDisplay content={note.content} className="text-sm text-muted-foreground" />
@@ -183,7 +183,7 @@ export function ActiveMeetingPanel({
       <div key={task.id} className="ml-[0.8rem] pl-4 border-l-2 border-muted space-y-2">
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-muted-foreground">{String.fromCharCode(97 + taskIdx)})</span>
-          <ListTodo className="h-3.5 w-3.5 text-green-500" />
+          <ListTodo className="h-3.5 w-3.5 text-palette-green" />
           <span className="text-sm font-medium">{task.title}</span>
         </div>
         {task.description && <RichTextDisplay content={task.description} className="text-sm text-muted-foreground" />}
@@ -214,7 +214,7 @@ export function ActiveMeetingPanel({
       <div key={decision.id} className="ml-[0.8rem] pl-4 border-l-2 border-muted space-y-2">
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-muted-foreground">{String.fromCharCode(97 + idx)})</span>
-          <Scale className="h-3.5 w-3.5 text-violet-500" />
+          <Scale className="h-3.5 w-3.5 text-palette-violet" />
           <span className="text-sm font-medium">{decision.title}</span>
         </div>
         {decision.description && <RichTextDisplay content={decision.description} className="text-sm text-muted-foreground" />}
@@ -236,7 +236,7 @@ export function ActiveMeetingPanel({
       <div key={ci.id} className="ml-[0.8rem] pl-4 border-l-2 border-muted space-y-2">
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-muted-foreground">{String.fromCharCode(97 + idx)})</span>
-          <Briefcase className="h-3.5 w-3.5 text-teal-500" />
+          <Briefcase className="h-3.5 w-3.5 text-palette-teal" />
           <span className="text-sm font-medium">{ci.subject || '(Kein Betreff)'}</span>
         </div>
         <div>
@@ -258,7 +258,7 @@ export function ActiveMeetingPanel({
             {prefix && (
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs font-medium text-muted-foreground">{prefix}</span>
-                <CalendarDays className="h-4 w-4 text-blue-500" />
+                <CalendarDays className="h-4 w-4 text-palette-blue" />
                 <span className="text-sm font-medium">Kommende Termine</span>
               </div>
             )}
@@ -271,7 +271,7 @@ export function ActiveMeetingPanel({
             {prefix && (
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs font-medium text-muted-foreground">{prefix}</span>
-                <StickyNote className="h-4 w-4 text-amber-500" />
+                <StickyNote className="h-4 w-4 text-palette-amber" />
                 <span className="text-sm font-medium">Meine Notizen</span>
               </div>
             )}
@@ -284,7 +284,7 @@ export function ActiveMeetingPanel({
             {prefix && (
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs font-medium text-muted-foreground">{prefix}</span>
-                <ListTodo className="h-4 w-4 text-green-500" />
+                <ListTodo className="h-4 w-4 text-palette-green" />
                 <span className="text-sm font-medium">Aufgaben</span>
               </div>
             )}
@@ -297,7 +297,7 @@ export function ActiveMeetingPanel({
             {prefix && (
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs font-medium text-muted-foreground">{prefix}</span>
-                <Scale className="h-4 w-4 text-violet-500" />
+                <Scale className="h-4 w-4 text-palette-violet" />
                 <span className="text-sm font-medium">Entscheidungen</span>
               </div>
             )}
@@ -310,7 +310,7 @@ export function ActiveMeetingPanel({
             {prefix && (
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs font-medium text-muted-foreground">{prefix}</span>
-                <Briefcase className="h-4 w-4 text-teal-500" />
+                <Briefcase className="h-4 w-4 text-palette-teal" />
                 <span className="text-sm font-medium">Vorgänge</span>
               </div>
             )}
@@ -533,13 +533,13 @@ export function ActiveMeetingPanel({
             {linkedQuickNotes.length > 0 && !isLoading && (
               <div className="mt-8 pt-6 border-t border-dashed">
                 <div className="flex items-center gap-2 mb-4">
-                  <StickyNote className="h-5 w-5 text-amber-500" />
+                  <StickyNote className="h-5 w-5 text-palette-amber" />
                   <h3 className="font-semibold text-lg">Quick Notes für dieses Meeting</h3>
                   <Badge variant="secondary">{linkedQuickNotes.length}</Badge>
                 </div>
                 <div className="space-y-4">
                   {linkedQuickNotes.map((note) => (
-                    <Card key={note.id} className="bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
+                    <Card key={note.id} className="bg-palette-amber/5 border-palette-amber/30">
                       <CardContent className="p-4">
                         <div className="flex flex-col gap-3">
                           <div>

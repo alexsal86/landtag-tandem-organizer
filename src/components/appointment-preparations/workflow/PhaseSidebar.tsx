@@ -70,7 +70,7 @@ export function PhaseSidebar({ phases, activePhase, onSelect, blockers }: PhaseS
           <ul className="space-y-1.5">
             {blockers.map((b) => (
               <li key={b} className="flex items-start gap-2 text-xs text-muted-foreground">
-                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-palette-amber shrink-0" />
                 <span>{b}</span>
               </li>
             ))}

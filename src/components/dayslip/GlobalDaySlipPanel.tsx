@@ -391,7 +391,7 @@ export function GlobalDaySlipPanel() {
                       if (archivedCount > 0) parts.push(`${archivedCount} archiviert`);
                       const summary = parts.length > 0 ? `Es werden erstellt: ${parts.join(", ")}.` : "";
                       return (
-                        <div className="rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs text-emerald-800 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-200">
+                        <div className="rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
                           <p>✓ Alle offenen Punkte wurden zugewiesen.</p>
                           {summary && <p className="mt-1 font-medium">{summary}</p>}
                         </div>
@@ -399,7 +399,7 @@ export function GlobalDaySlipPanel() {
                     })()}
                     {ds.triageEntries.map(({ id, text }) => {
                       const activeTarget = ds.resolvedByLineId.get(id);
-                      const buttonClass = (target: string) => `rounded p-1 transition-colors ${activeTarget === target ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300 dark:bg-emerald-500/20 dark:text-emerald-200 dark:ring-emerald-400/50" : "hover:bg-muted"}`;
+                      const buttonClass = (target: string) => `rounded p-1 transition-colors ${activeTarget === target ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300 dark:ring-emerald-400/50" : "hover:bg-muted"}`;
                       const stamp = ds.todayData.lineTimestamps?.[id];
                       const isHighPriority = /^!!\s*/.test(text);
                       const isPriority = !isHighPriority && /^!\s*/.test(text);
@@ -466,7 +466,7 @@ export function GlobalDaySlipPanel() {
                     </div>
                   </div>
                 )}
-                <button type="button" onClick={completeDay} className="flex h-10 w-full items-center justify-between rounded-lg border border-emerald-300 bg-emerald-50 px-3 text-sm font-medium text-emerald-800 dark:border-emerald-300/40 dark:bg-emerald-500/10 dark:text-emerald-200">
+                <button type="button" onClick={completeDay} className="flex h-10 w-full items-center justify-between rounded-lg border border-emerald-300 bg-emerald-50 px-3 text-sm font-medium text-emerald-800">
                   <span>{completeButtonLabel}</span>
                   <span className="text-xs opacity-70">{completeButtonHint}</span>
                 </button>
@@ -486,11 +486,11 @@ export function GlobalDaySlipPanel() {
       )}
 
       {completionMessage && (
-        <div className="fixed bottom-24 right-6 z-50 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs text-emerald-800 shadow-lg backdrop-blur dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-100">{completionMessage}</div>
+        <div className="fixed bottom-24 right-6 z-50 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs text-emerald-800 shadow-lg backdrop-blur">{completionMessage}</div>
       )}
 
       <button type="button" className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full border border-border/70 bg-background/90 shadow-lg backdrop-blur hover:bg-muted" aria-label="Tageszettel öffnen (Strg+Alt+J)" onClick={() => setOpen((prev: boolean) => !prev)} onDragOver={handleDaySlipButtonDragOver} onDrop={handleDaySlipButtonDrop}>
-        {showCompletePulse ? <Check className="h-5 w-5 text-emerald-600 dark:text-emerald-300" /> : <ClipboardPen className="h-5 w-5" />}
+        {showCompletePulse ? <Check className="h-5 w-5 text-emerald-600" /> : <ClipboardPen className="h-5 w-5" />}
         {ds.unresolvedCount > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-semibold text-white">{ds.unresolvedCount}</span>}
       </button>
     </>

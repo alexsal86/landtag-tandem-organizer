@@ -265,7 +265,7 @@ const KnowledgeBaseView = () => {
                 <div className="flex items-center gap-2">
                   <h2 className="text-lg font-semibold text-foreground truncate">{data.selectedDocument.title}</h2>
                   {data.selectedDocument.is_locked && <Badge variant="secondary" className="flex items-center gap-1"><Lock className="h-3 w-3" />Gesperrt</Badge>}
-                  {data.hasUnsavedChanges && <Badge variant="outline" className="text-orange-600 border-orange-600">Ungespeichert</Badge>}
+                  {data.hasUnsavedChanges && <Badge variant="outline" className="text-palette-orange border-palette-orange">Ungespeichert</Badge>}
                 </div>
                 <p className="text-sm text-muted-foreground">{formatDate(data.selectedDocument.updated_at)} • {data.selectedDocument.creator_name}</p>
               </div>

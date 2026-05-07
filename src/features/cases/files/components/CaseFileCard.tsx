@@ -48,10 +48,10 @@ export function CaseFileCard({ caseFile, viewMode, onClick, caseFileTypes = [] }
     .filter((status): status is CaseFileProcessingStatus => Boolean(status));
 
   const priorityColors: Record<string, string> = {
-    low: "text-gray-500",
-    medium: "text-blue-500",
-    high: "text-orange-500",
-    urgent: "text-red-500",
+    low: "text-muted-foreground",
+    medium: "text-palette-blue",
+    high: "text-palette-orange",
+    urgent: "text-palette-red",
   };
 
   const currentStatusPreview = caseFile.current_status_note

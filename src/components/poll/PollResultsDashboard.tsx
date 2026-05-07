@@ -159,11 +159,11 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'available':
-        return <Check className="h-4 w-4 text-green-600" />;
+        return <Check className="h-4 w-4 text-palette-green" />;
       case 'tentative':
-        return <AlertCircle className="h-4 w-4 text-yellow-600" />;
+        return <AlertCircle className="h-4 w-4 text-palette-yellow" />;
       case 'unavailable':
-        return <X className="h-4 w-4 text-red-600" />;
+        return <X className="h-4 w-4 text-palette-red" />;
       default:
         return <span className="h-4 w-4" />;
     }
@@ -295,7 +295,7 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
     return (
       <Card className="w-full">
         <CardContent className="p-6 text-center">
-          <div className="text-red-500">Abstimmung nicht gefunden.</div>
+          <div className="text-palette-red">Abstimmung nicht gefunden.</div>
         </CardContent>
       </Card>
     );
@@ -309,9 +309,9 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
     <div className="space-y-6">
       {/* Confirmation Success Banner */}
       {confirmedSlot && (
-        <Alert className="border-green-300 bg-green-50 dark:bg-green-950 dark:border-green-800">
-          <CheckCircle2 className="h-5 w-5 text-green-600" />
-          <AlertDescription className="text-green-800 dark:text-green-200">
+        <Alert className="border-palette-green/40 bg-palette-green/10">
+          <CheckCircle2 className="h-5 w-5 text-palette-green" />
+          <AlertDescription className="text-palette-green">
             <strong>Termin bestätigt!</strong> Der Termin am{' '}
             {format(new Date(confirmedSlot.start_time), 'dd. MMMM yyyy', { locale: de })} von{' '}
             {format(new Date(confirmedSlot.start_time), 'HH:mm')} bis{' '}
@@ -448,12 +448,12 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
                       <div className="text-sm text-muted-foreground flex items-center gap-1">
                         {participant.is_external ? (
                           <>
-                            <span className="h-2 w-2 bg-blue-500 rounded-full"></span>
+                            <span className="h-2 w-2 bg-palette-blue rounded-full"></span>
                             <span className="truncate max-w-32">{participant.email}</span>
                           </>
                         ) : (
                           <>
-                            <span className="h-2 w-2 bg-green-500 rounded-full"></span>
+                            <span className="h-2 w-2 bg-palette-green rounded-full"></span>
                             <span className="truncate max-w-32">{participant.email}</span>
                           </>
                         )}

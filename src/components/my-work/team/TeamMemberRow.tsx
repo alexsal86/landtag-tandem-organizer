@@ -29,7 +29,7 @@ export function TeamMemberRow({ member, onOpenEmployeeArea }: TeamMemberRowProps
           {member.workStatus.needsAttention && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <AlertTriangle className="h-4 w-4 flex-shrink-0 text-amber-500" />
+                <AlertTriangle className="h-4 w-4 flex-shrink-0 text-palette-amber" />
               </TooltipTrigger>
               <TooltipContent side="top" className="text-xs">
                 <p>Kein Zeiteintrag seit {member.workStatus.daysWithoutEntry} Werktagen</p>

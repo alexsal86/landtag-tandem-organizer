@@ -162,7 +162,7 @@ export const DecisionArchiveSettings = () => {
 
           {autoArchiveOnCompletion && (
             <Alert>
-              <CheckCircle className="h-4 w-4 text-green-500" />
+              <CheckCircle className="h-4 w-4 text-palette-green" />
               <AlertDescription>
                 Entscheidungsanfragen werden automatisch archiviert, sobald alle Teilnehmer geantwortet haben.
               </AlertDescription>
@@ -202,7 +202,7 @@ export const DecisionArchiveSettings = () => {
 
           {autoArchiveDays && parseInt(autoArchiveDays) > 0 && (
             <Alert>
-              <Archive className="h-4 w-4 text-blue-500" />
+              <Archive className="h-4 w-4 text-palette-blue" />
               <AlertDescription>
                 Vollständig beantwortete Entscheidungen werden nach {autoArchiveDays} Tagen automatisch archiviert.
               </AlertDescription>

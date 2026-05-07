@@ -313,8 +313,8 @@ export function PlanningTimelineSection({
                                 const dotBaseColor = isPastEntry
                                   ? "bg-muted text-muted-foreground"
                                   : entry.type === "known"
-                                    ? "bg-blue-500 text-white"
-                                    : "bg-amber-500 text-white";
+                                    ? "bg-palette-blue text-white"
+                                    : "bg-palette-amber text-white";
 
                                 const dotColorClass = isHighlighted
                                   ? "bg-primary text-primary-foreground ring-2 ring-primary/30"

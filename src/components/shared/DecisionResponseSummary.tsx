@@ -111,19 +111,19 @@ export function DecisionResponseSummary({
     return (
       <div className={cn("flex items-center gap-1.5 text-xs font-medium", className)}>
         {summary.yes > 0 && (
-          <span className="flex items-center gap-0.5 text-green-600">
+          <span className="flex items-center gap-0.5 text-palette-green">
             <Check className="h-3 w-3" />
             {summary.yes}
           </span>
         )}
         {summary.question > 0 && (
-          <span className="flex items-center gap-0.5 text-amber-600">
+          <span className="flex items-center gap-0.5 text-palette-amber">
             <HelpCircle className="h-3 w-3" />
             {summary.question}
           </span>
         )}
         {summary.no > 0 && (
-          <span className="flex items-center gap-0.5 text-red-600">
+          <span className="flex items-center gap-0.5 text-palette-red">
             <X className="h-3 w-3" />
             {summary.no}
           </span>
@@ -140,17 +140,17 @@ export function DecisionResponseSummary({
 
   return (
     <div className={cn("flex items-center gap-3 text-sm", className)}>
-      <div className="flex items-center gap-1 text-green-600">
+      <div className="flex items-center gap-1 text-palette-green">
         <Check className="h-4 w-4" />
         <span className="font-medium">{summary.yes}</span>
         <span className="text-muted-foreground">Ja</span>
       </div>
-      <div className="flex items-center gap-1 text-amber-600">
+      <div className="flex items-center gap-1 text-palette-amber">
         <HelpCircle className="h-4 w-4" />
         <span className="font-medium">{summary.question}</span>
         <span className="text-muted-foreground">Rückfrage</span>
       </div>
-      <div className="flex items-center gap-1 text-red-600">
+      <div className="flex items-center gap-1 text-palette-red">
         <X className="h-4 w-4" />
         <span className="font-medium">{summary.no}</span>
         <span className="text-muted-foreground">Nein</span>

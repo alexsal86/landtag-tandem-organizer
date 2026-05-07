@@ -181,7 +181,7 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
             <div className="flex items-center space-x-2 p-2 rounded-lg hover:bg-muted/50">
               <RadioGroupItem value="peer_review" id="peer_review" />
               <Label htmlFor="peer_review" className="flex items-center gap-2 cursor-pointer flex-1">
-                <UserCheck className="h-4 w-4 text-blue-500" />
+                <UserCheck className="h-4 w-4 text-palette-blue" />
                 <div>
                   <div className="font-medium">Kollegenprüfung</div>
                   <div className="text-xs text-muted-foreground">Kollegen schauen drüber, keine Entscheidung nötig</div>

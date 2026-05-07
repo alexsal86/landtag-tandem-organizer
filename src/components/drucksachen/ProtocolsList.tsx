@@ -300,7 +300,7 @@ export function ProtocolsList({ protocols, onProtocolSelect, onProtocolsRefresh 
                           {getStatusLabel(protocol.processing_status)}
                         </Badge>
                         {protocol.processing_status === 'error' && protocol.processing_error_message && (
-                          <div className="text-xs text-red-600 mt-1">
+                          <div className="text-xs text-palette-red mt-1">
                             {protocol.processing_error_message}
                           </div>
                         )}
@@ -331,7 +331,7 @@ export function ProtocolsList({ protocols, onProtocolSelect, onProtocolsRefresh 
                             )}
                             <DropdownMenuItem 
                               onClick={() => deleteProtocol(protocol.id)}
-                              className="text-red-600"
+                              className="text-palette-red"
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
                               Löschen

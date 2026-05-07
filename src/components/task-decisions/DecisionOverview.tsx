@@ -250,7 +250,7 @@ export const DecisionOverview = () => {
                 {filtering.tabCounts.questions > 0 && (
                   <Badge
                     variant="outline"
-                    className="ml-1.5 text-orange-600 border-orange-600 text-[10px] px-1.5 py-0"
+                    className="ml-1.5 text-palette-orange border-palette-orange text-[10px] px-1.5 py-0"
                   >
                     {filtering.tabCounts.questions}
                   </Badge>

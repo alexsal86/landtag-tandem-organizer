@@ -69,7 +69,7 @@ export function SeedReportView({ report }: { report: SeedReport }): React.JSX.El
       )}
       {report.errors?.length > 0 && (
         <div className="mt-2">
-          <div className="text-amber-600 dark:text-amber-400 text-xs font-medium">Hinweise:</div>
+          <div className="text-palette-amber text-xs font-medium">Hinweise:</div>
           <ul className="text-xs text-muted-foreground list-disc list-inside">
             {report.errors.slice(0, 5).map((e, i) => (
               <li key={i}>{e}</li>
@@ -441,7 +441,7 @@ export function TenantProvisioningWizard({ open, onOpenChange, templateTenants, 
         {step === 4 && result && (
           <div className="space-y-4 py-2">
             <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
-              <div className="font-medium text-emerald-700 dark:text-emerald-400">
+              <div className="font-medium text-emerald-700">
                 ✓ {result.tenantName} ist startklar
               </div>
               <div className="text-xs text-muted-foreground mt-1 font-mono">
@@ -452,7 +452,7 @@ export function TenantProvisioningWizard({ open, onOpenChange, templateTenants, 
             <SeedReportView report={result.report} />
 
             {result.adminPassword && (
-              <div className="p-3 rounded-lg border bg-amber-500/10 border-amber-500/30">
+              <div className="p-3 rounded-lg border bg-palette-amber/10 border-palette-amber/30">
                 <div className="text-sm font-medium mb-2">
                   Admin-Passwort für {result.adminEmail}
                 </div>

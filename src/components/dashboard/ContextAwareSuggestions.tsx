@@ -238,10 +238,10 @@ export function ContextAwareSuggestions({
 
   const getPriorityColor = (priority: Suggestion['priority']) => {
     switch (priority) {
-      case 'high': return 'border-red-200 bg-red-50 text-red-800';
-      case 'medium': return 'border-yellow-200 bg-yellow-50 text-yellow-800';
-      case 'low': return 'border-blue-200 bg-blue-50 text-blue-800';
-      default: return 'border-gray-200 bg-gray-50 text-gray-800';
+      case 'high': return 'border-palette-red/30 bg-palette-red/10 text-palette-red';
+      case 'medium': return 'border-palette-yellow/30 bg-palette-yellow/10 text-palette-yellow';
+      case 'low': return 'border-palette-blue/30 bg-palette-blue/10 text-palette-blue';
+      default: return 'border-border bg-muted/30 text-foreground';
     }
   };
 

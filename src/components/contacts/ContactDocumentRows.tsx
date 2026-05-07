@@ -60,7 +60,7 @@ export function ContactDocumentRows({ contactId, contactTags }: ContactDocumentR
   return (
     <>
       {directDocuments.length > 0 && (
-        <TableRow className="bg-muted/30 border-l-4 border-l-blue-500/30">
+        <TableRow className="bg-muted/30 border-l-4 border-l-palette-blue/30">
           <TableCell colSpan={8} className="py-2">
             <div className="flex items-center gap-2 pl-8">
               <Badge variant="default" className="text-xs">
@@ -73,13 +73,13 @@ export function ContactDocumentRows({ contactId, contactTags }: ContactDocumentR
       {directDocuments.map((doc) => (
         <TableRow 
           key={`direct-${doc.id}`} 
-          className="bg-muted/30 border-l-4 border-l-blue-500/30"
+          className="bg-muted/30 border-l-4 border-l-palette-blue/30"
         >
           <TableCell></TableCell>
           <TableCell colSpan={3}>
             <div className="flex items-center gap-2 pl-8">
-              <div className="p-1 bg-blue-100 dark:bg-blue-900 rounded">
-                <FileText className="h-3 w-3 text-blue-600 dark:text-blue-300" />
+              <div className="p-1 bg-palette-blue/20 rounded">
+                <FileText className="h-3 w-3 text-palette-blue" />
               </div>
               <div>
                 <div className="font-medium text-sm">{doc.title}</div>
@@ -140,7 +140,7 @@ export function ContactDocumentRows({ contactId, contactTags }: ContactDocumentR
       ))}
       
       {taggedDocuments.length > 0 && (
-        <TableRow className="bg-muted/30 border-l-4 border-l-green-500/30">
+        <TableRow className="bg-muted/30 border-l-4 border-l-palette-green/30">
           <TableCell colSpan={8} className="py-2">
             <div className="flex items-center gap-2 pl-8">
               <Badge variant="secondary" className="text-xs">
@@ -153,13 +153,13 @@ export function ContactDocumentRows({ contactId, contactTags }: ContactDocumentR
       {taggedDocuments.map((doc) => (
         <TableRow 
           key={`tagged-${doc.id}`} 
-          className="bg-muted/30 border-l-4 border-l-green-500/30"
+          className="bg-muted/30 border-l-4 border-l-palette-green/30"
         >
           <TableCell></TableCell>
           <TableCell colSpan={3}>
             <div className="flex items-center gap-2 pl-8">
-              <div className="p-1 bg-green-100 dark:bg-green-900 rounded">
-                <FileText className="h-3 w-3 text-green-600 dark:text-green-300" />
+              <div className="p-1 bg-palette-green/20 rounded">
+                <FileText className="h-3 w-3 text-palette-green" />
               </div>
               <div>
                 <div className="font-medium text-sm">{doc.title}</div>

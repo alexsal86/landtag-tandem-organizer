@@ -958,7 +958,7 @@ export function AutomationRuleWizard({
               ) : (
                 <div className="space-y-1">
                   {semanticIssues.map((issue, idx) => (
-                    <div key={`${issue.message}-${idx}`} className={cn("text-xs flex items-center gap-1.5", issue.level === "error" ? "text-destructive" : "text-amber-600")}>
+                    <div key={`${issue.message}-${idx}`} className={cn("text-xs flex items-center gap-1.5", issue.level === "error" ? "text-destructive" : "text-palette-amber")}>
                       {issue.level === "error" ? <TriangleAlert className="h-3.5 w-3.5" /> : <WandSparkles className="h-3.5 w-3.5" />}
                       <span>{issue.message}</span>
                     </div>

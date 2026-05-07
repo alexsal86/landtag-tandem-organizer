@@ -89,7 +89,7 @@ export function AdminCreateEntryDialog({
               <option value="overtime_reduction">⏰ Überstundenabbau</option>
             </select>
             {newEntryType === "overtime_reduction" && yearlyBalance < dailyMinutes && (
-              <div className="bg-amber-50 border border-amber-200 rounded-md p-2 text-sm text-amber-800">
+              <div className="bg-palette-amber/10 border border-palette-amber/30 rounded-md p-2 text-sm text-palette-amber">
                 ⚠️ Nicht genügend Überstunden vorhanden (Saldo: {fmt(yearlyBalance)}, benötigt:{" "}
                 {fmt(dailyMinutes)})
               </div>
@@ -153,10 +153,10 @@ export function AdminCreateEntryDialog({
             />
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+          <div className="bg-palette-blue/10 border border-palette-blue/30 rounded-md p-3">
             <div className="flex items-start gap-2">
-              <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5" />
-              <p className="text-sm text-blue-800">
+              <AlertCircle className="h-4 w-4 text-palette-blue mt-0.5" />
+              <p className="text-sm text-palette-blue">
                 Dieser Eintrag wird als Admin-Eintrag gekennzeichnet und ist für den Mitarbeiter
                 sichtbar.
               </p>

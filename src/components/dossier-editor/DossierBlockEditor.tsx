@@ -129,7 +129,7 @@ const editorTheme = {
   hashtag: 'text-primary font-medium',
   image: 'inline-block max-w-full',
   horizontalRule: 'my-4 border-t-2 border-border',
-  mark: 'bg-yellow-200 dark:bg-yellow-800',
+  mark: 'bg-palette-yellow/30',
 };
 
 const editorNodes = [

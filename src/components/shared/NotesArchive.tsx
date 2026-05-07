@@ -321,7 +321,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-100"
+                          className="h-7 w-7 text-palette-green hover:text-palette-green hover:bg-palette-green/20"
                           onClick={() => handleRestoreFromArchive(note.id)}
                           title="Wiederherstellen"
                         >
@@ -403,7 +403,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-100"
+                          className="h-7 w-7 text-palette-green hover:text-palette-green hover:bg-palette-green/20"
                           onClick={() => handleRestore(note.id)}
                           title="Wiederherstellen"
                         >

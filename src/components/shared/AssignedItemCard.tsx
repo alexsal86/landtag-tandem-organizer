@@ -54,7 +54,7 @@ interface AssignedItemCardProps {
 
 const priorityBorderColors: Record<Priority, string> = {
   high: 'border-l-destructive',
-  medium: 'border-l-orange-500',
+  medium: 'border-l-palette-orange',
   low: 'border-l-muted-foreground/30',
 };
 
@@ -145,7 +145,7 @@ export function AssignedItemCard({
                   {cleanTitle || title}
                 </h3>
                 {isCompleted && (
-                  <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-palette-green flex-shrink-0" />
                 )}
               </div>
               {parentTitle && (
@@ -222,7 +222,7 @@ export function AssignedItemCard({
                   className={cn(
                     "text-xs",
                     priority === 'high' && "border-destructive text-destructive",
-                    priority === 'medium' && "border-orange-500 text-orange-600"
+                    priority === 'medium' && "border-palette-orange text-palette-orange"
                   )}
                 >
                   {priority === 'high' ? 'Hoch' : 'Mittel'}

@@ -10,7 +10,7 @@ export function CharCounter({ text, limit }: { text: string; limit: number | nul
     <span className={cn(
       "text-xs tabular-nums",
       remaining < 0 ? "text-destructive font-medium" :
-      remaining < 50 ? "text-amber-500" :
+      remaining < 50 ? "text-palette-amber" :
       "text-muted-foreground",
     )}>
       {count} / {limit}

@@ -241,9 +241,9 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
 
   const getSessionTypeColor = (type: 'work' | 'short_break' | 'long_break') => {
     switch (type) {
-      case 'work': return 'text-red-500';
-      case 'short_break': return 'text-blue-500';
-      case 'long_break': return 'text-green-500';
+      case 'work': return 'text-palette-red';
+      case 'short_break': return 'text-palette-blue';
+      case 'long_break': return 'text-palette-green';
     }
   };
 

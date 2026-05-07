@@ -35,18 +35,18 @@ const getFileIcon = (fileName: string) => {
   const ext = fileName.split('.').pop()?.toLowerCase();
   switch (ext) {
     case 'pdf':
-      return <FileText className="h-5 w-5 text-red-500" />;
+      return <FileText className="h-5 w-5 text-palette-red" />;
     case 'doc':
     case 'docx':
-      return <FileText className="h-5 w-5 text-blue-500" />;
+      return <FileText className="h-5 w-5 text-palette-blue" />;
     case 'xls':
     case 'xlsx':
-      return <FileSpreadsheet className="h-5 w-5 text-green-500" />;
+      return <FileSpreadsheet className="h-5 w-5 text-palette-green" />;
     case 'jpg':
     case 'jpeg':
     case 'png':
     case 'gif':
-      return <ImageIcon className="h-5 w-5 text-purple-500" />;
+      return <ImageIcon className="h-5 w-5 text-palette-purple" />;
     default:
       return <File className="h-5 w-5 text-muted-foreground" />;
   }

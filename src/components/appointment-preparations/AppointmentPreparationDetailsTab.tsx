@@ -147,14 +147,14 @@ export function AppointmentPreparationDetailsTab({
             </div>
             
             <div className="text-center p-4 bg-muted/30 rounded-lg">
-              <p className="text-2xl font-bold text-green-600">
+              <p className="text-2xl font-bold text-palette-green">
                 {preparation.checklist_items?.filter(item => item.completed).length || 0}
               </p>
               <p className="text-sm text-muted-foreground">Abgeschlossen</p>
             </div>
             
             <div className="text-center p-4 bg-muted/30 rounded-lg">
-              <p className="text-2xl font-bold text-blue-600">
+              <p className="text-2xl font-bold text-palette-blue">
                 {Object.keys(preparation.preparation_data || {}).length}
               </p>
               <p className="text-sm text-muted-foreground">Datenfelder</p>

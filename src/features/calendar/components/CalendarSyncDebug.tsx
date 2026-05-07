@@ -102,15 +102,15 @@ export function CalendarSyncDebug() {
   };
 
   const getStatusIcon = (count: number, threshold: number = 0) => {
-    if (count === 0) return <CheckCircle className="w-4 h-4 text-green-600" />;
-    if (count <= threshold) return <AlertTriangle className="w-4 h-4 text-yellow-600" />;
-    return <XCircle className="w-4 h-4 text-red-600" />;
+    if (count === 0) return <CheckCircle className="w-4 h-4 text-palette-green" />;
+    if (count <= threshold) return <AlertTriangle className="w-4 h-4 text-palette-yellow" />;
+    return <XCircle className="w-4 h-4 text-palette-red" />;
   };
 
   const getStatusColor = (count: number, threshold: number = 0) => {
-    if (count === 0) return 'bg-green-100 text-green-800 border-green-200';
-    if (count <= threshold) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    return 'bg-red-100 text-red-800 border-red-200';
+    if (count === 0) return 'bg-palette-green/20 text-palette-green border-palette-green/30';
+    if (count <= threshold) return 'bg-palette-yellow/20 text-palette-yellow border-palette-yellow/30';
+    return 'bg-palette-red/20 text-palette-red border-palette-red/30';
   };
 
   return (
@@ -152,7 +152,7 @@ export function CalendarSyncDebug() {
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">
+                  <div className="text-2xl font-bold text-palette-blue">
                     {validationResult.icsEventCount}
                   </div>
                   <div className="text-sm text-muted-foreground">
@@ -161,7 +161,7 @@ export function CalendarSyncDebug() {
                 </div>
                 
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">
+                  <div className="text-2xl font-bold text-palette-green">
                     {validationResult.dbEventCount}
                   </div>
                   <div className="text-sm text-muted-foreground">
@@ -170,7 +170,7 @@ export function CalendarSyncDebug() {
                 </div>
                 
                 <div className="text-center">
-                  <div className={`text-2xl font-bold ${validationResult.missingInDb > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  <div className={`text-2xl font-bold ${validationResult.missingInDb > 0 ? 'text-palette-red' : 'text-palette-green'}`}>
                     {validationResult.missingInDb}
                   </div>
                   <div className="text-sm text-muted-foreground">
@@ -179,7 +179,7 @@ export function CalendarSyncDebug() {
                 </div>
                 
                 <div className="text-center">
-                  <div className={`text-2xl font-bold ${validationResult.extraInDb > 0 ? 'text-yellow-600' : 'text-green-600'}`}>
+                  <div className={`text-2xl font-bold ${validationResult.extraInDb > 0 ? 'text-palette-yellow' : 'text-palette-green'}`}>
                     {validationResult.extraInDb}
                   </div>
                   <div className="text-sm text-muted-foreground">

@@ -300,9 +300,9 @@ export function MyWorkTimeTrackingTab() {
   const getProgressColor = () => {
     const percentage = (weeklyWorked / weeklyTarget) * 100;
     if (percentage < 50) return "text-destructive";
-    if (percentage < 80) return "text-orange-500";
-    if (percentage <= 100) return "text-green-600";
-    return "text-blue-600"; // Überstunden
+    if (percentage < 80) return "text-palette-orange";
+    if (percentage <= 100) return "text-palette-green";
+    return "text-palette-blue"; // Überstunden
   };
 
   if (loading) {
@@ -383,7 +383,7 @@ export function MyWorkTimeTrackingTab() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${proportionalDifference >= 0 ? "text-green-600" : "text-destructive"}`}>
+            <div className={`text-2xl font-bold ${proportionalDifference >= 0 ? "text-palette-green" : "text-destructive"}`}>
               {proportionalDifference >= 0 ? "+" : ""}{fmt(proportionalDifference)}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -400,7 +400,7 @@ export function MyWorkTimeTrackingTab() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${difference >= 0 ? "text-green-600" : "text-destructive"}`}>
+            <div className={`text-2xl font-bold ${difference >= 0 ? "text-palette-green" : "text-destructive"}`}>
               {difference >= 0 ? "+" : ""}{fmt(difference)}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -447,9 +447,9 @@ export function MyWorkTimeTrackingTab() {
               </Button>
             ) : pauseStart ? (
               <div className="space-y-4">
-                <div className="p-4 rounded-lg bg-amber-50 border border-amber-200 text-center">
-                  <div className="text-sm text-amber-700">In Pause seit</div>
-                  <div className="text-2xl font-bold text-amber-800">{pauseStart}</div>
+                <div className="p-4 rounded-lg bg-palette-amber/10 border border-palette-amber/30 text-center">
+                  <div className="text-sm text-palette-amber">In Pause seit</div>
+                  <div className="text-2xl font-bold text-palette-amber">{pauseStart}</div>
                 </div>
                 <Button onClick={handlePauseEnd} className="w-full" variant="outline" size="lg">
                   <Play className="h-5 w-5 mr-2" />

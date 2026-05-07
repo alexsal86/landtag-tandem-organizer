@@ -136,7 +136,7 @@ export const ImportSteps: React.FC<ImportStepsProps> = ({
   if (step === "complete") {
     return (
       <Card>
-        <CardHeader><CardTitle className="flex items-center"><Check className="h-5 w-5 mr-2 text-green-600" />Import abgeschlossen</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="flex items-center"><Check className="h-5 w-5 mr-2 text-palette-green" />Import abgeschlossen</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-2">
             <Badge variant="default" className="text-sm py-1 px-3">✓ {importedCount} importiert</Badge>
@@ -153,11 +153,11 @@ export const ImportSteps: React.FC<ImportStepsProps> = ({
             </Alert>
           )}
           {duplicateWarnings.length > 0 && (
-            <Alert className="border-yellow-200 bg-yellow-50">
-              <AlertCircle className="h-4 w-4 text-yellow-600" />
+            <Alert className="border-palette-yellow/30 bg-palette-yellow/10">
+              <AlertCircle className="h-4 w-4 text-palette-yellow" />
               <AlertDescription>
-                <p className="font-medium mb-2 text-yellow-800">{duplicateWarnings.length} mögliche Duplikate:</p>
-                <div className="max-h-32 overflow-auto">{duplicateWarnings.slice(0, 5).map((w, i) => <p key={i} className="text-sm text-yellow-700">{w}</p>)}</div>
+                <p className="font-medium mb-2 text-palette-yellow">{duplicateWarnings.length} mögliche Duplikate:</p>
+                <div className="max-h-32 overflow-auto">{duplicateWarnings.slice(0, 5).map((w, i) => <p key={i} className="text-sm text-palette-yellow">{w}</p>)}</div>
               </AlertDescription>
             </Alert>
           )}

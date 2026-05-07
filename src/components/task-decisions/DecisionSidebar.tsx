@@ -143,10 +143,10 @@ export function DecisionSidebar({
                 {/* Offene Rückfragen */}
                 {openQuestions.length > 0 && (
                   <div className="space-y-2">
-                    <div className="flex items-center gap-1.5 text-xs font-medium text-orange-600">
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-palette-orange">
                       <MessageCircle className="h-3.5 w-3.5" />
                       <span>Offene Rückfragen</span>
-                      <Badge variant="outline" className="text-orange-600 border-orange-600 text-[10px] px-1.5 py-0">
+                      <Badge variant="outline" className="text-palette-orange border-palette-orange text-[10px] px-1.5 py-0">
                         {openQuestions.length}
                       </Badge>
                     </div>
@@ -155,13 +155,13 @@ export function DecisionSidebar({
                         <div
                           key={question.id}
                           className={cn(
-                            "p-2.5 rounded-md border-l-2 border-l-orange-500",
-                            "bg-orange-50 dark:bg-orange-950/20"
+                            "p-2.5 rounded-md border-l-2 border-l-palette-orange",
+                            "bg-palette-orange/10"
                           )}
                         >
                           <button
                             onClick={() => onQuestionClick(question.decisionId)}
-                            className="w-full text-left hover:bg-orange-100 dark:hover:bg-orange-950/40 transition-colors rounded -m-1 p-1"
+                            className="w-full text-left hover:bg-palette-orange/20 transition-colors rounded -m-1 p-1"
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1 min-w-0">
@@ -197,7 +197,7 @@ export function DecisionSidebar({
 
                           {/* Inline Response */}
                           {respondingTo === question.id ? (
-                            <div className="mt-2 pt-2 border-t border-orange-200 dark:border-orange-800 space-y-2">
+                            <div className="mt-2 pt-2 border-t border-palette-orange/30 space-y-2">
                               <SimpleRichTextEditor
                                 initialContent=""
                                 onChange={setResponseText}
@@ -243,10 +243,10 @@ export function DecisionSidebar({
                 {/* Direkte Antworten auf dich */}
                 {pendingDirectReplies.length > 0 && (
                   <div className="space-y-2">
-                    <div className="flex items-center gap-1.5 text-xs font-medium text-blue-600">
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-palette-blue">
                       <Reply className="h-3.5 w-3.5" />
                       <span>Antworten auf dich</span>
-                      <Badge variant="outline" className="text-blue-600 border-blue-600 text-[10px] px-1.5 py-0">
+                      <Badge variant="outline" className="text-palette-blue border-palette-blue text-[10px] px-1.5 py-0">
                         {pendingDirectReplies.length}
                       </Badge>
                     </div>
@@ -255,7 +255,7 @@ export function DecisionSidebar({
                         <button
                           key={`reply-${reply.id}`}
                           onClick={() => onCommentClick(reply.decisionId)}
-                          className="w-full text-left p-2.5 rounded-md border-l-2 border-l-blue-500 bg-blue-50 dark:bg-blue-950/20 hover:bg-blue-100 dark:hover:bg-blue-950/40 transition-colors"
+                          className="w-full text-left p-2.5 rounded-md border-l-2 border-l-palette-blue bg-palette-blue/10 hover:bg-palette-blue/20 transition-colors"
                         >
                           <p className="text-sm font-semibold line-clamp-3">{reply.decisionTitle}</p>
                           <div className="flex items-center gap-1.5 mt-1">
@@ -297,9 +297,9 @@ export function DecisionSidebar({
                           key={comment.id}
                           className={cn(
                             "w-full text-left p-2.5 rounded-md border-l-2",
-                            comment.responseType === 'yes' && "border-l-green-500 bg-green-50 dark:bg-green-950/20",
-                            comment.responseType === 'no' && "border-l-red-500 bg-red-50 dark:bg-red-950/20",
-                            comment.responseType === 'question' && "border-l-orange-500 bg-orange-50 dark:bg-orange-950/20",
+                            comment.responseType === 'yes' && "border-l-palette-green bg-palette-green/10",
+                            comment.responseType === 'no' && "border-l-palette-red bg-palette-red/10",
+                            comment.responseType === 'question' && "border-l-palette-orange bg-palette-orange/10",
                           )}
                         >
                           <button

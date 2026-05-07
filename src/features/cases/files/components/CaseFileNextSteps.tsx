@@ -206,8 +206,8 @@ export function CaseFileNextSteps({
     const now = Date.now();
     const diffDays = (due - now) / (1000 * 60 * 60 * 24);
     if (diffDays < 0) return "bg-destructive";
-    if (diffDays < 3) return "bg-amber-500";
-    if (diffDays < 14) return "bg-yellow-400";
+    if (diffDays < 3) return "bg-palette-amber";
+    if (diffDays < 14) return "bg-palette-yellow/60";
     return "bg-primary";
   };
 

@@ -72,8 +72,8 @@ export interface DossierTalkingPoint {
 export const STAKEHOLDER_STANCE_OPTIONS: { value: StakeholderStance; label: string; tone: string }[] = [
   { value: 'pro', label: 'Pro', tone: 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30' },
   { value: 'neutral', label: 'Neutral', tone: 'bg-muted text-foreground border-border' },
-  { value: 'unklar', label: 'Unklar', tone: 'bg-amber-500/15 text-amber-700 border-amber-500/30' },
-  { value: 'contra', label: 'Contra', tone: 'bg-rose-500/15 text-rose-700 border-rose-500/30' },
+  { value: 'unklar', label: 'Unklar', tone: 'bg-palette-amber/15 text-palette-amber border-palette-amber/30' },
+  { value: 'contra', label: 'Contra', tone: 'bg-palette-rose/15 text-palette-rose border-palette-rose/30' },
 ];
 
 export interface DossierEntry {

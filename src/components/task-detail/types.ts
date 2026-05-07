@@ -74,8 +74,8 @@ export const getCategoryColor = (category: Task["category"]) => {
   switch (category) {
     case "legislation": return "bg-primary text-primary-foreground";
     case "committee": return "bg-government-blue text-white";
-    case "constituency": return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300";
-    case "personal": return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300";
+    case "constituency": return "bg-palette-purple/20 text-palette-purple";
+    case "personal": return "bg-palette-orange/20 text-palette-orange";
   }
 };
 

@@ -22,8 +22,8 @@ function DiffView({ segments }: { segments: DiffSegment[] }) {
         <span
           key={i}
           className={cn(
-            seg.type === 'added' && 'bg-green-500/20 text-green-700 dark:text-green-400',
-            seg.type === 'removed' && 'bg-red-500/20 text-red-700 dark:text-red-400 line-through',
+            seg.type === 'added' && 'bg-palette-green/20 text-palette-green',
+            seg.type === 'removed' && 'bg-palette-red/20 text-palette-red line-through',
           )}
         >
           {seg.value}
@@ -174,11 +174,11 @@ export function KnowledgeVersionHistory({ documentId, currentContent, currentTit
 
                 <div className="flex items-center gap-4 mb-3 text-xs text-muted-foreground flex-shrink-0">
                   <span className="flex items-center gap-1">
-                    <span className="inline-block w-3 h-3 rounded bg-green-500/20 border border-green-500/30" />
+                    <span className="inline-block w-3 h-3 rounded bg-palette-green/20 border border-palette-green/30" />
                     Hinzugefügt
                   </span>
                   <span className="flex items-center gap-1">
-                    <span className="inline-block w-3 h-3 rounded bg-red-500/20 border border-red-500/30" />
+                    <span className="inline-block w-3 h-3 rounded bg-palette-red/20 border border-palette-red/30" />
                     Entfernt
                   </span>
                 </div>

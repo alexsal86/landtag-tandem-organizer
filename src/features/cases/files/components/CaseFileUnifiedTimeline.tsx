@@ -59,13 +59,13 @@ interface CaseFileUnifiedTimelineProps {
 }
 
 const CATEGORY_CONFIG = {
-  timeline: { icon: Flag, label: "Ereignis", color: "bg-purple-500" },
-  note: { icon: MessageSquare, label: "Notiz", color: "bg-amber-500" },
-  document: { icon: FileText, label: "Dokument", color: "bg-orange-500" },
-  task: { icon: CheckSquare, label: "Aufgabe", color: "bg-green-500" },
-  appointment: { icon: Calendar, label: "Termin", color: "bg-blue-500" },
-  letter: { icon: Mail, label: "Brief", color: "bg-cyan-500" },
-  interaction: { icon: MessageSquare, label: "Interaktion", color: "bg-indigo-500" },
+  timeline: { icon: Flag, label: "Ereignis", color: "bg-palette-purple" },
+  note: { icon: MessageSquare, label: "Notiz", color: "bg-palette-amber" },
+  document: { icon: FileText, label: "Dokument", color: "bg-palette-orange" },
+  task: { icon: CheckSquare, label: "Aufgabe", color: "bg-palette-green" },
+  appointment: { icon: Calendar, label: "Termin", color: "bg-palette-blue" },
+  letter: { icon: Mail, label: "Brief", color: "bg-palette-cyan" },
+  interaction: { icon: MessageSquare, label: "Interaktion", color: "bg-palette-indigo" },
 };
 
 const FILTER_TABS = [

@@ -43,7 +43,7 @@ export const ResponseOptionsPreview = ({ options }: ResponseOptionsPreviewProps)
               <span className="ml-1">{option.label || "..."}</span>
               {option.description && <Info className="h-2.5 w-2.5 ml-1 opacity-50" />}
               {option.recommended && (
-                <span className="ml-1 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-medium text-amber-700">
+                <span className="ml-1 rounded bg-palette-amber/20 px-1 py-0.5 text-[10px] font-medium text-palette-amber">
                   Empfohlen
                 </span>
               )}

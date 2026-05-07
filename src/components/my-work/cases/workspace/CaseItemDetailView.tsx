@@ -111,7 +111,7 @@ export function CaseItemDetailView({
           </div>
 
           <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-            <div className="rounded-2xl border bg-gray-50 px-4 py-3">
+            <div className="rounded-2xl border bg-muted/30 px-4 py-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fälligkeit</p>
               <div className="pt-1">
                 <input
@@ -122,7 +122,7 @@ export function CaseItemDetailView({
                 />
               </div>
             </div>
-            <div className="rounded-2xl border bg-gray-50 px-4 py-3">
+            <div className="rounded-2xl border bg-muted/30 px-4 py-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</p>
               <Select value={status} onValueChange={onStatusChange}>
                 <SelectTrigger className="mt-1 h-8 w-full bg-background">
@@ -135,7 +135,7 @@ export function CaseItemDetailView({
                 </SelectContent>
               </Select>
             </div>
-            <div className="rounded-2xl border bg-gray-50 px-4 py-3">
+            <div className="rounded-2xl border bg-muted/30 px-4 py-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Kategorie</p>
               <Select value={category} onValueChange={onCategoryChange}>
                 <SelectTrigger className="mt-1 h-8 w-full bg-background">
@@ -152,7 +152,7 @@ export function CaseItemDetailView({
 
           <div className="flex flex-wrap items-center gap-2.5 pt-1">
             <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold">
-              <Globe className={cn("h-3.5 w-3.5", isPublic ? "text-blue-600" : "text-muted-foreground")} />
+              <Globe className={cn("h-3.5 w-3.5", isPublic ? "text-palette-blue" : "text-muted-foreground")} />
               <span>{isPublic ? "Öffentlich" : "Nicht öffentlich"}</span>
               <Switch checked={isPublic} onCheckedChange={onPublicChange} />
             </div>

@@ -40,11 +40,11 @@ const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').to
 
 const getCategoryColor = (category?: string) => {
   switch (category) {
-    case 'citizen': return 'bg-blue-100 text-blue-800';
-    case 'colleague': return 'bg-green-100 text-green-800';
-    case 'business': return 'bg-purple-100 text-purple-800';
-    case 'media': return 'bg-orange-100 text-orange-800';
-    case 'lobbyist': return 'bg-gray-100 text-gray-800';
+    case 'citizen': return 'bg-palette-blue/20 text-palette-blue';
+    case 'colleague': return 'bg-palette-green/20 text-palette-green';
+    case 'business': return 'bg-palette-purple/20 text-palette-purple';
+    case 'media': return 'bg-palette-orange/20 text-palette-orange';
+    case 'lobbyist': return 'bg-muted text-foreground';
     default: return 'bg-muted text-muted-foreground';
   }
 };
@@ -74,8 +74,8 @@ const ContactItem: React.FC<{
     <div className="flex-1 min-w-0">
       <div className="flex items-center gap-2">
         <span className="font-medium truncate">{contact.name}</span>
-        {contact.is_favorite && <Star className="h-3 w-3 text-yellow-500 fill-current" />}
-        {!contact.is_favorite && (contact.usage_count || 0) > 0 && <Flame className="h-3 w-3 text-orange-500" />}
+        {contact.is_favorite && <Star className="h-3 w-3 text-palette-yellow fill-current" />}
+        {!contact.is_favorite && (contact.usage_count || 0) > 0 && <Flame className="h-3 w-3 text-palette-orange" />}
         {contact.contact_type === 'organization' ? (
           <Building className="h-3 w-3 text-muted-foreground" />
         ) : (
@@ -296,7 +296,7 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
               <AvatarFallback className="text-xs">{getInitials(selectedContact.name)}</AvatarFallback>
             </Avatar>
             <span className="truncate">{selectedContact.name}</span>
-            {selectedContact.is_favorite && <Star className="h-3 w-3 text-yellow-500 fill-current" />}
+            {selectedContact.is_favorite && <Star className="h-3 w-3 text-palette-yellow fill-current" />}
             {selectedContact.organization && (
               <span className="text-muted-foreground text-sm">({selectedContact.organization})</span>
             )}

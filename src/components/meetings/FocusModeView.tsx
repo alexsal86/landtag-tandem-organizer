@@ -602,10 +602,10 @@ export function FocusModeView({
   // Get border color for system sub-items
   const getSystemSubItemBorderColor = (sourceType?: 'quick_note' | 'appointment' | 'task' | 'decision') => {
     switch (sourceType) {
-      case 'quick_note': return 'border-l-amber-500';
-      case 'appointment': return 'border-l-blue-500';
-      case 'task': return 'border-l-green-500';
-      case 'decision': return 'border-l-violet-500';
+      case 'quick_note': return 'border-l-palette-amber';
+      case 'appointment': return 'border-l-palette-blue';
+      case 'task': return 'border-l-palette-green';
+      case 'decision': return 'border-l-palette-violet';
       default: return 'border-l-primary/30';
     }
   };
@@ -683,13 +683,13 @@ export function FocusModeView({
                     <Star className={cn("h-3.5 w-3.5", starredAppointmentIds.has(src.id as string) ? "fill-amber-400 text-amber-400" : "text-muted-foreground")} />
                   </Button>
                 )}
-                {sourceType === 'quick_note' && <StickyNote className="h-3.5 w-3.5 text-amber-500" />}
-                {sourceType === 'appointment' && <CalendarDays className="h-3.5 w-3.5 text-blue-500" />}
-                {sourceType === 'task' && <ListTodo className="h-3.5 w-3.5 text-green-500" />}
-                {sourceType === 'decision' && <Scale className="h-3.5 w-3.5 text-violet-500" />}
+                {sourceType === 'quick_note' && <StickyNote className="h-3.5 w-3.5 text-palette-amber" />}
+                {sourceType === 'appointment' && <CalendarDays className="h-3.5 w-3.5 text-palette-blue" />}
+                {sourceType === 'task' && <ListTodo className="h-3.5 w-3.5 text-palette-green" />}
+                {sourceType === 'decision' && <Scale className="h-3.5 w-3.5 text-palette-violet" />}
                 <span className={cn("text-sm font-medium", isItemCompleted && "line-through text-muted-foreground")}>{item.title}</span>
                 {isItemCompleted && (
-                  <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs">
+                  <Badge variant="secondary" className="bg-palette-green/20 text-palette-green text-xs">
                     <CheckCircle className="h-3 w-3 mr-1" />
                     Besprochen
                   </Badge>
@@ -781,10 +781,10 @@ export function FocusModeView({
         className={cn(
           "p-6 rounded-xl border transition-all duration-300",
           isSubItem && !item.system_type && "ml-8 border-l-4 border-l-primary/30",
-          isSubItem && item.system_type === 'upcoming_appointments' && "ml-8 border-l-4 border-l-blue-500",
-          isSubItem && item.system_type === 'quick_notes' && "ml-8 border-l-4 border-l-amber-500",
-          isSubItem && item.system_type === 'tasks' && "ml-8 border-l-4 border-l-green-500",
-          isSubItem && item.system_type === 'decisions' && "ml-8 border-l-4 border-l-violet-500",
+          isSubItem && item.system_type === 'upcoming_appointments' && "ml-8 border-l-4 border-l-palette-blue",
+          isSubItem && item.system_type === 'quick_notes' && "ml-8 border-l-4 border-l-palette-amber",
+          isSubItem && item.system_type === 'tasks' && "ml-8 border-l-4 border-l-palette-green",
+          isSubItem && item.system_type === 'decisions' && "ml-8 border-l-4 border-l-palette-violet",
           isFocused && "ring-2 ring-primary bg-primary/5 scale-[1.01] shadow-lg",
           item.is_completed && "bg-muted/50",
           !isFocused && !item.is_completed && "bg-card hover:bg-muted/30"
@@ -808,16 +808,16 @@ export function FocusModeView({
                 <CornerDownRight className="h-4 w-4 text-muted-foreground" />
               )}
               {item.system_type === 'upcoming_appointments' && (
-                <CalendarDays className="h-4 w-4 text-blue-500" />
+                <CalendarDays className="h-4 w-4 text-palette-blue" />
               )}
               {item.system_type === 'quick_notes' && (
-                <StickyNote className="h-4 w-4 text-amber-500" />
+                <StickyNote className="h-4 w-4 text-palette-amber" />
               )}
               {item.system_type === 'tasks' && (
-                <ListTodo className="h-4 w-4 text-green-500" />
+                <ListTodo className="h-4 w-4 text-palette-green" />
               )}
               {item.system_type === 'decisions' && (
-                <Scale className="h-4 w-4 text-violet-500" />
+                <Scale className="h-4 w-4 text-palette-violet" />
               )}
               <span className={cn(
                 isSubItem ? "text-base" : "text-lg font-semibold",
@@ -827,13 +827,13 @@ export function FocusModeView({
                 {item.title}
               </span>
               {item.is_completed && (
-                <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                <Badge variant="secondary" className="bg-palette-green/20 text-palette-green">
                   <CheckCircle className="h-3 w-3 mr-1" />
                   Besprochen
                 </Badge>
               )}
               {item.carry_over_to_next && (
-                <Badge variant="outline" className="border-amber-500 text-amber-700 dark:text-amber-400">
+                <Badge variant="outline" className="border-palette-amber text-palette-amber">
                   Übertragen
                 </Badge>
               )}
@@ -860,7 +860,7 @@ export function FocusModeView({
             {/* System content: Upcoming Appointments - show count info */}
             {item.system_type === 'upcoming_appointments' && upcomingAppointments.length > 0 && (
               <div className="mt-3 text-sm text-muted-foreground flex items-center gap-2">
-                <CalendarDays className="h-4 w-4 text-blue-500" />
+                <CalendarDays className="h-4 w-4 text-palette-blue" />
                 {upcomingAppointments.length} {upcomingAppointments.length === 1 ? 'Termin' : 'Termine'} — einzeln navigierbar
               </div>
             )}
@@ -882,7 +882,7 @@ export function FocusModeView({
             {/* System content: Decisions - show count info */}
             {item.system_type === 'decisions' && relevantDecisions.length > 0 && (
               <div className="mt-3 text-sm text-muted-foreground flex items-center gap-2">
-                <Scale className="h-4 w-4 text-violet-500" />
+                <Scale className="h-4 w-4 text-palette-violet" />
                 {relevantDecisions.length} {relevantDecisions.length === 1 ? 'Entscheidung' : 'Entscheidungen'} — einzeln navigierbar
               </div>
             )}

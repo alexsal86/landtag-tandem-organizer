@@ -86,19 +86,19 @@ export const ResponseHistoryTimeline = ({ participantId, decisionId }: ResponseH
           <div className="flex-1 space-y-1">
             <div className="flex items-center gap-2">
               {entry.response_type === 'yes' && (
-                <Badge variant="outline" className="text-green-600 border-green-600 text-xs">
+                <Badge variant="outline" className="text-palette-green border-palette-green text-xs">
                   <Check className="h-3 w-3 mr-1" />
                   Ja
                 </Badge>
               )}
               {entry.response_type === 'no' && (
-                <Badge variant="outline" className="text-red-600 border-red-600 text-xs">
+                <Badge variant="outline" className="text-palette-red border-palette-red text-xs">
                   <X className="h-3 w-3 mr-1" />
                   Nein
                 </Badge>
               )}
               {entry.response_type === 'question' && (
-                <Badge variant="outline" className="text-orange-600 border-orange-600 text-xs">
+                <Badge variant="outline" className="text-palette-orange border-palette-orange text-xs">
                   <MessageCircle className="h-3 w-3 mr-1" />
                   Rückfrage
                 </Badge>

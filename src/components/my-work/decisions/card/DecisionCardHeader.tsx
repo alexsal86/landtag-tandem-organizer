@@ -28,15 +28,15 @@ export function DecisionCardHeader({ archivingDecisionId, creatingTaskId, decisi
     <div className="flex items-center justify-between gap-2 mb-2">
       <div className="flex items-center gap-2 flex-wrap">
         {status === "question" ? (
-          <Badge className="bg-orange-100 hover:bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400 text-sm px-3 py-1 font-bold">Rückfrage</Badge>
+          <Badge className="bg-palette-orange/20 hover:bg-palette-orange/20 text-palette-orange text-sm px-3 py-1 font-bold">Rückfrage</Badge>
         ) : status === "decided" ? (
-          <Badge className="bg-green-100 hover:bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400 text-sm px-3 py-1 font-bold">Entschieden</Badge>
+          <Badge className="bg-palette-green/20 hover:bg-palette-green/20 text-palette-green text-sm px-3 py-1 font-bold">Entschieden</Badge>
         ) : status === "pending" ? (
-          <Badge className="bg-blue-100 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 text-sm px-3 py-1 font-bold">Ausstehend</Badge>
+          <Badge className="bg-palette-blue/20 hover:bg-palette-blue/20 text-palette-blue text-sm px-3 py-1 font-bold">Ausstehend</Badge>
         ) : null}
 
         {(decision.priority ?? 0) > 0 && (
-          <TooltipProvider><Tooltip><TooltipTrigger asChild><Star className="h-4 w-4 text-amber-500 fill-amber-500" /></TooltipTrigger><TooltipContent><p>Prioritär</p></TooltipContent></Tooltip></TooltipProvider>
+          <TooltipProvider><Tooltip><TooltipTrigger asChild><Star className="h-4 w-4 text-palette-amber fill-amber-500" /></TooltipTrigger><TooltipContent><p>Prioritär</p></TooltipContent></Tooltip></TooltipProvider>
         )}
         {decision.visible_to_all && (
           <TooltipProvider><Tooltip><TooltipTrigger asChild><Globe className="h-4 w-4 text-muted-foreground" /></TooltipTrigger><TooltipContent><p>Öffentlich</p></TooltipContent></Tooltip></TooltipProvider>

@@ -103,15 +103,15 @@ export const NewUserForm: React.FC<NewUserFormProps> = ({ onSuccess }) => {
   if (createdUser) {
     return (
       <div className="space-y-4">
-        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-          <h3 className="font-medium text-green-800 mb-2">Benutzer erfolgreich erstellt!</h3>
-          <p className="text-sm text-green-700 mb-4">
+        <div className="bg-palette-green/10 p-4 rounded-lg border border-palette-green/30">
+          <h3 className="font-medium text-palette-green mb-2">Benutzer erfolgreich erstellt!</h3>
+          <p className="text-sm text-palette-green mb-4">
             Bitte teilen Sie die folgenden Login-Daten mit dem neuen Benutzer:
           </p>
           
           <div className="space-y-3">
             <div>
-              <Label className="text-xs font-medium text-green-700">E-Mail-Adresse</Label>
+              <Label className="text-xs font-medium text-palette-green">E-Mail-Adresse</Label>
               <div className="flex items-center gap-2 mt-1">
                 <Input 
                   value={createdUser.email} 
@@ -130,7 +130,7 @@ export const NewUserForm: React.FC<NewUserFormProps> = ({ onSuccess }) => {
             </div>
             
             <div>
-              <Label className="text-xs font-medium text-green-700">Temporäres Passwort</Label>
+              <Label className="text-xs font-medium text-palette-green">Temporäres Passwort</Label>
               <div className="flex items-center gap-2 mt-1">
                 <Input 
                   type={showPassword ? 'text' : 'password'}
@@ -158,7 +158,7 @@ export const NewUserForm: React.FC<NewUserFormProps> = ({ onSuccess }) => {
             </div>
           </div>
           
-          <p className="text-xs text-green-600 mt-3">
+          <p className="text-xs text-palette-green mt-3">
             Der Benutzer sollte das Passwort nach der ersten Anmeldung ändern.
           </p>
         </div>

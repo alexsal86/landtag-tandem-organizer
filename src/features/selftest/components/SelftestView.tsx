@@ -15,7 +15,7 @@ import type { ScenarioRunState, StepStatus } from "../types";
 const StatusIcon = ({ status }: { status: StepStatus }) => {
   switch (status) {
     case "ok":
-      return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+      return <CheckCircle2 className="h-4 w-4 text-palette-green" />;
     case "failed":
       return <XCircle className="h-4 w-4 text-destructive" />;
     case "running":
@@ -114,7 +114,7 @@ export function SelftestView() {
                   <div>
                     <CardTitle className="flex items-center gap-2 flex-wrap">
                       {scenario.title}
-                      {state?.status === "ok" && <Badge variant="default" className="bg-green-600">OK</Badge>}
+                      {state?.status === "ok" && <Badge variant="default" className="bg-palette-green">OK</Badge>}
                       {state?.status === "failed" && <Badge variant="destructive">Fehler</Badge>}
                     </CardTitle>
                     <div className="flex flex-wrap gap-1 mt-1">

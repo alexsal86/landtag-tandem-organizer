@@ -107,9 +107,9 @@ export const CASE_TYPES = [
 ];
 
 export const CASE_STATUSES = [
-  { value: 'active', label: 'Aktiv', color: 'bg-green-500' },
-  { value: 'pending', label: 'Wartend', color: 'bg-yellow-500' },
-  { value: 'closed', label: 'Abgeschlossen', color: 'bg-blue-500' },
+  { value: 'active', label: 'Aktiv', color: 'bg-palette-green' },
+  { value: 'pending', label: 'Wartend', color: 'bg-palette-yellow' },
+  { value: 'closed', label: 'Abgeschlossen', color: 'bg-palette-blue' },
   { value: 'archived', label: 'Archiviert', color: 'bg-gray-500' },
 ];
 

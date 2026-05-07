@@ -330,13 +330,13 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'available':
-        return 'bg-green-500 hover:bg-green-600 text-white';
+        return 'bg-palette-green hover:bg-palette-green text-white';
       case 'tentative':
-        return 'bg-yellow-500 hover:bg-yellow-600 text-white';
+        return 'bg-palette-yellow hover:bg-palette-yellow text-white';
       case 'unavailable':
-        return 'bg-red-500 hover:bg-red-600 text-white';
+        return 'bg-palette-red hover:bg-palette-red text-white';
       default:
-        return 'bg-gray-200 hover:bg-gray-300 text-gray-700';
+        return 'bg-muted hover:bg-gray-300 text-foreground/80';
     }
   };
 
@@ -354,7 +354,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
     return (
       <Card className="w-full max-w-2xl mx-auto">
         <CardContent className="p-6 text-center">
-          <div className="text-red-500">Abstimmung nicht gefunden oder ungültiger Link.</div>
+          <div className="text-palette-red">Abstimmung nicht gefunden oder ungültiger Link.</div>
         </CardContent>
       </Card>
     );
@@ -364,7 +364,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
     return (
       <Card className="w-full max-w-2xl mx-auto">
         <CardContent className="p-6 text-center">
-          <div className="text-red-500">{accessError || 'Ungültige Zugriffsdaten. Bitte nutzen Sie einen gültigen Link oder eine autorisierte interne Teilnehmer-ID.'}</div>
+          <div className="text-palette-red">{accessError || 'Ungültige Zugriffsdaten. Bitte nutzen Sie einen gültigen Link oder eine autorisierte interne Teilnehmer-ID.'}</div>
         </CardContent>
       </Card>
     );

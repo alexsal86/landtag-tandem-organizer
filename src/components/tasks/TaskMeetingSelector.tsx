@@ -119,7 +119,7 @@ export function TaskMeetingSelector({
               onOpenChange(false);
             }}
           >
-            <Star className="h-4 w-4 text-amber-500" />
+            <Star className="h-4 w-4 text-palette-amber" />
             <div className="text-left">
               <div className="font-medium">Für nächsten Jour Fixe vormerken</div>
               <div className="text-xs text-muted-foreground">

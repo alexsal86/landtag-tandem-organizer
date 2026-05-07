@@ -58,12 +58,12 @@ export function PressReleaseEditor({ pressReleaseId, initialDraft, onBack }: Pre
 
       {/* Revision Comment Banner */}
       {h.pressRelease?.revision_comment && (h.status === "revision_requested" || h.status === "draft") && (
-        <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-md p-4">
+        <div className="bg-palette-yellow/10 border border-palette-yellow/30 rounded-md p-4">
           <div className="flex items-start gap-2">
-            <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+            <AlertTriangle className="h-5 w-5 text-palette-yellow mt-0.5 flex-shrink-0" />
             <div>
-              <p className="font-medium text-yellow-800 dark:text-yellow-200">Überarbeitungskommentar</p>
-              <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">{h.pressRelease.revision_comment}</p>
+              <p className="font-medium text-palette-yellow">Überarbeitungskommentar</p>
+              <p className="text-sm text-palette-yellow mt-1">{h.pressRelease.revision_comment}</p>
             </div>
           </div>
         </div>
@@ -71,28 +71,28 @@ export function PressReleaseEditor({ pressReleaseId, initialDraft, onBack }: Pre
 
       {/* Published Link */}
       {h.pressRelease?.ghost_post_url && h.status === "published" && (
-        <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md p-4 space-y-3">
+        <div className="bg-palette-blue/10 border border-palette-blue/30 rounded-md p-4 space-y-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <Globe className="h-5 w-5 text-blue-600 flex-shrink-0" />
+            <Globe className="h-5 w-5 text-palette-blue flex-shrink-0" />
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-              <span className="text-blue-800 dark:text-blue-200 font-medium">Veröffentlicht</span>
+              <span className="text-palette-blue font-medium">Veröffentlicht</span>
               {h.publisherName && h.pressRelease?.published_at && (
-                <span className="text-sm text-blue-600 dark:text-blue-300">von {h.publisherName} am {format(new Date(h.pressRelease.published_at), "dd.MM.yyyy 'um' HH:mm", { locale: de })}</span>
+                <span className="text-sm text-palette-blue">von {h.publisherName} am {format(new Date(h.pressRelease.published_at), "dd.MM.yyyy 'um' HH:mm", { locale: de })}</span>
               )}
             </div>
-            <a href={h.pressRelease.ghost_post_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1 ml-auto">
+            <a href={h.pressRelease.ghost_post_url} target="_blank" rel="noopener noreferrer" className="text-palette-blue hover:underline flex items-center gap-1 ml-auto">
               Beitrag ansehen<ExternalLink className="h-3 w-3" />
             </a>
           </div>
           {h.pressRelease?.email_sent_at && (
-            <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300 border-t border-blue-200 dark:border-blue-700 pt-2">
+            <div className="flex items-center gap-2 text-sm text-palette-blue border-t border-palette-blue/30 pt-2">
               <Mail className="h-4 w-4" />
               <span>Per E-Mail versandt am {format(new Date(h.pressRelease.email_sent_at), "dd.MM.yyyy 'um' HH:mm", { locale: de })}{h.emailSenderName && <> von {h.emailSenderName}</>}</span>
             </div>
           )}
           {!h.pressRelease?.email_sent_at && (
-            <div className="border-t border-blue-200 dark:border-blue-700 pt-2">
-              <Button variant="outline" size="sm" className="gap-2 text-blue-700 border-blue-300 hover:bg-blue-100 dark:text-blue-300 dark:border-blue-600 dark:hover:bg-blue-900" onClick={() => h.navigate(`/documents?tab=emails&action=compose-press&pressReleaseId=${h.pressRelease!.id}`)}>
+            <div className="border-t border-palette-blue/30 pt-2">
+              <Button variant="outline" size="sm" className="gap-2 text-palette-blue border-palette-blue/40 hover:bg-palette-blue/20" onClick={() => h.navigate(`/documents?tab=emails&action=compose-press&pressReleaseId=${h.pressRelease!.id}`)}>
                 <Mail className="h-4 w-4" />Per E-Mail an Presse senden
               </Button>
             </div>
@@ -130,9 +130,9 @@ export function PressReleaseEditor({ pressReleaseId, initialDraft, onBack }: Pre
               {h.editable && h.pressRelease && (h.status === "draft" || h.status === "revision_requested") && (
                 <Button onClick={h.handleSubmitForApproval} variant="outline" className="w-full gap-2" disabled={h.saving || !h.title.trim()}><SendHorizonal className="h-4 w-4" />Zur Freigabe senden</Button>
               )}
-              {h.isAdmin && h.status === "pending_approval" && <Button onClick={h.handleApprove} className="w-full gap-2 bg-green-600 hover:bg-green-700"><Check className="h-4 w-4" />Freigeben</Button>}
-              {h.isAdmin && h.status === "pending_approval" && <Button onClick={() => h.setShowRevisionDialog(true)} variant="outline" className="w-full gap-2 text-yellow-700 border-yellow-300 hover:bg-yellow-50"><X className="h-4 w-4" />Zurückweisen</Button>}
-              {h.status === "approved" && <Button onClick={() => h.setShowGhostDialog(true)} className="w-full gap-2 bg-blue-600 hover:bg-blue-700"><Globe className="h-4 w-4" />An Ghost veröffentlichen</Button>}
+              {h.isAdmin && h.status === "pending_approval" && <Button onClick={h.handleApprove} className="w-full gap-2 bg-palette-green hover:bg-palette-green"><Check className="h-4 w-4" />Freigeben</Button>}
+              {h.isAdmin && h.status === "pending_approval" && <Button onClick={() => h.setShowRevisionDialog(true)} variant="outline" className="w-full gap-2 text-palette-yellow border-palette-yellow/40 hover:bg-palette-yellow/10"><X className="h-4 w-4" />Zurückweisen</Button>}
+              {h.status === "approved" && <Button onClick={() => h.setShowGhostDialog(true)} className="w-full gap-2 bg-palette-blue hover:bg-palette-blue"><Globe className="h-4 w-4" />An Ghost veröffentlichen</Button>}
               {h.status === "published" && h.pressRelease?.ghost_post_url && <Button asChild variant="outline" className="w-full gap-2"><a href={h.pressRelease.ghost_post_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" />Auf Webseite ansehen</a></Button>}
             </div>
           </div>

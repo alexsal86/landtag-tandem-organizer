@@ -24,7 +24,7 @@ export function GhostPublishDialog({ isOpen, onClose, onConfirm, isLoading, pres
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Globe className="h-5 w-5 text-blue-500" />
+            <Globe className="h-5 w-5 text-palette-blue" />
             An Ghost veröffentlichen
           </DialogTitle>
           <DialogDescription>
@@ -72,8 +72,8 @@ export function GhostPublishDialog({ isOpen, onClose, onConfirm, isLoading, pres
             </div>
           )}
 
-          <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md p-3">
-            <p className="text-sm text-blue-800 dark:text-blue-200">
+          <div className="bg-palette-blue/10 border border-palette-blue/30 rounded-md p-3">
+            <p className="text-sm text-palette-blue">
               <Globe className="h-4 w-4 inline mr-1" />
               Die Pressemitteilung wird direkt auf Ihrer Webseite veröffentlicht.
             </p>

@@ -669,10 +669,10 @@ export function MyWorkCasesWorkspace() {
         return { color: "text-emerald-500", label: "Niedrig" };
       case "high":
       case "urgent":
-        return { color: "text-red-500", label: priority === "urgent" ? "Dringend" : "Hoch" };
+        return { color: "text-palette-red", label: priority === "urgent" ? "Dringend" : "Hoch" };
       case "medium":
       default:
-        return { color: "text-amber-500", label: "Mittel" };
+        return { color: "text-palette-amber", label: "Mittel" };
     }
   }, []);
 
@@ -845,7 +845,7 @@ export function MyWorkCasesWorkspace() {
         id: "due-at",
         timestamp: `${editableCaseItem.dueAt}T18:00:00`,
         title: "Frist",
-        accentClass: "bg-amber-500",
+        accentClass: "bg-palette-amber",
         icon: Timer,
       });
     }

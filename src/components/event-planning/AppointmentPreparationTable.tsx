@@ -34,7 +34,7 @@ export function AppointmentPreparationTable({
         {preparations.map((preparation) => {
           const statusConfig = {
             completed: { icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-500/20' },
-            in_progress: { icon: Clock, color: 'text-amber-500', bg: 'bg-amber-500/20' },
+            in_progress: { icon: Clock, color: 'text-palette-amber', bg: 'bg-palette-amber/20' },
             draft: { icon: FileEdit, color: 'text-muted-foreground', bg: 'bg-muted' }
           };
           const config = statusConfig[preparation.status as keyof typeof statusConfig] || statusConfig.draft;

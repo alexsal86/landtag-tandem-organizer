@@ -149,7 +149,7 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
   const getGuestStatusBadge = (status?: string) => {
     switch (status) {
       case 'confirmed':
-        return <Badge variant="default" className="bg-green-100 text-green-800">Bestätigt</Badge>;
+        return <Badge variant="default" className="bg-palette-green/20 text-palette-green">Bestätigt</Badge>;
       case 'declined':
         return <Badge variant="destructive">Abgelehnt</Badge>;
       case 'invited':

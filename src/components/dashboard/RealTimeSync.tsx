@@ -301,7 +301,7 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
   const getConnectionStatus = () => {
     if (!isConnected) return { icon: WifiOff, color: 'text-destructive', text: 'Offline' };
     if (isSyncing) return { icon: RefreshCw, color: 'text-primary animate-spin', text: 'Syncing' };
-    return { icon: Wifi, color: 'text-green-500', text: 'Online' };
+    return { icon: Wifi, color: 'text-palette-green', text: 'Online' };
   };
 
   const status = getConnectionStatus();
@@ -385,7 +385,7 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
                       </div>
                     )}
                     {connectedUser.is_online && (
-                      <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-background" />
+                      <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-palette-green rounded-full border border-background" />
                     )}
                   </div>
                   

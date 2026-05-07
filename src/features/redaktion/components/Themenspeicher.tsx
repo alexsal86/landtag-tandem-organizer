@@ -438,7 +438,7 @@ export function Themenspeicher({ onContentCreated }: Props) {
             </div>
 
             {duplicateWarning && (
-              <div className="rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-800 flex items-start gap-2">
+              <div className="rounded-md border border-palette-amber/40 bg-palette-amber/10 p-2 text-xs text-palette-amber flex items-start gap-2">
                 <TriangleAlert className="h-4 w-4 mt-0.5" />
                 <div>
                   <p>{duplicateWarning}</p>

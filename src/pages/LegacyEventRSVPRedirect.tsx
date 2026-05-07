@@ -11,7 +11,7 @@ export default function LegacyEventRSVPRedirect() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
       <Card className="w-full max-w-lg">
         <CardContent className="p-6 text-center text-sm text-muted-foreground">
           {eventId

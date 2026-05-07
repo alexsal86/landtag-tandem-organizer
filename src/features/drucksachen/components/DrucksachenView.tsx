@@ -103,20 +103,20 @@ export function DrucksachenView() {
                 <div className="text-sm text-muted-foreground">Protokolle</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">
+                <div className="text-2xl font-bold text-palette-green">
                   {protocols.filter(p => p.processing_status === 'completed').length}
                 </div>
                 <div className="text-sm text-muted-foreground">Verarbeitet</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-yellow-600">
+                <div className="text-2xl font-bold text-palette-yellow">
                   {protocols.filter(p => p.processing_status === 'processing').length}
                 </div>
                 <div className="text-sm text-muted-foreground">In Bearbeitung</div>
               </div>
               {protocols.filter(p => p.processing_status === 'error').length > 0 && (
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-red-600">
+                  <div className="text-2xl font-bold text-palette-red">
                     {protocols.filter(p => p.processing_status === 'error').length}
                   </div>
                   <div className="text-sm text-muted-foreground">Fehler</div>

@@ -194,7 +194,7 @@ export const MapLayerAdmin = () => {
                         className="h-7 px-2"
                       >
                         {layer.is_active ? (
-                          <Eye className="h-4 w-4 text-green-600" />
+                          <Eye className="h-4 w-4 text-palette-green" />
                         ) : (
                           <EyeOff className="h-4 w-4 text-muted-foreground" />
                         )}

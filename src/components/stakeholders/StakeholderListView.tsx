@@ -95,7 +95,7 @@ export function StakeholderListView({
                     }}
                     className="p-1 h-6 w-6"
                   >
-                    <Star className={`h-3 w-3 transition-colors ${stakeholder.is_favorite ? 'text-yellow-500 fill-current' : 'text-muted-foreground hover:text-yellow-500'}`} />
+                    <Star className={`h-3 w-3 transition-colors ${stakeholder.is_favorite ? 'text-palette-yellow fill-current' : 'text-muted-foreground hover:text-palette-yellow'}`} />
                   </Button>
                 </TableCell>
                 <TableCell>

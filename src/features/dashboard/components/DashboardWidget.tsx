@@ -438,7 +438,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
                           </span>
                           <Badge 
                             variant="outline" 
-                            className={isTask ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-green-50 text-green-700 border-green-200"}
+                            className={isTask ? "bg-palette-blue/10 text-palette-blue border-palette-blue/30" : "bg-palette-green/10 text-palette-green border-palette-green/30"}
                           >
                             {isTask ? "Aufgabe" : "Unteraufgabe"}
                           </Badge>

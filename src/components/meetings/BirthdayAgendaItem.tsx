@@ -44,10 +44,10 @@ interface BirthdayAgendaItemProps {
 }
 
 const ACTION_OPTIONS = [
-  { key: 'card' as const, label: 'Karte', icon: CreditCard, color: 'text-purple-600' },
-  { key: 'mail' as const, label: 'Mail', icon: Mail, color: 'text-blue-600' },
-  { key: 'call' as const, label: 'Anruf', icon: Phone, color: 'text-green-600' },
-  { key: 'gift' as const, label: 'Geschenk', icon: Gift, color: 'text-amber-600' },
+  { key: 'card' as const, label: 'Karte', icon: CreditCard, color: 'text-palette-purple' },
+  { key: 'mail' as const, label: 'Mail', icon: Mail, color: 'text-palette-blue' },
+  { key: 'call' as const, label: 'Anruf', icon: Phone, color: 'text-palette-green' },
+  { key: 'gift' as const, label: 'Geschenk', icon: Gift, color: 'text-palette-amber' },
 ];
 
 export function BirthdayAgendaItem({
@@ -164,16 +164,16 @@ export function BirthdayAgendaItem({
   };
 
   return (
-    <Card className={cn("border-l-4 border-l-pink-500", className)}>
+    <Card className={cn("border-l-4 border-l-palette-pink", className)}>
       <CardHeader className="py-2 px-3 pb-1">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
-            <Cake className="h-4 w-4 text-pink-500" />
+            <Cake className="h-4 w-4 text-palette-pink" />
             Geburtstage
             {contacts.length > 0 && <Badge variant="secondary">{contacts.length}</Badge>}
           </CardTitle>
           <div className="flex items-center gap-1">
-            <Badge variant="outline" className="text-xs bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-950 dark:text-pink-300 dark:border-pink-800">
+            <Badge variant="outline" className="text-xs bg-palette-pink/10 text-palette-pink border-palette-pink/30">
               <Cake className="h-3 w-3 mr-1" />
               System
             </Badge>
@@ -223,7 +223,7 @@ export function BirthdayAgendaItem({
                           key={opt.key}
                           size="sm"
                           variant={isSelected ? 'default' : 'outline'}
-                          className={cn("h-7 text-xs gap-1", isSelected && 'bg-pink-600 hover:bg-pink-700 text-white')}
+                          className={cn("h-7 text-xs gap-1", isSelected && 'bg-palette-pink hover:bg-palette-pink text-white')}
                           onClick={() => toggleAction(contact.id, opt.key)}
                         >
                           <Icon className="h-3 w-3" />

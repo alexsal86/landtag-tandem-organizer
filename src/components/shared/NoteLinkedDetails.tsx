@@ -279,14 +279,14 @@ export function NoteLinkedDetails({
       <CollapsibleContent className="pt-2 space-y-2" onClick={(e) => e.stopPropagation()}>
         {/* Task Status */}
         {taskId && (
-          <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded-md border border-blue-100 dark:border-blue-900 group/task">
+          <div className="p-2 bg-palette-blue/10 rounded-md border border-palette-blue/20 group/task">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-blue-600">
+              <div className="flex items-center gap-2 text-palette-blue">
                 <CheckSquare className="h-4 w-4" />
                 <span className="text-xs font-medium">Aufgabe</span>
               </div>
               <ArrowRight 
-                className="h-4 w-4 text-blue-600 opacity-0 group-hover/task:opacity-100 transition-opacity cursor-pointer"
+                className="h-4 w-4 text-palette-blue opacity-0 group-hover/task:opacity-100 transition-opacity cursor-pointer"
                 onClick={() => navigate(`/mywork?tab=tasks&highlight=${taskId}`)}
               />
             </div>
@@ -296,8 +296,8 @@ export function NoteLinkedDetails({
         
         {/* Archived Task Info */}
         {!taskId && taskArchivedInfo && (
-          <div className="p-2 bg-blue-50/50 dark:bg-blue-950/20 rounded-md border border-blue-100/50 dark:border-blue-900/50">
-            <div className="flex items-center gap-2 text-blue-600/70">
+          <div className="p-2 bg-palette-blue/5 rounded-md border border-palette-blue/20/50">
+            <div className="flex items-center gap-2 text-palette-blue/70">
               <Archive className="h-4 w-4" />
               <span className="text-xs font-medium">Aufgabe (archiviert)</span>
             </div>
@@ -310,14 +310,14 @@ export function NoteLinkedDetails({
         
         {/* Decision Status */}
         {decisionId && (
-          <div className="p-2 bg-purple-50 dark:bg-purple-950/30 rounded-md border border-purple-100 dark:border-purple-900 group/decision">
+          <div className="p-2 bg-palette-purple/10 rounded-md border border-palette-purple/20 group/decision">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-purple-600">
+              <div className="flex items-center gap-2 text-palette-purple">
                 <Vote className="h-4 w-4" />
                 <span className="text-xs font-medium">Entscheidung</span>
               </div>
               <ArrowRight 
-                className="h-4 w-4 text-purple-600 opacity-0 group-hover/decision:opacity-100 transition-opacity cursor-pointer"
+                className="h-4 w-4 text-palette-purple opacity-0 group-hover/decision:opacity-100 transition-opacity cursor-pointer"
                 onClick={() => navigate(`/mywork?tab=decisions&highlight=${decisionId}`)}
               />
             </div>
@@ -332,8 +332,8 @@ export function NoteLinkedDetails({
         
         {/* Archived Decision Info */}
         {!decisionId && decisionArchivedInfo && (
-          <div className="p-2 bg-purple-50/50 dark:bg-purple-950/20 rounded-md border border-purple-100/50 dark:border-purple-900/50">
-            <div className="flex items-center gap-2 text-purple-600/70">
+          <div className="p-2 bg-palette-purple/5 rounded-md border border-palette-purple/20/50">
+            <div className="flex items-center gap-2 text-palette-purple/70">
               <Archive className="h-4 w-4" />
               <span className="text-xs font-medium">Entscheidung (archiviert)</span>
             </div>
@@ -346,14 +346,14 @@ export function NoteLinkedDetails({
         
         {/* Case Item Status */}
         {caseItemId && (
-          <div className="p-2 bg-teal-50 dark:bg-teal-950/30 rounded-md border border-teal-100 dark:border-teal-900 group/case">
+          <div className="p-2 bg-palette-teal/10 rounded-md border border-palette-teal/20 group/case">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-teal-600">
+              <div className="flex items-center gap-2 text-palette-teal">
                 <FileText className="h-4 w-4" />
                 <span className="text-xs font-medium">Vorgang</span>
               </div>
               <ArrowRight 
-                className="h-4 w-4 text-teal-600 opacity-0 group-hover/case:opacity-100 transition-opacity cursor-pointer"
+                className="h-4 w-4 text-palette-teal opacity-0 group-hover/case:opacity-100 transition-opacity cursor-pointer"
                 onClick={() => navigate(`/mywork?tab=cases&highlight=${caseItemId}`)}
               />
             </div>
@@ -363,8 +363,8 @@ export function NoteLinkedDetails({
         
         {/* Archived Case Item Info */}
         {!caseItemId && caseItemArchivedInfo && (
-          <div className="p-2 bg-teal-50/50 dark:bg-teal-950/20 rounded-md border border-teal-100/50 dark:border-teal-900/50">
-            <div className="flex items-center gap-2 text-teal-600/70">
+          <div className="p-2 bg-palette-teal/5 rounded-md border border-palette-teal/20/50">
+            <div className="flex items-center gap-2 text-palette-teal/70">
               <Archive className="h-4 w-4" />
               <span className="text-xs font-medium">Vorgang (archiviert)</span>
             </div>
@@ -377,7 +377,7 @@ export function NoteLinkedDetails({
         
         {/* Meeting Status */}
         {meetingId && (
-          <div className="p-2 bg-emerald-50 dark:bg-emerald-950/30 rounded-md border border-emerald-100 dark:border-emerald-900 group/meeting">
+          <div className="p-2 bg-emerald-50 rounded-md border border-emerald-100 group/meeting">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-emerald-600">
                 <CalendarIcon className="h-4 w-4" />
@@ -394,7 +394,7 @@ export function NoteLinkedDetails({
         
         {/* Archived Meeting Info */}
         {!meetingId && meetingArchivedInfo && (
-          <div className="p-2 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-md border border-emerald-100/50 dark:border-emerald-900/50">
+          <div className="p-2 bg-emerald-50/50 rounded-md border border-emerald-100/50">
             <div className="flex items-center gap-2 text-emerald-600/70">
               <Archive className="h-4 w-4" />
               <span className="text-xs font-medium">Jour Fixe (archiviert)</span>

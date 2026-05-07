@@ -244,7 +244,7 @@ export const StandaloneDecisionCreator = ({
                     onCheckedChange={(checked) => setPriority(checked === true)}
                   />
                   <label htmlFor="priority" className="text-sm font-medium flex items-center">
-                    <Star className="h-4 w-4 mr-1 text-amber-500" />
+                    <Star className="h-4 w-4 mr-1 text-palette-amber" />
                     Als prioritär markieren
                   </label>
                 </div>

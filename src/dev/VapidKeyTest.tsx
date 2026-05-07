@@ -115,22 +115,22 @@ export const VapidKeyTest: React.FC = () => {
   const getStatusIcon = (status: 'pending' | 'success' | 'error') => {
     switch (status) {
       case 'pending':
-        return <Clock className="h-4 w-4 text-yellow-500" />;
+        return <Clock className="h-4 w-4 text-palette-yellow" />;
       case 'success':
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+        return <CheckCircle2 className="h-4 w-4 text-palette-green" />;
       case 'error':
-        return <XCircle className="h-4 w-4 text-red-500" />;
+        return <XCircle className="h-4 w-4 text-palette-red" />;
     }
   };
 
   const getStatusColor = (status: 'pending' | 'success' | 'error') => {
     switch (status) {
       case 'pending':
-        return 'text-yellow-700 bg-yellow-50 border-yellow-200';
+        return 'text-palette-yellow bg-palette-yellow/10 border-palette-yellow/30';
       case 'success':
-        return 'text-green-700 bg-green-50 border-green-200';
+        return 'text-palette-green bg-palette-green/10 border-palette-green/30';
       case 'error':
-        return 'text-red-700 bg-red-50 border-red-200';
+        return 'text-palette-red bg-palette-red/10 border-palette-red/30';
     }
   };
 
@@ -155,7 +155,7 @@ export const VapidKeyTest: React.FC = () => {
             <p className="text-sm mb-2">{testResult.message}</p>
             
             {Boolean(testResult.data) && (
-              <div className="mt-3 p-2 bg-gray-100 rounded text-xs font-mono">
+              <div className="mt-3 p-2 bg-muted rounded text-xs font-mono">
                 <details>
                   <summary className="cursor-pointer font-semibold">Debug-Details</summary>
                   <pre className="mt-2 overflow-x-auto">

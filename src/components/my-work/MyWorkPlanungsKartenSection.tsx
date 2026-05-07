@@ -206,7 +206,7 @@ export function MyWorkPlanungsKartenSection() {
           <div className="flex items-center gap-2 flex-wrap">
             <span className={cn("font-bold text-base", planning.is_completed && "line-through text-muted-foreground")}>{planning.title}</span>
             {planning.isCollaborator && <Badge variant="secondary" className="text-xs">Mitwirkend</Badge>}
-            {planning.is_completed && <Badge variant="outline" className="text-xs text-green-600 border-green-200">Erledigt</Badge>}
+            {planning.is_completed && <Badge variant="outline" className="text-xs text-palette-green border-palette-green/30">Erledigt</Badge>}
           </div>
           {planning.description && <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{planning.description}</p>}
           <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
@@ -241,7 +241,7 @@ export function MyWorkPlanungsKartenSection() {
                   planning.checklistItems.map((item) => (
                     <button key={item.id} type="button" className="text-sm flex items-center gap-2 text-left hover:text-foreground"
                       onClick={(e) => { e.stopPropagation(); toggleChecklistItem(item.id, !item.is_completed); }}>
-                      {item.is_completed ? <CheckSquare className="h-4 w-4 text-green-600" /> : <Square className="h-4 w-4 text-muted-foreground" />}
+                      {item.is_completed ? <CheckSquare className="h-4 w-4 text-palette-green" /> : <Square className="h-4 w-4 text-muted-foreground" />}
                       <span className={cn(item.is_completed && "line-through text-muted-foreground")}>{item.title}</span>
                     </button>
                   ))
@@ -260,7 +260,7 @@ export function MyWorkPlanungsKartenSection() {
         <div className="flex items-center gap-1 flex-shrink-0">
           {planning.user_id === user?.id && (
             <TooltipProvider><Tooltip><TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className={cn("h-7 w-7", planning.is_completed && "text-green-600")}
+              <Button variant="ghost" size="icon" className={cn("h-7 w-7", planning.is_completed && "text-palette-green")}
                 onClick={(e) => { e.stopPropagation(); toggleCompleted(planning.id, !planning.is_completed); }}>
                 <CheckCircle className="h-4 w-4" />
               </Button>

@@ -78,20 +78,20 @@ export function AdminBreakdownDialog({
                       </TableCell>
                       <TableCell className="text-right">{fmt(mb.targetMinutes)}</TableCell>
                       <TableCell className="text-right">{fmt(mb.workedMinutes)}</TableCell>
-                      <TableCell className="text-right text-blue-600">
+                      <TableCell className="text-right text-palette-blue">
                         +{fmt(mb.creditMinutes)}
                       </TableCell>
-                      <TableCell className="text-right text-amber-600">
+                      <TableCell className="text-right text-palette-amber">
                         {mb.overtimeReductionMinutes > 0 ? fmt(mb.overtimeReductionMinutes) : "—"}
                       </TableCell>
                       <TableCell
-                        className={`text-right font-medium ${mb.balance >= 0 ? "text-green-600" : "text-destructive"}`}
+                        className={`text-right font-medium ${mb.balance >= 0 ? "text-palette-green" : "text-destructive"}`}
                       >
                         {mb.balance >= 0 ? "+" : ""}
                         {fmt(mb.balance)}
                       </TableCell>
                       <TableCell
-                        className={`text-right font-bold ${cumulative >= 0 ? "text-green-600" : "text-destructive"}`}
+                        className={`text-right font-bold ${cumulative >= 0 ? "text-palette-green" : "text-destructive"}`}
                       >
                         {cumulative >= 0 ? "+" : ""}
                         {fmt(cumulative)}
@@ -105,7 +105,7 @@ export function AdminBreakdownDialog({
                       Korrekturen (gesamt)
                     </TableCell>
                     <TableCell
-                      className={`text-right font-medium ${totalCorrectionMinutes >= 0 ? "text-green-600" : "text-destructive"}`}
+                      className={`text-right font-medium ${totalCorrectionMinutes >= 0 ? "text-palette-green" : "text-destructive"}`}
                     >
                       {totalCorrectionMinutes >= 0 ? "+" : ""}
                       {fmt(totalCorrectionMinutes)}
@@ -116,7 +116,7 @@ export function AdminBreakdownDialog({
                 <TableRow className="bg-muted/50 font-bold">
                   <TableCell colSpan={5}>Gesamt {getYear(currentMonth)}</TableCell>
                   <TableCell
-                    className={`text-right ${yearlyBalance >= 0 ? "text-green-600" : "text-destructive"}`}
+                    className={`text-right ${yearlyBalance >= 0 ? "text-palette-green" : "text-destructive"}`}
                   >
                     {yearlyBalance >= 0 ? "+" : ""}
                     {fmt(yearlyBalance)}

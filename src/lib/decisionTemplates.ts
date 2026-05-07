@@ -94,14 +94,14 @@ export const getDefaultOptions = (): ResponseOption[] => {
 
 // Color mappings for Tailwind classes
 export const COLOR_OPTIONS = [
-  { value: "green", label: "Grün", bgClass: "bg-green-100", textClass: "text-green-700", borderClass: "border-green-600" },
-  { value: "red", label: "Rot", bgClass: "bg-red-100", textClass: "text-red-700", borderClass: "border-red-600" },
-  { value: "orange", label: "Orange", bgClass: "bg-orange-100", textClass: "text-orange-700", borderClass: "border-orange-600" },
-  { value: "yellow", label: "Gelb", bgClass: "bg-yellow-100", textClass: "text-yellow-700", borderClass: "border-yellow-600" },
-  { value: "blue", label: "Blau", bgClass: "bg-blue-100", textClass: "text-blue-700", borderClass: "border-blue-600" },
-  { value: "purple", label: "Lila", bgClass: "bg-purple-100", textClass: "text-purple-700", borderClass: "border-purple-600" },
-  { value: "lime", label: "Hellgrün", bgClass: "bg-lime-100", textClass: "text-lime-700", borderClass: "border-lime-600" },
-  { value: "gray", label: "Grau", bgClass: "bg-gray-100", textClass: "text-gray-700", borderClass: "border-gray-600" },
+  { value: "green", label: "Grün", bgClass: "bg-palette-green/20", textClass: "text-palette-green", borderClass: "border-palette-green" },
+  { value: "red", label: "Rot", bgClass: "bg-palette-red/20", textClass: "text-palette-red", borderClass: "border-palette-red" },
+  { value: "orange", label: "Orange", bgClass: "bg-palette-orange/20", textClass: "text-palette-orange", borderClass: "border-palette-orange" },
+  { value: "yellow", label: "Gelb", bgClass: "bg-palette-yellow/20", textClass: "text-palette-yellow", borderClass: "border-palette-yellow" },
+  { value: "blue", label: "Blau", bgClass: "bg-palette-blue/20", textClass: "text-palette-blue", borderClass: "border-palette-blue" },
+  { value: "purple", label: "Lila", bgClass: "bg-palette-purple/20", textClass: "text-palette-purple", borderClass: "border-palette-purple" },
+  { value: "lime", label: "Hellgrün", bgClass: "bg-palette-lime/20", textClass: "text-palette-lime", borderClass: "border-palette-lime" },
+  { value: "gray", label: "Grau", bgClass: "bg-muted", textClass: "text-foreground/80", borderClass: "border-gray-600" },
 ];
 
 export const getColorClasses = (color: string) => {

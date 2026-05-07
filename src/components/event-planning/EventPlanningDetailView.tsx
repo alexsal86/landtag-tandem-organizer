@@ -255,9 +255,9 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
     : "Uhrzeit offen";
   const participantStats = [
     { label: "Zugesagt", count: rsvpCounts.accepted, icon: CheckCircle, tone: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-    { label: "Vorbehalt", count: rsvpCounts.tentative, icon: AlertCircle, tone: "bg-amber-50 text-amber-700 border-amber-200" },
-    { label: "Abgesagt", count: rsvpCounts.declined, icon: X, tone: "bg-rose-50 text-rose-700 border-rose-200" },
-    { label: "Ausstehend", count: rsvpCounts.invited, icon: Clock, tone: "bg-slate-50 text-slate-700 border-slate-200" },
+    { label: "Vorbehalt", count: rsvpCounts.tentative, icon: AlertCircle, tone: "bg-palette-amber/10 text-palette-amber border-palette-amber/30" },
+    { label: "Abgesagt", count: rsvpCounts.declined, icon: X, tone: "bg-palette-rose/10 text-palette-rose border-palette-rose/30" },
+    { label: "Ausstehend", count: rsvpCounts.invited, icon: Clock, tone: "bg-muted/30 text-foreground/80 border-border" },
   ] as const;
 
   return (
@@ -392,7 +392,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
             </Dialog>
 
             {(selectedPlanning.user_id === user?.id || uniquePlanningCollaborators.some(c => c.user_id === user?.id && c.can_edit)) && (
-              <Button variant={selectedPlanning.is_completed ? "default" : "outline"} className={cn(selectedPlanning.is_completed && "bg-green-600 hover:bg-green-700")} onClick={() => togglePlanningCompleted(selectedPlanning.id, !selectedPlanning.is_completed)}>
+              <Button variant={selectedPlanning.is_completed ? "default" : "outline"} className={cn(selectedPlanning.is_completed && "bg-palette-green hover:bg-palette-green")} onClick={() => togglePlanningCompleted(selectedPlanning.id, !selectedPlanning.is_completed)}>
                 <CheckCircle className="mr-2 h-4 w-4" />{selectedPlanning.is_completed ? "Erledigt" : "Als erledigt markieren"}
               </Button>
             )}
@@ -720,7 +720,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                                   <Mail className="h-4 w-4" />
                                   <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-all duration-200 group-hover:max-w-[280px] group-hover:opacity-100 hover:max-w-[280px] hover:opacity-100">{speaker.email}</span>
                                   {copiedSpeakerContact === `${speaker.id}-email` && (
-                                    <span className="text-xs font-medium text-green-600">Kopiert</span>
+                                    <span className="text-xs font-medium text-palette-green">Kopiert</span>
                                   )}
                                 </button>
                               )}
@@ -729,7 +729,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                                   <Phone className="h-4 w-4" />
                                   <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-all duration-200 group-hover:max-w-[280px] group-hover:opacity-100 hover:max-w-[280px] hover:opacity-100">{speaker.phone}</span>
                                   {copiedSpeakerContact === `${speaker.id}-phone` && (
-                                    <span className="text-xs font-medium text-green-600">Kopiert</span>
+                                    <span className="text-xs font-medium text-palette-green">Kopiert</span>
                                   )}
                                 </button>
                               )}

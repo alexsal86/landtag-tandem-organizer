@@ -147,9 +147,9 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
           <div
             className={cn(
               "flex items-start gap-1.5 rounded px-1.5 py-1 text-[11px]",
-              item.type === 'question' && "bg-orange-50 dark:bg-orange-950/20",
-              item.type === 'yes' && "bg-green-50 dark:bg-green-950/20",
-              item.type === 'no' && "bg-red-50 dark:bg-red-950/20",
+              item.type === 'question' && "bg-palette-orange/10",
+              item.type === 'yes' && "bg-palette-green/10",
+              item.type === 'no' && "bg-palette-red/10",
             )}
           >
             <Avatar className="h-4 w-4 flex-shrink-0 mt-0.5">
@@ -165,13 +165,13 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
               <div className="flex items-center gap-1">
                 <span className="font-medium truncate">{item.name || 'Unbekannt'}</span>
                 {item.type === 'question' && (
-                  <Reply className="h-3 w-3 text-orange-500 flex-shrink-0" />
+                  <Reply className="h-3 w-3 text-palette-orange flex-shrink-0" />
                 )}
                 {item.type === 'yes' && (
-                  <Check className="h-3 w-3 text-green-600 flex-shrink-0" />
+                  <Check className="h-3 w-3 text-palette-green flex-shrink-0" />
                 )}
                 {item.type === 'no' && (
-                  <X className="h-3 w-3 text-red-600 flex-shrink-0" />
+                  <X className="h-3 w-3 text-palette-red flex-shrink-0" />
                 )}
                 <span className="text-[9px] text-muted-foreground ml-auto flex-shrink-0">
                   {timeAgo(item.createdAt)}
@@ -184,7 +184,7 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
               )}
               {/* Creator response - nested with visual hierarchy */}
               {item.creatorResponse && (
-                <div className="ml-4 mt-1 pl-2 border-l-2 border-orange-300 bg-muted/50 rounded-r px-2 py-1">
+                <div className="ml-4 mt-1 pl-2 border-l-2 border-palette-orange/40 bg-muted/50 rounded-r px-2 py-1">
                   <div className="flex items-center gap-1 mb-0.5">
                     <CheckCheck className="h-2.5 w-2.5 flex-shrink-0 text-primary" />
                     {creatorProfile && (
@@ -228,7 +228,7 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-5 px-1.5 text-[10px] text-orange-600 hover:text-orange-700 mt-0.5 -ml-1.5"
+                  className="h-5 px-1.5 text-[10px] text-palette-orange hover:text-palette-orange mt-0.5 -ml-1.5"
                   onClick={(e) => { e.stopPropagation(); setReplyText(item.creatorResponse || ""); setReplyingTo(item.id); }}
                 >
                   <Reply className="h-2.5 w-2.5 mr-0.5" />

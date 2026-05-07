@@ -31,9 +31,9 @@ interface DuplicateContactsSheetProps {
 
 
 const getScoreColor = (score: number) => {
-  if (score >= 90) return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-  if (score >= 75) return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
-  return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
+  if (score >= 90) return 'bg-palette-red/20 text-palette-red';
+  if (score >= 75) return 'bg-palette-orange/20 text-palette-orange';
+  return 'bg-palette-yellow/20 text-palette-yellow';
 };
 
 export function DuplicateContactsSheet({
@@ -192,12 +192,12 @@ export function DuplicateContactsSheet({
                         </div>
 
                         {/* Match Reasons */}
-                        <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg">
+                        <div className="bg-palette-blue/10 p-3 rounded-lg">
                           <p className="text-sm font-medium mb-2">Übereinstimmungen:</p>
                           <ul className="text-sm text-muted-foreground space-y-1">
                             {match.matchReasons.map((reason, i) => (
                               <li key={i} className="flex items-center gap-2">
-                                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                                <span className="w-1.5 h-1.5 bg-palette-blue rounded-full" />
                                 {reason}
                               </li>
                             ))}

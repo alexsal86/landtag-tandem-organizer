@@ -164,7 +164,7 @@ export function SecurityCockpit(): JSX.Element {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>OK</CardDescription>
-            <CardTitle className="text-h2 tabular-nums text-green-600">{stats.ok}</CardTitle>
+            <CardTitle className="text-h2 tabular-nums text-palette-green">{stats.ok}</CardTitle>
           </CardHeader>
         </Card>
       </div>

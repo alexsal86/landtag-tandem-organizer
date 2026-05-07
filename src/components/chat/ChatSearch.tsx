@@ -50,7 +50,7 @@ export function ChatSearch({ messages, onSelectMessage, onClose }: ChatSearchPro
     const parts = text.split(new RegExp(`(${escapedQuery})`, 'gi'));
     return parts.map((part, index) =>
       part.toLowerCase() === query.toLowerCase() ? (
-        <mark key={index} className="bg-yellow-200 dark:bg-yellow-800 rounded px-0.5">
+        <mark key={index} className="bg-palette-yellow/30 rounded px-0.5">
           {part}
         </mark>
       ) : (

@@ -109,7 +109,7 @@ export const DashboardGreetingSection = ({ data }: Props) => {
         : null;
       return (
         <span className="flex items-start gap-2 my-1">
-          {HintIcon && <HintIcon className="h-5 w-5 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />}
+          {HintIcon && <HintIcon className="h-5 w-5 mt-0.5 shrink-0 text-palette-amber" />}
           <span>{parseTextSection(specialDayHint.text)}</span>
         </span>
       );

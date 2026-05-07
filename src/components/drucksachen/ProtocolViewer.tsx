@@ -166,22 +166,22 @@ export function ProtocolViewer({ protocol, onClose }: ProtocolViewerProps) {
   // Get party badge color
   const getPartyColor = (party?: string) => {
     const colors: Record<string, string> = {
-      'GRÜNE': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      'CDU': 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
-      'SPD': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-      'FDP/DVP': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-      'AfD': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-      'DIE LINKE': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+      'GRÜNE': 'bg-palette-green/20 text-palette-green',
+      'CDU': 'bg-muted text-foreground',
+      'SPD': 'bg-palette-red/20 text-palette-red',
+      'FDP/DVP': 'bg-palette-yellow/20 text-palette-yellow',
+      'AfD': 'bg-palette-blue/20 text-palette-blue',
+      'DIE LINKE': 'bg-palette-purple/20 text-palette-purple',
     };
     return colors[party || ''] || 'bg-muted text-muted-foreground';
   };
 
   // Get event class for styling
   const getEventClass = (type: string) => {
-    if (type === 'Beifall') return 'text-green-600 font-semibold';
-    if (type === 'Zuruf') return 'text-red-600 italic';
-    if (type === 'Heiterkeit') return 'text-yellow-600';
-    return 'text-blue-600'; // Default
+    if (type === 'Beifall') return 'text-palette-green font-semibold';
+    if (type === 'Zuruf') return 'text-palette-red italic';
+    if (type === 'Heiterkeit') return 'text-palette-yellow';
+    return 'text-palette-blue'; // Default
   };
 
   // Render text with inline events

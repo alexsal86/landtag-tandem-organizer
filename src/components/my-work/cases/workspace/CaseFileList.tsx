@@ -40,7 +40,7 @@ const DroppableCaseFileRow = ({ cf, linkedCount, onSelectCaseFile, onArchiveCase
               type="button"
               className={cn(
                 "w-full border-b px-2 py-2 text-left transition-colors hover:bg-muted/40 rounded-md",
-                dropSnapshot.isDraggingOver && "ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-950/20",
+                dropSnapshot.isDraggingOver && "ring-2 ring-blue-500 bg-palette-blue/10",
               )}
               onClick={() => onSelectCaseFile(cf)}
             >
@@ -51,7 +51,7 @@ const DroppableCaseFileRow = ({ cf, linkedCount, onSelectCaseFile, onArchiveCase
                 <div className="flex items-center gap-2">{cf.reference_number && <span>{cf.reference_number}</span>}</div>
                 {linkedCount > 0 && <span><FileText className="inline h-3 w-3 mr-0.5" />{linkedCount} {linkedCount === 1 ? "Vorgang" : "Vorgänge"}</span>}
               </div>
-              {dropSnapshot.isDraggingOver && <p className="mt-1 text-xs text-blue-600 font-medium">Vorgang hier ablegen zum Verknüpfen</p>}
+              {dropSnapshot.isDraggingOver && <p className="mt-1 text-xs text-palette-blue font-medium">Vorgang hier ablegen zum Verknüpfen</p>}
               {cf.current_status_note && !dropSnapshot.isDraggingOver && (
                 <div className="mt-1 [&_p]:line-clamp-1">
                   <RichTextDisplay content={cf.current_status_note} className="text-xs" />

@@ -49,12 +49,12 @@ interface SenderInfo {
 }
 
 const FALLBACK_OCCASIONS = [
-  { key: 'buergeranliegen', label: 'Bürgeranliegen', description: 'Antwort auf Anfragen von Bürgern', icon: Users, color: 'bg-blue-500' },
-  { key: 'ministerium', label: 'Ministerium', description: 'Formelle Korrespondenz mit Ministerien', icon: Building2, color: 'bg-purple-500' },
-  { key: 'einladung', label: 'Einladung', description: 'Veranstaltungseinladungen', icon: PartyPopper, color: 'bg-amber-500' },
-  { key: 'gruss', label: 'Gruß & Dank', description: 'Glückwünsche, Beileid, Dankschreiben', icon: Heart, color: 'bg-rose-500' },
-  { key: 'parlamentarische_anfrage', label: 'Parlamentarische Anfrage', description: 'Anfragen an die Regierung', icon: FileQuestion, color: 'bg-teal-500' },
-  { key: 'stellungnahme', label: 'Stellungnahme', description: 'Offizielle Positionierung', icon: MessageSquare, color: 'bg-indigo-500' },
+  { key: 'buergeranliegen', label: 'Bürgeranliegen', description: 'Antwort auf Anfragen von Bürgern', icon: Users, color: 'bg-palette-blue' },
+  { key: 'ministerium', label: 'Ministerium', description: 'Formelle Korrespondenz mit Ministerien', icon: Building2, color: 'bg-palette-purple' },
+  { key: 'einladung', label: 'Einladung', description: 'Veranstaltungseinladungen', icon: PartyPopper, color: 'bg-palette-amber' },
+  { key: 'gruss', label: 'Gruß & Dank', description: 'Glückwünsche, Beileid, Dankschreiben', icon: Heart, color: 'bg-palette-rose' },
+  { key: 'parlamentarische_anfrage', label: 'Parlamentarische Anfrage', description: 'Anfragen an die Regierung', icon: FileQuestion, color: 'bg-palette-teal' },
+  { key: 'stellungnahme', label: 'Stellungnahme', description: 'Offizielle Positionierung', icon: MessageSquare, color: 'bg-palette-indigo' },
   { key: 'sonstiges', label: 'Sonstiges', description: 'Freie Briefform', icon: FileText, color: 'bg-muted-foreground' },
 ];
 

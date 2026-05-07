@@ -357,7 +357,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
     const hasContent = Boolean((element.blockContent || '').trim());
     const isEditing = editingBlockId === element.id;
     return (
-      <div key={element.id} aria-label={getElementAriaLabel(element)} className={`absolute cursor-move border overflow-hidden ${isSelected ? 'border-primary border-dashed border-2 bg-primary/5' : 'border-gray-300 bg-gray-50/50'}`}
+      <div key={element.id} aria-label={getElementAriaLabel(element)} className={`absolute cursor-move border overflow-hidden ${isSelected ? 'border-primary border-dashed border-2 bg-primary/5' : 'border-border bg-muted/30/50'}`}
         style={{ left: `${element.x * scaleX}px`, top: `${element.y * scaleY}px`, width: `${w}px`, height: `${h}px`, fontSize: `${fontSize}px`, fontFamily: element.blockFontFamily || 'Calibri', fontWeight: element.blockFontWeight || 'normal', color: element.blockColor || '#000', lineHeight: `${element.blockLineHeight || 1}` }}
         onMouseDown={(e) => interactions.onElementMouseDown(e, element)} onDoubleClick={(e) => { e.stopPropagation(); startEditingBlock(element); }}>
         {!hasContent && <div className="font-bold text-[10px] px-1 pt-0.5 opacity-70">{element.blockTitle || 'Block'}</div>}
@@ -729,8 +729,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                   <p className="text-xs text-muted-foreground mb-2">Auf Canvas ziehen zum Einfügen</p>
                   {variables.map((v) => (
                     <div key={v.value} draggable onDragStart={(e) => { e.dataTransfer.setData('application/x-variable', v.value); e.dataTransfer.setData('text/plain', v.value); e.dataTransfer.effectAllowed = 'copy'; }}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded border border-amber-300 bg-amber-50 text-amber-800 text-xs cursor-grab hover:bg-amber-100 transition-colors">
-                      <span>⚡</span><span className="font-medium">{v.label}</span><span className="text-amber-500 ml-auto text-[10px]">{v.value}</span>
+                      className="flex items-center gap-2 px-2 py-1.5 rounded border border-palette-amber/40 bg-palette-amber/10 text-palette-amber text-xs cursor-grab hover:bg-palette-amber/20 transition-colors">
+                      <span>⚡</span><span className="font-medium">{v.label}</span><span className="text-palette-amber ml-auto text-[10px]">{v.value}</span>
                     </div>
                   ))}
                 </CardContent>
@@ -744,11 +744,11 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
             <p className="text-xs text-muted-foreground">Doppelklick auf Text/Block zum Bearbeiten. Mit Mausrad + Strg/Cmd zoomen.</p>
             <div ref={previewContainerRef} className="border rounded-lg p-4 bg-muted/20 overflow-auto outline-none" style={{ maxHeight: 'calc(100vh - 280px)' }}>
           <div className="relative mx-auto" style={{ paddingLeft: 28, paddingTop: 28, width: canvasPixelWidth + 28, height: canvasPixelHeight + 28 }}>
-              <div className={`absolute top-0 left-7 h-7 border bg-slate-100 text-[10px] text-muted-foreground pointer-events-none ${showRuler ? '' : 'invisible'}`} style={{ width: canvasPixelWidth }}>
+              <div className={`absolute top-0 left-7 h-7 border bg-muted text-[10px] text-muted-foreground pointer-events-none ${showRuler ? '' : 'invisible'}`} style={{ width: canvasPixelWidth }}>
                   <canvas ref={horizontalRulerRef} width={Math.round(canvasPixelWidth)} height={28} className="absolute inset-0 h-full w-full" />
                   {Array.from({ length: Math.floor(canvasMaxWidth / 10) + 1 }).map((_, i) => (<span key={`label-x-${i}`} className="absolute top-0" style={{ left: `${(i * 10 * canvasPixelWidth) / canvasMaxWidth}px` }}>{i * 10}</span>))}
                 </div>
-                <div className={`absolute top-7 left-0 w-7 border bg-slate-100 text-[10px] text-muted-foreground pointer-events-none ${showRuler ? '' : 'invisible'}`} style={{ height: canvasPixelHeight }}>
+                <div className={`absolute top-7 left-0 w-7 border bg-muted text-[10px] text-muted-foreground pointer-events-none ${showRuler ? '' : 'invisible'}`} style={{ height: canvasPixelHeight }}>
                   <canvas ref={verticalRulerRef} width={28} height={Math.round(canvasPixelHeight)} className="absolute inset-0 h-full w-full" />
                   {Array.from({ length: Math.floor(canvasMaxHeight / 10) + 1 }).map((_, i) => (<span key={`label-y-${i}`} className="absolute left-0" style={{ top: `${(i * 10 * canvasPixelHeight) / canvasMaxHeight}px` }}>{i * 10}</span>))}
                 </div>
@@ -758,10 +758,10 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               onKeyDown={onPreviewKeyDown} onDragOver={(e) => e.preventDefault()} onMouseDown={interactions.onPreviewMouseDown}
               onDrop={onPreviewDrop} onMouseMove={interactions.onPreviewMouseMove} onMouseUp={interactions.onPreviewMouseUp}
               onClick={(e) => { if (e.target === e.currentTarget) clearSelection(); }}
-              className="border border-gray-300 bg-white relative outline-none" style={{ width: `${canvasPixelWidth}px`, height: `${canvasPixelHeight}px` }}>
+              className="border border-border bg-white relative outline-none" style={{ width: `${canvasPixelWidth}px`, height: `${canvasPixelHeight}px` }}>
               <span className="sr-only" aria-live="polite">{ariaAnnouncement}</span>
               <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)', backgroundSize: `${10 * effectiveScaleX}px ${10 * effectiveScaleY}px` }}>
-              {showCenterGuides && (<><div className="absolute left-0 right-0 top-1/2 border-t border-dashed border-red-500/80 pointer-events-none" /><div className="absolute top-0 bottom-0 left-1/2 border-l border-dashed border-red-500/80 pointer-events-none" /></>)}
+              {showCenterGuides && (<><div className="absolute left-0 right-0 top-1/2 border-t border-dashed border-palette-red/80 pointer-events-none" /><div className="absolute top-0 bottom-0 left-1/2 border-l border-dashed border-palette-red/80 pointer-events-none" /></>)}
               {showMargins && marginGuides.map((guide) => (
                 <React.Fragment key={guide.key}>
                   {guide.orientation === 'vertical' ? (<><div className="absolute top-0 bottom-0 border-l border-dashed pointer-events-none z-10" style={{ left: `${guide.pos}px`, borderColor: guide.color }} /><div className="absolute top-1 rounded bg-background/90 px-1 py-0 text-[10px] text-muted-foreground pointer-events-none z-10" style={{ left: `${Math.min(Math.max(guide.pos + 2, 2), Math.max(canvasPixelWidth - 42, 2))}px` }}>{guide.label}</div></>) : (<><div className="absolute left-0 right-0 border-t border-dashed pointer-events-none z-10" style={{ top: `${guide.pos}px`, borderColor: guide.color }} /><div className="absolute left-1 rounded bg-background/90 px-1 py-0 text-[10px] text-muted-foreground pointer-events-none z-10" style={{ top: `${Math.min(Math.max(guide.pos + 2, 2), Math.max(canvasPixelHeight - 18, 2))}px` }}>{guide.label}</div></>)}

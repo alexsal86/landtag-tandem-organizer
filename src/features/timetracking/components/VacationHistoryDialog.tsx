@@ -129,7 +129,7 @@ export function VacationHistoryDialog({
                       <TableCell className="text-right">
                         {(entry.carry_over_from_previous ?? 0) > 0 ? (
                           <Badge variant="outline" className="font-mono">
-                            <TrendingUp className="h-3 w-3 mr-1 text-green-600" />
+                            <TrendingUp className="h-3 w-3 mr-1 text-palette-green" />
                             +{entry.carry_over_from_previous ?? 0}
                           </Badge>
                         ) : (
@@ -154,7 +154,7 @@ export function VacationHistoryDialog({
                       </TableCell>
                       <TableCell className="text-right">
                         {(entry.carry_over_to_next ?? 0) > 0 ? (
-                          <Badge variant="secondary" className="font-mono bg-blue-50 text-blue-700 border-blue-200">
+                          <Badge variant="secondary" className="font-mono bg-palette-blue/10 text-palette-blue border-palette-blue/30">
                             {entry.carry_over_to_next ?? 0}
                           </Badge>
                         ) : (

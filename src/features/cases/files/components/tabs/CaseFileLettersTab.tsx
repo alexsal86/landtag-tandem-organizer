@@ -87,9 +87,9 @@ export function CaseFileLettersTab({ letters, onAdd, onRemove }: CaseFileLetters
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'sent': return 'bg-green-500';
-      case 'approved': return 'bg-blue-500';
-      case 'review': return 'bg-yellow-500';
+      case 'sent': return 'bg-palette-green';
+      case 'approved': return 'bg-palette-blue';
+      case 'review': return 'bg-palette-yellow';
       case 'draft': return 'bg-gray-500';
       default: return 'bg-gray-500';
     }

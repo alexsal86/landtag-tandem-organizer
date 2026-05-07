@@ -99,7 +99,7 @@ export function TrackChangesToolbar({ isReviewMode, showAcceptReject }: TrackCha
   if (!isReviewMode && !showAcceptReject) return null;
   if (changeCount === 0 && isReviewMode) {
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-950/30 border-b text-xs text-blue-700 dark:text-blue-300">
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-palette-blue/10 border-b text-xs text-palette-blue">
         <Eye className="h-3.5 w-3.5" />
         <span>Prüfmodus aktiv – Änderungen werden nachverfolgt</span>
       </div>
@@ -107,10 +107,10 @@ export function TrackChangesToolbar({ isReviewMode, showAcceptReject }: TrackCha
   }
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-950/30 border-b text-xs">
-      <Eye className="h-3.5 w-3.5 text-blue-600" />
+    <div className="flex items-center gap-2 px-3 py-1.5 bg-palette-blue/10 border-b text-xs">
+      <Eye className="h-3.5 w-3.5 text-palette-blue" />
       {isReviewMode && (
-        <span className="text-blue-700 dark:text-blue-300">
+        <span className="text-palette-blue">
           Prüfmodus aktiv – Änderungen werden nachverfolgt
         </span>
       )}
@@ -123,11 +123,11 @@ export function TrackChangesToolbar({ isReviewMode, showAcceptReject }: TrackCha
         <>
           <div className="flex-1" />
           <Button variant="outline" size="sm" className="h-6 text-xs gap-1" onClick={acceptAll}>
-            <CheckCircle className="h-3 w-3 text-green-600" />
+            <CheckCircle className="h-3 w-3 text-palette-green" />
             Alle annehmen
           </Button>
           <Button variant="outline" size="sm" className="h-6 text-xs gap-1" onClick={rejectAll}>
-            <XCircle className="h-3 w-3 text-red-600" />
+            <XCircle className="h-3 w-3 text-palette-red" />
             Alle ablehnen
           </Button>
         </>

@@ -92,22 +92,22 @@ export const HeaderEditorTest: React.FC = () => {
   const getStatusIcon = (status: TestResult['status']) => {
     switch (status) {
       case 'success':
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
+        return <CheckCircle className="w-4 h-4 text-palette-green" />;
       case 'error':
-        return <XCircle className="w-4 h-4 text-red-500" />;
+        return <XCircle className="w-4 h-4 text-palette-red" />;
       default:
-        return <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />;
+        return <div className="w-4 h-4 border-2 border-border border-t-blue-500 rounded-full animate-spin" />;
     }
   };
 
   const getStatusBadge = (status: TestResult['status']) => {
     switch (status) {
       case 'success':
-        return <Badge className="bg-green-100 text-green-800">Erfolgreich</Badge>;
+        return <Badge className="bg-palette-green/20 text-palette-green">Erfolgreich</Badge>;
       case 'error':
-        return <Badge className="bg-red-100 text-red-800">Fehler</Badge>;
+        return <Badge className="bg-palette-red/20 text-palette-red">Fehler</Badge>;
       default:
-        return <Badge className="bg-yellow-100 text-yellow-800">Läuft...</Badge>;
+        return <Badge className="bg-palette-yellow/20 text-palette-yellow">Läuft...</Badge>;
     }
   };
 
@@ -115,7 +115,7 @@ export const HeaderEditorTest: React.FC = () => {
     return (
       <div className="p-6">
         <div className="mb-4">
-          <Badge className="bg-blue-100 text-blue-800 mb-2">TEST MODUS</Badge>
+          <Badge className="bg-palette-blue/20 text-palette-blue mb-2">TEST MODUS</Badge>
           <h1 className="text-2xl font-bold">Header Editor Test</h1>
         </div>
         {/* FabricHeaderEditor removed */}
@@ -172,13 +172,13 @@ export const HeaderEditorTest: React.FC = () => {
                 <div className="pt-2 border-t">
                   <div className="flex justify-between text-sm">
                     <span>Erfolgreich:</span>
-                    <span className="text-green-600">
+                    <span className="text-palette-green">
                       {testResults.filter(t => t.status === 'success').length} / {testResults.length}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Fehlgeschlagen:</span>
-                    <span className="text-red-600">
+                    <span className="text-palette-red">
                       {testResults.filter(t => t.status === 'error').length} / {testResults.length}
                     </span>
                   </div>
@@ -204,7 +204,7 @@ export const HeaderEditorTest: React.FC = () => {
               Header Editor öffnen
             </Button>
 
-            <div className="p-3 bg-gray-50 rounded-lg text-sm">
+            <div className="p-3 bg-muted/30 rounded-lg text-sm">
               <h4 className="font-medium mb-2">Test-Features:</h4>
               <ul className="space-y-1 text-muted-foreground">
                 <li>• Text hinzufügen und bearbeiten</li>
@@ -227,13 +227,13 @@ export const HeaderEditorTest: React.FC = () => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <h4 className="font-medium mb-2">HTML:</h4>
-              <pre className="text-xs bg-gray-100 p-2 rounded overflow-x-auto">
+              <pre className="text-xs bg-muted p-2 rounded overflow-x-auto">
                 {mockTemplate.letterhead_html}
               </pre>
             </div>
             <div>
               <h4 className="font-medium mb-2">CSS:</h4>
-              <pre className="text-xs bg-gray-100 p-2 rounded overflow-x-auto">
+              <pre className="text-xs bg-muted p-2 rounded overflow-x-auto">
                 {mockTemplate.letterhead_css}
               </pre>
             </div>

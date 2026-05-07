@@ -39,8 +39,8 @@ type CaseFileOption = {
 
 const STATUS_STYLES: Record<string, string> = {
   neu: "bg-sky-500 text-white",
-  in_klaerung: "bg-amber-500 text-black",
-  antwort_ausstehend: "bg-violet-500 text-white",
+  in_klaerung: "bg-palette-amber text-black",
+  antwort_ausstehend: "bg-palette-violet text-white",
   erledigt: "bg-emerald-600 text-white",
   archiviert: "bg-slate-400 text-white",
 };

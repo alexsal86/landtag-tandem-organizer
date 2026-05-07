@@ -204,7 +204,7 @@ export function ContactListTable({
                       aria-label={contact.is_favorite ? "Favorit entfernen" : "Als Favorit markieren"}
                       title={contact.is_favorite ? "Favorit entfernen" : "Als Favorit markieren"}
                     >
-                      <Star className={`h-3 w-3 ${contact.is_favorite ? 'text-yellow-500 fill-current' : 'text-muted-foreground/40 hover:text-yellow-500'}`} />
+                      <Star className={`h-3 w-3 ${contact.is_favorite ? 'text-palette-yellow fill-current' : 'text-muted-foreground/40 hover:text-palette-yellow'}`} />
                     </button>
                   </div>
                 </TableCell>

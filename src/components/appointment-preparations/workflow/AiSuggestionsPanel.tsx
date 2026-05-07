@@ -144,7 +144,7 @@ export function AiSuggestionsPanel({ preparation, appointmentTitle, phase, onUpd
           )}
           {(suggestions.sensitive ?? []).length > 0 && (
             <div className="space-y-1.5">
-              <p className="section-label text-amber-700">Sensible Punkte</p>
+              <p className="section-label text-palette-amber">Sensible Punkte</p>
               <ul className="text-xs text-muted-foreground list-disc pl-5 space-y-0.5">
                 {suggestions.sensitive!.map((s, i) => (
                   <li key={i}>{s}</li>

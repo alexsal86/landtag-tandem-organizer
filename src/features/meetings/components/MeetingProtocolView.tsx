@@ -264,12 +264,12 @@ export function MeetingProtocolView({ meetingId, onBack, isPostArchive }: Meetin
 
   const getSystemIcon = (systemType?: string | null) => {
     switch (systemType) {
-      case 'decisions': return <Scale className="h-4 w-4 text-violet-500" />;
-      case 'quick_notes': return <StickyNote className="h-4 w-4 text-amber-500" />;
-      case 'tasks': return <CheckSquare className="h-4 w-4 text-blue-500" />;
+      case 'decisions': return <Scale className="h-4 w-4 text-palette-violet" />;
+      case 'quick_notes': return <StickyNote className="h-4 w-4 text-palette-amber" />;
+      case 'tasks': return <CheckSquare className="h-4 w-4 text-palette-blue" />;
       case 'case_items': return <Briefcase className="h-4 w-4 text-emerald-500" />;
       case 'birthdays': return <span className="text-base">🎂</span>;
-      case 'upcoming_appointments': return <Calendar className="h-4 w-4 text-orange-500" />;
+      case 'upcoming_appointments': return <Calendar className="h-4 w-4 text-palette-orange" />;
       default: return null;
     }
   };
@@ -322,7 +322,7 @@ export function MeetingProtocolView({ meetingId, onBack, isPostArchive }: Meetin
             {isChild && <ChevronRight className="h-3 w-3 text-muted-foreground" />}
             {item.title}
             {item.is_completed && (
-              <Badge variant="outline" className="text-xs text-green-600 border-green-300">Erledigt</Badge>
+              <Badge variant="outline" className="text-xs text-palette-green border-palette-green/40">Erledigt</Badge>
             )}
           </h4>
 
@@ -446,12 +446,12 @@ export function MeetingProtocolView({ meetingId, onBack, isPostArchive }: Meetin
         {decisions.length > 0 && (
           <div className="space-y-4 pt-6 border-t mb-8">
             <h3 className="text-xl font-semibold flex items-center gap-2">
-              <Scale className="h-5 w-5 text-violet-500" />
+              <Scale className="h-5 w-5 text-palette-violet" />
               Entscheidungen
             </h3>
             <div className="space-y-3">
               {decisions.map(d => (
-                <div key={d.id} className="p-4 bg-violet-50 dark:bg-violet-900/20 rounded-lg border border-violet-200 dark:border-violet-800">
+                <div key={d.id} className="p-4 bg-palette-violet/10 rounded-lg border border-palette-violet/30">
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1">
                       <p className="font-medium">{d.title}</p>
@@ -467,7 +467,7 @@ export function MeetingProtocolView({ meetingId, onBack, isPostArchive }: Meetin
                   </div>
                   {d.result_text?.trim() && (
                     <div className="mt-2 p-2 bg-background/60 rounded border-l-4 border-violet-400">
-                      <p className="text-sm font-medium text-violet-700 dark:text-violet-300 mb-1">Ergebnis:</p>
+                      <p className="text-sm font-medium text-palette-violet mb-1">Ergebnis:</p>
                       <p className="text-sm whitespace-pre-wrap">{d.result_text}</p>
                     </div>
                   )}
@@ -481,16 +481,16 @@ export function MeetingProtocolView({ meetingId, onBack, isPostArchive }: Meetin
         {notesWithResults.length > 0 && (
           <div className="space-y-4 pt-6 border-t mb-8">
             <h3 className="text-xl font-semibold flex items-center gap-2">
-              <StickyNote className="h-5 w-5 text-amber-500" />
+              <StickyNote className="h-5 w-5 text-palette-amber" />
               Besprochene Notizen
             </h3>
             <div className="space-y-3">
               {notesWithResults.map(note => (
-                <div key={note.id} className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                <div key={note.id} className="p-4 bg-palette-amber/10 rounded-lg border border-palette-amber/30">
                   <p className="font-medium">{note.title || note.content.substring(0, 80)}</p>
                   {note.meeting_result?.trim() && (
                     <div className="mt-2 p-2 bg-background/60 rounded border-l-4 border-amber-400">
-                      <p className="text-sm font-medium text-amber-700 dark:text-amber-300 mb-1">Ergebnis:</p>
+                      <p className="text-sm font-medium text-palette-amber mb-1">Ergebnis:</p>
                       <p className="text-sm whitespace-pre-wrap">{note.meeting_result}</p>
                     </div>
                   )}
@@ -509,7 +509,7 @@ export function MeetingProtocolView({ meetingId, onBack, isPostArchive }: Meetin
             </h3>
             <div className="space-y-2">
               {starredAppointments.map(apt => (
-                <div key={apt.id} className="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                <div key={apt.id} className="flex items-center gap-3 p-3 bg-palette-amber/10 rounded-lg border border-palette-amber/30">
                   <Star className="h-4 w-4 fill-amber-400 text-amber-400 shrink-0" />
                   <span className="font-medium">{apt.title}</span>
                   <span className="text-sm text-muted-foreground">
@@ -525,14 +525,14 @@ export function MeetingProtocolView({ meetingId, onBack, isPostArchive }: Meetin
         {parentTasks.length > 0 && (
           <div className="space-y-4 pt-6 border-t mb-8">
             <h3 className="text-xl font-semibold flex items-center gap-2">
-              <CheckSquare className="h-5 w-5 text-blue-500" />
+              <CheckSquare className="h-5 w-5 text-palette-blue" />
               Erstellte Aufgaben ({createdTasks.length})
             </h3>
             <div className="space-y-2">
               {parentTasks.map(task => {
                 const childTasks = createdTasks.filter(t => t.parent_task_id === task.id);
                 return (
-                  <div key={task.id} className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div key={task.id} className="p-3 bg-palette-blue/10 rounded-lg border border-palette-blue/30">
                     <p className="font-medium text-sm">{task.title}</p>
                     {task.assigned_to && (
                       <p className="text-xs text-muted-foreground mt-1">

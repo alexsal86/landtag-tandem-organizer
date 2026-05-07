@@ -391,7 +391,7 @@ export function NoteDecisionCreator({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Vote className="h-5 w-5 text-purple-600" />
+            <Vote className="h-5 w-5 text-palette-purple" />
             Entscheidungsanfrage aus Notiz
           </DialogTitle>
           <DialogDescription>
@@ -521,7 +521,7 @@ export function NoteDecisionCreator({
                 onCheckedChange={(checked) => setPriority(checked === true)}
               />
               <Label htmlFor="priority" className="flex items-center gap-1 text-sm cursor-pointer">
-                <Star className="h-3.5 w-3.5 text-amber-500" />
+                <Star className="h-3.5 w-3.5 text-palette-amber" />
                 Als prioritär markieren
               </Label>
             </div>

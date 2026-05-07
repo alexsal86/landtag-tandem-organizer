@@ -39,10 +39,10 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 const priorityOptions = [
-  { value: "critical", label: "Kritisch", icon: AlertTriangle, color: "text-red-600", bg: "bg-red-100 dark:bg-red-950/50", border: "border-red-500" },
-  { value: "warning", label: "Warnung", icon: AlertCircle, color: "text-orange-600", bg: "bg-orange-100 dark:bg-orange-950/50", border: "border-orange-500" },
-  { value: "info", label: "Information", icon: Info, color: "text-blue-600", bg: "bg-blue-100 dark:bg-blue-950/50", border: "border-blue-500" },
-  { value: "success", label: "Erfolg", icon: CheckCircle, color: "text-green-600", bg: "bg-green-100 dark:bg-green-950/50", border: "border-green-500" },
+  { value: "critical", label: "Kritisch", icon: AlertTriangle, color: "text-palette-red", bg: "bg-palette-red/20", border: "border-palette-red" },
+  { value: "warning", label: "Warnung", icon: AlertCircle, color: "text-palette-orange", bg: "bg-palette-orange/20", border: "border-palette-orange" },
+  { value: "info", label: "Information", icon: Info, color: "text-palette-blue", bg: "bg-palette-blue/20", border: "border-palette-blue" },
+  { value: "success", label: "Erfolg", icon: CheckCircle, color: "text-palette-green", bg: "bg-palette-green/20", border: "border-palette-green" },
 ];
 
 interface CreateAnnouncementDialogProps {

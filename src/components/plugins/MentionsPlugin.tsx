@@ -56,7 +56,7 @@ class MentionTypeaheadOption extends MenuOption {
 }
 
 /**
- * Resolve a Tailwind badge_color class like 'bg-blue-500' to its hex value.
+ * Resolve a Tailwind badge_color class like 'bg-palette-blue' to its hex value.
  */
 export function resolveBadgeColor(badgeColor: string | null, userId: string): string {
   if (!badgeColor) {

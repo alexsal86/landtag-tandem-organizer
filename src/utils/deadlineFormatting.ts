@@ -39,6 +39,6 @@ export function getDeadlineContextLabel(type: DeadlineKind): string {
 export const DEADLINE_STATUS_BAR_CLASS: Record<DeadlineStatus, string> = {
   overdue: 'bg-destructive',
   today: 'bg-emerald-500',
-  soon: 'bg-amber-500',
+  soon: 'bg-palette-amber',
   later: 'bg-muted-foreground/30',
 };

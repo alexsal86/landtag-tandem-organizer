@@ -69,7 +69,7 @@ export const LetterEditorToolbar: React.FC<LetterEditorToolbarProps> = React.mem
             <Badge variant="outline" className="text-xs opacity-60">✓ {lastSaved.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</Badge>
           )}
           {hasUnsavedChanges && !saving && (
-            <Badge variant="outline" className="text-xs border-amber-200 text-amber-700">
+            <Badge variant="outline" className="text-xs border-palette-amber/30 text-palette-amber">
               <AlertTriangle className="h-3 w-3 mr-1" />Wird gespeichert...
             </Badge>
           )}
@@ -146,7 +146,7 @@ export const LetterEditorToolbar: React.FC<LetterEditorToolbarProps> = React.mem
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="text-amber-500 cursor-help text-xs">⚠</span>
+                            <span className="text-palette-amber cursor-help text-xs">⚠</span>
                           </TooltipTrigger>
                           <TooltipContent side="top" className="max-w-[240px] text-xs">
                             Die Adresse wurde beim Erstellen des Briefs kopiert. Wenn sich die Kontaktdaten seitdem geändert haben, ist diese Adresse möglicherweise veraltet.

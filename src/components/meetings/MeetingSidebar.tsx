@@ -190,7 +190,7 @@ export function MeetingSidebar({
                 {/* Start/Stop Button */}
                 <div className="mt-3 pt-2 border-t">
                   {activeMeetingId === meeting.id ? (
-                    <Button size="sm" variant="default" onClick={(e) => { e.stopPropagation(); onStopMeeting(); }} className="w-full h-7 text-xs bg-green-600 hover:bg-green-700">
+                    <Button size="sm" variant="default" onClick={(e) => { e.stopPropagation(); onStopMeeting(); }} className="w-full h-7 text-xs bg-palette-green hover:bg-palette-green">
                       <CheckCircle className="h-3 w-3 mr-1" /> Laufend
                     </Button>
                   ) : (

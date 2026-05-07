@@ -92,7 +92,7 @@ interface AssignedItemsSectionProps {
 
 const priorityBorderColors: Record<string, string> = {
   high: 'border-l-destructive',
-  medium: 'border-l-orange-500',
+  medium: 'border-l-palette-orange',
   low: 'border-l-muted-foreground/30',
 };
 
@@ -151,9 +151,9 @@ function ItemCard({
   const overdue = isOverdue(dueDate);
 
   const typeLabels: Record<string, { label: string; className: string }> = {
-    task: { label: 'Aufgabe', className: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800' },
-    subtask: { label: 'Unteraufgabe', className: 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800' },
-    todo: { label: 'ToDo', className: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800' },
+    task: { label: 'Aufgabe', className: 'bg-palette-blue/10 text-palette-blue border-palette-blue/30' },
+    subtask: { label: 'Unteraufgabe', className: 'bg-palette-green/10 text-palette-green border-palette-green/30' },
+    todo: { label: 'ToDo', className: 'bg-palette-purple/10 text-palette-purple border-palette-purple/30' },
   };
 
   const typeInfo = typeLabels[type];
@@ -181,7 +181,7 @@ function ItemCard({
                   {title}
                 </h3>
                 {isCompleted && (
-                  <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-palette-green flex-shrink-0" />
                 )}
               </div>
               {parentTitle && (
@@ -222,7 +222,7 @@ function ItemCard({
                   className={cn(
                     "text-xs",
                     priority === 'high' && "border-destructive text-destructive",
-                    priority === 'medium' && "border-orange-500 text-orange-600"
+                    priority === 'medium' && "border-palette-orange text-palette-orange"
                   )}
                 >
                   {priority === 'high' ? 'Hoch' : 'Mittel'}

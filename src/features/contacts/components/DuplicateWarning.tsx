@@ -24,8 +24,8 @@ export function DuplicateWarning({
 
   const getConfidenceBadgeColor = (confidence: 'high' | 'medium') => {
     return confidence === 'high' 
-      ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-      : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
+      ? 'bg-palette-red/20 text-palette-red'
+      : 'bg-palette-yellow/20 text-palette-yellow';
   };
 
   const getMatchIcon = (matchType: 'email' | 'name_phone' | 'name_organization') => {

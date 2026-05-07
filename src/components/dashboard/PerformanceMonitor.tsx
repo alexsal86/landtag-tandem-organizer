@@ -194,9 +194,9 @@ export function PerformanceMonitor({ widgets, onPerformanceAlert }: PerformanceM
   };
 
   const getScoreColor = (score: number): string => {
-    if (score >= 80) return 'text-green-500';
-    if (score >= 60) return 'text-yellow-500';
-    return 'text-red-500';
+    if (score >= 80) return 'text-palette-green';
+    if (score >= 60) return 'text-palette-yellow';
+    return 'text-palette-red';
   };
 
   const optimizeDashboard = () => {
@@ -308,7 +308,7 @@ export function PerformanceMonitor({ widgets, onPerformanceAlert }: PerformanceM
                   <Cpu className="h-4 w-4 text-muted-foreground" />
                   <span>Memory Usage</span>
                 </div>
-                <span className={metrics.memoryUsage > 70 ? 'text-yellow-500' : 'text-muted-foreground'}>
+                <span className={metrics.memoryUsage > 70 ? 'text-palette-yellow' : 'text-muted-foreground'}>
                   {metrics.memoryUsage}%
                 </span>
               </div>
@@ -318,7 +318,7 @@ export function PerformanceMonitor({ widgets, onPerformanceAlert }: PerformanceM
                   <Zap className="h-4 w-4 text-muted-foreground" />
                   <span>Render Time</span>
                 </div>
-                <span className={metrics.renderTime > 50 ? 'text-yellow-500' : 'text-muted-foreground'}>
+                <span className={metrics.renderTime > 50 ? 'text-palette-yellow' : 'text-muted-foreground'}>
                   {metrics.renderTime.toFixed(1)}ms
                 </span>
               </div>
@@ -355,9 +355,9 @@ export function PerformanceMonitor({ widgets, onPerformanceAlert }: PerformanceM
                       className="flex items-start gap-2 p-2 bg-accent/30 rounded text-xs"
                     >
                       <AlertTriangle className={`h-3 w-3 mt-0.5 ${
-                        alert.type === 'error' ? 'text-red-500' :
-                        alert.type === 'warning' ? 'text-yellow-500' :
-                        'text-blue-500'
+                        alert.type === 'error' ? 'text-palette-red' :
+                        alert.type === 'warning' ? 'text-palette-yellow' :
+                        'text-palette-blue'
                       }`} />
                       <span className="text-muted-foreground flex-1">
                         {alert.message}

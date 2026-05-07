@@ -56,8 +56,8 @@ export function AdminCorrectionsTab({ corrections, onAddCorrection }: AdminCorre
                       <Badge
                         className={
                           corr.correction_minutes >= 0
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
+                            ? "bg-palette-green/20 text-palette-green"
+                            : "bg-palette-red/20 text-palette-red"
                         }
                       >
                         {corr.correction_minutes >= 0 ? "+" : ""}

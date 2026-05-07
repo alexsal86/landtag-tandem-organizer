@@ -93,7 +93,7 @@ export function ProtocolAnalysisStatus({
         <CardContent className="pt-0">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-blue-600" />
+              <FileText className="h-4 w-4 text-palette-blue" />
               <div>
                 <div className="text-lg font-semibold">{stats.agendaItems}</div>
                 <div className="text-xs text-muted-foreground">Tagesordnung</div>
@@ -101,7 +101,7 @@ export function ProtocolAnalysisStatus({
             </div>
             
             <div className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4 text-green-600" />
+              <MessageSquare className="h-4 w-4 text-palette-green" />
               <div>
                 <div className="text-lg font-semibold">{stats.speeches}</div>
                 <div className="text-xs text-muted-foreground">Wortmeldungen</div>
@@ -109,7 +109,7 @@ export function ProtocolAnalysisStatus({
             </div>
             
             <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-purple-600" />
+              <Users className="h-4 w-4 text-palette-purple" />
               <div>
                 <div className="text-lg font-semibold">{stats.speakers}</div>
                 <div className="text-xs text-muted-foreground">Redner</div>
@@ -117,7 +117,7 @@ export function ProtocolAnalysisStatus({
             </div>
             
             <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-orange-600" />
+              <Clock className="h-4 w-4 text-palette-orange" />
               <div>
                 <div className="text-lg font-semibold">{stats.sessions}</div>
                 <div className="text-xs text-muted-foreground">Zeitmarken</div>
@@ -134,7 +134,7 @@ export function ProtocolAnalysisStatus({
 
       {status === 'error' && error && (
         <CardContent className="pt-0">
-          <div className="text-sm text-red-600 bg-red-50 p-3 rounded">
+          <div className="text-sm text-palette-red bg-palette-red/10 p-3 rounded">
             {error}
           </div>
         </CardContent>

@@ -39,15 +39,15 @@ export const getEventTypeColor = (type: CalendarEvent["type"]) => {
     case "deadline":
       return "bg-destructive text-destructive-foreground";
     case "blocked":
-      return "bg-orange-500 text-white";
+      return "bg-palette-orange text-white";
     case "vacation":
-      return "bg-green-500 text-white";
+      return "bg-palette-green text-white";
     case "vacation_request":
-      return "bg-yellow-500 text-black";
+      return "bg-palette-yellow text-black";
     case "veranstaltung":
-      return "bg-purple-600 text-white";
+      return "bg-palette-purple text-white";
     case "birthday":
-      return "bg-pink-500 text-white";
+      return "bg-palette-pink text-white";
     default:
       return "bg-muted text-muted-foreground";
   }

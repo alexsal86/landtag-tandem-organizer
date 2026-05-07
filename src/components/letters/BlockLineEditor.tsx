@@ -391,7 +391,7 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
                             </Select>
                             <Select onValueChange={(v) => insertVariable(line.id, v)}>
                               <SelectTrigger className="h-6 w-8 px-1">
-                                <Zap className="h-3 w-3 text-amber-500" />
+                                <Zap className="h-3 w-3 text-palette-amber" />
                               </SelectTrigger>
                               <SelectContent>
                                 {variables.map((v) => (
@@ -454,7 +454,7 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
                             </Select>
                             <Select onValueChange={(v) => insertVariable(line.id, v)}>
                               <SelectTrigger className="h-6 w-8 px-1">
-                                <Zap className="h-3 w-3 text-amber-500" />
+                                <Zap className="h-3 w-3 text-palette-amber" />
                               </SelectTrigger>
                               <SelectContent>
                                 {variables.map((v) => (
@@ -557,7 +557,7 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
               return (
                 <div key={line.id} className={`flex items-center gap-1 ${line.valueBold ? 'font-bold' : ''}`} style={{ fontSize: `${line.fontSize || 9}pt`, fontFamily: getBlockLineFontStack(line.fontFamily), color: line.color || undefined }}>
                   <span>{previewVal || '\u00A0'}</span>
-                  {isVar && <Zap className="h-2.5 w-2.5 text-amber-500 shrink-0" />}
+                  {isVar && <Zap className="h-2.5 w-2.5 text-palette-amber shrink-0" />}
                 </div>
               );
             }
@@ -566,7 +566,7 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
               <div key={line.id} className="flex items-center gap-1" style={{ fontSize: `${line.fontSize || 9}pt`, fontFamily: getBlockLineFontStack(line.fontFamily), color: line.color || undefined }}>
                 <span className={line.labelBold !== false ? 'font-bold' : ''}>{line.label || ''}</span>
                 <span className={line.valueBold ? 'font-bold' : ''}>{previewVal || ''}</span>
-                {isVar && <Zap className="h-2.5 w-2.5 text-amber-500 shrink-0" />}
+                {isVar && <Zap className="h-2.5 w-2.5 text-palette-amber shrink-0" />}
               </div>
             );
           })}

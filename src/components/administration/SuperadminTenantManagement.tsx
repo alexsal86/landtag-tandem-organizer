@@ -733,15 +733,15 @@ export function SuperadminTenantManagement(): React.JSX.Element {
               <CardContent className="space-y-4">
                 {createdUserPassword ? (
                   <div className="space-y-4">
-                    <div className="p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
-                      <p className="text-green-800 dark:text-green-200 font-medium mb-2">
+                    <div className="p-4 bg-palette-green/10 border border-palette-green/30 rounded-lg">
+                      <p className="text-palette-green font-medium mb-2">
                         ✓ Benutzer erfolgreich erstellt!
                       </p>
-                      <p className="text-sm text-green-700 dark:text-green-300 mb-3">
+                      <p className="text-sm text-palette-green mb-3">
                         Bitte notieren Sie das generierte Passwort:
                       </p>
                       <div className="flex items-center gap-2">
-                        <code className="flex-1 p-2 bg-white dark:bg-gray-900 rounded border font-mono">
+                        <code className="flex-1 p-2 bg-white rounded border font-mono">
                           {createdUserPassword}
                         </code>
                         <Button variant="outline" size="sm" onClick={copyPassword}>

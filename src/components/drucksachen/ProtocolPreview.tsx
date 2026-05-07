@@ -97,21 +97,21 @@ export function ProtocolPreview({ data, onViewDetails }: ProtocolPreviewProps) {
       <CardContent className="space-y-4">
         {/* Summary Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center p-3 bg-blue-50 rounded-lg">
-            <div className="text-2xl font-bold text-blue-600">{data.agendaItems.length}</div>
-            <div className="text-xs text-blue-700">Tagesordnungspunkte</div>
+          <div className="text-center p-3 bg-palette-blue/10 rounded-lg">
+            <div className="text-2xl font-bold text-palette-blue">{data.agendaItems.length}</div>
+            <div className="text-xs text-palette-blue">Tagesordnungspunkte</div>
           </div>
-          <div className="text-center p-3 bg-green-50 rounded-lg">
-            <div className="text-2xl font-bold text-green-600">{data.speeches.length}</div>
-            <div className="text-xs text-green-700">Wortmeldungen</div>
+          <div className="text-center p-3 bg-palette-green/10 rounded-lg">
+            <div className="text-2xl font-bold text-palette-green">{data.speeches.length}</div>
+            <div className="text-xs text-palette-green">Wortmeldungen</div>
           </div>
-          <div className="text-center p-3 bg-purple-50 rounded-lg">
-            <div className="text-2xl font-bold text-purple-600">{uniqueSpeakers.length}</div>
-            <div className="text-xs text-purple-700">Redner</div>
+          <div className="text-center p-3 bg-palette-purple/10 rounded-lg">
+            <div className="text-2xl font-bold text-palette-purple">{uniqueSpeakers.length}</div>
+            <div className="text-xs text-palette-purple">Redner</div>
           </div>
-          <div className="text-center p-3 bg-orange-50 rounded-lg">
-            <div className="text-2xl font-bold text-orange-600">{data.sessions.length}</div>
-            <div className="text-xs text-orange-700">Zeitmarken</div>
+          <div className="text-center p-3 bg-palette-orange/10 rounded-lg">
+            <div className="text-2xl font-bold text-palette-orange">{data.sessions.length}</div>
+            <div className="text-xs text-palette-orange">Zeitmarken</div>
           </div>
         </div>
 

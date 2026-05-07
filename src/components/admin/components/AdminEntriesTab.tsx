@@ -108,7 +108,7 @@ export function AdminEntriesTab({
                             <TooltipTrigger asChild>
                               <Badge
                                 variant="outline"
-                                className="bg-blue-50 text-blue-700 border-blue-200"
+                                className="bg-palette-blue/10 text-palette-blue border-palette-blue/30"
                               >
                                 ✏️ Bearbeitet
                               </Badge>

@@ -76,8 +76,8 @@ export function CaseFileTasksTab({ tasks, onAdd, onRemove }: CaseFileTasksTabPro
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return 'bg-green-500';
-      case 'in_progress': return 'bg-blue-500';
+      case 'completed': return 'bg-palette-green';
+      case 'in_progress': return 'bg-palette-blue';
       case 'todo': return 'bg-gray-500';
       default: return 'bg-gray-500';
     }
@@ -125,7 +125,7 @@ export function CaseFileTasksTab({ tasks, onAdd, onRemove }: CaseFileTasksTabPro
                 <div className="flex items-center gap-3">
                   <CheckSquare className={cn(
                     "h-5 w-5",
-                    item.task?.status === 'completed' ? "text-green-500" : "text-muted-foreground"
+                    item.task?.status === 'completed' ? "text-palette-green" : "text-muted-foreground"
                   )} />
                   <div>
                     <div className={cn(
