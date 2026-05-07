@@ -29,7 +29,7 @@ export const useGlobalNoteSharing = () => {
     try {
       const { data, error } = await supabase
         .from("quick_note_global_shares")
-        .select("*")
+        .select("id, user_id, shared_with_user_id, permission_type, created_at")
         .eq("user_id", user.id);
 
       if (error) throw error;
