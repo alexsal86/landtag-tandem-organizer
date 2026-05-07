@@ -123,7 +123,6 @@ export function useDeleteFact() {
 export function useIncrementFactUsage() {
   return useMutation({
     mutationFn: async (factId: string) => {
-      // @ts-expect-error rpc typing for newly added function not yet regenerated
       const { error } = await supabase.rpc("increment_fact_usage", { _fact_id: factId });
       if (error) throw error;
     },
