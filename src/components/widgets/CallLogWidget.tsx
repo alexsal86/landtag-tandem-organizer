@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { debugConsole } from '@/utils/debugConsole';
+import { EmptyState, LoadingState } from '@/components/ui-patterns';
 
 interface CallLog {
   id: string;
@@ -774,13 +775,15 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
           </div>
           
           {loading ? (
-            <div className="text-center text-sm text-muted-foreground py-4">
-              Laden...
-            </div>
+            <LoadingState variant="list" rows={3} />
           ) : callLogs.length === 0 ? (
-            <div className="text-center text-sm text-muted-foreground py-4">
-              Noch keine Anrufe protokolliert
-            </div>
+            <EmptyState
+              icon={Phone}
+              size="sm"
+              title="Noch keine Anrufe"
+              description="Protokolliere deinen ersten Anruf, um den Verlauf zu sehen."
+              action={{ label: 'Anruf protokollieren', icon: Plus, onClick: () => setShowAddForm(true) }}
+            />
           ) : (
             currentCallLogs.map(log => (
               <div
