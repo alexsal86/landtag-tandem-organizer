@@ -1,85 +1,80 @@
-## Ziel
+# Refactor: 10 große Dateien in Sub-Module splitten
 
-Strukturierte Fakten werden zu einer **wiederverwendbaren Bibliothek**, in jeder Vorbereitung als **Live-Referenz mit optionalem Override** einsetzbar. Pflege primär in einer eigenen Fakten-Tabelle, optional verknüpft mit einem Wissens-Dossier oder Kontakt.
+Ziel: Alle 10 Dateien > 1000 Zeilen werden in fokussierte Sub-Module aufgeteilt. Pro Datei gilt: jeder neue Teil ≤ ~600 Zeilen, klare Trennung nach **types / constants / hooks / sub-components**. Public API (Default-/Named-Export) bleibt gleich, sodass keine Imports an anderen Stellen angepasst werden müssen.
 
-## Datenmodell (neue Tabelle)
+## Vorgehen pro Datei
 
-```sql
-create table public.facts (
-  id uuid primary key default gen_random_uuid(),
-  tenant_id uuid not null,
-  text text not null,
-  source text,
-  tags text[] default '{}',
-  -- optionale Verknüpfungen
-  dossier_id uuid references public.dossiers(id) on delete set null,
-  contact_id uuid references public.contacts(id) on delete set null,
-  -- Lifecycle
-  is_archived boolean default false,
-  valid_until date,           -- z. B. „Zahl gültig bis"
-  usage_count int default 0,  -- wie oft schon eingebunden
-  last_used_at timestamptz,
-  created_by uuid not null,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-```
+### 1. `components/administration/AutomationRuleWizard.tsx` (1481)
+Enthält bereits viele freistehende Konstanten, Typen und Validatoren — leicht extrahierbar.
+- `AutomationRuleWizard.constants.ts` → `MODULE_OPTIONS`, `CONDITION_OPERATORS`, `ACTION_TYPES`, `MODULE_TO_TABLE`, `STATUS_TABLE_OPTIONS`, `TASK_PRIORITY_OPTIONS`, `TRIGGER_TYPES`, `RULE_TEMPLATES`, `DEFAULT_*`.
+- `AutomationRuleWizard.types.ts` → `FieldType`, `FieldSpec`, `ConditionItem`, `ConditionGroup`, `ActionItem`, `WizardForm`.
+- `AutomationRuleWizard.logic.ts` → `validateConditionGroup`, `countConditions`, `evaluateCondition`, `evaluateConditionGroup`, `collectSemanticIssues`, `sanitizeTriggerValue`, `isIsoDate`, `toComparableNumber`.
+- Hauptdatei behält nur die Wizard-Komponente + `useState`/Steps.
 
-RLS: tenant-basiert (analog zu `dossiers`). Indizes auf `tenant_id`, `dossier_id`, `contact_id`, GIN auf `tags` und Full-Text auf `text` für schnelle Suche.
+### 2. `components/navigation/AppNavigation.tsx` (1480)
+Mehrere Sidebar-Panels in einer Datei.
+- `AppNavigation.types.ts` → `ActivePanel`, `NotificationFilter`, `QuickAccessAddCategory`, `UpcomingAppointmentItem`, `NavigationProps`.
+- `panels/HomePanel.tsx`, `panels/NotificationsPanel.tsx`, `panels/CasefilesPanel.tsx`, `panels/AppointmentsPanel.tsx` (je ein Panel-Render-Block).
+- `useAppointmentsForPanel.ts` falls Datenladen lokal vorhanden.
+- Haupt-`AppNavigation.tsx` orchestriert nur noch Layout + Panel-Switch.
 
-`structured_facts` in `preparation_data` bleibt — aber jeder Eintrag bekommt zusätzlich:
-```ts
-type StructuredFact = {
-  id: string;
-  fact_id?: string;        // ← Referenz auf public.facts (NEU)
-  text: string;            // bei fact_id leer = Live-Wert; gefüllt = lokaler Override
-  source?: string;         // dito (Override-Quelle)
-  link_type: 'general' | 'partner' | 'topic';
-  link_id?: string;
-};
-```
+### 3. `components/my-work/MyWorkCasesWorkspace.tsx` (1321)
+- `MyWorkCasesWorkspace.types.ts` → `TimelineEntry` und Hilfs-Typen.
+- `useMyWorkCases.ts` → Datenladen/Filter (Query-Hook + Memos).
+- `MyWorkCasesList.tsx`, `MyWorkCaseDetail.tsx`, `MyWorkCaseTimeline.tsx` als Sub-Komponenten der Master-Detail-Ansicht.
 
-Beim Rendern: ist `fact_id` gesetzt → Library-Wert anzeigen, sofern `text`/`source` leer; sonst lokaler Override mit dezentem „bearbeitet"-Badge und „Auf Original zurücksetzen"-Aktion.
+### 4. `components/meetings/FocusModeView.tsx` (1238)
+- `FocusModeView.types.ts` → `AgendaItem`, `Meeting`, `Profile`, `NavigableItem`, `SystemSubItemResultEntry`, `FocusModeViewProps`.
+- `FocusModeView.utils.ts` → `formatMeetingTime` u. ä.
+- `FocusAgendaList.tsx`, `FocusItemDetail.tsx`, `FocusKeyboardShortcuts.ts` (Tastatur-Bindings als Hook).
 
-## UI
+### 5. `components/administration/SuperadminTenantManagement.tsx` (1174)
+- `SuperadminTenantManagement.constants.ts` → `BUNDESLAENDER`, `ROLE_OPTIONS`.
+- `SuperadminTenantManagement.types.ts` → `TenantWithStats`, `UserWithTenants`.
+- `TenantList.tsx`, `TenantUsersDialog.tsx`, `CreateTenantDialog.tsx` als drei Sub-Komponenten.
 
-**1. Neue Seite `/wissen/fakten`** (Eintrag in der bestehenden Wissen-Sidebar, neben Dossiers):
-- Suchleiste (volltext + Tag-Filter)
-- Tabelle: Text · Quelle · Tags · Dossier/Kontakt · zuletzt verwendet · Aktionen
-- „+ Neuer Fakt" Inline-Editor
-- Bulk-Aktionen: Tag setzen, archivieren
+### 6. `components/task-decisions/TaskDecisionDetails.tsx` (1138)
+- `TaskDecisionDetails.types.ts` → `DecisionDetailsState`, `ResponseThread`, `Participant`, `TaskDecisionDetailsProps`.
+- `TaskDecisionResponses.tsx` (Antworten-Liste/Threads), `TaskDecisionParticipants.tsx`, `TaskDecisionComments.tsx`.
+- Konstante `DELETED_COMMENT_TEXT` + Sub-Component-Helfer in `TaskDecisionDetails.constants.ts`.
 
-**2. In der Vorbereitung — Phase „Fakten":**
-Aktueller `StructuredFactsPanel` bekommt einen zweiten Modus-Schalter `[Aus Bibliothek] [Eigener Fakt]`:
-- **Aus Bibliothek**: Combobox mit Suche (Tags + Text), Vorschläge oben (Fakten aus verknüpftem Dossier oder zu einem der Gesprächspartner-Kontakte), per Klick übernommen → erzeugt Eintrag mit `fact_id`.
-- **Eigener Fakt**: wie heute, freier Inline-Eintrag. Zusätzlicher Button „📚 In Bibliothek übernehmen" → legt Fact-Datensatz an und füllt `fact_id` nach.
+### 7. `contexts/matrix/MatrixClientProvider.tsx` (1063)
+Schwierigster Kandidat: ein großer Provider mit vielen privaten Helfern.
+- `matrixClient/createClient.ts` → Initialisierung & Login-Helfer.
+- `matrixClient/syncHandlers.ts` → Event-Listener-Setup.
+- `matrixClient/notificationBridge.ts` → Push-/Toast-Bridge.
+- Provider-Datei orchestriert nur noch State + Effekte.
+- `useMatrixClient`-Export bleibt unverändert.
 
-Bestehende Zuordnung zu Partner/Thema und Filter-Chips bleiben unverändert.
+### 8. `features/employees/components/EmployeeMeetingProtocol.tsx` (1040)
+Schon teilweise modular: enthält intern `RatingScale`, `StatusProgress`, `SaveIndicator`, `ProtocolField`.
+- Diese vier in eigene Dateien unter `EmployeeMeetingProtocol/` extrahieren.
+- `EmployeeMeetingProtocol.utils.ts` → `extractPlainTextFromHtml`, Konstante `ACTION_ITEM_MIN_LENGTH`.
 
-**3. In Dossier-Detailansicht:**
-Neue Karte „# FAKTEN (n)" zwischen den vorhandenen Sektionen — listet alle `facts.dossier_id = dossier.id`, inline-editierbar, „in aktueller Vorbereitung verwenden" wenn der Nutzer von einer Vorbereitung kommt (Deep-Link).
+### 9. `components/letters/DIN5008LetterLayout.tsx` (1016)
+- `DIN5008LetterLayout.types.ts` → `DIN5008LetterLayoutProps` und ggf. interne Block-Typen.
+- `din5008/AddressBlock.tsx`, `din5008/SubjectBlock.tsx`, `din5008/BodyBlock.tsx`, `din5008/SignatureBlock.tsx`, `din5008/AttachmentsBlock.tsx`.
+- Hauptdatei platziert die Blöcke nur im 210×297mm-Canvas.
 
-**4. In Kontakt-Detailansicht:**
-Analoge Karte „Fakten zu diesem Kontakt".
+### 10. `hooks/useQuickNotes.ts` (1001)
+- `quickNotes/constants.ts` → `noteColors`, Default-Werte.
+- `quickNotes/utils.ts` → `stripHtml`, `toEditorHtml`, `getCardBackground`, `hasInactiveMeetingLink`, `normalizeMeetingLink`.
+- `quickNotes/types.ts` → `GroupedNotes` etc.
+- Haupthook behält Query/Mutation-Logik.
 
-## Hooks & Helpers
+## Allgemeine Regeln
 
-- `useFacts({ search, tags, dossierId, contactId })` — TanStack-Query mit `staleTime: 60s`.
-- `useFactSuggestions(preparation)` — kombiniert Fakten mit `dossier_id` aus `LinkedItemsPanel`-Dossiers + Fakten zu allen Partner-`contact_id`.
-- `useUpsertFact`, `useArchiveFact`, `useIncrementFactUsage` (RPC für `usage_count`/`last_used_at` atomar).
-
-## Edge-Cases
-
-- Wird ein Library-Fakt gelöscht/archiviert → in der Vorbereitung als „Quell-Fakt nicht mehr verfügbar" markiert, lokaler Cache-Text bleibt lesbar.
-- Override entfernen → `text`/`source` aus `structured_facts` löschen, nur `fact_id` bleibt.
-- Migration alter `structured_facts` ohne `fact_id` bleibt voll funktional (optionales Feld).
+- Public API (`export`-Namen der Hauptdateien) bleibt 1:1 erhalten — keine Konsumenten müssen geändert werden.
+- TypeScript-Strict beibehalten; wo `as any` lauert, durch `@ts-expect-error` mit Begründung ersetzen.
+- Nach jedem Split: `tsc`-Prüfung wird vom Harness automatisch ausgeführt; bei Fehlern direkt korrigieren.
+- Keine Funktionsänderung, kein Verhaltens-Refactor — rein strukturell.
 
 ## Out of Scope
 
-- Keine KI-Vorschläge zur Faktenextraktion (kann später an `generate-preparation-suggestions` Edge-Function angedockt werden).
-- Kein Versionsverlauf (kann später analog `dossier_position_versions` ergänzt werden).
-- Keine Druck-/PDF-Export-Anpassung.
+- `src/integrations/supabase/types.ts` (auto-generiert).
+- Tests/Story-Files (sofern vorhanden) bleiben unverändert, sofern Imports stabil sind.
+- Keine Performance- oder Style-Optimierungen in diesem Schritt.
 
 ## Risiko
 
-Mittel — neue Tabelle plus RLS, plus zwei neue UI-Einstiegspunkte. Vorbereitungs-UI bleibt rückwärtskompatibel; Library-Funktion ist additiv.
+Mittel. Hauptrisiken: zirkuläre Imports zwischen extrahierten Sub-Dateien (Lösung: Typen/Konstanten in dedizierte Dateien ohne React-Imports) und Matrix-Provider-Refactor (komplexester Teil; konservativ extrahieren, Effekte beibehalten).

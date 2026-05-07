@@ -23,37 +23,12 @@ import { TenantProvisioningWizard } from "./tenant-wizard/TenantProvisioningWiza
 import { TenantHealthBadges } from "./tenant-wizard/TenantHealthBadges";
 import { CloneDataDrawer } from "./tenant-wizard/CloneDataDrawer";
 
-const BUNDESLAENDER = [
-  "Baden-Württemberg", "Bayern", "Berlin", "Brandenburg", "Bremen",
-  "Hamburg", "Hessen", "Mecklenburg-Vorpommern", "Niedersachsen",
-  "Nordrhein-Westfalen", "Rheinland-Pfalz", "Saarland", "Sachsen",
-  "Sachsen-Anhalt", "Schleswig-Holstein", "Thüringen",
-];
-
-interface TenantWithStats {
-  id: string;
-  name: string;
-  description: string | null;
-  is_active: boolean;
-  created_at: string;
-  is_template?: boolean;
-}
-
-interface UserWithTenants {
-  id: string;
-  email: string;
-  display_name: string;
-  avatar_url?: string;
-  created_at: string;
-  tenants: Array<{ id: string; name: string; role: string }>;
-}
-
-const ROLE_OPTIONS = [
-  { value: "abgeordneter", label: "Abgeordneter (Admin)" },
-  { value: "bueroleitung", label: "Büroleitung" },
-  { value: "mitarbeiter", label: "Mitarbeiter" },
-  { value: "praktikant", label: "Praktikant" },
-];
+import {
+  BUNDESLAENDER,
+  ROLE_OPTIONS,
+  type TenantWithStats,
+  type UserWithTenants,
+} from "./superadminTenant/constants";
 
 export function SuperadminTenantManagement(): React.JSX.Element {
   const { user } = useAuth();

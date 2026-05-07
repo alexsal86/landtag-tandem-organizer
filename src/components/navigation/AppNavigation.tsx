@@ -80,24 +80,13 @@ import { buildDeepLinkPath } from "@/utils/notificationDeepLinks";
 // Re-export for backward compatibility
 export { getNavigationGroups };
 
-type ActivePanel = 'home' | 'notifications' | 'casefiles' | 'appointments';
-type NotificationFilter = 'unread' | 'all';
-type QuickAccessAddCategory = 'pages' | 'case-items' | 'documents' | 'event-plannings';
-
-interface NavigationProps {
-  activeSection: string;
-  onSectionChange: (section: string) => void;
-  isMobile?: boolean;
-}
-
-type UpcomingAppointmentItem = {
-  id: string;
-  title: string;
-  start_time: string;
-  end_time: string | null;
-  location: string | null;
-  is_all_day: boolean;
-};
+import type {
+  ActivePanel,
+  NotificationFilter,
+  QuickAccessAddCategory,
+  NavigationProps,
+  UpcomingAppointmentItem,
+} from "./appNavigation/types";
 
 // Available pages for quick access
 const availableQuickPages: QuickAccessPage[] = [
