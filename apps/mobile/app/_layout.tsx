@@ -31,6 +31,7 @@ export default function RootLayout(): React.JSX.Element {
     <SafeAreaProvider>
       <AuthProvider>
         <ToastProvider>
+          <PushRegistrar />
           <Stack screenOptions={{ headerShown: false }} />
         </ToastProvider>
       </AuthProvider>
