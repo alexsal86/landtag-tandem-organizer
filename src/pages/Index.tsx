@@ -236,6 +236,11 @@ const Index = (): React.JSX.Element => {
         return withSectionBoundary('Vorgänge', <CaseFilesView />);
       case "dossiers":
         return withSectionBoundary('Wissen', <DossiersMainView />);
+      case "wissen":
+        if (subId === "fakten") {
+          return withSectionBoundary('Fakten-Bibliothek', <FactsLibraryView />);
+        }
+        return withSectionBoundary('Wissen', <DossiersMainView />);
       case "chat":
         return withSectionBoundary('Chat', <MatrixChatView />);
       case "daten":
