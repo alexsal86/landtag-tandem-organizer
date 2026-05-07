@@ -437,6 +437,8 @@ export default function Administration(): React.JSX.Element | null {
       switch (activeSubSection) {
         case "rules":
           return <div><h3 className="text-lg font-medium mb-4">No-Code Regel-Builder</h3><AutomationRulesManager /></div>;
+        case "engine":
+          return <WorkflowEngineManager />;
         case "rss-sources":
           return <div><h3 className="text-lg font-medium mb-4">RSS-Quellen verwalten</h3><RSSSourceManager /></div>;
         case "rss-settings":
