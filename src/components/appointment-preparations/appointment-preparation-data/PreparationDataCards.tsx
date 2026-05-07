@@ -31,6 +31,11 @@ interface PreparationDataCardsProps {
   onRemoveTalkingPointItem: (idx: number) => void;
   onTalkingPointKeyDown: (e: KeyboardEvent<HTMLInputElement>, idx: number) => void;
   onReorderTalkingPoints?: (fromIdx: number, toIdx: number) => void;
+  showFacts?: boolean;
+  showTalkingPoints?: boolean;
+  showQa?: boolean;
+  showInhalteHeaderCards?: boolean;
+  showInhalteRahmen?: boolean;
 }
 
 function PreparationSection({
