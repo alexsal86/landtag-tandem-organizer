@@ -164,7 +164,7 @@ export function PermissionsManager() {
           <TabsList>
             <TabsTrigger value="features">Module</TabsTrigger>
             <TabsTrigger value="actions">Aktionen</TabsTrigger>
-            <TabsTrigger value="fields" disabled>Felder (folgt)</TabsTrigger>
+            <TabsTrigger value="fields">Felder</TabsTrigger>
           </TabsList>
 
           <TabsContent value="features" className="space-y-3 pt-4">
@@ -212,6 +212,49 @@ export function PermissionsManager() {
                 </div>
               );
             })}
+          </TabsContent>
+
+          <TabsContent value="fields" className="space-y-3 pt-4">
+            {loading && <p className="text-caption text-muted-foreground">Lade…</p>}
+            <p className="text-caption text-muted-foreground">
+              Pro Rolle festlegen, ob ein sensibles Feld gelesen oder geschrieben werden darf.
+              Standard ist Vollzugriff. Lese-Verbot impliziert Schreib-Verbot.
+            </p>
+            {FIELD_TARGETS.map((t) => (
+              <div key={`${t.table}.${t.column}`} className="border rounded-md p-3">
+                <div className="flex items-baseline justify-between mb-2">
+                  <Label className="font-medium">{t.label}</Label>
+                  <code className="text-caption text-muted-foreground">{t.table}.{t.column}</code>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {ALL_ROLES.map((role) => {
+                    const perm = fields.get(`${t.table}.${t.column}.${role}`) ?? { can_read: true, can_write: true };
+                    return (
+                      <div key={role} className="flex items-center justify-between border rounded-md px-2 py-1.5">
+                        <span className="text-caption">{role}</span>
+                        <div className="flex gap-3">
+                          <label className="flex items-center gap-1 text-caption">
+                            <Switch
+                              checked={perm.can_read}
+                              onCheckedChange={() => toggleField(t.table, t.column, role, "can_read")}
+                            />
+                            Lesen
+                          </label>
+                          <label className="flex items-center gap-1 text-caption">
+                            <Switch
+                              checked={perm.can_write}
+                              disabled={!perm.can_read}
+                              onCheckedChange={() => toggleField(t.table, t.column, role, "can_write")}
+                            />
+                            Schreiben
+                          </label>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </TabsContent>
         </Tabs>
       </CardContent>
