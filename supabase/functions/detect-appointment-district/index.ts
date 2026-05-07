@@ -2,7 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 
-import { withSafeHandler } from "../_shared/security.ts";
+import { withSafeHandler, requireAuth, unauthorizedResponse } from "../_shared/security.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -104,6 +104,9 @@ serve(withSafeHandler("detect-appointment-district", async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const auth = await requireAuth(req);
+  if (!auth) return unauthorizedResponse();
 
   try {
     const { location, coordinates } = await req.json();

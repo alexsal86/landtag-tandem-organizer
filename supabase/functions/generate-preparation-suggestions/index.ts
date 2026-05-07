@@ -3,6 +3,7 @@
 // for an appointment preparation based on linked partners and event context.
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 import { chat, aiErrorResponse } from "../_shared/aiClient.ts";
+import { requireAuth, unauthorizedResponse } from "../_shared/security.ts";
 
 interface SuggestionRequest {
   visit_reason?: string;
@@ -26,6 +27,9 @@ interface SuggestionResponse {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const auth = await requireAuth(req);
+  if (!auth) return unauthorizedResponse();
 
   try {
     const body = (await req.json()) as SuggestionRequest;
