@@ -2,6 +2,7 @@
 // Uses Lovable AI to generate Talking Points, Q&A, sensitive points, background facts
 // for an appointment preparation based on linked partners and event context.
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
+import { chat, aiErrorResponse } from "../_shared/aiClient.ts";
 
 interface SuggestionRequest {
   visit_reason?: string;
@@ -98,58 +99,24 @@ Aufgabe: ${phaseInstructions}`;
       },
     ];
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+    try {
+      const result = await chat({
+        functionKey: "GENERATE_PREPARATION_SUGGESTIONS",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
         tools,
         tool_choice: { type: "function", function: { name: "suggest_preparation" } },
-      }),
-    });
+      });
 
-    if (aiResp.status === 429) {
-      return new Response(
-        JSON.stringify({ error: "Limit erreicht. Bitte später erneut versuchen." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-    if (aiResp.status === 402) {
-      return new Response(
-        JSON.stringify({ error: "Lovable AI Guthaben aufgebraucht. Bitte aufladen." }),
-        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-    if (!aiResp.ok) {
-      const t = await aiResp.text();
-      console.error("AI gateway error", aiResp.status, t);
-      return new Response(JSON.stringify({ error: "AI gateway error" }), {
-        status: 500,
+      const parsed: SuggestionResponse = (result.toolArgs ?? {}) as SuggestionResponse;
+      return new Response(JSON.stringify(parsed), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    } catch (aiErr) {
+      return aiErrorResponse(aiErr, corsHeaders);
     }
-
-    const aiJson = await aiResp.json();
-    const toolCall = aiJson?.choices?.[0]?.message?.tool_calls?.[0];
-    let parsed: SuggestionResponse = {};
-    if (toolCall?.function?.arguments) {
-      try {
-        parsed = JSON.parse(toolCall.function.arguments);
-      } catch (e) {
-        console.error("Failed to parse tool args", e);
-      }
-    }
-
-    return new Response(JSON.stringify(parsed), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
   } catch (e) {
     console.error("generate-preparation-suggestions error", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown" }), {
