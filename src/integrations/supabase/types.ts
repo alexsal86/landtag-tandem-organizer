@@ -5705,6 +5705,72 @@ export type Database = {
           },
         ]
       }
+      facts: {
+        Row: {
+          contact_id: string | null
+          created_at: string
+          created_by: string
+          dossier_id: string | null
+          id: string
+          is_archived: boolean
+          last_used_at: string | null
+          source: string | null
+          tags: string[]
+          tenant_id: string
+          text: string
+          updated_at: string
+          usage_count: number
+          valid_until: string | null
+        }
+        Insert: {
+          contact_id?: string | null
+          created_at?: string
+          created_by: string
+          dossier_id?: string | null
+          id?: string
+          is_archived?: boolean
+          last_used_at?: string | null
+          source?: string | null
+          tags?: string[]
+          tenant_id: string
+          text: string
+          updated_at?: string
+          usage_count?: number
+          valid_until?: string | null
+        }
+        Update: {
+          contact_id?: string | null
+          created_at?: string
+          created_by?: string
+          dossier_id?: string | null
+          id?: string
+          is_archived?: boolean
+          last_used_at?: string | null
+          source?: string | null
+          tags?: string[]
+          tenant_id?: string
+          text?: string
+          updated_at?: string
+          usage_count?: number
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "facts_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "facts_dossier_id_fkey"
+            columns: ["dossier_id"]
+            isOneToOne: false
+            referencedRelation: "dossiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       funding_participants: {
         Row: {
           allocated_amount: number | null
@@ -12673,6 +12739,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_fact_usage: { Args: { _fact_id: string }; Returns: undefined }
       insert_sample_contacts: {
         Args: { target_user_id: string }
         Returns: undefined
