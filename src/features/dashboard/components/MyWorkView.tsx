@@ -50,7 +50,6 @@ export function MyWorkView() {
     role,
     roleFlags,
     shouldIncludeTeamCountRef,
-    totalCounts,
   } = useMyWorkShellData();
   const { activeTab, setActiveTab, setSearchParams, visibleTabs } = useMyWorkActiveTab({
     role,
