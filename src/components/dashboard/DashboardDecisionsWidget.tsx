@@ -35,35 +35,30 @@ interface DecisionRowProps {
   decision: MyWorkDecision;
   onRefresh: () => void;
   onOpen: (id: string) => void;
+  onPromptOpen: (id: string) => void;
+  onPromptClose: (id: string) => void;
+  forcePrompt?: { color: string } | null;
 }
 
-function DecisionRow({ decision, onRefresh, onOpen }: DecisionRowProps) {
+function DecisionRow({ decision, onRefresh, onOpen, onPromptOpen, onPromptClose, forcePrompt }: DecisionRowProps) {
   const summary = getResponseSummary(decision.participants);
   const { label, isOverdue } = formatDeadline(decision.response_deadline);
-  const [prompt, setPrompt] = useState<{ color: string } | null>(null);
-  const timeoutRef = useRef<number | null>(null);
+  const [prompt, setPrompt] = useState<{ color: string } | null>(forcePrompt ?? null);
   const { toast } = useToast();
 
-  useEffect(() => () => { if (timeoutRef.current) window.clearTimeout(timeoutRef.current); }, []);
-
-  const startPromptTimer = () => {
-    if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
-    timeoutRef.current = window.setTimeout(() => {
-      setPrompt(null);
-      onRefresh();
-    }, 10000);
-  };
+  useEffect(() => {
+    if (forcePrompt && !prompt) setPrompt(forcePrompt);
+  }, [forcePrompt, prompt]);
 
   const handleSubmitted = (meta?: { responseType: string; color?: string }) => {
     const color = meta?.color
       || decision.response_options?.find((o) => o.key === meta?.responseType)?.color
       || 'green';
     setPrompt({ color });
-    startPromptTimer();
+    onPromptOpen(decision.id);
   };
 
   const handleUndo = async () => {
-    if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
     if (!decision.participant_id) return;
     const { error } = await supabase
       .from('task_decision_responses')
@@ -77,13 +72,20 @@ function DecisionRow({ decision, onRefresh, onOpen }: DecisionRowProps) {
     }
     toast({ title: 'Antwort zurückgenommen' });
     setPrompt(null);
+    onPromptClose(decision.id);
     onRefresh();
   };
 
   const handleAddJustification = () => {
-    if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
     setPrompt(null);
+    onPromptClose(decision.id);
     onOpen(decision.id);
+  };
+
+  const handleDismiss = () => {
+    setPrompt(null);
+    onPromptClose(decision.id);
+    onRefresh();
   };
 
   return (
