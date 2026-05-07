@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useCallback, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { STALE_TIME } from '@/lib/query-cache';
 import { debugConsole } from '@/utils/debugConsole';
 
 export interface NewCounts {
@@ -11,8 +13,8 @@ export interface NewCounts {
   caseFiles: number;
   caseItems: number;
   plannings: number;
-  team: number; // Team-Notifications
-  feedbackFeed: number; // Neue Rückmeldungen
+  team: number;
+  feedbackFeed: number;
 }
 
 const TEAM_NAV_CONTEXT = 'mywork_team' as const;
@@ -65,7 +67,6 @@ const REFRESH_THROTTLE_MS = 1200;
 
 const isMissingRpcError = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') return false;
-
   const maybeError = error as { code?: string; message?: string };
   return (
     maybeError.code === 'PGRST202'
@@ -73,51 +74,63 @@ const isMissingRpcError = (error: unknown): boolean => {
   );
 };
 
+async function fetchNewCounts(userId: string, contexts?: ContextType[]): Promise<NewCounts | 'missing-rpc'> {
+  const { data, error } = await supabase.rpc('get_my_work_new_counts', {
+    p_user_id: userId,
+    p_contexts: contexts && contexts.length > 0 ? (contexts as string[]) : undefined,
+  });
+
+  if (error) {
+    if (isMissingRpcError(error)) {
+      debugConsole.warn('get_my_work_new_counts RPC is unavailable; new badges are reset to 0.');
+      return 'missing-rpc';
+    }
+    throw error;
+  }
+
+  const incoming = (data || {}) as Partial<NewCounts>;
+  const normalized: NewCounts = {
+    ...DEFAULT_COUNTS,
+    ...Object.fromEntries(
+      Object.entries(incoming).map(([key, value]) => [key, Number(value || 0)]),
+    ),
+  } as NewCounts;
+  normalized.cases = normalized.caseItems + normalized.caseFiles;
+  return normalized;
+}
+
 export function useMyWorkNewCounts(): MyWorkNewCountsResult {
   const { user } = useAuth();
-  const [newCounts, setNewCounts] = useState<NewCounts>(DEFAULT_COUNTS);
-  const [isLoading, setIsLoading] = useState(true);
-  const isMountedRef = useRef(true);
-  const inFlightRef = useRef<Promise<void> | null>(null);
-  const queuedContextsRef = useRef<Set<ContextType>>(new Set());
-  const throttleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const queryClient = useQueryClient();
+  const userId = user?.id;
+  const queryKey = ['my-work-new-counts', userId] as const;
+
   const lastRefreshAtRef = useRef(0);
+  const throttleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-      if (throttleTimerRef.current) {
-        clearTimeout(throttleTimerRef.current);
-      }
-    };
-  }, []);
+  const { data, isLoading } = useQuery({
+    queryKey,
+    enabled: !!userId,
+    staleTime: STALE_TIME.REALTIME,
+    gcTime: STALE_TIME.LIST_WITH_REALTIME,
+    queryFn: async () => {
+      const result = await fetchNewCounts(userId as string);
+      return result === 'missing-rpc' ? DEFAULT_COUNTS : result;
+    },
+  });
 
-  const runRefresh = useCallback(async (contexts?: ContextType[]) => {
-    if (!user) {
-      if (isMountedRef.current) {
-        setNewCounts(DEFAULT_COUNTS);
-        setIsLoading(false);
-      }
-      return;
-    }
+  const refreshCounts = useCallback(async (contexts?: ContextType[]) => {
+    if (!userId) return;
 
-    if (isMountedRef.current) {
-      setIsLoading(true);
-    }
-
-    try {
-      const { data, error } = await supabase.rpc('get_my_work_new_counts', {
-        p_user_id: user.id,
-        p_contexts: contexts && contexts.length > 0 ? (contexts as string[]) : undefined,
-      });
-
-      if (error) {
-        if (isMissingRpcError(error)) {
-          // Safety fallback: if the dedicated new-counts RPC is unavailable,
-          // never fall back to total item counts (misleading as notification badges).
+    const run = async () => {
+      try {
+        const result = await fetchNewCounts(userId, contexts);
+        lastRefreshAtRef.current = Date.now();
+        if (result === 'missing-rpc') {
           if (contexts && contexts.length > 0) {
-            setNewCounts((prev) => {
-              const updated = { ...prev };
+            queryClient.setQueryData<NewCounts>(queryKey, (prev) => {
+              const base = prev ?? DEFAULT_COUNTS;
+              const updated: NewCounts = { ...base };
               contexts.forEach((context) => {
                 updated[CONTEXT_TO_COUNT_KEY[context]] = 0;
               });
@@ -125,87 +138,54 @@ export function useMyWorkNewCounts(): MyWorkNewCountsResult {
               return updated;
             });
           } else {
-            setNewCounts(DEFAULT_COUNTS);
+            queryClient.setQueryData<NewCounts>(queryKey, DEFAULT_COUNTS);
           }
-
-          debugConsole.warn('get_my_work_new_counts RPC is unavailable; new badges are reset to 0.');
           return;
         }
 
-        throw error;
+        if (contexts && contexts.length > 0) {
+          // Partial update — merge with existing cache
+          queryClient.setQueryData<NewCounts>(queryKey, (prev) => {
+            const base = prev ?? DEFAULT_COUNTS;
+            const merged: NewCounts = { ...base };
+            contexts.forEach((context) => {
+              const key = CONTEXT_TO_COUNT_KEY[context];
+              merged[key] = result[key];
+            });
+            merged.cases = merged.caseItems + merged.caseFiles;
+            return merged;
+          });
+        } else {
+          queryClient.setQueryData<NewCounts>(queryKey, result);
+        }
+      } catch (error) {
+        debugConsole.error('Error loading new counts via RPC:', error);
       }
-
-      const incoming = (data || {}) as Partial<NewCounts>;
-      setNewCounts((prev) => {
-        const normalized = {
-          ...prev,
-          ...Object.fromEntries(
-            Object.entries(incoming).map(([key, value]) => [key, Number(value || 0)]),
-          ),
-        };
-
-        return {
-          ...normalized,
-          cases: normalized.caseItems + normalized.caseFiles,
-        };
-      });
-    } catch (error) {
-      debugConsole.error('Error loading new counts via RPC:', error);
-    } finally {
-      if (isMountedRef.current) {
-        setIsLoading(false);
-      }
-    }
-  }, [user]);
-
-  const flushRefreshQueue = useCallback(async () => {
-    if (inFlightRef.current) return inFlightRef.current;
-
-    const queuedContexts = Array.from(queuedContextsRef.current);
-    queuedContextsRef.current.clear();
-    const promise = runRefresh(queuedContexts.length > 0 ? queuedContexts : undefined);
-    inFlightRef.current = promise;
-
-    await promise;
-    inFlightRef.current = null;
-    lastRefreshAtRef.current = Date.now();
-
-    if (queuedContextsRef.current.size > 0) {
-      await flushRefreshQueue();
-    }
-  }, [runRefresh]);
-
-  const refreshCounts = useCallback(async (contexts?: ContextType[]) => {
-    if (contexts && contexts.length > 0) {
-      contexts.forEach((context) => queuedContextsRef.current.add(context));
-    } else {
-      CONTEXTS.forEach((context) => queuedContextsRef.current.add(context));
-    }
+    };
 
     const sinceLastRefresh = Date.now() - lastRefreshAtRef.current;
     if (sinceLastRefresh < REFRESH_THROTTLE_MS) {
       if (throttleTimerRef.current) clearTimeout(throttleTimerRef.current);
       await new Promise<void>((resolve) => {
         throttleTimerRef.current = setTimeout(() => {
-          flushRefreshQueue().finally(resolve);
+          run().finally(resolve);
         }, REFRESH_THROTTLE_MS - sinceLastRefresh);
       });
       return;
     }
 
-    await flushRefreshQueue();
-  }, [flushRefreshQueue]);
+    await run();
+  }, [userId, queryClient, queryKey]);
 
   const markTabAsVisited = useCallback(async (context: ContextType) => {
-    if (!user) return;
+    if (!userId) return;
 
     const now = new Date().toISOString();
-
     try {
       const { error } = await supabase
         .from('user_navigation_visits')
         .upsert({
-          user_id: user.id,
+          user_id: userId,
           navigation_context: context,
           last_visited_at: now,
         }, { onConflict: 'user_id,navigation_context' });
@@ -213,30 +193,25 @@ export function useMyWorkNewCounts(): MyWorkNewCountsResult {
       if (error) throw error;
 
       const countKey = CONTEXT_TO_COUNT_KEY[context];
-      setNewCounts((prev) => ({
-        ...prev,
-        [countKey]: 0,
-        cases: (countKey === 'caseFiles' || countKey === 'caseItems')
-          ? (countKey === 'caseFiles' ? prev.caseItems : prev.caseFiles)
-          : prev.cases,
-      }));
+      queryClient.setQueryData<NewCounts>(queryKey, (prev) => {
+        const base = prev ?? DEFAULT_COUNTS;
+        const next: NewCounts = { ...base, [countKey]: 0 };
+        next.cases = next.caseItems + next.caseFiles;
+        return next;
+      });
 
       localStorage.setItem('navigation_visit_sync', JSON.stringify({
-        userId: user.id,
+        userId,
         context,
         timestamp: now,
       }));
     } catch (error) {
       debugConsole.error('Error marking tab as visited:', error);
     }
-  }, [user]);
-
-  useEffect(() => {
-    void refreshCounts();
-  }, [refreshCounts]);
+  }, [userId, queryClient, queryKey]);
 
   return {
-    newCounts,
+    newCounts: data ?? DEFAULT_COUNTS,
     isLoading,
     markTabAsVisited,
     refreshCounts,
