@@ -1,117 +1,116 @@
-## Phase 6 — Performance, Workflows & Permissions
+# Code-Quality-Audit & Refactoring-Plan
 
-Drei parallele Tracks, jeder unabhängig committable. Reihenfolge: **A → B → C** (A liefert Mess-Baseline, B/C bauen darauf auf).
+## Befunde (objektiv gemessen)
 
----
+| Metrik | Wert | Bewertung |
+|---|---|---|
+| TS/TSX-Dateien | 1.215 | groß, ok |
+| Zeilen Code (ohne types.ts) | ~253k | groß |
+| Dateien > 800 Zeilen | **32** | zu viele Mega-Komponenten |
+| `as any` Vorkommen | **24** in 19 Dateien | bricht eure Core-Regel |
+| `useEffect` gesamt | 711 in 435 Dateien | viel manuelles State-Sync |
+| Komponenten mit direktem `supabase.from(...)` | **38** | Datenzugriff in der UI-Schicht |
+| Komponenten mit `useEffect`+Supabase-Fetch (Anti-Pattern) | **90** | sollten React-Query nutzen |
+| Hardcodierte Tailwind-Farben (`text-white`, `bg-gray-…`) | **1.040** in 220 Dateien | bricht Design-Token-Regel |
+| `console.log/debug/warn` in src | 15 in 6 Dateien | ok, wenig |
+| Error Boundaries | 11 | dünn für 24 Features |
+| Migrationen | **640** | extrem fragmentiert |
+| Edge Functions | 71 | viele |
 
-### Track A — Performance & Egress 2.0
+## Konkrete Befunde
 
-**Ziel:** Egress weiter −30 %, Time-to-Interactive auf Hot-Paths < 1.5s, Realtime-Last halbieren.
+### 1. Mega-Komponenten (>800 LOC)
+Top-Brocken laut Component-Decomposition-Memory (>1500 splitten, aber auch 800+ ist Risiko):
+- `AppNavigation.tsx` 1.469
+- `MyWorkCasesWorkspace.tsx` 1.283
+- `FocusModeView.tsx` 1.182
+- `SuperadminTenantManagement.tsx` 1.149
+- `TaskDecisionDetails.tsx` 1.084
+- `MatrixClientProvider.tsx` 1.037
+- `AutomationRuleWizard.tsx` 1.030
+- `AppointmentDetailsSidebar.tsx` 1.000
+- `DIN5008LetterLayout.tsx` 983
+- … insgesamt 32 Dateien >800 Zeilen
 
-1. **Audit-Erweiterung** (`scripts/audit-queries.ts`)
-   - Neue Regeln: `count: 'exact'` ohne `head:true`, fehlende `.range()` bei Listen > 100, `useEffect` mit `supabase`-Call ohne Cleanup.
-   - Output als CI-Artefakt (`docs/performance-audit-YYYY-MM.md` automatisch).
+### 2. Verstöße gegen Core-Regeln
+- **`as any` in 19 Dateien** — direkt gegen TypeScript-Core-Regel
+- **1.040 hardcodierte Farb-Klassen** — gegen Design-Token-Regel
+- Beispiele: `text-white`, `bg-gray-100`, `border-blue-500` statt `text-foreground`, `bg-muted`, `border-primary`
 
-2. **Hot-Path-Refactor** (Top-15 aus aktuellem Audit):
-   - `useGlobalNoteSharing`, `useNoteSharing`, `useAppointmentPreparation`, `useAppointmentFeedback`, `useDistrictNotes`, `useElectionDistricts`, `useContactBriefingMemory`, `EmailHistory`, `useEmailComposer`, `NotificationSettings`, `useExpenseData`, `useEventPlanningData`, `TodaySchedule`, `AnnualTasksView`, `MeetingTemplateManager`.
-   - Pro Datei: explizite Spaltenlisten, `STALE_TIME`-Konstanten aus `src/lib/query-cache.ts`, `.range()` für Pagination.
+### 3. Datenfluss-Architektur
+- **38 Komponenten** rufen direkt `supabase.from(...)` auf statt über Hook/Service
+- **90 Dateien** verwenden `useEffect` + manuellen Fetch statt React-Query (`useQuery` nur in 62 Dateien — viel weniger als nötig)
+- Konsequenzen: doppelte Requests, kein Caching, kein Stale-Time-Schutz (widerspricht eurer Egress-Optimierungsstrategie)
 
-3. **TanStack Virtual** in 4 Listen mit > 200 Zeilen:
-   - Vorgänge-Liste, Kontakte-Liste, Dokumente-Liste, MyWork-Tasks.
+### 4. Migrations-Wildwuchs
+640 Migrationen für 1 Projekt. Schwer zu auditieren. Kein Konsolidierungs-Schnitt.
 
-4. **Realtime-Hook-Migration** (`useTenantRealtime`):
-   - Falls noch nicht in Phase 4a abgeschlossen: 7 Channel-Subscriptions migrieren.
-   - Tenant-Filter zwingend, `debounceMs: 250`.
+### 5. Doppelte Komponenten
+- `StructuredHeaderEditor.tsx` 2× (unterschiedliche Pfade)
+- `DecisionDialogs.tsx`, `DecisionCardActivity.tsx`, `UnicornAnimation.tsx` jeweils 2×
 
-5. **Edge-Function-Caching** (Postgres-KV-Pattern):
-   - Neue Tabelle `edge_function_cache(key, value, expires_at)` + Helper `_shared/cache.ts`.
-   - Anwenden auf: `collect-egress-metrics` (Vortag), `import-administrative-boundaries` (Geo-Daten 24h), Wetter-Proxy.
+### 6. Bundle / Dependencies
+125 Runtime-Dependencies — vermutlich Dead Weight. Nicht geprüft, aber lohnt einen `depcheck`.
 
-6. **Bundle-Splitting**:
-   - Lexical-Plugins, Letter-Designer, Map-Layer (Leaflet), Recharts in eigene Lazy-Chunks.
-   - `scripts/report-bundle-size.mjs` als CI-Gate (Regression > 5 % schlägt fehl).
-
-**Erfolg:** `egress_metrics` −30 % über 7 Tage, Bundle-Initial < 350 kB gz, Cockpit zeigt 0 fehlende Realtime-Filter.
-
----
-
-### Track B — Workflow Automation v2
-
-**Ziel:** Visuelle Workflows ohne Code, mehr Trigger-Typen, Conditional Branches.
-
-1. **Trigger-Erweiterung** (`workflow_definitions.trigger_type`):
-   - Neu: `schedule_cron` (z. B. „jeden Mo 8:00"), `webhook_inbound`, `email_received` (via send-news Posteingang), `entity_field_changed` (z. B. `task.priority` → 'urgent').
-   - DB-Migration: Trigger-Konfig als JSONB, Worker-Dispatcher (`workflow-dispatcher`) erweitern.
-
-2. **Conditional Branches & Loops**:
-   - Neue Step-Typen `branch` (if/else mit JSONLogic-Expression) und `for_each` (über Array-Output vorheriger Step).
-   - Schema-Update in `docs/automation/workflow-definition.schema.json` + Runtime-Tests.
-
-3. **Visueller Builder** (neue Route `/workflows/:id/builder`):
-   - React-Flow-basiertes Canvas, Drag-and-Drop von Trigger/Action/Branch-Knoten.
-   - Live-Validierung gegen JSON-Schema, Test-Run-Button mit Sample-Payload.
-   - Read-only-Diagramm in Detail-View.
-
-4. **Action-Bibliothek erweitern**:
-   - `create_decision`, `assign_task_to_role` (statt user), `send_matrix_message`, `update_case_status`, `notify_via_push`, `call_edge_function` (whitelisted).
-
-5. **Audit-Trail UI**:
-   - Bestehender `workflow_runs`-Trail bekommt eine eigene Detail-View mit Step-by-Step-Log, Re-Run-Button (mit gleichem Payload), Error-Inspect.
-
-**Erfolg:** Bürokraft kann ohne Entwickler einen 3-Step-Workflow mit Branch bauen und ihn live laufen sehen.
+### 7. Resilienz
+Nur **11 Error Boundaries** für 24 Features. Kritische Routen (Briefe, Vorgänge, Kalender) sollten je eigene Boundary haben.
 
 ---
 
-### Track C — Granular Permissions
+## Vorgeschlagenes Refactoring (priorisiert)
 
-**Ziel:** Tenant-Admin kann Module/Felder/Aktionen pro Rolle freischalten oder sperren.
+### Phase A — Quick Wins (geringe Risiken, großer Aufwand-Ertrag)
+1. **`as any` eliminieren** (19 Dateien): durch konkrete Types oder `@ts-expect-error` mit Begründung ersetzen.
+2. **Tailwind-Farb-Audit-Skript**: `scripts/audit-color-tokens.mjs`, das hardcodierte Farben listet und bei CI als Warning ausgibt. Dann die ~50 schlimmsten Dateien manuell auf semantische Tokens umstellen.
+3. **Doppelte Dateien zusammenführen** (4 Files).
+4. **`depcheck` laufen lassen**, ungenutzte Dependencies entfernen.
+5. **3 zusätzliche Error Boundaries** an den lazy-geladenen Routen-Containern (Briefe, Vorgänge, Redaktion).
 
-1. **Feature-Flag-Tabelle** `tenant_feature_flags(tenant_id, feature_key, enabled, config jsonb)`:
-   - Keys: `module.events`, `module.letters`, `module.knowledge`, `module.editorial`, `module.timetracking`, …
-   - RLS: nur `bueroleitung`/`abgeordneter` schreiben, alle lesen.
-   - Hook `useFeatureFlag(key)` → Boolean, gated Menüpunkte in Sidebar verstecken.
+### Phase B — Datenzugriff zentralisieren
+1. **`supabase.from()` aus 38 Komponenten herausziehen** in dedizierte Hooks unter `src/hooks/queries/`.
+2. **90 Komponenten mit `useEffect`+Fetch** schrittweise auf `useQuery` migrieren — beginnen mit hochfrequenten (Dashboard, MyWork, Sidebar-Panels).
+3. Konvention dokumentieren: Komponenten dürfen Supabase nur über Hook benutzen. Lint-Regel via custom ESLint-Rule oder `no-restricted-imports`.
 
-2. **Field-Level-Permissions** für sensible Tabellen (`contacts`, `cases`, `letters`):
-   - Tabelle `field_permissions(tenant_id, table_name, column_name, role, can_read, can_write)`.
-   - Server-seitig: View-Wrapper bzw. RLS-Policy + Edge-Function-Filter (Mask = NULL bei `can_read=false`).
-   - Frontend: `useFieldPermission(table, column)` → maskiert Felder mit „—" oder versteckt sie.
+### Phase C — Mega-Komponenten zerlegen
+Die 6 größten Dateien (>1.000 LOC) in Sub-Module nach euer bestehender Komposition-Konvention (types/constants/use*Interactions/sub-components):
+1. `AppNavigation.tsx` → in Sidebar-Sektionen aufteilen
+2. `MyWorkCasesWorkspace.tsx` → Workspace-Skelett + Tab-Module
+3. `FocusModeView.tsx`
+4. `SuperadminTenantManagement.tsx`
+5. `TaskDecisionDetails.tsx`
+6. `AutomationRuleWizard.tsx`
 
-3. **Action-Level-Permissions** (z. B. „nur Bürochef darf Briefe versenden"):
-   - Tabelle `action_permissions(tenant_id, action_key, allowed_roles)`.
-   - Action-Keys: `letter.send`, `letter.delete`, `decision.archive`, `case.close`, `workflow.execute_manual`, …
-   - Hook `useActionPermission(key)` blendet Buttons aus + Server-Guard in Edge Functions / RPCs.
+### Phase D — Migrations-Konsolidierung
+- Snapshot-Migration erzeugen (`pg_dump` des aktuellen Schemas), neue Baseline einchecken, alte 640 Migrationen archivieren in `supabase/migrations/_archive/`.
+- Ab da nur noch additive Migrationen.
+- Vorsicht: nur durchführen, wenn keine Branch-/Forks-Workflow blockiert ist.
 
-4. **Admin-UI** unter `/administration/permissions`:
-   - Tab 1: Feature-Flags (Toggle-Liste pro Modul).
-   - Tab 2: Field-Permissions (Matrix Tabelle × Spalte × Rolle).
-   - Tab 3: Action-Permissions (Liste mit Multi-Select Rollen).
-   - Audit-Log jeder Änderung.
-
-5. **Migration der Default-Permissions** (Idempotente Seed-Migration):
-   - Heutige hartkodierte Role-Checks in `src/router/ProtectedRoute.tsx`, `MyWork`, `Sidebar` als Default-Rows einsetzen → Verhalten bleibt identisch, ist aber jetzt konfigurierbar.
-
-**Erfolg:** Tenant-Admin kann ohne Code-Deploy einer Rolle ein Modul wegnehmen oder ein Feld maskieren; Edge Functions erzwingen die Regel auch bei direktem API-Zugriff.
-
----
-
-### Aufwand & Reihenfolge
-
-| Track | Sessions | Risiko | Liefert |
-|-------|----------|--------|---------|
-| A Performance | 3–4 | niedrig | Sofortige Kosten-/Tempo-Wirkung, Bundle-Gate |
-| B Workflows | 4–5 | mittel | Self-Service-Automation, weniger Dev-Tickets |
-| C Permissions | 4–6 | mittel-hoch (RLS!) | Multi-Tenant-Reife, DSGVO-Argument |
-
-**Empfehlung:** Track A zuerst (Mess-Baseline + Quick Wins), dann B und C parallel in eigenen Branches.
+### Phase E — Performance-Sweep
+- Bundle-Size-Report (vorhandenes `report-bundle-size.mjs`) gegen Budget durchsetzen — fail bei Überschreitung.
+- React-Profiler an den Mega-Routen, `React.memo`/Selektoren für Listen-Items.
+- `useEffect`-Audit: jeden Effect ohne klares Cleanup oder mit Dependency-Lücke flaggen (custom Skript).
 
 ---
 
-### Out of Scope
+## Was ich konkret als nächstes umsetzen würde
 
-- Externer Workflow-Marktplatz / Templates-Sharing zwischen Tenants.
-- Komplette Re-Architektur der Rollenrechte-Matrix (`docs/rollenrechte-matrix.md`) — nur Erweiterung, keine Umbenennung bestehender Rollen.
-- Performance-Optimierung der Mobile-App (`apps/mobile/`) — separater Track.
+Falls du grünes Licht gibst, schlage ich vor mit **Phase A komplett + Phase B Migration der 10 hochfrequentesten Komponenten** zu starten. Das ist:
+- 19 `as any`-Stellen sauber typisieren
+- 4 Duplikate zusammenführen
+- 50 Dateien auf Design-Tokens umstellen (semi-automatisches Skript + manuelle Kontrolle)
+- 3 Error-Boundaries ergänzen
+- 10 Komponenten von `useEffect`-Fetch auf React-Query
+- depcheck-Bericht als Datei
 
----
+Größere Refactorings (Mega-Komponenten zerlegen, Migrations-Konsolidierung) sind eigene Loops — das wären jeweils 2–4 Stunden Arbeit pro Komponente und sollten einzeln freigegeben werden.
 
-**Frage:** Soll ich mit **Track A** starten, oder willst du eine andere Reihenfolge (z. B. C zuerst wegen DSGVO-Audit)?
+## Außerhalb des Scopes
+- Funktionale Änderungen (kein neues Feature)
+- Visuelle Re-Designs
+- Auth-/RLS-Änderungen
+- Edge-Function-Konsolidierung (separate Initiative)
+
+## Risiken
+- **Tailwind-Token-Migration** kann subtile visuelle Diffs erzeugen — pro Datei prüfen.
+- **React-Query-Migration** kann doppeltes Fetching verursachen, wenn alter `useEffect` parallel weiterläuft — atomar pro Komponente.
+- **Migrations-Snapshot** ist destruktiv im Sinne der History — nur mit explizitem Go.
