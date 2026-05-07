@@ -7,9 +7,11 @@ import { useDashboardAppointmentsData } from '@/hooks/useDashboardAppointmentsDa
 import { useDashboardDeadlines } from '@/hooks/useDashboardDeadlines';
 import { NewsWidget } from '@/components/widgets/NewsWidget';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
-import { CalendarDays, ClipboardList, Newspaper } from 'lucide-react';
+import { CalendarDays, ClipboardList, Newspaper, Vote, Users } from 'lucide-react';
 import { useResolvedUserRole } from '@/hooks/useResolvedUserRole';
 import { BriefingComposerCard, TodayBriefingPanel } from '@/features/briefings';
+import { DashboardDecisionsWidget } from '@/components/dashboard/DashboardDecisionsWidget';
+import { DashboardJourFixeWidget } from '@/components/dashboard/DashboardJourFixeWidget';
 
 interface DashboardWidgetContainerProps {
   title: ReactNode;
@@ -119,9 +121,33 @@ export function MyWorkDashboardTab() {
       {isAbgeordneter && <TodayBriefingPanel />}
       {isEmployee && !isAbgeordneter && <BriefingComposerCard />}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,35fr)_minmax(0,35fr)_minmax(0,30fr)] gap-6 items-start">
-        <DeadlinesWidget />
-        <AppointmentsWidget />
-        <NewsWidgetCard />
+        <div className="flex flex-col gap-6 min-w-0">
+          <DeadlinesWidget />
+        </div>
+        <div className="flex flex-col gap-6 min-w-0">
+          <AppointmentsWidget />
+          <DashboardWidgetContainer
+            title={<span className="inline-flex items-center gap-2"><Vote className="h-4 w-4" />Entscheidungen</span>}
+            loadingFallback={null}
+            errorFallback={<p className="text-sm text-muted-foreground">Entscheidungen konnten nicht geladen werden.</p>}
+          >
+            <ErrorBoundary fallback={<p className="text-sm text-muted-foreground">Entscheidungen konnten nicht geladen werden.</p>}>
+              <DashboardDecisionsWidget />
+            </ErrorBoundary>
+          </DashboardWidgetContainer>
+        </div>
+        <div className="flex flex-col gap-6 min-w-0">
+          <NewsWidgetCard />
+          <DashboardWidgetContainer
+            title={<span className="inline-flex items-center gap-2"><Users className="h-4 w-4" />Jour fixe</span>}
+            loadingFallback={null}
+            errorFallback={<p className="text-sm text-muted-foreground">Jour fixe konnten nicht geladen werden.</p>}
+          >
+            <ErrorBoundary fallback={<p className="text-sm text-muted-foreground">Jour fixe konnten nicht geladen werden.</p>}>
+              <DashboardJourFixeWidget />
+            </ErrorBoundary>
+          </DashboardWidgetContainer>
+        </div>
       </div>
     </div>
   );
