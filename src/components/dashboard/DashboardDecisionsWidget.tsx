@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Vote, MessageSquare, Undo2 } from 'lucide-react';
 import { differenceInCalendarDays, format } from 'date-fns';
