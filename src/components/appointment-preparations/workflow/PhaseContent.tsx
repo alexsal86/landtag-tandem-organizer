@@ -9,6 +9,7 @@ import { DebriefPanel } from "./DebriefPanel";
 import { TemplatesPanel } from "./TemplatesPanel";
 import { SharingPanel } from "./SharingPanel";
 import { LinkedItemsPanel } from "./LinkedItemsPanel";
+import { StructuredFactsPanel } from "./StructuredFactsPanel";
 import type { PhaseId } from "./usePhaseStatus";
 import type { AppointmentPreparation } from "@/hooks/useAppointmentPreparation";
 import type { AppointmentPreparationAppointmentDetails } from "@/pages/AppointmentPreparationDetail";
