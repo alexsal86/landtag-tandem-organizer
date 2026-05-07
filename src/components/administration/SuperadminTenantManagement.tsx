@@ -34,15 +34,23 @@ import { useSuperadminTenantData } from "./superadminTenant/useSuperadminTenantD
 export function SuperadminTenantManagement(): React.JSX.Element {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [isPlatformAdmin, setIsPlatformAdmin] = useState<boolean>(false);
-  const [roleCheckLoading, setRoleCheckLoading] = useState<boolean>(true);
-  
-  // Tenant states
-  const [tenants, setTenants] = useState<TenantWithStats[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+
+  const {
+    isPlatformAdmin,
+    roleCheckLoading,
+    tenants,
+    setTenants,
+    loading,
+    loadTenants,
+    allUsers,
+    setAllUsers,
+    usersLoading,
+    loadAllUsers,
+  } = useSuperadminTenantData();
+
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
   const [editingTenant, setEditingTenant] = useState<TenantWithStats | null>(null);
-  
+
   // Tenant form state
   const [formName, setFormName] = useState<string>("");
   const [formDescription, setFormDescription] = useState<string>("");
@@ -67,11 +75,9 @@ export function SuperadminTenantManagement(): React.JSX.Element {
   const [cloneTarget, setCloneTarget] = useState<{ id: string; name: string } | null>(null);
   const [healthRefreshKey, setHealthRefreshKey] = useState<number>(0);
 
-  // User states
-  const [allUsers, setAllUsers] = useState<UserWithTenants[]>([]);
-  const [usersLoading, setUsersLoading] = useState<boolean>(false);
+  // User filter
   const [selectedTenantFilter, setSelectedTenantFilter] = useState<string>("all");
-  
+
   // Create user form
   const [createUserDialogOpen, setCreateUserDialogOpen] = useState<boolean>(false);
   const [newUserEmail, setNewUserEmail] = useState<string>("");
@@ -80,89 +86,12 @@ export function SuperadminTenantManagement(): React.JSX.Element {
   const [newUserTenantId, setNewUserTenantId] = useState<string>("");
   const [createdUserPassword, setCreatedUserPassword] = useState<string | null>(null);
   const [passwordCopied, setPasswordCopied] = useState<boolean>(false);
-  
+
   // Assign tenant dialog
   const [assignDialogOpen, setAssignDialogOpen] = useState<boolean>(false);
   const [assigningUser, setAssigningUser] = useState<UserWithTenants | null>(null);
   const [assignTenantId, setAssignTenantId] = useState<string>("");
   const [assignRole, setAssignRole] = useState<string>("mitarbeiter");
-
-  useEffect((): void => {
-    const checkPlatformRole = async (): Promise<void> => {
-      if (!user?.id) {
-        setIsPlatformAdmin(false);
-        setRoleCheckLoading(false);
-        return;
-      }
-
-      setRoleCheckLoading(true);
-      const { data, error } = await supabase.rpc('is_superadmin', { _user_id: user.id });
-      if (error) {
-        debugConsole.error('Error checking platform role:', error);
-        setIsPlatformAdmin(false);
-      } else {
-        setIsPlatformAdmin(Boolean(data));
-      }
-      setRoleCheckLoading(false);
-    };
-
-    void checkPlatformRole();
-  }, [user?.id]);
-
-  const loadTenants = async (): Promise<void> => {
-    try {
-      setLoading(true);
-      // Try to fetch is_template; gracefully fall back if column doesn't exist yet.
-      let { data, error } = await supabase
-        .from("tenants")
-        .select(`id, name, description, is_active, created_at, is_template`)
-        .order("name");
-
-      if (error && /column .*is_template.* does not exist/i.test(error.message ?? "")) {
-        const fallback = await supabase
-          .from("tenants")
-          .select(`id, name, description, is_active, created_at`)
-          .order("name");
-        data = fallback.data as typeof data;
-        error = fallback.error;
-      }
-
-      if (error) throw error;
-
-      setTenants(data || []);
-    } catch (error: unknown) {
-      debugConsole.error("Error loading tenants:", error);
-      toast({ title: "Fehler", description: "Tenants konnten nicht geladen werden", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadAllUsers = async (): Promise<void> => {
-    try {
-      setUsersLoading(true);
-      const { data, error } = await supabase.functions.invoke('manage-tenant-user', {
-        body: { action: 'listAllUsers' }
-      });
-
-      if (error) throw error;
-      if (!data.success) throw new Error(data.error);
-
-      setAllUsers(data.users ?? []);
-    } catch (error: unknown) {
-      debugConsole.error("Error loading users:", error);
-      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Benutzer konnten nicht geladen werden", variant: "destructive" });
-    } finally {
-      setUsersLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isPlatformAdmin) {
-      loadTenants();
-      loadAllUsers();
-    }
-  }, [isPlatformAdmin]);
 
   const handleSaveTenant = async (): Promise<void> => {
     if (!formName.trim()) {
