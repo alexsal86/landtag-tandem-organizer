@@ -590,36 +590,55 @@ All colors MUST be HSL.
     @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background;
   }
 
+  /* Phase E: consistent focus-visible (keyboard only) */
+  .focus-visible-ring {
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  /* Phase E: standard interactive surface (rows, list items, buttons-ghost) */
+  .interactive-surface {
+    @apply rounded-md transition-colors duration-fast ease-standard
+           hover:bg-muted/60
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background;
+  }
+
+  /* Phase E: pressable (cards, larger tappable targets) */
+  .pressable {
+    @apply transition-[transform,box-shadow,background-color] duration-fast ease-standard
+           hover:bg-muted/40 active:scale-[0.99]
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
   /* Button Variants */
   .btn-primary {
     @apply bg-primary text-primary-foreground shadow-card 
            hover:shadow-elegant hover:bg-primary/90
-           transition-all duration-300 
-           hover:scale-105 active:scale-95
-           focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background;
+           transition-all duration-base ease-standard
+           active:scale-[0.98]
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
 
   .btn-secondary {
     @apply bg-secondary text-secondary-foreground shadow-card
            hover:shadow-elegant hover:bg-secondary/90
-           transition-all duration-300
-           hover:scale-105 active:scale-95
-           focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background;
+           transition-all duration-base ease-standard
+           active:scale-[0.98]
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
 
   /* Link Styles */
   .link-primary {
-    @apply text-primary hover:text-primary/80 underline-offset-2 hover:underline transition-colors;
+    @apply text-primary hover:text-primary/80 underline-offset-2 hover:underline transition-colors duration-fast;
   }
 
   /* Icon Hover */
   .icon-hover {
-    @apply transition-all duration-200 hover:text-primary hover:scale-110;
+    @apply transition-colors duration-fast ease-standard hover:text-primary;
   }
 
   /* Input Focus */
   .input-focus {
-    @apply focus:ring-2 focus:ring-primary focus:border-primary transition-all;
+    @apply focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-fast;
   }
 
   /* Mobile Touch Optimization */
