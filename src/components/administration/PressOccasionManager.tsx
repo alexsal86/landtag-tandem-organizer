@@ -41,17 +41,11 @@ const ICON_OPTIONS = [
   { value: 'FileText', label: 'Dokument' },
 ];
 
-const COLOR_OPTIONS = [
-  { value: 'bg-blue-500', label: 'Blau' },
-  { value: 'bg-purple-500', label: 'Lila' },
-  { value: 'bg-amber-500', label: 'Amber' },
-  { value: 'bg-rose-500', label: 'Rose' },
-  { value: 'bg-teal-500', label: 'Teal' },
-  { value: 'bg-indigo-500', label: 'Indigo' },
-  { value: 'bg-green-500', label: 'Grün' },
-  { value: 'bg-orange-500', label: 'Orange' },
-  { value: 'bg-muted-foreground', label: 'Grau' },
-];
+import { PALETTE_PRESETS, getPaletteSolidClass } from "@/lib/paletteStyles";
+
+const COLOR_OPTIONS = PALETTE_PRESETS
+  .filter((p) => ['blue','purple','amber','rose','teal','indigo','green','orange','gray'].includes(p.key))
+  .map((p) => ({ value: p.legacyValue, label: p.label }));
 
 const DEFAULT_OCCASIONS = [
   { key: 'statement', label: 'Stellungnahme', description: 'Politische Einordnung zu aktuellen Themen', icon: 'Megaphone', color: 'bg-blue-500', patterns: ['stellungnahme', 'einordnung', 'kommentar'] },
@@ -345,7 +339,7 @@ export function PressOccasionManager() {
                     {COLOR_OPTIONS.map((o) => (
                       <SelectItem key={o.value} value={o.value}>
                         <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded-full ${o.value}`} />
+                          <div className={`w-3 h-3 rounded-full ${getPaletteSolidClass(o.value)}`} />
                           {o.label}
                         </div>
                       </SelectItem>
@@ -396,7 +390,7 @@ export function PressOccasionManager() {
           return (
             <div key={occasion.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50">
               <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-md flex items-center justify-center text-white ${occasion.color || 'bg-muted-foreground'}`}>
+                <div className={`w-8 h-8 rounded-md flex items-center justify-center text-white ${getPaletteSolidClass(occasion.color)}`}>
                   <OccasionIcon className="h-4 w-4" />
                 </div>
                 <div>

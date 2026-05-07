@@ -86,6 +86,28 @@ export default {
 					birthdays: 'hsl(var(--agenda-birthdays))',
 					decisions: 'hsl(var(--agenda-decisions))'
 				},
+				palette: {
+					red: 'hsl(var(--palette-red))',
+					orange: 'hsl(var(--palette-orange))',
+					amber: 'hsl(var(--palette-amber))',
+					yellow: 'hsl(var(--palette-yellow))',
+					lime: 'hsl(var(--palette-lime))',
+					green: 'hsl(var(--palette-green))',
+					teal: 'hsl(var(--palette-teal))',
+					cyan: 'hsl(var(--palette-cyan))',
+					blue: 'hsl(var(--palette-blue))',
+					indigo: 'hsl(var(--palette-indigo))',
+					purple: 'hsl(var(--palette-purple))',
+					violet: 'hsl(var(--palette-violet))',
+					pink: 'hsl(var(--palette-pink))',
+					rose: 'hsl(var(--palette-rose))',
+					gray: 'hsl(var(--palette-gray))'
+				},
+				priority: {
+					high: 'hsl(var(--priority-high))',
+					medium: 'hsl(var(--priority-medium))',
+					low: 'hsl(var(--priority-low))'
+				},
 				muted: {
 					DEFAULT: 'hsl(var(--muted))',
 					foreground: 'hsl(var(--muted-foreground))'

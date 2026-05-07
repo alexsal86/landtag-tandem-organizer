@@ -81,11 +81,11 @@ export function GlobalDaySlipPanel() {
         node.classList.toggle("opacity-70", struck);
         const isHighPriority = /^!!\s*/.test(text);
         const isPriority = !isHighPriority && /^!\s*/.test(text);
-        node.classList.toggle("bg-red-500/10", isHighPriority);
+        node.classList.toggle("bg-priority-high/10", isHighPriority);
         node.classList.toggle("border", isHighPriority || isPriority);
-        node.classList.toggle("border-red-400/40", isHighPriority);
-        node.classList.toggle("bg-amber-400/10", isPriority);
-        node.classList.toggle("border-amber-400/40", isPriority);
+        node.classList.toggle("border-priority-high/40", isHighPriority);
+        node.classList.toggle("bg-palette-amber/10", isPriority);
+        node.classList.toggle("border-palette-amber/40", isPriority);
         const stamp = ds.todayData.lineTimestamps?.[lineId];
         node.title = stamp ? `Erfasst: ${formatTimeStamp(stamp.addedAt)} · Abgehakt: ${formatTimeStamp(stamp.checkedAt)}` : "";
       });
@@ -343,11 +343,11 @@ export function GlobalDaySlipPanel() {
             <div className={`flex min-h-0 flex-1 flex-col transition-all duration-300 ease-out ${contentTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
               <WeekPlanningBanner recurringItems={ds.recurringItems} onApplyPlan={ds.handleApplyWeekPlan} />
               {ds.yesterdayCarryLines.length > 0 && !carriedOver && (
-                <div className="border-b border-amber-300/60 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-200">
+                <div className="border-b border-palette-amber/40 bg-palette-amber/10 px-4 py-2 text-sm text-palette-amber   ">
                   <span className="font-semibold">Gestern noch offen:</span>{" "}&ldquo;{ds.yesterdayCarryLines[0].text}&rdquo;{ds.yesterdayCarryLines.length > 1 ? ` +${ds.yesterdayCarryLines.length - 1}` : ""}
-                  <div className="mt-1 flex items-center justify-between gap-2 text-xs text-amber-700 dark:text-amber-100/80">
+                  <div className="mt-1 flex items-center justify-between gap-2 text-xs text-palette-amber ">
                     <span>Es werden offene und gesnoozte Punkte von gestern angeboten.</span>
-                    <button type="button" className="rounded border border-amber-300/80 px-2 py-0.5 hover:bg-amber-100 dark:border-amber-300/40 dark:hover:bg-amber-400/10" onClick={carryOverFromYesterday}>In heute übernehmen</button>
+                    <button type="button" className="rounded border border-palette-amber/50 px-2 py-0.5 hover:bg-palette-amber/20  " onClick={carryOverFromYesterday}>In heute übernehmen</button>
                   </div>
                 </div>
               )}
@@ -405,7 +405,7 @@ export function GlobalDaySlipPanel() {
                       const isPriority = !isHighPriority && /^!\s*/.test(text);
                       const snoozeItem = ds.resolvedItems.find(r => r.lineId === id && r.target === "snoozed");
                       return (
-                        <div key={id} className={cn("flex items-center justify-between gap-2 rounded-md border border-border/60 px-2 py-1.5 text-sm", isHighPriority && "bg-red-500/10 border-red-400/40", isPriority && "bg-amber-400/10 border-amber-400/40")}>
+                        <div key={id} className={cn("flex items-center justify-between gap-2 rounded-md border border-border/60 px-2 py-1.5 text-sm", isHighPriority && "bg-priority-high/10 border-priority-high/40", isPriority && "bg-palette-amber/10 border-palette-amber/40")}>
                           <div className="flex flex-1 flex-col">
                             <span className="line-clamp-1">{text}</span>
                             <span className="text-[10px] text-muted-foreground">
