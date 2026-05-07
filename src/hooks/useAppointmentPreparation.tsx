@@ -252,7 +252,8 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
           is_archived: row.is_archived,
           archived_at: row.archived_at,
           preparation_data: normalizePreparationData(row.preparation_data),
-          checklist_items: row.checklist_items ?? []
+          checklist_items: row.checklist_items ?? [],
+          shared_with: row.shared_with ?? [],
         });
       }
     } catch (err) {
@@ -267,6 +268,7 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
     if (!preparationId || !user) return;
 
     try {
+      setSaveStatus("saving");
       const updatePayload: Partial<AppointmentPreparationRow> = {
         ...updates,
         updated_at: new Date().toISOString(),
@@ -281,8 +283,11 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
         .eq('id', preparationId);
 
       if (updateError) throw updateError;
+      setSaveStatus("saved");
+      setLastSavedAt(new Date());
     } catch (err) {
       debugConsole.error('Error updating preparation:', err);
+      setSaveStatus("error");
       // Rollback on error
       await fetchPreparation();
       throw err;
