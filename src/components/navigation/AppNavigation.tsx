@@ -334,18 +334,27 @@ export function AppNavigation({
       <button
         key={id}
         onClick={() => handleNavigationClick(id)}
+        aria-current={isActive ? "page" : undefined}
         className={cn(
-          "flex items-center w-full gap-2 py-1.5 px-2 rounded-md text-sm transition-colors relative group",
+          "relative flex items-center w-full gap-2 h-8 px-2 rounded-md text-sm",
+          "transition-colors duration-fast ease-standard",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
           indent && "pl-8",
           "hover:bg-[hsl(var(--nav-hover))]",
           (isActive || isPending) && "bg-[hsl(var(--nav-active-bg))] font-medium",
           !isActive && "text-[hsl(var(--nav-foreground))]"
         )}
       >
+        {(isActive || isPending) && (
+          <span
+            aria-hidden="true"
+            className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r bg-primary"
+          />
+        )}
         <div className="relative">
           <Icon className={cn("h-4 w-4 shrink-0", clickedItem === id && "animate-nav-bounce")} />
           {badge > 0 && (
-            <span className="absolute -top-1 -right-0.5 h-2 w-2 rounded-full bg-destructive animate-pulse-slow" />
+            <span className="absolute -top-1 -right-0.5 h-2 w-2 rounded-pill bg-destructive animate-pulse-slow" />
           )}
         </div>
         <span className="truncate text-sm">{label}</span>
@@ -378,7 +387,9 @@ export function AppNavigation({
             }
           }}
           className={cn(
-            "flex items-center w-full gap-2 py-1.5 px-2 rounded-md text-sm transition-colors",
+            "flex items-center w-full gap-2 h-8 px-2 rounded-md text-sm",
+            "transition-colors duration-fast ease-standard",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
             "hover:bg-[hsl(var(--nav-hover))]",
             isActive && "font-medium"
           )}
@@ -386,14 +397,14 @@ export function AppNavigation({
           <div className="relative">
             <group.icon className="h-4 w-4 shrink-0" />
             {badge > 0 && (
-              <span className="absolute -top-1 -right-0.5 h-2 w-2 rounded-full bg-destructive animate-pulse-slow" />
+              <span className="absolute -top-1 -right-0.5 h-2 w-2 rounded-pill bg-destructive animate-pulse-slow" />
             )}
           </div>
           <span className="truncate text-sm">{group.label}</span>
           {isExpanded ? (
-            <ChevronDown className="ml-auto h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))]" />
+            <ChevronDown className="ml-auto h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))] transition-transform duration-fast ease-standard" />
           ) : (
-            <ChevronRight className="ml-auto h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))]" />
+            <ChevronRight className="ml-auto h-3 w-3 shrink-0 text-[hsl(var(--nav-muted))] transition-transform duration-fast ease-standard" />
           )}
         </button>
         {isExpanded && group.subItems && (
