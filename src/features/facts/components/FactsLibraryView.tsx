@@ -35,6 +35,8 @@ export function FactsLibraryView() {
   const [sortDir, setSortDir] = useState<FactSortDir>("desc");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(25);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // All-tags lookup (separate, unpaginated, archive-respecting)
   const { data: allFacts = [] } = useFacts({ includeArchived: showArchived });
