@@ -19,10 +19,19 @@ const asJson = args.has("--json");
 const topArg = [...args].find((a) => a.startsWith("--top="));
 const TOP = topArg ? parseInt(topArg.split("=")[1], 10) : 30;
 
+type Rule =
+  | "select-star"
+  | "no-limit"
+  | "no-stale-time"
+  | "realtime-no-filter"
+  | "count-without-head"
+  | "no-range-pagination"
+  | "effect-without-cleanup";
+
 type Finding = {
   file: string;
   line: number;
-  rule: "select-star" | "no-limit" | "no-stale-time" | "realtime-no-filter";
+  rule: Rule;
   snippet: string;
 };
 
