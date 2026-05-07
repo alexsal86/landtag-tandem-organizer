@@ -143,8 +143,6 @@ export const useAppointmentFeedback = () => {
       })) as AppointmentWithFeedback[];
     },
     enabled: !!user?.id && !!currentTenant?.id,
-    staleTime: 2 * 60_000,
-    gcTime: 5 * 60_000,
     refetchOnWindowFocus: false,
   });
 
@@ -253,8 +251,6 @@ export const useAppointmentFeedback = () => {
       }) as AppointmentWithFeedback[];
     },
     enabled: !!user?.id && !!currentTenant?.id,
-    staleTime: 2 * 60_000,
-    gcTime: 5 * 60_000,
     refetchOnWindowFocus: false,
   });
 
@@ -315,8 +311,6 @@ export const useAppointmentFeedback = () => {
       return map;
     },
     enabled: appointmentIds.length > 0,
-    staleTime: 2 * 60_000,
-    gcTime: 5 * 60_000,
     refetchOnWindowFocus: false,
   });
 
@@ -362,8 +356,6 @@ export const useAppointmentFeedback = () => {
       return data as FeedbackSettings;
     },
     enabled: !!user?.id && !!currentTenant?.id,
-    staleTime: 5 * 60_000,
-    gcTime: 10 * 60_000,
     refetchOnWindowFocus: false,
   });
 
