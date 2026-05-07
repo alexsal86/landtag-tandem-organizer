@@ -1,7 +1,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { useNavigate } from "react-router-dom";
-import { Badge } from "@/components/ui/badge";
+
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -13,7 +13,7 @@ import {
 import { CheckSquare, Vote, Briefcase, StickyNote, Calendar, Plus } from "lucide-react";
 import { PageHelpButton } from "@/components/shared/PageHelpButton";
 import { MYWORK_HELP_CONTENT } from "@/config/helpContent";
-import { useMyWorkSettings } from "@/hooks/useMyWorkSettings";
+
 import { useMyWorkNewCounts } from "@/hooks/useMyWorkNewCounts";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { MyWorkTabErrorState } from "@/components/my-work/MyWorkTabErrorState";
@@ -50,14 +50,13 @@ export function MyWorkView() {
     role,
     roleFlags,
     shouldIncludeTeamCountRef,
-    totalCounts,
   } = useMyWorkShellData();
   const { activeTab, setActiveTab, setSearchParams, visibleTabs } = useMyWorkActiveTab({
     role,
     feedbackFeedCoreRolesOnly,
   });
 
-  const { badgeDisplayMode } = useMyWorkSettings();
+
   const { newCounts, markTabAsVisited, refreshCounts } = useMyWorkNewCounts();
 
   useEffect(() => {
@@ -124,32 +123,28 @@ export function MyWorkView() {
         <div className="flex min-w-0 flex-1 overflow-x-auto">
           {visibleTabs.map((tab) => {
             const Icon = tab.icon;
-            const count = (() => {
-              if (tab.value === "feedbackfeed") return newCounts.feedbackFeed || 0;
-              if (!tab.countKey) return 0;
-              if (tab.countKey === "team") return newCounts.team || 0;
-              if (badgeDisplayMode === "new") {
-                const newCountsMap: Record<string, keyof typeof newCounts> = {
-                  tasks: "tasks",
-                  decisions: "decisions",
-                  jourFixe: "jourFixe",
-                  cases: "cases",
-                  plannings: "plannings",
-                };
-                const key = newCountsMap[tab.countKey];
-                return key ? newCounts[key] : 0;
-              }
-              return totalCounts[tab.countKey];
+            const hasNew = (() => {
+              if (tab.value === "feedbackfeed") return (newCounts.feedbackFeed || 0) > 0;
+              if (!tab.countKey) return false;
+              if (tab.countKey === "team") return (newCounts.team || 0) > 0;
+              const newCountsMap: Record<string, keyof typeof newCounts> = {
+                tasks: "tasks",
+                decisions: "decisions",
+                jourFixe: "jourFixe",
+                cases: "cases",
+                plannings: "plannings",
+              };
+              const key = newCountsMap[tab.countKey];
+              return key ? (newCounts[key] || 0) > 0 : false;
             })();
             const isActiveTab = activeTab === tab.value;
-            const badgeVariant = tab.badgeVariant || (badgeDisplayMode === "new" ? "destructive" : "secondary");
 
             return (
               <button
                 key={tab.value}
                 onClick={() => handleTabChange(tab.value)}
                 data-help-id={`mywork-tab-${tab.value}`}
-                className={`flex items-center gap-1.5 ${tab.isLogo ? "px-2" : "px-4"} py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                className={`relative flex items-center gap-1.5 ${tab.isLogo ? "px-2" : "px-4"} py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   isActiveTab
                     ? "border-primary text-primary"
                     : "border-transparent text-muted-foreground hover:text-foreground"
@@ -164,14 +159,14 @@ export function MyWorkView() {
                     onError={() => setIsTabLogoError(true)}
                   />
                 ) : (
-                  <Icon className="h-4 w-4" />
+                  <span className="relative inline-flex">
+                    <Icon className="h-4 w-4" />
+                    {hasNew && !isActiveTab && (
+                      <span className="absolute -top-0.5 -right-1 h-1.5 w-1.5 rounded-full bg-primary animate-pulse" aria-hidden />
+                    )}
+                  </span>
                 )}
                 {tab.label}
-                {count > 0 && (
-                  <Badge variant={badgeVariant} className="ml-1 h-5 min-w-5 text-xs">
-                    {count}
-                  </Badge>
-                )}
               </button>
             );
           })}
