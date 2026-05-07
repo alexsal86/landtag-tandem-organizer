@@ -283,10 +283,43 @@ const run = () => {
       selectTenant(state, staffSession, deterministicFixtures.tenant.id);
       assert.equal(canAccessAdminArea(state, staffSession), false, 'Nicht-Admin darf keinen Zugriff auf den Admin-Bereich erhalten.');
     },
+    letterApprovalWorkflow: () => {
+      const letter = createLetter(state, flowContext.adminSession, {
+        id: deterministicFixtures.letter.id,
+        title: deterministicFixtures.letter.title,
+        status: deterministicFixtures.letter.initialStatus,
+      });
+      assert.equal(letter.status, 'draft', 'Brief startet im Status draft.');
+      const review = transitionLetterStatus(state, flowContext.adminSession, letter.id, 'review');
+      assert.equal(review.status, 'review', 'Brief muss in review wechseln.');
+      const approved = transitionLetterStatus(state, flowContext.adminSession, letter.id, 'approved');
+      assert.equal(approved.status, 'approved', 'Brief muss approved werden.');
+      const sent = transitionLetterStatus(state, flowContext.adminSession, letter.id, 'sent');
+      assert.equal(sent.status, 'sent', 'Brief muss versendet werden.');
+      assert.throws(
+        () => transitionLetterStatus(state, flowContext.adminSession, letter.id, 'draft'),
+        /Unzulässiger Statuswechsel/,
+        'Versendete Briefe dürfen nicht in draft zurückgesetzt werden.',
+      );
+    },
+    notificationsLifecycle: () => {
+      const adminId = deterministicFixtures.users.admin.id;
+      pushNotification(state, adminId, { id: 'n1', title: 'Brief freigeben' });
+      pushNotification(state, adminId, { id: 'n2', title: 'Aufgabe fällig' });
+      const unread = (state.notificationsByUser.get(adminId) ?? []).filter((n) => !n.read).length;
+      assert.equal(unread, 2, 'Es müssen 2 ungelesene Benachrichtigungen vorhanden sein.');
+      const remaining = markAllNotificationsRead(state, adminId);
+      assert.equal(remaining, 0, 'Nach markAllAsRead müssen 0 ungelesene übrig sein.');
+    },
   };
 
   const smokeRequiredFlowOrder = ['loginAndTenantSelection', 'appointmentLifecycle', 'taskLifecycle'];
-  const smokeExtendedFlowOrder = [...smokeRequiredFlowOrder, 'nonAdminAuthorization'];
+  const smokeExtendedFlowOrder = [
+    ...smokeRequiredFlowOrder,
+    'nonAdminAuthorization',
+    'letterApprovalWorkflow',
+    'notificationsLifecycle',
+  ];
   const selectedFlowOrder = requestedSuite === 'required' ? smokeRequiredFlowOrder : smokeExtendedFlowOrder;
 
   for (const flowName of selectedFlowOrder) {
