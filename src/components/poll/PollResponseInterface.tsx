@@ -336,7 +336,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
       case 'unavailable':
         return 'bg-palette-red hover:bg-palette-red text-white';
       default:
-        return 'bg-muted hover:bg-gray-300 text-foreground/80';
+        return 'bg-muted hover:bg-muted text-foreground/80';
     }
   };
 

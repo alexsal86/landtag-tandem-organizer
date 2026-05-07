@@ -334,7 +334,7 @@ export const ElectionDistrictsView = () => {
                         <span>FDP</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 bg-blue-800 rounded"></div>
+                        <div className="w-3 h-3 bg-palette-blue rounded"></div>
                         <span>AfD</span>
                       </div>
                       <div className="flex items-center gap-1">

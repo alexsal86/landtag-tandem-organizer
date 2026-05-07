@@ -164,7 +164,7 @@ export default function DecisionResponse() {
     const colorClasses = option ? getColorClasses(option.color) : getColorClasses("gray");
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-palette-blue/10 to-palette-indigo/20 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4">
@@ -230,7 +230,7 @@ export default function DecisionResponse() {
 
   if (!token || !participantId) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-palette-blue/10 to-palette-indigo/20 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <XCircle className="h-16 w-16 text-palette-red mx-auto mb-4" />
@@ -248,7 +248,7 @@ export default function DecisionResponse() {
 
   if (isLoadingOptions) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-palette-blue/10 to-palette-indigo/20 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardContent className="py-8 text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
@@ -262,7 +262,7 @@ export default function DecisionResponse() {
   // Check if any option requires comment for special handling
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-palette-blue/10 to-palette-indigo/20 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-xl">Entscheidungsanfrage</CardTitle>

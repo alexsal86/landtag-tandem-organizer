@@ -101,7 +101,7 @@ export const COLOR_OPTIONS = [
   { value: "blue", label: "Blau", bgClass: "bg-palette-blue/20", textClass: "text-palette-blue", borderClass: "border-palette-blue" },
   { value: "purple", label: "Lila", bgClass: "bg-palette-purple/20", textClass: "text-palette-purple", borderClass: "border-palette-purple" },
   { value: "lime", label: "Hellgrün", bgClass: "bg-palette-lime/20", textClass: "text-palette-lime", borderClass: "border-palette-lime" },
-  { value: "gray", label: "Grau", bgClass: "bg-muted", textClass: "text-foreground/80", borderClass: "border-gray-600" },
+  { value: "gray", label: "Grau", bgClass: "bg-muted", textClass: "text-foreground/80", borderClass: "border-border" },
 ];
 
 export const getColorClasses = (color: string) => {

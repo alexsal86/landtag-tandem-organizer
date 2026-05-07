@@ -154,7 +154,7 @@ function GuestResponse() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-palette-blue/10 to-palette-purple/10">
         <div className="text-center">
           <div className="animate-pulse">
             <Calendar className="h-16 w-16 mx-auto mb-4 text-palette-blue" />
@@ -167,7 +167,7 @@ function GuestResponse() {
 
   if (error || !appointment || !guest) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-pink-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-palette-red/10 to-palette-pink/10">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center">
             <XCircle className="h-16 w-16 mx-auto mb-4 text-palette-red" />
@@ -184,7 +184,7 @@ function GuestResponse() {
   const hasResponded = guest.status !== 'invited';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-palette-blue/10 to-palette-purple/10 py-8 px-4">
       <div className="max-w-2xl mx-auto">
         
         {/* Header */}

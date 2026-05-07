@@ -954,7 +954,7 @@ export function AutomationRuleWizard({
             <div className="rounded-md border p-3 space-y-2">
               <p className="text-xs font-medium text-muted-foreground">Echtzeit-Validierung</p>
               {semanticIssues.length === 0 ? (
-                <p className="text-xs text-emerald-600">Keine statischen/semantischen Probleme erkannt.</p>
+                <p className="text-xs text-palette-green">Keine statischen/semantischen Probleme erkannt.</p>
               ) : (
                 <div className="space-y-1">
                   {semanticIssues.map((issue, idx) => (

@@ -57,8 +57,8 @@ export function EventPlanningTable({
             >
               <TableCell className="w-10">
                 {planning.confirmed_date ? (
-                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/20">
-                    <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-palette-green/20">
+                    <CheckCircle className="h-4 w-4 text-palette-green" />
                   </div>
                 ) : (
                   <div className="flex items-center justify-center w-6 h-6 rounded-full bg-palette-amber/20">

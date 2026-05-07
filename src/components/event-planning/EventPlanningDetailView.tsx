@@ -254,7 +254,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
     ? `${format(new Date(confirmedPlanningDate), "HH:mm", { locale: de })} Uhr`
     : "Uhrzeit offen";
   const participantStats = [
-    { label: "Zugesagt", count: rsvpCounts.accepted, icon: CheckCircle, tone: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+    { label: "Zugesagt", count: rsvpCounts.accepted, icon: CheckCircle, tone: "bg-palette-green/10 text-palette-green border-palette-green/30" },
     { label: "Vorbehalt", count: rsvpCounts.tentative, icon: AlertCircle, tone: "bg-palette-amber/10 text-palette-amber border-palette-amber/30" },
     { label: "Abgesagt", count: rsvpCounts.declined, icon: X, tone: "bg-palette-rose/10 text-palette-rose border-palette-rose/30" },
     { label: "Ausstehend", count: rsvpCounts.invited, icon: Clock, tone: "bg-muted/30 text-foreground/80 border-border" },

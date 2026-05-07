@@ -107,7 +107,7 @@ export function CaseFileCard({ caseFile, viewMode, onClick, caseFileTypes = [] }
                   </Badge>
                 );
               })}
-              <Badge className={cn("text-white", statusConfig?.color || "bg-gray-500")}>
+              <Badge className={cn("text-white", statusConfig?.color || "bg-muted")}>
                 {statusConfig?.label || caseFile.status}
               </Badge>
             </div>
@@ -130,7 +130,7 @@ export function CaseFileCard({ caseFile, viewMode, onClick, caseFileTypes = [] }
               <p className="text-xs text-muted-foreground">{caseFile.reference_number}</p>
             )}
           </div>
-          <Badge className={cn("text-white shrink-0", statusConfig?.color || "bg-gray-500")}>
+          <Badge className={cn("text-white shrink-0", statusConfig?.color || "bg-muted")}>
             {statusConfig?.label || caseFile.status}
           </Badge>
         </div>

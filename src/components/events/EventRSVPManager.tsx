@@ -558,7 +558,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
     if (!link) return <Badge variant="outline">Wird beim Versand erzeugt</Badge>;
     if (link.revoked_at) return <Badge variant="outline" className="border-palette-rose/40 text-palette-rose">Deaktiviert</Badge>;
     if (link.expires_at && new Date(link.expires_at).getTime() <= Date.now()) return <Badge variant="outline" className="border-palette-amber/40 text-palette-amber">Abgelaufen</Badge>;
-    return <Badge className="bg-emerald-600 text-white">Aktiv</Badge>;
+    return <Badge className="bg-palette-green text-white">Aktiv</Badge>;
   };
 
   const formatDateTime = (value?: string | null, fallback = '-') => {

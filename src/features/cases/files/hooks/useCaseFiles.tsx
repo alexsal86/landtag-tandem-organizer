@@ -110,7 +110,7 @@ export const CASE_STATUSES = [
   { value: 'active', label: 'Aktiv', color: 'bg-palette-green' },
   { value: 'pending', label: 'Wartend', color: 'bg-palette-yellow' },
   { value: 'closed', label: 'Abgeschlossen', color: 'bg-palette-blue' },
-  { value: 'archived', label: 'Archiviert', color: 'bg-gray-500' },
+  { value: 'archived', label: 'Archiviert', color: 'bg-muted' },
 ];
 
 const CASE_FILE_COUNTS_RPC = 'get_case_files_with_counts';

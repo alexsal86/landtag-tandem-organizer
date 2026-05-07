@@ -178,7 +178,7 @@ export function EventPlanningListView(data: EventPlanningDataReturn) {
                         {planning.location && <div className="flex items-center text-sm text-muted-foreground"><MapPin className="mr-2 h-3 w-3" />{planning.location}</div>}
                         <TooltipProvider><Tooltip><TooltipTrigger asChild>
                           {planning.confirmed_date ? (
-                            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/20"><CheckCircle className="h-4 w-4 text-emerald-500" /></div>
+                            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-palette-green/20"><CheckCircle className="h-4 w-4 text-palette-green" /></div>
                           ) : (
                             <div className="flex items-center justify-center w-6 h-6 rounded-full bg-palette-amber/20"><Clock className="h-4 w-4 text-palette-amber" /></div>
                           )}

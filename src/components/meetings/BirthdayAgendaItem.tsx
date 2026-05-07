@@ -212,7 +212,7 @@ export function BirthdayAgendaItem({
                         {format(contact.nextBirthday, 'dd. MMMM', { locale: de })} — wird {contact.age} Jahre
                       </p>
                     </div>
-                    <Cake className="h-4 w-4 text-pink-400" />
+                    <Cake className="h-4 w-4 text-palette-pink" />
                   </div>
                   <div className="flex gap-1 flex-wrap">
                     {ACTION_OPTIONS.map((opt) => {

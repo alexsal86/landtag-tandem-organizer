@@ -390,8 +390,8 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
       case 'urgent': return 'bg-palette-red text-white';
       case 'high': return 'bg-palette-orange text-white';
       case 'medium': return 'bg-palette-blue text-white';
-      case 'low': return 'bg-gray-500 text-white';
-      default: return 'bg-gray-500 text-white';
+      case 'low': return 'bg-muted text-white';
+      default: return 'bg-muted text-white';
     }
   };
 

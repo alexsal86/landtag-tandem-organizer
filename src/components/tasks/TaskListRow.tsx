@@ -308,7 +308,7 @@ export function TaskListRow({
           {followUpDate && (
             <Badge
               variant="outline"
-              className="mr-1 h-6 px-2 text-[11px] border-amber-400 text-palette-amber bg-palette-amber/10"
+              className="mr-1 h-6 px-2 text-[11px] border-palette-amber/60 text-palette-amber bg-palette-amber/10"
             >
               <Clock3 className="h-3 w-3 mr-1" />
               {format(new Date(followUpDate), "dd.MM.yy", { locale: de })}

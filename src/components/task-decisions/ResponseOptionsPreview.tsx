@@ -36,7 +36,7 @@ export const ResponseOptionsPreview = ({ options }: ResponseOptionsPreviewProps)
             <Badge
               key={option.key}
               variant="outline"
-              className={`${colorClasses.textClass} ${colorClasses.borderClass} ${option.recommended ? "ring-1 ring-amber-400/70" : ""}`}
+              className={`${colorClasses.textClass} ${colorClasses.borderClass} ${option.recommended ? "ring-1 ring-palette-amber/70" : ""}`}
             >
               {option.icon && getIcon(option.icon)}
               {!option.icon && <Circle className="h-3 w-3 mr-1" />}

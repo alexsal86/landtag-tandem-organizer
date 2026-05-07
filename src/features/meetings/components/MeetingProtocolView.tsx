@@ -267,7 +267,7 @@ export function MeetingProtocolView({ meetingId, onBack, isPostArchive }: Meetin
       case 'decisions': return <Scale className="h-4 w-4 text-palette-violet" />;
       case 'quick_notes': return <StickyNote className="h-4 w-4 text-palette-amber" />;
       case 'tasks': return <CheckSquare className="h-4 w-4 text-palette-blue" />;
-      case 'case_items': return <Briefcase className="h-4 w-4 text-emerald-500" />;
+      case 'case_items': return <Briefcase className="h-4 w-4 text-palette-green" />;
       case 'birthdays': return <span className="text-base">🎂</span>;
       case 'upcoming_appointments': return <Calendar className="h-4 w-4 text-palette-orange" />;
       default: return null;
@@ -466,7 +466,7 @@ export function MeetingProtocolView({ meetingId, onBack, isPostArchive }: Meetin
                     </Badge>
                   </div>
                   {d.result_text?.trim() && (
-                    <div className="mt-2 p-2 bg-background/60 rounded border-l-4 border-violet-400">
+                    <div className="mt-2 p-2 bg-background/60 rounded border-l-4 border-palette-violet/60">
                       <p className="text-sm font-medium text-palette-violet mb-1">Ergebnis:</p>
                       <p className="text-sm whitespace-pre-wrap">{d.result_text}</p>
                     </div>
@@ -489,7 +489,7 @@ export function MeetingProtocolView({ meetingId, onBack, isPostArchive }: Meetin
                 <div key={note.id} className="p-4 bg-palette-amber/10 rounded-lg border border-palette-amber/30">
                   <p className="font-medium">{note.title || note.content.substring(0, 80)}</p>
                   {note.meeting_result?.trim() && (
-                    <div className="mt-2 p-2 bg-background/60 rounded border-l-4 border-amber-400">
+                    <div className="mt-2 p-2 bg-background/60 rounded border-l-4 border-palette-amber/60">
                       <p className="text-sm font-medium text-palette-amber mb-1">Ergebnis:</p>
                       <p className="text-sm whitespace-pre-wrap">{note.meeting_result}</p>
                     </div>
@@ -504,13 +504,13 @@ export function MeetingProtocolView({ meetingId, onBack, isPostArchive }: Meetin
         {starredAppointments.length > 0 && (
           <div className="space-y-4 pt-6 border-t mb-8">
             <h3 className="text-xl font-semibold flex items-center gap-2">
-              <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
+              <Star className="h-5 w-5 fill-palette-amber text-palette-amber" />
               Markierte Termine
             </h3>
             <div className="space-y-2">
               {starredAppointments.map(apt => (
                 <div key={apt.id} className="flex items-center gap-3 p-3 bg-palette-amber/10 rounded-lg border border-palette-amber/30">
-                  <Star className="h-4 w-4 fill-amber-400 text-amber-400 shrink-0" />
+                  <Star className="h-4 w-4 fill-palette-amber text-palette-amber shrink-0" />
                   <span className="font-medium">{apt.title}</span>
                   <span className="text-sm text-muted-foreground">
                     ({format(new Date(apt.start_time), 'dd.MM.yyyy HH:mm', { locale: de })})

@@ -41,7 +41,7 @@ export function ChannelPreview({
     return (
       <div className="rounded-md border bg-background text-sm shadow-sm overflow-hidden max-w-sm">
         <div className="flex items-center gap-2 px-3 py-2 border-b">
-          <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-pink-500 to-yellow-400" />
+          <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-palette-pink to-palette-yellow/60" />
           <span className="font-semibold text-xs">{authorName}</span>
         </div>
         {imageUrl ? (

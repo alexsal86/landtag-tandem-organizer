@@ -305,7 +305,7 @@ export const FocusModeUpcomingAppointments = forwardRef<
           <Star 
             className={cn(
               "h-4 w-4 transition-colors",
-              isStarred ? "fill-amber-400 text-amber-400" : "text-muted-foreground"
+              isStarred ? "fill-palette-amber text-palette-amber" : "text-muted-foreground"
             )} 
           />
         </Button>
@@ -389,7 +389,7 @@ export const FocusModeUpcomingAppointments = forwardRef<
           )}
           {starredCount > 0 && (
             <Badge variant="outline" className="text-xs bg-palette-amber/10 border-palette-amber/30 text-palette-amber">
-              <Star className="h-3 w-3 mr-1 fill-amber-400" />
+              <Star className="h-3 w-3 mr-1 fill-palette-amber" />
               {starredCount}
             </Badge>
           )}

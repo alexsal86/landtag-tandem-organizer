@@ -377,14 +377,14 @@ export function NoteLinkedDetails({
         
         {/* Meeting Status */}
         {meetingId && (
-          <div className="p-2 bg-emerald-50 rounded-md border border-emerald-100 group/meeting">
+          <div className="p-2 bg-palette-green/10 rounded-md border border-palette-green/20 group/meeting">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-emerald-600">
+              <div className="flex items-center gap-2 text-palette-green">
                 <CalendarIcon className="h-4 w-4" />
                 <span className="text-xs font-medium">Jour Fixe</span>
               </div>
               <ArrowRight 
-                className="h-4 w-4 text-emerald-600 opacity-0 group-hover/meeting:opacity-100 transition-opacity cursor-pointer"
+                className="h-4 w-4 text-palette-green opacity-0 group-hover/meeting:opacity-100 transition-opacity cursor-pointer"
                 onClick={() => navigate(`/meetings?highlight=${meetingId}`)}
               />
             </div>
@@ -394,8 +394,8 @@ export function NoteLinkedDetails({
         
         {/* Archived Meeting Info */}
         {!meetingId && meetingArchivedInfo && (
-          <div className="p-2 bg-emerald-50/50 rounded-md border border-emerald-100/50">
-            <div className="flex items-center gap-2 text-emerald-600/70">
+          <div className="p-2 bg-palette-green/50 rounded-md border border-palette-green/50">
+            <div className="flex items-center gap-2 text-palette-green/70">
               <Archive className="h-4 w-4" />
               <span className="text-xs font-medium">Jour Fixe (archiviert)</span>
             </div>

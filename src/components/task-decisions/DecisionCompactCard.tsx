@@ -124,7 +124,7 @@ export function DecisionCompactCard({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Star className="h-4 w-4 text-palette-amber fill-amber-500" />
+                    <Star className="h-4 w-4 text-palette-amber fill-palette-amber" />
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>Prioritär</p>
@@ -147,7 +147,7 @@ export function DecisionCompactCard({
             )}
 
             {decision.hasResponded && decision.isParticipant && (
-              <CheckCircle className="h-4 w-4 text-emerald-500" />
+              <CheckCircle className="h-4 w-4 text-palette-green" />
             )}
           </div>
 

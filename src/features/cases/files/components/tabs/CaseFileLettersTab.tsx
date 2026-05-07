@@ -90,8 +90,8 @@ export function CaseFileLettersTab({ letters, onAdd, onRemove }: CaseFileLetters
       case 'sent': return 'bg-palette-green';
       case 'approved': return 'bg-palette-blue';
       case 'review': return 'bg-palette-yellow';
-      case 'draft': return 'bg-gray-500';
-      default: return 'bg-gray-500';
+      case 'draft': return 'bg-muted';
+      default: return 'bg-muted';
     }
   };
 

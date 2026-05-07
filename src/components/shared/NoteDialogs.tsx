@@ -322,7 +322,7 @@ export function NoteDialogs(props: NoteDialogsProps) {
               <div className="flex items-center gap-3">
                 <Checkbox id="delete-meeting" checked={props.deleteLinkedMeeting} onCheckedChange={(checked) => props.setDeleteLinkedMeeting(!!checked)} />
                 <label htmlFor="delete-meeting" className="text-sm flex items-center gap-2 cursor-pointer">
-                  <CalendarIcon className="h-4 w-4 text-emerald-600" />Vom Jour Fixe entfernen
+                  <CalendarIcon className="h-4 w-4 text-palette-green" />Vom Jour Fixe entfernen
                 </label>
               </div>
             )}

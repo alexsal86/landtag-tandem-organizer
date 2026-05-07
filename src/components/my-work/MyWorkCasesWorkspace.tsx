@@ -666,7 +666,7 @@ export function MyWorkCasesWorkspace() {
   const priorityMeta = useCallback((priority: string | null) => {
     switch (priority) {
       case "low":
-        return { color: "text-emerald-500", label: "Niedrig" };
+        return { color: "text-palette-green", label: "Niedrig" };
       case "high":
       case "urgent":
         return { color: "text-palette-red", label: priority === "urgent" ? "Dringend" : "Hoch" };
@@ -836,7 +836,7 @@ export function MyWorkCasesWorkspace() {
         id: "source-received",
         timestamp: `${editableCaseItem.sourceReceivedAt}T08:00:00`,
         title: "Eingang",
-        accentClass: "bg-sky-500",
+        accentClass: "bg-palette-blue",
         icon: Inbox,
       });
     }

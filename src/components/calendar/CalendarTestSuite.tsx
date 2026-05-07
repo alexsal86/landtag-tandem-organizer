@@ -351,7 +351,7 @@ export function CalendarTestSuite() {
             </Card>
           </div>
 
-          <Card className="p-4 bg-gradient-to-r from-green-50 to-blue-50">
+          <Card className="p-4 bg-gradient-to-r from-palette-green/10 to-palette-blue/10">
             <h4 className="font-medium mb-2">🏆 Gesamtbewertung</h4>
             <div className="text-sm space-y-2">
               <p>

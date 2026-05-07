@@ -378,7 +378,7 @@ export function AgendaEditorPanel({
                                   </label>
                                 )}
                                 {hasContentIndicator(item) && (
-                                  <span className="h-2 w-2 rounded-full bg-sky-500/80 shrink-0" title="Enthält Beschreibung, Notizen oder Dokumente" />
+                                  <span className="h-2 w-2 rounded-full bg-palette-blue/80 shrink-0" title="Enthält Beschreibung, Notizen oder Dokumente" />
                                 )}
                                 {hasSubItems(item) && (
                                   <Button

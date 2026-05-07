@@ -26,8 +26,8 @@ const TIME_SLOT_LABELS: Record<string, string> = {
 };
 
 const VARIANT_LABELS: Record<string, { label: string; className: string }> = {
-  motivational: { label: "Motivierend", className: "bg-sky-500/10 text-sky-700 border-sky-500/30" },
-  encouraging: { label: "Ermutigend", className: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30" },
+  motivational: { label: "Motivierend", className: "bg-palette-blue/10 text-palette-blue border-palette-blue/30" },
+  encouraging: { label: "Ermutigend", className: "bg-palette-green/10 text-palette-green border-palette-green/30" },
   relaxed: { label: "Entspannt", className: "bg-palette-violet/10 text-palette-violet border-palette-violet/30" },
   celebration: { label: "Feierlich", className: "bg-palette-amber/10 text-palette-amber border-palette-amber/30" },
   warning: { label: "Warnung", className: "bg-palette-red/10 text-palette-red border-palette-red/30" },

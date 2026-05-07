@@ -31,7 +31,7 @@ export function NoteLinkedBadge({ type, id, label, className }: NoteLinkedBadgeP
       case 'case_item':
         return 'text-palette-teal bg-palette-teal/20 border-palette-teal/40 hover:bg-palette-teal/30';
       case 'meeting': 
-        return 'text-emerald-700 bg-emerald-100 border-emerald-300 hover:bg-emerald-200';
+        return 'text-palette-green bg-palette-green/20 border-palette-green/40 hover:bg-palette-green/30';
     }
   };
 

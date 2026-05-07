@@ -57,7 +57,7 @@ export function TenantHealthBadges({ tenantId, reloadKey }: Props): React.JSX.El
       ? "bg-destructive/10 text-destructive border-destructive/30"
       : n < 5
       ? "bg-palette-amber/10 text-palette-amber border-palette-amber/30"
-      : "bg-emerald-500/10 text-emerald-700 border-emerald-500/30";
+      : "bg-palette-green/10 text-palette-green border-palette-green/30";
 
   return (
     <div className="flex flex-wrap gap-1">

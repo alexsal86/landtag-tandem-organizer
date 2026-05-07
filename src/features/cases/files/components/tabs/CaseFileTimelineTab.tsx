@@ -32,7 +32,7 @@ const EVENT_TYPES = [
   { value: 'decision', label: 'Entscheidung', icon: CheckSquare, color: 'bg-palette-green' },
   { value: 'document', label: 'Dokument', icon: FileText, color: 'bg-palette-orange' },
   { value: 'correspondence', label: 'Korrespondenz', icon: Mail, color: 'bg-palette-cyan' },
-  { value: 'note', label: 'Notiz', icon: Clock, color: 'bg-gray-500' },
+  { value: 'note', label: 'Notiz', icon: Clock, color: 'bg-muted' },
 ];
 
 export function CaseFileTimelineTab({ timeline, onAddEntry, onDeleteEntry }: CaseFileTimelineTabProps) {

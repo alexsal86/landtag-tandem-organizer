@@ -331,7 +331,7 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
               <Star 
                 className={cn(
                   "h-4 w-4 transition-colors",
-                  isStarred ? "fill-amber-400 text-amber-400" : "text-muted-foreground"
+                  isStarred ? "fill-palette-amber text-palette-amber" : "text-muted-foreground"
                 )} 
               />
             </Button>
@@ -425,7 +425,7 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
         <div className="ml-auto flex items-center gap-2">
           {starredCount > 0 && (
             <Badge variant="outline" className="text-xs bg-palette-amber/10 border-palette-amber/30 text-palette-amber">
-              <Star className="h-3 w-3 mr-1 fill-amber-400" />
+              <Star className="h-3 w-3 mr-1 fill-palette-amber" />
               {starredCount}
             </Badge>
           )}

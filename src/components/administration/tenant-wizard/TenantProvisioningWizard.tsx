@@ -440,8 +440,8 @@ export function TenantProvisioningWizard({ open, onOpenChange, templateTenants, 
         {/* STEP 4: Success */}
         {step === 4 && result && (
           <div className="space-y-4 py-2">
-            <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
-              <div className="font-medium text-emerald-700">
+            <div className="p-4 rounded-lg bg-palette-green/10 border border-palette-green/30">
+              <div className="font-medium text-palette-green">
                 ✓ {result.tenantName} ist startklar
               </div>
               <div className="text-xs text-muted-foreground mt-1 font-mono">

@@ -70,7 +70,7 @@ export interface DossierTalkingPoint {
 }
 
 export const STAKEHOLDER_STANCE_OPTIONS: { value: StakeholderStance; label: string; tone: string }[] = [
-  { value: 'pro', label: 'Pro', tone: 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30' },
+  { value: 'pro', label: 'Pro', tone: 'bg-palette-green/15 text-palette-green border-palette-green/30' },
   { value: 'neutral', label: 'Neutral', tone: 'bg-muted text-foreground border-border' },
   { value: 'unklar', label: 'Unklar', tone: 'bg-palette-amber/15 text-palette-amber border-palette-amber/30' },
   { value: 'contra', label: 'Contra', tone: 'bg-palette-rose/15 text-palette-rose border-palette-rose/30' },

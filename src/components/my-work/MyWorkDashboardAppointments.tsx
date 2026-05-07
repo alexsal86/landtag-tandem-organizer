@@ -360,7 +360,7 @@ export const DashboardAppointments = ({ data }: Props) => {
       {specialDayHint && isSpecialDayHintVisible && <Separator className="my-2" />}
 
       {specialDayHint && isSpecialDayHintVisible && (
-        <div className="group relative bg-palette-amber/10 border-l-2 border-amber-400 px-3 py-1.5 pr-9 rounded text-sm text-foreground flex items-start gap-2">
+        <div className="group relative bg-palette-amber/10 border-l-2 border-palette-amber/60 px-3 py-1.5 pr-9 rounded text-sm text-foreground flex items-start gap-2">
           {HintIcon && <HintIcon className="h-4 w-4 mt-0.5 shrink-0 text-palette-amber" />}
           <span dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(specialDayHint.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>')) }} />
           <Button

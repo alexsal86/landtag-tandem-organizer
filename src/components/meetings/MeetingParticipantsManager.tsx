@@ -36,7 +36,7 @@ const statusLabels = {
 
 const statusColors = {
   pending: 'bg-palette-amber/10 text-palette-amber border-palette-amber/20',
-  confirmed: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
+  confirmed: 'bg-palette-green/10 text-palette-green border-palette-green/20',
   declined: 'bg-palette-red/10 text-palette-red border-palette-red/20'
 };
 

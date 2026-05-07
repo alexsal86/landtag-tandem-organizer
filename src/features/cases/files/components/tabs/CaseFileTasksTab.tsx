@@ -78,8 +78,8 @@ export function CaseFileTasksTab({ tasks, onAdd, onRemove }: CaseFileTasksTabPro
     switch (status) {
       case 'completed': return 'bg-palette-green';
       case 'in_progress': return 'bg-palette-blue';
-      case 'todo': return 'bg-gray-500';
-      default: return 'bg-gray-500';
+      case 'todo': return 'bg-muted';
+      default: return 'bg-muted';
     }
   };
 

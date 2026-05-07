@@ -160,7 +160,7 @@ export function NoteCard({
                 {note.task_id && <div className="w-1.5 h-1.5 bg-palette-blue" title="Aufgabe" />}
                 {note.decision_id && <div className="w-1.5 h-1.5 bg-palette-purple" title="Entscheidung" />}
                 {note.case_item_id && <div className="w-1.5 h-1.5 bg-palette-teal" title="Vorgang" />}
-                {note.meeting_id && <div className="w-1.5 h-1.5 bg-emerald-500" title="Jour Fixe" />}
+                {note.meeting_id && <div className="w-1.5 h-1.5 bg-palette-green" title="Jour Fixe" />}
                 {hasShared && <div className="w-1.5 h-1.5 bg-palette-violet" title={note.is_shared ? `Geteilt von ${note.owner?.display_name || 'Unbekannt'}` : "Geteilt"} />}
               </div>
               <div className="hidden group-hover:flex items-center gap-1.5 flex-wrap">
@@ -232,7 +232,7 @@ export function NoteCard({
                       </Button>
                     </TooltipTrigger><TooltipContent side="top">Wiedervorlage</TooltipContent></Tooltip>
                     <Tooltip><TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.meeting_id && "text-emerald-600")} onClick={(e) => { e.stopPropagation(); note.meeting_id ? onRemoveFromMeeting(note.id) : onOpenMeetingSelector(note); }}>
+                      <Button variant="ghost" size="icon" className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.meeting_id && "text-palette-green")} onClick={(e) => { e.stopPropagation(); note.meeting_id ? onRemoveFromMeeting(note.id) : onOpenMeetingSelector(note); }}>
                         <CalendarIcon className="h-3 w-3" />
                       </Button>
                     </TooltipTrigger><TooltipContent side="top">{note.meeting_id ? "Von Jour Fixe entfernen" : "Auf Jour Fixe"}</TooltipContent></Tooltip>
@@ -343,7 +343,7 @@ export function NoteCard({
                   </DropdownMenuItem>
                 )}
                 {note.meeting_id ? (
-                  <DropdownMenuItem onClick={() => onRemoveFromMeeting(note.id)} className="text-emerald-600">
+                  <DropdownMenuItem onClick={() => onRemoveFromMeeting(note.id)} className="text-palette-green">
                     <CalendarIcon className="h-3 w-3 mr-2" />Von Jour Fixe entfernen
                   </DropdownMenuItem>
                 ) : (
@@ -473,7 +473,7 @@ export function NoteCard({
       </div>
 
       {note.is_pinned && (
-        <div className="absolute top-0 right-0 w-0 h-0 border-t-[16px] border-l-[16px] border-t-amber-400 border-l-transparent rounded-tr-lg" title="Angepinnt" />
+        <div className="absolute top-0 right-0 w-0 h-0 border-t-[16px] border-l-[16px] border-t-palette-amber/60 border-l-transparent rounded-tr-lg" title="Angepinnt" />
       )}
 
       {hasLinkedItems && (

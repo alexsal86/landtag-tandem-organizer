@@ -391,7 +391,7 @@ export function GlobalDaySlipPanel() {
                       if (archivedCount > 0) parts.push(`${archivedCount} archiviert`);
                       const summary = parts.length > 0 ? `Es werden erstellt: ${parts.join(", ")}.` : "";
                       return (
-                        <div className="rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                        <div className="rounded border border-palette-green/40 bg-palette-green/10 px-3 py-2 text-xs text-palette-green">
                           <p>✓ Alle offenen Punkte wurden zugewiesen.</p>
                           {summary && <p className="mt-1 font-medium">{summary}</p>}
                         </div>
@@ -399,7 +399,7 @@ export function GlobalDaySlipPanel() {
                     })()}
                     {ds.triageEntries.map(({ id, text }) => {
                       const activeTarget = ds.resolvedByLineId.get(id);
-                      const buttonClass = (target: string) => `rounded p-1 transition-colors ${activeTarget === target ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300 dark:ring-emerald-400/50" : "hover:bg-muted"}`;
+                      const buttonClass = (target: string) => `rounded p-1 transition-colors ${activeTarget === target ? "bg-palette-green/20 text-palette-green ring-1 ring-palette-green dark:ring-palette-green/50" : "hover:bg-muted"}`;
                       const stamp = ds.todayData.lineTimestamps?.[id];
                       const isHighPriority = /^!!\s*/.test(text);
                       const isPriority = !isHighPriority && /^!\s*/.test(text);
@@ -460,13 +460,13 @@ export function GlobalDaySlipPanel() {
                     <p className="mb-1 text-[11px] text-muted-foreground">Wie war dein Tag?</p>
                     <div className="flex items-center justify-between">
                       {["😞", "🙁", "😐", "🙂", "😄"].map((mood, index) => (
-                        <button key={mood} type="button" className={cn("rounded px-1.5 py-1 text-lg transition hover:bg-muted", ds.todayData.dayMood === (index + 1) ? "bg-emerald-500/20 ring-1 ring-emerald-400/50" : "opacity-70")}
+                        <button key={mood} type="button" className={cn("rounded px-1.5 py-1 text-lg transition hover:bg-muted", ds.todayData.dayMood === (index + 1) ? "bg-palette-green/20 ring-1 ring-palette-green/50" : "opacity-70")}
                           onClick={() => ds.setStore((prev) => ({ ...prev, [ds.todayKey]: { ...(prev[ds.todayKey] ?? { html: "", plainText: "", struckLineIds: [] }), dayMood: (index + 1) as 1 | 2 | 3 | 4 | 5 } }))}>{mood}</button>
                       ))}
                     </div>
                   </div>
                 )}
-                <button type="button" onClick={completeDay} className="flex h-10 w-full items-center justify-between rounded-lg border border-emerald-300 bg-emerald-50 px-3 text-sm font-medium text-emerald-800">
+                <button type="button" onClick={completeDay} className="flex h-10 w-full items-center justify-between rounded-lg border border-palette-green/40 bg-palette-green/10 px-3 text-sm font-medium text-palette-green">
                   <span>{completeButtonLabel}</span>
                   <span className="text-xs opacity-70">{completeButtonHint}</span>
                 </button>
@@ -486,12 +486,12 @@ export function GlobalDaySlipPanel() {
       )}
 
       {completionMessage && (
-        <div className="fixed bottom-24 right-6 z-50 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs text-emerald-800 shadow-lg backdrop-blur">{completionMessage}</div>
+        <div className="fixed bottom-24 right-6 z-50 rounded-lg border border-palette-green/40 bg-palette-green/10 px-3 py-1.5 text-xs text-palette-green shadow-lg backdrop-blur">{completionMessage}</div>
       )}
 
       <button type="button" className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full border border-border/70 bg-background/90 shadow-lg backdrop-blur hover:bg-muted" aria-label="Tageszettel öffnen (Strg+Alt+J)" onClick={() => setOpen((prev: boolean) => !prev)} onDragOver={handleDaySlipButtonDragOver} onDrop={handleDaySlipButtonDrop}>
-        {showCompletePulse ? <Check className="h-5 w-5 text-emerald-600" /> : <ClipboardPen className="h-5 w-5" />}
-        {ds.unresolvedCount > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-semibold text-white">{ds.unresolvedCount}</span>}
+        {showCompletePulse ? <Check className="h-5 w-5 text-palette-green" /> : <ClipboardPen className="h-5 w-5" />}
+        {ds.unresolvedCount > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-palette-green px-1 text-[10px] font-semibold text-white">{ds.unresolvedCount}</span>}
       </button>
     </>
   );

@@ -11,7 +11,7 @@ import {
 const TYPE_CONFIG = {
   task: { label: 'Aufgabe', tabBase: '/mywork?tab=tasks', barClass: 'bg-palette-blue' },
   note: { label: 'Notiz', tabBase: '/mywork?tab=capture', barClass: 'bg-palette-amber' },
-  case: { label: 'Vorgang', tabBase: '/mywork?tab=cases', barClass: 'bg-emerald-500' },
+  case: { label: 'Vorgang', tabBase: '/mywork?tab=cases', barClass: 'bg-palette-green' },
   decision: { label: 'Entscheidung', tabBase: '/mywork?tab=decisions', barClass: 'bg-palette-purple' },
   eventPlanning: { label: 'Veranstaltungsplanung', tabBase: '/eventplanning', barClass: 'bg-palette-rose' },
 };
@@ -140,7 +140,7 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
       </div>
 
       {renderGroup('overdue', 'Überfällig', grouped.overdue, 'text-destructive')}
-      {renderGroup('today', 'Heute', grouped.today, 'text-emerald-600')}
+      {renderGroup('today', 'Heute', grouped.today, 'text-palette-green')}
       {renderGroup('thisWeek', 'Diese Woche', grouped.thisWeek)}
 
       {grouped.later.length > 0 && (

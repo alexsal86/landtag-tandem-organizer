@@ -768,11 +768,11 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
                 </React.Fragment>
               ))}
 
-              {interactions.snapLines.x != null && (<><div className="absolute top-0 bottom-0 border-l-2 border-emerald-500/90 pointer-events-none animate-pulse" style={{ left: `${interactions.snapLines.x * effectiveScaleX}px` }} /><div className="absolute top-1 rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] text-white pointer-events-none" style={{ left: `${interactions.snapLines.x * effectiveScaleX + 2}px` }}>{Math.round(interactions.snapLines.x)}mm</div></>)}
-              {interactions.snapLines.y != null && (<><div className="absolute left-0 right-0 border-t-2 border-emerald-500/90 pointer-events-none animate-pulse" style={{ top: `${interactions.snapLines.y * effectiveScaleY}px` }} /><div className="absolute left-1 rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] text-white pointer-events-none" style={{ top: `${interactions.snapLines.y * effectiveScaleY + 2}px` }}>{Math.round(interactions.snapLines.y)}mm</div></>)}
+              {interactions.snapLines.x != null && (<><div className="absolute top-0 bottom-0 border-l-2 border-palette-green/90 pointer-events-none animate-pulse" style={{ left: `${interactions.snapLines.x * effectiveScaleX}px` }} /><div className="absolute top-1 rounded bg-palette-green px-1.5 py-0.5 text-[10px] text-white pointer-events-none" style={{ left: `${interactions.snapLines.x * effectiveScaleX + 2}px` }}>{Math.round(interactions.snapLines.x)}mm</div></>)}
+              {interactions.snapLines.y != null && (<><div className="absolute left-0 right-0 border-t-2 border-palette-green/90 pointer-events-none animate-pulse" style={{ top: `${interactions.snapLines.y * effectiveScaleY}px` }} /><div className="absolute left-1 rounded bg-palette-green px-1.5 py-0.5 text-[10px] text-white pointer-events-none" style={{ top: `${interactions.snapLines.y * effectiveScaleY + 2}px` }}>{Math.round(interactions.snapLines.y)}mm</div></>)}
 
               {(interactions.smartGuideDistance.horizontal != null || interactions.smartGuideDistance.vertical != null) && (
-                <div className="absolute bottom-2 left-2 z-10 rounded bg-emerald-600/90 px-2 py-1 text-[10px] text-white pointer-events-none">
+                <div className="absolute bottom-2 left-2 z-10 rounded bg-palette-green/90 px-2 py-1 text-[10px] text-white pointer-events-none">
                   {interactions.smartGuideDistance.horizontal != null && <span>ΔX {interactions.smartGuideDistance.horizontal}mm </span>}
                   {interactions.smartGuideDistance.vertical != null && <span>ΔY {interactions.smartGuideDistance.vertical}mm</span>}
                 </div>

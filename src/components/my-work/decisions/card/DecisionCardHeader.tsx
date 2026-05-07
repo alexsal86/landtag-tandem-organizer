@@ -36,12 +36,12 @@ export function DecisionCardHeader({ archivingDecisionId, creatingTaskId, decisi
         ) : null}
 
         {(decision.priority ?? 0) > 0 && (
-          <TooltipProvider><Tooltip><TooltipTrigger asChild><Star className="h-4 w-4 text-palette-amber fill-amber-500" /></TooltipTrigger><TooltipContent><p>Prioritär</p></TooltipContent></Tooltip></TooltipProvider>
+          <TooltipProvider><Tooltip><TooltipTrigger asChild><Star className="h-4 w-4 text-palette-amber fill-palette-amber" /></TooltipTrigger><TooltipContent><p>Prioritär</p></TooltipContent></Tooltip></TooltipProvider>
         )}
         {decision.visible_to_all && (
           <TooltipProvider><Tooltip><TooltipTrigger asChild><Globe className="h-4 w-4 text-muted-foreground" /></TooltipTrigger><TooltipContent><p>Öffentlich</p></TooltipContent></Tooltip></TooltipProvider>
         )}
-        {decision.hasResponded && decision.isParticipant && <CheckCircle className="h-4 w-4 text-emerald-500" />}
+        {decision.hasResponded && decision.isParticipant && <CheckCircle className="h-4 w-4 text-palette-green" />}
       </div>
 
       {decision.isCreator && (

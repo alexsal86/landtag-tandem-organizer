@@ -184,13 +184,13 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
   const getStatusRingColor = (statusType: string): string => {
     switch (statusType) {
       case 'online':
-        return 'ring-green-500';
+        return 'ring-palette-green';
       case 'meeting':
-        return 'ring-red-500';
+        return 'ring-palette-red';
       case 'break':
-        return 'ring-yellow-500';
+        return 'ring-palette-yellow';
       case 'away':
-        return 'ring-orange-500';
+        return 'ring-palette-orange';
       case 'offline':
         return 'ring-gray-400';
       case 'custom':

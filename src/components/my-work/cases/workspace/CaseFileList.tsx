@@ -40,7 +40,7 @@ const DroppableCaseFileRow = ({ cf, linkedCount, onSelectCaseFile, onArchiveCase
               type="button"
               className={cn(
                 "w-full border-b px-2 py-2 text-left transition-colors hover:bg-muted/40 rounded-md",
-                dropSnapshot.isDraggingOver && "ring-2 ring-blue-500 bg-palette-blue/10",
+                dropSnapshot.isDraggingOver && "ring-2 ring-palette-blue bg-palette-blue/10",
               )}
               onClick={() => onSelectCaseFile(cf)}
             >

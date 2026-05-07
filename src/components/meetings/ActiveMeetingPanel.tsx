@@ -123,7 +123,7 @@ export function ActiveMeetingPanel({
         <div key={appt.id} className={cn("ml-[0.8rem] pl-4 border-l-2 border-muted space-y-2", starredAppointmentIds.has(appt.id) && "bg-palette-amber/5")}>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0" onClick={(e) => { e.stopPropagation(); onToggleStar(appt); }}>
-              <Star className={cn("h-3.5 w-3.5", starredAppointmentIds.has(appt.id) ? "fill-amber-400 text-amber-400" : "text-muted-foreground")} />
+              <Star className={cn("h-3.5 w-3.5", starredAppointmentIds.has(appt.id) ? "fill-palette-amber text-palette-amber" : "text-muted-foreground")} />
             </Button>
             <span className="text-xs font-medium text-muted-foreground">{String.fromCharCode(97 + apptIdx)})</span>
             <CalendarDays className="h-3.5 w-3.5 text-palette-blue" />

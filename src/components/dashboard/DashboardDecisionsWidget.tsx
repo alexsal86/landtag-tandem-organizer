@@ -23,7 +23,7 @@ function formatDeadline(deadline: string | null): { label: string; isOverdue: bo
 }
 
 const PROMPT_COLOR_CLASS: Record<string, string> = {
-  green: 'border-emerald-200 bg-emerald-50',
+  green: 'border-palette-green/30 bg-palette-green/10',
   red: 'border-palette-red/30 bg-palette-red/10',
   orange: 'border-palette-orange/30 bg-palette-orange/10',
   yellow: 'border-palette-yellow/30 bg-palette-yellow/10',
@@ -108,7 +108,7 @@ function DecisionRow({ decision, onRefresh, onOpen, onPromptOpen, onPromptClose,
 
       {summary.total > 0 && (
         <div className="flex items-center gap-1 mb-2" aria-hidden>
-          {Array.from({ length: summary.yesCount }).map((_, i) => <span key={`y${i}`} className="h-1.5 flex-1 rounded-sm bg-emerald-500" />)}
+          {Array.from({ length: summary.yesCount }).map((_, i) => <span key={`y${i}`} className="h-1.5 flex-1 rounded-sm bg-palette-green" />)}
           {Array.from({ length: summary.noCount }).map((_, i) => <span key={`n${i}`} className="h-1.5 flex-1 rounded-sm bg-destructive" />)}
           {Array.from({ length: summary.questionCount }).map((_, i) => <span key={`q${i}`} className="h-1.5 flex-1 rounded-sm bg-palette-amber" />)}
           {Array.from({ length: summary.pending }).map((_, i) => <span key={`p${i}`} className="h-1.5 flex-1 rounded-sm bg-muted" />)}
