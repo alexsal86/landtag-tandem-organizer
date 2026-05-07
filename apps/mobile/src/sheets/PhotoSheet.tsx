@@ -5,6 +5,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { supabase } from '@/lib/supabase';
 import { SheetShell } from '@/ui/SheetShell';
 import { useToast } from '@/ui/Toast';
+import { ensurePermission } from '@/lib/permissions';
 
 export function PhotoSheet({
   visible, onClose, userId,
