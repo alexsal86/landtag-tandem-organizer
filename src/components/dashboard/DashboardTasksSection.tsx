@@ -52,13 +52,20 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
   const renderItem = (item: DeadlineItem) => {
     const cfg = TYPE_CONFIG[item.type];
     const Icon = cfg.icon;
+    const status = getDeadlineStatus(item.dueDate);
+    const dateLabel = formatDeadlineDateLabel(item.dueDate);
+    const contextLabel = getDeadlineContextLabel(item.type);
     return (
       <div
         key={`${item.type}-${item.id}`}
-        className="group flex items-center gap-1.5 rounded px-1 py-0.5 text-sm text-foreground/90 cursor-pointer hover:bg-muted/40 transition-colors"
+        className="group relative flex items-center gap-1.5 rounded pl-2 pr-1 py-0.5 text-sm text-foreground/90 cursor-pointer hover:bg-muted/40 transition-colors"
         onClick={() => navigate(item.type === 'eventPlanning' && item.planningId ? `${cfg.tabBase}/${item.planningId}` : `${cfg.tabBase}&highlight=${item.id}`)}
         title={`${cfg.label} – Klicken zum Öffnen, oder per Handle in den Tageszettel ziehen`}
       >
+        <span
+          aria-hidden
+          className={`absolute left-0 top-1 bottom-1 w-0.5 rounded ${DEADLINE_STATUS_BAR_CLASS[status]}`}
+        />
         <span
           draggable
           onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, item.title, item.id, item.type); }}
@@ -70,8 +77,8 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
         </span>
         <Icon className={`h-3.5 w-3.5 shrink-0 ${cfg.color}`} />
         <span className="flex-1 truncate">{item.title}</span>
-        <span className="text-xs text-muted-foreground font-mono shrink-0">
-          {format(new Date(item.dueDate), 'dd.MM.', { locale: de })}
+        <span className={`text-xs tabular-nums shrink-0 ${status === 'overdue' ? 'text-destructive' : 'text-muted-foreground'}`}>
+          {dateLabel} · {contextLabel}
         </span>
         {item.canSnooze ? <DeadlineSnoozeButton item={item} /> : null}
       </div>
