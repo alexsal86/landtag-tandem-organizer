@@ -115,7 +115,7 @@ export function MyWorkFeedbackFeedTab() {
   }
   if (!entries || entries.length === 0) {
     return (
-      <div className="space-y-4 max-w-4xl">
+      <div className="space-y-2 max-w-4xl">
         <FeedbackFilters
           scope={scope}
           setScope={setScope}
@@ -138,7 +138,7 @@ export function MyWorkFeedbackFeedTab() {
   }
 
   return (
-    <div className="space-y-4 max-w-4xl">
+    <div className="space-y-2 max-w-4xl">
       <FeedbackFilters
         scope={scope}
         setScope={setScope}

@@ -1,5 +1,6 @@
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 const MyWorkJourFixeTab = lazyWithRetry(() => import("./MyWorkJourFixeTab").then(m => ({ default: m.MyWorkJourFixeTab })));
 const MyWorkPlanungsKartenSection = lazyWithRetry(() => import("./MyWorkPlanungsKartenSection").then(m => ({ default: m.MyWorkPlanungsKartenSection })));
@@ -11,18 +12,24 @@ const fallback = (
 );
 
 export function MyWorkTerminePlanungTab() {
+  const [sub, setSub] = useState<"meetings" | "plannings">("meetings");
+
   return (
-    <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-      <div className="min-w-0">
+    <Tabs value={sub} onValueChange={(v) => setSub(v as "meetings" | "plannings")} className="w-full">
+      <TabsList className="mb-4">
+        <TabsTrigger value="meetings">Meetings</TabsTrigger>
+        <TabsTrigger value="plannings">Planungen</TabsTrigger>
+      </TabsList>
+      <TabsContent value="meetings" className="mt-0">
         <Suspense fallback={fallback}>
           <MyWorkJourFixeTab />
         </Suspense>
-      </div>
-      <div className="min-w-0">
+      </TabsContent>
+      <TabsContent value="plannings" className="mt-0">
         <Suspense fallback={fallback}>
           <MyWorkPlanungsKartenSection />
         </Suspense>
-      </div>
-    </div>
+      </TabsContent>
+    </Tabs>
   );
 }

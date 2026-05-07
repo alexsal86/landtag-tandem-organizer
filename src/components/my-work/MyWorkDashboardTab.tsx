@@ -120,7 +120,7 @@ export function MyWorkDashboardTab() {
       <DashboardHeader />
       {isAbgeordneter && <TodayBriefingPanel />}
       {isEmployee && !isAbgeordneter && <BriefingComposerCard />}
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,35fr)_minmax(0,35fr)_minmax(0,30fr)] gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,40fr)_minmax(0,35fr)_minmax(0,25fr)] gap-6 items-start">
         <div className="flex flex-col gap-6 min-w-0">
           <AppointmentsWidget />
         </div>

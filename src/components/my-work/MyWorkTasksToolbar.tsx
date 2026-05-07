@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -40,7 +40,7 @@ export function MyWorkTasksToolbar({
       <div className="flex items-center justify-between px-4 py-2 border-b">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">Aufgaben</span>
-          <Badge variant="outline">{totalTasks}</Badge>
+          {totalTasks > 0 && <span className="text-xs text-muted-foreground tabular-nums">{totalTasks}</span>}
         </div>
         <div className="flex items-center gap-2">
           <Select value={statusFilter} onValueChange={onStatusFilterChange}>
@@ -80,7 +80,7 @@ export function MyWorkTasksToolbar({
                 <ChevronDown className={cn("h-4 w-4 transition-transform", !dueFollowUpsExpanded && "-rotate-90")} />
                 <Clock className="h-4 w-4 text-amber-600" />
                 <span className="text-xs font-medium text-amber-700">Fällige Wiedervorlagen</span>
-                <Badge variant="secondary" className="bg-amber-100 text-amber-800 hover:bg-amber-100">{dueFollowUpCount}</Badge>
+                <span className="text-[11px] text-amber-700/70 tabular-nums">{dueFollowUpCount}</span>
               </div>
             </CollapsibleTrigger>
           </Collapsible>
@@ -95,7 +95,7 @@ export function MyWorkTasksToolbar({
                 <ChevronDown className={cn("h-4 w-4 transition-transform", !scheduledFollowUpsExpanded && "-rotate-90")} />
                 <Hourglass className="h-4 w-4 text-muted-foreground" />
                 <span className="text-xs font-medium text-muted-foreground">Geplant (bis zum Datum ausgeblendet)</span>
-                <Badge variant="secondary" className="text-xs">{hiddenScheduledCount}</Badge>
+                <span className="text-[11px] text-muted-foreground tabular-nums">{hiddenScheduledCount}</span>
               </div>
             </CollapsibleTrigger>
           </Collapsible>

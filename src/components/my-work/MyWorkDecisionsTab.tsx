@@ -14,7 +14,7 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { StandaloneDecisionCreator } from "@/components/task-decisions/StandaloneDecisionCreator";
-import { Search, Settings2 } from "lucide-react";
+import { Search } from "lucide-react";
 import { DecisionListToolbar } from "./decisions/DecisionListToolbar";
 import { DecisionList } from "./decisions/DecisionList";
 import { DecisionDialogs } from "./decisions/DecisionDialogs";
@@ -165,9 +165,6 @@ export function MyWorkDecisionsTab() {
                   <Input placeholder="Suchen..." value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} className="pl-8 h-8 text-xs" />
                 </div>
                 <StandaloneDecisionCreator isOpen={state.isCreateOpen} onOpenChange={actions.setCreateOpen} onDecisionCreated={actions.handleDecisionCreated} />
-                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setDefaultParticipantsOpen(true)} title="Standard-Teilnehmer">
-                  <Settings2 className="h-3.5 w-3.5" />
-                </Button>
               </div>
               <TabsContent value={activeTab} className="mt-3">
                 <DecisionList
