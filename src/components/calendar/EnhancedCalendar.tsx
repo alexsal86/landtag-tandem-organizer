@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks, addDays, subDays, startOfDay, endOfDay, isSameDay, parseISO, addMinutes } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { getEventTypeClass } from './eventTypeStyles';
 
 interface CalendarEvent {
   id: string;
