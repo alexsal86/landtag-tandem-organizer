@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { toast } from "sonner";
 import { debugConsole } from "@/utils/debugConsole";
+import { STALE_TIME } from "@/lib/query-cache";
 
 export interface TeamAnnouncement {
   id: string;
@@ -31,172 +33,148 @@ export interface CreateAnnouncementData {
   expires_at?: string | null;
 }
 
+const PRIORITY_ORDER: Record<TeamAnnouncement['priority'], number> = {
+  critical: 0,
+  warning: 1,
+  info: 2,
+  success: 3,
+};
+
+function computeActive(list: TeamAnnouncement[]): TeamAnnouncement[] {
+  const now = new Date();
+  const active = list.filter((a) => {
+    if (!a.is_active) return false;
+    if (a.is_dismissed) return false;
+    if (a.starts_at && new Date(a.starts_at) > now) return false;
+    if (a.expires_at && new Date(a.expires_at) < now) return false;
+    return true;
+  });
+  active.sort((a, b) => {
+    const diff = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+    if (diff !== 0) return diff;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+  return active;
+}
+
+async function fetchAnnouncementsList(tenantId: string, userId: string): Promise<TeamAnnouncement[]> {
+  const { data: announcementsData, error: announcementsError } = await supabase
+    .from("team_announcements")
+    .select("id, tenant_id, author_id, title, message, priority, starts_at, expires_at, is_active, created_at, updated_at")
+    .eq("tenant_id", tenantId)
+    .order("created_at", { ascending: false });
+  if (announcementsError) throw announcementsError;
+
+  const { data: dismissalsData, error: dismissalsError } = await supabase
+    .from("team_announcement_dismissals")
+    .select("announcement_id")
+    .eq("user_id", userId);
+  if (dismissalsError) throw dismissalsError;
+
+  const dismissedIds = new Set((dismissalsData ?? []).map((d: { announcement_id: string }) => d.announcement_id));
+  const authorIds = [...new Set((announcementsData ?? []).map((a: { author_id: string }) => a.author_id))];
+
+  const { data: profilesData } = authorIds.length
+    ? await supabase.from("profiles").select("user_id, display_name").in("user_id", authorIds)
+    : { data: [] as Array<{ user_id: string; display_name: string | null }> };
+  const profileMap = new Map((profilesData ?? []).map((p: { user_id: string; display_name: string | null }) => [p.user_id, p.display_name]));
+
+  return (announcementsData ?? []).map((a) => ({
+    ...a,
+    priority: a.priority as TeamAnnouncement['priority'],
+    author_name: profileMap.get(a.author_id) || "Unbekannt",
+    is_dismissed: dismissedIds.has(a.id),
+  }));
+}
+
 export function useTeamAnnouncements() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const [announcements, setAnnouncements] = useState<TeamAnnouncement[]>([]);
-  const [activeAnnouncements, setActiveAnnouncements] = useState<TeamAnnouncement[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const tenantId = currentTenant?.id;
+  const userId = user?.id;
+  const queryKey = ["team-announcements", tenantId, userId] as const;
 
-  const fetchAnnouncements = useCallback(async () => {
-    if (!user?.id || !currentTenant?.id) {
-      setAnnouncements([]);
-      setActiveAnnouncements([]);
-      setLoading(false);
-      return;
-    }
+  const { data, isLoading, refetch } = useQuery({
+    queryKey,
+    enabled: !!tenantId && !!userId,
+    staleTime: STALE_TIME.LIST_WITH_REALTIME,
+    queryFn: () => fetchAnnouncementsList(tenantId as string, userId as string),
+  });
 
-    try {
-      const { data: announcementsData, error: announcementsError } = await supabase
-        .from("team_announcements")
-        .select("id, tenant_id, author_id, title, message, priority, starts_at, expires_at, is_active, created_at, updated_at")
-        .eq("tenant_id", currentTenant.id)
-        .order("created_at", { ascending: false });
+  const announcements = data ?? [];
+  const activeAnnouncements = computeActive(announcements);
 
-      if (announcementsError) throw announcementsError;
-
-      const { data: dismissalsData, error: dismissalsError } = await supabase
-        .from("team_announcement_dismissals")
-        .select("announcement_id")
-        .eq("user_id", user.id);
-
-      if (dismissalsError) throw dismissalsError;
-
-      const dismissedIds = new Set(dismissalsData?.map((d: Record<string, any>) => d.announcement_id) || []);
-
-      const authorIds = [...new Set(announcementsData?.map((a: Record<string, any>) => a.author_id) || [])];
-      const { data: profilesData } = await supabase
-        .from("profiles")
-        .select("user_id, display_name")
-        .in("user_id", authorIds);
-
-      const profileMap = new Map(profilesData?.map((p: Record<string, any>) => [p.user_id, p.display_name]) || []);
-
-      const enrichedAnnouncements = (announcementsData || []).map((announcement: Record<string, any>) => ({
-        ...announcement,
-        priority: announcement.priority as TeamAnnouncement['priority'],
-        author_name: profileMap.get(announcement.author_id) || "Unbekannt",
-        is_dismissed: dismissedIds.has(announcement.id),
-      }));
-
-      setAnnouncements(enrichedAnnouncements);
-
-      const now = new Date();
-      const active = enrichedAnnouncements.filter((a: Record<string, any>) => {
-        if (!a.is_active) return false;
-        if (a.is_dismissed) return false;
-        if (a.starts_at && new Date(a.starts_at) > now) return false;
-        if (a.expires_at && new Date(a.expires_at) < now) return false;
-        return true;
-      });
-
-      const priorityOrder = { critical: 0, warning: 1, info: 2, success: 3 };
-      active.sort((a: Record<string, any>, b: Record<string, any>) => {
-        const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
-        if (priorityDiff !== 0) return priorityDiff;
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      });
-
-      setActiveAnnouncements(active);
-    } catch (error) {
-      debugConsole.error("Error fetching announcements:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.id, currentTenant?.id]);
-
+  // Realtime: invalidate on changes
   useEffect(() => {
-    fetchAnnouncements();
-  }, [fetchAnnouncements]);
-
-  useEffect(() => {
-    if (!currentTenant?.id) return;
-
-    const channelName = `team-announcements-${currentTenant.id}-${crypto.randomUUID()}`;
+    if (!tenantId || !userId) return;
+    const channelName = `team-announcements-${tenantId}-${crypto.randomUUID()}`;
     const channel = supabase
       .channel(channelName)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'team_announcements',
-          filter: `tenant_id=eq.${currentTenant.id}`,
-        },
-        () => {
-          fetchAnnouncements();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'team_announcement_dismissals',
-          filter: `user_id=eq.${user?.id}`,
-        },
-        () => {
-          fetchAnnouncements();
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'team_announcements', filter: `tenant_id=eq.${tenantId}` },
+        () => queryClient.invalidateQueries({ queryKey }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'team_announcement_dismissals', filter: `user_id=eq.${userId}` },
+        () => queryClient.invalidateQueries({ queryKey }))
       .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [tenantId, userId, queryClient, queryKey]);
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [currentTenant?.id, fetchAnnouncements]);
-
+  // Tick: re-evaluate expiry every minute
   useEffect(() => {
     const interval = setInterval(() => {
-      const now = new Date();
-      setActiveAnnouncements(prev => 
-        prev.filter(a => !a.expires_at || new Date(a.expires_at) > now)
-      );
-    }, 60000);
-
+      // Force re-render through cache touch only when something actually expired
+      const list = queryClient.getQueryData<TeamAnnouncement[]>(queryKey);
+      if (!list) return;
+      const stillActive = computeActive(list);
+      const before = computeActive(list).length;
+      if (stillActive.length !== before) {
+        queryClient.setQueryData<TeamAnnouncement[]>(queryKey, [...list]);
+      }
+    }, 60_000);
     return () => clearInterval(interval);
-  }, []);
+  }, [queryClient, queryKey]);
 
-  const createAnnouncement = async (data: CreateAnnouncementData) => {
-    if (!user?.id || !currentTenant?.id) {
+  const patchCache = (patcher: (prev: TeamAnnouncement[]) => TeamAnnouncement[]) => {
+    queryClient.setQueryData<TeamAnnouncement[]>(queryKey, (prev) => patcher(prev ?? []));
+  };
+
+  const createAnnouncement = async (input: CreateAnnouncementData) => {
+    if (!userId || !tenantId) {
       toast.error("Nicht angemeldet");
       return null;
     }
-
     try {
       const { data: newAnnouncement, error } = await supabase
         .from("team_announcements")
         .insert([{
-          tenant_id: currentTenant.id,
-          author_id: user.id,
-          title: data.title,
-          message: data.message,
-          priority: data.priority,
-          starts_at: data.starts_at || null,
-          expires_at: data.expires_at || null,
+          tenant_id: tenantId,
+          author_id: userId,
+          title: input.title,
+          message: input.message,
+          priority: input.priority,
+          starts_at: input.starts_at || null,
+          expires_at: input.expires_at || null,
           is_active: true,
         }])
         .select()
         .single();
-
       if (error) throw error;
 
       try {
         const { data: members } = await supabase
           .from("user_tenant_memberships")
           .select("user_id")
-          .eq("tenant_id", currentTenant.id)
+          .eq("tenant_id", tenantId)
           .eq("is_active", true)
-          .neq("user_id", user.id);
-
+          .neq("user_id", userId);
         if (members && members.length > 0) {
-          const notifications = members.map((m: Record<string, any>) => 
+          const notifications = members.map((m: { user_id: string }) =>
             supabase.rpc("create_notification", {
               user_id_param: m.user_id,
               type_name: "team_news",
-              title_param: `Team-Mitteilung: ${data.title}`,
-              message_param: data.message.substring(0, 200),
-              priority_param: data.priority === "critical" ? "high" : "medium",
+              title_param: `Team-Mitteilung: ${input.title}`,
+              message_param: input.message.substring(0, 200),
+              priority_param: input.priority === "critical" ? "high" : "medium",
               data_param: JSON.stringify({ announcement_id: newAnnouncement.id }),
             })
           );
@@ -207,7 +185,7 @@ export function useTeamAnnouncements() {
       }
 
       toast.success("Mitteilung erstellt");
-      await fetchAnnouncements();
+      await refetch();
       return newAnnouncement;
     } catch (error) {
       debugConsole.error("Error creating announcement:", error);
@@ -216,70 +194,27 @@ export function useTeamAnnouncements() {
     }
   };
 
-  const updateAnnouncement = async (id: string, data: Partial<CreateAnnouncementData & { is_active: boolean }>) => {
-    const previousAnnouncements = [...announcements];
-    const previousActiveAnnouncements = [...activeAnnouncements];
-    
-    setAnnouncements(prev => prev.map(a => 
-      a.id === id ? { ...a, ...data } : a
-    ));
-    
-    if (data.is_active !== undefined) {
-      if (!data.is_active) {
-        setActiveAnnouncements(prev => prev.filter(a => a.id !== id));
-      }
-    }
-    
+  const updateAnnouncement = async (id: string, patch: Partial<CreateAnnouncementData & { is_active: boolean }>) => {
+    const previous = queryClient.getQueryData<TeamAnnouncement[]>(queryKey);
+    patchCache((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
     try {
       const { data: updateData, error } = await supabase
         .from("team_announcements")
-        .update(data)
+        .update(patch)
         .eq("id", id)
         .select()
         .single();
-
-      if (error) {
-        debugConsole.error("Update error details:", error);
-        throw error;
-      }
-
+      if (error) throw error;
       if (updateData) {
-        setAnnouncements(prev => prev.map(a => 
-          a.id === id ? { ...a, ...updateData, priority: updateData.priority as TeamAnnouncement['priority'] } : a
-        ));
-        
-        if (updateData.is_active) {
-          const now = new Date();
-          const isExpired = updateData.expires_at && new Date(updateData.expires_at) < now;
-          const isScheduled = updateData.starts_at && new Date(updateData.starts_at) > now;
-          
-          if (!isExpired && !isScheduled) {
-            setActiveAnnouncements(prev => {
-              if (prev.find(a => a.id === id)) return prev;
-              const existingAnnouncement = announcements.find(a => a.id === id);
-              if (existingAnnouncement) {
-                return [...prev, { ...existingAnnouncement, ...updateData, priority: updateData.priority as TeamAnnouncement['priority'] }];
-              }
-              return prev;
-            });
-          }
-        } else {
-          setActiveAnnouncements(prev => prev.filter(a => a.id !== id));
-        }
+        patchCache((prev) => prev.map((a) => (a.id === id ? { ...a, ...updateData, priority: updateData.priority as TeamAnnouncement['priority'] } : a)));
       }
-
       toast.success("Mitteilung aktualisiert");
-      await fetchAnnouncements();
+      await refetch();
       return true;
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'Unbekannter Fehler';
-      const code = error instanceof Error ? (error as Error & { code?: string }).code : undefined;
       debugConsole.error("Error updating announcement:", error);
-      debugConsole.error("Error code:", code);
-      debugConsole.error("Error message:", msg);
-      
-      setAnnouncements(previousAnnouncements);
-      setActiveAnnouncements(previousActiveAnnouncements);
+      if (previous) queryClient.setQueryData(queryKey, previous);
       toast.error(`Fehler: ${msg}`);
       return false;
     }
@@ -287,15 +222,10 @@ export function useTeamAnnouncements() {
 
   const deleteAnnouncement = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from("team_announcements")
-        .delete()
-        .eq("id", id);
-
+      const { error } = await supabase.from("team_announcements").delete().eq("id", id);
       if (error) throw error;
-
       toast.success("Mitteilung gelöscht");
-      await fetchAnnouncements();
+      await refetch();
       return true;
     } catch (error) {
       debugConsole.error("Error deleting announcement:", error);
@@ -305,26 +235,16 @@ export function useTeamAnnouncements() {
   };
 
   const dismissAnnouncement = async (announcementId: string) => {
-    if (!user?.id) {
+    if (!userId) {
       toast.error("Nicht angemeldet");
       return false;
     }
-
     try {
       const { error } = await supabase
         .from("team_announcement_dismissals")
-        .insert([{
-          announcement_id: announcementId,
-          user_id: user.id,
-        }]);
-
+        .insert([{ announcement_id: announcementId, user_id: userId }]);
       if (error) throw error;
-
-      setActiveAnnouncements(prev => prev.filter(a => a.id !== announcementId));
-      setAnnouncements(prev => 
-        prev.map(a => a.id === announcementId ? { ...a, is_dismissed: true } : a)
-      );
-
+      patchCache((prev) => prev.map((a) => (a.id === announcementId ? { ...a, is_dismissed: true } : a)));
       toast.success("Als erledigt markiert");
       return true;
     } catch (error) {
@@ -335,18 +255,15 @@ export function useTeamAnnouncements() {
   };
 
   const undoDismissal = async (announcementId: string) => {
-    if (!user?.id) return false;
-
+    if (!userId) return false;
     try {
       const { error } = await supabase
         .from("team_announcement_dismissals")
         .delete()
         .eq("announcement_id", announcementId)
-        .eq("user_id", user.id);
-
+        .eq("user_id", userId);
       if (error) throw error;
-
-      await fetchAnnouncements();
+      await refetch();
       toast.success("Erledigt-Markierung aufgehoben");
       return true;
     } catch (error) {
@@ -358,77 +275,65 @@ export function useTeamAnnouncements() {
   return {
     announcements,
     activeAnnouncements,
-    loading,
+    loading: isLoading,
     createAnnouncement,
     updateAnnouncement,
     deleteAnnouncement,
     dismissAnnouncement,
     undoDismissal,
-    refetch: fetchAnnouncements,
+    refetch,
   };
 }
 
-// Hook to get dismissal progress for admins
+interface AnnouncementProgress {
+  dismissedCount: number;
+  totalCount: number;
+  dismissals: Array<{ user_id: string; display_name: string; dismissed_at: string }>;
+}
+
 export function useAnnouncementProgress(announcementId: string) {
-  const [progress, setProgress] = useState<{
-    dismissedCount: number;
-    totalCount: number;
-    dismissals: Array<{ user_id: string; display_name: string; dismissed_at: string }>;
-  }>({ dismissedCount: 0, totalCount: 0, dismissals: [] });
-  const [loading, setLoading] = useState(true);
   const { currentTenant } = useTenant();
 
-  useEffect(() => {
-    const fetchProgress = async () => {
-      if (!announcementId || !currentTenant?.id) {
-        setLoading(false);
-        return;
-      }
+  const query = useQuery<AnnouncementProgress>({
+    queryKey: ["team-announcement-progress", announcementId, currentTenant?.id],
+    enabled: !!announcementId && !!currentTenant?.id,
+    staleTime: STALE_TIME.LIST,
+    queryFn: async () => {
+      const { data: dismissalsData, error: dismissalsError } = await supabase
+        .from("team_announcement_dismissals")
+        .select("user_id, dismissed_at")
+        .eq("announcement_id", announcementId);
+      if (dismissalsError) throw dismissalsError;
 
-      try {
-        const { data: dismissalsData, error: dismissalsError } = await supabase
-          .from("team_announcement_dismissals")
-          .select("user_id, dismissed_at")
-          .eq("announcement_id", announcementId);
+      const { data: membersData, error: membersError } = await supabase
+        .from("user_tenant_memberships")
+        .select("user_id")
+        .eq("tenant_id", currentTenant!.id)
+        .eq("is_active", true);
+      if (membersError) throw membersError;
 
-        if (dismissalsError) throw dismissalsError;
+      const dismissedUserIds = (dismissalsData ?? []).map((d: { user_id: string }) => d.user_id);
+      const { data: profilesData } = dismissedUserIds.length
+        ? await supabase.from("profiles").select("user_id, display_name").in("user_id", dismissedUserIds)
+        : { data: [] as Array<{ user_id: string; display_name: string | null }> };
+      const profileMap = new Map((profilesData ?? []).map((p: { user_id: string; display_name: string | null }) => [p.user_id, p.display_name]));
 
-        const { data: membersData, error: membersError } = await supabase
-          .from("user_tenant_memberships")
-          .select("user_id")
-          .eq("tenant_id", currentTenant.id)
-          .eq("is_active", true);
+      const dismissals = (dismissalsData ?? []).map((d: { user_id: string; dismissed_at: string }) => ({
+        user_id: d.user_id,
+        display_name: profileMap.get(d.user_id) || "Unbekannt",
+        dismissed_at: d.dismissed_at,
+      }));
 
-        if (membersError) throw membersError;
+      return {
+        dismissedCount: dismissalsData?.length || 0,
+        totalCount: membersData?.length || 0,
+        dismissals,
+      };
+    },
+  });
 
-        const dismissedUserIds = dismissalsData?.map((d: Record<string, any>) => d.user_id) || [];
-        const { data: profilesData } = await supabase
-          .from("profiles")
-          .select("user_id, display_name")
-          .in("user_id", dismissedUserIds);
-
-        const profileMap = new Map(profilesData?.map((p: Record<string, any>) => [p.user_id, p.display_name]) || []);
-
-        const dismissals = (dismissalsData || []).map((d: Record<string, any>) => ({
-          user_id: d.user_id,
-          display_name: profileMap.get(d.user_id) || "Unbekannt",
-          dismissed_at: d.dismissed_at,
-        }));
-
-        setProgress({
-          dismissedCount: dismissalsData?.length || 0,
-          totalCount: membersData?.length || 0,
-          dismissals,
-        });
-      } catch (error) {
-        debugConsole.error("Error fetching progress:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProgress();
-  }, [announcementId, currentTenant?.id]);
-
-  return { progress, loading };
+  return {
+    progress: query.data ?? { dismissedCount: 0, totalCount: 0, dismissals: [] },
+    loading: query.isLoading,
+  };
 }
