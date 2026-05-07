@@ -1,6 +1,6 @@
 // Edge Function: selftest-backup-pointer
 // Schreibt täglich einen Statusbericht in public.system_health.
-// Kann Supabase Management API aufrufen, falls SUPABASE_MGMT_TOKEN gesetzt ist;
+// Kann Supabase Management API aufrufen, falls MGMT_API_TOKEN gesetzt ist;
 // sonst macht der Selftest einen DB-Lebendcheck und markiert das Backup als "unverified".
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
       // Fallback: nur DB-Lebendcheck
       const { error } = await admin.from("tenants").select("id", { head: true, count: "exact" }).limit(1);
       status = error ? "critical" : "warning";
-      details = { source: "fallback", note: "SUPABASE_MGMT_TOKEN nicht gesetzt — Backup-Status nicht geprüft." };
+      details = { source: "fallback", note: "MGMT_API_TOKEN nicht gesetzt — Backup-Status nicht geprüft." };
     }
   } catch (e) {
     status = "critical";
