@@ -521,7 +521,7 @@ export function AppointmentPreparationDataTab({
           />
           )}
 
-          {/* Logistik */}
+          {showSection('logistik') && (
           <Card>
             <CardContent className="pt-6">
               <Collapsible open={expandedSections.logistik} onOpenChange={() => toggleSection('logistik')}>
@@ -563,8 +563,9 @@ export function AppointmentPreparationDataTab({
               </Collapsible>
             </CardContent>
           </Card>
+          )}
 
-          {/* Öffentlichkeitsarbeit */}
+          {showSection('oeffentlichkeit') && (
           <Card>
             <CardContent className="pt-6">
               <div className="space-y-4">
@@ -594,10 +595,12 @@ export function AppointmentPreparationDataTab({
               </div>
             </CardContent>
           </Card>
+          )}
         </div>
 
         {/* Rechte Spalte */}
         <div className="space-y-4">
+          {showSection('programm') && (
           <ProgramCard
             programRows={programRows}
             expandedSection={expandedSections.programm}
@@ -606,7 +609,9 @@ export function AppointmentPreparationDataTab({
             onUpdate={updateProgramRow}
             onRemove={removeProgramRow}
           />
+          )}
 
+          {showInhaltePanel && (
           <PreparationDataCards
             qaPairs={qaPairs}
             keyTopicItems={keyTopicItems}
@@ -627,7 +632,13 @@ export function AppointmentPreparationDataTab({
             onRemoveTalkingPointItem={removeTalkingPointItem}
             onTalkingPointKeyDown={handleTalkingPointKeyDown}
             onReorderTalkingPoints={reorderTalkingPoints}
+            showFacts={showFacts}
+            showTalkingPoints={showTalkingPoints}
+            showQa={showQa}
+            showInhalteHeaderCards={showInhalteHeaderCards}
+            showInhalteRahmen={showInhalteRahmen}
           />
+          )}
         </div>
 
       </div>
