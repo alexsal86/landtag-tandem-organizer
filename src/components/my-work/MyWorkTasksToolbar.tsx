@@ -95,7 +95,7 @@ export function MyWorkTasksToolbar({
                 <ChevronDown className={cn("h-4 w-4 transition-transform", !scheduledFollowUpsExpanded && "-rotate-90")} />
                 <Hourglass className="h-4 w-4 text-muted-foreground" />
                 <span className="text-xs font-medium text-muted-foreground">Geplant (bis zum Datum ausgeblendet)</span>
-                <Badge variant="secondary" className="text-xs">{hiddenScheduledCount}</Badge>
+                <span className="text-[11px] text-muted-foreground tabular-nums">{hiddenScheduledCount}</span>
               </div>
             </CollapsibleTrigger>
           </Collapsible>
