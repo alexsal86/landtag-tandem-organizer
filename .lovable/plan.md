@@ -1,82 +1,46 @@
 ## Ziel
-Konfigurierbare KI-Anbindung: Standard bleibt der Lovable AI Gateway, neue oder bestehende Edge Functions können per ENV-Variable auf **OpenAI direkt** (eigener API-Key) umgeschaltet werden. Default-Modell für OpenAI: `gpt-5-mini`.
+Alle für Endnutzer (Empfänger von Mails/Kalendereinladungen, eingeloggte User, Besucher der veröffentlichten Seite, GitHub-Besucher) sichtbaren Hinweise auf „Lovable" entfernen. Interne, technisch notwendige Referenzen (Build-Tooling, Preview-Workarounds, AI-Gateway-URL) bleiben unangetastet.
 
-## Architektur
+## Sichtbar nach außen → wird entfernt/ersetzt
 
-Eine zentrale Helper-Datei `supabase/functions/_shared/aiClient.ts` kapselt beide Provider hinter einer einheitlichen API:
+### 1. Versendete Kalendereinladungen (.ics) – höchste Priorität
+Empfänger sehen das in ihrem Mail-/Kalenderprogramm.
+- `supabase/functions/generate-calendar-invite/generate-calendar-invite.utils.ts`
+  - `PRODID:-//Lovable//Appointment Scheduler//DE` → `PRODID:-//LandtagsOS//Appointment Scheduler//DE`
+  - Message-ID-Domain `@lovable.app` → `@landtagsos.app`
+- `supabase/functions/send-appointment-invitation/index.ts` – gleiche zwei Stellen.
 
-```text
-Edge Function ──► aiClient.chat({ messages, tools, model? })
-                       │
-                       ├── AI_PROVIDER=lovable  → ai.gateway.lovable.dev (LOVABLE_API_KEY)
-                       └── AI_PROVIDER=openai   → api.openai.com         (OPENAI_API_KEY)
-```
+### 2. Matrix-Chat Device-Name
+Wird anderen Matrix-Nutzern und im Sicherheits-Login-Verlauf angezeigt.
+- `src/components/chat/MatrixLoginForm.tsx`: `initial_device_display_name: 'Lovable App'` → `'LandtagsOS'`.
 
-**Provider-Auswahl-Reihenfolge:**
-1. Optionaler Parameter `provider` im Funktionsaufruf (überschreibt alles)
-2. Pro-Funktion-ENV: `AI_PROVIDER_<FUNCTION_NAME>` (z. B. `AI_PROVIDER_GENERATE_PREPARATION_SUGGESTIONS=openai`)
-3. Globale ENV: `AI_PROVIDER` (Default: `lovable`)
+### 3. UI-Texte im Chat-Fehlerdialog
+Endnutzer sehen Text mit „Lovable läuft hier im eingebetteten Preview-iframe..." und „Lovable-Host im Top-Level-Tab erkannt".
+- `src/components/chat/MatrixChatView.tsx`:
+  - Texte umformulieren in neutrale Diagnose („Eingebettetes Preview-iframe erkannt..."), ohne Markennennung.
+  - Variable `isLovableHost` → `isPreviewHost` (Logik bleibt, nur Bezeichnung neutral).
 
-So lässt sich pro Use Case entscheiden, ohne Code anzufassen.
+### 4. README.md
+Öffentlich auf GitHub.
+- Lovable-Projekt-Link entfernen.
+- Hinweis „Alternativ direkt in Lovable entwickeln..." streichen.
+- „Via Lovable: Share → Publish" und Custom-Domain-Verweis auf Lovable Docs entfernen oder durch generische Deployment-Notiz ersetzen.
 
-## Schritte
+### 5. Lovable-Badge auf Published-Site
+Separater Schritt nach Code-Refactoring: über Publish-Settings den „Edit with Lovable"-Badge ausblenden (benötigt Pro-Plan; falls nicht verfügbar, gebe ich Bescheid).
 
-### 1. Secrets vorbereiten
-- User trägt `OPENAI_API_KEY` als Supabase Secret ein (über Secret-Tool angefordert).
-- Optional: `AI_PROVIDER` global setzen (Default `lovable` wenn leer).
+## Bleibt drin (technisch erforderlich, nicht endnutzersichtbar)
 
-### 2. Shared AI Client (`supabase/functions/_shared/aiClient.ts`)
-- Einheitliches Interface: `chat({ messages, tools?, tool_choice?, model?, stream?, provider? })`.
-- Mappt Modellnamen automatisch:
-  - `google/gemini-3-flash-preview` ↔ `gpt-5-mini` (OpenAI-Default)
-  - `openai/gpt-5` → `gpt-5` (durchgereicht)
-  - explizit übergebene Modellnamen bleiben unverändert
-- Identische Response-Form für beide Provider (OpenAI-kompatibles Schema – passt ohnehin schon).
-- Einheitliche Fehlerbehandlung: 401/402/429/500 → strukturierte JSON-Antwort.
-
-### 3. Bestehende KI-Funktion anpassen
-`supabase/functions/generate-preparation-suggestions/index.ts` als Referenz umstellen:
-- Statt direktem `fetch(...)` → `aiClient.chat(...)`.
-- Tool-Calling-Schema (`suggest_preparation`) bleibt identisch (OpenAI Function Calling = gleiche Form).
-- Verhalten 1:1 erhalten, nur Provider austauschbar.
-
-### 4. Admin-UI (klein) für Provider-Status (optional, empfohlen)
-Im Bereich `/admin` oder `/superadmin` eine kleine Read-Only-Anzeige:
-- Aktueller globaler Provider (aus neuer Edge Function `get-ai-config`)
-- Liste der KI-Funktionen mit jeweiligem effektivem Provider
-- Hinweis-Text, wo Secrets/ENV gesetzt werden (Supabase-Dashboard-Link)
-
-Keine Edit-UI – Konfiguration läuft bewusst über Secrets, nicht über DB (Sicherheit, Auditierbarkeit).
-
-### 5. Dokumentation
-Kurze README-Notiz in `supabase/functions/_shared/README.md`:
-- Welche ENV-Variablen wofür
-- Wie man eine neue KI-Funktion auf OpenAI zwingt
-- Beispiel-Snippet `aiClient.chat(...)`
-
-## Technische Details
-
-**Modell-Mapping (Standardfall):**
-| Lovable Gateway | OpenAI direkt |
+| Stelle | Grund |
 |---|---|
-| `google/gemini-3-flash-preview` (default) | `gpt-5-mini` (default) |
-| `openai/gpt-5` | `gpt-5` |
-| `openai/gpt-5-mini` | `gpt-5-mini` |
+| `vite.config.ts` CSP `frame-ancestors *.lovable.app/...` | Damit die Preview im Lovable-Editor weiter lädt. Endnutzer sehen das nicht. |
+| `vite.config.ts` auskommentierter `lovable-tagger`-Import | Dev-only, bereits inaktiv. |
+| `package.json` Dev-Dependency `lovable-tagger` | Build-Tooling, kein Output. |
+| `public/coi-serviceworker.js` + `src/lib/coiRuntime.ts` + `src/main.tsx` Kommentar | Preview-Workaround. Hostname-Check `lovable.app/lovableproject.com` wird beibehalten, aber Funktionsname `isLovablePreviewHost` → `isEmbeddedPreviewHost`, Kommentare neutralisiert. |
+| `supabase/functions/_shared/security.ts` Allowlist `*.lovableproject.com / *.lovable.app` | CORS-Whitelist für Preview-Domains, serverseitig, nicht sichtbar. |
+| `supabase/functions/_shared/aiClient.ts` + README + `generate-preparation-suggestions/index.ts` | Funktional: Lovable AI Gateway ist tatsächlich der aktive Provider. Wer das in Logs sieht, ist Admin, nicht Endnutzer. |
 
-**Streaming:** `aiClient.chatStream()` als zweite Funktion, gibt ReadableStream zurück (für künftige Chat-UIs). Aktuell genutzt: nur non-streaming `chat()`.
+Die letzten drei Punkte können auf Wunsch zusätzlich umbenannt werden – nur sag Bescheid.
 
-**Fehler-Response (vereinheitlicht):**
-```json
-{ "error": "rate_limited" | "payment_required" | "unauthorized" | "ai_error", "message": "..." }
-```
-Frontend kann generisch reagieren, egal welcher Provider zugrunde liegt.
-
-**Was NICHT geändert wird:**
-- Keine bestehenden Tool-Schemata (`suggest_preparation` etc.) – bleiben kompatibel.
-- Keine DB-Migrationen.
-- Lovable AI Gateway bleibt aktiv und Default.
-
-## Nach Implementierung
-1. User fügt `OPENAI_API_KEY` hinzu (wird im Build über Secret-Dialog angefragt).
-2. Optional: `AI_PROVIDER_GENERATE_PREPARATION_SUGGESTIONS=openai` setzen, um diese Funktion auf OpenAI umzustellen.
-3. Test über `/termine` → Briefing-Vorschläge generieren.
+## Hinweis zu zukünftigem Drift
+Solange das Projekt im Lovable-Editor weiterentwickelt wird, kann es passieren, dass neue Stellen wieder „Lovable"-Strings einschleusen (z. B. Default-Templates in Edge-Functions). Falls gewünscht, kann ich später einen einfachen Lint-Check (CI-Skript) ergänzen, der jeden PR auf neue `lovable`-Vorkommen außerhalb der Allowlist prüft.
