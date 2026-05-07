@@ -1,6 +1,7 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { STALE_TIME } from '@/lib/query-cache';
 import { useAuth } from './useAuth';
 import { useTenant } from './useTenant';
 import { format } from 'date-fns';
@@ -91,6 +92,8 @@ export const useAppointmentFeedback = () => {
   // Lädt Termine mit Feedback (letzte 7 Tage)
   const { data: appointments, isLoading: appointmentsLoading, refetch: refetchAppointments } = useQuery({
     queryKey: ['appointment-feedback-appointments', user?.id, currentTenant?.id],
+    staleTime: STALE_TIME.LIST_WITH_REALTIME,
+    gcTime: STALE_TIME.LIST_WITH_REALTIME * 2,
     queryFn: async () => {
       if (!user?.id || !currentTenant?.id) return [];
 
@@ -140,14 +143,14 @@ export const useAppointmentFeedback = () => {
       })) as AppointmentWithFeedback[];
     },
     enabled: !!user?.id && !!currentTenant?.id,
-    staleTime: 2 * 60_000,
-    gcTime: 5 * 60_000,
     refetchOnWindowFocus: false,
   });
 
   // Lädt externe Events mit Feedback (letzte 7 Tage)
   const { data: externalEvents, isLoading: externalEventsLoading, refetch: refetchExternalEvents } = useQuery({
     queryKey: ['appointment-feedback-external', user?.id, currentTenant?.id],
+    staleTime: STALE_TIME.LIST_WITH_REALTIME,
+    gcTime: STALE_TIME.LIST_WITH_REALTIME * 2,
     queryFn: async () => {
       if (!user?.id || !currentTenant?.id) return [];
 
@@ -248,8 +251,6 @@ export const useAppointmentFeedback = () => {
       }) as AppointmentWithFeedback[];
     },
     enabled: !!user?.id && !!currentTenant?.id,
-    staleTime: 2 * 60_000,
-    gcTime: 5 * 60_000,
     refetchOnWindowFocus: false,
   });
 
@@ -271,6 +272,8 @@ export const useAppointmentFeedback = () => {
 
   const { data: preparationsMap } = useQuery({
     queryKey: ['appointment-feedback-preparations', appointmentIds],
+    staleTime: STALE_TIME.LIST_WITH_REALTIME,
+    gcTime: STALE_TIME.LIST_WITH_REALTIME * 2,
     queryFn: async () => {
       if (appointmentIds.length === 0) return new Map<string, AppointmentPreparation>();
 
@@ -308,8 +311,6 @@ export const useAppointmentFeedback = () => {
       return map;
     },
     enabled: appointmentIds.length > 0,
-    staleTime: 2 * 60_000,
-    gcTime: 5 * 60_000,
     refetchOnWindowFocus: false,
   });
 
@@ -318,6 +319,8 @@ export const useAppointmentFeedback = () => {
   // Lade Settings
   const { data: settings } = useQuery({
     queryKey: ['appointment-feedback-settings', user?.id],
+    staleTime: STALE_TIME.LIST_WITH_REALTIME,
+    gcTime: STALE_TIME.LIST_WITH_REALTIME * 2,
     queryFn: async () => {
       if (!user?.id || !currentTenant?.id) return null;
 
@@ -353,8 +356,6 @@ export const useAppointmentFeedback = () => {
       return data as FeedbackSettings;
     },
     enabled: !!user?.id && !!currentTenant?.id,
-    staleTime: 5 * 60_000,
-    gcTime: 10 * 60_000,
     refetchOnWindowFocus: false,
   });
 

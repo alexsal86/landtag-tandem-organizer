@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { STALE_TIME } from '@/lib/query-cache';
 import { useTenant } from './useTenant';
 
 export type HeatmapSource = 'contacts' | 'flags' | 'appointments';
@@ -15,6 +16,8 @@ export const useHeatmapData = (source: HeatmapSource, enabled: boolean = true) =
 
   const { data: points, isLoading } = useQuery({
     queryKey: ['heatmap-data', source, currentTenant?.id],
+    staleTime: STALE_TIME.GEO,
+    gcTime: STALE_TIME.GEO * 2,
     queryFn: async (): Promise<HeatmapPoint[]> => {
       if (!currentTenant?.id) return [];
 

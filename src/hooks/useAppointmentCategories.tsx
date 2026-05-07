@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { STALE_TIME } from '@/lib/query-cache';
 
 export interface AppointmentCategory {
   id: string;
@@ -14,6 +15,8 @@ export interface AppointmentCategory {
 export const useAppointmentCategories = () => {
   return useQuery({
     queryKey: ['appointment-categories'],
+    staleTime: STALE_TIME.LOOKUP,
+    gcTime: STALE_TIME.LOOKUP * 2,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('appointment_categories')

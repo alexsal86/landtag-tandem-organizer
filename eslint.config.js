@@ -106,6 +106,14 @@ export default [
         },
       ],
       'no-undef': 'off',
+      // Egress-Sweep: select('*') verschwendet Bandbreite. Spalten explizit listen.
+      'no-restricted-syntax': [
+        'warn',
+        {
+          selector: "CallExpression[callee.property.name='select'] > Literal[value='*']",
+          message: "Egress: bitte explizite Spaltenliste angeben statt select('*'). Siehe src/lib/query-cache.ts.",
+        },
+      ],
     },
   },
   {

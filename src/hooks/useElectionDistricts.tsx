@@ -6,6 +6,7 @@ import { useTenant } from "./useTenant";
 import { useToast } from "@/components/ui/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import { hasOwnProperty, isRecord } from "@/utils/typeSafety";
+import { STALE_TIME } from "@/lib/query-cache";
 import {
   type ElectionDistrictFeature,
   type GeoContactInfo,
@@ -173,6 +174,8 @@ export function useElectionDistricts() {
     queryKey: ["election-districts", user?.id],
     queryFn: fetchDistricts,
     enabled: Boolean(user),
+    staleTime: STALE_TIME.GEO,
+    gcTime: STALE_TIME.GEO * 2,
   });
 
   useEffect(() => {

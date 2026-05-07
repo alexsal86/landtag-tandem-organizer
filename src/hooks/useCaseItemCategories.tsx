@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
+import { STALE_TIME } from '@/lib/query-cache';
 
 export interface CaseItemCategory {
   id: string;
@@ -25,6 +26,8 @@ export const useCaseItemCategories = () => {
   return useQuery({
     queryKey: ['case-item-categories', currentTenant?.id],
     enabled: Boolean(currentTenant?.id),
+    staleTime: STALE_TIME.LOOKUP,
+    gcTime: STALE_TIME.LOOKUP * 2,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('case_item_categories')

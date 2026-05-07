@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect, useState } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
+import { STALE_TIME } from '@/lib/query-cache';
 
 export interface KarlsruheDistrict {
   id: string;
@@ -21,6 +22,8 @@ export const useKarlsruheDistricts = () => {
 
   const { data: districts, isLoading, error, refetch } = useQuery({
     queryKey: ['karlsruhe-districts'],
+    staleTime: STALE_TIME.GEO,
+    gcTime: STALE_TIME.GEO * 2,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('karlsruhe_districts')

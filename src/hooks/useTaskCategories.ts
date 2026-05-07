@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
+import { STALE_TIME } from "@/lib/query-cache";
 
 export interface TaskCategoryOption {
   name: string;
@@ -20,6 +21,8 @@ export function useTaskCategories() {
   const query = useQuery({
     queryKey: ["task-categories", currentTenant?.id],
     enabled: Boolean(currentTenant?.id),
+    staleTime: STALE_TIME.LOOKUP,
+    gcTime: STALE_TIME.LOOKUP * 2,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("task_categories")
