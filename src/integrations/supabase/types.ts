@@ -1344,6 +1344,45 @@ export type Database = {
           },
         ]
       }
+      bulk_action_audit: {
+        Row: {
+          action: string
+          actor_id: string
+          affected_count: number | null
+          created_at: string
+          id: string
+          payload: Json
+          tenant_id: string
+          undo_payload: Json | null
+          undone_at: string | null
+          undone_by: string | null
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          affected_count?: number | null
+          created_at?: string
+          id?: string
+          payload?: Json
+          tenant_id: string
+          undo_payload?: Json | null
+          undone_at?: string | null
+          undone_by?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          affected_count?: number | null
+          created_at?: string
+          id?: string
+          payload?: Json
+          tenant_id?: string
+          undo_payload?: Json | null
+          undone_at?: string | null
+          undone_by?: string | null
+        }
+        Relationships: []
+      }
       calendar_sync_settings: {
         Row: {
           created_at: string | null
@@ -3021,6 +3060,45 @@ export type Database = {
           name?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      data_lint_findings: {
+        Row: {
+          details: Json | null
+          detected_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          issue: string
+          resolved_at: string | null
+          scope: string
+          severity: string
+          tenant_id: string
+        }
+        Insert: {
+          details?: Json | null
+          detected_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          issue: string
+          resolved_at?: string | null
+          scope: string
+          severity?: string
+          tenant_id: string
+        }
+        Update: {
+          details?: Json | null
+          detected_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          issue?: string
+          resolved_at?: string | null
+          scope?: string
+          severity?: string
+          tenant_id?: string
         }
         Relationships: []
       }
@@ -12647,6 +12725,7 @@ export type Database = {
         Args: { p_decision_id: string }
         Returns: undefined
       }
+      cleanup_bulk_action_audit: { Args: never; Returns: number }
       create_appointment_poll_with_details: {
         Args: {
           p_deadline?: string
@@ -12725,6 +12804,19 @@ export type Database = {
         Returns: Json
       }
       expire_carry_over_vacation: { Args: never; Returns: undefined }
+      find_contact_duplicates_trgm: {
+        Args: { _limit?: number; _tenant_id: string; _threshold?: number }
+        Returns: {
+          contact1_email: string
+          contact1_id: string
+          contact1_name: string
+          contact2_email: string
+          contact2_id: string
+          contact2_name: string
+          match_reasons: string[]
+          match_score: number
+        }[]
+      }
       generate_current_year_stats: {
         Args: { p_tenant_id: string }
         Returns: Json
@@ -12911,6 +13003,10 @@ export type Database = {
         Returns: boolean
       }
       is_tenant_config_admin: { Args: { _tenant_id: string }; Returns: boolean }
+      is_tenant_member: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
       log_collaboration_event: {
         Args: {
           details?: Json
@@ -12944,6 +13040,13 @@ export type Database = {
         Returns: {
           linked_meeting_id: string
           updated_request_id: string
+        }[]
+      }
+      run_data_lint: {
+        Args: { _tenant_id: string }
+        Returns: {
+          finding_count: number
+          scope: string
         }[]
       }
       send_message: {
