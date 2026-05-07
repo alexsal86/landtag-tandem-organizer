@@ -120,6 +120,34 @@ export function PermissionsManager() {
     if (error) toast({ title: "Fehler", description: error.message, variant: "destructive" });
   };
 
+  const toggleField = async (table: string, column: string, role: AppRole, key: "can_read" | "can_write") => {
+    if (!tenantId) return;
+    const mapKey = `${table}.${column}.${role}`;
+    const current = fields.get(mapKey) ?? { can_read: true, can_write: true };
+    const nextVal = !current[key];
+    const nextPerm = { ...current, [key]: nextVal };
+    // Wenn Lesen verweigert wird, kann auch nicht geschrieben werden.
+    if (key === "can_read" && nextVal === false) nextPerm.can_write = false;
+    const next = new Map(fields);
+    next.set(mapKey, nextPerm);
+    setFields(next);
+    const { error } = await supabase
+      .from("field_permissions")
+      .upsert(
+        {
+          tenant_id: tenantId,
+          table_name: table,
+          column_name: column,
+          role,
+          can_read: nextPerm.can_read,
+          can_write: nextPerm.can_write,
+        },
+        { onConflict: "tenant_id,table_name,column_name,role" },
+      );
+    if (error) toast({ title: "Fehler", description: error.message, variant: "destructive" });
+  };
+
+
   if (!tenantId) return null;
 
   return (
