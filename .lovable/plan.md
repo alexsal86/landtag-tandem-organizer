@@ -1,56 +1,45 @@
-# Appointment-Preparation: Ausbau-Plan
+## Was ist noch offen?
 
-Umsetzung aller vorgeschlagenen Verbesserungen **ohne** PDF-Export und Briefing-Dashboard.
+Aus den letzten Aufträgen ist alles geliefert (Workflow-Workspace, Contact-Memory, Templates, Sharing, Linked Items, Debrief, AI-Suggestions, Stepper, Autosave, Shortcuts, Focus Mode). **Aber:** der Sub-Tab `AppointmentPreparationDataTab` rendert **immer alle Felder** (Anlass, Partner, Begleiter, Logistik, Öffentlichkeit, Programm, Topics/TP/Q&A) — egal in welcher Phase. Dadurch siehst du in „Anlass" auch Logistik, in „Themen" auch Öffentlichkeitsarbeit usw. Das ist das, was du als „nicht passend" wahrnimmst.
 
-## A. UIX-Politur
+## Ziel
 
-1. **Phasen-Stepper oben** — Horizontaler Progress-Indicator über dem Workspace mit „Nächste Phase"-CTA am Ende jeder Phase. Sidebar bleibt für Direktsprung.
-2. **Autosave-Indikator** — Dezenter Status oben rechts: „Speichere…" / „✓ Gespeichert vor 3s".
-3. **Keyboard-Shortcuts** — `⌘+→/←` Phase wechseln, `⌘+K` Kontakt verknüpfen, `⌘+P` aktuellen Punkt ins Kontakt-Gedächtnis pinnen, `⌘+S` manuell speichern. Inkl. Hilfe-Overlay (`?`).
-4. **Fokus-Modus** — Toggle-Button: Sidebar einklappen, nur aktive Phase + Live-Briefing (60/40).
-5. **Drag&Drop für Talking Points** — Reihenfolge per dnd-kit umsortierbar (= Gesprächsreihenfolge), persistiert in `talking_point_items`.
+Jede Phase zeigt **nur die Felder, die fachlich zu dieser Phase gehören**. Die Daten bleiben unverändert (alles weiterhin in `preparation_data`), nur die Sichtbarkeit der Sektionen wird gesteuert.
 
-## B. Inhaltliche Funktionen
+## Soll-Zuordnung Phase → Sektionen
 
-6. **KI-Vorbereitungsassistent** (Lovable AI Gateway, `google/gemini-3-flash-preview`)
-   - Edge Function `generate-preparation-suggestions`
-   - Input: Anlass, verknüpfte Partner + deren Memory + letzte Interaktionen, Kontaktdaten
-   - Output: Vorschläge für Talking Points, Q&A, sensible Punkte, Hintergrundfakten
-   - Button „✨ Vorschläge generieren" pro Phase, einzeln übernehmbar
-7. **Vorlagen-Bibliothek** — Neue Tabelle `preparation_templates` (Name, Anlasstyp, vorbefüllte Phasen-Daten als JSONB). Beim Anlegen einer Vorbereitung wählbar; Admin-UI zum Pflegen unter Settings.
-8. **Verknüpfung zu Vorgängen/Entscheidungen** — In Phase „Fakten" automatisch offene Vorgänge/Entscheidungen der verknüpften Kontakte einblenden (Read-Only Card mit Link).
-9. **Wissensdossier-Einbindung** — In Phase „Themen" Dossiers per Tag-/Kontakt-Match vorschlagen, „Quick-Read"-Drawer zum Lesen ohne Verlassen der Vorbereitung.
+| Phase | Sektionen |
+|---|---|
+| **1 Anlass & Annahme** | Anlass-Chips + Freifeld · Vorlagen-Panel |
+| **2 Team & Logistik** | Gesprächspartner · Begleitpersonen · Logistik (Fahrtzeit/Parken/Folgetermin) · Programm · Sharing-Panel |
+| **3 Fakten & Positionen** | Fakten/Themen-Items (`key_topic_items`) · Briefing-Gedächtnis · Linked Items · AI-Suggestions (Modus „Fakten") |
+| **4 Themen, TP & Q&A** | Talking Points · Q&A · Briefing-Gedächtnis · AI-Suggestions (Modus „TP/Q&A") |
+| **5 Q&A-Durchgang** | Checkliste (unverändert) |
+| **6 Briefing-Freigabe** | Status, Notizen, Öffentlichkeitsarbeit (Social/Presse-Switches), Briefing-Notizen (unverändert) |
+| **7 Nachbereitung** | Debrief-Panel · Dokumente (unverändert) |
 
-## C. Geschlossener Kreislauf nach dem Gespräch
+Begründung Verschiebungen:
+- **Programm** gehört zu „Team & Logistik" (zeitlicher Ablauf vor Ort), nicht zu „Themen".
+- **Öffentlichkeitsarbeit** (Social/Presse-Switches) gehört zur **Freigabe** — das wird typischerweise erst entschieden, wenn das Briefing steht.
+- **Fakten ≠ Talking Points**: aktuell teilen sich beide den `PreparationDataCards`-Block. Wir teilen die Anzeige auf: Phase 3 zeigt nur Topic-Items, Phase 4 zeigt TP + Q&A.
 
-10. **Debrief-Phase** (5. Phase „Nachbereitung")
-    - Felder: Was wurde besprochen? Ergebnisse? Stimmung? Offene Punkte?
-    - Beim Speichern: automatisch Interaktion am verknüpften Kontakt anlegen + neue Memory-Items vorschlagen
-11. **Auto-Aufgaben aus Debrief** — Aus „Offene Punkte" mit einem Klick Tasks erzeugen (zugewiesen an Verantwortliche, mit Termin-Referenz).
-12. **Erfolgs-Check (Reminder)** — Optional: in 4 Wochen Follow-up-Aufgabe „Hat XY geliefert?" automatisch terminieren.
+## Technische Umsetzung
 
-## D. Übersicht & Discovery (Team-Sharing)
+1. **`AppointmentPreparationDataTab` Prop `visibleSections`** hinzufügen (`Set<SectionKey>`). Default = alle (Rückwärtskompatibel für `AppointmentBriefingView`).
+2. Jede Sektion (Anlass-Card, ConversationPartnersCard, CompanionsCard, Logistik-Card, Öffentlichkeit-Card, ProgramCard, PreparationDataCards) wird mit `visibleSections.has('xxx') && …` gewrappt.
+3. **`PreparationDataCards`** bekommt zusätzlich `showFacts` / `showTalkingPoints` / `showQa` — damit Phase 3 nur Fakten und Phase 4 nur TP+Q&A sieht.
+4. **`PhaseContent.tsx`** ruft `AppointmentPreparationDataTab` mit phasenspezifischem `visibleSections` auf. Außerdem:
+   - `freigabe`-Phase rendert künftig zusätzlich die Öffentlichkeitsarbeit-Card (über `AppointmentPreparationDetailsTab` oder per neuem schmalen Wrapper).
+   - `team`-Phase: `SharingPanel` bleibt; Logistik+Programm sichtbar.
+5. **`usePhaseStatus.ts`**: Done-Logik leicht justieren — `team` zählt zusätzlich `program.length`/`travel_time` als „done"-Signal nicht erforderlich, aber `freigabe` sollte zusätzlich `social_media_planned`/`press_planned` als gesetzt erkennen (kein Blocker, nur Anzeige).
+6. **Kleinkosmetik**: Phasen-Lead-Texte in `PHASE_TITLES` an die neue Inhaltszusammenstellung anpassen (z.B. „Team, Logistik & Ablauf").
 
-13. **Team-Sharing der Vorbereitung** — Spalte `shared_with` (uuid[]) auf `appointment_preparations`; RLS so erweitern, dass Geteilte lesen/kommentieren dürfen. UI: „Teilen"-Button mit User-Picker im Workspace-Header.
+## Out of scope
 
-## Datenbank-Änderungen
+- Keine DB-Änderung, keine neuen Felder.
+- `AppointmentBriefingView` (Read-only-Briefing) bleibt vollständig — sie nutzt nicht den DataTab.
+- PDF/Letter-Export und Briefing-Dashboard bleiben wie vereinbart raus.
 
-```text
-+ Tabelle preparation_templates (name, anlasstyp, phases_data jsonb, tenant_id)
-+ Tabelle preparation_debriefs (preparation_id, content jsonb, mood, outcomes)
-+ Spalte appointment_preparations.shared_with uuid[]
-+ Edge Function: generate-preparation-suggestions (Lovable AI)
-+ RLS-Update appointment_preparations für shared_with
-```
+## Risiko
 
-## Reihenfolge
-
-**Phase 1 – Foundation:** A1 Stepper, A2 Autosave-Indikator, A4 Fokus-Modus, A5 Drag&Drop  
-**Phase 2 – Loop schließen:** C10 Debrief-Phase, C11 Auto-Aufgaben, C12 Erfolgs-Check  
-**Phase 3 – Intelligenz:** B6 KI-Assistent, B8 Vorgänge/Entscheidungen, B9 Dossiers  
-**Phase 4 – Skalierung:** B7 Vorlagen, D13 Team-Sharing, A3 Shortcuts (zuletzt, weil sie alles oben Genannte abdecken müssen)
-
-## Out of Scope (auf Wunsch ausgeschlossen)
-
-- PDF/Letter-Export der Vorbereitung
-- Briefing-Dashboard (heutige/nächste 7 Tage Übersicht)
+Gering. Reine Sichtbarkeitssteuerung mit Default-Fallback. Bestehende Daten bleiben erhalten und sind in jeder Phase zugänglich, in der die jeweilige Sektion gerendert wird.
