@@ -63,6 +63,11 @@ interface LegendPayloadItem {
 
 interface CartesianAxisProps extends BaseRechartsProps {
   dataKey?: string | ((entry: RechartsDataPoint) => unknown);
+  tickLine?: boolean;
+  axisLine?: boolean;
+  tickFormatter?: (value: unknown, index?: number) => string;
+  width?: number;
+  hide?: boolean;
 }
 
 interface BarProps extends BaseRechartsProps {
@@ -85,6 +90,8 @@ declare module 'recharts' {
   export interface TooltipProps extends import('react').Attributes {
     children?: ReactNode;
     className?: string;
+    content?: ReactNode;
+    cursor?: boolean | object;
     formatter?: (
       value: unknown,
       name: unknown,
@@ -108,10 +115,12 @@ declare module 'recharts' {
   export const CartesianGrid: ComponentType<BaseRechartsProps>;
   export const Bar: ComponentType<BarProps>;
   export const Line: ComponentType<LineProps>;
+  export const Area: ComponentType<LineProps & { fill?: string }>;
   export const Pie: ComponentType<PieProps>;
   export const Cell: ComponentType<CellProps>;
   export const ResponsiveContainer: ComponentType<ResponsiveContainerProps>;
   export const BarChart: ComponentType<ChartWrapperProps>;
   export const LineChart: ComponentType<ChartWrapperProps>;
+  export const AreaChart: ComponentType<ChartWrapperProps>;
   export const PieChart: ComponentType<ChartWrapperProps>;
 }
