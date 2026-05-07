@@ -219,6 +219,11 @@ const run = () => {
       id: `${FIXTURES.task.id}-${runtimeFixtureNamespace}`,
       title: `${FIXTURES.task.title}-${runtimeFixtureNamespace}`,
     },
+    letter: {
+      ...FIXTURES.letter,
+      id: `${FIXTURES.letter.id}-${runtimeFixtureNamespace}`,
+      title: `${FIXTURES.letter.title}-${runtimeFixtureNamespace}`,
+    },
   };
 
   const flowContext = { state, fixtures: deterministicFixtures };
