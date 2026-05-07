@@ -55,6 +55,9 @@ const setupTenantBucket = (state, tenantId) => {
   if (!state.tasksByTenant.has(tenantId)) {
     state.tasksByTenant.set(tenantId, []);
   }
+  if (!state.lettersByTenant.has(tenantId)) {
+    state.lettersByTenant.set(tenantId, []);
+  }
 };
 
 const clearFixtureRecords = (state, fixtures = FIXTURES) => {
@@ -73,6 +76,15 @@ const clearFixtureRecords = (state, fixtures = FIXTURES) => {
       .get(fixtures.tenant.id)
       .filter((t) => t.id !== fixtures.task.id),
   );
+
+  state.lettersByTenant.set(
+    fixtures.tenant.id,
+    state.lettersByTenant
+      .get(fixtures.tenant.id)
+      .filter((l) => l.id !== fixtures.letter.id),
+  );
+
+  state.notificationsByUser.clear();
 };
 
 const login = (state, email, password) => {
