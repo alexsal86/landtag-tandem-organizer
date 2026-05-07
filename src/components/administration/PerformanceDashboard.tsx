@@ -207,10 +207,10 @@ export function PerformanceDashboard(): JSX.Element {
               config={{ size: { label: "DB-Größe", color: "hsl(var(--primary))" } }}
               className="h-[280px] w-full"
             >
-              <AreaChart data={series}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" tickLine={false} axisLine={false} />
-                <YAxis
+              <RechartsPrimitive.AreaChart data={series}>
+                <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" />
+                <RechartsPrimitive.XAxis dataKey="date" tickLine={false} axisLine={false} />
+                <RechartsPrimitive.YAxis
                   tickFormatter={(v) => formatBytes(Number(v))}
                   tickLine={false}
                   axisLine={false}
@@ -219,13 +219,13 @@ export function PerformanceDashboard(): JSX.Element {
                 <ChartTooltip
                   content={<ChartTooltipContent formatter={(v) => formatBytes(Number(v))} />}
                 />
-                <Area
+                <RechartsPrimitive.Area
                   type="monotone"
                   dataKey="size"
                   stroke="hsl(var(--primary))"
                   fill="hsl(var(--primary) / 0.15)"
                 />
-              </AreaChart>
+              </RechartsPrimitive.AreaChart>
             </ChartContainer>
           )}
         </CardContent>
