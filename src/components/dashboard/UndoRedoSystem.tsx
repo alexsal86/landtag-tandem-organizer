@@ -3,8 +3,8 @@ import { debugConsole } from '@/utils/debugConsole';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Undo2, Redo2, RotateCcw } from 'lucide-react';
-import { toast } from 'sonner';
 import { DashboardLayout } from '@/types/dashboardWidgets';
+import { notify } from "@/lib/notify";
 
 interface UndoRedoAction {
   id: string;
@@ -76,9 +76,9 @@ export function UndoRedoSystem() {
       // Apply the layout from the previous action
       applyLayout(previousAction.layout);
       
-      toast.success(`Rückgängig: ${previousAction.description}`);
+      notify.success(`Rückgängig: ${previousAction.description}`);
     } else {
-      toast.error('Keine Aktionen zum Rückgängigmachen');
+      notify.error('Keine Aktionen zum Rückgängigmachen');
     }
   };
 
@@ -90,9 +90,9 @@ export function UndoRedoSystem() {
       // Apply the layout from the next action
       applyLayout(nextAction.layout);
       
-      toast.success(`Wiederherstellen: ${nextAction.description}`);
+      notify.success(`Wiederherstellen: ${nextAction.description}`);
     } else {
-      toast.error('Keine Aktionen zum Wiederherstellen');
+      notify.error('Keine Aktionen zum Wiederherstellen');
     }
   };
 
@@ -106,7 +106,7 @@ export function UndoRedoSystem() {
     setHistory([]);
     setCurrentIndex(-1);
     setIsVisible(false);
-    toast.success('Verlauf zurückgesetzt');
+    notify.success('Verlauf zurückgesetzt');
   };
 
   const canUndo = currentIndex > 0;

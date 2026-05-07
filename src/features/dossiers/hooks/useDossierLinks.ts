@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import type { DossierLink } from "../types";
+import { notify } from "@/lib/notify";
 
 export function useDossierLinks(dossierId: string | null) {
   return useQuery({
@@ -34,9 +34,9 @@ export function useCreateDossierLink() {
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["dossier-links", vars.dossier_id] });
-      toast.success("Verknüpfung erstellt");
+      notify.success("Verknüpfung erstellt");
     },
-    onError: (err) => toast.error(`Fehler: ${err.message}`),
+    onError: (err) => notify.error(`Fehler: ${err.message}`),
   });
 }
 
@@ -51,8 +51,8 @@ export function useDeleteDossierLink() {
     },
     onSuccess: (dossierId) => {
       qc.invalidateQueries({ queryKey: ["dossier-links", dossierId] });
-      toast.success("Verknüpfung entfernt");
+      notify.success("Verknüpfung entfernt");
     },
-    onError: (err) => toast.error(`Fehler: ${err.message}`),
+    onError: (err) => notify.error(`Fehler: ${err.message}`),
   });
 }

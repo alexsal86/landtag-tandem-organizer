@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
 import { debugConsole } from '@/utils/debugConsole';
+import { notify } from "@/lib/notify";
 
 export interface DocumentVersion {
   id: string;
@@ -19,7 +19,6 @@ export interface DocumentVersion {
 
 export function useKnowledgeVersionHistory(documentId: string | undefined) {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [versions, setVersions] = useState<DocumentVersion[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -57,7 +56,8 @@ export function useKnowledgeVersionHistory(documentId: string | undefined) {
       );
     } catch (err) {
       debugConsole.error('Error fetching versions:', err);
-      toast({ title: 'Fehler', description: 'Versionshistorie konnte nicht geladen werden.', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Versionshistorie konnte nicht geladen werden.'
+});
     } finally {
       setLoading(false);
     }

@@ -2,8 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProfileId } from "@/hooks/useCurrentProfileId";
 import { useTenant } from "@/hooks/useTenant";
-import { toast } from "sonner";
 import type { DossierSourceWatcher } from "../types";
+import { notify } from "@/lib/notify";
 
 export function useDossierSourceWatchers(dossierId: string | null) {
   return useQuery({
@@ -48,9 +48,9 @@ export function useCreateDossierSourceWatcher() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dossier-source-watchers"] });
-      toast.success("Quelle hinzugefügt");
+      notify.success("Quelle hinzugefügt");
     },
-    onError: (error) => toast.error(`Fehler: ${error.message}`),
+    onError: (error) => notify.error(`Fehler: ${error.message}`),
   });
 }
 
@@ -64,9 +64,9 @@ export function useDeleteDossierSourceWatcher() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dossier-source-watchers"] });
-      toast.success("Quelle entfernt");
+      notify.success("Quelle entfernt");
     },
-    onError: (error) => toast.error(`Fehler: ${error.message}`),
+    onError: (error) => notify.error(`Fehler: ${error.message}`),
   });
 }
 
@@ -84,8 +84,8 @@ export function useRunDossierSourceSync() {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["dossier-entries"] });
       qc.invalidateQueries({ queryKey: ["dossier-entry-counts"] });
-      toast.success(`Sync abgeschlossen: ${data.inserted} neu, ${data.skipped} übersprungen`);
+      notify.success(`Sync abgeschlossen: ${data.inserted} neu, ${data.skipped} übersprungen`);
     },
-    onError: (error) => toast.error(`Sync fehlgeschlagen: ${error.message}`),
+    onError: (error) => notify.error(`Sync fehlgeschlagen: ${error.message}`),
   });
 }

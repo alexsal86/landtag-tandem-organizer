@@ -6,10 +6,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Upload, FileText, Trash2, Download, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { notify } from "@/lib/notify";
 
 interface TaskDocument {
   id: string;
@@ -36,7 +36,6 @@ export function TaskDocumentDialog({
   onOpenChange 
 }: TaskDocumentDialogProps) {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [documents, setDocuments] = useState<TaskDocument[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -95,10 +94,10 @@ export function TaskDocumentDialog({
       if (dbError) throw dbError;
 
       await loadDocuments();
-      toast({ title: "Dokument hochgeladen" });
+      notify.success("Dokument hochgeladen");
     } catch (error) {
       debugConsole.error("Error uploading document:", error);
-      toast({ title: "Fehler beim Hochladen", variant: "destructive" });
+      notify.error("Fehler beim Hochladen");
     } finally {
       setUploading(false);
       e.target.value = '';
@@ -121,7 +120,7 @@ export function TaskDocumentDialog({
       URL.revokeObjectURL(url);
     } catch (error) {
       debugConsole.error("Error downloading document:", error);
-      toast({ title: "Fehler beim Download", variant: "destructive" });
+      notify.error("Fehler beim Download");
     }
   };
 
@@ -139,10 +138,10 @@ export function TaskDocumentDialog({
       if (error) throw error;
 
       setDocuments(prev => prev.filter(d => d.id !== doc.id));
-      toast({ title: "Dokument gelöscht" });
+      notify.success("Dokument gelöscht");
     } catch (error) {
       debugConsole.error("Error deleting document:", error);
-      toast({ title: "Fehler beim Löschen", variant: "destructive" });
+      notify.error("Fehler beim Löschen");
     }
   };
 

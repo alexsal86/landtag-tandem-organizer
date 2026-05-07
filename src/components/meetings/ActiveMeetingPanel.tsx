@@ -16,8 +16,8 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import type { Meeting, AgendaItem, Profile, LinkedQuickNote, LinkedTask, LinkedCaseItem, RelevantDecision, MeetingUpcomingAppointment } from './types';
+import { notify } from "@/lib/notify";
 
 interface ActiveMeetingPanelProps {
   meeting: Meeting;
@@ -66,7 +66,6 @@ export function ActiveMeetingPanel({
   onToggleVisibility,
   isLoading = false,
 }: ActiveMeetingPanelProps) {
-  const { toast } = useToast();
 
   const getProfile = (userId: string) => profiles.find(p => p.user_id === userId);
 
@@ -82,7 +81,8 @@ export function ActiveMeetingPanel({
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      toast({ title: "Download-Fehler", description: "Datei konnte nicht heruntergeladen werden.", variant: "destructive" });
+      notify.error("Download-Fehler", { description: "Datei konnte nicht heruntergeladen werden."
+});
     }
   };
 

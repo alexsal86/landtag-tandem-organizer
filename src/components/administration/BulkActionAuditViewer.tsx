@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { History, Loader2, Undo2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
+import { notify } from "@/lib/notify";
 
 interface AuditRow {
   id: string;
@@ -23,7 +24,6 @@ interface AuditRow {
 
 export function BulkActionAuditViewer() {
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const [rows, setRows] = useState<AuditRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -38,7 +38,8 @@ export function BulkActionAuditViewer() {
       .limit(200);
     setLoading(false);
     if (error) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      notify.error("Fehler", { description: error.message
+});
       return;
     }
     setRows((data ?? []) as AuditRow[]);

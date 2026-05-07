@@ -7,9 +7,9 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
 import { format, formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
+import { notify } from "@/lib/notify";
 
 type UserSession = Database["public"]["Tables"]["user_sessions"]["Row"];
 type SessionDeviceDescriptor = { icon: typeof Monitor; label: string };
@@ -41,7 +41,6 @@ function parseDeviceInfo(ua: string | null): SessionDeviceDescriptor {
 
 export function ActiveSessionsCard(): React.JSX.Element {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [sessions, setSessions] = useState<UserSession[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [loggingOut, setLoggingOut] = useState<boolean>(false);
@@ -93,18 +92,15 @@ export function ActiveSessionsCard(): React.JSX.Element {
 
       if (error) throw error;
 
-      toast({
-        title: "Abgemeldet",
-        description: "Sie wurden von allen anderen Geräten abgemeldet.",
-      });
+      notify.success("Abgemeldet", {
+        description: "Sie wurden von allen anderen Geräten abgemeldet."
+});
 
       await loadSessions();
     } catch (error: unknown) {
-      toast({
-        title: "Fehler",
-        description: `Abmeldung fehlgeschlagen: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`,
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: `Abmeldung fehlgeschlagen: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`
+});
     } finally {
       setLoggingOut(false);
     }

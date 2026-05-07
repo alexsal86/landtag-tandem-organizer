@@ -8,9 +8,9 @@ import { CalendarIcon, Clock, Users, Check, AlertCircle, X, Trophy, Mail, CheckC
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/hooks/useTenant';
 import { debugConsole } from '@/utils/debugConsole';
+import { notify } from "@/lib/notify";
 
 interface TimeSlot {
   id: string;
@@ -60,7 +60,6 @@ interface PollResultsDashboardProps {
 }
 
 export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashboardProps) => {
-  const { toast } = useToast();
   const { currentTenant } = useTenant();
   const [loading, setLoading] = useState(true);
   const [poll, setPoll] = useState<Poll | null>(null);
@@ -143,11 +142,9 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
 
       } catch (error) {
         debugConsole.error('Error loading poll results:', error);
-        toast({
-          title: "Fehler",
-          description: "Die Umfrageergebnisse konnten nicht geladen werden.",
-          variant: "destructive",
-        });
+        notify.error("Fehler", {
+          description: "Die Umfrageergebnisse konnten nicht geladen werden."
+});
       } finally {
         setLoading(false);
       }
@@ -189,11 +186,9 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
       if (!slot) return;
 
       if (!currentTenant?.id) {
-        toast({
-          title: "Hinweis",
-          description: "Kein Tenant-Kontext verfügbar",
-          variant: "destructive",
-        });
+        notify.error("Hinweis", {
+          description: "Kein Tenant-Kontext verfügbar"
+});
         return;
       }
 
@@ -228,10 +223,9 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
       setPoll(prev => prev ? { ...prev, status: 'completed' } : null);
       setConfirmedSlot(slot);
 
-      toast({
-        title: "Termin bestätigt",
-        description: "Der Termin wurde erfolgreich bestätigt und in den Kalender eingetragen.",
-      });
+      notify.success("Termin bestätigt", {
+        description: "Der Termin wurde erfolgreich bestätigt und in den Kalender eingetragen."
+});
 
       if (onConfirmSlot) {
         onConfirmSlot(slotId);
@@ -239,11 +233,9 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
 
     } catch (error) {
       debugConsole.error('Error confirming slot:', error);
-      toast({
-        title: "Fehler",
-        description: "Der Termin konnte nicht bestätigt werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Der Termin konnte nicht bestätigt werden."
+});
     }
   };
 
@@ -265,19 +257,16 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
 
       debugConsole.log('Resend invitation response:', data);
 
-      toast({
-        title: "Einladung gesendet",
-        description: `Eine Erinnerung wurde erfolgreich an ${participantEmail} gesendet.`,
-      });
+      notify.success("Einladung gesendet", {
+        description: `Eine Erinnerung wurde erfolgreich an ${participantEmail} gesendet.`
+});
 
     } catch (error: unknown) {
       debugConsole.error('Error resending invitation:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
-      toast({
-        title: "Fehler",
-        description: `Die Einladung konnte nicht erneut gesendet werden: ${errorMessage}`,
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: `Die Einladung konnte nicht erneut gesendet werden: ${errorMessage}`
+});
     }
   };
 

@@ -4,6 +4,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useTenant } from "@/hooks/useTenant";
 import { debugConsole } from "@/utils/debugConsole";
 import type { TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
+import { notify } from "@/lib/notify";
 
 export interface CaseFileType {
   id: string;
@@ -21,7 +22,6 @@ export interface CaseFileType {
 export const useCaseFileTypes = () => {
   const [caseFileTypes, setCaseFileTypes] = useState<CaseFileType[]>([]);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
   const { currentTenant } = useTenant();
 
   const fetchCaseFileTypes = useCallback(async () => {
@@ -38,11 +38,9 @@ export const useCaseFileTypes = () => {
       setCaseFileTypes(data || []);
     } catch (error) {
       debugConsole.error('Error fetching case file types:', error);
-      toast({
-        title: "Fehler",
-        description: "Fallakten-Typen konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Fallakten-Typen konnten nicht geladen werden."
+});
     } finally {
       setLoading(false);
     }
@@ -67,20 +65,17 @@ export const useCaseFileTypes = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Erfolgreich",
-        description: "Fallakten-Typ wurde erstellt.",
-      });
+      notify.success("Erfolgreich", {
+        description: "Fallakten-Typ wurde erstellt."
+});
 
       await fetchCaseFileTypes();
       return true;
     } catch (error) {
       debugConsole.error('Error creating case file type:', error);
-      toast({
-        title: "Fehler",
-        description: "Fallakten-Typ konnte nicht erstellt werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Fallakten-Typ konnte nicht erstellt werden."
+});
       return false;
     }
   };
@@ -102,20 +97,17 @@ export const useCaseFileTypes = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Erfolgreich",
-        description: "Fallakten-Typ wurde aktualisiert.",
-      });
+      notify.success("Erfolgreich", {
+        description: "Fallakten-Typ wurde aktualisiert."
+});
 
       await fetchCaseFileTypes();
       return true;
     } catch (error) {
       debugConsole.error('Error updating case file type:', error);
-      toast({
-        title: "Fehler",
-        description: "Fallakten-Typ konnte nicht aktualisiert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Fallakten-Typ konnte nicht aktualisiert werden."
+});
       return false;
     }
   };
@@ -129,20 +121,17 @@ export const useCaseFileTypes = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Erfolgreich",
-        description: "Fallakten-Typ wurde gelöscht.",
-      });
+      notify.success("Erfolgreich", {
+        description: "Fallakten-Typ wurde gelöscht."
+});
 
       await fetchCaseFileTypes();
       return true;
     } catch (error) {
       debugConsole.error('Error deleting case file type:', error);
-      toast({
-        title: "Fehler",
-        description: "Fallakten-Typ konnte nicht gelöscht werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Fallakten-Typ konnte nicht gelöscht werden."
+});
       return false;
     }
   };
@@ -156,20 +145,17 @@ export const useCaseFileTypes = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Erfolgreich",
-        description: `Fallakten-Typ wurde ${!isActive ? 'aktiviert' : 'deaktiviert'}.`,
-      });
+      notify.success("Erfolgreich", {
+        description: `Fallakten-Typ wurde ${!isActive ? 'aktiviert' : 'deaktiviert'}.`
+});
 
       await fetchCaseFileTypes();
       return true;
     } catch (error) {
       debugConsole.error('Error toggling case file type:', error);
-      toast({
-        title: "Fehler",
-        description: "Status konnte nicht geändert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Status konnte nicht geändert werden."
+});
       return false;
     }
   };
@@ -187,11 +173,9 @@ export const useCaseFileTypes = () => {
       return true;
     } catch (error) {
       debugConsole.error('Error updating order:', error);
-      toast({
-        title: "Fehler",
-        description: "Reihenfolge konnte nicht gespeichert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Reihenfolge konnte nicht gespeichert werden."
+});
       await fetchCaseFileTypes();
       return false;
     }

@@ -4,8 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useTopicBacklog } from "@/features/redaktion/hooks/useTopicBacklog";
-import { useToast } from "@/hooks/use-toast";
-
+import { notify } from "@/lib/notify";
 interface TransferToThemenspeicherDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -24,7 +23,6 @@ export function TransferToThemenspeicherDialog({
   onTransferred,
 }: TransferToThemenspeicherDialogProps) {
   const { createTopic } = useTopicBacklog();
-  const { toast } = useToast();
   const [title, setTitle] = useState(prefillTitle);
   const [tags, setTags] = useState(prefillTags);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,11 +42,13 @@ export function TransferToThemenspeicherDialog({
     try {
       const parsedTags = tags.split(",").map(t => t.trim()).filter(Boolean);
       await createTopic({ topic: title.trim(), tags: parsedTags, status: "idea", priority: 1 });
-      toast({ title: "In Themenspeicher übernommen", description: `"${title.trim()}" wurde als Thema angelegt.` });
+      notify.success("In Themenspeicher übernommen", { description: `"${title.trim()}" wurde als Thema angelegt.` 
+});
       onTransferred?.();
       onOpenChange(false);
     } catch (error) {
-      toast({ title: "Fehler", description: "Thema konnte nicht erstellt werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Thema konnte nicht erstellt werden."
+});
     } finally {
       setIsSubmitting(false);
     }

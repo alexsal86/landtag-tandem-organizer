@@ -16,9 +16,9 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import type { ParticipantRole, NewMeetingParticipant } from "./types";
+import { notify } from "@/lib/notify";
 
 interface StandaloneMeetingCreatorProps {
   open: boolean;
@@ -29,7 +29,6 @@ interface StandaloneMeetingCreatorProps {
 export function StandaloneMeetingCreator({ open, onOpenChange, onMeetingCreated }: StandaloneMeetingCreatorProps) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -53,7 +52,8 @@ export function StandaloneMeetingCreator({ open, onOpenChange, onMeetingCreated 
   const handleCreate = async () => {
     if (!user || !currentTenant) return;
     if (!title.trim()) {
-      toast({ title: "Fehler", description: "Bitte geben Sie einen Titel ein!", variant: "destructive" });
+      notify.error("Fehler", { description: "Bitte geben Sie einen Titel ein!"
+});
       return;
     }
 
@@ -99,13 +99,15 @@ export function StandaloneMeetingCreator({ open, onOpenChange, onMeetingCreated 
         );
       }
 
-      toast({ title: "Meeting erstellt", description: "Das Meeting wurde erfolgreich erstellt." });
+      notify.success("Meeting erstellt", { description: "Das Meeting wurde erfolgreich erstellt." 
+});
       resetForm();
       onOpenChange(false);
       onMeetingCreated?.();
     } catch (error) {
       debugConsole.error("Error creating meeting:", error);
-      toast({ title: "Fehler", description: "Meeting konnte nicht erstellt werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Meeting konnte nicht erstellt werden."
+});
     } finally {
       setIsCreating(false);
     }

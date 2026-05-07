@@ -7,8 +7,8 @@ import { useCreateEntry } from "../hooks/useDossierEntries";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useCurrentProfileId } from "@/hooks/useCurrentProfileId";
-import { toast } from "sonner";
 import { isEmailFile, isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, buildEmlFromOutlookHtml } from "@/utils/emlParser";
+import { notify } from "@/lib/notify";
 
 interface SmartCaptureProps {
   dossierId?: string | null;
@@ -87,7 +87,7 @@ export function SmartCapture({ dossierId = null }: SmartCaptureProps) {
         });
       }
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Upload fehlgeschlagen");
+      notify.error(err instanceof Error ? err.message : "Upload fehlgeschlagen");
     } finally {
       setUploading(false);
       e.target.value = "";
@@ -117,9 +117,9 @@ export function SmartCapture({ dossierId = null }: SmartCaptureProps) {
             content: parsed.textBody || parsed.htmlBody || "",
             metadata,
           });
-          toast.success("E-Mail aus Outlook eingefügt");
+          notify.success("E-Mail aus Outlook eingefügt");
         } catch {
-          toast.error("E-Mail konnte nicht verarbeitet werden");
+          notify.error("E-Mail konnte nicht verarbeitet werden");
         }
       }
     }

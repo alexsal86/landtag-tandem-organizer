@@ -6,9 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Image, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import { $createImageNode, type ImagePayload } from '@/components/nodes/ImageNode';
 import { debugConsole } from '@/utils/debugConsole';
+import { notify } from "@/lib/notify";
 
 interface ImageUploadDialogProps {
   onInsert: (payload: ImagePayload) => void;
@@ -19,7 +19,6 @@ const ImageUploadDialog: React.FC<ImageUploadDialogProps> = ({ onInsert, onCance
   const [imageUrl, setImageUrl] = useState('');
   const [altText, setAltText] = useState('');
   const [uploading, setUploading] = useState(false);
-  const { toast } = useToast();
 
   const handleFileUpload = async (file: File) => {
     setUploading(true);
@@ -40,17 +39,14 @@ const ImageUploadDialog: React.FC<ImageUploadDialogProps> = ({ onInsert, onCance
 
       setImageUrl(data.publicUrl);
       if (!altText) setAltText(file.name);
-      toast({
-        title: "Erfolg",
-        description: "Bild erfolgreich hochgeladen",
-      });
+      notify.success("Erfolg", {
+        description: "Bild erfolgreich hochgeladen"
+});
     } catch (error) {
       debugConsole.error('Error uploading image:', error);
-      toast({
-        title: "Fehler",
-        description: "Fehler beim Hochladen des Bildes",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Fehler beim Hochladen des Bildes"
+});
     } finally {
       setUploading(false);
     }

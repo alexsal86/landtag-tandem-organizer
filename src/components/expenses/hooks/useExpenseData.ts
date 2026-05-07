@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
-import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { notify } from "@/lib/notify";
 
 export interface ExpenseCategory {
   id: string;
@@ -36,7 +36,6 @@ export interface ExpenseBudget {
 export function useExpenseData() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -55,7 +54,8 @@ export function useExpenseData() {
   const loadCategories = async () => {
     if (!currentTenant) return;
     const { data, error } = await supabase.from("expense_categories").select("id, name, description, color, is_active, order_index, created_at, updated_at, tenant_id").eq("tenant_id", currentTenant.id).eq("is_active", true).order("order_index");
-    if (error) toast({ title: "Fehler", description: "Kategorien konnten nicht geladen werden", variant: "destructive" });
+    if (error) notify.error("Fehler", { description: "Kategorien konnten nicht geladen werden"
+});
     else setCategories(data || []);
   };
 
@@ -65,14 +65,16 @@ export function useExpenseData() {
     const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
     const endDate = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-${lastDay.toString().padStart(2, '0')}`;
     const { data, error } = await supabase.from("expenses").select(`*, category:expense_categories(*)`).eq("tenant_id", currentTenant.id).gte("expense_date", startDate).lte("expense_date", endDate).order("expense_date", { ascending: false });
-    if (error) toast({ title: "Fehler", description: "Ausgaben konnten nicht geladen werden", variant: "destructive" });
+    if (error) notify.error("Fehler", { description: "Ausgaben konnten nicht geladen werden"
+});
     else setExpenses((data as Expense[]) || []);
   };
 
   const loadBudgets = async () => {
     if (!user || !currentTenant) return;
     const { data, error } = await supabase.from("expense_budgets").select("id, user_id, year, month, budget_amount, created_at, updated_at, tenant_id").eq("user_id", user.id).eq("tenant_id", currentTenant.id).order("year", { ascending: false }).order("month", { ascending: false });
-    if (error) toast({ title: "Fehler", description: "Budgets konnten nicht geladen werden", variant: "destructive" });
+    if (error) notify.error("Fehler", { description: "Budgets konnten nicht geladen werden"
+});
     else setBudgets(data || []);
   };
 
@@ -81,31 +83,40 @@ export function useExpenseData() {
     const fileName = `${Date.now()}.${fileExt}`;
     const filePath = `${user?.id}/receipts/${fileName}`;
     const { error } = await supabase.storage.from('documents').upload(filePath, file);
-    if (error) { toast({ title: "Fehler", description: `Beleg konnte nicht hochgeladen werden: ${error.message}`, variant: "destructive" }); return null; }
+    if (error) { notify.error("Fehler", { description: `Beleg konnte nicht hochgeladen werden: ${error.message}`
+}); return null; }
     return filePath;
   };
 
   const addExpense = async (newExpense: { amount: string; expense_date: string; description: string; notes: string; category_id: string; receipt_file: File | null; recurring_type: string }) => {
-    if (!newExpense.amount || !newExpense.category_id || !user?.id || !currentTenant?.id) { toast({ title: "Fehler", description: "Betrag und Kategorie sind erforderlich", variant: "destructive" }); return false; }
+    if (!newExpense.amount || !newExpense.category_id || !user?.id || !currentTenant?.id) { notify.error("Fehler", { description: "Betrag und Kategorie sind erforderlich"
+}); return false; }
     let receiptPath: string | null = null;
     if (newExpense.receipt_file) { receiptPath = await uploadReceipt(newExpense.receipt_file); if (!receiptPath) return false; }
     const { error } = await supabase.from("expenses").insert([{ user_id: user.id, tenant_id: currentTenant.id, amount: parseFloat(newExpense.amount), expense_date: newExpense.expense_date, description: newExpense.description || null, notes: newExpense.notes || null, receipt_file_path: receiptPath, category_id: newExpense.category_id, recurring_type: newExpense.recurring_type }]);
-    if (error) { toast({ title: "Fehler", description: "Ausgabe konnte nicht hinzugefügt werden", variant: "destructive" }); return false; }
-    toast({ title: "Erfolg", description: "Ausgabe wurde hinzugefügt" }); loadExpenses(); return true;
+    if (error) { notify.error("Fehler", { description: "Ausgabe konnte nicht hinzugefügt werden"
+}); return false; }
+    notify.success("Erfolg", { description: "Ausgabe wurde hinzugefügt" 
+}); loadExpenses(); return true;
   };
 
   const addCategory = async (newCategory: { name: string; description: string; color: string }) => {
-    if (!newCategory.name || !currentTenant?.id) { toast({ title: "Fehler", description: "Name ist erforderlich", variant: "destructive" }); return false; }
+    if (!newCategory.name || !currentTenant?.id) { notify.error("Fehler", { description: "Name ist erforderlich"
+}); return false; }
     const { error } = await supabase.from("expense_categories").insert([{ name: newCategory.name, description: newCategory.description || null, color: newCategory.color, order_index: categories.length, tenant_id: currentTenant.id }]);
-    if (error) { toast({ title: "Fehler", description: "Kategorie konnte nicht hinzugefügt werden", variant: "destructive" }); return false; }
-    toast({ title: "Erfolg", description: "Kategorie wurde hinzugefügt" }); loadCategories(); return true;
+    if (error) { notify.error("Fehler", { description: "Kategorie konnte nicht hinzugefügt werden"
+}); return false; }
+    notify.success("Erfolg", { description: "Kategorie wurde hinzugefügt" 
+}); loadCategories(); return true;
   };
 
   const setBudgetAmount = async (amount: string) => {
-    if (!amount || !user?.id || !currentTenant?.id) { toast({ title: "Fehler", description: "Budget-Betrag ist erforderlich", variant: "destructive" }); return false; }
+    if (!amount || !user?.id || !currentTenant?.id) { notify.error("Fehler", { description: "Budget-Betrag ist erforderlich"
+}); return false; }
     const parsedAmount = parseFloat(amount);
     const { error } = await supabase.from("expense_budgets").upsert({ user_id: user.id, tenant_id: currentTenant.id, year: selectedYear, month: selectedMonth, budget_amount: parsedAmount });
-    if (error) { toast({ title: "Fehler", description: "Budget konnte nicht gesetzt werden", variant: "destructive" }); return false; }
+    if (error) { notify.error("Fehler", { description: "Budget konnte nicht gesetzt werden"
+}); return false; }
     const currentDate = new Date(selectedYear, selectedMonth - 1);
     const futureMonths: Array<{ user_id: string; tenant_id: string; year: number; month: number; budget_amount: number }> = [];
     for (let i = 1; i <= 12; i++) {
@@ -114,7 +125,8 @@ export function useExpenseData() {
       if (!budgets.find(b => b.year === year && b.month === month)) futureMonths.push({ user_id: user.id, tenant_id: currentTenant.id, year, month, budget_amount: parsedAmount });
     }
     if (futureMonths.length > 0) await supabase.from("expense_budgets").insert(futureMonths);
-    toast({ title: "Erfolg", description: `Budget wurde gesetzt und auf ${futureMonths.length} weitere Monate angewendet` }); loadBudgets(); return true;
+    notify.success("Erfolg", { description: `Budget wurde gesetzt und auf ${futureMonths.length} weitere Monate angewendet` 
+}); loadBudgets(); return true;
   };
 
   const getCurrentBudget = () => budgets.find(b => b.year === selectedYear && b.month === selectedMonth);

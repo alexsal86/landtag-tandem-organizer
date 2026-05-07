@@ -2,8 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useCurrentProfileId } from "@/hooks/useCurrentProfileId";
-import { toast } from "sonner";
 import type { DossierTalkingPoint, TalkingPointsContent } from "../types";
+import { notify } from "@/lib/notify";
 
 export function useTalkingPoints(dossierId: string | null) {
   const { currentTenant } = useTenant();
@@ -75,9 +75,9 @@ export function useUpsertTalkingPoint() {
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ["dossier-talking-points", vars.dossier_id] });
-      toast.success("Sprechzettel gespeichert");
+      notify.success("Sprechzettel gespeichert");
     },
-    onError: (err: Error) => toast.error(`Fehler: ${err.message}`),
+    onError: (err: Error) => notify.error(`Fehler: ${err.message}`),
   });
 }
 
@@ -90,8 +90,8 @@ export function useDeleteTalkingPoint() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dossier-talking-points"] });
-      toast.success("Sprechzettel gelöscht");
+      notify.success("Sprechzettel gelöscht");
     },
-    onError: (err: Error) => toast.error(`Fehler: ${err.message}`),
+    onError: (err: Error) => notify.error(`Fehler: ${err.message}`),
   });
 }

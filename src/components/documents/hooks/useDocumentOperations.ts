@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { useLetterArchiving } from "@/hooks/useLetterArchiving";
 import type { Tenant } from "@/hooks/useTenant";
 import type { Document, DocumentFolder, Letter, ParentTaskOption } from "../types";
@@ -12,6 +11,7 @@ import {
   toArchivableLetterRecord,
 } from "../operationsContract";
 import { debugConsole } from "@/utils/debugConsole";
+import { notify } from "@/lib/notify";
 
 interface UseDocumentOperationsProps {
   user: User | null;
@@ -83,7 +83,6 @@ export function useDocumentOperations({
   activeTab,
   letters,
 }: UseDocumentOperationsProps): UseDocumentOperationsResult {
-  const { toast } = useToast();
   const navigate = useNavigate();
   const { archiveLetter, isArchiving } = useLetterArchiving();
 
@@ -108,7 +107,8 @@ export function useDocumentOperations({
       URL.revokeObjectURL(url);
       window.document.body.removeChild(link);
     } catch (error: unknown) {
-      toast({ title: "Download-Fehler", description: errMsg(error), variant: "destructive" });
+      notify.error("Download-Fehler", { description: errMsg(error)
+});
     }
   };
 
@@ -121,11 +121,13 @@ export function useDocumentOperations({
       }
       const { error: dbError } = await supabase.from("documents").delete().eq("id", document.id);
       if (dbError) throw dbError;
-      toast({ title: "Dokument gelöscht", description: "Das Dokument wurde erfolgreich entfernt." });
+      notify.success("Dokument gelöscht", { description: "Das Dokument wurde erfolgreich entfernt." 
+});
       if (activeTab === "documents") await fetchDocuments();
       return { success: true };
     } catch (error: unknown) {
-      toast({ title: "Lösch-Fehler", description: errMsg(error), variant: "destructive" });
+      notify.error("Lösch-Fehler", { description: errMsg(error)
+});
       return { success: false, message: errMsg(error) };
     }
   };
@@ -174,7 +176,8 @@ export function useDocumentOperations({
         await supabase.from("document_contacts").insert(contactLinks);
       }
 
-      toast({ title: "Dokument hochgeladen", description: "Das Dokument wurde erfolgreich gespeichert." });
+      notify.success("Dokument hochgeladen", { description: "Das Dokument wurde erfolgreich gespeichert." 
+});
       onSuccess();
       if (activeTab === "documents") {
         await fetchDocuments();
@@ -182,7 +185,8 @@ export function useDocumentOperations({
       }
       return { success: true };
     } catch (error: unknown) {
-      toast({ title: "Upload-Fehler", description: errMsg(error), variant: "destructive" });
+      notify.error("Upload-Fehler", { description: errMsg(error)
+});
       return { success: false, message: errMsg(error) };
     } finally {
       setLoading(false);
@@ -204,12 +208,13 @@ export function useDocumentOperations({
         })
         .eq("id", editingDocument.id);
       if (error) throw error;
-      toast({ title: "Dokument aktualisiert" });
+      notify.success("Dokument aktualisiert");
       onSuccess();
       await fetchDocuments();
       return { success: true };
     } catch (error: unknown) {
-      toast({ title: "Fehler", description: errMsg(error), variant: "destructive" });
+      notify.error("Fehler", { description: errMsg(error)
+});
       return { success: false, message: errMsg(error) };
     }
   };
@@ -228,12 +233,14 @@ export function useDocumentOperations({
         },
       ]);
       if (error) throw error;
-      toast({ title: "Ordner erstellt", description: `Der Ordner "${mutation.name}" wurde erfolgreich erstellt.` });
+      notify.success("Ordner erstellt", { description: `Der Ordner "${mutation.name}" wurde erfolgreich erstellt.` 
+});
       onSuccess();
       await fetchFolders();
       return { success: true };
     } catch (error: unknown) {
-      toast({ title: "Fehler", description: errMsg(error), variant: "destructive" });
+      notify.error("Fehler", { description: errMsg(error)
+});
       return { success: false, message: errMsg(error) };
     }
   };
@@ -242,7 +249,8 @@ export function useDocumentOperations({
     const folder = folders.find((entry) => entry.id === folderId);
     if (!folder) return { success: false, message: "Ordner nicht gefunden" };
     if (folder.documentCount && folder.documentCount > 0) {
-      toast({ title: "Ordner nicht leer", description: "Bitte verschieben oder löschen Sie zuerst alle Dokumente.", variant: "destructive" });
+      notify.error("Ordner nicht leer", { description: "Bitte verschieben oder löschen Sie zuerst alle Dokumente."
+});
       return { success: false, message: "Ordner nicht leer" };
     }
     if (!confirm(`Möchten Sie den Ordner "${folder.name}" wirklich löschen?`)) return { success: false, message: "Abgebrochen" };
@@ -250,11 +258,12 @@ export function useDocumentOperations({
     try {
       const { error } = await supabase.from("document_folders").delete().eq("id", folderId);
       if (error) throw error;
-      toast({ title: "Ordner gelöscht" });
+      notify.success("Ordner gelöscht");
       await fetchFolders();
       return { success: true };
     } catch (error: unknown) {
-      toast({ title: "Fehler", description: errMsg(error), variant: "destructive" });
+      notify.error("Fehler", { description: errMsg(error)
+});
       return { success: false, message: errMsg(error) };
     }
   };
@@ -268,13 +277,14 @@ export function useDocumentOperations({
     try {
       const { error } = await supabase.from("documents").update({ folder_id: mutation.folderId || null }).eq("id", selectedDocument.id);
       if (error) throw error;
-      toast({ title: "Dokument verschoben" });
+      notify.success("Dokument verschoben");
       onSuccess();
       await fetchDocuments();
       await fetchFolders();
       return { success: true };
     } catch (error: unknown) {
-      toast({ title: "Fehler", description: errMsg(error), variant: "destructive" });
+      notify.error("Fehler", { description: errMsg(error)
+});
       return { success: false, message: errMsg(error) };
     }
   };
@@ -286,11 +296,12 @@ export function useDocumentOperations({
     try {
       const { error } = await supabase.from("letters").delete().eq("id", letterId);
       if (error) throw error;
-      toast({ title: "Brief gelöscht" });
+      notify.success("Brief gelöscht");
       await fetchLetters();
       return { success: true };
     } catch {
-      toast({ title: "Fehler", description: "Der Brief konnte nicht gelöscht werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Der Brief konnte nicht gelöscht werden."
+});
       return { success: false, message: "Der Brief konnte nicht gelöscht werden." };
     }
   };
@@ -299,13 +310,15 @@ export function useDocumentOperations({
     if (!confirm("Möchten Sie diesen Brief archivieren?")) return { success: false, message: "Abgebrochen" };
     const letter = letters.find((entry) => entry.id === letterId);
     if (!letter) {
-      toast({ title: "Fehler", description: "Brief nicht gefunden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Brief nicht gefunden."
+});
       return { success: false, message: "Brief nicht gefunden" };
     }
 
     const archivableLetter = toArchivableLetterRecord(letter);
     if (!archivableLetter) {
-      toast({ title: "Fehler", description: "Brief-ID fehlt.", variant: "destructive" });
+      notify.error("Fehler", { description: "Brief-ID fehlt."
+});
       return { success: false, message: "Brief-ID fehlt" };
     }
 
@@ -327,11 +340,12 @@ export function useDocumentOperations({
         .update({ status: "draft", archived_at: null, archived_by: null })
         .eq("id", letterId);
       if (error) throw error;
-      toast({ title: "Brief wiederhergestellt" });
+      notify.success("Brief wiederhergestellt");
       await fetchLetters();
       return { success: true };
     } catch {
-      toast({ title: "Fehler", description: "Der Brief konnte nicht wiederhergestellt werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Der Brief konnte nicht wiederhergestellt werden."
+});
       return { success: false, message: "Der Brief konnte nicht wiederhergestellt werden." };
     }
   };
@@ -374,11 +388,11 @@ export function useDocumentOperations({
   const createTaskFromLetter = async () => {
     if (!user || !currentTenant || !sourceLetterForTask || !taskDialogMode) return;
     if (!taskTitle.trim()) {
-      toast({ title: "Titel fehlt", variant: "destructive" });
+      notify.error("Titel fehlt");
       return;
     }
     if (taskDialogMode === "subtask" && parentTaskId === "none") {
-      toast({ title: "Übergeordnete Aufgabe fehlt", variant: "destructive" });
+      notify.error("Übergeordnete Aufgabe fehlt");
       return;
     }
 
@@ -415,10 +429,10 @@ export function useDocumentOperations({
         ]);
         if (error) throw error;
       }
-      toast({ title: taskDialogMode === "task" ? "Aufgabe erstellt" : "Unteraufgabe erstellt" });
+      notify.success(taskDialogMode === "task" ? "Aufgabe erstellt" : "Unteraufgabe erstellt");
       closeTaskDialog();
     } catch {
-      toast({ title: "Fehler", variant: "destructive" });
+      notify.error("Fehler");
     } finally {
       setIsCreatingTask(false);
     }

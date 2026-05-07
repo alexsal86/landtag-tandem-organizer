@@ -1,14 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from '@/utils/debugConsole';
+import { notify } from "@/lib/notify";
 
 type DecisionTopicRow = { topic_id: string | null };
 
 export const useDecisionTopics = (decisionId: string | undefined) => {
   const [assignedTopics, setAssignedTopics] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
 
   const fetchAssignedTopics = useCallback(async () => {
     if (!decisionId) {
@@ -55,11 +54,9 @@ export const useDecisionTopics = (decisionId: string | undefined) => {
       return true;
     } catch (error) {
       debugConsole.error('Error assigning topic:', error);
-      toast({
-        title: "Fehler",
-        description: "Thema konnte nicht zugewiesen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Thema konnte nicht zugewiesen werden."
+});
       return false;
     }
   };
@@ -80,11 +77,9 @@ export const useDecisionTopics = (decisionId: string | undefined) => {
       return true;
     } catch (error) {
       debugConsole.error('Error removing topic:', error);
-      toast({
-        title: "Fehler",
-        description: "Thema konnte nicht entfernt werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Thema konnte nicht entfernt werden."
+});
       return false;
     }
   };
@@ -117,11 +112,9 @@ export const useDecisionTopics = (decisionId: string | undefined) => {
       return true;
     } catch (error) {
       debugConsole.error('Error setting topics:', error);
-      toast({
-        title: "Fehler",
-        description: "Themen konnten nicht aktualisiert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Themen konnten nicht aktualisiert werden."
+});
       return false;
     }
   };

@@ -2,8 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { STALE_TIME } from '@/lib/query-cache';
 import { useTenant } from '@/hooks/useTenant';
-import { toast } from 'sonner';
-
+import { notify } from "@/lib/notify";
 export interface MapLayer {
   id: string;
   tenant_id: string;
@@ -60,9 +59,9 @@ export function useMapLayers() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
-      toast.success('Layer erstellt');
+      notify.success('Layer erstellt');
     },
-    onError: () => toast.error('Fehler beim Erstellen des Layers'),
+    onError: () => notify.error('Fehler beim Erstellen des Layers'),
   });
 
   const updateLayer = useMutation({
@@ -72,9 +71,9 @@ export function useMapLayers() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
-      toast.success('Layer aktualisiert');
+      notify.success('Layer aktualisiert');
     },
-    onError: () => toast.error('Fehler beim Aktualisieren'),
+    onError: () => notify.error('Fehler beim Aktualisieren'),
   });
 
   const deleteLayer = useMutation({
@@ -84,9 +83,9 @@ export function useMapLayers() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
-      toast.success('Layer gelöscht');
+      notify.success('Layer gelöscht');
     },
-    onError: () => toast.error('Fehler beim Löschen'),
+    onError: () => notify.error('Fehler beim Löschen'),
   });
 
   return { layers, activeLayers, isLoading, createLayer, updateLayer, deleteLayer };

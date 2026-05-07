@@ -7,10 +7,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from '@/utils/debugConsole';
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { toast } from "sonner";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { MentionSharePromptDialog } from "@/components/shared/MentionSharePromptDialog";
 import { extractMentionedUserIds } from "@/utils/noteMentions";
+import { notify } from "@/lib/notify";
 
 interface GlobalQuickNoteDialogProps {
   open: boolean;
@@ -53,12 +53,12 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
     const plainContent = stripHtml(content);
 
     if (!plainContent && !plainTitle) {
-      toast.error("Bitte Titel oder Inhalt eingeben");
+      notify.error("Bitte Titel oder Inhalt eingeben");
       return;
     }
     
     if (!user?.id) {
-      toast.error("Nicht angemeldet");
+      notify.error("Nicht angemeldet");
       return;
     }
 
@@ -108,7 +108,7 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
         setMentionPromptOpen(true);
       }
 
-      toast.success("Notiz erstellt");
+      notify.success("Notiz erstellt");
       
       // Dispatch event to refresh notes list immediately
       window.dispatchEvent(new CustomEvent('quick-note-created', { 
@@ -118,7 +118,7 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
       onOpenChange(false);
     } catch (error: unknown) {
       debugConsole.error("Error creating quick note:", error);
-      toast.error(`Fehler: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
+      notify.error(`Fehler: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -141,11 +141,11 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
     );
 
     if (error) {
-      toast.error("Freigabe für erwähnte Personen fehlgeschlagen");
+      notify.error("Freigabe für erwähnte Personen fehlgeschlagen");
       return;
     }
 
-    toast.success("Notiz für erwähnte Personen freigegeben");
+    notify.success("Notiz für erwähnte Personen freigegeben");
   };
 
   // Handle Enter key in title editor for quick save

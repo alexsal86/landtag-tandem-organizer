@@ -13,8 +13,7 @@ import {
   Minimize2
 } from 'lucide-react';
 import type { DashboardLayout, DashboardWidgetType, WidgetSize } from '@/types/dashboardWidgets';
-import { toast } from 'sonner';
-
+import { notify } from "@/lib/notify";
 interface AutoLayoutEngineProps {
   currentLayout: DashboardLayout;
   onLayoutOptimized: (layout: DashboardLayout) => void;
@@ -218,7 +217,7 @@ export function AutoLayoutEngine({ currentLayout, onLayoutOptimized }: AutoLayou
   const applySuggestion = (suggestion: LayoutSuggestion) => {
     onLayoutOptimized(suggestion.layout);
     setShowSuggestions(false);
-    toast.success(`Layout "${suggestion.name}" angewendet`);
+    notify.success(`Layout "${suggestion.name}" angewendet`);
   };
 
   const getTypeIcon = (type: LayoutSuggestion['type']) => {

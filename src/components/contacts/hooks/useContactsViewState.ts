@@ -5,7 +5,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { useToast } from "@/hooks/use-toast";
 import { useInfiniteContacts, Contact } from "@/hooks/useInfiniteContacts";
 import { useCounts } from "@/hooks/useCounts";
 import { useAllPersonContacts } from "@/hooks/useAllPersonContacts";
@@ -16,6 +15,7 @@ import { useContactsDocumentsExpansion } from "./useContactsDocumentsExpansion";
 import { useContactsFiltersAndSorting } from "./useContactsFiltersAndSorting";
 import { useContactsSelection } from "./useContactsSelection";
 import { useContactsViewPreferences } from "./useContactsViewPreferences";
+import { notify } from "@/lib/notify";
 
 export type { DistributionList } from "./useContactsDistributionLists";
 
@@ -95,7 +95,6 @@ export function useContactsViewState(): UseContactsViewStateResult {
   const { subId } = useParams();
   const { user } = useAuth();
   const { currentTenant, loading: tenantLoading } = useTenant();
-  const { toast } = useToast();
 
   const preferences = useContactsViewPreferences(subId);
   const filtersAndSorting = useContactsFiltersAndSorting(preferences.activeTab);
@@ -165,11 +164,13 @@ export function useContactsViewState(): UseContactsViewStateResult {
         throw error;
       }
 
-      toast({ title: "Kontakt gelöscht", description: `${contactName} wurde erfolgreich gelöscht.` });
+      notify.success("Kontakt gelöscht", { description: `${contactName} wurde erfolgreich gelöscht.` 
+});
       refreshContacts();
     } catch (error) {
       debugConsole.error("Error deleting contact:", error);
-      toast({ title: "Fehler", description: "Kontakt konnte nicht gelöscht werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Kontakt konnte nicht gelöscht werden."
+});
     }
   };
 

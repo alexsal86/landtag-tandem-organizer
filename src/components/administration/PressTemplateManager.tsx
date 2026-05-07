@@ -11,7 +11,6 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useTenant } from '@/hooks/useTenant';
-import { useToast } from '@/hooks/use-toast';
 import { DEFAULT_DIN5008_LAYOUT, type LetterLayoutSettings } from '@/types/letterLayout';
 import { LetterLayoutCanvasDesigner } from '@/components/letters/LetterLayoutCanvasDesigner';
 import { StructuredHeaderEditor } from '@/components/letters/StructuredHeaderEditor';
@@ -22,6 +21,7 @@ type EditorTab = 'canvas-designer' | 'header-designer' | 'footer-designer' | 'bl
 type BlockKey = 'addressField' | 'infoBlock' | 'subject';
 // CanvasElement is HeaderElement from the canvas engine
 import type { HeaderElement } from '@/components/canvas-engine/types';
+import { notify } from "@/lib/notify";
 type CanvasElement = HeaderElement;
 
 type PressTemplate = PressTemplateConfig;
@@ -52,7 +52,6 @@ const getBlockItems = (layout: LetterLayoutSettings, blockKey: BlockKey): Canvas
 
 export function PressTemplateManager() {
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
 
   const [templates, setTemplates] = useState<PressTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,7 +87,8 @@ export function PressTemplateManager() {
       const loadedTemplates = await loadPressTemplates(currentTenant.id);
       setTemplates(loadedTemplates);
     } catch (error: unknown) {
-      toast({ title: 'Fehler', description: error instanceof Error ? error.message : 'Laden fehlgeschlagen', variant: 'destructive' });
+      notify.error('Fehler', { description: error instanceof Error ? error.message : 'Laden fehlgeschlagen'
+});
     } finally {
       setLoading(false);
     }
@@ -102,7 +102,8 @@ export function PressTemplateManager() {
       setTemplates(nextTemplates);
       return true;
     } catch (error: unknown) {
-      toast({ title: 'Fehler', description: error instanceof Error ? error.message : 'Speichern fehlgeschlagen', variant: 'destructive' });
+      notify.error('Fehler', { description: error instanceof Error ? error.message : 'Speichern fehlgeschlagen'
+});
       return false;
     }
   };
@@ -197,7 +198,7 @@ export function PressTemplateManager() {
     const ok = await saveTemplates(nextTemplates);
     if (!ok) return;
 
-    toast({ title: editingId ? 'Pressevorlage aktualisiert' : 'Pressevorlage erstellt' });
+    notify.success(editingId ? 'Pressevorlage aktualisiert' : 'Pressevorlage erstellt');
     setEditingId(null);
     setShowCreate(false);
   };
@@ -212,7 +213,7 @@ export function PressTemplateManager() {
       : next;
 
     const ok = await saveTemplates(adjusted);
-    if (ok) toast({ title: 'Pressevorlage gelöscht' });
+    if (ok) notify.success('Pressevorlage gelöscht');
 
     setDeletingId(null);
   };

@@ -1,6 +1,6 @@
 import Papa from "papaparse";
-import { toast } from "sonner";
 import type { FactRow, FactInput } from "./types";
+import { notify } from "@/lib/notify";
 
 const COLUMNS = ["text", "source", "tags", "valid_until", "is_archived"] as const;
 
@@ -56,7 +56,7 @@ export async function parseFactsCsv(file: File): Promise<ParsedFactImport> {
         resolve({ rows, skipped, errors });
       },
       error: (err) => {
-        toast.error(`CSV-Fehler: ${err.message}`);
+        notify.error(`CSV-Fehler: ${err.message}`);
         resolve({ rows: [], skipped: 0, errors: [err.message] });
       },
     });

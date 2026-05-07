@@ -1,10 +1,10 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import { generateLetterDOCX } from "@/utils/letterDOCXGenerator";
 import { debugConsole } from '@/utils/debugConsole';
 import type { LetterRecord } from '@/components/letter-pdf/types';
+import { notify } from "@/lib/notify";
 
 interface LetterDOCXExportProps {
   letter: LetterRecord;
@@ -19,7 +19,6 @@ export default function LetterDOCXExport({
   size = "sm", 
   className = "" 
 }: LetterDOCXExportProps) {
-  const { toast } = useToast();
   const [isExporting, setIsExporting] = React.useState(false);
 
   const handleExport = async () => {
@@ -44,18 +43,15 @@ export default function LetterDOCXExport({
       URL.revokeObjectURL(url);
       document.body.removeChild(link);
 
-      toast({
-        title: "DOCX erfolgreich exportiert",
-        description: `Brief wurde als ${filename} heruntergeladen.`,
-      });
+      notify.success("DOCX erfolgreich exportiert", {
+        description: `Brief wurde als ${filename} heruntergeladen.`
+});
 
     } catch (error: unknown) {
       debugConsole.error('DOCX Export Error:', error);
-      toast({
-        title: "Export-Fehler",
-        description: error instanceof Error ? error.message : "Der Brief konnte nicht als DOCX exportiert werden.",
-        variant: "destructive",
-      });
+      notify.error("Export-Fehler", {
+        description: error instanceof Error ? error.message : "Der Brief konnte nicht als DOCX exportiert werden."
+});
     } finally {
       setIsExporting(false);
     }

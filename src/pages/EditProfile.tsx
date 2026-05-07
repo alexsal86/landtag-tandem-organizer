@@ -7,13 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { ImageCropper } from "@/components/ui/ImageCropper";
 import { ActiveSessionsCard } from "@/components/account/ActiveSessionsCard";
 import { debugConsole } from "@/utils/debugConsole";
+import { notify } from "@/lib/notify";
 
 interface ProfileData {
   display_name: string;
@@ -23,7 +23,6 @@ interface ProfileData {
 
 export function EditProfile() {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   
@@ -67,11 +66,9 @@ export function EditProfile() {
       }
     } catch (error) {
       debugConsole.error('Error fetching profile:', error);
-      toast({
-        title: "Fehler",
-        description: "Profil konnte nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Profil konnte nicht geladen werden."
+});
     } finally {
       setLoading(false);
     }
@@ -90,21 +87,17 @@ export function EditProfile() {
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      toast({
-        title: "Fehler",
-        description: "Bitte wählen Sie eine Bilddatei aus.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Bitte wählen Sie eine Bilddatei aus."
+});
       return;
     }
 
     // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "Fehler",
-        description: "Die Datei ist zu groß. Maximale Größe: 5MB.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Die Datei ist zu groß. Maximale Größe: 5MB."
+});
       return;
     }
 
@@ -164,10 +157,9 @@ export function EditProfile() {
         avatar_url: urlWithCacheBust
       }));
 
-      toast({
-        title: "Bild hochgeladen",
-        description: "Ihr Profilbild wurde erfolgreich hochgeladen.",
-      });
+      notify.success("Bild hochgeladen", {
+        description: "Ihr Profilbild wurde erfolgreich hochgeladen."
+});
 
     } catch (error: unknown) {
       debugConsole.error('Error uploading file:', error);
@@ -175,11 +167,9 @@ export function EditProfile() {
       const errorMessage = msg?.includes('bucket') || msg?.includes('Bucket')
         ? "Der Avatar-Speicher ist nicht konfiguriert. Bitte kontaktieren Sie den Administrator."
         : "Das Bild konnte nicht hochgeladen werden. Bitte versuchen Sie es erneut.";
-      toast({
-        title: "Upload-Fehler",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      notify.error("Upload-Fehler", {
+        description: errorMessage
+});
     } finally {
       setIsUploading(false);
     }
@@ -194,11 +184,9 @@ export function EditProfile() {
     e.preventDefault();
     
     if (!user) {
-      toast({
-        title: "Fehler",
-        description: "Sie müssen angemeldet sein, um Ihr Profil zu bearbeiten.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Sie müssen angemeldet sein, um Ihr Profil zu bearbeiten."
+});
       return;
     }
 
@@ -241,19 +229,16 @@ export function EditProfile() {
 
       if (error) throw error;
 
-      toast({
-        title: "Profil aktualisiert",
-        description: "Ihre Profilinformationen wurden erfolgreich gespeichert.",
-      });
+      notify.success("Profil aktualisiert", {
+        description: "Ihre Profilinformationen wurden erfolgreich gespeichert."
+});
       
       navigate("/");
     } catch (error) {
       debugConsole.error('Error updating profile:', error);
-      toast({
-        title: "Fehler",
-        description: "Profil konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Profil konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut."
+});
     } finally {
       setIsSubmitting(false);
     }

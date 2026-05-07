@@ -7,9 +7,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { History, RotateCcw, Eye, Clock } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import { debugConsole } from '@/utils/debugConsole';
 import { normalizeSupabaseResult } from '@/utils/typeSafety';
+import { notify } from "@/lib/notify";
 
 interface DocumentVersion {
   id: string;
@@ -176,7 +176,6 @@ export function VersionHistoryPlugin({
   const [versions, setVersions] = useState<DocumentVersion[]>([]);
   const [lastAutoSave, setLastAutoSave] = useState<Date>(new Date());
   const { user } = useAuth();
-  const { toast } = useToast();
 
   // Don't render if no documentId
   if (!documentId) {
@@ -251,10 +250,9 @@ export function VersionHistoryPlugin({
           debugConsole.error('Error creating snapshot:', error);
         } else {
           if (type === 'manual') {
-            toast({
-              title: "Erfolg",
-              description: "Snapshot wurde erstellt",
-            });
+            notify.success("Erfolg", {
+              description: "Snapshot wurde erstellt"
+});
           }
           loadVersions();
         }
@@ -278,20 +276,17 @@ export function VersionHistoryPlugin({
 
       onVersionRestore?.(version.content);
       
-      toast({
-        title: "Erfolg",
-        description: `Version ${version.version} wurde wiederhergestellt`,
-      });
+      notify.success("Erfolg", {
+        description: `Version ${version.version} wurde wiederhergestellt`
+});
 
       setShowHistory(false);
       setShowPreview(false);
     } catch (error) {
       debugConsole.error('Error restoring version:', error);
-      toast({
-        title: "Fehler",
-        description: "Fehler beim Wiederherstellen der Version",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Fehler beim Wiederherstellen der Version"
+});
     }
   };
 

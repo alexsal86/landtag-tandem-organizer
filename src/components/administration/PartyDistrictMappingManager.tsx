@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Trash2, Plus } from 'lucide-react';
+import { notify } from "@/lib/notify";
 
 interface PartyAssociation {
   id: string;
@@ -51,7 +51,7 @@ export const PartyDistrictMappingManager = () => {
 
   const addDistrictMapping = async () => {
     if (!selectedPartyId || !selectedDistrictId) {
-      toast.error('Bitte Kreisverband und Wahlkreis auswählen');
+      notify.error('Bitte Kreisverband und Wahlkreis auswählen');
       return;
     }
 
@@ -67,10 +67,10 @@ export const PartyDistrictMappingManager = () => {
       .eq('id', selectedPartyId);
 
     if (error) {
-      toast.error('Fehler beim Zuordnen des Wahlkreises');
+      notify.error('Fehler beim Zuordnen des Wahlkreises');
       debugConsole.error(error);
     } else {
-      toast.success('Wahlkreis erfolgreich zugeordnet');
+      notify.success('Wahlkreis erfolgreich zugeordnet');
       await fetchData();
       setSelectedDistrictId('');
     }
@@ -90,10 +90,10 @@ export const PartyDistrictMappingManager = () => {
       .eq('id', partyId);
 
     if (error) {
-      toast.error('Fehler beim Entfernen der Zuordnung');
+      notify.error('Fehler beim Entfernen der Zuordnung');
       debugConsole.error(error);
     } else {
-      toast.success('Zuordnung erfolgreich entfernt');
+      notify.success('Zuordnung erfolgreich entfernt');
       await fetchData();
     }
     setLoading(false);

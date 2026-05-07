@@ -8,8 +8,8 @@ import { CalendarIcon, Clock, Check, AlertCircle, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import { debugConsole } from '@/utils/debugConsole';
+import { notify } from "@/lib/notify";
 
 interface TimeSlot {
   id: string;
@@ -55,7 +55,6 @@ interface PollResponseInterfaceProps {
 }
 
 export const PollResponseInterface = ({ pollId, token, participantId, isPreview = false }: PollResponseInterfaceProps) => {
-  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [poll, setPoll] = useState<Poll | null>(null);
@@ -197,11 +196,9 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
           ? error.message
           : 'Die Abstimmung konnte nicht geladen werden.';
         setAccessError(errorMessage);
-        toast({
-          title: "Fehler",
-          description: errorMessage,
-          variant: "destructive",
-        });
+        notify.error("Fehler", {
+          description: errorMessage
+});
       } finally {
         if (isEffectActive) {
           setLoading(false);
@@ -284,18 +281,15 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
         if (error) throw error;
       }
 
-      toast({
-        title: "Antworten gespeichert",
-        description: "Ihre Verfügbarkeiten wurden erfolgreich übermittelt.",
-      });
+      notify.success("Antworten gespeichert", {
+        description: "Ihre Verfügbarkeiten wurden erfolgreich übermittelt."
+});
 
     } catch (error) {
       debugConsole.error('Error saving responses:', error);
-      toast({
-        title: "Fehler",
-        description: "Die Antworten konnten nicht gespeichert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Die Antworten konnten nicht gespeichert werden."
+});
     } finally {
       setSaving(false);
     }

@@ -11,9 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, Eye, FileText } from "lucide-react";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
+import { notify } from "@/lib/notify";
 
 interface EmailTemplate {
   id: string;
@@ -31,7 +31,6 @@ interface EmailTemplate {
 export function EmailTemplateManager() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
 
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(false);
@@ -80,11 +79,9 @@ export function EmailTemplateManager() {
         variables: Array.isArray(t.variables) ? t.variables : []
       })) as EmailTemplate[]);
     } catch (error: unknown) {
-      toast({
-        title: "Fehler beim Laden",
-        description: error instanceof Error ? error.message : String(error),
-        variant: "destructive",
-      });
+      notify.error("Fehler beim Laden", {
+        description: error instanceof Error ? error.message : String(error)
+});
     } finally {
       setLoading(false);
     }
@@ -109,25 +106,23 @@ export function EmailTemplateManager() {
           .eq('id', editingTemplate.id);
 
         if (error) throw error;
-        toast({ title: "Template aktualisiert" });
+        notify.success("Template aktualisiert");
       } else {
         const { error } = await supabase
           .from('email_templates')
           .insert(templateData);
 
         if (error) throw error;
-        toast({ title: "Template erstellt" });
+        notify.success("Template erstellt");
       }
 
       resetForm();
       setShowDialog(false);
       fetchTemplates();
     } catch (error: unknown) {
-      toast({
-        title: "Fehler beim Speichern",
-        description: error instanceof Error ? error.message : String(error),
-        variant: "destructive",
-      });
+      notify.error("Fehler beim Speichern", {
+        description: error instanceof Error ? error.message : String(error)
+});
     } finally {
       setLoading(false);
     }
@@ -155,14 +150,12 @@ export function EmailTemplateManager() {
         .eq('id', id);
 
       if (error) throw error;
-      toast({ title: "Template gelöscht" });
+      notify.success("Template gelöscht");
       fetchTemplates();
     } catch (error: unknown) {
-      toast({
-        title: "Fehler beim Löschen",
-        description: error instanceof Error ? error.message : String(error),
-        variant: "destructive",
-      });
+      notify.error("Fehler beim Löschen", {
+        description: error instanceof Error ? error.message : String(error)
+});
     }
   };
 

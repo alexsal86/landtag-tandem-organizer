@@ -9,6 +9,7 @@ import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/components/ui/use-toast";
 import { Users2, Loader2, Merge, RefreshCcw, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { notify } from "@/lib/notify";
 
 interface DupRow {
   contact1_id: string;
@@ -23,7 +24,6 @@ interface DupRow {
 
 export function DuplicateScanDashboard() {
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const navigate = useNavigate();
   const [rows, setRows] = useState<DupRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -39,7 +39,8 @@ export function DuplicateScanDashboard() {
     });
     setLoading(false);
     if (error) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      notify.error("Fehler", { description: error.message
+});
       return;
     }
     setRows((data ?? []) as DupRow[]);

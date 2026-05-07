@@ -4,11 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Users, ArrowRight } from "lucide-react";
 import { debugConsole } from "@/utils/debugConsole";
+import { notify } from "@/lib/notify";
 
 interface Contact {
   id: string;
@@ -34,7 +34,6 @@ export function StakeholderToDistributionDialog({
   const [topic, setTopic] = useState("");
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
-  const { toast } = useToast();
 
   const handleCreate = async () => {
     if (!user || associatedContacts.length === 0) return;
@@ -67,19 +66,16 @@ export function StakeholderToDistributionDialog({
 
       if (membersError) throw membersError;
 
-      toast({
-        title: "Verteiler erstellt",
-        description: `Verteiler "${name}" wurde mit ${associatedContacts.length} Kontakten erstellt.`,
-      });
+      notify.success("Verteiler erstellt", {
+        description: `Verteiler "${name}" wurde mit ${associatedContacts.length} Kontakten erstellt.`
+});
 
       onClose();
     } catch (error) {
       debugConsole.error('Error creating distribution list:', error);
-      toast({
-        title: "Fehler",
-        description: "Verteiler konnte nicht erstellt werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Verteiler konnte nicht erstellt werden."
+});
     } finally {
       setLoading(false);
     }

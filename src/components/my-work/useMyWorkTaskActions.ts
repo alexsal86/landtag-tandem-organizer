@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { MyWorkTask } from "@/hooks/useMyWorkTasksData";
 import { debugConsole } from "@/utils/debugConsole";
 import { notifyTaskShared } from "@/utils/shareNotifications";
+import { notify } from "@/lib/notify";
 
 interface Profile {
   user_id: string;
@@ -78,7 +78,6 @@ export function useMyWorkTaskActions({
   taskCategories,
   onCelebrate,
 }: UseMyWorkTaskActionsParams) {
-  const { toast } = useToast();
 
   const [snoozeDialogOpen, setSnoozeDialogOpen] = useState(false);
   const [snoozeTaskId, setSnoozeTaskId] = useState<string | null>(null);
@@ -220,7 +219,7 @@ export function useMyWorkTaskActions({
 
       invalidateTasks();
       onCelebrate();
-      toast({ title: "Aufgabe erledigt und archiviert" });
+      notify.success("Aufgabe erledigt und archiviert");
     } catch (error: unknown) {
       setAssignedTasks(previousAssignedTasks);
       setCreatedTasks(previousCreatedTasks);
@@ -228,12 +227,10 @@ export function useMyWorkTaskActions({
       setTaskSnoozes(previousTaskSnoozes);
       invalidateTasks();
       debugConsole.error("Error completing task:", error);
-      toast({
-        title: "Archivierung fehlgeschlagen",
+      notify.error("Archivierung fehlgeschlagen", {
         description:
-          "Die Aufgabe blieb unverändert. Es wurde nichts teilweise archiviert.",
-        variant: "destructive",
-      });
+          "Die Aufgabe blieb unverändert. Es wurde nichts teilweise archiviert."
+});
     }
   };
 
@@ -256,11 +253,11 @@ export function useMyWorkTaskActions({
 
       if (error) throw error;
       onCelebrate();
-      toast({ title: "Unteraufgabe erledigt" });
+      notify.success("Unteraufgabe erledigt");
     } catch (error) {
       setSubtasks(previousSubtasks);
       debugConsole.error("Error completing subtask:", error);
-      toast({ title: "Fehler", variant: "destructive" });
+      notify.error("Fehler");
     }
   };
 
@@ -273,10 +270,10 @@ export function useMyWorkTaskActions({
         .select();
       if (error) throw error;
       updateTaskInCollections(taskId, (task) => ({ ...task, title }));
-      toast({ title: "Titel aktualisiert" });
+      notify.success("Titel aktualisiert");
     } catch (error) {
       debugConsole.error("Error updating title:", error);
-      toast({ title: "Fehler beim Speichern", variant: "destructive" });
+      notify.error("Fehler beim Speichern");
     }
   };
 
@@ -292,10 +289,10 @@ export function useMyWorkTaskActions({
         .select();
       if (error) throw error;
       updateTaskInCollections(taskId, (task) => ({ ...task, description }));
-      toast({ title: "Beschreibung aktualisiert" });
+      notify.success("Beschreibung aktualisiert");
     } catch (error) {
       debugConsole.error("Error updating description:", error);
-      toast({ title: "Fehler beim Speichern", variant: "destructive" });
+      notify.error("Fehler beim Speichern");
     }
   };
 
@@ -312,10 +309,10 @@ export function useMyWorkTaskActions({
         ...task,
         due_date: dueDate,
       }));
-      toast({ title: "Frist aktualisiert" });
+      notify.success("Frist aktualisiert");
     } catch (error) {
       debugConsole.error("Error updating due date:", error);
-      toast({ title: "Fehler beim Speichern", variant: "destructive" });
+      notify.error("Fehler beim Speichern");
     }
   };
 
@@ -363,7 +360,7 @@ export function useMyWorkTaskActions({
         if (error) throw error;
       }
 
-      toast({ title: "Wiedervorlage gesetzt" });
+      notify.success("Wiedervorlage gesetzt");
       setTaskSnoozes((prev) => ({
         ...prev,
         [targetTaskId]: date.toISOString(),
@@ -372,7 +369,7 @@ export function useMyWorkTaskActions({
       setSnoozeTaskId(null);
     } catch (error) {
       debugConsole.error("Error setting snooze:", error);
-      toast({ title: "Fehler", variant: "destructive" });
+      notify.error("Fehler");
     }
   };
 
@@ -382,7 +379,7 @@ export function useMyWorkTaskActions({
 
     try {
       await clearSnoozeForTask(snoozeTaskId);
-      toast({ title: "Wiedervorlage entfernt" });
+      notify.success("Wiedervorlage entfernt");
       setTaskSnoozes((prev) => {
         const next = { ...prev };
         delete next[targetTaskId];
@@ -392,14 +389,14 @@ export function useMyWorkTaskActions({
       setSnoozeTaskId(null);
     } catch (error) {
       debugConsole.error("Error clearing snooze:", error);
-      toast({ title: "Fehler", variant: "destructive" });
+      notify.error("Fehler");
     }
   };
 
   const handleQuickClearSnooze = async (taskId: string) => {
     try {
       await clearSnoozeForTask(taskId);
-      toast({ title: "Wiedervorlage entfernt" });
+      notify.success("Wiedervorlage entfernt");
       setTaskSnoozes((prev) => {
         const next = { ...prev };
         delete next[taskId];
@@ -407,7 +404,7 @@ export function useMyWorkTaskActions({
       });
     } catch (error) {
       debugConsole.error("Error clearing snooze:", error);
-      toast({ title: "Fehler", variant: "destructive" });
+      notify.error("Fehler");
     }
   };
 
@@ -461,13 +458,13 @@ export function useMyWorkTaskActions({
         ...task,
         assigned_to: assignedToValue,
       }));
-      toast({ title: "Zuweisung aktualisiert" });
+      notify.success("Zuweisung aktualisiert");
       setAssignDialogOpen(false);
       setAssignTaskId(null);
       setAssignSelectedUserIds([]);
     } catch (error) {
       debugConsole.error("Error updating assignee:", error);
-      toast({ title: "Fehler", variant: "destructive" });
+      notify.error("Fehler");
     }
   };
 
@@ -506,21 +503,17 @@ export function useMyWorkTaskActions({
 
       if (error) {
         debugConsole.error("Error adding task to meeting:", error);
-        toast({
-          title: "Fehler",
+        notify.error("Fehler", {
           description:
-            error.message || "Aufgabe konnte nicht zugeordnet werden.",
-          variant: "destructive",
-        });
+            error.message || "Aufgabe konnte nicht zugeordnet werden."
+});
         return;
       }
 
       if (!data || data.length === 0) {
-        toast({
-          title: "Warnung",
-          description: "Keine Aufgabe aktualisiert.",
-          variant: "destructive",
-        });
+        notify.error("Warnung", {
+          description: "Keine Aufgabe aktualisiert."
+});
         return;
       }
 
@@ -529,15 +522,13 @@ export function useMyWorkTaskActions({
         meeting_id: meetingId,
         pending_for_jour_fixe: false,
       }));
-      toast({ title: `Aufgabe zu "${meetingTitle}" hinzugefügt` });
+      notify.success(`Aufgabe zu "${meetingTitle}" hinzugefügt`);
     } catch (error: unknown) {
       debugConsole.error("Error adding task to meeting:", error);
-      toast({
-        title: "Fehler",
+      notify.error("Fehler", {
         description:
-          error instanceof Error ? error.message : "Unbekannter Fehler",
-        variant: "destructive",
-      });
+          error instanceof Error ? error.message : "Unbekannter Fehler"
+});
     } finally {
       setMeetingTaskId(null);
       setMeetingSelectorOpen(false);
@@ -556,12 +547,10 @@ export function useMyWorkTaskActions({
 
       if (error) {
         debugConsole.error("Error marking task:", error);
-        toast({
-          title: "Fehler",
+        notify.error("Fehler", {
           description:
-            error.message || "Aufgabe konnte nicht vorgemerkt werden.",
-          variant: "destructive",
-        });
+            error.message || "Aufgabe konnte nicht vorgemerkt werden."
+});
         return;
       }
 
@@ -570,15 +559,13 @@ export function useMyWorkTaskActions({
         pending_for_jour_fixe: true,
         meeting_id: null,
       }));
-      toast({ title: "Aufgabe für nächsten Jour Fixe vorgemerkt" });
+      notify.success("Aufgabe für nächsten Jour Fixe vorgemerkt");
     } catch (error: unknown) {
       debugConsole.error("Error marking task for next jour fixe:", error);
-      toast({
-        title: "Fehler",
+      notify.error("Fehler", {
         description:
-          error instanceof Error ? error.message : "Unbekannter Fehler",
-        variant: "destructive",
-      });
+          error instanceof Error ? error.message : "Unbekannter Fehler"
+});
     } finally {
       setMeetingTaskId(null);
       setMeetingSelectorOpen(false);
@@ -590,11 +577,9 @@ export function useMyWorkTaskActions({
 
     const parentTask = getTaskById(parentTaskId);
     if (!parentTask?.tenant_id) {
-      toast({
-        title: "Fehler",
-        description: "Übergeordnete Aufgabe nicht gefunden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Übergeordnete Aufgabe nicht gefunden."
+});
       return;
     }
 
@@ -621,18 +606,16 @@ export function useMyWorkTaskActions({
 
       if (error) throw error;
       if (!data) return;
-      toast({ title: "Unteraufgabe erstellt" });
+      notify.success("Unteraufgabe erstellt");
       setSubtasks((prev) => ({
         ...prev,
         [parentTaskId]: [...(prev[parentTaskId] || []), data],
       }));
     } catch (error) {
       debugConsole.error("Error creating child task:", error);
-      toast({
-        title: "Fehler",
-        description: "Unteraufgabe konnte nicht erstellt werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Unteraufgabe konnte nicht erstellt werden."
+});
     }
   };
 
@@ -671,12 +654,12 @@ export function useMyWorkTaskActions({
         ...task,
         ...updates,
       }));
-      toast({ title: "Aufgabe aktualisiert" });
+      notify.success("Aufgabe aktualisiert");
       setTaskEditDialogOpen(false);
       setEditingTaskId(null);
     } catch (error) {
       debugConsole.error("Error updating task:", error);
-      toast({ title: "Fehler beim Speichern", variant: "destructive" });
+      notify.error("Fehler beim Speichern");
     }
   };
 

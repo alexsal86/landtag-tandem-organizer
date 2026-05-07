@@ -12,8 +12,7 @@ import { debugConsole } from '@/utils/debugConsole';
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
-import { toast } from "sonner";
-
+import { notify } from "@/lib/notify";
 const rssSettingsSchema = z.object({
   articles_per_feed: z.number().min(5).max(50),
   total_articles_limit: z.number().min(10).max(100),
@@ -49,7 +48,7 @@ export function RSSSettingsManager() {
       .single();
 
     if (error && error.code !== 'PGRST116') {
-      toast.error("Fehler beim Laden der Einstellungen");
+      notify.error("Fehler beim Laden der Einstellungen");
       debugConsole.error(error);
     } else if (data) {
       form.reset({
@@ -84,9 +83,9 @@ export function RSSSettingsManager() {
         });
 
       if (error) throw error;
-      toast.success("Einstellungen gespeichert");
+      notify.success("Einstellungen gespeichert");
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Fehler beim Speichern");
+      notify.error(error instanceof Error ? error.message : "Fehler beim Speichern");
       debugConsole.error(error);
     } finally {
       setSaving(false);

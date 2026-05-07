@@ -10,7 +10,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
@@ -20,6 +19,7 @@ import { useNavigate } from "react-router-dom";
 import { useTimeEntryReminder } from "@/hooks/useTimeEntryReminder";
 import { useVacationReminders } from "@/hooks/useVacationReminders";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
+import { notify } from "@/lib/notify";
 
 interface TimeEntryRow {
   id: string;
@@ -116,14 +116,14 @@ export function MyWorkTimeTrackingTab() {
     setTotalPauseMinutes(0);
     setPauseMinutes("0");
     setClockData({ clockIn: now, date: today, pauseStart: null, pauseTotal: 0, updatedAt: Date.now() });
-    toast.success(`Arbeit begonnen um ${now}`);
+    notify.success(`Arbeit begonnen um ${now}`);
   };
 
   const handlePauseStart = () => {
     const now = format(new Date(), "HH:mm");
     setPauseStart(now);
     setClockData(prev => prev ? { ...prev, pauseStart: now, updatedAt: Date.now() } : prev);
-    toast.info(`Pause begonnen um ${now}`);
+    notify.info(`Pause begonnen um ${now}`);
   };
 
   const handlePauseEnd = () => {
@@ -141,13 +141,13 @@ export function MyWorkTimeTrackingTab() {
     
     setClockData(prev => prev ? { ...prev, pauseStart: null, pauseTotal: newTotal, updatedAt: Date.now() } : prev);
     
-    toast.success(`Pause beendet (+${minutes} Min)`);
+    notify.success(`Pause beendet (+${minutes} Min)`);
   };
 
   const handleClockOut = () => {
     const now = format(new Date(), "HH:mm");
     setEndTime(now);
-    toast.success(`Feierabend um ${now} - Bitte Eintrag speichern`);
+    notify.success(`Feierabend um ${now} - Bitte Eintrag speichern`);
   };
 
   const today = new Date();
@@ -249,7 +249,7 @@ export function MyWorkTimeTrackingTab() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !startTime || !endTime) {
-      toast.error("Bitte alle Felder ausfüllen");
+      notify.error("Bitte alle Felder ausfüllen");
       return;
     }
 
@@ -257,7 +257,7 @@ export function MyWorkTimeTrackingTab() {
     const end = new Date(`${entryDate}T${endTime}`);
     
     if (end <= start) {
-      toast.error("Endzeit muss nach Startzeit liegen");
+      notify.error("Endzeit muss nach Startzeit liegen");
       return;
     }
 
@@ -280,7 +280,7 @@ export function MyWorkTimeTrackingTab() {
 
       if (error) throw error;
 
-      toast.success("Zeiteintrag gespeichert");
+      notify.success("Zeiteintrag gespeichert");
       // Stempeluhr-Daten nach erfolgreichem Speichern löschen
       clearClockData();
       setStartTime("");
@@ -289,7 +289,7 @@ export function MyWorkTimeTrackingTab() {
       setNotes("");
       checkRoleAndLoad();
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Fehler beim Speichern");
+      notify.error(error instanceof Error ? error.message : "Fehler beim Speichern");
     } finally {
       setIsSubmitting(false);
     }

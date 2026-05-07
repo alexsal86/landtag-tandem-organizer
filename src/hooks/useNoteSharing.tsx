@@ -2,10 +2,10 @@ import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { toast } from "sonner";
 import { debugConsole } from '@/utils/debugConsole';
 import { notifyQuickNoteShared } from "@/utils/shareNotifications";
 import { STALE_TIME } from "@/lib/query-cache";
+import { notify } from "@/lib/notify";
 
 export interface NoteShare {
   id: string;
@@ -74,14 +74,14 @@ export const useNoteSharing = (noteId?: string) => {
 
       if (error) {
         if (error.code === "23505") {
-          toast.error("Diese Notiz wurde bereits mit dieser Person geteilt");
+          notify.error("Diese Notiz wurde bereits mit dieser Person geteilt");
         } else {
           throw error;
         }
         return false;
       }
 
-      toast.success("Notiz erfolgreich freigegeben");
+      notify.success("Notiz erfolgreich freigegeben");
 
       const { data: senderProfile } = await supabase
         .from("profiles")
@@ -105,7 +105,7 @@ export const useNoteSharing = (noteId?: string) => {
       return true;
     } catch (error) {
       debugConsole.error("Error sharing note:", error);
-      toast.error("Fehler beim Freigeben der Notiz");
+      notify.error("Fehler beim Freigeben der Notiz");
       return false;
     }
   };
@@ -119,15 +119,15 @@ export const useNoteSharing = (noteId?: string) => {
         .select();
       if (error) throw error;
       if (!deleted || deleted.length === 0) {
-        toast.error("Freigabe konnte nicht entfernt werden");
+        notify.error("Freigabe konnte nicht entfernt werden");
         return false;
       }
-      toast.success("Freigabe entfernt");
+      notify.success("Freigabe entfernt");
       invalidate();
       return true;
     } catch (error) {
       debugConsole.error("Error removing share:", error);
-      toast.error("Fehler beim Entfernen der Freigabe");
+      notify.error("Fehler beim Entfernen der Freigabe");
       return false;
     }
   };
@@ -142,7 +142,7 @@ export const useNoteSharing = (noteId?: string) => {
         .single();
       if (fetchError || !shareData) {
         debugConsole.error("Error fetching share:", fetchError);
-        toast.error("Freigabe nicht gefunden");
+        notify.error("Freigabe nicht gefunden");
         return false;
       }
 
@@ -154,15 +154,15 @@ export const useNoteSharing = (noteId?: string) => {
         .select();
       if (error) throw error;
       if (!updated || updated.length === 0) {
-        toast.error("Berechtigung konnte nicht aktualisiert werden");
+        notify.error("Berechtigung konnte nicht aktualisiert werden");
         return false;
       }
-      toast.success("Berechtigung aktualisiert");
+      notify.success("Berechtigung aktualisiert");
       invalidate();
       return true;
     } catch (error) {
       debugConsole.error("Error updating permission:", error);
-      toast.error("Fehler beim Aktualisieren der Berechtigung");
+      notify.error("Fehler beim Aktualisieren der Berechtigung");
       return false;
     }
   };

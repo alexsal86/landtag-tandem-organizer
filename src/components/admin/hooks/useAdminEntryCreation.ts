@@ -1,10 +1,10 @@
 import { useState } from "react";
 import type { User } from "@supabase/supabase-js";
-import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { EntryType } from "@/features/timetracking/components/AdminTimeEntryEditor";
 import { validateDailyLimit } from "../utils/validationHelpers";
 import { fmt, getTypeLabel } from "../utils/timeFormatting";
+import { notify } from "@/lib/notify";
 
 export interface NewEntryFormData {
   type: EntryType;
@@ -42,19 +42,19 @@ export function useAdminEntryCreation({
         const end = new Date(`${data.date}T${data.endTime}`);
 
         if (end <= start) {
-          toast.error("Endzeit muss nach Startzeit liegen");
+          notify.error("Endzeit muss nach Startzeit liegen");
           return;
         }
 
         const grossMinutes = Math.round((end.getTime() - start.getTime()) / 60000);
 
         if (data.pauseMinutes < 0) {
-          toast.error("Die Pause darf nicht negativ sein");
+          notify.error("Die Pause darf nicht negativ sein");
           return;
         }
 
         if (data.pauseMinutes > grossMinutes) {
-          toast.error("Die Pause darf nicht länger als die Arbeitszeit sein");
+          notify.error("Die Pause darf nicht länger als die Arbeitszeit sein");
           return;
         }
 
@@ -78,12 +78,12 @@ export function useAdminEntryCreation({
         ]);
 
         if (error) throw error;
-        toast.success("Zeiteintrag erstellt");
+        notify.success("Zeiteintrag erstellt");
       } else {
         if (data.type === "overtime_reduction") {
           const dailyMinutes = Math.round(dailyHours * 60);
           if (yearlyBalance < dailyMinutes) {
-            toast.error(
+            notify.error(
               `Nicht genügend Überstunden vorhanden. Aktueller Saldo: ${fmt(yearlyBalance)}, benötigt: ${fmt(dailyMinutes)}`
             );
             return;
@@ -102,12 +102,12 @@ export function useAdminEntryCreation({
         ]);
 
         if (error) throw error;
-        toast.success(`${getTypeLabel(data.type)} erstellt`);
+        notify.success(`${getTypeLabel(data.type)} erstellt`);
       }
 
       onSuccess();
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Fehler beim Erstellen");
+      notify.error(error instanceof Error ? error.message : "Fehler beim Erstellen");
     } finally {
       setIsSaving(false);
     }

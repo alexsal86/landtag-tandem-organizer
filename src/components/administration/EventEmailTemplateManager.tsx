@@ -6,9 +6,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
-import { toast } from 'sonner';
 import { debugConsole } from '@/utils/debugConsole';
 import { Save, RotateCcw, Mail } from 'lucide-react';
+import { notify } from "@/lib/notify";
 
 const DEFAULTS = {
   invitation: {
@@ -105,7 +105,7 @@ export const EventEmailTemplateManager: React.FC = () => {
       }
     } catch (error) {
       debugConsole.error('Error loading event email templates:', error);
-      toast.error('Fehler beim Laden der Vorlagen');
+      notify.error('Fehler beim Laden der Vorlagen');
     } finally {
       setLoading(false);
     }
@@ -132,10 +132,10 @@ export const EventEmailTemplateManager: React.FC = () => {
           [type]: { id: data.id, subject: data.subject ?? '', body: data.body ?? '' },
         }));
       }
-      toast.success('Vorlage erfolgreich gespeichert');
+      notify.success('Vorlage erfolgreich gespeichert');
     } catch (error) {
       debugConsole.error('Error saving event email template:', error);
-      toast.error('Fehler beim Speichern der Vorlage');
+      notify.error('Fehler beim Speichern der Vorlage');
     } finally {
       setSaving(prev => ({ ...prev, [type]: false }));
     }

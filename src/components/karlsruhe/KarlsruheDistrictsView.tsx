@@ -17,10 +17,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MapPin, RefreshCw, Users, Flag, Building2, Map, Route, Flame } from 'lucide-react';
-import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { notify } from "@/lib/notify";
 
 export const KarlsruheDistrictsView = () => {
   const { districts, isLoading, refetch } = useKarlsruheDistricts();
@@ -87,9 +87,9 @@ export const KarlsruheDistrictsView = () => {
     setIsRefreshing(true);
     try {
       await refetch();
-      toast.success('Stadtteile wurden aktualisiert');
+      notify.success('Stadtteile wurden aktualisiert');
     } catch (error) {
-      toast.error('Fehler beim Aktualisieren der Stadtteile');
+      notify.error('Fehler beim Aktualisieren der Stadtteile');
     } finally {
       setIsRefreshing(false);
     }

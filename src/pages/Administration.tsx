@@ -104,7 +104,6 @@ const resolveNavigationState = (
 export default function Administration(): React.JSX.Element | null {
   const { user, loading } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const [isAdmin, setIsAdmin] = useState<boolean>(false);

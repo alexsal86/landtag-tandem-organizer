@@ -8,8 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
+import { notify } from "@/lib/notify";
 
 interface ArchivedTask {
   id: string;
@@ -54,7 +54,6 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
   const [archivedTasks, setArchivedTasks] = useState<ArchivedTask[]>([]);
   const [archiveSettings, setArchiveSettings] = useState<ArchiveSettings>({});
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
 
   useEffect(() => {
     if (isOpen) {
@@ -89,11 +88,9 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
       setArchivedTasks(formattedTasks);
     } catch (error) {
       debugConsole.error('Error loading archived tasks:', error);
-      toast({
-        title: "Fehler",
-        description: "Archivierte Aufgaben konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Archivierte Aufgaben konnten nicht geladen werden."
+});
     } finally {
       setLoading(false);
     }
@@ -132,17 +129,14 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
       if (error) throw error;
 
       setArchiveSettings(newSettings);
-      toast({
-        title: "Einstellungen gespeichert",
-        description: "Archiv-Einstellungen wurden automatisch aktualisiert.",
-      });
+      notify.success("Einstellungen gespeichert", {
+        description: "Archiv-Einstellungen wurden automatisch aktualisiert."
+});
     } catch (error) {
       debugConsole.error('Error saving archive settings:', error);
-      toast({
-        title: "Fehler",
-        description: "Einstellungen konnten nicht gespeichert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Einstellungen konnten nicht gespeichert werden."
+});
     }
   };
 
@@ -156,17 +150,14 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
       if (error) throw error;
 
       setArchivedTasks(prev => prev.filter(t => t.id !== taskId));
-      toast({
-        title: "Aufgabe gelöscht",
-        description: "Die archivierte Aufgabe wurde endgültig gelöscht.",
-      });
+      notify.success("Aufgabe gelöscht", {
+        description: "Die archivierte Aufgabe wurde endgültig gelöscht."
+});
     } catch (error) {
       debugConsole.error('Error deleting archived task:', error);
-      toast({
-        title: "Fehler",
-        description: "Aufgabe konnte nicht gelöscht werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Aufgabe konnte nicht gelöscht werden."
+});
     }
   };
 
@@ -269,10 +260,9 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
         onTaskRestored(restoredTask);
       }
       
-      toast({
-        title: "Aufgabe wiederhergestellt",
-        description: "Die Aufgabe wurde erfolgreich aktiviert und ist wieder in der Aufgabenliste verfügbar.",
-      });
+      notify.success("Aufgabe wiederhergestellt", {
+        description: "Die Aufgabe wurde erfolgreich aktiviert und ist wieder in der Aufgabenliste verfügbar."
+});
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : '';
       const isNetworkError = msg.includes('Failed to fetch') || 
@@ -309,21 +299,19 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
               onTaskRestored(restored);
             }
             
-            toast({
-              title: "Aufgabe wiederhergestellt",
+            notify.success("Aufgabe wiederhergestellt", {
               description: "Die Aufgabe wurde erfolgreich aktiviert."
-            });
+            
+});
           }
         }, 500);
         return;
       }
       
       debugConsole.error('Error restoring archived task:', error);
-      toast({
-        title: "Fehler",
-        description: "Aufgabe konnte nicht wiederhergestellt werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Aufgabe konnte nicht wiederhergestellt werden."
+});
     }
   };
 

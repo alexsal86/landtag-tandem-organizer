@@ -6,9 +6,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
-import { toast } from "sonner";
 import { useIncrementFactUsage } from "../hooks/useFacts";
 import type { FactRow } from "../types";
+import { notify } from "@/lib/notify";
 
 interface PreparationRow {
   id: string;
@@ -62,7 +62,7 @@ export function AdoptFactDialog({ fact, onClose }: Props) {
       };
       const existing = data.structured_facts ?? [];
       if (existing.some((f) => f.fact_id === fact.id)) {
-        toast.info("Fakt ist bereits in dieser Vorbereitung enthalten.");
+        notify.info("Fakt ist bereits in dieser Vorbereitung enthalten.");
         onClose();
         return;
       }
@@ -84,11 +84,11 @@ export function AdoptFactDialog({ fact, onClose }: Props) {
         .eq("id", prep.id);
       if (error) throw error;
       incrementUsage.mutate(fact.id);
-      toast.success(`In „${prep.title}" übernommen.`);
+      notify.success(`In „${prep.title}" übernommen.`);
       qc.invalidateQueries({ queryKey: ["preparations-open"] });
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Fehler beim Übernehmen");
+      notify.error(e instanceof Error ? e.message : "Fehler beim Übernehmen");
     } finally {
       setBusyId(null);
     }

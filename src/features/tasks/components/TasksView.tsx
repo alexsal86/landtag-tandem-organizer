@@ -17,7 +17,6 @@ import { LetterSourceLink } from "@/components/letters/LetterSourceLink";
 import { extractLetterSourceId, stripLetterSourceMarker } from "@/utils/letterSource";
 import { buildFeedbackBackLink } from "@/types/feedbackContext";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { TaskDetailSidebar } from "@/features/tasks/components/TaskDetailSidebar";
 import { TaskDecisionCreator } from "@/components/task-decisions/TaskDecisionCreator";
 import { TaskDecisionStatus } from "@/components/task-decisions/TaskDecisionStatus";
@@ -28,11 +27,11 @@ import { useTasksData } from "@/components/tasks/hooks/useTasksData";
 import { useTaskOperations } from "@/components/tasks/hooks/useTaskOperations";
 import { TaskDialogs } from "@/components/tasks/TaskDialogs";
 import type { Task } from "@/components/tasks/types";
+import { notify } from "@/lib/notify";
 
 export function TasksView() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { isHighlighted, highlightRef, highlightId } = useNotificationHighlight();
-  const { toast } = useToast();
   const { isItemNew } = useNewItemIndicators('tasks');
 
   const data = useTasksData();
@@ -92,11 +91,9 @@ export function TasksView() {
       if (archived) {
         setArchiveModalOpen(true);
       } else {
-        toast({
-          title: "Element nicht gefunden",
-          description: "Diese Aufgabe existiert nicht mehr oder wurde gelöscht.",
-          variant: "destructive",
-        });
+        notify.error("Element nicht gefunden", {
+          description: "Diese Aufgabe existiert nicht mehr oder wurde gelöscht."
+});
         setSearchParams((prev) => {
           const next = new URLSearchParams(prev);
           next.delete("highlight");
@@ -271,8 +268,9 @@ export function TasksView() {
                                       await syncTaskAssignees({ taskId: createdSubtask.id, assigneeIds, assignedBy: userId });
                                       data.loadSubtasksForTask(task.id);
                                       data.loadSubtaskCounts();
-                                      toast({ title: "Unteraufgabe hinzugefügt" });
-                                    } catch (error) { debugConsole.error('Error adding subtask:', error); toast({ title: "Fehler", description: "Unteraufgabe konnte nicht hinzugefügt werden.", variant: "destructive" }); }
+                                      notify.success("Unteraufgabe hinzugefügt");
+                                    } catch (error) { debugConsole.error('Error adding subtask:', error); notify.error("Fehler", { description: "Unteraufgabe konnte nicht hinzugefügt werden."
+}); }
                                   })();
                                 }
                               }}><Plus className="h-4 w-4" />Unteraufgabe hinzufügen</Button>
@@ -291,8 +289,8 @@ export function TasksView() {
                                           if (error) throw error;
                                           data.loadSubtasksForTask(task.id);
                                           if (isChecked) ops.setShowCelebration(true);
-                                          toast({ title: isChecked ? "Unteraufgabe erledigt" : "Unteraufgabe wieder geöffnet" });
-                                        } catch (error) { debugConsole.error('Error:', error); toast({ title: "Fehler", variant: "destructive" }); }
+                                          notify.success(isChecked ? "Unteraufgabe erledigt" : "Unteraufgabe wieder geöffnet");
+                                        } catch (error) { debugConsole.error('Error:', error); notify.error("Fehler"); }
                                       }} onClick={(e) => e.stopPropagation()} className="mt-0.5" />
                                       <div className="flex-1 min-w-0">
                                         <span className={`text-sm ${subtask.is_completed ? 'line-through text-muted-foreground' : ''}`}>{cleanSubtaskTitle || subtask.title}</span>
@@ -303,8 +301,8 @@ export function TasksView() {
                                         </div>
                                       </div>
                                       <div className="flex gap-1 opacity-0 pointer-events-none transition-opacity group-hover/subtask:opacity-100 group-hover/subtask:pointer-events-auto">
-                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); const newTitle = prompt('Neuer Titel:', subtask.title); if (newTitle) { (async () => { try { await supabase.from('tasks').update({ title: newTitle }).eq('id', subtask.id); data.loadSubtasksForTask(task.id); toast({ title: "Unteraufgabe aktualisiert" }); } catch { toast({ title: "Fehler", variant: "destructive" }); } })(); } }} title="Bearbeiten"><Edit2 className="h-4 w-4" /></Button>
-                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive" onClick={async (e) => { e.stopPropagation(); if (confirm('Unteraufgabe wirklich löschen?')) { try { await supabase.from('tasks').delete().eq('id', subtask.id); data.loadSubtasksForTask(task.id); data.loadSubtaskCounts(); toast({ title: "Unteraufgabe gelöscht" }); } catch { toast({ title: "Fehler", variant: "destructive" }); } } }} title="Löschen"><Trash2 className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); const newTitle = prompt('Neuer Titel:', subtask.title); if (newTitle) { (async () => { try { await supabase.from('tasks').update({ title: newTitle }).eq('id', subtask.id); data.loadSubtasksForTask(task.id); notify.success("Unteraufgabe aktualisiert"); } catch { notify.error("Fehler"); } })(); } }} title="Bearbeiten"><Edit2 className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive" onClick={async (e) => { e.stopPropagation(); if (confirm('Unteraufgabe wirklich löschen?')) { try { await supabase.from('tasks').delete().eq('id', subtask.id); data.loadSubtasksForTask(task.id); data.loadSubtaskCounts(); notify.success("Unteraufgabe gelöscht"); } catch { notify.error("Fehler"); } } }} title="Löschen"><Trash2 className="h-4 w-4" /></Button>
                                       </div>
                                     </div>
                                   </div>
@@ -324,7 +322,7 @@ export function TasksView() {
                                 input.onchange = async (event) => {
                                   const file = (event.target as HTMLInputElement).files?.[0];
                                   if (file && data.user) {
-                                    try { await supabase.from('task_documents').insert([{ task_id: task.id, user_id: data.user.id, file_name: file.name, file_path: `tasks/${task.id}/${file.name}`, file_type: file.type, file_size: file.size }]); data.loadTaskDocuments(); data.loadTaskDocumentCounts(); toast({ title: "Dokument hinzugefügt" }); } catch { toast({ title: "Fehler", variant: "destructive" }); }
+                                    try { await supabase.from('task_documents').insert([{ task_id: task.id, user_id: data.user.id, file_name: file.name, file_path: `tasks/${task.id}/${file.name}`, file_type: file.type, file_size: file.size }]); data.loadTaskDocuments(); data.loadTaskDocumentCounts(); notify.success("Dokument hinzugefügt"); } catch { notify.error("Fehler"); }
                                   }
                                 }; input.click();
                               }}><Plus className="h-4 w-4" />Dokument hinzufügen</Button>
@@ -334,7 +332,7 @@ export function TasksView() {
                                 <Paperclip className="h-4 w-4" /><span className="flex-1">{doc.file_name}</span>
                                 <div className="flex gap-1">
                                   <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()} title="Herunterladen"><Download className="h-4 w-4" /></Button>
-                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive" onClick={async (e) => { e.stopPropagation(); try { await supabase.from('task_documents').delete().eq('id', doc.id); data.loadTaskDocuments(); data.loadTaskDocumentCounts(); toast({ title: "Dokument gelöscht" }); } catch { toast({ title: "Fehler", variant: "destructive" }); } }} title="Löschen"><Trash2 className="h-4 w-4" /></Button>
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive" onClick={async (e) => { e.stopPropagation(); try { await supabase.from('task_documents').delete().eq('id', doc.id); data.loadTaskDocuments(); data.loadTaskDocumentCounts(); notify.success("Dokument gelöscht"); } catch { notify.error("Fehler"); } }} title="Löschen"><Trash2 className="h-4 w-4" /></Button>
                                 </div>
                               </div>
                             ))}
@@ -367,7 +365,7 @@ export function TasksView() {
                                     {comment.userId === data.user?.id && (
                                       <div className="flex gap-1">
                                         <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setEditingComment(prev => ({ ...prev, [comment.id]: comment.content }))}><Edit2 className="h-3 w-3" /></Button>
-                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive" onClick={async () => { try { await supabase.from('task_comments').delete().eq('id', comment.id); data.loadTaskComments(); toast({ title: "Kommentar gelöscht" }); } catch { toast({ title: "Fehler", variant: "destructive" }); } }}><Trash2 className="h-3 w-3" /></Button>
+                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive" onClick={async () => { try { await supabase.from('task_comments').delete().eq('id', comment.id); data.loadTaskComments(); notify.success("Kommentar gelöscht"); } catch { notify.error("Fehler"); } }}><Trash2 className="h-3 w-3" /></Button>
                                       </div>
                                     )}
                                   </div>
@@ -376,7 +374,7 @@ export function TasksView() {
                                   <div className="space-y-2">
                                     <SimpleRichTextEditor initialContent={editingComment[comment.id]} onChange={(value) => setEditingComment(prev => ({ ...prev, [comment.id]: value }))} minHeight="60px" />
                                     <div className="flex justify-end gap-1">
-                                      <Button size="sm" className="h-8" onClick={async () => { try { await supabase.from('task_comments').update({ content: editingComment[comment.id] }).eq('id', comment.id); setEditingComment(prev => { const { [comment.id]: _, ...rest } = prev; return rest; }); data.loadTaskComments(); toast({ title: "Kommentar aktualisiert" }); } catch { toast({ title: "Fehler", variant: "destructive" }); } }}><Check className="h-3 w-3" /></Button>
+                                      <Button size="sm" className="h-8" onClick={async () => { try { await supabase.from('task_comments').update({ content: editingComment[comment.id] }).eq('id', comment.id); setEditingComment(prev => { const { [comment.id]: _, ...rest } = prev; return rest; }); data.loadTaskComments(); notify.success("Kommentar aktualisiert"); } catch { notify.error("Fehler"); } }}><Check className="h-3 w-3" /></Button>
                                       <Button variant="outline" size="sm" className="h-8" onClick={() => setEditingComment(prev => { const { [comment.id]: _, ...rest } = prev; return rest; })}><X className="h-3 w-3" /></Button>
                                     </div>
                                   </div>

@@ -3,7 +3,6 @@ import { debugConsole } from '@/utils/debugConsole';
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -23,6 +22,7 @@ import { cn } from "@/lib/utils";
 import type { ActionItem, ActionItemOwner, EmployeeMeeting, MeetingPreparationData, ProtocolData } from "@/components/employees/types";
 
 import {
+import { notify } from "@/lib/notify";
   ACTION_ITEM_MIN_LENGTH,
   extractPlainTextFromHtml,
   RatingScale,
@@ -39,7 +39,6 @@ interface EmployeeMeetingProtocolProps {
 export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingProtocolProps) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -147,7 +146,8 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       setActionItems((actionData || []) as ActionItem[]);
     } catch (error: unknown) {
       debugConsole.error("Error loading meeting:", error);
-      toast({ title: "Fehler", description: "Besprechungsdaten konnten nicht geladen werden", variant: "destructive" });
+      notify.error("Fehler", { description: "Besprechungsdaten konnten nicht geladen werden"
+});
     } finally {
       setLoading(false);
     }
@@ -184,13 +184,15 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       dataChangedRef.current = false;
 
       if (!isAutoSave) {
-        toast({ title: "Gespeichert", description: "Protokoll wurde gespeichert" });
+        notify.success("Gespeichert", { description: "Protokoll wurde gespeichert" 
+});
       }
     } catch (error: unknown) {
       debugConsole.error("Error saving protocol:", error);
       setSaveState("unsaved");
       if (!isAutoSave) {
-        toast({ title: "Fehler", description: "Protokoll konnte nicht gespeichert werden", variant: "destructive" });
+        notify.error("Fehler", { description: "Protokoll konnte nicht gespeichert werden"
+});
       }
     } finally {
       savingRef.current = false;
@@ -225,10 +227,12 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       const { error } = await supabase.from("employee_meetings").update({ shared_during_meeting: true }).eq("id", meetingId);
       if (error) throw error;
       setSharedDuringMeeting(true);
-      toast({ title: "Vorbereitung geteilt", description: "Beide Parteien können jetzt die Vorbereitungen sehen" });
+      notify.success("Vorbereitung geteilt", { description: "Beide Parteien können jetzt die Vorbereitungen sehen" 
+});
     } catch (error: unknown) {
       debugConsole.error("Error sharing preparation:", error);
-      toast({ title: "Fehler", description: "Vorbereitung konnte nicht geteilt werden", variant: "destructive" });
+      notify.error("Fehler", { description: "Vorbereitung konnte nicht geteilt werden"
+});
     }
   };
 
@@ -275,21 +279,24 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
 
         const openItems = actionItems.filter(i => i.status !== "completed");
         if (openItems.length > 0) {
-          toast({ title: "Gespräch abgeschlossen", description: `Hinweis: Es gibt noch ${openItems.length} offene Maßnahme(n).` });
+          notify.success("Gespräch abgeschlossen", { description: `Hinweis: Es gibt noch ${openItems.length} offene Maßnahme(n).` 
+});
         } else {
-          toast({ title: "Abgeschlossen", description: "Gespräch wurde als abgeschlossen markiert" });
+          notify.success("Abgeschlossen", { description: "Gespräch wurde als abgeschlossen markiert" 
+});
         }
       } else {
-        toast({ 
-          title: newStatus === "in_progress" ? "Gestartet" : "Aktualisiert", 
+        notify.success(newStatus === "in_progress" ? "Gestartet" : "Aktualisiert", { 
           description: newStatus === "in_progress" ? "Gespräch wurde gestartet" : "Status aktualisiert" 
-        });
+        
+});
       }
 
       loadMeetingData();
     } catch (error: unknown) {
       debugConsole.error("Error updating status:", error);
-      toast({ title: "Fehler", description: "Status konnte nicht aktualisiert werden", variant: "destructive" });
+      notify.error("Fehler", { description: "Status konnte nicht aktualisiert werden"
+});
     }
   };
 
@@ -312,11 +319,13 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
         sendMeetingNotification(recipientId, "Gespräch abgesagt", `${senderName} hat das Gespräch am ${dateStr} abgesagt. Grund: ${reason}`);
       }
 
-      toast({ title: "Abgesagt", description: "Gespräch wurde abgesagt" });
+      notify.success("Abgesagt", { description: "Gespräch wurde abgesagt" 
+});
       loadMeetingData();
     } catch (error: unknown) {
       debugConsole.error("Error cancelling meeting:", error);
-      toast({ title: "Fehler", description: "Gespräch konnte nicht abgesagt werden", variant: "destructive" });
+      notify.error("Fehler", { description: "Gespräch konnte nicht abgesagt werden"
+});
     }
   };
 
@@ -334,10 +343,12 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
         `${meeting.employee_name} möchte das Gespräch am ${format(new Date(meeting.meeting_date), "dd.MM.yyyy", { locale: de })} umterminieren. Grund: ${reason}`
       );
 
-      toast({ title: "Anfrage gesendet", description: "Umterminierungsanfrage wurde an den Vorgesetzten gesendet" });
+      notify.success("Anfrage gesendet", { description: "Umterminierungsanfrage wurde an den Vorgesetzten gesendet" 
+});
     } catch (error: unknown) {
       debugConsole.error("Error requesting reschedule:", error);
-      toast({ title: "Fehler", description: "Anfrage konnte nicht gesendet werden", variant: "destructive" });
+      notify.error("Fehler", { description: "Anfrage konnte nicht gesendet werden"
+});
     }
   };
 
@@ -346,20 +357,16 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
 
     const plainDescription = extractPlainTextFromHtml(newActionItem.description);
     if (!plainDescription) {
-      toast({
-        title: "Validierung",
-        description: "Bitte eine Maßnahme mit Inhalt eingeben.",
-        variant: "destructive",
-      });
+      notify.error("Validierung", {
+        description: "Bitte eine Maßnahme mit Inhalt eingeben."
+});
       return;
     }
 
     if (plainDescription.length < ACTION_ITEM_MIN_LENGTH) {
-      toast({
-        title: "Validierung",
-        description: `Bitte mindestens ${ACTION_ITEM_MIN_LENGTH} Zeichen eingeben.`,
-        variant: "destructive",
-      });
+      notify.error("Validierung", {
+        description: `Bitte mindestens ${ACTION_ITEM_MIN_LENGTH} Zeichen eingeben.`
+});
       return;
     }
 
@@ -381,10 +388,12 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       if (error) throw error;
       setActionItems([data as ActionItem, ...actionItems]);
       setNewActionItem({ description: "", owner: "employee", status: "open" });
-      toast({ title: "Action Item hinzugefügt", description: "Neue Maßnahme wurde erfolgreich erstellt" });
+      notify.success("Action Item hinzugefügt", { description: "Neue Maßnahme wurde erfolgreich erstellt" 
+});
     } catch (error: unknown) {
       debugConsole.error("Error adding action item:", error);
-      toast({ title: "Fehler", description: "Action Item konnte nicht erstellt werden", variant: "destructive" });
+      notify.error("Fehler", { description: "Action Item konnte nicht erstellt werden"
+});
     }
   };
 
@@ -393,10 +402,12 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       const { error } = await supabase.from("employee_meeting_action_items").update(updates).eq("id", itemId);
       if (error) throw error;
       setActionItems(actionItems.map(item => item.id === itemId ? { ...item, ...updates } : item));
-      toast({ title: "Aktualisiert", description: "Action Item wurde aktualisiert" });
+      notify.success("Aktualisiert", { description: "Action Item wurde aktualisiert" 
+});
     } catch (error: unknown) {
       debugConsole.error("Error updating action item:", error);
-      toast({ title: "Fehler", description: "Action Item konnte nicht aktualisiert werden", variant: "destructive" });
+      notify.error("Fehler", { description: "Action Item konnte nicht aktualisiert werden"
+});
     }
   };
 
@@ -405,10 +416,12 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       const { error } = await supabase.from("employee_meeting_action_items").delete().eq("id", itemId);
       if (error) throw error;
       setActionItems(actionItems.filter(item => item.id !== itemId));
-      toast({ title: "Gelöscht", description: "Action Item wurde entfernt" });
+      notify.success("Gelöscht", { description: "Action Item wurde entfernt" 
+});
     } catch (error: unknown) {
       debugConsole.error("Error deleting action item:", error);
-      toast({ title: "Fehler", description: "Action Item konnte nicht gelöscht werden", variant: "destructive" });
+      notify.error("Fehler", { description: "Action Item konnte nicht gelöscht werden"
+});
     }
   };
 

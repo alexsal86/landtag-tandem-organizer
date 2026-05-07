@@ -8,8 +8,7 @@ import { CommentThread, CommentData } from "@/components/task-decisions/CommentT
 import { Send, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
-
+import { notify } from "@/lib/notify";
 const DELETED_COMMENT_TEXT = "Dieser Kommentar wurde gelöscht.";
 
 interface TaskCommentSidebarProps {
@@ -28,7 +27,6 @@ export function TaskCommentSidebar({
   onCommentAdded,
 }: TaskCommentSidebarProps) {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [comments, setComments] = useState<CommentData[]>([]);
   const [newComment, setNewComment] = useState("");
   const [newCommentEditorKey, setNewCommentEditorKey] = useState(0);
@@ -85,11 +83,9 @@ export function TaskCommentSidebar({
       setComments(rootComments);
     } catch (error) {
       debugConsole.error('Error loading comments:', error);
-      toast({
-        title: "Fehler",
-        description: "Kommentare konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Kommentare konnten nicht geladen werden."
+});
     } finally {
       setIsLoading(false);
     }
@@ -118,7 +114,7 @@ export function TaskCommentSidebar({
 
       if (error) throw error;
 
-      toast({ title: "Kommentar hinzugefügt" });
+      notify.success("Kommentar hinzugefügt");
 
       setNewComment("");
       setNewCommentEditorKey((prev) => prev + 1);
@@ -126,11 +122,9 @@ export function TaskCommentSidebar({
       onCommentAdded?.();
     } catch (error) {
       debugConsole.error('Error submitting comment:', error);
-      toast({
-        title: "Fehler",
-        description: "Kommentar konnte nicht gespeichert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Kommentar konnte nicht gespeichert werden."
+});
     } finally {
       setIsSubmitting(false);
     }
@@ -152,15 +146,13 @@ export function TaskCommentSidebar({
 
       if (error) throw error;
 
-      toast({ title: "Kommentar aktualisiert" });
+      notify.success("Kommentar aktualisiert");
       loadComments();
     } catch (error) {
       debugConsole.error('Error updating comment:', error);
-      toast({
-        title: "Fehler",
-        description: "Kommentar konnte nicht bearbeitet werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Kommentar konnte nicht bearbeitet werden."
+});
     }
   };
 
@@ -186,16 +178,14 @@ export function TaskCommentSidebar({
         if (error) throw error;
       }
 
-      toast({ title: hasReplies ? "Kommentar als gelöscht markiert" : "Kommentar gelöscht" });
+      notify.success(hasReplies ? "Kommentar als gelöscht markiert" : "Kommentar gelöscht");
       loadComments();
       onCommentAdded?.();
     } catch (error) {
       debugConsole.error('Error deleting comment:', error);
-      toast({
-        title: "Fehler",
-        description: "Kommentar konnte nicht gelöscht werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Kommentar konnte nicht gelöscht werden."
+});
     }
   };
 

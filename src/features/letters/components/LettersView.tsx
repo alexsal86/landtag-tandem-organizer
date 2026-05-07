@@ -12,7 +12,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
-import { useToast } from '@/hooks/use-toast';
 import { debugConsole } from '@/utils/debugConsole';
 import { useViewPreference } from '@/hooks/useViewPreference';
 import LetterEditor from '@/features/letters/components/LetterEditor';
@@ -21,6 +20,7 @@ import LetterPDFExport from '@/features/letters/components/LetterPDFExport';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import type { Database } from '@/integrations/supabase/types';
 import type { LetterRecord } from '@/components/letter-pdf/types';
+import { notify } from "@/lib/notify";
 
 type Letter = LetterRecord;
 type ParentTaskOption = Pick<Database['public']['Tables']['tasks']['Row'], 'id' | 'title'>;
@@ -40,7 +40,6 @@ interface WizardCompletionConfig {
 const LettersView: React.FC = () => {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const { viewType, setViewType } = useViewPreference({ key: 'letters' });
   
   const [letters, setLetters] = useState<Letter[]>([]);
@@ -81,11 +80,9 @@ const LettersView: React.FC = () => {
       setLetters((data as Letter[] | null) ?? []);
     } catch (error) {
       debugConsole.error('Error fetching letters:', error);
-      toast({
-        title: "Fehler",
-        description: "Briefe konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Briefe konnten nicht geladen werden."
+});
     } finally {
       setLoading(false);
     }
@@ -160,11 +157,9 @@ const LettersView: React.FC = () => {
       } catch (error) {
         debugConsole.error('Error fetching parent tasks:', error);
         setAvailableParentTasks([]);
-        toast({
-          title: 'Fehler',
-          description: 'Übergeordnete Aufgaben konnten nicht geladen werden.',
-          variant: 'destructive',
-        });
+        notify.error('Fehler', {
+          description: 'Übergeordnete Aufgaben konnten nicht geladen werden.'
+});
       }
     } else {
       setAvailableParentTasks([]);
@@ -183,20 +178,16 @@ const LettersView: React.FC = () => {
   const createTaskFromLetter = async () => {
     if (!user || !currentTenant || !taskDialogMode || !sourceLetterForTask) return;
     if (!taskTitle.trim()) {
-      toast({
-        title: 'Titel fehlt',
-        description: 'Bitte einen Titel für die Aufgabe eingeben.',
-        variant: 'destructive',
-      });
+      notify.error('Titel fehlt', {
+        description: 'Bitte einen Titel für die Aufgabe eingeben.'
+});
       return;
     }
 
     if (taskDialogMode === 'subtask' && parentTaskId === 'none') {
-      toast({
-        title: 'Übergeordnete Aufgabe fehlt',
-        description: 'Bitte wählen Sie eine Aufgabe für die Unteraufgabe aus.',
-        variant: 'destructive',
-      });
+      notify.error('Übergeordnete Aufgabe fehlt', {
+        description: 'Bitte wählen Sie eine Aufgabe für die Unteraufgabe aus.'
+});
       return;
     }
 
@@ -236,22 +227,19 @@ const LettersView: React.FC = () => {
         if (error) throw error;
       }
 
-      toast({
-        title: taskDialogMode === 'task' ? 'Aufgabe erstellt' : 'Unteraufgabe erstellt',
+      notify.success(taskDialogMode === 'task' ? 'Aufgabe erstellt' : 'Unteraufgabe erstellt', {
         description: taskDialogMode === 'task'
           ? 'Der Brief wurde als Aufgabe übernommen.'
-          : 'Der Brief wurde als Unteraufgabe übernommen.',
-      });
+          : 'Der Brief wurde als Unteraufgabe übernommen.'
+});
       closeTaskDialog();
     } catch (error) {
       debugConsole.error('Error creating task from letter:', error);
-      toast({
-        title: 'Fehler',
+      notify.error('Fehler', {
         description: taskDialogMode === 'task'
           ? 'Die Aufgabe konnte nicht erstellt werden.'
-          : 'Die Unteraufgabe konnte nicht erstellt werden.',
-        variant: 'destructive',
-      });
+          : 'Die Unteraufgabe konnte nicht erstellt werden.'
+});
     } finally {
       setIsCreatingTask(false);
     }
@@ -266,19 +254,16 @@ const LettersView: React.FC = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Brief gelöscht",
-        description: "Der Brief wurde erfolgreich gelöscht.",
-      });
+      notify.success("Brief gelöscht", {
+        description: "Der Brief wurde erfolgreich gelöscht."
+});
 
       fetchLetters();
     } catch (error) {
       debugConsole.error('Error deleting letter:', error);
-      toast({
-        title: "Fehler",
-        description: "Der Brief konnte nicht gelöscht werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Der Brief konnte nicht gelöscht werden."
+});
     } finally {
       setLetterPendingDelete(null);
     }

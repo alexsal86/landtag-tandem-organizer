@@ -19,18 +19,17 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { notify } from "@/lib/notify";
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 
 export function SettingsView(): React.JSX.Element {
   const { theme, setTheme } = useTheme();
-  const { toast } = useToast();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isAdminClaim, role } = useResolvedUserRole();
@@ -80,20 +79,16 @@ export function SettingsView(): React.JSX.Element {
 
   const handleChangePassword = async (): Promise<void> => {
     if (newPassword !== confirmPassword) {
-      toast({
-        title: "Fehler",
-        description: "Die Passwörter stimmen nicht überein.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Die Passwörter stimmen nicht überein."
+});
       return;
     }
     
     if (newPassword.length < 8) {
-      toast({
-        title: "Fehler",
-        description: "Das Passwort muss mindestens 8 Zeichen haben.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Das Passwort muss mindestens 8 Zeichen haben."
+});
       return;
     }
     
@@ -105,31 +100,27 @@ export function SettingsView(): React.JSX.Element {
       
       if (error) throw error;
       
-      toast({
-        title: "Passwort geändert",
-        description: "Ihr Passwort wurde erfolgreich aktualisiert.",
-      });
+      notify.success("Passwort geändert", {
+        description: "Ihr Passwort wurde erfolgreich aktualisiert."
+});
       
       setPasswordDialogOpen(false);
       setNewPassword("");
       setConfirmPassword("");
     } catch (error: unknown) {
       debugConsole.error('Password change error:', error);
-      toast({
-        title: "Fehler",
-        description: error instanceof Error ? error.message : "Passwort konnte nicht geändert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: error instanceof Error ? error.message : "Passwort konnte nicht geändert werden."
+});
     } finally {
       setChangingPassword(false);
     }
   };
 
   const handleSaveSettings = (): void => {
-    toast({
-      title: "Einstellungen gespeichert",
-      description: "Ihre Einstellungen wurden erfolgreich gespeichert.",
-    });
+    notify.success("Einstellungen gespeichert", {
+      description: "Ihre Einstellungen wurden erfolgreich gespeichert."
+});
   };
 
   const themeOptions = [
@@ -295,12 +286,11 @@ export function SettingsView(): React.JSX.Element {
                   value={badgeDisplayMode} 
                   onValueChange={(value) => {
                     updateBadgeDisplayMode(value as BadgeDisplayMode);
-                    toast({
-                      title: "Einstellung gespeichert",
+                    notify.success("Einstellung gespeichert", {
                       description: value === 'new' 
                         ? "Badges zeigen jetzt nur neue Elemente an." 
-                        : "Badges zeigen jetzt die Gesamtzahl an.",
-                    });
+                        : "Badges zeigen jetzt die Gesamtzahl an."
+});
                   }}
                   disabled={myWorkSettingsLoading}
                 >

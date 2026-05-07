@@ -13,9 +13,9 @@ import { debugConsole } from '@/utils/debugConsole';
 import { useTenant } from '@/hooks/useTenant';
 import { UnsplashImagePicker } from '@/components/dashboard/UnsplashImagePicker';
 import { Palette, Type, Settings as SettingsIcon } from 'lucide-react';
+import { notify } from "@/lib/notify";
 
 export function LoginCustomization() {
-  const { toast } = useToast();
   const { currentTenant } = useTenant();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -94,11 +94,9 @@ export function LoginCustomization() {
       }
     } catch (error) {
       debugConsole.error('Error loading data:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Daten konnten nicht geladen werden.',
-        variant: 'destructive'
-      });
+      notify.error('Fehler', {
+        description: 'Daten konnten nicht geladen werden.'
+});
     } finally {
       setLoading(false);
     }
@@ -132,17 +130,15 @@ export function LoginCustomization() {
 
       if (error) throw error;
 
-      toast({
-        title: 'Gespeichert',
+      notify.success('Gespeichert', {
         description: 'Login-Anpassungen wurden erfolgreich gespeichert.'
-      });
+      
+});
     } catch (error: unknown) {
       debugConsole.error('Error saving:', error);
-      toast({
-        title: 'Fehler',
-        description: error instanceof Error ? error.message : 'Speichern fehlgeschlagen.',
-        variant: 'destructive'
-      });
+      notify.error('Fehler', {
+        description: error instanceof Error ? error.message : 'Speichern fehlgeschlagen.'
+});
     } finally {
       setSaving(false);
     }

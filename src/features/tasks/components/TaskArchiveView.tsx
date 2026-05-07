@@ -10,9 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
-import { useToast } from "@/hooks/use-toast";
-
-
+import { notify } from "@/lib/notify";
 type ArchivedTaskRow = Tables<"archived_tasks">;
 type TaskDecisionRow = Tables<"task_decisions">;
 type TaskDecisionResponseRow = Tables<"task_decision_responses">;
@@ -70,7 +68,6 @@ export function TaskArchiveView() {
   const [archiveSettings, setArchiveSettings] = useState<ArchiveSettings>({});
   
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
 
   useEffect(() => {
     loadArchivedTasks();
@@ -105,11 +102,9 @@ export function TaskArchiveView() {
       setArchivedTasks(formattedTasks);
     } catch (error) {
       debugConsole.error('Error loading archived tasks:', error);
-      toast({
-        title: "Fehler",
-        description: "Archivierte Aufgaben konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Archivierte Aufgaben konnten nicht geladen werden."
+});
     } finally {
       setLoading(false);
     }
@@ -209,17 +204,14 @@ export function TaskArchiveView() {
       if (error) throw error;
 
       setArchiveSettings(newSettings);
-      toast({
-        title: "Einstellungen gespeichert",
-        description: "Archiv-Einstellungen wurden automatisch aktualisiert.",
-      });
+      notify.success("Einstellungen gespeichert", {
+        description: "Archiv-Einstellungen wurden automatisch aktualisiert."
+});
     } catch (error) {
       debugConsole.error('Error saving archive settings:', error);
-      toast({
-        title: "Fehler",
-        description: "Einstellungen konnten nicht gespeichert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Einstellungen konnten nicht gespeichert werden."
+});
     }
   };
 
@@ -233,17 +225,14 @@ export function TaskArchiveView() {
       if (error) throw error;
 
       setArchivedTasks(prev => prev.filter(t => t.id !== taskId));
-      toast({
-        title: "Aufgabe gelöscht",
-        description: "Die archivierte Aufgabe wurde endgültig gelöscht.",
-      });
+      notify.success("Aufgabe gelöscht", {
+        description: "Die archivierte Aufgabe wurde endgültig gelöscht."
+});
     } catch (error) {
       debugConsole.error('Error deleting archived task:', error);
-      toast({
-        title: "Fehler",
-        description: "Aufgabe konnte nicht gelöscht werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Aufgabe konnte nicht gelöscht werden."
+});
     }
   };
 
@@ -257,17 +246,14 @@ export function TaskArchiveView() {
       if (error) throw error;
 
       setArchivedDecisions(prev => prev.filter(d => d.id !== decisionId));
-      toast({
-        title: "Entscheidung gelöscht",
-        description: "Die archivierte Entscheidung wurde endgültig gelöscht.",
-      });
+      notify.success("Entscheidung gelöscht", {
+        description: "Die archivierte Entscheidung wurde endgültig gelöscht."
+});
     } catch (error) {
       debugConsole.error('Error deleting archived decision:', error);
-      toast({
-        title: "Fehler",
-        description: "Entscheidung konnte nicht gelöscht werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Entscheidung konnte nicht gelöscht werden."
+});
     }
   };
 

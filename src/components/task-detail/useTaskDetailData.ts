@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
 import type { Task, TaskComment, TaskDocument, Subtask } from "./types";
 import type { Tables, TablesUpdate } from "@/integrations/supabase/types";
 import { normalizeTaskAssigneeIds, serializeLegacyTaskAssignees, syncTaskAssignees } from "@/lib/taskAssignees";
+import { notify } from "@/lib/notify";
 
 type TaskRow = Tables<"tasks">;
 type TaskDocumentRow = Tables<"task_documents">;
@@ -26,7 +26,6 @@ export function useTaskDetailData(task: Task | null) {
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [newSubtask, setNewSubtask] = useState({ description: "", assigned_to: "", due_date: "" });
   const [editingSubtask, setEditingSubtask] = useState<Record<string, Partial<Subtask>>>({});
-  const { toast } = useToast();
   const { user } = useAuth();
 
   useEffect(() => {
@@ -151,7 +150,8 @@ export function useTaskDetailData(task: Task | null) {
           setTimeout(async () => {
 const { data: fresh } = await supabase.from("tasks").select("id, title").eq("id", task.id).single();
             if (fresh && fresh.title === editFormData.title) {
-              toast({ title: "Aufgabe gespeichert", description: "Die Änderungen wurden erfolgreich gespeichert." });
+              notify.success("Aufgabe gespeichert", { description: "Die Änderungen wurden erfolgreich gespeichert." 
+});
               const updated = { ...task, ...(editFormData as Task) };
               setEditFormData(updated);
               try { onTaskUpdate(updated); } catch {}
@@ -164,7 +164,8 @@ const { data: fresh } = await supabase.from("tasks").select("id, title").eq("id"
       }
 
       const updated = { ...task, ...(editFormData as Task) };
-      toast({ title: "Aufgabe gespeichert", description: "Die Änderungen wurden erfolgreich gespeichert." });
+      notify.success("Aufgabe gespeichert", { description: "Die Änderungen wurden erfolgreich gespeichert." 
+});
       setEditFormData(updated);
       try { onTaskUpdate(updated); } catch {}
     } catch (error: unknown) {
@@ -174,7 +175,8 @@ const { data: fresh } = await supabase.from("tasks").select("id, title").eq("id"
         setTimeout(async () => {
 const { data: fresh } = await supabase.from("tasks").select("id, title").eq("id", task.id).single();
            if (fresh && fresh.title === editFormData.title) {
-            toast({ title: "Aufgabe gespeichert", description: "Die Änderungen wurden erfolgreich gespeichert." });
+            notify.success("Aufgabe gespeichert", { description: "Die Änderungen wurden erfolgreich gespeichert." 
+});
             const updated = { ...task, ...(editFormData as Task) };
             setEditFormData(updated);
             try { onTaskUpdate(updated); } catch {}
@@ -184,7 +186,8 @@ const { data: fresh } = await supabase.from("tasks").select("id, title").eq("id"
         return;
       }
       debugConsole.error("Error saving task:", error);
-      toast({ title: "Fehler", description: "Aufgabe konnte nicht gespeichert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Aufgabe konnte nicht gespeichert werden."
+});
     } finally {
       setSaving(false);
     }
@@ -198,9 +201,11 @@ const { data: fresh } = await supabase.from("tasks").select("id, title").eq("id"
       setNewComment("");
       setNewCommentEditorKey((p) => p + 1);
       loadTaskComments(task.id);
-      toast({ title: "Kommentar hinzugefügt", description: "Ihr Kommentar wurde erfolgreich hinzugefügt." });
+      notify.success("Kommentar hinzugefügt", { description: "Ihr Kommentar wurde erfolgreich hinzugefügt." 
+});
     } catch {
-      toast({ title: "Fehler", description: "Kommentar konnte nicht hinzugefügt werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Kommentar konnte nicht hinzugefügt werden."
+});
     }
   };
 
@@ -211,9 +216,10 @@ const { data: fresh } = await supabase.from("tasks").select("id, title").eq("id"
       if (error) throw error;
       setEditingComment((p) => { const u = { ...p }; delete u[commentId]; return u; });
       loadTaskComments(task!.id);
-      toast({ title: "Kommentar aktualisiert" });
+      notify.success("Kommentar aktualisiert");
     } catch {
-      toast({ title: "Fehler", description: "Kommentar konnte nicht aktualisiert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Kommentar konnte nicht aktualisiert werden."
+});
     }
   };
 
@@ -222,9 +228,10 @@ const { data: fresh } = await supabase.from("tasks").select("id, title").eq("id"
       const { error } = await supabase.from("task_comments").delete().eq("id", commentId);
       if (error) throw error;
       loadTaskComments(task!.id);
-      toast({ title: "Kommentar gelöscht" });
+      notify.success("Kommentar gelöscht");
     } catch {
-      toast({ title: "Fehler", description: "Kommentar konnte nicht gelöscht werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Kommentar konnte nicht gelöscht werden."
+});
     }
   };
 
@@ -240,9 +247,10 @@ const { data: fresh } = await supabase.from("tasks").select("id, title").eq("id"
       const { error: de } = await supabase.from("task_documents").insert([{ task_id: task.id, user_id: user.id, file_name: file.name, file_path: filePath, file_size: file.size, file_type: file.type }]);
       if (de) throw de;
       loadTaskDocuments(task.id);
-      toast({ title: "Dokument hochgeladen" });
+      notify.success("Dokument hochgeladen");
     } catch {
-      toast({ title: "Fehler", description: "Das Dokument konnte nicht hochgeladen werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Das Dokument konnte nicht hochgeladen werden."
+});
     } finally {
       setUploading(false);
       event.target.value = "";
@@ -254,9 +262,10 @@ const { data: fresh } = await supabase.from("tasks").select("id, title").eq("id"
       await supabase.storage.from("task-documents").remove([doc.file_path]);
       await supabase.from("task_documents").delete().eq("id", doc.id);
       loadTaskDocuments(task!.id);
-      toast({ title: "Dokument gelöscht" });
+      notify.success("Dokument gelöscht");
     } catch {
-      toast({ title: "Fehler", description: "Das Dokument konnte nicht gelöscht werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Das Dokument konnte nicht gelöscht werden."
+});
     }
   };
 
@@ -273,7 +282,8 @@ const { data: fresh } = await supabase.from("tasks").select("id, title").eq("id"
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
-      toast({ title: "Fehler", description: "Das Dokument konnte nicht heruntergeladen werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Das Dokument konnte nicht heruntergeladen werden."
+});
     }
   };
 
@@ -298,9 +308,10 @@ const { data: fresh } = await supabase.from("tasks").select("id, title").eq("id"
       await syncTaskAssignees({ taskId: createdSubtask.id, assigneeIds, assignedBy: user.id });
       setNewSubtask({ description: "", assigned_to: "", due_date: "" });
       loadSubtasks(task.id);
-      toast({ title: "Unteraufgabe hinzugefügt" });
+      notify.success("Unteraufgabe hinzugefügt");
     } catch {
-      toast({ title: "Fehler", description: "Unteraufgabe konnte nicht hinzugefügt werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Unteraufgabe konnte nicht hinzugefügt werden."
+});
     }
   };
 
@@ -319,9 +330,10 @@ const { data: fresh } = await supabase.from("tasks").select("id, title").eq("id"
       }
       loadSubtasks(task!.id);
       setEditingSubtask((p) => { const up = { ...p }; delete up[subtaskId]; return up; });
-      toast({ title: "Unteraufgabe aktualisiert" });
+      notify.success("Unteraufgabe aktualisiert");
     } catch {
-      toast({ title: "Fehler", description: "Unteraufgabe konnte nicht aktualisiert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Unteraufgabe konnte nicht aktualisiert werden."
+});
     }
   };
 
@@ -331,7 +343,8 @@ const { data: fresh } = await supabase.from("tasks").select("id, title").eq("id"
       if (error) throw error;
       loadSubtasks(task!.id);
     } catch {
-      toast({ title: "Fehler", description: "Status konnte nicht geändert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Status konnte nicht geändert werden."
+});
     }
   };
 
@@ -340,9 +353,10 @@ const { data: fresh } = await supabase.from("tasks").select("id, title").eq("id"
       const { error } = await supabase.from("tasks").delete().eq("id", subtaskId);
       if (error) throw error;
       loadSubtasks(task!.id);
-      toast({ title: "Unteraufgabe gelöscht" });
+      notify.success("Unteraufgabe gelöscht");
     } catch {
-      toast({ title: "Fehler", description: "Unteraufgabe konnte nicht gelöscht werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Unteraufgabe konnte nicht gelöscht werden."
+});
     }
   };
 

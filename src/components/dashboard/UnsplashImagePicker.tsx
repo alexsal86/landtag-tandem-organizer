@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Upload, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from '@/utils/debugConsole';
+import { notify } from "@/lib/notify";
 
 export interface UnsplashAttribution {
   photographer: string;
@@ -54,7 +54,6 @@ export function UnsplashImagePicker({
   const [selectedAttribution, setSelectedAttribution] = useState<UnsplashAttribution | null>(null);
   const [position, setPosition] = useState<"center" | "top" | "bottom">(currentPosition);
   const [isUploading, setIsUploading] = useState(false);
-  const { toast } = useToast();
 
   const searchUnsplash = async () => {
     if (!searchQuery.trim()) return;
@@ -76,11 +75,9 @@ export function UnsplashImagePicker({
       setImages(data.results);
     } catch (error) {
       debugConsole.error("Error searching Unsplash:", error);
-      toast({
-        title: "Suchfehler",
-        description: "Die Unsplash-Suche konnte nicht durchgeführt werden.",
-        variant: "destructive",
-      });
+      notify.error("Suchfehler", {
+        description: "Die Unsplash-Suche konnte nicht durchgeführt werden."
+});
     } finally {
       setIsSearching(false);
     }
@@ -92,21 +89,17 @@ export function UnsplashImagePicker({
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
-      toast({
-        title: "Ungültiger Dateityp",
-        description: "Bitte wähle eine Bilddatei aus.",
-        variant: "destructive",
-      });
+      notify.error("Ungültiger Dateityp", {
+        description: "Bitte wähle eine Bilddatei aus."
+});
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "Datei zu groß",
-        description: "Das Bild darf maximal 5MB groß sein.",
-        variant: "destructive",
-      });
+      notify.error("Datei zu groß", {
+        description: "Das Bild darf maximal 5MB groß sein."
+});
       return;
     }
 
@@ -133,17 +126,14 @@ export function UnsplashImagePicker({
 
       setSelectedImage(publicUrl);
       setSelectedAttribution(null); // Uploaded images have no Unsplash attribution
-      toast({
-        title: "Upload erfolgreich",
-        description: "Dein Bild wurde hochgeladen.",
-      });
+      notify.success("Upload erfolgreich", {
+        description: "Dein Bild wurde hochgeladen."
+});
     } catch (error) {
       debugConsole.error("Error uploading file:", error);
-      toast({
-        title: "Upload fehlgeschlagen",
-        description: "Das Bild konnte nicht hochgeladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Upload fehlgeschlagen", {
+        description: "Das Bild konnte nicht hochgeladen werden."
+});
     } finally {
       setIsUploading(false);
     }
@@ -160,11 +150,9 @@ export function UnsplashImagePicker({
 
   const handleSave = () => {
     if (!selectedImage) {
-      toast({
-        title: "Kein Bild gewählt",
-        description: "Bitte wähle zuerst ein Bild aus.",
-        variant: "destructive",
-      });
+      notify.error("Kein Bild gewählt", {
+        description: "Bitte wähle zuerst ein Bild aus."
+});
       return;
     }
 

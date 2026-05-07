@@ -9,7 +9,6 @@ import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/h
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { EmailPreviewDialog } from "@/components/task-decisions/EmailPreviewDialog";
 import { DecisionAttachmentPreviewDialog } from "@/components/task-decisions/DecisionAttachmentPreviewDialog";
-import { useToast } from "@/hooks/use-toast";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -25,6 +24,7 @@ import { DecisionCardMeta } from "./card/DecisionCardMeta";
 import { DecisionCardActivity } from "./card/DecisionCardActivity";
 import { CalendarDays, ChevronDown, ChevronUp, Info } from "lucide-react";
 import { getPalettePromptClasses } from "@/lib/paletteStyles";
+import { notify } from "@/lib/notify";
 
 interface MyWorkDecisionCardProps {
   decision: MyWorkDecision;
@@ -62,7 +62,6 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
   const [commentPromptColor, setCommentPromptColor] = useState("green");
   const [resolvedDeputyName, setResolvedDeputyName] = useState<string | null>(null);
   const responseRefreshTimeoutRef = useRef<number | null>(null);
-  const { toast } = useToast();
   const { currentTenant } = useTenant();
 
   const { appointmentLink, appointmentRequestNarrative, displayDescription, isAppointmentRequest, isRequestedStartValid, plainDescription, requestedStart, requestedTitle, summary, summaryItems, targetDeputy, winningResponse } = useDecisionCardDerivedData(decision);
@@ -195,7 +194,8 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
       if (!existingResponse) throw new Error("Keine Rückmeldung gefunden, die ergänzt werden kann.");
       const { error } = await supabase.from("task_decision_responses").update({ comment: commentDraft.trim(), updated_at: new Date().toISOString() }).eq("id", existingResponse.id);
       if (error) throw error;
-      toast({ title: "Begründung gespeichert", description: "Deine Begründung wurde als Rückmeldung zur Entscheidung gespeichert." });
+      notify.success("Begründung gespeichert", { description: "Deine Begründung wurde als Rückmeldung zur Entscheidung gespeichert." 
+});
       clearResponseRefreshTimeout();
       setShowCommentPrompt(false);
       setShowCommentEditor(false);
@@ -203,7 +203,8 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
       setCommentEditorKey((previous) => previous + 1);
       onResponseSubmitted();
     } catch {
-      toast({ title: "Fehler", description: "Die Begründung konnte nicht zur Rückmeldung gespeichert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Die Begründung konnte nicht zur Rückmeldung gespeichert werden."
+});
     } finally {
       setIsSubmittingComment(false);
     }
@@ -246,8 +247,10 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
 
   const openMailLink = (mailtoUrl: string) => { window.location.href = mailtoUrl; };
   const copyMailTemplate = async (text: string, type: "Zusage" | "Absage") => {
-    try { await navigator.clipboard.writeText(text); toast({ title: `${type}-Mail kopiert`, description: `Der Text für die ${type.toLowerCase()} wurde in die Zwischenablage kopiert.` }); }
-    catch { toast({ title: "Kopieren fehlgeschlagen", description: "Der Mailtext konnte nicht kopiert werden.", variant: "destructive" }); }
+    try { await navigator.clipboard.writeText(text); notify.success(`${type}-Mail kopiert`, { description: `Der Text für die ${type.toLowerCase()} wurde in die Zwischenablage kopiert.` 
+}); }
+    catch { notify.error("Kopieren fehlgeschlagen", { description: "Der Mailtext konnte nicht kopiert werden."
+}); }
   };
 
   return (

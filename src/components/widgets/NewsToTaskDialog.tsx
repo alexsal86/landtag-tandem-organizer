@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { CheckSquare, Loader2 } from 'lucide-react';
 import { debugConsole } from '@/utils/debugConsole';
 import { MultiSelect } from '@/components/ui/multi-select';
@@ -16,6 +15,7 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useTenant } from '@/hooks/useTenant';
+import { notify } from "@/lib/notify";
 
 interface NewsArticle {
   id: string;
@@ -96,7 +96,7 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
     } catch (error) {
       categoriesTenantRef.current = null;
       debugConsole.error('Error loading task categories:', error);
-      toast.error('Kategorien konnten nicht geladen werden.');
+      notify.error('Kategorien konnten nicht geladen werden.');
     } finally {
       setCategoriesLoading(false);
     }
@@ -130,7 +130,7 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
     } catch (error) {
       usersTenantRef.current = null;
       debugConsole.error('Error loading task assignees:', error);
-      toast.error('Benutzer konnten nicht geladen werden.');
+      notify.error('Benutzer konnten nicht geladen werden.');
     } finally {
       setUsersLoading(false);
     }
@@ -158,17 +158,17 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
 
   const handleCreate = async () => {
     if (!title.trim()) {
-      toast.error('Bitte geben Sie einen Titel ein');
+      notify.error('Bitte geben Sie einen Titel ein');
       return;
     }
 
     if (!selectedCategory) {
-      toast.error('Bitte wählen Sie eine Kategorie aus');
+      notify.error('Bitte wählen Sie eine Kategorie aus');
       return;
     }
 
     if (!currentTenant?.id) {
-      toast.error('Bitte wählen Sie zuerst einen Mandanten aus');
+      notify.error('Bitte wählen Sie zuerst einen Mandanten aus');
       return;
     }
 
@@ -195,7 +195,7 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
 
       if (error) throw error;
 
-      toast.success('Aufgabe erfolgreich erstellt');
+      notify.success('Aufgabe erfolgreich erstellt');
       
       // Reset form
       setTitle('');
@@ -207,7 +207,7 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
       onOpenChange(false);
     } catch (error) {
       debugConsole.error('Error creating task:', error);
-      toast.error('Fehler beim Erstellen der Aufgabe');
+      notify.error('Fehler beim Erstellen der Aufgabe');
     } finally {
       setLoading(false);
     }

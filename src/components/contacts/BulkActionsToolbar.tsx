@@ -38,9 +38,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/hooks/useTenant';
 import type { Contact } from '@/types/contact';
+import { notify } from "@/lib/notify";
 
 interface BulkActionsToolbarProps {
   selectedContacts: Pick<Contact, "id" | "name" | "email" | "phone" | "category" | "tags">[];
@@ -65,7 +65,6 @@ export function BulkActionsToolbar({
   const [distributionListName, setDistributionListName] = useState('');
   const [distributionListDescription, setDistributionListDescription] = useState('');
   const [processing, setProcessing] = useState(false);
-  const { toast } = useToast();
   const { currentTenant } = useTenant();
 
   const handleAddTags = async () => {
@@ -88,10 +87,9 @@ export function BulkActionsToolbar({
         if (error) throw error;
       }
 
-      toast({
-        title: 'Tags hinzugefügt',
-        description: `${selectedContacts.length} Kontakte aktualisiert`,
-      });
+      notify.success('Tags hinzugefügt', {
+        description: `${selectedContacts.length} Kontakte aktualisiert`
+});
 
       setIsTagDialogOpen(false);
       setSelectedTags([]);
@@ -99,11 +97,9 @@ export function BulkActionsToolbar({
       onActionComplete();
     } catch (error) {
       debugConsole.error('Error adding tags:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Tags konnten nicht hinzugefügt werden',
-        variant: 'destructive',
-      });
+      notify.error('Fehler', {
+        description: 'Tags konnten nicht hinzugefügt werden'
+});
     } finally {
       setProcessing(false);
     }
@@ -123,21 +119,18 @@ export function BulkActionsToolbar({
         if (error) throw error;
       }
 
-      toast({
-        title: 'Kategorie geändert',
-        description: `${selectedContacts.length} Kontakte aktualisiert`,
-      });
+      notify.success('Kategorie geändert', {
+        description: `${selectedContacts.length} Kontakte aktualisiert`
+});
 
       setIsCategoryDialogOpen(false);
       setSelectedCategory('');
       onActionComplete();
     } catch (error) {
       debugConsole.error('Error changing category:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Kategorie konnte nicht geändert werden',
-        variant: 'destructive',
-      });
+      notify.error('Fehler', {
+        description: 'Kategorie konnte nicht geändert werden'
+});
     } finally {
       setProcessing(false);
     }
@@ -177,10 +170,9 @@ export function BulkActionsToolbar({
 
       if (membersError) throw membersError;
 
-      toast({
-        title: 'Verteiler erstellt',
-        description: `${selectedContacts.length} Kontakte hinzugefügt`,
-      });
+      notify.success('Verteiler erstellt', {
+        description: `${selectedContacts.length} Kontakte hinzugefügt`
+});
 
       setIsDistributionDialogOpen(false);
       setDistributionListName('');
@@ -188,11 +180,9 @@ export function BulkActionsToolbar({
       onActionComplete();
     } catch (error) {
       debugConsole.error('Error creating distribution list:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Verteiler konnte nicht erstellt werden',
-        variant: 'destructive',
-      });
+      notify.error('Fehler', {
+        description: 'Verteiler konnte nicht erstellt werden'
+});
     } finally {
       setProcessing(false);
     }
@@ -210,20 +200,17 @@ export function BulkActionsToolbar({
         if (error) throw error;
       }
 
-      toast({
-        title: 'Kontakte gelöscht',
-        description: `${selectedContacts.length} Kontakte wurden gelöscht`,
-      });
+      notify.success('Kontakte gelöscht', {
+        description: `${selectedContacts.length} Kontakte wurden gelöscht`
+});
 
       setIsDeleteDialogOpen(false);
       onActionComplete();
     } catch (error) {
       debugConsole.error('Error deleting contacts:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Kontakte konnten nicht gelöscht werden',
-        variant: 'destructive',
-      });
+      notify.error('Fehler', {
+        description: 'Kontakte konnten nicht gelöscht werden'
+});
     } finally {
       setProcessing(false);
     }
@@ -250,10 +237,9 @@ export function BulkActionsToolbar({
     link.download = `kontakte_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
 
-    toast({
-      title: 'Export erfolgreich',
-      description: `${selectedContacts.length} Kontakte als CSV exportiert`,
-    });
+    notify.success('Export erfolgreich', {
+      description: `${selectedContacts.length} Kontakte als CSV exportiert`
+});
   };
 
   const exportToVCF = () => {
@@ -282,10 +268,9 @@ export function BulkActionsToolbar({
     link.download = `kontakte_${new Date().toISOString().split('T')[0]}.vcf`;
     link.click();
 
-    toast({
-      title: 'Export erfolgreich',
-      description: `${selectedContacts.length} Kontakte als VCF exportiert`,
-    });
+    notify.success('Export erfolgreich', {
+      description: `${selectedContacts.length} Kontakte als VCF exportiert`
+});
   };
 
   if (selectedContacts.length === 0) return null;

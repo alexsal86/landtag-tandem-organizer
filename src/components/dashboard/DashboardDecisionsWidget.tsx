@@ -9,8 +9,8 @@ import { getResponseSummary, MyWorkDecision } from '@/components/my-work/decisio
 import { TaskDecisionResponse } from '@/components/task-decisions/TaskDecisionResponse';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { notify } from "@/lib/notify";
 
 function formatDeadline(deadline: string | null): { label: string; isOverdue: boolean } {
   if (!deadline) return { label: 'Ohne Frist', isOverdue: false };
@@ -44,7 +44,6 @@ function DecisionRow({ decision, onRefresh, onOpen, onPromptOpen, onPromptClose,
   const summary = getResponseSummary(decision.participants);
   const { label, isOverdue } = formatDeadline(decision.response_deadline);
   const [prompt, setPrompt] = useState<{ color: string } | null>(forcePrompt ?? null);
-  const { toast } = useToast();
 
   useEffect(() => {
     if (forcePrompt && !prompt) setPrompt(forcePrompt);
@@ -67,10 +66,11 @@ function DecisionRow({ decision, onRefresh, onOpen, onPromptOpen, onPromptClose,
       .eq('participant_id', decision.participant_id)
       .is('parent_response_id', null);
     if (error) {
-      toast({ title: 'Rückgängig fehlgeschlagen', description: error.message, variant: 'destructive' });
+      notify.error('Rückgängig fehlgeschlagen', { description: error.message
+});
       return;
     }
-    toast({ title: 'Antwort zurückgenommen' });
+    notify.success('Antwort zurückgenommen');
     setPrompt(null);
     onPromptClose(decision.id);
     onRefresh();

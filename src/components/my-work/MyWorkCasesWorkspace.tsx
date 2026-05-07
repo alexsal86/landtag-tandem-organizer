@@ -16,7 +16,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 import { debugConsole } from "@/utils/debugConsole";
 import { useCaseWorkspaceData, type CaseFile, type CaseItem } from "@/components/my-work/hooks/useCaseWorkspaceData";
 import { useCaseItemEdit, type CaseItemInteractionDocument, type TimelineEvent, type TimelineInteractionType, type TimelineDocumentAttachment } from "@/components/my-work/hooks/useCaseItemEdit";
@@ -41,6 +40,7 @@ import {
   priorityOptions,
 } from "./myWorkCasesWorkspace/constants";
 import { useLinkedDecisions } from "./myWorkCasesWorkspace/useLinkedDecisions";
+import { notify } from "@/lib/notify";
 
 export function MyWorkCasesWorkspace() {
   const { user } = useAuth();
@@ -97,7 +97,7 @@ export function MyWorkCasesWorkspace() {
   const runAsync = useCallback((action: () => Promise<unknown>) => {
     action().catch((error) => {
       debugConsole.error("Unerwarteter Fehler:", error);
-      toast.error("Aktion konnte nicht ausgeführt werden.");
+      notify.error("Aktion konnte nicht ausgeführt werden.");
     });
   }, []);
 
@@ -111,7 +111,7 @@ export function MyWorkCasesWorkspace() {
     const result = await persist();
     if (result?.error) {
       setCaseItems(snapshot);
-      toast.error(rollbackMessage);
+      notify.error(rollbackMessage);
       return false;
     }
     return true;
@@ -144,7 +144,7 @@ export function MyWorkCasesWorkspace() {
     }
     setCaseItems((current) => current.filter((row) => row.id !== id));
     await deleteCaseItem(id);
-    toast.success("Vorgang gelöscht");
+    notify.success("Vorgang gelöscht");
   }, [deleteConfirmItemId, detailItemId, setEditableCaseItem, setCaseItems, deleteCaseItem]);
 
 
@@ -161,7 +161,7 @@ export function MyWorkCasesWorkspace() {
       setDetailItemId(null);
       setEditableCaseItem(null);
     }
-    toast.success(nextStatus === "archiviert" ? "Vorgang archiviert." : "Vorgang wiederhergestellt.");
+    notify.success(nextStatus === "archiviert" ? "Vorgang archiviert." : "Vorgang wiederhergestellt.");
   }, [applyItemOptimisticUpdate, detailItemId, setEditableCaseItem]);
 
   const handleArchiveCaseFile = useCallback(async (caseFile: CaseFile) => {
@@ -173,11 +173,11 @@ export function MyWorkCasesWorkspace() {
         setCaseItems((current) => current.map((item) => item.case_file_id === caseFile.id ? { ...item, case_file_id: null } : item));
         if (detailFileId === caseFile.id) setDetailFileId(null);
       }
-      toast.success(nextStatus === "archived" ? "Fallakte archiviert." : "Fallakte wiederhergestellt.");
+      notify.success(nextStatus === "archived" ? "Fallakte archiviert." : "Fallakte wiederhergestellt.");
       await refreshAll();
     } catch (error) {
       debugConsole.error("Fallakte konnte nicht archiviert werden", error);
-      toast.error("Fallakte konnte nicht archiviert werden.");
+      notify.error("Fallakte konnte nicht archiviert werden.");
     }
   }, [detailFileId, refreshAll, setCaseItems]);
 
@@ -188,11 +188,11 @@ export function MyWorkCasesWorkspace() {
       if (error) throw error;
       setCaseItems((current) => current.map((item) => item.case_file_id === caseFile.id ? { ...item, case_file_id: null } : item));
       if (detailFileId === caseFile.id) setDetailFileId(null);
-      toast.success("Fallakte gelöscht.");
+      notify.success("Fallakte gelöscht.");
       await refreshAll();
     } catch (error) {
       debugConsole.error("Fallakte konnte nicht gelöscht werden", error);
-      toast.error("Fallakte konnte nicht gelöscht werden.");
+      notify.error("Fallakte konnte nicht gelöscht werden.");
     }
   }, [detailFileId, refreshAll, setCaseItems]);
 
@@ -428,7 +428,7 @@ export function MyWorkCasesWorkspace() {
       () => supabase.from("case_items").update({ status: newStatus }).eq("id", item.id),
       "Status konnte nicht geändert werden.",
     );
-    if (ok) toast.success(`Status auf "${statusOptions.find((s) => s.value === newStatus)?.label || newStatus}" gesetzt.`);
+    if (ok) notify.success(`Status auf "${statusOptions.find((s) => s.value === newStatus)?.label || newStatus}" gesetzt.`);
   };
 
   const handleQuickPriorityChange = async (item: CaseItem, newPriority: string) => {
@@ -438,7 +438,7 @@ export function MyWorkCasesWorkspace() {
       () => supabase.from("case_items").update({ priority: newPriority }).eq("id", item.id),
       "Priorität konnte nicht geändert werden.",
     );
-    if (ok) toast.success(`Priorität auf "${priorityOptions.find((p) => p.value === newPriority)?.label || newPriority}" gesetzt.`);
+    if (ok) notify.success(`Priorität auf "${priorityOptions.find((p) => p.value === newPriority)?.label || newPriority}" gesetzt.`);
   };
 
 
@@ -449,7 +449,7 @@ export function MyWorkCasesWorkspace() {
       () => supabase.from("case_items").update({ visible_to_all: nextPublic }).eq("id", item.id),
       "Sichtbarkeit konnte nicht geändert werden.",
     );
-    if (ok) toast.success(nextPublic ? "Vorgang ist jetzt öffentlich." : "Vorgang ist jetzt nicht öffentlich.");
+    if (ok) notify.success(nextPublic ? "Vorgang ist jetzt öffentlich." : "Vorgang ist jetzt nicht öffentlich.");
   };
 
   const handleQuickLinkToFile = async (item: CaseItem, caseFileId: string) => {
@@ -461,7 +461,7 @@ export function MyWorkCasesWorkspace() {
     );
     if (!ok) return;
     const file = caseFilesById[caseFileId];
-    toast.success(`Vorgang mit "${file?.title || "Akte"}" verknüpft.`);
+    notify.success(`Vorgang mit "${file?.title || "Akte"}" verknüpft.`);
   };
 
   const handleUnlinkFromFile = async (item: CaseItem) => {
@@ -471,7 +471,7 @@ export function MyWorkCasesWorkspace() {
       () => supabase.from("case_items").update({ case_file_id: null }).eq("id", item.id),
       "Verknüpfung konnte nicht gelöst werden.",
     );
-    if (ok) toast.success("Verknüpfung zur Akte gelöst.");
+    if (ok) notify.success("Verknüpfung zur Akte gelöst.");
   };
 
   const handleDragEnd = (result: DropResult) => {
@@ -692,7 +692,7 @@ export function MyWorkCasesWorkspace() {
   const handleAddInteraction = useCallback(async (files: File[] = []) => {
     if (!editableCaseItem) return;
     if (!editableCaseItem.interactionType) {
-      toast.error("Bitte zuerst eine Interaktion auswählen.");
+      notify.error("Bitte zuerst eine Interaktion auswählen.");
       return;
     }
     const typeMeta = interactionTypeOptions.find((opt) => opt.value === editableCaseItem.interactionType);
@@ -703,11 +703,11 @@ export function MyWorkCasesWorkspace() {
 
     if (editableCaseItem.interactionType === "dokument") {
       if (!currentTenant?.id || !user?.id) {
-        toast.error("Dokument-Upload ist aktuell nicht verfügbar.");
+        notify.error("Dokument-Upload ist aktuell nicht verfügbar.");
         return;
       }
       if (files.length === 0) {
-        toast.error("Bitte mindestens ein Dokument auswählen.");
+        notify.error("Bitte mindestens ein Dokument auswählen.");
         return;
       }
 
@@ -718,7 +718,7 @@ export function MyWorkCasesWorkspace() {
 
         const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, file);
         if (uploadError) {
-          toast.error(`Upload fehlgeschlagen: ${file.name}`);
+          notify.error(`Upload fehlgeschlagen: ${file.name}`);
           return;
         }
 
@@ -737,7 +737,7 @@ export function MyWorkCasesWorkspace() {
           .single();
 
         if (insertError || !documentRow) {
-          toast.error(`Dokument konnte nicht gespeichert werden: ${file.name}`);
+          notify.error(`Dokument konnte nicht gespeichert werden: ${file.name}`);
           return;
         }
 
@@ -757,7 +757,7 @@ export function MyWorkCasesWorkspace() {
       updateEdit({
         interactionDocuments: [...editableCaseItem.interactionDocuments, ...uploaded].sort((a, b) => a.title.localeCompare(b.title, "de", { sensitivity: "base" })),
       });
-      toast.success(uploaded.length > 1 ? `${uploaded.length} Dokumente hinzugefügt.` : "Dokument hinzugefügt.");
+      notify.success(uploaded.length > 1 ? `${uploaded.length} Dokumente hinzugefügt.` : "Dokument hinzugefügt.");
     } else if (editableCaseItem.interactionType === "anruf") {
       title = `Telefonat mit ${contact || "unbekannt"}`;
     } else if (editableCaseItem.interactionType === "mail") {
@@ -895,7 +895,7 @@ export function MyWorkCasesWorkspace() {
   const handleDownloadInteractionDocument = useCallback(async (document: CaseItemInteractionDocument) => {
     const { data, error } = await supabase.storage.from("documents").download(document.filePath);
     if (error || !data) {
-      toast.error("Dokument konnte nicht heruntergeladen werden.");
+      notify.error("Dokument konnte nicht heruntergeladen werden.");
       return;
     }
 
@@ -911,7 +911,7 @@ export function MyWorkCasesWorkspace() {
 
   const handleRenameInteractionDocument = useCallback(async (documentId: string, title: string) => {
     if (!title.trim()) {
-      toast.error("Bitte einen Dokumentnamen eingeben.");
+      notify.error("Bitte einen Dokumentnamen eingeben.");
       return;
     }
 
@@ -920,7 +920,7 @@ export function MyWorkCasesWorkspace() {
 
     const { error } = await supabase.from("documents").update({ title: title.trim() }).eq("id", documentId);
     if (error) {
-      toast.error("Dokumentname konnte nicht aktualisiert werden.");
+      notify.error("Dokumentname konnte nicht aktualisiert werden.");
       return;
     }
 
@@ -929,7 +929,7 @@ export function MyWorkCasesWorkspace() {
         .map((doc) => (doc.id === documentId ? { ...doc, title: title.trim() } : doc))
         .sort((a, b) => a.title.localeCompare(b.title, "de", { sensitivity: "base" })),
     });
-    toast.success("Dokumentname aktualisiert.");
+    notify.success("Dokumentname aktualisiert.");
   }, [editableCaseItem, updateEdit]);
 
   const handleDeleteInteractionDocument = useCallback(async (documentId: string) => {
@@ -939,12 +939,12 @@ export function MyWorkCasesWorkspace() {
     await supabase.storage.from("documents").remove([target.filePath]);
     const { error } = await supabase.from("documents").delete().eq("id", documentId);
     if (error) {
-      toast.error("Dokument konnte nicht gelöscht werden.");
+      notify.error("Dokument konnte nicht gelöscht werden.");
       return;
     }
 
     updateEdit({ interactionDocuments: editableCaseItem!.interactionDocuments.filter((doc) => doc.id !== documentId) });
-    toast.success("Dokument gelöscht.");
+    notify.success("Dokument gelöscht.");
   }, [editableCaseItem, updateEdit]);
 
   const handleUpdateInteractionDocumentMeta = useCallback((documentId: string, patch: { shortText?: string | null; documentDate?: string | null }) => {
@@ -957,7 +957,7 @@ export function MyWorkCasesWorkspace() {
   const handleCaseItemSave = async () => {
     if (!detailItemId || !editableCaseItem) return;
     if (editableCaseItem.status === "erledigt" && (!editableCaseItem.completionNote.trim() || !editableCaseItem.completedAt)) {
-      toast.error("Für den Status „Erledigt“ sind Abschlussnotiz und Abgeschlossen am Pflichtfelder.");
+      notify.error("Für den Status „Erledigt“ sind Abschlussnotiz und Abgeschlossen am Pflichtfelder.");
       return;
     }
 
@@ -1001,7 +1001,7 @@ export function MyWorkCasesWorkspace() {
       "Vorgang konnte nicht gespeichert werden.",
     );
     if (!ok) return;
-    toast.success("Vorgang gespeichert.");
+    notify.success("Vorgang gespeichert.");
   };
 
   // --- Render ---
@@ -1203,16 +1203,16 @@ export function MyWorkCasesWorkspace() {
             onMeetingSelected={async (meetingId, meetingTitle) => {
               if (!meetingSelectorItemId) return;
               const { error } = await supabase.from("case_items").update({ meeting_id: meetingId, pending_for_jour_fixe: false }).eq("id", meetingSelectorItemId);
-              if (error) { toast.error("Fehler beim Zuordnen."); return; }
+              if (error) { notify.error("Fehler beim Zuordnen."); return; }
               setCaseItems((prev) => prev.map((i) => i.id === meetingSelectorItemId ? { ...i, meeting_id: meetingId, pending_for_jour_fixe: false } as CaseItem : i));
-              toast.success(`Vorgang dem Meeting "${meetingTitle}" zugeordnet.`);
+              notify.success(`Vorgang dem Meeting "${meetingTitle}" zugeordnet.`);
             }}
             onMarkForNextJourFixe={async () => {
               if (!meetingSelectorItemId) return;
               const { error } = await supabase.from("case_items").update({ pending_for_jour_fixe: true }).eq("id", meetingSelectorItemId);
-              if (error) { toast.error("Fehler beim Vormerken."); return; }
+              if (error) { notify.error("Fehler beim Vormerken."); return; }
               setCaseItems((prev) => prev.map((i) => i.id === meetingSelectorItemId ? { ...i, pending_for_jour_fixe: true } as CaseItem : i));
-              toast.success("Vorgang für Jour Fixe vorgemerkt.");
+              notify.success("Vorgang für Jour Fixe vorgemerkt.");
             }}
             archivedCaseItems={archivedCaseItems.map((item) => ({ id: item.id, title: getItemSubject(item), subtitle: formatDateSafe(item.updated_at, "dd.MM.yyyy HH:mm", "–", { locale: de }), onRestore: () => runAsync(() => handleArchiveCaseItem(item)) }))}
             isItemArchiveOpen={isItemArchiveOpen}

@@ -14,8 +14,8 @@ import {
 } from "@/utils/dashboard/messageGenerator";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
-import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
+import { notify } from "@/lib/notify";
 
 const TIME_SLOT_LABELS: Record<string, string> = {
   morning: "Morgens (6–11)",
@@ -82,7 +82,6 @@ function describeTrigger(msg: DashboardMessage): string {
 
 export function MotivationalMessagesOverview() {
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [variantFilter, setVariantFilter] = useState("all");
   const [timeSlotFilter, setTimeSlotFilter] = useState("all");
@@ -109,11 +108,9 @@ export function MotivationalMessagesOverview() {
         setMessages(parsed ?? defaultMessages);
       } catch (error) {
         debugConsole.error("Error loading motivational messages:", error);
-        toast({
-          title: "Fehler",
-          description: "Motivationssprüche konnten nicht geladen werden.",
-          variant: "destructive",
-        });
+        notify.error("Fehler", {
+          description: "Motivationssprüche konnten nicht geladen werden."
+});
       } finally {
         setIsLoading(false);
       }
@@ -177,14 +174,13 @@ export function MotivationalMessagesOverview() {
         if (insertError) throw insertError;
       }
 
-      toast({ title: "Gespeichert", description: "Motivationssprüche wurden aktualisiert." });
+      notify.success("Gespeichert", { description: "Motivationssprüche wurden aktualisiert." 
+});
     } catch (error) {
       debugConsole.error("Error saving motivational messages:", error);
-      toast({
-        title: "Fehler",
-        description: "Motivationssprüche konnten nicht gespeichert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Motivationssprüche konnten nicht gespeichert werden."
+});
     } finally {
       setIsSaving(false);
     }

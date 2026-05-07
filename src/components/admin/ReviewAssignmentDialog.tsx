@@ -6,13 +6,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { debugConsole } from '@/utils/debugConsole';
 import { createLetterApprovalDecision } from '@/utils/letterWorkflowActions';
 import { LETTER_NOTIFICATION_TYPES } from '@/utils/letterNotificationTypes';
+import { notify } from "@/lib/notify";
 
 interface User {
   user_id: string;
@@ -47,7 +47,6 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
 }) => {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
@@ -86,7 +85,8 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
       setUsers(data?.map((item: Record<string, any>) => ({ user_id: item.user_id, display_name: item.display_name || 'Unbekannt' })) || []);
     } catch (error) {
       debugConsole.error('Error fetching tenant users:', error);
-      toast({ title: "Fehler", description: "Benutzer konnten nicht geladen werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Benutzer konnten nicht geladen werden."
+});
     } finally {
       setLoading(false);
     }
@@ -121,7 +121,8 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
     }
 
     if (selectedUsers.length === 0) {
-      toast({ title: "Keine Benutzer ausgewählt", description: "Bitte wählen Sie mindestens einen Benutzer aus.", variant: "destructive" });
+      notify.error("Keine Benutzer ausgewählt", { description: "Bitte wählen Sie mindestens einen Benutzer aus."
+});
       return;
     }
 
@@ -146,19 +147,22 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
         }
         // Notify reviewers
         await sendNotifications(selectedUsers, LETTER_NOTIFICATION_TYPES.REVIEW_REQUESTED, 'Brief zur Freigabe', `Der Brief "${letterData?.title || 'Unbekannt'}" wurde Ihnen zur Freigabe vorgelegt.`);
-        toast({ title: "Zur Freigabe eingereicht", description: `${selectedUsers.length} Prüfer wurden zugewiesen. Eine Entscheidungsanfrage wurde erstellt.` });
+        notify.success("Zur Freigabe eingereicht", { description: `${selectedUsers.length} Prüfer wurden zugewiesen. Eine Entscheidungsanfrage wurde erstellt.` 
+});
         onReviewAssigned('approval');
       } else {
         // Peer review – no decision, just notify
         await sendNotifications(selectedUsers, LETTER_NOTIFICATION_TYPES.REVIEW_REQUESTED, 'Brief zur Kollegenprüfung', `Der Brief "${letterData?.title || 'Unbekannt'}" wurde Ihnen zur Kollegenprüfung zugewiesen.`);
-        toast({ title: "Kollegenprüfung zugewiesen", description: `${selectedUsers.length} Kollegen wurden zur Prüfung zugewiesen.` });
+        notify.success("Kollegenprüfung zugewiesen", { description: `${selectedUsers.length} Kollegen wurden zur Prüfung zugewiesen.` 
+});
         onReviewAssigned('review');
       }
 
       onClose();
     } catch (error) {
       debugConsole.error('Error saving collaborators:', error);
-      toast({ title: "Fehler", description: "Prüfer konnten nicht zugewiesen werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Prüfer konnten nicht zugewiesen werden."
+});
     } finally {
       setSaving(false);
     }

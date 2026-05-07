@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DragDropContext, Droppable, Draggable, type DropResult, type DraggableProvided } from "@hello-pangea/dnd";
 import { Plus, X, Check, GripVertical, Minus, Edit, Trash2, Layers } from "lucide-react";
+import { notify } from "@/lib/notify";
 
 type TemplateItemType = "item" | "separator" | "system_social_media" | "system_rsvp" | "phase_start";
 
@@ -105,7 +106,6 @@ function groupTemplateItemsByPhase(items: TemplateItem[]): PhaseGroup[] {
 }
 
 export function PlanningTemplateManager() {
-  const { toast } = useToast();
 
   const [planningTemplates, setPlanningTemplates] = useState<PlanningTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<PlanningTemplate | null>(null);
@@ -151,11 +151,13 @@ export function PlanningTemplateManager() {
       setSelectedTemplate((prev) => (prev ? { ...prev, template_items: items } : prev));
 
       if (items === templateItems) {
-        toast({ title: "Gespeichert", description: "Template erfolgreich aktualisiert." });
+        notify.success("Gespeichert", { description: "Template erfolgreich aktualisiert." 
+});
       }
     } catch (error) {
       debugConsole.error(error);
-      toast({ title: "Fehler", description: "Fehler beim Speichern.", variant: "destructive" });
+      notify.error("Fehler", { description: "Fehler beim Speichern."
+});
     }
   };
 
@@ -400,9 +402,11 @@ export function PlanningTemplateManager() {
                     await loadTemplates();
                     setSelectedTemplate({ ...selectedTemplate, name: editingTemplateName.value });
                     setEditingTemplateName(null);
-                    toast({ title: "Gespeichert", description: "Template-Name aktualisiert." });
+                    notify.success("Gespeichert", { description: "Template-Name aktualisiert." 
+});
                   } catch {
-                    toast({ title: "Fehler", description: "Fehler beim Speichern.", variant: "destructive" });
+                    notify.error("Fehler", { description: "Fehler beim Speichern."
+});
                   }
                 }}><Check className="h-3 w-3" /></Button>
                 <Button size="sm" variant="outline" onClick={() => setEditingTemplateName(null)}><X className="h-3 w-3" /></Button>

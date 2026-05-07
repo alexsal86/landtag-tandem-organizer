@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Copy } from "lucide-react";
 import type { SeedReport } from "./TenantProvisioningWizard";
 import { SeedReportView } from "./TenantProvisioningWizard";
+import { notify } from "@/lib/notify";
 
 interface TenantOption {
   id: string;
@@ -24,7 +25,6 @@ interface Props {
 }
 
 export function CloneDataDrawer({ open, onOpenChange, targetTenant, availableSources, onDone }: Props): React.JSX.Element {
-  const { toast } = useToast();
   const [sourceId, setSourceId] = useState<string>("");
   const [running, setRunning] = useState<boolean>(false);
   const [report, setReport] = useState<SeedReport | null>(null);
@@ -51,14 +51,13 @@ export function CloneDataDrawer({ open, onOpenChange, targetTenant, availableSou
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || "Klonen fehlgeschlagen");
       setReport(data.report);
-      toast({ title: "Daten geklont", description: `Konfiguration von Quelle übernommen.` });
+      notify.success("Daten geklont", { description: `Konfiguration von Quelle übernommen.` 
+});
       onDone?.();
     } catch (err) {
-      toast({
-        title: "Fehler",
-        description: err instanceof Error ? err.message : "Klonen fehlgeschlagen",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: err instanceof Error ? err.message : "Klonen fehlgeschlagen"
+});
     } finally {
       setRunning(false);
     }

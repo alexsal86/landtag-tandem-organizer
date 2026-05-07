@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useDistrictDetection } from '@/hooks/useDistrictDetection';
 import { saveAppointmentTopics } from '@/hooks/useAppointmentTopics';
 import type { AppointmentContactRef, AppointmentGuestInput, CreateAppointmentPayload } from '@/components/planning/sharedTypes';
+import { notify } from "@/lib/notify";
 
 const getDefaultStartTime = () => {
   const now = new Date();
@@ -92,7 +93,6 @@ export function useCreateAppointment(open: boolean, onOpenChange: (open: boolean
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [selectedContacts, setSelectedContacts] = useState<ReadonlyArray<AppointmentContactRef>>([]);
   const [appointmentCategories, setAppointmentCategories] = useState<ReadonlyArray<AppointmentCategoryOption>>([]);
@@ -165,7 +165,8 @@ export function useCreateAppointment(open: boolean, onOpenChange: (open: boolean
 
   const onSubmit = async (values: AppointmentFormValues) => {
     if (!user || !currentTenant) {
-      if (!currentTenant) toast({ title: "Fehler", description: "Kein Tenant ausgewählt.", variant: "destructive" });
+      if (!currentTenant) notify.error("Fehler", { description: "Kein Tenant ausgewählt."
+});
       return;
     }
     setLoading(true);
@@ -183,18 +184,23 @@ export function useCreateAppointment(open: boolean, onOpenChange: (open: boolean
         await supabase.from('appointment_guests').insert(appointmentGuests.map((guest) => ({ appointment_id: appointment.id, tenant_id: currentTenant.id, name: guest.name, email: guest.email, status: 'invited' as const, invitation_token: crypto.randomUUID() + '-' + Date.now() })));
         try {
           const { error: invErr } = await supabase.functions.invoke('send-appointment-invitation', { body: { appointmentId: appointment.id, sendToAll: true } });
-          if (invErr) toast({ title: "Warnung", description: "Einladungen konnten nicht versendet werden.", variant: "destructive" });
-          else toast({ title: "Einladungen versendet", description: `Einladungen wurden an ${appointmentGuests.length} Gäste versendet.` });
+          if (invErr) notify.error("Warnung", { description: "Einladungen konnten nicht versendet werden."
+});
+          else notify.success("Einladungen versendet", { description: `Einladungen wurden an ${appointmentGuests.length} Gäste versendet.` 
+});
         } catch (invitationError: unknown) {
-          toast({ title: "Warnung", description: parseUnknownError(invitationError), variant: "destructive" });
+          notify.error("Warnung", { description: parseUnknownError(invitationError)
+});
         }
       }
-      toast({ title: "Termin erstellt", description: "Der Termin wurde erfolgreich gespeichert." });
+      notify.success("Termin erstellt", { description: "Der Termin wurde erfolgreich gespeichert." 
+});
       await queryClient.invalidateQueries({ queryKey: ["calendar-data"] });
       onOpenChange(false);
       navigate("/calendar");
     } catch (error: unknown) {
-      toast({ title: "Fehler beim Erstellen", description: parseUnknownError(error), variant: "destructive" });
+      notify.error("Fehler beim Erstellen", { description: parseUnknownError(error)
+});
     } finally { setLoading(false); }
   };
 

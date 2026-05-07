@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/hooks/useTenant';
+import { notify } from "@/lib/notify";
 
 export interface GalleryImage {
   name: string;
@@ -11,7 +11,6 @@ export interface GalleryImage {
 }
 
 export const useCanvasGallery = () => {
-  const { toast } = useToast();
   const { currentTenant } = useTenant();
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
   const [galleryLoading, setGalleryLoading] = useState(false);
@@ -69,7 +68,8 @@ export const useCanvasGallery = () => {
 
   const uploadImage = async (file: File): Promise<{ publicUrl: string; storagePath: string; blobUrl: string } | null> => {
     try {
-      if (!currentTenant?.id) { toast({ title: 'Fehler', description: 'Kein Mandant gefunden', variant: 'destructive' }); return null; }
+      if (!currentTenant?.id) { notify.error('Fehler', { description: 'Kein Mandant gefunden'
+}); return null; }
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}.${fileExt}`;
       const filePath = `${currentTenant.id}/header-images/${fileName}`;
@@ -82,7 +82,8 @@ export const useCanvasGallery = () => {
       return { publicUrl, storagePath: filePath, blobUrl };
     } catch (error) {
       debugConsole.error('Upload error:', error);
-      toast({ title: 'Fehler', description: 'Bild konnte nicht hochgeladen werden', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Bild konnte nicht hochgeladen werden'
+});
       return null;
     }
   };
@@ -94,7 +95,7 @@ export const useCanvasGallery = () => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       await uploadImage(file);
-      toast({ title: 'Bild hochgeladen' });
+      notify.success('Bild hochgeladen');
     };
     input.click();
   };
@@ -102,13 +103,15 @@ export const useCanvasGallery = () => {
   const deleteGalleryImage = async (galleryImg: GalleryImage) => {
     try {
       const { error } = await supabase.storage.from('letter-assets').remove([galleryImg.path]);
-      if (error) { toast({ title: 'Fehler', description: `Löschen fehlgeschlagen: ${error.message}`, variant: 'destructive' }); return; }
+      if (error) { notify.error('Fehler', { description: `Löschen fehlgeschlagen: ${error.message}`
+}); return; }
       URL.revokeObjectURL(galleryImg.blobUrl);
       blobUrlMapRef.current.delete(galleryImg.path);
       await loadGalleryImages();
-      toast({ title: 'Bild gelöscht' });
+      notify.success('Bild gelöscht');
     } catch (error: unknown) {
-      toast({ title: 'Fehler', description: `Bild konnte nicht gelöscht werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`, variant: 'destructive' });
+      notify.error('Fehler', { description: `Bild konnte nicht gelöscht werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
+});
     }
   };
 

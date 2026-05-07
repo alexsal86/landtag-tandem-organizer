@@ -12,8 +12,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 import type { NotificationType } from '@/hooks/useNotifications';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
-
+import { notify } from "@/lib/notify";
 interface NotificationTypeSettings {
   id: string;
   notification_type_id: string;
@@ -186,7 +185,6 @@ const CategorySection = ({
 
 export const NotificationSettings = (): JSX.Element => {
   const { user } = useAuth();
-  const { toast } = useToast();
   const { pushSupported, pushPermission, requestPushPermission, subscribeToPush } = useNotifications();
 
   const [settings, setSettings] = useState<NotificationTypeSettings[]>([]);
@@ -280,11 +278,9 @@ export const NotificationSettings = (): JSX.Element => {
         }
       } catch (error: unknown) {
         debugConsole.error('Error loading notification settings:', error);
-        toast({
-          title: 'Fehler',
-          description: 'Benachrichtigungseinstellungen konnten nicht geladen werden.',
-          variant: 'destructive',
-        });
+        notify.error('Fehler', {
+          description: 'Benachrichtigungseinstellungen konnten nicht geladen werden.'
+});
       }
     };
 
@@ -364,11 +360,9 @@ export const NotificationSettings = (): JSX.Element => {
     } catch (error: unknown) {
       setSettings(previousSettings);
       debugConsole.error('Error updating setting:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Einstellung konnte nicht gespeichert werden.',
-        variant: 'destructive',
-      });
+      notify.error('Fehler', {
+        description: 'Einstellung konnte nicht gespeichert werden.'
+});
     }
   }, [settings, toast, user]);
 
@@ -413,11 +407,9 @@ export const NotificationSettings = (): JSX.Element => {
     } catch (error: unknown) {
       setSettings(previousSettings);
       debugConsole.error('Error updating category settings:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Einstellungen konnten nicht gespeichert werden.',
-        variant: 'destructive',
-      });
+      notify.error('Fehler', {
+        description: 'Einstellungen konnten nicht gespeichert werden.'
+});
     }
   }, [settings, toast, user]);
 
@@ -454,17 +446,14 @@ export const NotificationSettings = (): JSX.Element => {
         })),
       );
 
-      toast({
-        title: 'Gespeichert',
-        description: 'Ruhezeiten wurden erfolgreich gespeichert.',
-      });
+      notify.success('Gespeichert', {
+        description: 'Ruhezeiten wurden erfolgreich gespeichert.'
+});
     } catch (error: unknown) {
       debugConsole.error('Error updating quiet hours:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Ruhezeiten konnten nicht gespeichert werden.',
-        variant: 'destructive',
-      });
+      notify.error('Fehler', {
+        description: 'Ruhezeiten konnten nicht gespeichert werden.'
+});
     } finally {
       setLoading(false);
     }

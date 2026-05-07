@@ -23,8 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MessageSquare, X, Check, Reply, Trash2, MessageSquarePlus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-
+import { notify } from "@/lib/notify";
 interface Comment {
   id: string;
   text: string;
@@ -342,7 +341,6 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
   const [showSidebar, setShowSidebar] = useState(false);
   const [highlightedComment, setHighlightedComment] = useState<string | null>(null);
   const [savedSelection, setSavedSelection] = useState<SavedSelection | null>(null);
-  const { toast } = useToast();
 
   const loadComments = async () => {
     if (!documentId) return;
@@ -420,11 +418,9 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
       highlightExistingComments(commentsWithProfiles);
     } catch (error) {
       debugConsole.error('Error loading comments:', error);
-      toast({
-        title: "Fehler",
-        description: "Kommentare konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Kommentare konnten nicht geladen werden."
+});
     }
   };
 
@@ -533,10 +529,9 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
         setTextLength(text.length);
         setShowDialog(true);
       } else {
-        toast({
-          title: "Hinweis",
-          description: "Bitte markieren Sie zuerst einen Text für Ihren Kommentar.",
-        });
+        notify.success("Hinweis", {
+          description: "Bitte markieren Sie zuerst einen Text für Ihren Kommentar."
+});
       }
     });
   };
@@ -656,17 +651,14 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
       // Reload comments to get proper author info
       loadComments();
 
-      toast({
-        title: "Comment added",
-        description: "Your comment has been saved successfully.",
-      });
+      notify.success("Comment added", {
+        description: "Your comment has been saved successfully."
+});
     } catch (error) {
       debugConsole.error('Error saving comment:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save comment. Please try again.",
-        variant: "destructive",
-      });
+      notify.error("Error", {
+        description: "Failed to save comment. Please try again."
+});
     }
   };
 
@@ -687,17 +679,14 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
         )
       );
 
-      toast({
-        title: "Comment resolved",
-        description: "The comment has been marked as resolved.",
-      });
+      notify.success("Comment resolved", {
+        description: "The comment has been marked as resolved."
+});
     } catch (error) {
       debugConsole.error('Error resolving comment:', error);
-      toast({
-        title: "Error",
-        description: "Failed to resolve comment. Please try again.",
-        variant: "destructive",
-      });
+      notify.error("Error", {
+        description: "Failed to resolve comment. Please try again."
+});
     }
   };
 
@@ -722,17 +711,14 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
       // Reload comments to show the new reply
       loadComments();
 
-      toast({
-        title: "Antwort hinzugefügt",
-        description: "Ihre Antwort wurde gespeichert.",
-      });
+      notify.success("Antwort hinzugefügt", {
+        description: "Ihre Antwort wurde gespeichert."
+});
     } catch (error) {
       debugConsole.error('Error saving reply:', error);
-      toast({
-        title: "Fehler",
-        description: "Antwort konnte nicht gespeichert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Antwort konnte nicht gespeichert werden."
+});
     }
   };
 
@@ -761,17 +747,14 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
 
       setComments(prev => prev.filter(comment => comment.id !== commentId));
 
-      toast({
-        title: "Comment deleted",
-        description: "The comment has been removed.",
-      });
+      notify.success("Comment deleted", {
+        description: "The comment has been removed."
+});
     } catch (error) {
       debugConsole.error('Error deleting comment:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete comment. Please try again.",
-        variant: "destructive",
-      });
+      notify.error("Error", {
+        description: "Failed to delete comment. Please try again."
+});
     }
   };
 

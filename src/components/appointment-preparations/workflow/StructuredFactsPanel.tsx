@@ -9,8 +9,8 @@ import type { AppointmentPreparation } from "@/hooks/useAppointmentPreparation";
 import { splitPreparationTextToList } from "@/hooks/useAppointmentPreparation";
 import { useFacts, useUpsertFact, useIncrementFactUsage } from "@/features/facts/hooks/useFacts";
 import { FactsLibraryPicker } from "@/features/facts/components/FactsLibraryPicker";
-import { toast } from "sonner";
 import type { FactRow } from "@/features/facts/types";
+import { notify } from "@/lib/notify";
 
 type StructuredFact = NonNullable<AppointmentPreparation['preparation_data']['structured_facts']>[number];
 type LinkType = StructuredFact['link_type'];
@@ -100,12 +100,12 @@ export function StructuredFactsPanel({ preparation, onUpdate }: Props) {
     await save([...facts, newEntry]);
     incrementUsage.mutate(fact.id);
     setPickerOpen(false);
-    toast.success("Fakt aus Bibliothek übernommen");
+    notify.success("Fakt aus Bibliothek übernommen");
   };
 
   const handlePromoteToLibrary = async (entry: StructuredFact) => {
     if (!entry.text.trim()) {
-      toast.error("Fakt-Text ist leer");
+      notify.error("Fakt-Text ist leer");
       return;
     }
     const factId = await upsertFact.mutateAsync({
@@ -118,7 +118,7 @@ export function StructuredFactsPanel({ preparation, onUpdate }: Props) {
         f.id === entry.id ? { ...f, fact_id: factId, text: '', source: undefined } : f,
       ),
     );
-    toast.success("In Bibliothek übernommen");
+    notify.success("In Bibliothek übernommen");
   };
 
   // For grouping/filtering we use resolved text

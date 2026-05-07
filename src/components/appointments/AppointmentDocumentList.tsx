@@ -3,8 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Download, Trash2, File } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import { debugConsole } from '@/utils/debugConsole';
+import { notify } from "@/lib/notify";
 
 interface AppointmentDocument {
   id: string;
@@ -26,7 +26,6 @@ export function AppointmentDocumentList({
   onDocumentDeleted, 
   canDelete = true 
 }: AppointmentDocumentListProps) {
-  const { toast } = useToast();
 
   const downloadFile = async (document: AppointmentDocument) => {
     try {
@@ -45,17 +44,14 @@ export function AppointmentDocumentList({
       window.document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
 
-      toast({
-        title: "Download gestartet",
-        description: `${document.file_name} wird heruntergeladen.`,
-      });
+      notify.success("Download gestartet", {
+        description: `${document.file_name} wird heruntergeladen.`
+});
     } catch (error) {
       debugConsole.error('Download error:', error);
-      toast({
-        title: "Download fehlgeschlagen",
-        description: "Die Datei konnte nicht heruntergeladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Download fehlgeschlagen", {
+        description: "Die Datei konnte nicht heruntergeladen werden."
+});
     }
   };
 
@@ -78,17 +74,14 @@ export function AppointmentDocumentList({
 
       onDocumentDeleted(document.id);
 
-      toast({
-        title: "Datei gelöscht",
-        description: `${document.file_name} wurde gelöscht.`,
-      });
+      notify.success("Datei gelöscht", {
+        description: `${document.file_name} wurde gelöscht.`
+});
     } catch (error) {
       debugConsole.error('Delete error:', error);
-      toast({
-        title: "Löschung fehlgeschlagen",
-        description: "Die Datei konnte nicht gelöscht werden.",
-        variant: "destructive",
-      });
+      notify.error("Löschung fehlgeschlagen", {
+        description: "Die Datei konnte nicht gelöscht werden."
+});
     }
   };
 

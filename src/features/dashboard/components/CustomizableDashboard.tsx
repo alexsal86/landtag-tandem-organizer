@@ -23,7 +23,6 @@ import { DashboardCoverImage } from '@/components/dashboard/DashboardCoverImage'
 import { QuickActionsWidget } from '@/components/widgets/QuickActionsWidget';
 import { NewsWidget } from '@/components/widgets/NewsWidget';
 import { WidgetQuickAccess } from '@/components/dashboard/WidgetQuickAccess';
-import { toast } from 'sonner';
 import {
   Settings,
   Save,
@@ -49,6 +48,7 @@ import {
 // CSS imports for react-grid-layout
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
+import { notify } from "@/lib/notify";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -139,16 +139,16 @@ export const CustomizableDashboard: React.FC = () => {
   const handleSaveLayout = async (name?: string) => {
     try {
       await saveCurrentLayout(name);
-      toast.success('Layout gespeichert');
+      notify.success('Layout gespeichert');
       setShowSaveDialog(false);
     } catch (error) {
-      toast.error('Fehler beim Speichern des Layouts');
+      notify.error('Fehler beim Speichern des Layouts');
     }
   };
 
   const handleSaveAsNew = async () => {
     if (!newLayoutName.trim()) {
-      toast.error('Bitte geben Sie einen Namen ein');
+      notify.error('Bitte geben Sie einen Namen ein');
       return;
     }
     await handleSaveLayout(newLayoutName.trim());
@@ -157,14 +157,14 @@ export const CustomizableDashboard: React.FC = () => {
 
   const handleDeleteLayout = async (layoutId: string) => {
     if (layouts.length <= 1) {
-      toast.error('Das letzte Layout kann nicht gelöscht werden');
+      notify.error('Das letzte Layout kann nicht gelöscht werden');
       return;
     }
     try {
       await deleteLayout(layoutId);
-      toast.success('Layout gelöscht');
+      notify.success('Layout gelöscht');
     } catch (error) {
-      toast.error('Fehler beim Löschen des Layouts');
+      notify.error('Fehler beim Löschen des Layouts');
     }
   };
 
@@ -195,7 +195,7 @@ export const CustomizableDashboard: React.FC = () => {
     const widgetInfo = availableWidgets.find(w => w.type === widgetType);
     if (!widgetInfo) {
       debugConsole.error('❌ Widget type not found:', widgetType);
-      toast.error('Widget-Typ nicht gefunden');
+      notify.error('Widget-Typ nicht gefunden');
       return;
     }
 

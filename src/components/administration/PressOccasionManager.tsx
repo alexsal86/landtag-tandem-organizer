@@ -12,7 +12,6 @@ import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { debugConsole } from '@/utils/debugConsole';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
-import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { loadPressTemplates, type PressTemplateConfig } from '@/components/press/pressTemplateConfig';
 
@@ -43,6 +42,7 @@ const ICON_OPTIONS = [
 ];
 
 import { PALETTE_PRESETS, getPaletteSolidClass } from "@/lib/paletteStyles";
+import { notify } from "@/lib/notify";
 
 const COLOR_OPTIONS = PALETTE_PRESETS
   .filter((p) => ['blue','purple','amber','rose','teal','indigo','green','orange','gray'].includes(p.key))
@@ -70,7 +70,6 @@ const makeId = () => crypto.randomUUID();
 
 export function PressOccasionManager() {
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const [occasions, setOccasions] = useState<PressOccasion[]>([]);
   const [templates, setTemplates] = useState<PressTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -151,7 +150,8 @@ export function PressOccasionManager() {
       .maybeSingle();
 
     if (existingError) {
-      toast({ title: 'Fehler', description: existingError.message, variant: 'destructive' });
+      notify.error('Fehler', { description: existingError.message
+});
       return false;
     }
 
@@ -161,7 +161,8 @@ export function PressOccasionManager() {
 
     const { error } = await query;
     if (error) {
-      toast({ title: 'Fehler', description: error.message, variant: 'destructive' });
+      notify.error('Fehler', { description: error.message
+});
       return false;
     }
 
@@ -185,7 +186,7 @@ export function PressOccasionManager() {
     }));
     const ok = await persistOccasions(seeded);
     if (ok) {
-      toast({ title: 'Standard-Anlässe erstellt' });
+      notify.success('Standard-Anlässe erstellt');
       setLoading(false);
     }
   };
@@ -245,7 +246,7 @@ export function PressOccasionManager() {
     const ok = await persistOccasions(next);
     if (!ok) return;
 
-    toast({ title: editingId ? 'Anlass aktualisiert' : 'Anlass erstellt' });
+    notify.success(editingId ? 'Anlass aktualisiert' : 'Anlass erstellt');
     setEditingId(null);
     setShowCreate(false);
   };
@@ -253,7 +254,7 @@ export function PressOccasionManager() {
   const handleDelete = async () => {
     if (!deletingId) return;
     const ok = await persistOccasions(occasions.filter((o) => o.id !== deletingId));
-    if (ok) toast({ title: 'Anlass gelöscht' });
+    if (ok) notify.success('Anlass gelöscht');
     setDeletingId(null);
   };
 

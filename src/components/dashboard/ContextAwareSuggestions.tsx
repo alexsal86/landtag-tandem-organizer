@@ -14,8 +14,7 @@ import {
 } from 'lucide-react';
 import { DashboardLayout, DashboardWidget } from '@/types/dashboardWidgets';
 import type { DashboardWidgetSuggestion } from '@/types/dashboard';
-import { toast } from 'sonner';
-
+import { notify } from "@/lib/notify";
 type Suggestion = DashboardWidgetSuggestion;
 
 interface ContextAwareSuggestionsProps {
@@ -228,7 +227,7 @@ export function ContextAwareSuggestions({
   const applySuggestion = (suggestion: Suggestion) => {
     onSuggestionApply(suggestion);
     dismissSuggestion(suggestion.id);
-    toast.success(`Applied: ${suggestion.title}`);
+    notify.success(`Applied: ${suggestion.title}`);
   };
 
   const dismissSuggestion = (suggestionId: string) => {

@@ -9,9 +9,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ArrowLeft, Save, RotateCcw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
-import { useToast } from '@/hooks/use-toast';
 import { DEFAULT_DIN5008_LAYOUT, isLetterLayoutSettings, type LetterLayoutSettings } from '@/types/letterLayout';
 import type { Database } from '@/integrations/supabase/types';
+import { notify } from "@/lib/notify";
 
 interface LetterTemplateSettingsProps {
   onBack: () => void;
@@ -125,7 +125,6 @@ const setNestedValue = (obj: LetterLayoutSettings, path: Din5008FieldPath, value
 
 export const LetterTemplateSettings: React.FC<LetterTemplateSettingsProps> = ({ onBack }) => {
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const [variableDefaults, setVariableDefaults] = useState<Record<string, string>>({});
   const [din5008Defaults, setDin5008Defaults] = useState<LetterLayoutSettings>(DEFAULT_DIN5008_LAYOUT);
   const [saving, setSaving] = useState(false);
@@ -210,10 +209,11 @@ export const LetterTemplateSettings: React.FC<LetterTemplateSettingsProps> = ({ 
         if (error) throw error;
       }
 
-      toast({ title: 'Einstellungen gespeichert' });
+      notify.success('Einstellungen gespeichert');
     } catch (error) {
       debugConsole.error('Error saving settings:', error);
-      toast({ title: 'Fehler', description: 'Einstellungen konnten nicht gespeichert werden.', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Einstellungen konnten nicht gespeichert werden.'
+});
     } finally {
       setSaving(false);
     }

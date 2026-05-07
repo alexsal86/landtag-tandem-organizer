@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { toast } from 'sonner';
 import { useAuth } from './useAuth';
 import { useTenant } from './useTenant';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,6 +13,7 @@ import type {
   WidgetSize,
 } from '@/types/dashboardWidgets';
 import { isDashboardWidgetType } from '@/types/dashboardWidgets';
+import { notify } from "@/lib/notify";
 
 export type { DashboardLayout, DashboardWidget, DashboardWidgetType, WidgetConfigMap, WidgetSize } from '@/types/dashboardWidgets';
 
@@ -344,7 +344,7 @@ export function useDashboardLayout() {
       try {
         await saveCurrentLayout();
       } catch (error) {
-        toast.error('Änderungen konnten nicht gespeichert werden - lokal gespeichert');
+        notify.error('Änderungen konnten nicht gespeichert werden - lokal gespeichert');
       }
     }, 1000);
   };
@@ -369,7 +369,7 @@ export function useDashboardLayout() {
       try {
         await saveCurrentLayout();
       } catch (error) {
-        toast.error('Änderungen konnten nicht gespeichert werden - lokal gespeichert');
+        notify.error('Änderungen konnten nicht gespeichert werden - lokal gespeichert');
       }
     }, 1000);
   };
@@ -378,19 +378,19 @@ export function useDashboardLayout() {
   const saveCurrentLayout = async (name?: string) => {
     if (!currentLayout) {
       debugConsole.log('❌ No currentLayout available');
-      toast.error('Kein Layout zum Speichern verfügbar');
+      notify.error('Kein Layout zum Speichern verfügbar');
       return false;
     }
 
     if (!user?.id) {
       
-      toast.error('Benutzer nicht angemeldet oder User-ID fehlt');
+      notify.error('Benutzer nicht angemeldet oder User-ID fehlt');
       return false;
     }
 
     if (!currentTenant?.id) {
       
-      toast.error('Kein Mandant ausgewählt');
+      notify.error('Kein Mandant ausgewählt');
       return false;
     }
 
@@ -472,7 +472,7 @@ export function useDashboardLayout() {
       // Save to localStorage as backup
       localStorage.setItem(`dashboard-layout-${user.id}`, JSON.stringify(layoutToSave));
       
-      toast.success('Layout erfolgreich gespeichert');
+      notify.success('Layout erfolgreich gespeichert');
       return true;
       
     } catch (error) {
@@ -481,9 +481,9 @@ export function useDashboardLayout() {
       // Fallback: save to localStorage only
       try {
         localStorage.setItem(`dashboard-layout-${user.id}`, JSON.stringify(currentLayout));
-        toast.error('Layout nur lokal gespeichert - Server-Fehler');
+        notify.error('Layout nur lokal gespeichert - Server-Fehler');
       } catch (localError) {
-        toast.error('Speichern komplett fehlgeschlagen');
+        notify.error('Speichern komplett fehlgeschlagen');
       }
       return false;
     }
@@ -506,19 +506,19 @@ export function useDashboardLayout() {
       setCurrentLayout(defaultLayout);
     }
     
-    toast.success('Layout gelöscht');
+    notify.success('Layout gelöscht');
   };
 
   // Add new widget with position parameter
   const addWidget = (type: string, position?: { x: number; y: number }) => {
     if (!currentLayout) {
-      toast.error('Layout nicht verfügbar');
+      notify.error('Layout nicht verfügbar');
       return;
     }
 
     // Validiere Type
     if (!isDashboardWidgetType(type)) {
-      toast.error(`Ungültiger Widget-Typ: ${type}`);
+      notify.error(`Ungültiger Widget-Typ: ${type}`);
       return;
     }
     
@@ -588,7 +588,7 @@ export function useDashboardLayout() {
   useEffect(() => {
     if (pendingWidgetType && currentLayout) {
       
-      toast.success(`${pendingWidgetType} Widget hinzugefügt`);
+      notify.success(`${pendingWidgetType} Widget hinzugefügt`);
       setPendingWidgetType(null);
     }
   }, [pendingWidgetType, currentLayout]);

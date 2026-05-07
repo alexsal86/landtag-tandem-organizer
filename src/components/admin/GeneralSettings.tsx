@@ -10,6 +10,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { debugConsole } from "@/utils/debugConsole";
 import { useOnboardingGate } from "@/hooks/useOnboardingGate";
 import { OnboardingChecklistCard } from "@/components/onboarding/OnboardingChecklistCard";
+import { notify } from "@/lib/notify";
 
 interface AppSettings {
   app_name: string;
@@ -18,7 +19,6 @@ interface AppSettings {
 }
 
 export function GeneralSettings() {
-  const { toast } = useToast();
   const { currentTenant } = useTenant();
   const [settings, setSettings] = useState<AppSettings>({
     app_name: "LandtagsOS",
@@ -84,11 +84,9 @@ export function GeneralSettings() {
         });
       } catch (error) {
         debugConsole.error('Error loading settings:', error);
-        toast({
-          title: "Fehler",
-          description: "Einstellungen konnten nicht geladen werden.",
-          variant: "destructive"
-        });
+        notify.error("Fehler", {
+          description: "Einstellungen konnten nicht geladen werden."
+});
       } finally {
         setLoading(false);
       }
@@ -108,20 +106,16 @@ export function GeneralSettings() {
     const hasAllowedExtension = allowedExtensions.includes(fileExtension);
 
     if (!hasAllowedType && !hasAllowedExtension) {
-      toast({
-        title: "Fehler",
-        description: "Bitte wählen Sie eine Bilddatei aus (JPG, PNG, GIF, SVG, WebP).",
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Bitte wählen Sie eine Bilddatei aus (JPG, PNG, GIF, SVG, WebP)."
+});
       return;
     }
 
     if (file.size > 2 * 1024 * 1024) {
-      toast({
-        title: "Fehler", 
-        description: "Die Datei ist zu groß. Maximal 2MB erlaubt.",
-        variant: "destructive"
-      });
+      notify.error("Fehler", { 
+        description: "Die Datei ist zu groß. Maximal 2MB erlaubt."
+});
       return;
     }
 
@@ -149,17 +143,15 @@ export function GeneralSettings() {
       setLogoCacheBuster(Date.now());
       setSettings(prev => ({ ...prev, app_logo_url: urlData.publicUrl }));
       
-      toast({
-        title: "Erfolgreich",
+      notify.success("Erfolgreich", {
         description: "Logo wurde hochgeladen."
-      });
+      
+});
     } catch (error: unknown) {
       debugConsole.error('Error uploading file:', error);
-      toast({
-        title: "Fehler",
-        description: `Logo konnte nicht hochgeladen werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: `Logo konnte nicht hochgeladen werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
+});
     } finally {
       setUploading(false);
     }
@@ -176,11 +168,9 @@ export function GeneralSettings() {
 
   const saveSettings = async () => {
     if (!currentTenant?.id) {
-      toast({
-        title: "Fehler",
-        description: "Kein Mandant ausgewählt.",
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Kein Mandant ausgewählt."
+});
       return;
     }
 
@@ -198,21 +188,19 @@ export function GeneralSettings() {
 
       if (error) throw error;
 
-      toast({
-        title: "Gespeichert",
+      notify.success("Gespeichert", {
         description: "Einstellungen wurden erfolgreich gespeichert."
-      });
+      
+});
 
       setTimeout(() => {
         window.location.reload();
       }, 1000);
     } catch (error) {
       debugConsole.error('Error saving settings:', error);
-      toast({
-        title: "Fehler", 
-        description: "Einstellungen konnten nicht gespeichert werden.",
-        variant: "destructive"
-      });
+      notify.error("Fehler", { 
+        description: "Einstellungen konnten nicht gespeichert werden."
+});
     } finally {
       setSaving(false);
     }
@@ -312,7 +300,6 @@ export function GeneralSettings() {
 
 function OnboardingResetCard(): React.JSX.Element {
   const { reopen } = useOnboardingGate();
-  const { toast } = useToast();
   return (
     <Card>
       <CardHeader>
@@ -326,7 +313,7 @@ function OnboardingResetCard(): React.JSX.Element {
           variant="outline"
           onClick={async () => {
             await reopen();
-            toast({ title: "Einführung wird erneut angezeigt" });
+            notify.success("Einführung wird erneut angezeigt");
           }}
         >
           Einführung erneut starten

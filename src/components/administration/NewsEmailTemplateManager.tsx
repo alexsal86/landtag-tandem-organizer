@@ -6,9 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { Save, RotateCcw, Eye, Mail } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { notify } from "@/lib/notify";
 
 interface NewsEmailTemplate {
   id: string;
@@ -68,7 +68,7 @@ export const NewsEmailTemplateManager: React.FC = () => {
       }
     } catch (error) {
       debugConsole.error('Error loading template:', error);
-      toast.error('Fehler beim Laden der Vorlage');
+      notify.error('Fehler beim Laden der Vorlage');
     } finally {
       setLoading(false);
     }
@@ -123,10 +123,10 @@ export const NewsEmailTemplateManager: React.FC = () => {
         if (data) setTemplate(data);
       }
 
-      toast.success('Vorlage erfolgreich gespeichert');
+      notify.success('Vorlage erfolgreich gespeichert');
     } catch (error) {
       debugConsole.error('Error saving template:', error);
-      toast.error('Fehler beim Speichern der Vorlage');
+      notify.error('Fehler beim Speichern der Vorlage');
     } finally {
       setSaving(false);
     }

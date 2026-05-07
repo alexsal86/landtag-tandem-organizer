@@ -14,6 +14,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useLoginCustomization } from "@/hooks/useLoginCustomization";
 import { logAuditEvent, AuditActions } from "@/hooks/useAuditLog";
 import { useFavicon } from "@/hooks/useFavicon";
+import { notify } from "@/lib/notify";
 
 type AuthError = { message: string };
 type MFAFactor = { id?: string; status?: string };
@@ -44,7 +45,6 @@ const Auth = (): React.JSX.Element => {
   const [mfaCode, setMfaCode] = useState<string>("");
   const [factorId, setFactorId] = useState<string>("");
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { customization, isLoading: customLoading } = useLoginCustomization();
 
   useFavicon(customization.logo_url ?? undefined);
@@ -99,10 +99,9 @@ const Auth = (): React.JSX.Element => {
       email,
       details: { display_name: displayName },
     });
-    toast({
-      title: "Registrierung erfolgreich",
-      description: "Bitte überprüfen Sie Ihre E-Mail für den Bestätigungslink.",
-    });
+    notify.success("Registrierung erfolgreich", {
+      description: "Bitte überprüfen Sie Ihre E-Mail für den Bestätigungslink."
+});
   };
 
   const handleSignIn = async (e: FormEvent<HTMLFormElement>): Promise<void> => {

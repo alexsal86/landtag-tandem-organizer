@@ -6,12 +6,12 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { debugConsole } from '@/utils/debugConsole';
 import { EmptyState, LoadingState } from '@/components/ui-patterns';
+import { notify } from "@/lib/notify";
 
 interface CallLog {
   id: string;
@@ -108,7 +108,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
       setCallLogs((data || []) as CallLog[]);
     } catch (error) {
       debugConsole.error('Error loading call logs:', error);
-      toast.error('Fehler beim Laden der Anrufliste');
+      notify.error('Fehler beim Laden der Anrufliste');
     } finally {
       setLoading(false);
     }
@@ -263,10 +263,10 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
 
       await loadCallLogs();
       resetForm();
-      toast.success('Anruf protokolliert');
+      notify.success('Anruf protokolliert');
     } catch (error) {
       debugConsole.error('Error creating call log:', error);
-      toast.error('Fehler beim Protokollieren des Anrufs');
+      notify.error('Fehler beim Protokollieren des Anrufs');
     }
   };
 
@@ -280,10 +280,10 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
       if (error) throw error;
 
       await loadCallLogs();
-      toast.success('Anruf aus Liste entfernt');
+      notify.success('Anruf aus Liste entfernt');
     } catch (error) {
       debugConsole.error('Error deleting call log:', error);
-      toast.error('Fehler beim Entfernen des Anrufs');
+      notify.error('Fehler beim Entfernen des Anrufs');
     }
   };
 
@@ -332,10 +332,10 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
       }
 
       await loadCallLogs();
-      toast.success('Follow-up abgeschlossen');
+      notify.success('Follow-up abgeschlossen');
     } catch (error) {
       debugConsole.error('Error marking follow-up complete:', error);
-      toast.error('Fehler beim Abschließen des Follow-ups');
+      notify.error('Fehler beim Abschließen des Follow-ups');
     }
   };
 
@@ -463,10 +463,10 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
       if (error) throw error;
 
       setContacts(prev => [...prev, { id: data.id, name: data.name, phone: data.phone, email: data.email }]);
-      toast.success('Kontakt gespeichert');
+      notify.success('Kontakt gespeichert');
     } catch (error) {
       debugConsole.error('Error saving contact:', error);
-      toast.error('Fehler beim Speichern des Kontakts');
+      notify.error('Fehler beim Speichern des Kontakts');
     }
   };
 

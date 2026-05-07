@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
-import { useToast } from "@/hooks/use-toast";
 import { FileText, Upload, Download, Trash2, X, Edit, Plus, FolderOpen } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -12,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { Database } from '@/integrations/supabase/types';
 import type { LetterAttachmentRecord } from '@/types/letterLayout';
+import { notify } from "@/lib/notify";
 
 type Attachment = LetterAttachmentRecord;
 type LinkedDocument = Database['public']['Tables']['documents']['Row'];
@@ -30,7 +30,6 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
   readonly = false
 }) => {
   const { user } = useAuth();
-  const { toast } = useToast();
   
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -56,11 +55,9 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
       if (error) throw error;
       setDocuments(data || []);
     } catch (error: unknown) {
-      toast({
-        title: "Fehler",
-        description: "Dokumente konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Dokumente konnten nicht geladen werden."
+});
     }
   };
 
@@ -84,11 +81,9 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
         
         // File size limit (10MB)
         if (file.size > 10 * 1024 * 1024) {
-          toast({
-            title: "Datei zu groß",
-            description: `${file.name} ist größer als 10MB und wurde übersprungen.`,
-            variant: "destructive",
-          });
+          notify.error("Datei zu groß", {
+            description: `${file.name} ist größer als 10MB und wurde übersprungen.`
+});
           continue;
         }
 
@@ -101,11 +96,9 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
           .upload(filePath, file);
 
         if (uploadError) {
-          toast({
-            title: "Upload-Fehler",
-            description: `${file.name} konnte nicht hochgeladen werden: ${uploadError.message}`,
-            variant: "destructive",
-          });
+          notify.error("Upload-Fehler", {
+            description: `${file.name} konnte nicht hochgeladen werden: ${uploadError.message}`
+});
           continue;
         }
 
@@ -126,11 +119,9 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
         if (insertError) {
           // Clean up uploaded file
           await supabase.storage.from('documents').remove([filePath]);
-          toast({
-            title: "Datenbankfehler",
-            description: `${file.name} konnte nicht gespeichert werden: ${insertError.message}`,
-            variant: "destructive",
-          });
+          notify.error("Datenbankfehler", {
+            description: `${file.name} konnte nicht gespeichert werden: ${insertError.message}`
+});
           continue;
         }
         
@@ -138,16 +129,13 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
       }
 
       onAttachmentUpdate(newAttachments);
-      toast({
-        title: "Upload erfolgreich",
-        description: "Alle Dateien wurden erfolgreich hochgeladen.",
-      });
+      notify.success("Upload erfolgreich", {
+        description: "Alle Dateien wurden erfolgreich hochgeladen."
+});
     } catch (error) {
-      toast({
-        title: "Upload-Fehler",
-        description: "Ein unerwarteter Fehler ist aufgetreten.",
-        variant: "destructive",
-      });
+      notify.error("Upload-Fehler", {
+        description: "Ein unerwarteter Fehler ist aufgetreten."
+});
     } finally {
       setUploading(false);
     }
@@ -191,11 +179,9 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (error) {
-      toast({
-        title: "Download-Fehler",
-        description: "Die Datei konnte nicht heruntergeladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Download-Fehler", {
+        description: "Die Datei konnte nicht heruntergeladen werden."
+});
     }
   };
 
@@ -223,16 +209,13 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
       const updatedAttachments = attachments.filter(att => att.id !== attachment.id);
       onAttachmentUpdate(updatedAttachments);
       
-      toast({
-        title: "Datei gelöscht",
-        description: `${attachment.file_name} wurde erfolgreich gelöscht.`,
-      });
+      notify.success("Datei gelöscht", {
+        description: `${attachment.file_name} wurde erfolgreich gelöscht.`
+});
     } catch (error: unknown) {
-      toast({
-        title: "Lösch-Fehler",
-        description: error instanceof Error ? error.message : String(error),
-        variant: "destructive",
-      });
+      notify.error("Lösch-Fehler", {
+        description: error instanceof Error ? error.message : String(error)
+});
     }
   };
 
@@ -262,16 +245,13 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
       setEditingAttachment(null);
       setNewDisplayName("");
 
-      toast({
-        title: "Anzeigename aktualisiert",
-        description: "Der Anzeigename wurde erfolgreich geändert.",
-      });
+      notify.success("Anzeigename aktualisiert", {
+        description: "Der Anzeigename wurde erfolgreich geändert."
+});
     } catch (error: unknown) {
-      toast({
-        title: "Fehler",
-        description: "Der Anzeigename konnte nicht geändert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Der Anzeigename konnte nicht geändert werden."
+});
     }
   };
 
@@ -296,18 +276,15 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
       const updatedAttachments = [...attachments, data];
       onAttachmentUpdate(updatedAttachments);
 
-      toast({
-        title: "Dokument hinzugefügt",
-        description: `${document.title} wurde als Anlage hinzugefügt.`,
-      });
+      notify.success("Dokument hinzugefügt", {
+        description: `${document.title} wurde als Anlage hinzugefügt.`
+});
 
       setShowDocumentSelector(false);
     } catch (error: unknown) {
-      toast({
-        title: "Fehler",
-        description: "Das Dokument konnte nicht hinzugefügt werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Das Dokument konnte nicht hinzugefügt werden."
+});
     }
   };
 

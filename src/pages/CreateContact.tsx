@@ -13,7 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -27,6 +26,7 @@ import { DuplicateWarning } from "@/features/contacts/components/DuplicateWarnin
 import { TagInput } from "@/components/ui/tag-input";
 import type { ContactCategory, ContactDuplicateCandidate, ContactPriority, EditableContact } from "@/types/contact";
 import { createContactSchema } from "@/features/contacts/schemas/contact.schema";
+import { notify } from "@/lib/notify";
 
 type ContactFormData = {
   contact_type: Exclude<import("@/types/contact").ContactType, "archive">;
@@ -61,7 +61,6 @@ const ADDED_REASON_OPTIONS = [
 
 export function CreateContact() {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
 
@@ -202,11 +201,9 @@ export function CreateContact() {
     const validation = createContactSchema.safeParse(formData);
     if (!validation.success) {
       const firstError = validation.error.issues[0];
-      toast({
-        title: "Fehler",
-        description: firstError?.message ?? "Bitte füllen Sie alle Pflichtfelder aus.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: firstError?.message ?? "Bitte füllen Sie alle Pflichtfelder aus."
+});
       if (firstError?.path[0] === 'email') {
         setEmailValidationError(firstError.message);
       }
@@ -265,18 +262,15 @@ export function CreateContact() {
 
       if (error) throw error;
 
-      toast({
-        title: "Kontakt erstellt",
-        description: `${formData.name} wurde erfolgreich hinzugefügt.`,
-      });
+      notify.success("Kontakt erstellt", {
+        description: `${formData.name} wurde erfolgreich hinzugefügt.`
+});
       navigate("/contacts");
     } catch {
-      toast({
-        title: "Fehler",
+      notify.error("Fehler", {
         description:
-          "Der Kontakt konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
-        variant: "destructive",
-      });
+          "Der Kontakt konnte nicht erstellt werden. Bitte versuchen Sie es erneut."
+});
     } finally {
       setIsSubmitting(false);
       setShowDuplicateWarning(false);

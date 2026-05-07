@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { useTenant } from "@/hooks/useTenant";
-import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { ClipboardCheck, GripVertical, Plus, Trash2 } from "lucide-react";
+import { notify } from "@/lib/notify";
 
 interface ChecklistTemplate {
   id: string;
@@ -22,7 +22,6 @@ interface ChecklistTemplate {
 
 export function VacationChecklistAdmin() {
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const [items, setItems] = useState<ChecklistTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [newLabel, setNewLabel] = useState("");
@@ -56,9 +55,11 @@ export function VacationChecklistAdmin() {
       reminder_after: newReminderAfter,
     });
     if (error) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      notify.error("Fehler", { description: error.message
+});
     } else {
-      toast({ title: "Gespeichert", description: "Checklisten-Punkt wurde hinzugefügt." });
+      notify.success("Gespeichert", { description: "Checklisten-Punkt wurde hinzugefügt." 
+});
       setNewLabel("");
       setNewDescription("");
       setNewReminderAfter(false);
@@ -85,7 +86,8 @@ export function VacationChecklistAdmin() {
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from("vacation_checklist_templates").delete().eq("id", id);
     if (error) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      notify.error("Fehler", { description: error.message
+});
     } else {
       loadItems();
     }

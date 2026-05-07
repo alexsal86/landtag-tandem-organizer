@@ -19,11 +19,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { debugConsole } from "@/utils/debugConsole";
-import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import type { Document, DirectDocument } from "@/hooks/useContactDocuments";
 import { downloadDocument } from "./utils/downloadDocument";
 import { EmptyState } from "@/components/ui-patterns";
+import { notify } from "@/lib/notify";
 
 interface ContactDocumentListProps {
   documents: (Document | DirectDocument)[];
@@ -58,7 +58,6 @@ const isDirectDocument = (doc: Document | DirectDocument): doc is DirectDocument
 };
 
 export function ContactDocumentList({ documents, type, contactTags = [], onRemove }: ContactDocumentListProps) {
-  const { toast } = useToast();
   const [removingDocId, setRemovingDocId] = useState<string | null>(null);
 
   const handleDownload = async (document: Document | DirectDocument) => {
@@ -66,18 +65,15 @@ export function ContactDocumentList({ documents, type, contactTags = [], onRemov
       filePath: document.file_path,
       fileName: document.file_name,
       onSuccess: () => {
-        toast({
-          title: "Download gestartet",
-          description: `${document.file_name} wird heruntergeladen.`,
-        });
+        notify.success("Download gestartet", {
+          description: `${document.file_name} wird heruntergeladen.`
+});
       },
       onError: (error) => {
         debugConsole.error('Error downloading document:', error);
-        toast({
-          title: "Fehler",
-          description: "Dokument konnte nicht heruntergeladen werden.",
-          variant: "destructive",
-        });
+        notify.error("Fehler", {
+          description: "Dokument konnte nicht heruntergeladen werden."
+});
       },
     });
   };
@@ -87,18 +83,15 @@ export function ContactDocumentList({ documents, type, contactTags = [], onRemov
 
     try {
       await onRemove(documentContactId);
-      toast({
-        title: "Verknüpfung entfernt",
-        description: "Das Dokument wurde vom Kontakt getrennt.",
-      });
+      notify.success("Verknüpfung entfernt", {
+        description: "Das Dokument wurde vom Kontakt getrennt."
+});
       setRemovingDocId(null);
     } catch (error) {
       debugConsole.error('Error removing document link:', error);
-      toast({
-        title: "Fehler",
-        description: "Verknüpfung konnte nicht entfernt werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Verknüpfung konnte nicht entfernt werden."
+});
     }
   };
 

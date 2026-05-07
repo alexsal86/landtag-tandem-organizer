@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
 import type { CelebrationSettings } from '@/components/celebrations';
 import { debugConsole } from '@/utils/debugConsole';
+import { notify } from "@/lib/notify";
 
 interface AnimationDefinition {
   id: string;
@@ -25,7 +25,6 @@ const DEFAULT_SETTINGS: CelebrationSettings = {
 
 export function useCelebrationSettings() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [settings, setSettings] = useState<CelebrationSettings>(DEFAULT_SETTINGS);
   const [animations, setAnimations] = useState<AnimationDefinition[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,11 +103,9 @@ export function useCelebrationSettings() {
       if (error) throw error;
     } catch (error: unknown) {
       debugConsole.error('Error updating celebration settings:', error);
-      toast({
-        title: "Fehler",
-        description: "Einstellungen konnten nicht gespeichert werden.",
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Einstellungen konnten nicht gespeichert werden."
+});
       // Revert on error
       loadData();
     }

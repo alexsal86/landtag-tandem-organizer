@@ -14,7 +14,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -23,6 +22,7 @@ import { Navigation } from "@/components/navigation/Navigation";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { ImageCropper } from "@/components/ui/ImageCropper";
 import type { ContactCategory, ContactPriority, EditableContact } from "@/types/contact";
+import { notify } from "@/lib/notify";
 
 const createEmptyContact = (): EditableContact => ({
   id: "",
@@ -44,7 +44,6 @@ const createEmptyContact = (): EditableContact => ({
 export default function EditContact() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const [loading, setLoading] = useState(false);
@@ -82,11 +81,9 @@ export default function EditContact() {
       .eq("tenant_id", currentTenant!.id)
       .single();
     if (error || !data) {
-      toast({
-        title: "Fehler",
-        description: "Kontakt konnte nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Kontakt konnte nicht geladen werden."
+});
       return;
     }
 
@@ -114,20 +111,16 @@ export default function EditContact() {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      toast({
-        title: "Fehler",
-        description: "Bitte wählen Sie eine Bilddatei aus.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Bitte wählen Sie eine Bilddatei aus."
+});
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "Fehler",
-        description: "Die Datei ist zu groß. Maximale Größe: 5MB.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Die Datei ist zu groß. Maximale Größe: 5MB."
+});
       return;
     }
 
@@ -167,13 +160,12 @@ export default function EditContact() {
       } = supabase.storage.from("avatars").getPublicUrl(filePath);
 
       setContact({ ...contact, avatar_url: `${publicUrl}?t=${Date.now()}` });
-      toast({ title: "Erfolg", description: "Profilbild wurde hochgeladen." });
+      notify.success("Erfolg", { description: "Profilbild wurde hochgeladen." 
+});
     } catch {
-      toast({
-        title: "Fehler",
-        description: "Profilbild konnte nicht hochgeladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Profilbild konnte nicht hochgeladen werden."
+});
     } finally {
       setUploading(false);
     }
@@ -188,21 +180,17 @@ export default function EditContact() {
     e.preventDefault();
 
     if (!contact.name) {
-      toast({
-        title: "Fehler",
-        description: "Name ist ein Pflichtfeld.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Name ist ein Pflichtfeld."
+});
       return;
     }
 
     if (!contact.email && !contact.phone) {
-      toast({
-        title: "Fehler",
+      notify.error("Fehler", {
         description:
-          "Bitte hinterlegen Sie mindestens E-Mail oder Telefonnummer.",
-        variant: "destructive",
-      });
+          "Bitte hinterlegen Sie mindestens E-Mail oder Telefonnummer."
+});
       return;
     }
 
@@ -237,14 +225,13 @@ export default function EditContact() {
 
       if (error) throw error;
 
-      toast({ title: "Erfolg", description: "Kontakt wurde aktualisiert." });
+      notify.success("Erfolg", { description: "Kontakt wurde aktualisiert." 
+});
       navigate(`/contacts/${contact.id}`);
     } catch {
-      toast({
-        title: "Fehler",
-        description: "Kontakt konnte nicht aktualisiert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Kontakt konnte nicht aktualisiert werden."
+});
     } finally {
       setLoading(false);
     }

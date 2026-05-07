@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, eachDayOfInterval, isWeekend, parseISO } from "date-fns";
-import { toast } from "sonner";
 import { debugConsole } from "@/utils/debugConsole";
+import { notify } from "@/lib/notify";
 
 /**
  * Checks for missing time entries on workdays and notifies the user.
@@ -91,12 +91,12 @@ async function checkMissingEntries(userId: string, softDays: number, hardDays: n
       } catch {
         // RPC might not exist – fall through to toast
       }
-      toast.warning(
+      notify.warning(
         `Du hast ${missingDates.length} Arbeitstage ohne Zeiteintrag. Bitte trage deine Arbeitszeiten zeitnah nach.`,
         { duration: 10000 }
       );
     } else if (missingDates.length >= softDays) {
-      toast.info(
+      notify.info(
         `Erinnerung: Du hast ${missingDates.length} Arbeitstage ohne Zeiteintrag.`,
         { duration: 8000 }
       );

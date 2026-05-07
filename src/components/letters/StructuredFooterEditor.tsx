@@ -9,7 +9,6 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Type, ArrowUp, ArrowDown, Trash2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 
@@ -63,7 +62,6 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
   onBlocksChange,
   footerHeight = 18
 }) => {
-  const { toast } = useToast();
   const { currentTenant } = useTenant();
   const [blocks, setBlocks] = useState<FooterBlock[]>(initialBlocks);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);

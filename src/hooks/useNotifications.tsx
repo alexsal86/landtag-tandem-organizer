@@ -6,6 +6,7 @@ import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
 import { debugConsole } from '@/utils/debugConsole';
 import type { UnknownRecord } from '@/utils/typeSafety';
+import { notify } from "@/lib/notify";
 
 export interface NotificationFeedbackContext {
   target?: {
@@ -152,7 +153,6 @@ const handleNotificationRealtimeEvent = (
 
 export const useNotifications = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
@@ -211,11 +211,9 @@ export const useNotifications = () => {
       // Preserve existing notifications (stale data > no data)
       // Only show toast if we have no data at all
       if (notifications.length === 0) {
-        toast({
-          title: 'Fehler',
-          description: 'Benachrichtigungen konnten nicht geladen werden.',
-          variant: 'destructive',
-        });
+        notify.error('Fehler', {
+          description: 'Benachrichtigungen konnten nicht geladen werden.'
+});
       }
     } finally {
       setLoading(false);
@@ -364,11 +362,9 @@ export const useNotifications = () => {
         setNotifications(previousNotifications);
         setUnreadCount(previousUnreadCount);
 
-        toast({
-          title: 'Fehler',
-          description: 'Benachrichtigungen konnten nicht als gelesen markiert werden.',
-          variant: 'destructive',
-        });
+        notify.error('Fehler', {
+          description: 'Benachrichtigungen konnten nicht als gelesen markiert werden.'
+});
       }
     }
   }, [user, toast, notifications, unreadCount, loadNotifications]);
@@ -460,10 +456,9 @@ export const useNotifications = () => {
           }
 
           if (!silent) {
-            toast({
-              title: 'Erfolgreich',
-              description: 'Push-Benachrichtigungen wurden aktiviert.',
-            });
+            notify.success('Erfolgreich', {
+              description: 'Push-Benachrichtigungen wurden aktiviert.'
+});
           }
           return; // Successfully repaired — done
         }
@@ -548,10 +543,9 @@ export const useNotifications = () => {
         }
 
         if (!silent) {
-          toast({
-            title: 'Erfolgreich',
-            description: 'Push-Benachrichtigungen wurden aktiviert.',
-          });
+          notify.success('Erfolgreich', {
+            description: 'Push-Benachrichtigungen wurden aktiviert.'
+});
         }
       }
     } catch (error: unknown) {
@@ -564,11 +558,9 @@ export const useNotifications = () => {
           'db-upsert': 'Abo konnte nicht in der Datenbank gespeichert werden',
           'repair-db': 'Bestehendes Abo konnte nicht repariert werden',
         };
-        toast({
-          title: 'Fehler',
-          description: stepLabels[step] ?? 'Push-Benachrichtigungen konnten nicht aktiviert werden.',
-          variant: 'destructive',
-        });
+        notify.error('Fehler', {
+          description: stepLabels[step] ?? 'Push-Benachrichtigungen konnten nicht aktiviert werden.'
+});
       }
       throw error;
     }
@@ -576,11 +568,9 @@ export const useNotifications = () => {
 
   const requestPushPermission = useCallback(async (): Promise<boolean> => {
     if (!pushSupported) {
-      toast({
-        title: 'Nicht unterstützt',
-        description: 'Push-Benachrichtigungen werden von diesem Browser nicht unterstützt.',
-        variant: 'destructive',
-      });
+      notify.error('Nicht unterstützt', {
+        description: 'Push-Benachrichtigungen werden von diesem Browser nicht unterstützt.'
+});
       return false;
     }
 
@@ -593,19 +583,15 @@ export const useNotifications = () => {
         return true;
       }
 
-      toast({
-        title: 'Berechtigung verweigert',
-        description: 'Push-Benachrichtigungen wurden nicht erlaubt.',
-        variant: 'destructive',
-      });
+      notify.error('Berechtigung verweigert', {
+        description: 'Push-Benachrichtigungen wurden nicht erlaubt.'
+});
       return false;
     } catch (error: unknown) {
       debugConsole.error('Error requesting push permission:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Berechtigung für Push-Benachrichtigungen konnte nicht angefordert werden.',
-        variant: 'destructive',
-      });
+      notify.error('Fehler', {
+        description: 'Berechtigung für Push-Benachrichtigungen konnte nicht angefordert werden.'
+});
       return false;
     }
   }, [pushSupported, subscribeToPush, toast]);
@@ -705,11 +691,10 @@ export const useNotifications = () => {
                 }
 
                 emitNotificationsChanged({ source: 'notifications', notificationId: newNotification.id });
-                toast({
-                  title: newNotification.title || 'Neue Benachrichtigung',
+                notify.success(newNotification.title || 'Neue Benachrichtigung', {
                   description: newNotification.message || 'Sie haben eine neue Benachrichtigung erhalten.',
-                  duration: 4000,
-                });
+                  duration: 4000
+});
               },
               () => undefined,
             );

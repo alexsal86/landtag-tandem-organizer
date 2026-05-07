@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +19,7 @@ import {
 import { Plus, Search, FileText, Calendar, User, Settings, Globe, Mail } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { notify } from "@/lib/notify";
 
 interface PressRelease {
   id: string;
@@ -44,7 +44,6 @@ interface PressReleasesListProps {
 export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListProps) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const navigate = useNavigate();
   
   const [pressReleases, setPressReleases] = useState<PressRelease[]>([]);
@@ -104,10 +103,9 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
 
     const trimmedTemplateBody = emailTemplateBody.trim();
     if (trimmedTemplateBody && !hasPressEmailTemplateCoreVariable(trimmedTemplateBody)) {
-      toast({
-        title: "Hinweis zum Template",
-        description: "Im Nachrichtentext fehlen die Kernvariablen {{titel}} oder {{inhalt}}. Dadurch kann der Pressetext unvollständig sein.",
-      });
+      notify.success("Hinweis zum Template", {
+        description: "Im Nachrichtentext fehlen die Kernvariablen {{titel}} oder {{inhalt}}. Dadurch kann der Pressetext unvollständig sein."
+});
     }
 
     setSavingSettings(true);
@@ -134,10 +132,11 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
         }
       }
 
-      toast({ title: "Einstellungen gespeichert" });
+      notify.success("Einstellungen gespeichert");
       setSettingsOpen(false);
     } catch (error: unknown) {
-      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Speichern fehlgeschlagen", variant: "destructive" });
+      notify.error("Fehler", { description: error instanceof Error ? error.message : "Speichern fehlgeschlagen"
+});
     } finally {
       setSavingSettings(false);
     }
@@ -176,11 +175,9 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
         setProfiles(profileMap);
       }
     } catch (error: unknown) {
-      toast({
-        title: "Fehler beim Laden",
-        description: error instanceof Error ? error.message : "Unbekannter Fehler",
-        variant: "destructive",
-      });
+      notify.error("Fehler beim Laden", {
+        description: error instanceof Error ? error.message : "Unbekannter Fehler"
+});
     } finally {
       setLoading(false);
     }

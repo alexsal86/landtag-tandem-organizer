@@ -3,8 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Camera } from "lucide-react";
 import { UnsplashImagePicker, UnsplashAttribution } from "./UnsplashImagePicker";
-import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from '@/utils/debugConsole';
+import { notify } from "@/lib/notify";
 
 interface DashboardCoverImageProps {
   userId: string;
@@ -16,7 +16,6 @@ export function DashboardCoverImage({ userId }: DashboardCoverImageProps) {
   const [position, setPosition] = useState<"center" | "top" | "bottom">("center");
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast();
 
   useEffect(() => {
     loadCoverImage();
@@ -114,17 +113,14 @@ export function DashboardCoverImage({ userId }: DashboardCoverImageProps) {
       setAttribution(imageAttribution || null);
       setIsPickerOpen(false);
 
-      toast({
-        title: "Cover gespeichert",
-        description: "Dein Dashboard-Cover wurde erfolgreich aktualisiert.",
-      });
+      notify.success("Cover gespeichert", {
+        description: "Dein Dashboard-Cover wurde erfolgreich aktualisiert."
+});
     } catch (error) {
       debugConsole.error("Error saving cover:", error);
-      toast({
-        title: "Fehler",
-        description: "Das Cover konnte nicht gespeichert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Das Cover konnte nicht gespeichert werden."
+});
     }
   };
 

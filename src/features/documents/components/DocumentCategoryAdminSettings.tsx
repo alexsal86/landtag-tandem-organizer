@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { TagIconPicker } from "@/components/contacts/TagIconPicker";
 import { useTenant } from "@/hooks/useTenant";
+import { notify } from "@/lib/notify";
 
 type DocumentCategory = {
   id: string;
@@ -26,7 +27,6 @@ type DocumentCategory = {
 };
 
 export function DocumentCategoryAdminSettings() {
-  const { toast } = useToast();
   const { currentTenant } = useTenant();
   const [categories, setCategories] = useState<DocumentCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +49,8 @@ export function DocumentCategoryAdminSettings() {
       setCategories(data || []);
     } catch (error) {
       debugConsole.error('Error loading document categories:', error);
-      toast({ title: "Fehler", description: "Dokumenten-Kategorien konnten nicht geladen werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Dokumenten-Kategorien konnten nicht geladen werden."
+});
     } finally {
       setLoading(false);
     }
@@ -72,10 +73,12 @@ export function DocumentCategoryAdminSettings() {
       
       await loadCategories();
       setNewCategory(null);
-      toast({ title: "Erfolg", description: "Kategorie wurde erfolgreich hinzugefügt." });
+      notify.success("Erfolg", { description: "Kategorie wurde erfolgreich hinzugefügt." 
+});
     } catch (error: unknown) {
       debugConsole.error('Error adding category:', error);
-      toast({ title: "Fehler", description: "Kategorie konnte nicht hinzugefügt werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Kategorie konnte nicht hinzugefügt werden."
+});
     }
   };
 
@@ -94,10 +97,12 @@ export function DocumentCategoryAdminSettings() {
       
       await loadCategories();
       setEditingCategory(null);
-      toast({ title: "Erfolg", description: "Kategorie wurde erfolgreich aktualisiert." });
+      notify.success("Erfolg", { description: "Kategorie wurde erfolgreich aktualisiert." 
+});
     } catch (error: unknown) {
       debugConsole.error('Error updating category:', error);
-      toast({ title: "Fehler", description: "Kategorie konnte nicht aktualisiert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Kategorie konnte nicht aktualisiert werden."
+});
     }
   };
 
@@ -112,10 +117,12 @@ export function DocumentCategoryAdminSettings() {
       if (error) throw error;
       
       await loadCategories();
-      toast({ title: "Erfolg", description: "Kategorie wurde erfolgreich gelöscht." });
+      notify.success("Erfolg", { description: "Kategorie wurde erfolgreich gelöscht." 
+});
     } catch (error: unknown) {
       debugConsole.error('Error deleting category:', error);
-      toast({ title: "Fehler", description: "Kategorie konnte nicht gelöscht werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Kategorie konnte nicht gelöscht werden."
+});
     }
   };
 
@@ -125,10 +132,12 @@ export function DocumentCategoryAdminSettings() {
       if (error) throw error;
       
       await loadCategories();
-      toast({ title: "Erfolg", description: `Kategorie wurde ${!isActive ? 'aktiviert' : 'deaktiviert'}.` });
+      notify.success("Erfolg", { description: `Kategorie wurde ${!isActive ? 'aktiviert' : 'deaktiviert'}.` 
+});
     } catch (error: unknown) {
       debugConsole.error('Error toggling category:', error);
-      toast({ title: "Fehler", description: "Status konnte nicht geändert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Status konnte nicht geändert werden."
+});
     }
   };
 
@@ -150,10 +159,12 @@ export function DocumentCategoryAdminSettings() {
       for (const item of updatedItems) {
         await supabase.from('document_categories').update({ order_index: item.order_index }).eq('id', item.id);
       }
-      toast({ title: "Erfolg", description: "Reihenfolge wurde gespeichert." });
+      notify.success("Erfolg", { description: "Reihenfolge wurde gespeichert." 
+});
     } catch (error) {
       debugConsole.error('Error updating order:', error);
-      toast({ title: "Fehler", description: "Reihenfolge konnte nicht gespeichert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Reihenfolge konnte nicht gespeichert werden."
+});
       loadCategories();
     }
   };

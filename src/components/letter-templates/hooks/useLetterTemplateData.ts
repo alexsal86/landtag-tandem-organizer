@@ -4,7 +4,6 @@ import { debugConsole } from '@/utils/debugConsole';
 import { handleAppError } from '@/utils/errorHandler';
 import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
 import {
   DEFAULT_DIN5008_LAYOUT,
   type BlockContentEntry,
@@ -17,6 +16,7 @@ import {
 } from '@/types/letterLayout';
 import { parseFooterLinesForEditor, toFooterLineData } from '@/components/letters/footerBlockUtils';
 import {
+import { notify } from "@/lib/notify";
   LetterTemplate, SenderInformation, InformationBlock, GalleryImage,
   normalizeImageItem, normalizeLayoutBlockContentImages, createDefaultAttachmentElements,
   MarginKey, TabRect,
@@ -25,7 +25,6 @@ import {
 export function useLetterTemplateData() {
   const { currentTenant } = useTenant();
   const { user } = useAuth();
-  const { toast } = useToast();
 
   const [templates, setTemplates] = useState<LetterTemplate[]>([]);
   const [senderInfos, setSenderInfos] = useState<SenderInformation[]>([]);
@@ -149,7 +148,7 @@ export function useLetterTemplateData() {
       };
       const { error } = await supabase.from('letter_templates').insert(insertData as typeof insertData & { name: string; letterhead_html: string; letterhead_css: string; response_time_days: number; tenant_id: string; created_by: string });
       if (error) throw error;
-      toast({ title: "Template erstellt" });
+      notify.success("Template erstellt");
       setShowCreateDialog(false);
       setActiveTab('canvas-designer');
       resetForm();
@@ -176,7 +175,7 @@ export function useLetterTemplateData() {
       };
       const { error } = await supabase.from('letter_templates').update(updateData as typeof updateData & { name: string }).eq('id', editingTemplate.id);
       if (error) throw error;
-      toast({ title: "Template aktualisiert" });
+      notify.success("Template aktualisiert");
       setEditingTemplate(null); resetForm(); fetchTemplates();
     } catch (error) {
       handleAppError(error, { context: 'handleUpdateTemplate', toast: { fn: toast, title: 'Fehler', description: 'Template konnte nicht aktualisiert werden.' } });
@@ -188,7 +187,7 @@ export function useLetterTemplateData() {
     try {
       const { error } = await supabase.from('letter_templates').update({ is_active: false }).eq('id', template.id);
       if (error) throw error;
-      toast({ title: "Template gelöscht" });
+      notify.success("Template gelöscht");
       fetchTemplates();
     } catch (error) {
       handleAppError(error, { context: 'handleDeleteTemplate', toast: { fn: toast, title: 'Fehler', description: 'Template konnte nicht gelöscht werden.' } });

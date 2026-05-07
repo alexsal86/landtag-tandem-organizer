@@ -7,11 +7,11 @@ import { CommentThread, CommentData } from "./CommentThread";
 import { Send, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import { buildReactionMap, sortReactionEntries, type ReactionRow } from "./commentReactions";
 import { shouldHandleReactionEvent } from "./reactionEventVisibility";
 import type { ParticipantProfile, ReactionProfile } from "@/types/taskDecisions";
+import { notify } from "@/lib/notify";
 
 type DecisionCommentProfile = ParticipantProfile;
 
@@ -36,7 +36,6 @@ export function DecisionComments({
   onCommentAdded,
 }: DecisionCommentsProps) {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [comments, setComments] = useState<CommentData[]>([]);
   const [newComment, setNewComment] = useState("");
   const [newCommentEditorKey, setNewCommentEditorKey] = useState(0);
@@ -148,11 +147,9 @@ export function DecisionComments({
       setComments(rootComments);
     } catch (error) {
       debugConsole.error('Error loading comments:', error);
-      toast({
-        title: "Fehler",
-        description: "Kommentare konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Kommentare konnten nicht geladen werden."
+});
     } finally {
       setIsLoading(false);
     }
@@ -233,10 +230,9 @@ export function DecisionComments({
         }
       }
 
-      toast({
-        title: "Erfolg",
-        description: "Diskussionsbeitrag wurde hinzugefügt.",
-      });
+      notify.success("Erfolg", {
+        description: "Diskussionsbeitrag wurde hinzugefügt."
+});
 
       setNewComment("");
       setNewCommentEditorKey((prev) => prev + 1);
@@ -244,11 +240,9 @@ export function DecisionComments({
       onCommentAdded?.();
     } catch (error) {
       debugConsole.error('Error submitting comment:', error);
-      toast({
-        title: "Fehler",
-        description: "Kommentar konnte nicht gespeichert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Kommentar konnte nicht gespeichert werden."
+});
     } finally {
       setIsSubmitting(false);
     }
@@ -491,13 +485,11 @@ export function DecisionComments({
         "code" in error &&
         error.code === "23514";
 
-      toast({
-        title: "Fehler",
+      notify.error("Fehler", {
         description: isInvalidReactionError
           ? "Ungültige Reaktion"
-          : "Reaktion konnte nicht gespeichert werden. Die Ansicht wurde zurückgesetzt.",
-        variant: "destructive",
-      });
+          : "Reaktion konnte nicht gespeichert werden. Die Ansicht wurde zurückgesetzt."
+});
     } finally {
       pendingReactionOpsRef.current.delete(actionKey);
     }
@@ -515,15 +507,13 @@ export function DecisionComments({
 
       if (error) throw error;
 
-      toast({ title: "Kommentar aktualisiert" });
+      notify.success("Kommentar aktualisiert");
       loadComments();
     } catch (error) {
       debugConsole.error('Error updating comment:', error);
-      toast({
-        title: "Fehler",
-        description: "Kommentar konnte nicht bearbeitet werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Kommentar konnte nicht bearbeitet werden."
+});
     }
   };
 
@@ -549,16 +539,14 @@ export function DecisionComments({
         if (error) throw error;
       }
 
-      toast({ title: hasReplies ? "Kommentar als gelöscht markiert" : "Kommentar gelöscht" });
+      notify.success(hasReplies ? "Kommentar als gelöscht markiert" : "Kommentar gelöscht");
       loadComments();
       onCommentAdded?.();
     } catch (error) {
       debugConsole.error('Error deleting comment:', error);
-      toast({
-        title: "Fehler",
-        description: "Kommentar konnte nicht gelöscht werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Kommentar konnte nicht gelöscht werden."
+});
     }
   };
 

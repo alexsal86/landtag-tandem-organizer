@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { useViewPreference } from "@/hooks/useViewPreference";
-import { useToast } from "@/hooks/use-toast";
 import { useTopics } from "@/hooks/useTopics";
 import { useDocumentCategories } from "@/hooks/useDocumentCategories";
 import { useAllPersonContacts } from "@/hooks/useAllPersonContacts";
@@ -48,6 +47,7 @@ import { DocumentDialogs } from "@/components/documents/DocumentDialogs";
 import { STATUS_LABELS, getStatusColor, formatFileSize } from "@/components/documents/types";
 import type { Document, Letter, DocumentFolder } from "@/components/documents/types";
 import {
+import { notify } from "@/lib/notify";
   isDocumentCategoryOption,
   isDocumentTagOption,
   isDocumentFolderWithCount,
@@ -72,7 +72,6 @@ export function DocumentsView() {
   const initialTab: 'documents' | 'letters' | 'emails' | 'press' =
     initialTabParam === 'letters' || initialTabParam === 'emails' || initialTabParam === 'press' ? initialTabParam : 'documents';
   const { isHighlighted, highlightRef } = useNotificationHighlight();
-  const { toast } = useToast();
   const { viewType, setViewType } = useViewPreference({ key: 'documents' });
   const { topics: tags } = useTopics();
   const { categories: documentCategories } = useDocumentCategories();
@@ -283,16 +282,17 @@ export function DocumentsView() {
         .upsert(payload, { onConflict: "tenant_id,setting_key" });
 
       if (error) {
-        toast({ title: "Einstellungen konnten nicht gespeichert werden", description: error.message, variant: "destructive" });
+        notify.error("Einstellungen konnten nicht gespeichert werden", { description: error.message
+});
         return;
       }
 
-      toast({ title: "Einstellungen tenantweit gespeichert" });
+      notify.success("Einstellungen tenantweit gespeichert");
       setShowArchiveSettings(false);
       return;
     }
 
-    toast({ title: "Einstellung nur lokal gespeichert" });
+    notify.success("Einstellung nur lokal gespeichert");
     setShowArchiveSettings(false);
   };
   const getLetterActionLabel = (action: 'task' | 'subtask' | 'edit' | 'restore' | 'delete') => {

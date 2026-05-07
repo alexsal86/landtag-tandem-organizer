@@ -14,16 +14,15 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
 import { nextWorkingDay, toDateString } from "../utils";
 import {
+import { notify } from "@/lib/notify";
   useDeleteBriefing,
   useMyBriefingForDate,
   useSaveBriefing,
 } from "../hooks/useMyDraftBriefing";
 
 export function BriefingComposerCard() {
-  const { toast } = useToast();
   const [expanded, setExpanded] = useState(false);
   const [date, setDate] = useState<Date>(() => nextWorkingDay());
   const [title, setTitle] = useState("");
@@ -53,7 +52,8 @@ export function BriefingComposerCard() {
 
   const handleSave = async () => {
     if (!content.trim()) {
-      toast({ title: "Inhalt fehlt", description: "Bitte schreibe einen kurzen Briefing-Text.", variant: "destructive" });
+      notify.error("Inhalt fehlt", { description: "Bitte schreibe einen kurzen Briefing-Text."
+});
       return;
     }
     try {
@@ -63,14 +63,14 @@ export function BriefingComposerCard() {
         title: title.trim() || null,
         content: content.trim(),
       });
-      toast({
-        title: existing ? "Briefing aktualisiert" : "Briefing gespeichert",
-        description: `Wird am ${format(date, "EEEE, d. MMMM", { locale: de })} im Dashboard angezeigt.`,
-      });
+      notify.success(existing ? "Briefing aktualisiert" : "Briefing gespeichert", {
+        description: `Wird am ${format(date, "EEEE, d. MMMM", { locale: de })} im Dashboard angezeigt.`
+});
       setExpanded(false);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unbekannter Fehler";
-      toast({ title: "Speichern fehlgeschlagen", description: message, variant: "destructive" });
+      notify.error("Speichern fehlgeschlagen", { description: message
+});
     }
   };
 
@@ -79,12 +79,13 @@ export function BriefingComposerCard() {
     if (!confirm("Briefing wirklich löschen?")) return;
     try {
       await deleteMutation.mutateAsync(existing.id);
-      toast({ title: "Briefing gelöscht" });
+      notify.success("Briefing gelöscht");
       setTitle("");
       setContent("");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unbekannter Fehler";
-      toast({ title: "Löschen fehlgeschlagen", description: message, variant: "destructive" });
+      notify.error("Löschen fehlgeschlagen", { description: message
+});
     }
   };
 

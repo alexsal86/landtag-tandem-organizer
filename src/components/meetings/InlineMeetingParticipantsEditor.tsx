@@ -6,8 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { UserSelector } from '@/components/admin/UserSelector';
 import { Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import { debugConsole } from '@/utils/debugConsole';
+import { notify } from "@/lib/notify";
 
 interface Participant {
   id: string;
@@ -33,7 +33,6 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRole, setSelectedRole] = useState<'organizer' | 'participant' | 'optional'>('participant');
-  const { toast } = useToast();
 
   useEffect(() => {
     if (meetingId) {
@@ -96,18 +95,15 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
   const handleAddParticipant = async (user: { id: string; display_name: string }) => {
     if (!meetingId) {
       debugConsole.error('❌ InlineMeetingParticipantsEditor: No meetingId provided!');
-      toast({
-        title: "Fehler",
-        description: "Keine Meeting-ID vorhanden",
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Keine Meeting-ID vorhanden"
+});
       return;
     }
     if (participants.some(p => p.user_id === user.id)) {
-      toast({
-        title: "Bereits hinzugefügt",
-        description: `${user.display_name} ist bereits Teilnehmer.`,
-      });
+      notify.success("Bereits hinzugefügt", {
+        description: `${user.display_name} ist bereits Teilnehmer.`
+});
       return;
     }
 
@@ -126,20 +122,17 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
 
     if (error) {
       debugConsole.error('❌ Error adding participant:', error);
-      toast({
-        title: "Fehler beim Hinzufügen",
-        description: error.message || "Teilnehmer konnte nicht hinzugefügt werden.",
-        variant: "destructive"
-      });
+      notify.error("Fehler beim Hinzufügen", {
+        description: error.message || "Teilnehmer konnte nicht hinzugefügt werden."
+});
       return;
     }
     
     if (data) {
       
-      toast({
-        title: "Teilnehmer hinzugefügt",
-        description: `${user.display_name} wurde als ${roleLabels[selectedRole].label} hinzugefügt.`,
-      });
+      notify.success("Teilnehmer hinzugefügt", {
+        description: `${user.display_name} wurde als ${roleLabels[selectedRole].label} hinzugefügt.`
+});
       setParticipants(prev => [...prev, {
         ...data,
         role: selectedRole,
@@ -168,19 +161,16 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
       setParticipants(prev => prev.map(p => 
         p.id === participantId ? { ...p, role: previousRole } : p
       ));
-      toast({
-        title: "Fehler",
-        description: "Rolle konnte nicht geändert werden.",
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Rolle konnte nicht geändert werden."
+});
       return;
     }
     
     
-    toast({
-      title: "Rolle geändert",
-      description: `${participant?.user?.display_name || 'Teilnehmer'} ist jetzt ${roleLabels[newRole].label}.`,
-    });
+    notify.success("Rolle geändert", {
+      description: `${participant?.user?.display_name || 'Teilnehmer'} ist jetzt ${roleLabels[newRole].label}.`
+});
   };
 
   const handleRemoveParticipant = async (participantId: string) => {
@@ -192,19 +182,16 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
 
     if (error) {
       debugConsole.error('❌ Error removing participant:', error);
-      toast({
-        title: "Fehler",
-        description: "Teilnehmer konnte nicht entfernt werden.",
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Teilnehmer konnte nicht entfernt werden."
+});
       return;
     }
     
     
-    toast({
-      title: "Teilnehmer entfernt",
-      description: `${participant?.user?.display_name || 'Teilnehmer'} wurde entfernt.`,
-    });
+    notify.success("Teilnehmer entfernt", {
+      description: `${participant?.user?.display_name || 'Teilnehmer'} wurde entfernt.`
+});
     setParticipants(prev => prev.filter(p => p.id !== participantId));
   };
 

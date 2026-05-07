@@ -10,6 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Building2, ChevronRight, ChevronLeft, Loader2, Copy, Check, Sparkles } from "lucide-react";
+import { notify } from "@/lib/notify";
 
 const BUNDESLAENDER = [
   "Baden-Württemberg", "Bayern", "Berlin", "Brandenburg", "Bremen",
@@ -105,7 +106,6 @@ interface ProvisionResult {
 }
 
 export function TenantProvisioningWizard({ open, onOpenChange, templateTenants, onCreated }: Props): React.JSX.Element {
-  const { toast } = useToast();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [result, setResult] = useState<ProvisionResult | null>(null);
@@ -220,13 +220,12 @@ export function TenantProvisioningWizard({ open, onOpenChange, templateTenants, 
         adminEmail: data.adminEmail,
       });
       setStep(4);
-      toast({ title: "Tenant angelegt", description: `${name.trim()} ist startklar.` });
+      notify.success("Tenant angelegt", { description: `${name.trim()} ist startklar.` 
+});
     } catch (err) {
-      toast({
-        title: "Fehler",
-        description: err instanceof Error ? err.message : "Anlegen fehlgeschlagen",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: err instanceof Error ? err.message : "Anlegen fehlgeschlagen"
+});
     } finally {
       setSubmitting(false);
     }

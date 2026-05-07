@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { useTenant } from "@/hooks/useTenant";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { TopicSelector } from "@/components/topics/TopicSelector";
@@ -16,6 +15,7 @@ import { useCreateTaskWithTopics } from "@/hooks/useTaskTopics";
 import { debugConsole } from "@/utils/debugConsole";
 import { notifyTaskShared } from "@/utils/shareNotifications";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
+import { notify } from "@/lib/notify";
 
 type ProfileOption = Pick<Tables<"profiles">, "id" | "display_name" | "user_id"> & { isCurrentUser: boolean };
 type TaskCategoryOption = Pick<Tables<"task_categories">, "name" | "label">;
@@ -24,7 +24,6 @@ type TaskInsert = TablesInsert<"tasks">;
 
 export default function CreateTask() {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { currentTenant } = useTenant();
   const { saveTaskTopics } = useCreateTaskWithTopics();
   const [loading, setLoading] = useState(false);
@@ -104,11 +103,9 @@ export default function CreateTask() {
       try {
         // Validate required fields
         if (!formData.title.trim()) {
-          toast({
-            title: "Fehler",
-            description: "Bitte geben Sie einen Titel für die Aufgabe ein.",
-            variant: "destructive",
-          });
+          notify.error("Fehler", {
+            description: "Bitte geben Sie einen Titel für die Aufgabe ein."
+});
           return;
         }
 
@@ -118,22 +115,18 @@ export default function CreateTask() {
         
         if (userError || !user) {
           debugConsole.error('❌ Auth error:', userError);
-          toast({
-            title: "Fehler",
-            description: "Sie müssen angemeldet sein, um Aufgaben zu erstellen.",
-            variant: "destructive",
-          });
+          notify.error("Fehler", {
+            description: "Sie müssen angemeldet sein, um Aufgaben zu erstellen."
+});
           return;
         }
 
         // Validate tenant
         if (!currentTenant?.id) {
           debugConsole.error('❌ No tenant available:', currentTenant);
-          toast({
-            title: "Fehler", 
-            description: "Kein Tenant ausgewählt. Bitte laden Sie die Seite neu.",
-            variant: "destructive",
-          });
+          notify.error("Fehler", { 
+            description: "Kein Tenant ausgewählt. Bitte laden Sie die Seite neu."
+});
           return;
         }
 
@@ -196,10 +189,9 @@ export default function CreateTask() {
           await saveTaskTopics(insertedTask.id, formData.topicIds);
         }
         
-        toast({
-          title: "Aufgabe erstellt",
-          description: "Die neue Aufgabe wurde erfolgreich erstellt.",
-        });
+        notify.success("Aufgabe erstellt", {
+          description: "Die neue Aufgabe wurde erfolgreich erstellt."
+});
 
         // Reset form
         setFormData({
@@ -215,11 +207,9 @@ export default function CreateTask() {
         navigate("/tasks");
     } catch (error) {
       debugConsole.error('❌ Error creating task:', error);
-      toast({
-        title: "Fehler",
-        description: `Aufgabe konnte nicht erstellt werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: `Aufgabe konnte nicht erstellt werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
+});
     } finally {
       setLoading(false);
     }

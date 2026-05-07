@@ -16,7 +16,6 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useTenantUsers } from "@/hooks/useTenantUsers";
-import { useToast } from "@/hooks/use-toast";
 import {
   type SocialContentMediaType,
   type SocialContentPlatformStatus,
@@ -47,6 +46,7 @@ import type { PlannerFormatFilter, SocialPlannerDraftPayload, SocialPlannerTempl
 import { applyTemplateToState, inferFormatType, validateVariant } from "./utils";
 import { BriefingGroup } from "./BriefingGroup";
 import { RecurrenceForm, DEFAULT_RECURRENCE, expandRecurrence, type RecurrenceState } from "./RecurrenceForm";
+import { notify } from "@/lib/notify";
 
 const SocialPlannerEditDialog = lazyWithRetry(
   () => import("./SocialPlannerEditDialog"),
@@ -57,7 +57,6 @@ interface PlannerBoardProps {
 }
 
 export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
-  const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const { users } = useTenantUsers();
   const { topics, createTopic } = useTopicBacklog();
@@ -178,7 +177,8 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
 
   const handleSaveItem = useCallback(async (itemId: string, payload: SocialPlannerDraftPayload) => {
     await updateItem(itemId, payload);
-    toast({ title: "Beitrag aktualisiert", description: "Änderungen sind im Board und Kalender sichtbar." });
+    notify.success("Beitrag aktualisiert", { description: "Änderungen sind im Board und Kalender sichtbar." 
+});
   }, [toast, updateItem]);
 
   const resetCreateDialog = () => {
@@ -246,7 +246,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   const createDraft = async () => {
     const trimmedTopicTitle = createTopicTitle.trim();
     if (createTopicId === "none" && !trimmedTopicTitle) {
-      toast({ title: "Bitte Thema auswählen oder neu eingeben", variant: "destructive" });
+      notify.error("Bitte Thema auswählen oder neu eingeben");
       return;
     }
 
@@ -255,7 +255,8 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
       return validateVariant(createVariantsByChannel[channelId], slug);
     });
     if (createVariantErrors.length > 0) {
-      toast({ title: "Kanalvarianten prüfen", description: createVariantErrors[0], variant: "destructive" });
+      notify.error("Kanalvarianten prüfen", { description: createVariantErrors[0]
+});
       return;
     }
 
@@ -318,16 +319,15 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
         });
       }
 
-      toast({
-        title: occurrences.length > 1 ? `${occurrences.length} Entwürfe erstellt` : "Entwurf erstellt",
+      notify.success(occurrences.length > 1 ? `${occurrences.length} Entwürfe erstellt` : "Entwurf erstellt", {
         description: occurrences.length > 1
           ? "Verknüpfte Serie wurde im Social Planner angelegt."
-          : "Der Beitrag wurde mit Briefing-Feldern im Social Planner angelegt.",
-      });
+          : "Der Beitrag wurde mit Briefing-Feldern im Social Planner angelegt."
+});
       setIsCreateDialogOpen(false);
       resetCreateDialog();
     } catch {
-      toast({ title: "Entwurf konnte nicht erstellt werden", variant: "destructive" });
+      notify.error("Entwurf konnte nicht erstellt werden");
     } finally {
       setIsCreatingDraft(false);
     }
@@ -340,9 +340,10 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
       await deleteItem(deleteItemId);
       if (editingItemId === deleteItemId) setEditingItemId(null);
       setDeleteItemId(null);
-      toast({ title: "Beitrag gelöscht", description: "Der Social-Media-Entwurf wurde aus dem Planner entfernt." });
+      notify.success("Beitrag gelöscht", { description: "Der Social-Media-Entwurf wurde aus dem Planner entfernt." 
+});
     } catch {
-      toast({ title: "Beitrag konnte nicht gelöscht werden", variant: "destructive" });
+      notify.error("Beitrag konnte nicht gelöscht werden");
     }
   }, [deleteItem, deleteItemId, editingItemId, toast]);
 
@@ -361,7 +362,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
     try {
       await updateItem(itemId, { scheduled_for: isoDate } as Parameters<typeof updateItem>[1]);
     } catch {
-      toast({ title: "Zeitpunkt konnte nicht geändert werden", variant: "destructive" });
+      notify.error("Zeitpunkt konnte nicht geändert werden");
     }
   }, [updateItem, toast]);
 

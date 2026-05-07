@@ -8,9 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
 import { Trash2, Plus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { notify } from "@/lib/notify";
 
 interface DistrictSupportAssignment {
   id: string;
@@ -37,7 +37,6 @@ interface Representative {
 
 export const DistrictSupportManager = () => {
   const { districts } = useElectionDistricts();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedDistrict, setSelectedDistrict] = useState<string>('');
@@ -100,10 +99,10 @@ export const DistrictSupportManager = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['district_support_assignments'] });
-      toast({
-        title: "Betreuungswahlkreis hinzugefügt",
+      notify.success("Betreuungswahlkreis hinzugefügt", {
         description: "Die Zuordnung wurde erfolgreich erstellt."
-      });
+      
+});
       setIsAddDialogOpen(false);
       setSelectedDistrict('');
       setSelectedRepresentative('');
@@ -111,11 +110,9 @@ export const DistrictSupportManager = () => {
     },
     onError: (error) => {
       debugConsole.error('Error adding support assignment:', error);
-      toast({
-        title: "Fehler",
-        description: "Die Zuordnung konnte nicht erstellt werden.",
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Die Zuordnung konnte nicht erstellt werden."
+});
     }
   });
 
@@ -131,28 +128,24 @@ export const DistrictSupportManager = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['district_support_assignments'] });
-      toast({
-        title: "Betreuungswahlkreis entfernt",
+      notify.success("Betreuungswahlkreis entfernt", {
         description: "Die Zuordnung wurde erfolgreich entfernt."
-      });
+      
+});
     },
     onError: (error) => {
       debugConsole.error('Error removing support assignment:', error);
-      toast({
-        title: "Fehler",
-        description: "Die Zuordnung konnte nicht entfernt werden.",
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Die Zuordnung konnte nicht entfernt werden."
+});
     }
   });
 
   const handleAddSupport = () => {
     if (!selectedDistrict || !selectedRepresentative) {
-      toast({
-        title: "Unvollständige Eingabe",
-        description: "Bitte wählen Sie sowohl einen Wahlkreis als auch einen Abgeordneten aus.",
-        variant: "destructive"
-      });
+      notify.error("Unvollständige Eingabe", {
+        description: "Bitte wählen Sie sowohl einen Wahlkreis als auch einen Abgeordneten aus."
+});
       return;
     }
 

@@ -10,12 +10,12 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Upload, FileText, X, CheckCircle, AlertCircle, Zap, FileJson } from 'lucide-react';
-import { toast } from 'sonner';
 import { parsePDFFile, analyzeProtocolStructure } from '@/utils/pdfParser';
 import { validateJSONProtocol, parseJSONProtocol, getJSONProtocolPreview } from '@/utils/jsonProtocolParser';
 import type { ParsedProtocol } from '@/utils/pdfParser';
 import type { JSONProtocolPreview, UploadResult } from './types';
 import { isUploadResult } from './types';
+import { notify } from "@/lib/notify";
 
 interface DrucksachenUploadProps {
   onUploadSuccess: (protocol: UploadResult) => void;
@@ -53,7 +53,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
 
     if (fileArray.length !== files.length) {
       const fileTypeLabel = fileType === 'pdf' ? 'PDF' : 'JSON';
-      toast.error(`Nur ${fileTypeLabel}-Dateien sind erlaubt`);
+      notify.error(`Nur ${fileTypeLabel}-Dateien sind erlaubt`);
     }
 
     // Process files
@@ -163,7 +163,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
           // Clean up orphaned file and retry
           const cleaned = await cleanupOrphanedFile(duplicateCheck.filePath!);
           if (cleaned) {
-            toast.info('Verwaiste Datei bereinigt, Upload wird fortgesetzt...');
+            notify.info('Verwaiste Datei bereinigt, Upload wird fortgesetzt...');
           } else {
             throw new Error('Datei existiert bereits im Storage (Bereinigung fehlgeschlagen)');
           }
@@ -208,10 +208,10 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
         });
         
         // Show preview to user
-        toast.success(`PDF analysiert: ${structuredData.agendaItems.length} Tagesordnungspunkte, ${structuredData.speeches.length} Reden gefunden`);
+        notify.success(`PDF analysiert: ${structuredData.agendaItems.length} Tagesordnungspunkte, ${structuredData.speeches.length} Reden gefunden`);
       } catch (parseError) {
         debugConsole.error('Local PDF parsing failed:', parseError);
-        toast.error(`PDF-Analyse fehlgeschlagen: ${parseError instanceof Error ? parseError.message : 'Unbekannter Fehler'}`);
+        notify.error(`PDF-Analyse fehlgeschlagen: ${parseError instanceof Error ? parseError.message : 'Unbekannter Fehler'}`);
         throw parseError;
       }
 
@@ -276,14 +276,14 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
         if (analysisError) {
           debugConsole.warn('Database insertion error:', analysisError);
           // Still mark as completed with warning
-          toast.warning('PDF hochgeladen, aber Datenbankfehler bei der Analyse');
+          notify.warning('PDF hochgeladen, aber Datenbankfehler bei der Analyse');
         } else {
           debugConsole.log('Database insertion completed:', analysisResult);
-          toast.success('PDF erfolgreich analysiert und gespeichert');
+          notify.success('PDF erfolgreich analysiert und gespeichert');
         }
       } catch (error) {
         debugConsole.warn('Analysis function error:', error);
-        toast.warning('PDF hochgeladen, aber Analyse-Service nicht verfügbar');
+        notify.warning('PDF hochgeladen, aber Analyse-Service nicht verfügbar');
       }
 
       // Update status to completed
@@ -320,7 +320,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
           error: error instanceof Error ? error.message : 'Unbekannter Fehler'
         } : f
       ));
-      toast.error(`Fehler beim Upload: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
+      notify.error(`Fehler beim Upload: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
     }
   };
 
@@ -406,7 +406,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
         
         if (analysisError) {
           debugConsole.warn('Related data insertion error:', analysisError);
-          toast.warning('JSON importiert, aber Fehler bei der Datenverteilung');
+          notify.warning('JSON importiert, aber Fehler bei der Datenverteilung');
         }
       } catch (error) {
         debugConsole.warn('Analysis function error:', error);
@@ -417,7 +417,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
         i === index ? { ...f, status: 'completed', protocolId: protocolData.id, progress: 100 } : f
       ));
 
-      toast.success(`JSON-Protokoll erfolgreich importiert: ${parsedProtocol.structured_data.speeches.length} Reden`);
+      notify.success(`JSON-Protokoll erfolgreich importiert: ${parsedProtocol.structured_data.speeches.length} Reden`);
       if (!isUploadResult(protocolData)) {
         throw new Error('Ungültige Upload-Response vom Server');
       }
@@ -433,7 +433,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
           error: error instanceof Error ? error.message : 'Unbekannter Fehler'
         } : f
       ));
-      toast.error(`Fehler beim JSON-Import: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
+      notify.error(`Fehler beim JSON-Import: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
     }
   };
 
@@ -509,13 +509,13 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
           .from('parliament-protocols')
           .remove(filesToRemove);
         
-        toast.success(`${orphanedFiles.length} verwaiste Dateien bereinigt`);
+        notify.success(`${orphanedFiles.length} verwaiste Dateien bereinigt`);
       } else {
-        toast.info('Keine verwaisten Dateien gefunden');
+        notify.info('Keine verwaisten Dateien gefunden');
       }
     } catch (error) {
       debugConsole.error('Cleanup error:', error);
-      toast.error('Fehler bei der Bereinigung');
+      notify.error('Fehler bei der Bereinigung');
     }
   };
 

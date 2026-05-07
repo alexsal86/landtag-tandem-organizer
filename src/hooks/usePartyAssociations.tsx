@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { debugConsole } from '@/utils/debugConsole';
 import { isRecord } from '@/utils/typeSafety';
 import {
@@ -12,6 +11,7 @@ import {
 
 // Import ElectionDistrict type
 import type { ElectionDistrict } from './useElectionDistricts';
+import { notify } from "@/lib/notify";
 
 export interface PartyAssociation {
   id: string;
@@ -95,7 +95,7 @@ export function usePartyAssociations() {
 
       if (error) {
         debugConsole.error('Error fetching party associations:', error);
-        toast.error('Fehler beim Laden der Partei-Verbände');
+        notify.error('Fehler beim Laden der Partei-Verbände');
         return;
       }
 
@@ -129,7 +129,7 @@ export function usePartyAssociations() {
       setAssociations(associationsWithBoundaries);
     } catch (error) {
       debugConsole.error('Error in fetchAssociations:', error);
-      toast.error('Fehler beim Laden der Partei-Verbände');
+      notify.error('Fehler beim Laden der Partei-Verbände');
     } finally {
       setLoading(false);
     }

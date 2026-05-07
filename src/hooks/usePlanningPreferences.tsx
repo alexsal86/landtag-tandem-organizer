@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { toast } from "sonner";
 import { debugConsole } from '@/utils/debugConsole';
+import { notify } from "@/lib/notify";
 
 export interface DefaultCollaborator {
   user_id: string;
@@ -94,14 +94,14 @@ export const usePlanningPreferences = () => {
       return true;
     } catch (error) {
       debugConsole.error("Error saving planning preferences:", error);
-      toast.error("Fehler beim Speichern der Voreinstellungen");
+      notify.error("Fehler beim Speichern der Voreinstellungen");
       return false;
     }
   };
 
   const addCollaborator = async (userId: string, canEdit: boolean = false) => {
     if (defaultCollaborators.some((c) => c.user_id === userId)) {
-      toast.error("Bereits hinzugefügt");
+      notify.error("Bereits hinzugefügt");
       return false;
     }
 
@@ -109,7 +109,7 @@ export const usePlanningPreferences = () => {
     const success = await saveCollaborators(newCollaborators);
     
     if (success) {
-      toast.success("Mitarbeiter hinzugefügt");
+      notify.success("Mitarbeiter hinzugefügt");
       await loadPreferences();
     }
     
@@ -121,7 +121,7 @@ export const usePlanningPreferences = () => {
     const success = await saveCollaborators(newCollaborators);
     
     if (success) {
-      toast.success("Mitarbeiter entfernt");
+      notify.success("Mitarbeiter entfernt");
       await loadPreferences();
     }
     
@@ -135,7 +135,7 @@ export const usePlanningPreferences = () => {
     const success = await saveCollaborators(newCollaborators);
     
     if (success) {
-      toast.success("Berechtigung aktualisiert");
+      notify.success("Berechtigung aktualisiert");
       await loadPreferences();
     }
     

@@ -10,10 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { Calendar, Clock, FileText, Loader2, Trash2 } from "lucide-react";
+import { notify } from "@/lib/notify";
 
 interface Meeting {
   id: string;
@@ -39,7 +39,6 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
   const navigate = useNavigate();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -123,11 +122,9 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
       setMeetings(enrichedMeetings);
     } catch (error: unknown) {
       debugConsole.error("Error loading meetings:", error);
-      toast({
-        title: "Fehler",
-        description: "Meetings konnten nicht geladen werden",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Meetings konnten nicht geladen werden"
+});
     } finally {
       setLoading(false);
     }
@@ -151,17 +148,14 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
       if (error) throw error;
 
       setMeetings((prev) => prev.filter((m) => m.id !== meetingId));
-      toast({
-        title: "Gespräch gelöscht",
-        description: "Das Mitarbeitergespräch wurde erfolgreich entfernt.",
-      });
+      notify.success("Gespräch gelöscht", {
+        description: "Das Mitarbeitergespräch wurde erfolgreich entfernt."
+});
     } catch (error) {
       debugConsole.error("Error deleting meeting:", error);
-      toast({
-        title: "Fehler",
-        description: "Das Gespräch konnte nicht gelöscht werden. Es wurden keine Teil-Löschungen übernommen.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Das Gespräch konnte nicht gelöscht werden. Es wurden keine Teil-Löschungen übernommen."
+});
     } finally {
       setDeletingMeetingId(null);
     }

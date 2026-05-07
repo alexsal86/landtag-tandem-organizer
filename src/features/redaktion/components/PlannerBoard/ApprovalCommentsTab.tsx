@@ -5,8 +5,8 @@ import { de } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
 import { useApprovalComments } from "@/features/redaktion/hooks/useApprovalComments";
+import { notify } from "@/lib/notify";
 
 interface ApprovalCommentsTabProps {
   contentItemId: string | null;
@@ -16,14 +16,13 @@ interface ApprovalCommentsTabProps {
 }
 
 export function ApprovalCommentsTab({ contentItemId, responsibleUserId, topicTitle, onChangeRequested }: ApprovalCommentsTabProps) {
-  const { toast } = useToast();
   const { comments, loading, addComment } = useApprovalComments(contentItemId);
   const [draft, setDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const handleSend = async (changeRequest: boolean) => {
     if (!draft.trim()) {
-      toast({ title: "Kommentar ist leer", variant: "destructive" });
+      notify.error("Kommentar ist leer");
       return;
     }
     if (!contentItemId) return;
@@ -32,13 +31,15 @@ export function ApprovalCommentsTab({ contentItemId, responsibleUserId, topicTit
       await addComment(draft, changeRequest, responsibleUserId, topicTitle);
       setDraft("");
       if (changeRequest) {
-        toast({ title: "Änderungswunsch gesendet", description: "Verantwortliche Person wurde benachrichtigt." });
+        notify.success("Änderungswunsch gesendet", { description: "Verantwortliche Person wurde benachrichtigt." 
+});
         onChangeRequested?.();
       } else {
-        toast({ title: "Kommentar hinzugefügt" });
+        notify.success("Kommentar hinzugefügt");
       }
     } catch (err) {
-      toast({ title: "Konnte nicht gespeichert werden", description: String(err instanceof Error ? err.message : err), variant: "destructive" });
+      notify.error("Konnte nicht gespeichert werden", { description: String(err instanceof Error ? err.message : err)
+});
     } finally {
       setSubmitting(false);
     }

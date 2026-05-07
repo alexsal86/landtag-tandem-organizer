@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { notify } from "@/lib/notify";
 
 type OnOpenSearchCallback = () => void;
 
@@ -65,7 +66,6 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
   const { user, signOut } = useAuth();
   const { currentStatus, getStatusDisplay } = useUserStatus();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const appSettings = useAppSettings();
@@ -97,18 +97,15 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
   const handleSignOut = async (): Promise<void> => {
     try {
       await signOut();
-      toast({
-        title: 'Erfolgreich abgemeldet',
-        description: 'Sie wurden erfolgreich abgemeldet.',
-      });
+      notify.success('Erfolgreich abgemeldet', {
+        description: 'Sie wurden erfolgreich abgemeldet.'
+});
       // Navigate to auth page after successful logout
       navigate('/auth');
     } catch (error: unknown) {
-      toast({
-        title: 'Fehler beim Abmelden',
-        description: 'Ein Fehler ist beim Abmelden aufgetreten.',
-        variant: 'destructive',
-      });
+      notify.error('Fehler beim Abmelden', {
+        description: 'Ein Fehler ist beim Abmelden aufgetreten.'
+});
     }
   };
 

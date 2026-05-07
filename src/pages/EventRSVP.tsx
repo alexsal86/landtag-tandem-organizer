@@ -23,9 +23,9 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import {
+import { notify } from "@/lib/notify";
   fetchPublicInvitation,
   PublicInvitationApiError,
   respondToPublicInvitation,
@@ -120,7 +120,6 @@ function getFriendlyErrorMessage(error: unknown): string {
 
 export default function EventRSVP() {
   const { code } = useParams<{ code: string }>();
-  const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -179,22 +178,19 @@ export default function EventRSVP() {
       });
       setComment(response.comment ?? "");
       setConfirmationVisible(true);
-      toast({
-        title: "Antwort gespeichert",
+      notify.success("Antwort gespeichert", {
         description:
           status === "accepted"
             ? "Vielen Dank, Ihre Zusage wurde gespeichert."
             : status === "declined"
               ? "Vielen Dank, Ihre Absage wurde gespeichert."
-              : "Vielen Dank, Ihre Rückmeldung unter Vorbehalt wurde gespeichert.",
-      });
+              : "Vielen Dank, Ihre Rückmeldung unter Vorbehalt wurde gespeichert."
+});
     } catch (error) {
       debugConsole.error("Error saving public invitation response", error);
-      toast({
-        title: "Speichern fehlgeschlagen",
-        description: getFriendlyErrorMessage(error),
-        variant: "destructive",
-      });
+      notify.error("Speichern fehlgeschlagen", {
+        description: getFriendlyErrorMessage(error)
+});
     } finally {
       setSaving(false);
     }

@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { notify } from "@/lib/notify";
 
 interface MFAFactor {
   id: string;
@@ -21,7 +21,6 @@ interface MFAFactor {
 }
 
 export function TwoFactorSettings() {
-  const { toast } = useToast();
   const [isEnabled, setIsEnabled] = useState(false);
   const [factors, setFactors] = useState<MFAFactor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,11 +83,9 @@ export function TwoFactorSettings() {
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
       setError(msg);
-      toast({
-        title: "Fehler",
-        description: "2FA-Setup konnte nicht gestartet werden: " + msg,
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "2FA-Setup konnte nicht gestartet werden: " + msg
+});
     } finally {
       setLoading(false);
     }
@@ -119,19 +116,17 @@ export function TwoFactorSettings() {
       setRecoveryCodes(codes);
       setSetupStep("recovery");
       
-      toast({
-        title: "2FA aktiviert",
+      notify.success("2FA aktiviert", {
         description: "Zwei-Faktor-Authentifizierung wurde erfolgreich aktiviert"
-      });
+      
+});
       
       await loadMFAStatus();
     } catch (error: unknown) {
       setError("Ungültiger Code. Bitte versuchen Sie es erneut.");
-      toast({
-        title: "Fehler",
-        description: "Code konnte nicht verifiziert werden: " + (error instanceof Error ? error.message : String(error)),
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Code konnte nicht verifiziert werden: " + (error instanceof Error ? error.message : String(error))
+});
     } finally {
       setLoading(false);
     }
@@ -178,20 +173,18 @@ export function TwoFactorSettings() {
       
       if (unenrollError) throw unenrollError;
       
-      toast({
-        title: "2FA deaktiviert",
+      notify.success("2FA deaktiviert", {
         description: "Zwei-Faktor-Authentifizierung wurde deaktiviert"
-      });
+      
+});
       
       setShowDisableDialog(false);
       await loadMFAStatus();
     } catch (error: unknown) {
       setError("Ungültiger Code oder Fehler beim Deaktivieren.");
-      toast({
-        title: "Fehler",
-        description: "2FA konnte nicht deaktiviert werden: " + (error instanceof Error ? error.message : String(error)),
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "2FA konnte nicht deaktiviert werden: " + (error instanceof Error ? error.message : String(error))
+});
     } finally {
       setLoading(false);
     }
@@ -201,10 +194,10 @@ export function TwoFactorSettings() {
     navigator.clipboard.writeText(text);
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
-    toast({
-      title: "Kopiert",
+    notify.success("Kopiert", {
       description: "In die Zwischenablage kopiert"
-    });
+    
+});
   };
 
   const downloadRecoveryCodes = () => {

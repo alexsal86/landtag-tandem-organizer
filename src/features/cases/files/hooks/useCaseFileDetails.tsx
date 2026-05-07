@@ -6,6 +6,7 @@ import { buildCaseItemInteractionInsertPayload } from "@/features/cases/shared/u
 import { debugConsole } from "@/utils/debugConsole";
 import { CaseFile } from "./useCaseFiles";
 import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
+import { notify } from "@/lib/notify";
 
 export interface CaseFileContact {
   id: string;
@@ -164,7 +165,6 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
   const [loading, setLoading] = useState(true);
   
   const { user } = useAuth();
-  const { toast } = useToast();
 
   const fetchCaseFile = useCallback(async () => {
     if (!caseFileId) {
@@ -404,14 +404,14 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
         contactId
       );
       
-      toast({ title: "Kontakt hinzugefügt" });
+      notify.success("Kontakt hinzugefügt");
       return true;
     } catch (error: unknown) {
       const code = error && typeof error === 'object' && 'code' in error ? (error as {code: string}).code : '';
       if (code === '23505') {
-        toast({ title: "Kontakt bereits verknüpft", variant: "destructive" });
+        notify.error("Kontakt bereits verknüpft");
       } else {
-        toast({ title: "Fehler beim Hinzufügen", variant: "destructive" });
+        notify.error("Fehler beim Hinzufügen");
       }
       return false;
     }
@@ -422,10 +422,10 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       const { error } = await supabase.from('case_file_contacts').delete().eq('id', id);
       if (error) throw error;
       await fetchContacts();
-      toast({ title: "Kontakt entfernt" });
+      notify.success("Kontakt entfernt");
       return true;
     } catch (error) {
-      toast({ title: "Fehler beim Entfernen", variant: "destructive" });
+      notify.error("Fehler beim Entfernen");
       return false;
     }
   };
@@ -454,14 +454,14 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
         documentId
       );
       
-      toast({ title: "Dokument hinzugefügt" });
+      notify.success("Dokument hinzugefügt");
       return true;
     } catch (error: unknown) {
       const code = error && typeof error === 'object' && 'code' in error ? (error as {code: string}).code : '';
       if (code === '23505') {
-        toast({ title: "Dokument bereits verknüpft", variant: "destructive" });
+        notify.error("Dokument bereits verknüpft");
       } else {
-        toast({ title: "Fehler beim Hinzufügen", variant: "destructive" });
+        notify.error("Fehler beim Hinzufügen");
       }
       return false;
     }
@@ -472,10 +472,10 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       const { error } = await supabase.from('case_file_documents').delete().eq('id', id);
       if (error) throw error;
       await fetchDocuments();
-      toast({ title: "Dokument entfernt" });
+      notify.success("Dokument entfernt");
       return true;
     } catch (error) {
-      toast({ title: "Fehler beim Entfernen", variant: "destructive" });
+      notify.error("Fehler beim Entfernen");
       return false;
     }
   };
@@ -503,14 +503,14 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
         taskId
       );
       
-      toast({ title: "Aufgabe hinzugefügt" });
+      notify.success("Aufgabe hinzugefügt");
       return true;
     } catch (error: unknown) {
       const code = error && typeof error === 'object' && 'code' in error ? (error as {code: string}).code : '';
       if (code === '23505') {
-        toast({ title: "Aufgabe bereits verknüpft", variant: "destructive" });
+        notify.error("Aufgabe bereits verknüpft");
       } else {
-        toast({ title: "Fehler beim Hinzufügen", variant: "destructive" });
+        notify.error("Fehler beim Hinzufügen");
       }
       return false;
     }
@@ -521,10 +521,10 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       const { error } = await supabase.from('case_file_tasks').delete().eq('id', id);
       if (error) throw error;
       await fetchTasks();
-      toast({ title: "Aufgabe entfernt" });
+      notify.success("Aufgabe entfernt");
       return true;
     } catch (error) {
-      toast({ title: "Fehler beim Entfernen", variant: "destructive" });
+      notify.error("Fehler beim Entfernen");
       return false;
     }
   };
@@ -552,14 +552,14 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
         appointmentId
       );
       
-      toast({ title: "Termin hinzugefügt" });
+      notify.success("Termin hinzugefügt");
       return true;
     } catch (error: unknown) {
       const code = error && typeof error === 'object' && 'code' in error ? (error as { code: string }).code : '';
       if (code === '23505') {
-        toast({ title: "Termin bereits verknüpft", variant: "destructive" });
+        notify.error("Termin bereits verknüpft");
       } else {
-        toast({ title: "Fehler beim Hinzufügen", variant: "destructive" });
+        notify.error("Fehler beim Hinzufügen");
       }
       return false;
     }
@@ -570,10 +570,10 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       const { error } = await supabase.from('case_file_appointments').delete().eq('id', id);
       if (error) throw error;
       await fetchAppointments();
-      toast({ title: "Termin entfernt" });
+      notify.success("Termin entfernt");
       return true;
     } catch (error) {
-      toast({ title: "Fehler beim Entfernen", variant: "destructive" });
+      notify.error("Fehler beim Entfernen");
       return false;
     }
   };
@@ -601,14 +601,14 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
         letterId
       );
       
-      toast({ title: "Brief hinzugefügt" });
+      notify.success("Brief hinzugefügt");
       return true;
     } catch (error: unknown) {
       const code = error && typeof error === 'object' && 'code' in error ? (error as { code: string }).code : '';
       if (code === '23505') {
-        toast({ title: "Brief bereits verknüpft", variant: "destructive" });
+        notify.error("Brief bereits verknüpft");
       } else {
-        toast({ title: "Fehler beim Hinzufügen", variant: "destructive" });
+        notify.error("Fehler beim Hinzufügen");
       }
       return false;
     }
@@ -619,10 +619,10 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       const { error } = await supabase.from('case_file_letters').delete().eq('id', id);
       if (error) throw error;
       await fetchLetters();
-      toast({ title: "Brief entfernt" });
+      notify.success("Brief entfernt");
       return true;
     } catch (error) {
-      toast({ title: "Fehler beim Entfernen", variant: "destructive" });
+      notify.error("Fehler beim Entfernen");
       return false;
     }
   };
@@ -641,10 +641,10 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
 
       if (error) throw error;
       await fetchNotes();
-      toast({ title: "Notiz hinzugefügt" });
+      notify.success("Notiz hinzugefügt");
       return true;
     } catch (error) {
-      toast({ title: "Fehler beim Hinzufügen", variant: "destructive" });
+      notify.error("Fehler beim Hinzufügen");
       return false;
     }
   };
@@ -663,7 +663,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       await fetchNotes();
       return true;
     } catch (error) {
-      toast({ title: "Fehler beim Aktualisieren", variant: "destructive" });
+      notify.error("Fehler beim Aktualisieren");
       return false;
     }
   };
@@ -673,10 +673,10 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       const { error } = await supabase.from('case_file_notes').delete().eq('id', id);
       if (error) throw error;
       await fetchNotes();
-      toast({ title: "Notiz gelöscht" });
+      notify.success("Notiz gelöscht");
       return true;
     } catch (error) {
-      toast({ title: "Fehler beim Löschen", variant: "destructive" });
+      notify.error("Fehler beim Löschen");
       return false;
     }
   };
@@ -695,10 +695,10 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
 
       if (error) throw error;
       await fetchTimeline();
-      toast({ title: "Ereignis hinzugefügt" });
+      notify.success("Ereignis hinzugefügt");
       return true;
     } catch (error) {
-      toast({ title: "Fehler beim Hinzufügen", variant: "destructive" });
+      notify.error("Fehler beim Hinzufügen");
       return false;
     }
   };
@@ -708,10 +708,10 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       const { error } = await supabase.from('case_file_timeline').delete().eq('id', id);
       if (error) throw error;
       await fetchTimeline();
-      toast({ title: "Ereignis gelöscht" });
+      notify.success("Ereignis gelöscht");
       return true;
     } catch (error) {
-      toast({ title: "Fehler beim Löschen", variant: "destructive" });
+      notify.error("Fehler beim Löschen");
       return false;
     }
   };
@@ -732,12 +732,12 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       .insert(buildCaseItemInteractionInsertPayload(interaction as Record<string, unknown>, user.id));
 
     if (error) {
-      toast({ title: "Fehler beim Hinzufügen", variant: "destructive" });
+      notify.error("Fehler beim Hinzufügen");
       return false;
     }
 
     await fetchInteractions();
-    toast({ title: "Interaktion hinzugefügt" });
+    notify.success("Interaktion hinzugefügt");
     return true;
   };
 
@@ -755,10 +755,10 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
 
       if (error) throw error;
       await fetchCaseFile();
-      toast({ title: "Aktueller Stand aktualisiert" });
+      notify.success("Aktueller Stand aktualisiert");
       return true;
     } catch (error) {
-      toast({ title: "Fehler beim Aktualisieren", variant: "destructive" });
+      notify.error("Fehler beim Aktualisieren");
       return false;
     }
   };
@@ -774,10 +774,10 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
 
       if (error) throw error;
       await fetchCaseFile();
-      toast({ title: "Risiken & Chancen aktualisiert" });
+      notify.success("Risiken & Chancen aktualisiert");
       return true;
     } catch (error) {
-      toast({ title: "Fehler beim Aktualisieren", variant: "destructive" });
+      notify.error("Fehler beim Aktualisieren");
       return false;
     }
   };
@@ -791,10 +791,10 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
 
       if (error) throw error;
       await fetchTasks();
-      toast({ title: "Aufgabe abgeschlossen" });
+      notify.success("Aufgabe abgeschlossen");
       return true;
     } catch (error) {
-      toast({ title: "Fehler beim Abschließen", variant: "destructive" });
+      notify.error("Fehler beim Abschließen");
       return false;
     }
   };
@@ -810,10 +810,10 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
 
       if (error) throw error;
       await fetchCaseFile();
-      toast({ title: "Zuständiger Bearbeiter aktualisiert" });
+      notify.success("Zuständiger Bearbeiter aktualisiert");
       return true;
     } catch (error) {
-      toast({ title: "Fehler beim Aktualisieren", variant: "destructive" });
+      notify.error("Fehler beim Aktualisieren");
       return false;
     }
   };
@@ -829,10 +829,10 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
 
       if (error) throw error;
       await fetchCaseFile();
-      toast({ title: "Bearbeitungsstatus aktualisiert" });
+      notify.success("Bearbeitungsstatus aktualisiert");
       return true;
     } catch (error) {
-      toast({ title: "Fehler beim Aktualisieren", variant: "destructive" });
+      notify.error("Fehler beim Aktualisieren");
       return false;
     }
   };

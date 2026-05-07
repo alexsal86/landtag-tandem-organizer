@@ -10,9 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/hooks/useTenant';
 import {
+import { notify } from "@/lib/notify";
   AVAILABLE_HINT_ICONS,
   DEFAULT_SPECIAL_DAYS,
   isValidSpecialDayDate,
@@ -32,7 +32,6 @@ const HintIconPreview = ({ iconName }: { iconName: string }) => {
 
 export const DashboardHintSettings = () => {
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
 
   const [entries, setEntries] = useState<SpecialDay[]>(DEFAULT_SPECIAL_DAYS);
   const [isLoading, setIsLoading] = useState(true);
@@ -57,11 +56,9 @@ export const DashboardHintSettings = () => {
         setEntries(parsedDays || DEFAULT_SPECIAL_DAYS);
       } catch (error) {
         debugConsole.error('Error loading dashboard hint settings:', error);
-        toast({
-          title: 'Fehler',
-          description: 'Dashboard-Hinweise konnten nicht geladen werden.',
-          variant: 'destructive'
-        });
+        notify.error('Fehler', {
+          description: 'Dashboard-Hinweise konnten nicht geladen werden.'
+});
       } finally {
         setIsLoading(false);
       }
@@ -113,11 +110,9 @@ export const DashboardHintSettings = () => {
 
   const handleSave = async () => {
     if (!validation.isValid) {
-      toast({
-        title: 'Ungültige Eingaben',
-        description: validation.errors[0] || 'Bitte prüfen Sie die Eingaben.',
-        variant: 'destructive'
-      });
+      notify.error('Ungültige Eingaben', {
+        description: validation.errors[0] || 'Bitte prüfen Sie die Eingaben.'
+});
       return;
     }
 
@@ -165,14 +160,13 @@ export const DashboardHintSettings = () => {
         if (insertError) throw insertError;
       }
 
-      toast({ title: 'Gespeichert', description: 'Dashboard-Hinweise wurden aktualisiert.' });
+      notify.success('Gespeichert', { description: 'Dashboard-Hinweise wurden aktualisiert.' 
+});
     } catch (error) {
       debugConsole.error('Error saving dashboard hint settings:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Dashboard-Hinweise konnten nicht gespeichert werden.',
-        variant: 'destructive'
-      });
+      notify.error('Fehler', {
+        description: 'Dashboard-Hinweise konnten nicht gespeichert werden.'
+});
     } finally {
       setIsSaving(false);
     }

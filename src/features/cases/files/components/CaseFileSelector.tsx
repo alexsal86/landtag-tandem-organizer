@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Briefcase, FolderPlus } from "lucide-react";
+import { notify } from "@/lib/notify";
 
 interface CaseFileSelectorProps {
   open: boolean;
@@ -48,7 +49,6 @@ export function CaseFileSelector({
   
   const { currentTenant } = useTenant();
   const { user } = useAuth();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Fetch available case files
@@ -169,10 +169,7 @@ export function CaseFileSelector({
       return { caseFileId, timelineFailed: Boolean(timelineError) };
     },
     onSuccess: ({ caseFileId, timelineFailed }) => {
-      toast({
-        title: timelineFailed ? "Zur Fallakte hinzugefügt (ohne Chronologie-Eintrag)" : "Zur Fallakte hinzugefügt",
-        variant: timelineFailed ? "destructive" : "default",
-      });
+      notify.success(timelineFailed ? "Zur Fallakte hinzugefügt (ohne Chronologie-Eintrag)" : "Zur Fallakte hinzugefügt");
       queryClient.invalidateQueries({ queryKey: ['case-files'] });
       onSelect(caseFileId);
       onOpenChange(false);
@@ -180,9 +177,9 @@ export function CaseFileSelector({
     onError: (error: unknown) => {
       const errorMessage = extractErrorMessage(error);
       if (errorMessage === 'already_linked') {
-        toast({ title: "Bereits mit dieser Fallakte verknüpft", variant: "destructive" });
+        notify.error("Bereits mit dieser Fallakte verknüpft");
       } else {
-        toast({ title: "Fehler beim Hinzufügen", variant: "destructive" });
+        notify.error("Fehler beim Hinzufügen");
       }
     },
   });
@@ -217,7 +214,7 @@ export function CaseFileSelector({
       setShowCreateNew(false);
     },
     onError: () => {
-      toast({ title: "Fehler beim Erstellen der Fallakte", variant: "destructive" });
+      notify.error("Fehler beim Erstellen der Fallakte");
     },
   });
 

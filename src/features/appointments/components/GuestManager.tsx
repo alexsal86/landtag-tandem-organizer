@@ -9,8 +9,8 @@ import { Separator } from "@/components/ui/separator";
 import { Plus, X, Mail, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
-import { toast } from "sonner";
 import { debugConsole } from "@/utils/debugConsole";
+import { notify } from "@/lib/notify";
 
 interface Guest {
   id?: string;
@@ -84,25 +84,25 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
       setDefaultGuests(data || []);
     } catch (error: unknown) {
       debugConsole.error('Error fetching default guests:', error);
-      toast.error('Fehler beim Laden der Standard-Gäste');
+      notify.error('Fehler beim Laden der Standard-Gäste');
     }
   };
 
   const addManualGuest = () => {
     if (!newGuestName.trim() || !newGuestEmail.trim()) {
-      toast.error('Bitte Name und E-Mail-Adresse eingeben');
+      notify.error('Bitte Name und E-Mail-Adresse eingeben');
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(newGuestEmail)) {
-      toast.error('Bitte gültige E-Mail-Adresse eingeben');
+      notify.error('Bitte gültige E-Mail-Adresse eingeben');
       return;
     }
 
     // Check for duplicates
     if (guests.some(g => g.email.toLowerCase() === newGuestEmail.toLowerCase())) {
-      toast.error('Gast mit dieser E-Mail-Adresse bereits hinzugefügt');
+      notify.error('Gast mit dieser E-Mail-Adresse bereits hinzugefügt');
       return;
     }
 
@@ -114,20 +114,20 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
     onGuestsChange([...guests, newGuest]);
     setNewGuestName('');
     setNewGuestEmail('');
-    toast.success('Gast hinzugefügt');
+    notify.success('Gast hinzugefügt');
   };
 
   const removeGuest = (index: number) => {
     const updatedGuests = guests.filter((_, i) => i !== index);
     onGuestsChange(updatedGuests);
-    toast.success('Gast entfernt');
+    notify.success('Gast entfernt');
   };
 
   const handleDefaultGuestToggle = (defaultGuest: DefaultGuest, checked: boolean) => {
     if (checked) {
       // Check for duplicates
       if (guests.some(g => g.email.toLowerCase() === defaultGuest.email.toLowerCase())) {
-        toast.error('Gast bereits hinzugefügt');
+        notify.error('Gast bereits hinzugefügt');
         return;
       }
 

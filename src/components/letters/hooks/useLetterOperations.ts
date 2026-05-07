@@ -1,12 +1,12 @@
 import { useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import type { Letter, LetterTemplate } from '../types';
 import { canTransitionStatus, STATUS_LABELS } from '../types';
 import { debugConsole } from '@/utils/debugConsole';
 import type { Database } from '@/integrations/supabase/types';
 import type { LetterContentNodes } from '../types';
 import type { SenderInformationRecord, InformationBlockRecord } from '@/types/letterLayout';
+import { notify } from "@/lib/notify";
 
 type LetterAttachment = Database['public']['Tables']['letter_attachments']['Row'];
 
@@ -33,7 +33,6 @@ interface UseLetterOperationsOptions {
 }
 
 export function useLetterOperations(opts: UseLetterOperationsOptions) {
-  const { toast } = useToast();
   const {
     letter, editedLetter, setEditedLetter, canEdit, userId, tenantId,
     showPagination, latestContentRef, isUpdatingFromRemoteRef, pendingMentionsRef,
@@ -53,7 +52,8 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
 
     if (contentToSave && contentToSave.includes('{"root":{"children"') && contentToSave.split('{"root":{"children"').length > 2) {
       debugConsole.error('Detected corrupted content, aborting save');
-      toast({ title: 'Inhalt beschädigt', description: 'Der Inhalt scheint beschädigt zu sein. Bitte laden Sie die Seite neu.', variant: 'destructive', duration: 5000 });
+      notify.error('Inhalt beschädigt', { description: 'Der Inhalt scheint beschädigt zu sein. Bitte laden Sie die Seite neu.', duration: 5000 
+});
       return;
     }
 
@@ -87,7 +87,8 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
       setLastSaved(new Date());
     } catch (error) {
       debugConsole.error('Error auto-saving letter:', error);
-      toast({ title: 'Auto-Speichern fehlgeschlagen', description: 'Änderungen konnten nicht gespeichert werden.', variant: 'destructive', duration: 3000 });
+      notify.error('Auto-Speichern fehlgeschlagen', { description: 'Änderungen konnten nicht gespeichert werden.', duration: 3000 
+});
     } finally {
       setTimeout(() => setSaving(false), 200);
     }
@@ -170,10 +171,12 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
       }
 
       onSave();
-      toast({ title: 'Brief gespeichert', description: 'Ihre Änderungen wurden erfolgreich gespeichert.' });
+      notify.success('Brief gespeichert', { description: 'Ihre Änderungen wurden erfolgreich gespeichert.' 
+});
     } catch (error) {
       debugConsole.error('Error saving letter:', error);
-      toast({ title: 'Fehler beim Speichern', description: 'Der Brief konnte nicht gespeichert werden.', variant: 'destructive' });
+      notify.error('Fehler beim Speichern', { description: 'Der Brief konnte nicht gespeichert werden.'
+});
     } finally {
       setSaving(false);
     }
@@ -181,7 +184,8 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
 
   const handleStatusTransition = useCallback(async (newStatus: string) => {
     if (!canTransitionStatus(editedLetter.status || 'draft', newStatus)) {
-      toast({ title: 'Ungültiger Statuswechsel', description: 'Dieser Statuswechsel ist nicht erlaubt.', variant: 'destructive' });
+      notify.error('Ungültiger Statuswechsel', { description: 'Dieser Statuswechsel ist nicht erlaubt.'
+});
       return;
     }
 
@@ -236,12 +240,11 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
             archived_by: archiveResult.archivedBy,
           }));
 
-          toast({
-            title: 'Brief versendet und archiviert',
+          notify.success('Brief versendet und archiviert', {
             description: archiveResult.followUpTaskId
               ? 'Brief wurde versendet, archiviert und mit Wiedervorlage versehen.'
-              : 'Brief wurde versendet und automatisch in die Dokumentenverwaltung übernommen.',
-          });
+              : 'Brief wurde versendet und automatisch in die Dokumentenverwaltung übernommen.'
+});
         } else {
           const { error } = await supabase
             .from('letters')
@@ -251,7 +254,8 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
         }
       } catch (error) {
         debugConsole.error('Error updating workflow tracking:', error);
-        toast({ title: 'Fehler beim Workflow-Update', description: newStatus === 'sent' ? 'Der Brief konnte nicht versendet und archiviert werden.' : 'Die Workflow-Daten konnten nicht gespeichert werden.', variant: 'destructive' });
+        notify.error('Fehler beim Workflow-Update', { description: newStatus === 'sent' ? 'Der Brief konnte nicht versendet und archiviert werden.' : 'Die Workflow-Daten konnten nicht gespeichert werden.'
+});
       }
     }
 
@@ -259,7 +263,8 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
     if (newStatus === 'approved' || newStatus === 'sent' || newStatus === 'draft') setIsProofreadingMode(false);
 
     if (newStatus !== 'sent') {
-      toast({ title: 'Status geändert', description: `Status wurde zu "${STATUS_LABELS[newStatus]}" geändert.` });
+      notify.success('Status geändert', { description: `Status wurde zu "${STATUS_LABELS[newStatus]}" geändert.` 
+});
     }
   }, [editedLetter, letter, userId, canEdit, setEditedLetter, setIsProofreadingMode, setShowAssignmentDialog, toast]);
 
@@ -271,10 +276,12 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
         .insert([{ letter_id: letter.id, user_id: userId, content, comment_type: 'comment' }]);
       if (error) throw error;
       fetchComments();
-      toast({ title: 'Kommentar hinzugefügt', description: 'Der Kommentar wurde erfolgreich hinzugefügt.' });
+      notify.success('Kommentar hinzugefügt', { description: 'Der Kommentar wurde erfolgreich hinzugefügt.' 
+});
     } catch (error) {
       debugConsole.error('Error adding comment:', error);
-      toast({ title: 'Fehler', description: 'Der Kommentar konnte nicht hinzugefügt werden.', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Der Kommentar konnte nicht hinzugefügt werden.'
+});
     }
   }, [letter?.id, userId, fetchComments, toast]);
 
@@ -283,10 +290,12 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
     try {
       setEditedLetter(prev => ({ ...prev, status: 'draft' }));
       setIsProofreadingMode(true);
-      toast({ title: 'Brief zurückgegeben', description: 'Der Brief wurde zur Bearbeitung zurückgegeben.' });
+      notify.success('Brief zurückgegeben', { description: 'Der Brief wurde zur Bearbeitung zurückgegeben.' 
+});
     } catch (error) {
       debugConsole.error('Error returning letter:', error);
-      toast({ title: 'Fehler', description: 'Der Brief konnte nicht zurückgegeben werden.', variant: 'destructive' });
+      notify.error('Fehler', { description: 'Der Brief konnte nicht zurückgegeben werden.'
+});
     }
   }, [letter?.id, userId, setEditedLetter, setIsProofreadingMode, toast]);
 
@@ -311,7 +320,8 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
       await onRenameSuccess?.();
     } catch (error) {
       debugConsole.error('Error updating attachment display name:', error);
-      toast({ title: 'Fehler beim Umbenennen', description: 'Der Anlagenname konnte nicht aktualisiert werden.', variant: 'destructive' });
+      notify.error('Fehler beim Umbenennen', { description: 'Der Anlagenname konnte nicht aktualisiert werden.'
+});
     }
   }, [toast]);
 

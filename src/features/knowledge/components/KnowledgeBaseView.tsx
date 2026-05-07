@@ -22,14 +22,13 @@ import { useKnowledgeData } from '@/components/knowledge/hooks/useKnowledgeData'
 import { useKnowledgeVersionHistory } from '@/components/knowledge/hooks/useKnowledgeVersionHistory';
 import { KnowledgeVersionHistory } from '@/components/knowledge/KnowledgeVersionHistory';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { DecisionFileUpload } from '@/components/task-decisions/DecisionFileUpload';
 import type { EmailMetadata } from '@/utils/emlParser';
+import { notify } from "@/lib/notify";
 
 const KnowledgeBaseView = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
   const navigate = useNavigate();
   const { subId, documentId: legacyDocumentId } = useParams<{ subId?: string; documentId?: string }>();
   const documentId = subId ?? legacyDocumentId;
@@ -120,7 +119,8 @@ const KnowledgeBaseView = () => {
   const handleKnowledgeUpload = async () => {
     if (!user || !data.selectedDocument || !data.tenantId) return;
     if (selectedUploadFiles.length === 0) {
-      toast({ title: 'Keine Dateien ausgewählt', description: 'Bitte wählen Sie mindestens eine Datei aus.', variant: 'destructive' });
+      notify.error('Keine Dateien ausgewählt', { description: 'Bitte wählen Sie mindestens eine Datei aus.'
+});
       return;
     }
 
@@ -156,21 +156,18 @@ const KnowledgeBaseView = () => {
         if (dbError) throw dbError;
       }
 
-      toast({
-        title: 'Upload erfolgreich',
-        description: `${selectedUploadFiles.length} Datei(en) wurden aus Wissen hochgeladen.`,
-      });
+      notify.success('Upload erfolgreich', {
+        description: `${selectedUploadFiles.length} Datei(en) wurden aus Wissen hochgeladen.`
+});
       resetUploadState();
       setShowUploadDialog(false);
     } catch (error) {
       if (uploadedPaths.length > 0) {
         await supabase.storage.from('documents').remove(uploadedPaths);
       }
-      toast({
-        title: 'Upload fehlgeschlagen',
-        description: 'Die Dateien konnten nicht vollständig hochgeladen werden.',
-        variant: 'destructive',
-      });
+      notify.error('Upload fehlgeschlagen', {
+        description: 'Die Dateien konnten nicht vollständig hochgeladen werden.'
+});
     } finally {
       setIsUploadingFiles(false);
     }

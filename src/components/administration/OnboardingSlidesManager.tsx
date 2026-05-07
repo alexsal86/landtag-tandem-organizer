@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { useTenant } from "@/hooks/useTenant";
-import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowDown, ArrowUp, Download, Eye, Pencil, Plus, Save, Trash2, Upload, X } from "lucide-react";
 import { OnboardingDialog } from "@/components/onboarding/OnboardingDialog";
 import { DEFAULT_SLIDES, type OnboardingSlide } from "@/hooks/useOnboardingGate";
+import { notify } from "@/lib/notify";
 
 type Row = {
   id: string;
@@ -33,7 +33,6 @@ const ICON_CHOICES = [
 
 export function OnboardingSlidesManager(): React.JSX.Element {
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -51,7 +50,8 @@ export function OnboardingSlidesManager(): React.JSX.Element {
       .eq("tenant_id", tenantId)
       .order("position", { ascending: true });
     if (error) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      notify.error("Fehler", { description: error.message
+});
     } else {
       setRows((data ?? []) as Row[]);
     }
@@ -88,7 +88,7 @@ export function OnboardingSlidesManager(): React.JSX.Element {
   const save = async (): Promise<void> => {
     if (!tenantId) return;
     if (!draft.title?.trim()) {
-      toast({ title: "Titel fehlt", variant: "destructive" });
+      notify.error("Titel fehlt");
       return;
     }
     if (editingId === "new") {
@@ -102,7 +102,8 @@ export function OnboardingSlidesManager(): React.JSX.Element {
         position: draft.position ?? rows.length,
       });
       if (error) {
-        toast({ title: "Fehler", description: error.message, variant: "destructive" });
+        notify.error("Fehler", { description: error.message
+});
         return;
       }
     } else if (editingId) {
@@ -117,20 +118,22 @@ export function OnboardingSlidesManager(): React.JSX.Element {
         })
         .eq("id", editingId);
       if (error) {
-        toast({ title: "Fehler", description: error.message, variant: "destructive" });
+        notify.error("Fehler", { description: error.message
+});
         return;
       }
     }
     cancelEdit();
     await load();
-    toast({ title: "Gespeichert" });
+    notify.success("Gespeichert");
   };
 
   const remove = async (id: string): Promise<void> => {
     if (!confirm("Slide wirklich löschen?")) return;
     const { error } = await supabase.from("tenant_onboarding_slides").delete().eq("id", id);
     if (error) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      notify.error("Fehler", { description: error.message
+});
       return;
     }
     await load();
@@ -190,7 +193,7 @@ export function OnboardingSlidesManager(): React.JSX.Element {
       const parsed = JSON.parse(text) as { slides?: Array<Partial<Row>> } | Array<Partial<Row>>;
       const incoming = Array.isArray(parsed) ? parsed : parsed.slides ?? [];
       if (!Array.isArray(incoming) || incoming.length === 0) {
-        toast({ title: "Keine Slides gefunden", variant: "destructive" });
+        notify.error("Keine Slides gefunden");
         return;
       }
       const replace = confirm(
@@ -202,7 +205,8 @@ export function OnboardingSlidesManager(): React.JSX.Element {
           .delete()
           .eq("tenant_id", tenantId);
         if (delErr) {
-          toast({ title: "Fehler beim Ersetzen", description: delErr.message, variant: "destructive" });
+          notify.error("Fehler beim Ersetzen", { description: delErr.message
+});
           return;
         }
       }
@@ -218,13 +222,15 @@ export function OnboardingSlidesManager(): React.JSX.Element {
       }));
       const { error } = await supabase.from("tenant_onboarding_slides").insert(payload);
       if (error) {
-        toast({ title: "Import fehlgeschlagen", description: error.message, variant: "destructive" });
+        notify.error("Import fehlgeschlagen", { description: error.message
+});
         return;
       }
       await load();
-      toast({ title: `${payload.length} Slide(s) importiert` });
+      notify.success(`${payload.length} Slide(s) importiert`);
     } catch (e) {
-      toast({ title: "Ungültige JSON-Datei", description: (e as Error).message, variant: "destructive" });
+      notify.error("Ungültige JSON-Datei", { description: (e as Error).message
+});
     }
   };
 

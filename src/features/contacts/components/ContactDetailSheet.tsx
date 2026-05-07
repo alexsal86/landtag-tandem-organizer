@@ -26,10 +26,10 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import { getContactAvatarColor } from "@/components/contacts/utils/avatarColors";
 import { ContactEditForm } from "@/features/contacts/components/ContactEditForm";
+import { notify } from "@/lib/notify";
 
 interface ContactRow {
   id: string;
@@ -197,7 +197,6 @@ const CASE_STATUS_LABELS: Record<string, string> = {
 
 export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate }: ContactDetailSheetProps) {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [contact, setContact] = useState<ContactRow | null>(null);
   const [activities, setActivities] = useState<ActivityRow[]>([]);
   const [cases, setCases] = useState<CaseItemRow[]>([]);
@@ -262,7 +261,8 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
         }
       } catch (e) {
         debugConsole.error("ContactDetailSheet load error", e);
-        toast({ title: "Fehler", description: "Kontakt konnte nicht geladen werden.", variant: "destructive" });
+        notify.error("Fehler", { description: "Kontakt konnte nicht geladen werden."
+});
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -273,9 +273,11 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
   const handleCopy = useCallback(async (value: string, label: string) => {
     try {
       await navigator.clipboard.writeText(value);
-      toast({ title: "Kopiert", description: `${label} wurde in die Zwischenablage kopiert.` });
+      notify.success("Kopiert", { description: `${label} wurde in die Zwischenablage kopiert.` 
+});
     } catch {
-      toast({ title: "Fehler", description: "Kopieren nicht möglich.", variant: "destructive" });
+      notify.error("Fehler", { description: "Kopieren nicht möglich."
+});
     }
   }, [toast]);
 

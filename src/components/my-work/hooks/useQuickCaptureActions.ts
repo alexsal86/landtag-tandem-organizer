@@ -2,11 +2,11 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import { extractMentionedUserIds } from "@/utils/noteMentions";
 import { notifyQuickNoteShared } from "@/utils/shareNotifications";
 import { stripHtml } from "@/components/my-work/utils/editorContent";
+import { notify } from "@/lib/notify";
 
 type QuickCaptureValues = {
   title: string;
@@ -35,7 +35,6 @@ export function useQuickCaptureActions({
 }: UseQuickCaptureActionsParams) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
 
   const [saving, setSaving] = useState(false);
   const [savingAsTask, setSavingAsTask] = useState(false);
@@ -87,12 +86,12 @@ export function useQuickCaptureActions({
         setMentionPromptOpen(true);
       }
 
-      toast({ title: "Notiz gespeichert" });
+      notify.success("Notiz gespeichert");
       onResetForm();
       onNoteSaved?.();
     } catch (error) {
       debugConsole.error("Error saving note:", error);
-      toast({ title: "Fehler beim Speichern", variant: "destructive" });
+      notify.error("Fehler beim Speichern");
     } finally {
       setSaving(false);
     }
@@ -111,7 +110,7 @@ export function useQuickCaptureActions({
     );
 
     if (error) {
-      toast({ title: "Freigabe für erwähnte Personen fehlgeschlagen", variant: "destructive" });
+      notify.error("Freigabe für erwähnte Personen fehlgeschlagen");
       return;
     }
 
@@ -140,7 +139,7 @@ export function useQuickCaptureActions({
         )
     );
 
-    toast({ title: "Notiz für erwähnte Personen freigegeben" });
+    notify.success("Notiz für erwähnte Personen freigegeben");
   };
 
   const handleSaveAsTask = async () => {
@@ -165,12 +164,12 @@ export function useQuickCaptureActions({
 
       if (error) throw error;
 
-      toast({ title: "Als Aufgabe gespeichert" });
+      notify.success("Als Aufgabe gespeichert");
       onResetForm();
       onNoteSaved?.();
     } catch (error) {
       debugConsole.error("Error saving as task:", error);
-      toast({ title: "Fehler beim Speichern", variant: "destructive" });
+      notify.error("Fehler beim Speichern");
     } finally {
       setSavingAsTask(false);
     }

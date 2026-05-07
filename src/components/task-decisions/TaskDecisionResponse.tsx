@@ -8,13 +8,13 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Check, X, MessageCircle, Edit2, Paperclip, Circle, Star, ChevronDown, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { DecisionFileUpload } from "./DecisionFileUpload";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { ResponseOption, getColorClasses, getDefaultOptions } from "@/lib/decisionTemplates";
 import { LETTER_NOTIFICATION_TYPES } from '@/utils/letterNotificationTypes';
 import type { DecisionParticipantProfile } from './types/domain';
+import { notify } from "@/lib/notify";
 
 interface ResponseSubmitMeta {
   responseType: string;
@@ -113,7 +113,6 @@ export const TaskDecisionResponse = ({
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggeredRef = useRef(false);
   const LONG_PRESS_MS = 500;
-  const { toast } = useToast();
 
   useEffect(() => {
     setSelectedResponseKey(null);
@@ -445,10 +444,9 @@ export const TaskDecisionResponse = ({
         debugConsole.error('Error auto-updating letter status from decision:', letterError);
       }
 
-      toast({
-        title: "Erfolgreich",
-        description: "Ihre Antwort wurde gespeichert.",
-      });
+      notify.success("Erfolgreich", {
+        description: "Ihre Antwort wurde gespeichert."
+});
 
       const selectedOption = getOptionByKey(responseType);
       setSelectedResponseKey(responseType);
@@ -466,11 +464,9 @@ export const TaskDecisionResponse = ({
       });
     } catch (error: unknown) {
       debugConsole.error('Error submitting response:', error);
-      toast({
-        title: "Fehler",
-        description: error instanceof Error ? error.message : "Antwort konnte nicht gespeichert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: error instanceof Error ? error.message : "Antwort konnte nicht gespeichert werden."
+});
     } finally {
       setIsLoading(false);
     }
@@ -485,11 +481,9 @@ export const TaskDecisionResponse = ({
 
   const handleQuestionSubmit = (option: ResponseOption) => {
     if (option.requires_comment && !questionComment.trim()) {
-      toast({
-        title: "Fehler",
-        description: "Bitte geben Sie eine Frage oder einen Kommentar ein.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Bitte geben Sie eine Frage oder einen Kommentar ein."
+});
       return;
     }
     handleResponse(option.key, questionComment.trim());

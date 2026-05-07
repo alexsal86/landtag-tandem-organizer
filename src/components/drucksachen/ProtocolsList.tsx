@@ -27,13 +27,12 @@ import {
   RefreshCw
 } from 'lucide-react';
 import {
+import { notify } from "@/lib/notify";
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { toast } from 'sonner';
-
 interface Protocol {
   id: string;
   protocol_date: string;
@@ -129,11 +128,11 @@ export function ProtocolsList({ protocols, onProtocolSelect, onProtocolsRefresh 
 
       if (error) throw error;
       
-      toast.success('Protokoll erfolgreich gelöscht');
+      notify.success('Protokoll erfolgreich gelöscht');
       onProtocolsRefresh();
     } catch (error) {
       debugConsole.error('Error deleting protocol:', error);
-      toast.error('Fehler beim Löschen des Protokolls');
+      notify.error('Fehler beim Löschen des Protokolls');
     }
   };
 
@@ -161,11 +160,11 @@ export function ProtocolsList({ protocols, onProtocolSelect, onProtocolsRefresh 
         debugConsole.warn('Protocol analysis function not available:', error);
       }
       
-      toast.success('Protokoll wird erneut verarbeitet');
+      notify.success('Protokoll wird erneut verarbeitet');
       onProtocolsRefresh();
     } catch (error) {
       debugConsole.error('Error reprocessing protocol:', error);
-      toast.error('Fehler beim erneuten Verarbeiten');
+      notify.error('Fehler beim erneuten Verarbeiten');
     }
   };
 

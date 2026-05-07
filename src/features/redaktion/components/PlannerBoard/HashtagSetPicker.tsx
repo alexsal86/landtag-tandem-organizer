@@ -5,8 +5,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TagInput } from "@/components/ui/tag-input";
-import { useToast } from "@/hooks/use-toast";
 import { useHashtagSets } from "@/features/redaktion/hooks/useHashtagSets";
+import { notify } from "@/lib/notify";
 
 interface HashtagSetPickerProps {
   currentHashtags: string[];
@@ -15,18 +15,17 @@ interface HashtagSetPickerProps {
 
 export function HashtagSetPicker({ currentHashtags, onApply }: HashtagSetPickerProps) {
   const { sets, createSet, deleteSet } = useHashtagSets();
-  const { toast } = useToast();
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [newTags, setNewTags] = useState<string[]>([]);
 
   const handleCreate = async () => {
     if (!newName.trim()) {
-      toast({ title: "Bitte Name angeben", variant: "destructive" });
+      notify.error("Bitte Name angeben");
       return;
     }
     if (newTags.length === 0) {
-      toast({ title: "Mindestens ein Hashtag eintragen", variant: "destructive" });
+      notify.error("Mindestens ein Hashtag eintragen");
       return;
     }
     try {
@@ -34,9 +33,9 @@ export function HashtagSetPicker({ currentHashtags, onApply }: HashtagSetPickerP
       setNewName("");
       setNewTags([]);
       setCreating(false);
-      toast({ title: "Hashtag-Set gespeichert" });
+      notify.success("Hashtag-Set gespeichert");
     } catch {
-      toast({ title: "Set konnte nicht gespeichert werden", variant: "destructive" });
+      notify.error("Set konnte nicht gespeichert werden");
     }
   };
 
@@ -45,9 +44,9 @@ export function HashtagSetPicker({ currentHashtags, onApply }: HashtagSetPickerP
     if (!name) return;
     try {
       await createSet({ name: name.trim(), hashtags: currentHashtags });
-      toast({ title: "Aktuelle Hashtags als Set gespeichert" });
+      notify.success("Aktuelle Hashtags als Set gespeichert");
     } catch {
-      toast({ title: "Set konnte nicht gespeichert werden", variant: "destructive" });
+      notify.error("Set konnte nicht gespeichert werden");
     }
   };
 
@@ -81,7 +80,7 @@ export function HashtagSetPicker({ currentHashtags, onApply }: HashtagSetPickerP
                 onClick={() => {
                   const merged = Array.from(new Set([...currentHashtags, ...set.hashtags]));
                   onApply(merged);
-                  toast({ title: `${set.hashtags.length} Hashtags eingefügt` });
+                  notify.success(`${set.hashtags.length} Hashtags eingefügt`);
                 }}
               >
                 <span className="font-medium">{set.name}</span>

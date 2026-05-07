@@ -11,9 +11,9 @@ import { Contact } from "@/hooks/useInfiniteContacts";
 import { getGenderLabel } from "./hooks/useContactsViewState";
 import { getInitials } from "./utils/contactFormatters";
 import { getContactAvatarColor } from "./utils/avatarColors";
-import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { notify } from "@/lib/notify";
 
 interface ContactListTableProps {
   contacts: Contact[];
@@ -59,7 +59,6 @@ export function ContactListTable({
   contacts, sortColumn, sortDirection, onSort, onContactClick, onToggleFavorite,
   isSelectionMode, selectedContactIds, onToggleSelection,
 }: ContactListTableProps) {
-  const { toast } = useToast();
   const [splitNameMode, setSplitNameMode] = useState(() => {
     try { return localStorage.getItem("contacts-split-name") === "true"; } catch { return false; }
   });
@@ -277,7 +276,7 @@ export function ContactListTable({
                       <TooltipProvider><Tooltip><TooltipTrigger asChild>
                         <button
                           className="text-muted-foreground hover:text-foreground"
-                          onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(contact.email!); toast({ title: "E-Mail kopiert" }); }}
+                          onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(contact.email!); notify.success("E-Mail kopiert"); }}
                           aria-label="E-Mail-Adresse kopieren"
                           title="E-Mail-Adresse kopieren"
                         >
@@ -289,7 +288,7 @@ export function ContactListTable({
                       <TooltipProvider><Tooltip><TooltipTrigger asChild>
                         <button
                           className="text-muted-foreground hover:text-foreground"
-                          onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(contact.phone!); toast({ title: "Telefon kopiert" }); }}
+                          onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(contact.phone!); notify.success("Telefon kopiert"); }}
                           aria-label="Telefonnummer kopieren"
                           title="Telefonnummer kopieren"
                         >
@@ -301,7 +300,7 @@ export function ContactListTable({
                       <TooltipProvider><Tooltip><TooltipTrigger asChild>
                         <button
                           className="text-muted-foreground hover:text-foreground"
-                          onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(contact.linkedin!); toast({ title: "LinkedIn kopiert" }); }}
+                          onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(contact.linkedin!); notify.success("LinkedIn kopiert"); }}
                           aria-label="LinkedIn-Profil kopieren"
                           title="LinkedIn-Profil kopieren"
                         >

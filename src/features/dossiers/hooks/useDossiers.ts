@@ -2,9 +2,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useCurrentProfileId } from "@/hooks/useCurrentProfileId";
-import { toast } from "sonner";
 import type { Dossier } from "../types";
 import { useEffect } from "react";
+import { notify } from "@/lib/notify";
 
 export function useDossiers() {
   const { currentTenant } = useTenant();
@@ -106,9 +106,9 @@ export function useCreateDossier() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dossiers"] });
-      toast.success("Dossier erstellt");
+      notify.success("Dossier erstellt");
     },
-    onError: (err) => toast.error(`Fehler: ${err.message}`),
+    onError: (err) => notify.error(`Fehler: ${err.message}`),
   });
 }
 
@@ -148,8 +148,8 @@ export function useUpdateDossier() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dossiers"] });
-      toast.success("Dossier aktualisiert");
+      notify.success("Dossier aktualisiert");
     },
-    onError: (err) => toast.error(`Fehler: ${err.message}`),
+    onError: (err) => notify.error(`Fehler: ${err.message}`),
   });
 }

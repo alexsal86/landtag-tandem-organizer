@@ -8,7 +8,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { toast } from 'sonner';
 import { debugConsole } from '@/utils/debugConsole';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,6 +16,7 @@ import { TaskDetailSidebar } from '@/features/tasks/components/TaskDetailSidebar
 import { QuickNotesList } from '@/components/shared/QuickNotesList';
 import SimpleRichTextEditor from '@/components/ui/SimpleRichTextEditor';
 import type { Task } from '@/components/task-detail/types';
+import { notify } from "@/lib/notify";
 
 interface QuickNotesWidgetProps {
   className?: string;
@@ -227,10 +227,10 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
       setNewTitle('');
       setTitleEditorKey(prev => prev + 1);
       setRefreshTrigger(prev => prev + 1);
-      toast.success('Notiz erstellt');
+      notify.success('Notiz erstellt');
     } catch (error) {
       debugConsole.error('Error creating note:', error);
-      toast.error('Fehler beim Erstellen der Notiz');
+      notify.error('Fehler beim Erstellen der Notiz');
     }
   };
 
@@ -241,7 +241,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
         `quicknotes_settings_${user.id}`,
         JSON.stringify({ showDeleteConfirmation: newValue })
       );
-      toast.success('Einstellung gespeichert');
+      notify.success('Einstellung gespeichert');
     }
   };
 

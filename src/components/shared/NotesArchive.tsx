@@ -26,10 +26,10 @@ import { Trash2, RotateCcw, Clock, ChevronDown, Archive, Calendar as CalendarIco
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { format, differenceInDays, addDays } from "date-fns";
 import { de } from "date-fns/locale";
+import { notify } from "@/lib/notify";
 
 interface DeletedNote {
   id: string;
@@ -142,7 +142,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
 
   const handleRestore = async (noteId: string) => {
     if (!user?.id) {
-      toast.error("Nicht angemeldet");
+      notify.error("Nicht angemeldet");
       return;
     }
     
@@ -157,25 +157,25 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
       if (error) throw error;
       
       if (!data || data.length === 0) {
-        toast.error("Keine Berechtigung zum Wiederherstellen dieser Notiz");
+        notify.error("Keine Berechtigung zum Wiederherstellen dieser Notiz");
         return;
       }
       
       // Optimistic UI update
       setNotes(prev => prev.filter(n => n.id !== noteId));
       
-      toast.success("Notiz wiederhergestellt");
+      notify.success("Notiz wiederhergestellt");
       onRestore?.();
     } catch (error) {
       debugConsole.error("Error restoring note:", error);
-      toast.error("Fehler beim Wiederherstellen");
+      notify.error("Fehler beim Wiederherstellen");
       loadDeletedNotes();
     }
   };
 
   const handleRestoreFromArchive = async (noteId: string) => {
     if (!user?.id) {
-      toast.error("Nicht angemeldet");
+      notify.error("Nicht angemeldet");
       return;
     }
     
@@ -190,18 +190,18 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
       if (error) throw error;
       
       if (!data || data.length === 0) {
-        toast.error("Keine Berechtigung zum Wiederherstellen dieser Notiz");
+        notify.error("Keine Berechtigung zum Wiederherstellen dieser Notiz");
         return;
       }
       
       // Optimistic state update - immediately remove from list
       setArchivedNotes(prev => prev.filter(n => n.id !== noteId));
       
-      toast.success("Notiz aus Archiv wiederhergestellt");
+      notify.success("Notiz aus Archiv wiederhergestellt");
       onRestore?.();
     } catch (error) {
       debugConsole.error("Error restoring from archive:", error);
-      toast.error("Fehler beim Wiederherstellen");
+      notify.error("Fehler beim Wiederherstellen");
       // On error: reload archive list to ensure consistent state
       loadArchivedNotes();
     }
@@ -215,12 +215,12 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
         .eq("id", noteId);
 
       if (error) throw error;
-      toast.success("Notiz endgültig gelöscht");
+      notify.success("Notiz endgültig gelöscht");
       setConfirmDeleteNote(null);
       loadDeletedNotes();
     } catch (error) {
       debugConsole.error("Error permanently deleting note:", error);
-      toast.error("Fehler beim Löschen");
+      notify.error("Fehler beim Löschen");
     }
   };
 
@@ -232,12 +232,12 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
         .eq("id", noteId);
 
       if (error) throw error;
-      toast.success(`Löschdatum geändert auf ${format(newDate, "dd.MM.yyyy", { locale: de })}`);
+      notify.success(`Löschdatum geändert auf ${format(newDate, "dd.MM.yyyy", { locale: de })}`);
       setDatePickerNote(null);
       loadDeletedNotes();
     } catch (error) {
       debugConsole.error("Error updating delete date:", error);
-      toast.error("Fehler beim Ändern des Löschdatums");
+      notify.error("Fehler beim Ändern des Löschdatums");
     }
   };
 

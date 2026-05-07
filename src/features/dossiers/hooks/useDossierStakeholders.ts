@@ -2,8 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useCurrentProfileId } from "@/hooks/useCurrentProfileId";
-import { toast } from "sonner";
 import type { DossierStakeholder, StakeholderStance } from "../types";
+import { notify } from "@/lib/notify";
 
 export function useDossierStakeholders(dossierId: string | null) {
   const { currentTenant } = useTenant();
@@ -53,9 +53,9 @@ export function useUpsertStakeholder() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dossier-stakeholders"] });
-      toast.success("Akteur gespeichert");
+      notify.success("Akteur gespeichert");
     },
-    onError: (err: Error) => toast.error(`Fehler: ${err.message}`),
+    onError: (err: Error) => notify.error(`Fehler: ${err.message}`),
   });
 }
 
@@ -68,8 +68,8 @@ export function useDeleteStakeholder() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dossier-stakeholders"] });
-      toast.success("Akteur entfernt");
+      notify.success("Akteur entfernt");
     },
-    onError: (err: Error) => toast.error(`Fehler: ${err.message}`),
+    onError: (err: Error) => notify.error(`Fehler: ${err.message}`),
   });
 }

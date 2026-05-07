@@ -11,8 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Building2, Plus, Users, Check, X, ArrowLeftRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-
+import { notify } from "@/lib/notify";
 interface TenantCollaboration {
   id: string;
   tenant_a_id: string;
@@ -29,7 +28,6 @@ interface TenantCollaboration {
 export function TenantCollaboration() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const [collaborations, setCollaborations] = useState<TenantCollaboration[]>([]);
   const [availableTenants, setAvailableTenants] = useState<Array<{ id: string; name: string }>>([]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -107,18 +105,15 @@ export function TenantCollaboration() {
         .single();
 
       if (error) {
-        toast({
-          title: "Fehler",
-          description: "Kollaborationsanfrage konnte nicht gesendet werden.",
-          variant: "destructive",
-        });
+        notify.error("Fehler", {
+          description: "Kollaborationsanfrage konnte nicht gesendet werden."
+});
         return;
       }
 
-      toast({
-        title: "Erfolg",
-        description: "Kollaborationsanfrage wurde gesendet.",
-      });
+      notify.success("Erfolg", {
+        description: "Kollaborationsanfrage wurde gesendet."
+});
 
       setSelectedTenantId("");
       setIsCreateDialogOpen(false);
@@ -143,18 +138,15 @@ export function TenantCollaboration() {
         .single();
 
       if (error) {
-        toast({
-          title: "Fehler",
-          description: "Kollaboration konnte nicht genehmigt werden.",
-          variant: "destructive",
-        });
+        notify.error("Fehler", {
+          description: "Kollaboration konnte nicht genehmigt werden."
+});
         return;
       }
 
-      toast({
-        title: "Erfolg",
-        description: "Kollaboration wurde genehmigt.",
-      });
+      notify.success("Erfolg", {
+        description: "Kollaboration wurde genehmigt."
+});
 
       fetchCollaborations();
     } catch (error) {
@@ -170,18 +162,15 @@ export function TenantCollaboration() {
         .eq("id", collaborationId);
 
       if (error) {
-        toast({
-          title: "Fehler",
-          description: "Kollaboration konnte nicht abgelehnt werden.",
-          variant: "destructive",
-        });
+        notify.error("Fehler", {
+          description: "Kollaboration konnte nicht abgelehnt werden."
+});
         return;
       }
 
-      toast({
-        title: "Erfolg",
-        description: "Kollaboration wurde abgelehnt.",
-      });
+      notify.success("Erfolg", {
+        description: "Kollaboration wurde abgelehnt."
+});
 
       fetchCollaborations();
     } catch (error) {

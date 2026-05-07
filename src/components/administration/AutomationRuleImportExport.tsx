@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Download, Upload, Loader2, FileJson } from "lucide-react";
+import { notify } from "@/lib/notify";
 
 interface ExportableRule {
   id: string;
@@ -157,7 +158,6 @@ interface ImportDialogProps {
 export function AutomationRuleImportDialog({ open, onOpenChange, onImported }: ImportDialogProps) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [parsed, setParsed] = useState<ImportPayload | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -210,11 +210,12 @@ export function AutomationRuleImportDialog({ open, onOpenChange, onImported }: I
     setImporting(false);
 
     if (error) {
-      toast({ title: "Import fehlgeschlagen", description: error.message, variant: "destructive" });
+      notify.error("Import fehlgeschlagen", { description: error.message
+});
       return;
     }
 
-    toast({ title: `${rows.length} Regel${rows.length > 1 ? "n" : ""} importiert` });
+    notify.success(`${rows.length} Regel${rows.length > 1 ? "n" : ""} importiert`);
     setParsed(null);
     onImported();
     onOpenChange(false);

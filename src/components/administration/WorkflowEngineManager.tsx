@@ -15,6 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/components/ui/use-toast";
 import { Workflow, Plus, Play, Trash2, Edit, History, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { notify } from "@/lib/notify";
 
 interface Condition { field: string; op: string; value: string }
 interface Action { type: string; config: Record<string, string> }
@@ -78,7 +79,6 @@ const EMPTY_DEF: Omit<WorkflowDef, "id" | "tenant_id" | "created_at"> = {
 export function WorkflowEngineManager() {
   const { currentTenant } = useTenant();
   const { user } = useAuth();
-  const { toast } = useToast();
   const [defs, setDefs] = useState<WorkflowDef[]>([]);
   const [runs, setRuns] = useState<RunRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,7 +95,8 @@ export function WorkflowEngineManager() {
         .select("id, workflow_id, trigger_type, status, is_dry_run, started_at, finished_at, error")
         .eq("tenant_id", currentTenant.id).order("started_at", { ascending: false }).limit(100),
     ]);
-    if (defRes.error) toast({ title: "Fehler", description: defRes.error.message, variant: "destructive" });
+    if (defRes.error) notify.error("Fehler", { description: defRes.error.message
+});
     setDefs((defRes.data ?? []) as WorkflowDef[]);
     setRuns((runRes.data ?? []) as RunRow[]);
     setLoading(false);
@@ -120,10 +121,11 @@ export function WorkflowEngineManager() {
       ? await supabase.from("workflow_definitions").update(payload).eq("id", editing.id)
       : await supabase.from("workflow_definitions").insert(payload);
     if (error) {
-      toast({ title: "Speichern fehlgeschlagen", description: error.message, variant: "destructive" });
+      notify.error("Speichern fehlgeschlagen", { description: error.message
+});
       return;
     }
-    toast({ title: "Workflow gespeichert" });
+    notify.success("Workflow gespeichert");
     setEditing(null);
     void load();
   };
@@ -132,7 +134,8 @@ export function WorkflowEngineManager() {
     if (!confirm("Diesen Workflow wirklich löschen?")) return;
     const { error } = await supabase.from("workflow_definitions").delete().eq("id", id);
     if (error) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      notify.error("Fehler", { description: error.message
+});
       return;
     }
     void load();
@@ -155,10 +158,12 @@ export function WorkflowEngineManager() {
       },
     });
     if (error) {
-      toast({ title: "Dry-Run fehlgeschlagen", description: error.message, variant: "destructive" });
+      notify.error("Dry-Run fehlgeschlagen", { description: error.message
+});
       return;
     }
-    toast({ title: "Dry-Run abgeschlossen", description: JSON.stringify(data) });
+    notify.success("Dry-Run abgeschlossen", { description: JSON.stringify(data) 
+});
     void load();
   };
 

@@ -11,9 +11,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { debugConsole } from '@/utils/debugConsole';
 import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { EmptyState, LoadingState } from '@/components/ui-patterns';
+import { notify } from "@/lib/notify";
 
 interface InformationBlock {
   id: string;
@@ -40,7 +40,6 @@ export const InformationBlockManager: React.FC = () => {
 
   const { currentTenant } = useTenant();
   const { user } = useAuth();
-  const { toast } = useToast();
 
   const blockTypes = [
     { value: 'contact', label: 'Kontaktperson' },
@@ -68,11 +67,9 @@ export const InformationBlockManager: React.FC = () => {
       setBlocks(data || []);
     } catch (error) {
       debugConsole.error('Fehler beim Laden der Informationsblöcke:', error);
-      toast({
-        title: "Fehler",
-        description: "Informationsblöcke konnten nicht geladen werden.",
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Informationsblöcke konnten nicht geladen werden."
+});
     } finally {
       setLoading(false);
     }
@@ -255,10 +252,10 @@ export const InformationBlockManager: React.FC = () => {
           .eq('id', editingBlock.id);
 
         if (error) throw error;
-        toast({
-          title: "Erfolg",
+        notify.success("Erfolg", {
           description: "Informationsblock wurde aktualisiert."
-        });
+        
+});
       } else {
         const insertData = {
           name: formData.name!,
@@ -276,10 +273,10 @@ export const InformationBlockManager: React.FC = () => {
           .insert(insertData);
 
         if (error) throw error;
-        toast({
-          title: "Erfolg",
+        notify.success("Erfolg", {
           description: "Neuer Informationsblock wurde erstellt."
-        });
+        
+});
       }
 
       setIsDialogOpen(false);
@@ -293,11 +290,9 @@ export const InformationBlockManager: React.FC = () => {
       fetchBlocks();
     } catch (error) {
       debugConsole.error('Fehler beim Speichern:', error);
-      toast({
-        title: "Fehler",
-        description: "Informationsblock konnte nicht gespeichert werden.",
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Informationsblock konnte nicht gespeichert werden."
+});
     }
   };
 
@@ -316,18 +311,16 @@ export const InformationBlockManager: React.FC = () => {
 
       if (error) throw error;
       
-      toast({
-        title: "Erfolg",
+      notify.success("Erfolg", {
         description: "Informationsblock wurde gelöscht."
-      });
+      
+});
       fetchBlocks();
     } catch (error) {
       debugConsole.error('Fehler beim Löschen:', error);
-      toast({
-        title: "Fehler",
-        description: "Informationsblock konnte nicht gelöscht werden.",
-        variant: "destructive"
-      });
+      notify.error("Fehler", {
+        description: "Informationsblock konnte nicht gelöscht werden."
+});
     }
   };
 

@@ -10,6 +10,7 @@ import { Globe } from "lucide-react";
 import { Facebook, Instagram, Linkedin, Twitter, YouTube, TikTok, Threads, Mastodon } from "@/components/icons/SocialIcons";
 import { debugConsole } from "@/utils/debugConsole";
 import type { ReactNode } from "react";
+import { notify } from "@/lib/notify";
 
 const OFFICE_SOCIAL_MEDIA_KEY = "office_social_media_channels";
 
@@ -72,7 +73,6 @@ const parseChannels = (rawValue: string | null): SocialChannelValues => {
 
 export function OfficeSocialMediaSettings() {
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [channels, setChannels] = useState<SocialChannelValues>(EMPTY_CHANNELS);
@@ -98,11 +98,9 @@ export function OfficeSocialMediaSettings() {
       setChannels(parseChannels(data?.setting_value ?? null));
     } catch (error) {
       debugConsole.error("Error loading office social media settings:", error);
-      toast({
-        title: "Fehler",
-        description: "Social-Media-Kanäle konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Social-Media-Kanäle konnten nicht geladen werden."
+});
     } finally {
       setLoading(false);
     }
@@ -129,14 +127,13 @@ export function OfficeSocialMediaSettings() {
         );
 
       if (error) throw error;
-      toast({ title: "Gespeichert", description: "Social-Media-Kanäle wurden aktualisiert." });
+      notify.success("Gespeichert", { description: "Social-Media-Kanäle wurden aktualisiert." 
+});
     } catch (error) {
       debugConsole.error("Error saving office social media settings:", error);
-      toast({
-        title: "Fehler",
-        description: "Social-Media-Kanäle konnten nicht gespeichert werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Social-Media-Kanäle konnten nicht gespeichert werden."
+});
     } finally {
       setSaving(false);
     }

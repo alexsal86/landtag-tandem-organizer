@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { debugConsole } from '@/utils/debugConsole';
-import { useToast } from '@/hooks/use-toast';
 import { Contact } from '@/hooks/useInfiniteContacts';
+import { notify } from "@/lib/notify";
 
 export function useStakeholderTopics(stakeholders: Contact[], onRefresh?: () => void) {
-  const { toast } = useToast();
   const [stakeholderTopics, setStakeholderTopics] = useState<Record<string, string[]>>({});
   const [editingTopics, setEditingTopics] = useState<string | null>(null);
   const [localTopicUpdates, setLocalTopicUpdates] = useState<Record<string, string[]>>({});
@@ -51,12 +50,14 @@ export function useStakeholderTopics(stakeholders: Contact[], onRefresh?: () => 
       setStakeholderTopics(prev => ({ ...prev, [stakeholderId]: pendingTopics }));
       setLocalTopicUpdates(prev => { const s = { ...prev }; delete s[stakeholderId]; return s; });
       onRefresh?.();
-      toast({ title: "Erfolg", description: "Themen wurden erfolgreich gespeichert." });
+      notify.success("Erfolg", { description: "Themen wurden erfolgreich gespeichert." 
+});
       setEditingTopics(null);
     } catch (error) {
       debugConsole.error('Error saving topics:', error);
       setLocalTopicUpdates(prev => { const s = { ...prev }; delete s[stakeholderId]; return s; });
-      toast({ title: "Fehler", description: "Themen konnten nicht gespeichert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: "Themen konnten nicht gespeichert werden."
+});
     }
   };
 

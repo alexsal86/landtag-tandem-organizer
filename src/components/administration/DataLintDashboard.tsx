@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/components/ui/use-toast";
 import { ClipboardCheck, Loader2, CheckCircle2, AlertTriangle, AlertCircle, RefreshCcw, ExternalLink } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { notify } from "@/lib/notify";
 
 interface LintFinding {
   id: string;
@@ -34,7 +35,6 @@ const SEVERITY_VARIANT: Record<string, "default" | "secondary" | "destructive" |
 
 export function DataLintDashboard() {
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const navigate = useNavigate();
   const [findings, setFindings] = useState<LintFinding[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +52,8 @@ export function DataLintDashboard() {
       .order("detected_at", { ascending: false })
       .limit(500);
     if (error) {
-      toast({ title: "Fehler beim Laden", description: error.message, variant: "destructive" });
+      notify.error("Fehler beim Laden", { description: error.message
+});
     } else {
       setFindings((data ?? []) as LintFinding[]);
     }
@@ -67,11 +68,13 @@ export function DataLintDashboard() {
     const { data, error } = await supabase.rpc("run_data_lint", { _tenant_id: currentTenant.id });
     setRunning(false);
     if (error) {
-      toast({ title: "Lint fehlgeschlagen", description: error.message, variant: "destructive" });
+      notify.error("Lint fehlgeschlagen", { description: error.message
+});
       return;
     }
     const total = (data ?? []).reduce((s: number, r: { finding_count?: number }) => s + (r.finding_count ?? 0), 0);
-    toast({ title: "Daten-Lint abgeschlossen", description: `${total} Hinweise gefunden.` });
+    notify.success("Daten-Lint abgeschlossen", { description: `${total} Hinweise gefunden.` 
+});
     void load();
   };
 
@@ -81,7 +84,8 @@ export function DataLintDashboard() {
       .update({ resolved_at: new Date().toISOString() })
       .eq("id", id);
     if (error) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      notify.error("Fehler", { description: error.message
+});
       return;
     }
     setFindings(prev => prev.filter(f => f.id !== id));

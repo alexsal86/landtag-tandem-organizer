@@ -8,11 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
 import { debugConsole } from "@/utils/debugConsole";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import { notify } from "@/lib/notify";
 
 interface ExternalCalendar {
   id: string;
@@ -105,7 +105,7 @@ export function ExternalCalendarSettings() {
       setCalendars((data as ExternalCalendar[] | null) ?? []);
     } catch (error) {
       debugConsole.error('Error fetching calendars:', error);
-      toast.error('Fehler beim Laden der externen Kalender');
+      notify.error('Fehler beim Laden der externen Kalender');
     } finally {
       setIsLoading(false);
     }
@@ -122,7 +122,7 @@ export function ExternalCalendarSettings() {
     try {
       // Validate ICS URL
       if (!formData.ics_url.includes('.ics') && !formData.ics_url.includes('calendar')) {
-        toast.error('Bitte geben Sie eine gültige ICS-URL ein');
+        notify.error('Bitte geben Sie eine gültige ICS-URL ein');
         return;
       }
 
@@ -140,7 +140,7 @@ export function ExternalCalendarSettings() {
 
       if (error) throw error;
 
-      toast.success('Kalender erfolgreich hinzugefügt');
+      notify.success('Kalender erfolgreich hinzugefügt');
       setIsDialogOpen(false);
       setFormData({
         name: '',
@@ -152,7 +152,7 @@ export function ExternalCalendarSettings() {
       fetchCalendars();
     } catch (error) {
       debugConsole.error('Error adding calendar:', error);
-      toast.error('Fehler beim Hinzufügen des Kalenders');
+      notify.error('Fehler beim Hinzufügen des Kalenders');
     }
   };
 
@@ -167,16 +167,16 @@ export function ExternalCalendarSettings() {
       if (error) throw error;
 
       if (!data || data.status === 'error') {
-        toast.error(data?.message ?? 'Fehler bei der Synchronisation');
+        notify.error(data?.message ?? 'Fehler bei der Synchronisation');
         return;
       }
 
-      const method = data.status === 'partial' ? toast.warning : toast.success;
+      const method = data.status === 'partial' ? notify.warning : notify.success;
       method(data.message ?? 'Kalender erfolgreich synchronisiert');
       fetchCalendars(); // Refresh to update last_sync time
     } catch (error) {
       debugConsole.error('Error syncing calendar:', error);
-      toast.error('Fehler bei der Synchronisation');
+      notify.error('Fehler bei der Synchronisation');
     } finally {
       setSyncingCalendars(prev => {
         const newSet = new Set(prev);
@@ -197,11 +197,11 @@ export function ExternalCalendarSettings() {
 
       if (error) throw error;
       
-      toast.success('Kalender erfolgreich entfernt');
+      notify.success('Kalender erfolgreich entfernt');
       fetchCalendars();
     } catch (error) {
       debugConsole.error('Error deleting calendar:', error);
-      toast.error('Fehler beim Entfernen des Kalenders');
+      notify.error('Fehler beim Entfernen des Kalenders');
     }
   };
 
@@ -214,11 +214,11 @@ export function ExternalCalendarSettings() {
 
       if (error) throw error;
       
-      toast.success(enabled ? 'Synchronisation aktiviert' : 'Synchronisation deaktiviert');
+      notify.success(enabled ? 'Synchronisation aktiviert' : 'Synchronisation deaktiviert');
       fetchCalendars();
     } catch (error) {
       debugConsole.error('Error toggling sync:', error);
-      toast.error('Fehler beim Ändern der Synchronisation');
+      notify.error('Fehler beim Ändern der Synchronisation');
     }
   };
 

@@ -16,8 +16,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
-import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { notify } from "@/lib/notify";
 
 const rssSourceSchema = z.object({
   name: z.string().min(1, "Name ist erforderlich").max(100),
@@ -72,7 +72,7 @@ export function RSSSourceManager() {
       .order("order_index");
 
     if (error) {
-      toast.error("Fehler beim Laden der RSS-Quellen");
+      notify.error("Fehler beim Laden der RSS-Quellen");
       debugConsole.error(error);
     } else {
       setSources(data || []);
@@ -103,7 +103,7 @@ export function RSSSourceManager() {
           .eq("id", editingSource.id);
 
         if (error) throw error;
-        toast.success("RSS-Quelle aktualisiert");
+        notify.success("RSS-Quelle aktualisiert");
       } else {
         // Create
         const maxOrder = sources.reduce((max, s) => Math.max(max, s.order_index), -1);
@@ -119,7 +119,7 @@ export function RSSSourceManager() {
           }]);
 
         if (error) throw error;
-        toast.success("RSS-Quelle hinzugefügt");
+        notify.success("RSS-Quelle hinzugefügt");
       }
 
       loadSources();
@@ -127,7 +127,7 @@ export function RSSSourceManager() {
       form.reset();
       setEditingSource(null);
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Fehler beim Speichern");
+      notify.error(error instanceof Error ? error.message : "Fehler beim Speichern");
       debugConsole.error(error);
     }
   };
@@ -139,10 +139,10 @@ export function RSSSourceManager() {
       .eq("id", source.id);
 
     if (error) {
-      toast.error("Fehler beim Aktualisieren des Status");
+      notify.error("Fehler beim Aktualisieren des Status");
       debugConsole.error(error);
     } else {
-      toast.success(source.is_active ? "Quelle deaktiviert" : "Quelle aktiviert");
+      notify.success(source.is_active ? "Quelle deaktiviert" : "Quelle aktiviert");
       loadSources();
     }
   };
@@ -156,10 +156,10 @@ export function RSSSourceManager() {
       .eq("id", deleteSource.id);
 
     if (error) {
-      toast.error("Fehler beim Löschen");
+      notify.error("Fehler beim Löschen");
       debugConsole.error(error);
     } else {
-      toast.success("RSS-Quelle gelöscht");
+      notify.success("RSS-Quelle gelöscht");
       loadSources();
     }
     setDeleteSource(null);
@@ -188,13 +188,13 @@ export function RSSSourceManager() {
         .eq("id", update.id);
     }
 
-    toast.success("Reihenfolge aktualisiert");
+    notify.success("Reihenfolge aktualisiert");
   };
 
   const testFeed = async () => {
     const url = form.getValues("url");
     if (!url) {
-      toast.error("Bitte geben Sie eine URL ein");
+      notify.error("Bitte geben Sie eine URL ein");
       return;
     }
 
@@ -206,12 +206,12 @@ export function RSSSourceManager() {
       }
       const text = await response.text();
       if (text.includes("<rss") || text.includes("<feed")) {
-        toast.success("RSS-Feed ist gültig!");
+        notify.success("RSS-Feed ist gültig!");
       } else {
-        toast.error("Die URL scheint kein gültiger RSS-Feed zu sein");
+        notify.error("Die URL scheint kein gültiger RSS-Feed zu sein");
       }
     } catch (error: unknown) {
-      toast.error(`Fehler beim Testen: ${error instanceof Error ? error.message : String(error)}`);
+      notify.error(`Fehler beim Testen: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setTestingUrl(false);
     }

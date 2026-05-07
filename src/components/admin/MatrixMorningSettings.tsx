@@ -6,9 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { debugConsole } from '@/utils/debugConsole';
+import { notify } from "@/lib/notify";
 
 interface MorningSettings {
   id?: string;
@@ -21,7 +21,6 @@ interface MorningSettings {
 
 export const MatrixMorningSettings: React.FC = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
   
   const [settings, setSettings] = useState<MorningSettings>({
     enabled: false,
@@ -88,26 +87,21 @@ export const MatrixMorningSettings: React.FC = () => {
 
       if (error) {
         debugConsole.error('Error saving settings:', error);
-        toast({
-          title: 'Fehler',
-          description: 'Morgengruß-Einstellungen konnten nicht gespeichert werden.',
-          variant: 'destructive',
-        });
+        notify.error('Fehler', {
+          description: 'Morgengruß-Einstellungen konnten nicht gespeichert werden.'
+});
         return;
       }
 
       setHasChanges(false);
-      toast({
-        title: 'Gespeichert',
-        description: 'Morgengruß-Einstellungen wurden erfolgreich gespeichert.',
-      });
+      notify.success('Gespeichert', {
+        description: 'Morgengruß-Einstellungen wurden erfolgreich gespeichert.'
+});
     } catch (error) {
       debugConsole.error('Error saving settings:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Ein unerwarteter Fehler ist aufgetreten.',
-        variant: 'destructive',
-      });
+      notify.error('Fehler', {
+        description: 'Ein unerwarteter Fehler ist aufgetreten.'
+});
     } finally {
       setLoading(false);
     }

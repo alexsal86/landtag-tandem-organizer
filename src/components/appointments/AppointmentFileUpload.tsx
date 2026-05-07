@@ -3,8 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Upload, X, File, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import { debugConsole } from '@/utils/debugConsole';
+import { notify } from "@/lib/notify";
 
 interface UploadedFile {
   id?: string;
@@ -35,7 +35,6 @@ export function AppointmentFileUpload({
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
 
   const handleFileSelect = async (selectedFiles: FileList | null) => {
     if (!selectedFiles || selectedFiles.length === 0) return;
@@ -107,10 +106,9 @@ export function AppointmentFileUpload({
           uploading: false
         };
 
-        toast({
-          title: "Datei hochgeladen",
-          description: `${fileData.file.name} wurde erfolgreich hochgeladen.`,
-        });
+        notify.success("Datei hochgeladen", {
+          description: `${fileData.file.name} wurde erfolgreich hochgeladen.`
+});
 
       } catch (error) {
         debugConsole.error('Upload error:', error);
@@ -120,11 +118,9 @@ export function AppointmentFileUpload({
           error: 'Upload fehlgeschlagen'
         };
 
-        toast({
-          title: "Upload fehlgeschlagen",
-          description: `${fileData.file.name} konnte nicht hochgeladen werden.`,
-          variant: "destructive",
-        });
+        notify.error("Upload fehlgeschlagen", {
+          description: `${fileData.file.name} konnte nicht hochgeladen werden.`
+});
       }
     }
 
@@ -151,17 +147,14 @@ export function AppointmentFileUpload({
           .delete()
           .eq('id', fileToRemove.id);
 
-        toast({
-          title: "Datei gelöscht",
-          description: `${fileToRemove.file.name} wurde gelöscht.`,
-        });
+        notify.success("Datei gelöscht", {
+          description: `${fileToRemove.file.name} wurde gelöscht.`
+});
       } catch (error) {
         debugConsole.error('Delete error:', error);
-        toast({
-          title: "Löschung fehlgeschlagen",
-          description: "Die Datei konnte nicht gelöscht werden.",
-          variant: "destructive",
-        });
+        notify.error("Löschung fehlgeschlagen", {
+          description: "Die Datei konnte nicht gelöscht werden."
+});
         return;
       }
     }

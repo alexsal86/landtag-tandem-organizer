@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ActivityTimeline, type Activity } from "@/components/contacts/ActivityTimeline";
@@ -14,11 +13,11 @@ import { ContactBriefingMemoryTab } from "@/components/contacts/ContactBriefingM
 import { ContactFactsSection } from "@/features/facts/components/ContactFactsSection";
 import { debugConsole } from "@/utils/debugConsole";
 import type { Contact, ContactCategory, ContactPriority } from "@/types/contact";
+import { notify } from "@/lib/notify";
 
 export default function ContactDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { user } = useAuth();
   const [contact, setContact] = useState<Contact | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,11 +61,9 @@ export default function ContactDetail() {
       }
     } catch (error) {
       debugConsole.error('Error fetching contact:', error);
-      toast({
-        title: "Fehler",
-        description: "Kontakt konnte nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Kontakt konnte nicht geladen werden."
+});
     } finally {
       setLoading(false);
     }
@@ -101,11 +98,9 @@ export default function ContactDetail() {
       setActivities(formattedActivities);
     } catch (error) {
       debugConsole.error("Error fetching activities:", error);
-      toast({
-        title: "Fehler",
-        description: "Aktivitäten konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Aktivitäten konnten nicht geladen werden."
+});
     } finally {
       setActivitiesLoading(false);
     }
@@ -205,18 +200,15 @@ export default function ContactDetail() {
 
       if (error) throw error;
 
-      toast({
-        title: "Kontakt gelöscht",
-        description: `${contact.name} wurde erfolgreich gelöscht.`,
-      });
+      notify.success("Kontakt gelöscht", {
+        description: `${contact.name} wurde erfolgreich gelöscht.`
+});
       navigate("/");
     } catch (error) {
       debugConsole.error('Error deleting contact:', error);
-      toast({
-        title: "Fehler",
-        description: "Kontakt konnte nicht gelöscht werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Kontakt konnte nicht gelöscht werden."
+});
     }
   };
 

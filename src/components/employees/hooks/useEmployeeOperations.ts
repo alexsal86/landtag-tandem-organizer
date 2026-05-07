@@ -3,8 +3,8 @@ import { debugConsole } from '@/utils/debugConsole';
 import type { Database } from "@/integrations/supabase/types";
 import type { Dispatch, SetStateAction } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
 import {
+import { notify } from "@/lib/notify";
   EmployeeMutationActionResult,
   EmployeeMutationDTO,
   EmployeeRow,
@@ -47,7 +47,6 @@ export function useEmployeeOperations({
   setEmployees, pendingLeaves, setPendingLeaves,
 }: UseEmployeeOperationsProps) {
   const { user } = useAuth();
-  const { toast } = useToast();
 
   const createLeaveCalendarEntry = async (leaveRequest: PendingLeaveRequest, userId: string, leaveType: LeaveType): Promise<void> => {
     try {
@@ -108,7 +107,8 @@ export function useEmployeeOperations({
       }
 
       const typeLabel = leaveRequest?.type === "medical" ? "Arzttermin" : leaveRequest?.type === "overtime_reduction" ? "Überstundenabbau" : leaveRequest?.type === "vacation" ? "Urlaubsantrag" : "Antrag";
-      toast({ title: action === "approved" ? `${typeLabel} genehmigt` : `${typeLabel} abgelehnt`, description: action === "approved" ? `Der ${typeLabel} wurde genehmigt.` : `Der ${typeLabel} wurde abgelehnt.` });
+      notify.success(action === "approved" ? `${typeLabel} genehmigt` : `${typeLabel} abgelehnt`, { description: action === "approved" ? `Der ${typeLabel} wurde genehmigt.` : `Der ${typeLabel} wurde abgelehnt.` 
+});
       setTimeout(() => window.location.reload(), 300);
       return normalizeMutationResult("leave_action", { leaveId, status: action }, null);
     } catch (e: unknown) {
@@ -119,13 +119,15 @@ export function useEmployeeOperations({
         await new Promise(r => setTimeout(r, 500));
         const { data: checkData } = await supabase.from("leave_requests").select("status").eq("id", leaveId).maybeSingle();
         if (checkData?.status === action) {
-          toast({ title: action === "approved" ? "Antrag genehmigt" : "Antrag abgelehnt", description: "Die Aktion wurde erfolgreich durchgeführt." });
+          notify.success(action === "approved" ? "Antrag genehmigt" : "Antrag abgelehnt", { description: "Die Aktion wurde erfolgreich durchgeführt." 
+});
           setTimeout(() => window.location.reload(), 300);
           return normalizeMutationResult("leave_action", { leaveId, status: action }, null);
         }
       }
       setPendingLeaves(previousLeaves);
-      toast({ title: "Fehler", description: errorMessage || "Antrag konnte nicht aktualisiert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: errorMessage || "Antrag konnte nicht aktualisiert werden."
+});
       return normalizeMutationResult("leave_action", null, e);
     }
   };
@@ -144,72 +146,86 @@ export function useEmployeeOperations({
         await supabase.from("appointments").delete().ilike("title", `%${userName}%`).eq("category", categoryMap[leaveRequest.type]).gte("start_time", new Date(leaveRequest.start_date).toISOString());
       }
 
-      toast({ title: approve ? "Stornierung genehmigt" : "Stornierung abgelehnt", description: approve ? "Die Urlaubsstornierung wurde genehmigt und der Kalendereintrag entfernt." : "Die Stornierung wurde abgelehnt. Der Urlaub bleibt bestehen." });
+      notify.success(approve ? "Stornierung genehmigt" : "Stornierung abgelehnt", { description: approve ? "Die Urlaubsstornierung wurde genehmigt und der Kalendereintrag entfernt." : "Die Stornierung wurde abgelehnt. Der Urlaub bleibt bestehen." 
+});
       window.location.reload();
       return normalizeMutationResult("cancel_approval", { leaveId, status: newStatus }, null);
     } catch (e: unknown) {
       debugConsole.error(e);
-      toast({ title: "Fehler", description: e instanceof Error ? e.message : "Stornierungsanfrage konnte nicht verarbeitet werden.", variant: "destructive" });
+      notify.error("Fehler", { description: e instanceof Error ? e.message : "Stornierungsanfrage konnte nicht verarbeitet werden."
+});
       return normalizeMutationResult("cancel_approval", null, e);
     }
   };
 
   const updateHours = async (userId: string, newHours: number): Promise<EmployeeMutationResult> => {
     if (newHours < 1 || newHours > 39.5) {
-      toast({ title: "Ungültige Eingabe", description: "Stunden müssen zwischen 1 und 39,5 liegen.", variant: "destructive" });
+      notify.error("Ungültige Eingabe", { description: "Stunden müssen zwischen 1 und 39,5 liegen."
+});
       return normalizeMutationResult("update_hours", null, new Error("Ungültige Stundenanzahl"));
     }
     try {
       const { error } = await supabase.from("employee_settings").upsert({ user_id: userId, hours_per_week: newHours, admin_id: user?.id }, { onConflict: 'user_id', ignoreDuplicates: false }).select();
       if (error) throw error;
       setEmployees(prev => prev.map(emp => emp.user_id === userId ? { ...emp, hours_per_week: newHours } : emp));
-      toast({ title: "Gespeichert", description: "Stunden pro Woche wurden aktualisiert." });
+      notify.success("Gespeichert", { description: "Stunden pro Woche wurden aktualisiert." 
+});
       return normalizeMutationResult("update_hours", { userId, field: "hours_per_week", value: newHours }, null);
     } catch (e: unknown) {
       debugConsole.error(e);
-      toast({ title: "Fehler", description: e instanceof Error ? e.message : "Stunden konnten nicht aktualisiert werden.", variant: "destructive" });
+      notify.error("Fehler", { description: e instanceof Error ? e.message : "Stunden konnten nicht aktualisiert werden."
+});
       return normalizeMutationResult("update_hours", null, e);
     }
   };
 
   const updateDaysPerWeek = async (userId: string, newDays: number): Promise<EmployeeMutationResult> => {
-    if (newDays < 1 || newDays > 5) { toast({ title: "Ungültige Eingabe", description: "Tage müssen zwischen 1 und 5 liegen.", variant: "destructive" }); return normalizeMutationResult("update_days_per_week", null, new Error("Ungültige Tagesanzahl")); }
+    if (newDays < 1 || newDays > 5) { notify.error("Ungültige Eingabe", { description: "Tage müssen zwischen 1 und 5 liegen."
+}); return normalizeMutationResult("update_days_per_week", null, new Error("Ungültige Tagesanzahl")); }
     try {
       const { error } = await supabase.from("employee_settings").upsert({ user_id: userId, days_per_week: newDays, admin_id: user?.id }, { onConflict: 'user_id', ignoreDuplicates: false });
       if (error) throw error;
       setEmployees(prev => prev.map(emp => emp.user_id === userId ? { ...emp, days_per_week: newDays } : emp));
-      toast({ title: "Gespeichert", description: "Tage pro Woche wurden aktualisiert." });
+      notify.success("Gespeichert", { description: "Tage pro Woche wurden aktualisiert." 
+});
       return normalizeMutationResult("update_days_per_week", { userId, field: "days_per_week", value: newDays }, null);
     } catch (e: unknown) {
-      debugConsole.error(e); toast({ title: "Fehler", description: e instanceof Error ? e.message : "Tage konnten nicht aktualisiert werden.", variant: "destructive" });
+      debugConsole.error(e); notify.error("Fehler", { description: e instanceof Error ? e.message : "Tage konnten nicht aktualisiert werden."
+});
       return normalizeMutationResult("update_days_per_week", null, e);
     }
   };
 
   const updateDaysPerMonth = async (userId: string, newDays: number): Promise<EmployeeMutationResult> => {
-    if (newDays < 1 || newDays > 31) { toast({ title: "Ungültige Eingabe", description: "Tage müssen zwischen 1 und 31 liegen.", variant: "destructive" }); return normalizeMutationResult("update_days_per_month", null, new Error("Ungültige Tage/Monat")); }
+    if (newDays < 1 || newDays > 31) { notify.error("Ungültige Eingabe", { description: "Tage müssen zwischen 1 und 31 liegen."
+}); return normalizeMutationResult("update_days_per_month", null, new Error("Ungültige Tage/Monat")); }
     try {
       const { error } = await supabase.from("employee_settings").upsert({ user_id: userId, days_per_month: newDays, admin_id: user?.id }, { onConflict: 'user_id', ignoreDuplicates: false });
       if (error) throw error;
       setEmployees(prev => prev.map(emp => emp.user_id === userId ? { ...emp, days_per_month: newDays } : emp));
-      toast({ title: "Gespeichert", description: "Tage pro Monat wurden aktualisiert." });
+      notify.success("Gespeichert", { description: "Tage pro Monat wurden aktualisiert." 
+});
       return normalizeMutationResult("update_days_per_month", { userId, field: "days_per_month", value: newDays }, null);
     } catch (e: unknown) {
-      debugConsole.error(e); toast({ title: "Fehler", description: e instanceof Error ? e.message : "Tage konnten nicht aktualisiert werden.", variant: "destructive" });
+      debugConsole.error(e); notify.error("Fehler", { description: e instanceof Error ? e.message : "Tage konnten nicht aktualisiert werden."
+});
       return normalizeMutationResult("update_days_per_month", null, e);
     }
   };
 
   const updateVacationDays = async (userId: string, newDays: number): Promise<EmployeeMutationResult> => {
-    if (newDays < 0 || newDays > 50) { toast({ title: "Ungültige Eingabe", description: "Urlaubstage müssen zwischen 0 und 50 liegen.", variant: "destructive" }); return normalizeMutationResult("update_vacation_days", null, new Error("Ungültige Urlaubstage")); }
+    if (newDays < 0 || newDays > 50) { notify.error("Ungültige Eingabe", { description: "Urlaubstage müssen zwischen 0 und 50 liegen."
+}); return normalizeMutationResult("update_vacation_days", null, new Error("Ungültige Urlaubstage")); }
     try {
       const { error } = await supabase.from("employee_settings").upsert({ user_id: userId, annual_vacation_days: newDays, admin_id: user?.id }, { onConflict: 'user_id', ignoreDuplicates: false });
       if (error) throw error;
       setEmployees(prev => prev.map(emp => emp.user_id === userId ? { ...emp, annual_vacation_days: newDays } : emp));
-      toast({ title: "Gespeichert", description: "Urlaubstage wurden aktualisiert." });
+      notify.success("Gespeichert", { description: "Urlaubstage wurden aktualisiert." 
+});
       return normalizeMutationResult("update_vacation_days", { userId, field: "annual_vacation_days", value: newDays }, null);
     } catch (e: unknown) {
-      debugConsole.error(e); toast({ title: "Fehler", description: e instanceof Error ? e.message : "Urlaubstage konnten nicht aktualisiert werden.", variant: "destructive" });
+      debugConsole.error(e); notify.error("Fehler", { description: e instanceof Error ? e.message : "Urlaubstage konnten nicht aktualisiert werden."
+});
       return normalizeMutationResult("update_vacation_days", null, e);
     }
   };
@@ -219,10 +235,12 @@ export function useEmployeeOperations({
       const { error } = await supabase.from("employee_settings").upsert({ user_id: userId, employment_start_date: newDate, admin_id: user?.id }, { onConflict: 'user_id', ignoreDuplicates: false });
       if (error) throw error;
       setEmployees(prev => prev.map(emp => emp.user_id === userId ? { ...emp, employment_start_date: newDate } : emp));
-      toast({ title: "Gespeichert", description: "Startdatum wurde aktualisiert." });
+      notify.success("Gespeichert", { description: "Startdatum wurde aktualisiert." 
+});
       return normalizeMutationResult("update_start_date", { userId, field: "employment_start_date", value: newDate }, null);
     } catch (e: unknown) {
-      debugConsole.error(e); toast({ title: "Fehler", description: e instanceof Error ? e.message : "Startdatum konnte nicht aktualisiert werden.", variant: "destructive" });
+      debugConsole.error(e); notify.error("Fehler", { description: e instanceof Error ? e.message : "Startdatum konnte nicht aktualisiert werden."
+});
       return normalizeMutationResult("update_start_date", null, e);
     }
   };

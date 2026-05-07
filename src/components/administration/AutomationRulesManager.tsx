@@ -71,11 +71,11 @@ import { AutomationErrorDashboard } from "./AutomationErrorDashboard";
 import { logAuditEvent, AuditActions } from "@/hooks/useAuditLog";
 import { useAutomationAdminMutations, useAutomationMembershipRole, useAutomationPauseState, useAutomationRules, useAutomationRunSteps, useAutomationRuns } from "./hooks/useAutomationAdminData";
 import type { AutomationRuleRecordView as RuleRow, AutomationRunRecordView as RunRow } from "./automationShared";
+import { notify } from "@/lib/notify";
 
 export function AutomationRulesManager() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
 
   const [runningRuleId, setRunningRuleId] = useState<string | null>(null);
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
@@ -191,17 +191,15 @@ export function AutomationRulesManager() {
 
     try {
       await togglePause.mutateAsync(newVal);
-      toast({ title: newVal ? "Alle Automations pausiert" : "Automations reaktiviert" });
+      notify.success(newVal ? "Alle Automations pausiert" : "Automations reaktiviert");
       logAuditEvent({
         action: AuditActions.SETTINGS_CHANGED,
         details: { type: "automation_kill_switch", paused: newVal, tenant_id: tenantId },
       });
     } catch (error) {
-      toast({
-        title: "Fehler",
-        description: error instanceof Error ? error.message : "Automations konnten nicht umgeschaltet werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: error instanceof Error ? error.message : "Automations konnten nicht umgeschaltet werden."
+});
     }
   };
 
@@ -294,12 +292,14 @@ export function AutomationRulesManager() {
 
   const upsertRule = async () => {
     if (!currentTenant || !user || !form.name.trim()) {
-      toast({ title: "Fehlende Angaben", description: "Bitte Regelname ausfüllen.", variant: "destructive" });
+      notify.error("Fehlende Angaben", { description: "Bitte Regelname ausfüllen."
+});
       return;
     }
 
     if (!canEdit) {
-      toast({ title: "Keine Berechtigung", description: "Nur Abgeordnete dürfen Regeln erstellen/ändern.", variant: "destructive" });
+      notify.error("Keine Berechtigung", { description: "Nur Abgeordnete dürfen Regeln erstellen/ändern."
+});
       return;
     }
 
@@ -340,11 +340,9 @@ export function AutomationRulesManager() {
     try {
       await upsertRuleMutation.mutateAsync({ editingRuleId, payload });
     } catch (error) {
-      toast({
-        title: "Speichern fehlgeschlagen",
-        description: error instanceof Error ? error.message : "Regel konnte nicht gespeichert werden.",
-        variant: "destructive",
-      });
+      notify.error("Speichern fehlgeschlagen", {
+        description: error instanceof Error ? error.message : "Regel konnte nicht gespeichert werden."
+});
       return;
     }
 
@@ -354,14 +352,15 @@ export function AutomationRulesManager() {
       details: { rule_name: form.name, module: form.module, rule_id: editingRuleId || "new" },
     });
 
-    toast({ title: editingRuleId ? "Regel aktualisiert" : "Regel erstellt" });
+    notify.success(editingRuleId ? "Regel aktualisiert" : "Regel erstellt");
     resetForm();
     setWizardOpen(false);
   };
 
   const deleteRule = async (ruleId: string) => {
     if (!canEdit) {
-      toast({ title: "Keine Berechtigung", description: "Nur Abgeordnete dürfen Regeln löschen.", variant: "destructive" });
+      notify.error("Keine Berechtigung", { description: "Nur Abgeordnete dürfen Regeln löschen."
+});
       return;
     }
 
@@ -369,11 +368,9 @@ export function AutomationRulesManager() {
     try {
       await deleteRuleMutation.mutateAsync(ruleId);
     } catch (error) {
-      toast({
-        title: "Löschen fehlgeschlagen",
-        description: error instanceof Error ? error.message : "Regel konnte nicht gelöscht werden.",
-        variant: "destructive",
-      });
+      notify.error("Löschen fehlgeschlagen", {
+        description: error instanceof Error ? error.message : "Regel konnte nicht gelöscht werden."
+});
       return;
     }
 
@@ -382,29 +379,27 @@ export function AutomationRulesManager() {
       details: { rule_id: ruleId, rule_name: ruleName },
     });
 
-    toast({ title: "Regel gelöscht" });
+    notify.success("Regel gelöscht");
     if (editingRuleId === ruleId) resetForm();
   };
 
   const toggleRuleEnabled = async (rule: RuleRow, checked: boolean) => {
     if (!canToggle) {
-      toast({ title: "Keine Berechtigung", variant: "destructive" });
+      notify.error("Keine Berechtigung");
       return;
     }
 
     try {
       await toggleRuleEnabledMutation.mutateAsync({ ruleId: rule.id, enabled: checked });
-      toast({ title: checked ? "Regel aktiviert" : "Regel deaktiviert" });
+      notify.success(checked ? "Regel aktiviert" : "Regel deaktiviert");
       logAuditEvent({
         action: checked ? "automation.rule_enabled" : "automation.rule_disabled",
         details: { rule_id: rule.id, rule_name: rule.name },
       });
     } catch (error) {
-      toast({
-        title: "Fehler",
-        description: error instanceof Error ? error.message : "Regel konnte nicht umgeschaltet werden.",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: error instanceof Error ? error.message : "Regel konnte nicht umgeschaltet werden."
+});
     }
   };
 
@@ -434,11 +429,9 @@ export function AutomationRulesManager() {
         sourcePayload: buildSourcePayloadFromRule(targetRule),
       });
     } catch (error) {
-      toast({
-        title: "Dry-Run fehlgeschlagen",
-        description: error instanceof Error ? error.message : "Dry-Run konnte nicht gestartet werden.",
-        variant: "destructive",
-      });
+      notify.error("Dry-Run fehlgeschlagen", {
+        description: error instanceof Error ? error.message : "Dry-Run konnte nicht gestartet werden."
+});
     } finally {
       setRunningRuleId(null);
     }
@@ -455,11 +448,9 @@ export function AutomationRulesManager() {
         sourcePayload: buildSourcePayloadFromRule(rule),
       });
     } catch (error) {
-      toast({
-        title: "Ausführung fehlgeschlagen",
-        description: error instanceof Error ? error.message : "Regel konnte nicht ausgeführt werden.",
-        variant: "destructive",
-      });
+      notify.error("Ausführung fehlgeschlagen", {
+        description: error instanceof Error ? error.message : "Regel konnte nicht ausgeführt werden."
+});
     } finally {
       setRunningRuleId(null);
     }
@@ -470,11 +461,9 @@ export function AutomationRulesManager() {
       const rule = rules.find((r: Record<string, any>) => r.id === editingRuleId);
       if (rule) triggerDryRun(rule);
     } else {
-      toast({
-        title: "Regel zuerst speichern",
-        description: "Bitte erstelle die Regel zuerst, bevor du einen Dry-Run startest.",
-        variant: "destructive",
-      });
+      notify.error("Regel zuerst speichern", {
+        description: "Bitte erstelle die Regel zuerst, bevor du einen Dry-Run startest."
+});
     }
   };
 

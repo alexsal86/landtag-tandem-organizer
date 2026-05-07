@@ -4,10 +4,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import type { TenantWithStats, UserWithTenants } from "./constants";
+import { notify } from "@/lib/notify";
 
 export function useSuperadminTenantData() {
   const { user } = useAuth();
-  const { toast } = useToast();
 
   const [isPlatformAdmin, setIsPlatformAdmin] = useState<boolean>(false);
   const [roleCheckLoading, setRoleCheckLoading] = useState<boolean>(true);
@@ -57,11 +57,9 @@ export function useSuperadminTenantData() {
       setTenants(data || []);
     } catch (error: unknown) {
       debugConsole.error("Error loading tenants:", error);
-      toast({
-        title: "Fehler",
-        description: "Tenants konnten nicht geladen werden",
-        variant: "destructive",
-      });
+      notify.error("Fehler", {
+        description: "Tenants konnten nicht geladen werden"
+});
     } finally {
       setLoading(false);
     }
@@ -78,12 +76,10 @@ export function useSuperadminTenantData() {
       setAllUsers(data.users ?? []);
     } catch (error: unknown) {
       debugConsole.error("Error loading users:", error);
-      toast({
-        title: "Fehler",
+      notify.error("Fehler", {
         description:
-          error instanceof Error ? error.message : "Benutzer konnten nicht geladen werden",
-        variant: "destructive",
-      });
+          error instanceof Error ? error.message : "Benutzer konnten nicht geladen werden"
+});
     } finally {
       setUsersLoading(false);
     }

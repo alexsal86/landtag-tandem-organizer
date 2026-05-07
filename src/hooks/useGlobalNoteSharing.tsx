@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { toast } from "sonner";
 import { debugConsole } from "@/utils/debugConsole";
+import { notify } from "@/lib/notify";
 
 export interface GlobalNoteShare {
   id: string;
@@ -77,19 +77,19 @@ export const useGlobalNoteSharing = () => {
 
       if (error) {
         if (error.code === "23505") {
-          toast.error("Bereits für diese Person freigegeben");
+          notify.error("Bereits für diese Person freigegeben");
         } else {
           throw error;
         }
         return false;
       }
 
-      toast.success("Alle Notizen erfolgreich freigegeben");
+      notify.success("Alle Notizen erfolgreich freigegeben");
       loadGlobalShares();
       return true;
     } catch (error) {
       debugConsole.error("Error adding global share:", error);
-      toast.error("Fehler beim Freigeben");
+      notify.error("Fehler beim Freigeben");
       return false;
     }
   };
@@ -97,13 +97,13 @@ export const useGlobalNoteSharing = () => {
   const removeGlobalShare = async (shareId: string) => {
     if (!shareId) {
       debugConsole.error("No share ID provided for removal");
-      toast.error("Fehler: Keine Freigabe-ID");
+      notify.error("Fehler: Keine Freigabe-ID");
       return false;
     }
 
     if (!user) {
       debugConsole.error("No user authenticated for share removal");
-      toast.error("Fehler: Nicht authentifiziert");
+      notify.error("Fehler: Nicht authentifiziert");
       return false;
     }
 
@@ -126,23 +126,23 @@ export const useGlobalNoteSharing = () => {
       
       if (!data || data.length === 0) {
         debugConsole.warn("No share found with ID:", shareId);
-        toast.error("Freigabe nicht gefunden");
+        notify.error("Freigabe nicht gefunden");
         return false;
       }
 
-      toast.success("Globale Freigabe entfernt");
+      notify.success("Globale Freigabe entfernt");
       loadGlobalShares();
       return true;
     } catch (error) {
       debugConsole.error("Error removing global share:", error);
-      toast.error("Fehler beim Entfernen der Freigabe");
+      notify.error("Fehler beim Entfernen der Freigabe");
       return false;
     }
   };
 
   const updateGlobalPermission = async (shareId: string, permissionType: "view" | "edit") => {
     if (!user) {
-      toast.error("Nicht angemeldet");
+      notify.error("Nicht angemeldet");
       return false;
     }
 
@@ -174,28 +174,28 @@ export const useGlobalNoteSharing = () => {
         debugConsole.log("Existing share:", existingShare);
         
         if (!existingShare) {
-          toast.error("Freigabe nicht gefunden");
+          notify.error("Freigabe nicht gefunden");
           return false;
         }
         
         if (existingShare.user_id !== user.id) {
-          toast.error("Keine Berechtigung für diese Freigabe");
+          notify.error("Keine Berechtigung für diese Freigabe");
           return false;
         }
         
         if (existingShare.permission_type === permissionType) {
-          toast.success("Berechtigung bereits gesetzt");
+          notify.success("Berechtigung bereits gesetzt");
           loadGlobalShares();
           return true;
         }
       }
 
-      toast.success("Berechtigung aktualisiert");
+      notify.success("Berechtigung aktualisiert");
       loadGlobalShares();
       return true;
     } catch (error) {
       debugConsole.error("Error updating permission:", error);
-      toast.error("Fehler beim Aktualisieren der Berechtigung");
+      notify.error("Fehler beim Aktualisieren der Berechtigung");
       return false;
     }
   };

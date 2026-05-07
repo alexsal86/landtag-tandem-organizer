@@ -27,8 +27,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-
+import { notify } from "@/lib/notify";
 interface AnalyticsData {
   totalSpeeches: number;
   totalSpeakers: number;
@@ -208,7 +207,7 @@ export function ProtocolAnalytics({ protocolId, tenantId }: ProtocolAnalyticsPro
 
     } catch (error) {
       debugConsole.error('Error loading analytics:', error);
-      toast.error('Fehler beim Laden der Statistiken');
+      notify.error('Fehler beim Laden der Statistiken');
     } finally {
       setLoading(false);
     }

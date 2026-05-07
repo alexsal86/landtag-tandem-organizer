@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useTenant } from './useTenant';
-import { toast } from 'sonner';
 import { debugConsole } from '@/utils/debugConsole';
+import { notify } from "@/lib/notify";
 
 export interface StatusOption {
   id: string;
@@ -369,10 +369,10 @@ export const useUserStatus = () => {
       if (error) throw error;
 
       setCurrentStatus(data);
-      toast.success('Status aktualisiert');
+      notify.success('Status aktualisiert');
     } catch (error) {
       debugConsole.error('Error updating status:', error);
-      toast.error('Fehler beim Aktualisieren des Status');
+      notify.error('Fehler beim Aktualisieren des Status');
     }
   };
 
