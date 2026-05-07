@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Calendar } from "lucide-react";
+import { MyWorkEmptyState } from "@/components/my-work/MyWorkEmptyState";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useMyWorkJourFixeMeetings } from "@/hooks/useMyWorkJourFixeMeetings";
