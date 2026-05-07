@@ -87,12 +87,25 @@ export interface AppointmentPreparation {
       item: string;
       notes: string;
     }>;
+    // Debrief / Nachbereitung
+    debrief_summary?: string;
+    debrief_outcomes?: string;
+    debrief_mood?: 'positive' | 'neutral' | 'negative';
+    debrief_open_points?: Array<{
+      id: string;
+      text: string;
+      assignee?: string;
+      due_date?: string;
+      task_created?: boolean;
+    }>;
+    debrief_followup_scheduled?: boolean;
   };
   checklist_items: Array<{
     id: string;
     label: string;
     completed: boolean;
   }>;
+  shared_with?: string[];
 }
 
 
@@ -187,12 +200,17 @@ interface AppointmentPreparationRow {
   archived_at: string | null;
   preparation_data: AppointmentPreparationData | null;
   checklist_items: AppointmentChecklistItem[] | null;
+  shared_with: string[] | null;
 }
+
+export type AutosaveStatus = "idle" | "saving" | "saved" | "error";
 
 export function useAppointmentPreparation(preparationId: string | undefined) {
   const [preparation, setPreparation] = useState<AppointmentPreparation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<AutosaveStatus>("idle");
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const { user } = useAuth();
 
   const normalizePreparationData = (
@@ -234,7 +252,8 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
           is_archived: row.is_archived,
           archived_at: row.archived_at,
           preparation_data: normalizePreparationData(row.preparation_data),
-          checklist_items: row.checklist_items ?? []
+          checklist_items: row.checklist_items ?? [],
+          shared_with: row.shared_with ?? [],
         });
       }
     } catch (err) {
@@ -249,6 +268,7 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
     if (!preparationId || !user) return;
 
     try {
+      setSaveStatus("saving");
       const updatePayload: Partial<AppointmentPreparationRow> = {
         ...updates,
         updated_at: new Date().toISOString(),
@@ -263,8 +283,11 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
         .eq('id', preparationId);
 
       if (updateError) throw updateError;
+      setSaveStatus("saved");
+      setLastSavedAt(new Date());
     } catch (err) {
       debugConsole.error('Error updating preparation:', err);
+      setSaveStatus("error");
       // Rollback on error
       await fetchPreparation();
       throw err;
@@ -301,6 +324,8 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
     error,
     updatePreparation,
     archivePreparation,
-    refetch: fetchPreparation
+    refetch: fetchPreparation,
+    saveStatus,
+    lastSavedAt,
   };
 }

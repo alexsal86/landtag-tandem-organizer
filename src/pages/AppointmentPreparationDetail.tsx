@@ -10,8 +10,12 @@ import { AppointmentPreparationFileUpload } from "@/components/appointments/Appo
 import { AppointmentDetailsSidebar } from "@/components/calendar/AppointmentDetailsSidebar";
 import { AppointmentBriefingView } from "@/components/appointment-preparations/AppointmentBriefingView";
 import { PhaseSidebar } from "@/components/appointment-preparations/workflow/PhaseSidebar";
+import { PhaseStepper } from "@/components/appointment-preparations/workflow/PhaseStepper";
 import { PhaseContent } from "@/components/appointment-preparations/workflow/PhaseContent";
 import { LiveBriefingPane } from "@/components/appointment-preparations/workflow/LiveBriefingPane";
+import { AutosaveIndicator } from "@/components/appointment-preparations/workflow/AutosaveIndicator";
+import { KeyboardShortcutsHelp } from "@/components/appointment-preparations/workflow/KeyboardShortcutsHelp";
+import { useAppointmentPreparationShortcuts } from "@/hooks/useAppointmentPreparationShortcuts";
 import { usePhaseStatus, type PhaseId } from "@/components/appointment-preparations/workflow/usePhaseStatus";
 import { supabase } from "@/integrations/supabase/client";
 import { generateBriefingPdf } from "@/components/appointment-preparations/briefingPdfGenerator";
@@ -63,8 +67,12 @@ export default function AppointmentPreparationDetail() {
     preparation,
     loading,
     error,
-    updatePreparation
+    updatePreparation,
+    saveStatus,
+    lastSavedAt,
   } = useAppointmentPreparation(preparationId);
+  const [focusMode, setFocusMode] = useState(false);
+  const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
 
   // Fetch user role to determine default tab
   useEffect(() => {
@@ -341,9 +349,12 @@ export default function AppointmentPreparationDetail() {
                     Live-Briefing
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground whitespace-nowrap">
-                  Zuletzt bearbeitet: {new Date(preparation.updated_at).toLocaleString('de-DE')}
-                </p>
+                <div className="flex flex-col items-end gap-0.5">
+                  <AutosaveIndicator status={saveStatus} lastSavedAt={lastSavedAt} />
+                  <p className="text-xs text-muted-foreground whitespace-nowrap">
+                    Zuletzt bearbeitet: {new Date(preparation.updated_at).toLocaleString('de-DE')}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -377,8 +388,12 @@ export default function AppointmentPreparationDetail() {
             selectedPhase={selectedPhase}
             setSelectedPhase={setSelectedPhase}
             onShowBriefing={() => setBriefingMode(true)}
+            focusMode={focusMode}
+            onToggleFocus={() => setFocusMode((v) => !v)}
+            onShowShortcutsHelp={() => setShortcutsHelpOpen(true)}
           />
         )}
+        <KeyboardShortcutsHelp open={shortcutsHelpOpen} onOpenChange={setShortcutsHelpOpen} />
       </div>
         {appointmentInfo && (
           <AppointmentDetailsSidebar
@@ -413,6 +428,9 @@ interface WorkflowWorkspaceProps {
   selectedPhase: PhaseId | null;
   setSelectedPhase: (id: PhaseId | null) => void;
   onShowBriefing: () => void;
+  focusMode: boolean;
+  onToggleFocus: () => void;
+  onShowShortcutsHelp: () => void;
 }
 
 function WorkflowWorkspace({
@@ -423,54 +441,84 @@ function WorkflowWorkspace({
   selectedPhase,
   setSelectedPhase,
   onShowBriefing,
+  focusMode,
+  onToggleFocus,
+  onShowShortcutsHelp,
 }: WorkflowWorkspaceProps) {
   const { phases, activePhase, blockers } = usePhaseStatus(preparation, selectedPhase);
   const currentIdx = phases.findIndex((p) => p.id === activePhase);
   const nextPhase = phases[currentIdx + 1];
+  const prevPhase = phases[currentIdx - 1];
+
+  useAppointmentPreparationShortcuts({
+    onNextPhase: () => nextPhase && setSelectedPhase(nextPhase.id),
+    onPrevPhase: () => prevPhase && setSelectedPhase(prevPhase.id),
+    onToggleFocus,
+    onOpenBriefing: onShowBriefing,
+    onShowHelp: onShowShortcutsHelp,
+  });
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 mt-4">
-      <div className="lg:col-span-3 lg:sticky lg:top-4 lg:self-start">
-        <PhaseSidebar
-          phases={phases}
-          activePhase={activePhase}
-          onSelect={(id) => setSelectedPhase(id)}
-          blockers={blockers}
-        />
+    <div className="space-y-4 mt-4">
+      <div className="flex items-center justify-between gap-4 border-b pb-3">
+        <div className="flex-1 min-w-0">
+          <PhaseStepper phases={phases} activePhase={activePhase} onSelect={(id) => setSelectedPhase(id)} />
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="ghost" size="sm" onClick={onToggleFocus}>
+            {focusMode ? "Sidebar einblenden" : "Fokus-Modus"}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onShowShortcutsHelp} aria-label="Tastenkürzel">
+            ?
+          </Button>
+        </div>
       </div>
 
-      <div className="lg:col-span-6">
-        <PhaseContent
-          phase={activePhase}
-          preparation={preparation}
-          appointmentDetails={appointmentInfo}
-          onUpdate={updatePreparation}
-          onOpenAppointmentDetails={onOpenAppointmentDetails}
-        />
-        {nextPhase && (
-          <div className="mt-6 flex justify-end">
-            <Button variant="default" size="sm" onClick={() => setSelectedPhase(nextPhase.id)}>
-              Phase abschließen
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+      <div className={`grid grid-cols-1 gap-6 ${focusMode ? 'lg:grid-cols-10' : 'lg:grid-cols-12'}`}>
+        {!focusMode && (
+          <div className="lg:col-span-3 lg:sticky lg:top-4 lg:self-start">
+            <PhaseSidebar
+              phases={phases}
+              activePhase={activePhase}
+              onSelect={(id) => setSelectedPhase(id)}
+              blockers={blockers}
+            />
           </div>
         )}
-      </div>
 
-      <div className="hidden lg:block lg:col-span-3 lg:sticky lg:top-4 lg:self-start">
-        <LiveBriefingPane
-          preparation={preparation}
-          appointmentInfo={appointmentInfo ? {
-            title: appointmentInfo.title,
-            start_time: appointmentInfo.start_time,
-            end_time: appointmentInfo.end_time,
-            location: appointmentInfo.location ?? null,
-          } : null}
-        />
-        <div className="mt-3 text-right">
-          <Button variant="ghost" size="sm" onClick={onShowBriefing}>
-            Vollbild-Briefing →
-          </Button>
+        <div className={focusMode ? 'lg:col-span-6' : 'lg:col-span-6'}>
+          <PhaseContent
+            phase={activePhase}
+            preparation={preparation}
+            appointmentDetails={appointmentInfo}
+            onUpdate={updatePreparation}
+            onOpenAppointmentDetails={onOpenAppointmentDetails}
+          />
+          {nextPhase && (
+            <div className="mt-6 flex justify-end">
+              <Button variant="default" size="sm" onClick={() => setSelectedPhase(nextPhase.id)}>
+                Phase abschließen
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <div className={`hidden lg:block lg:sticky lg:top-4 lg:self-start ${focusMode ? 'lg:col-span-4' : 'lg:col-span-3'}`}>
+          <LiveBriefingPane
+            preparation={preparation}
+            appointmentInfo={appointmentInfo ? {
+              title: appointmentInfo.title,
+              start_time: appointmentInfo.start_time,
+              end_time: appointmentInfo.end_time,
+              location: appointmentInfo.location ?? null,
+            } : null}
+          />
+          <div className="mt-3 text-right">
+            <Button variant="ghost" size="sm" onClick={onShowBriefing}>
+              Vollbild-Briefing →
+            </Button>
+          </div>
         </div>
       </div>
     </div>

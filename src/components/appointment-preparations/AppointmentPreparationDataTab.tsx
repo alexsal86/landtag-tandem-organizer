@@ -407,6 +407,13 @@ export function AppointmentPreparationDataTab({
   const handleTalkingPointKeyDown = (e: KeyboardEvent<HTMLInputElement>, _idx: number) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addTalkingPointItem(); }
   };
+  const reorderTalkingPoints = (fromIdx: number, toIdx: number) => {
+    const updated = [...talkingPointItems];
+    const [moved] = updated.splice(fromIdx, 1);
+    updated.splice(toIdx, 0, moved);
+    setTalkingPointItems(updated);
+    debouncedSave(buildPreparationData(editData, { talking_point_items: updated }));
+  };
 
   return (
     <div className="space-y-4">
@@ -603,6 +610,7 @@ export function AppointmentPreparationDataTab({
             onUpdateTalkingPointItem={updateTalkingPointItem}
             onRemoveTalkingPointItem={removeTalkingPointItem}
             onTalkingPointKeyDown={handleTalkingPointKeyDown}
+            onReorderTalkingPoints={reorderTalkingPoints}
           />
         </div>
 

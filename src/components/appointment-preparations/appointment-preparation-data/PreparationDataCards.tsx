@@ -1,4 +1,5 @@
-import { CheckCircleIcon, ChevronDownIcon, ChevronRightIcon, FileTextIcon, PlusIcon, TrashIcon } from "lucide-react";
+import { CheckCircleIcon, ChevronDownIcon, ChevronRightIcon, FileTextIcon, GripVertical, PlusIcon, TrashIcon } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -29,6 +30,7 @@ interface PreparationDataCardsProps {
   onUpdateTalkingPointItem: (idx: number, field: 'point' | 'background', value: string) => void;
   onRemoveTalkingPointItem: (idx: number) => void;
   onTalkingPointKeyDown: (e: KeyboardEvent<HTMLInputElement>, idx: number) => void;
+  onReorderTalkingPoints?: (fromIdx: number, toIdx: number) => void;
 }
 
 function PreparationSection({
@@ -157,7 +159,9 @@ export function PreparationDataCards({
   onUpdateTalkingPointItem,
   onRemoveTalkingPointItem,
   onTalkingPointKeyDown,
+  onReorderTalkingPoints,
 }: PreparationDataCardsProps) {
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
   const allEmpty = Object.values(FIELD_SECTIONS).every((section) =>
     section.fields.every((field) => !editData[field.key]),
   );
@@ -239,8 +243,27 @@ export function PreparationDataCards({
               </span>
             </div>
             {talkingPointItems.map((item, idx) => (
-              <div key={item.id} className="rounded-lg border bg-muted/20 p-3 space-y-2">
+              <div
+                key={item.id}
+                draggable={!!onReorderTalkingPoints}
+                onDragStart={() => setDragIdx(idx)}
+                onDragOver={(e) => { if (dragIdx !== null) e.preventDefault(); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (dragIdx !== null && dragIdx !== idx) {
+                    onReorderTalkingPoints?.(dragIdx, idx);
+                  }
+                  setDragIdx(null);
+                }}
+                onDragEnd={() => setDragIdx(null)}
+                className={`rounded-lg border bg-muted/20 p-3 space-y-2 transition-opacity ${dragIdx === idx ? 'opacity-50' : ''}`}
+              >
                 <div className="flex items-start gap-2">
+                  {onReorderTalkingPoints && (
+                    <button type="button" className="mt-2 cursor-grab text-muted-foreground/50 hover:text-muted-foreground" aria-label="Verschieben">
+                      <GripVertical className="h-4 w-4" />
+                    </button>
+                  )}
                   <Input
                     value={item.point}
                     onChange={(e) => onUpdateTalkingPointItem(idx, 'point', e.target.value)}
