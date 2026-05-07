@@ -110,6 +110,22 @@ export default function AppointmentPreparationDetail() {
     fetchAppointmentInfo(apptId);
   }, [fetchAppointmentInfo, preparation?.appointment_id]);
 
+  // Fetch responsible person (created_by)
+  useEffect(() => {
+    if (!preparation?.created_by) {
+      setResponsiblePerson(null);
+      return;
+    }
+    (async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('display_name, avatar_url')
+        .eq('user_id', preparation.created_by)
+        .maybeSingle();
+      setResponsiblePerson(data ?? null);
+    })();
+  }, [preparation?.created_by]);
+
   // Create new preparation if we have URL parameters but no ID
   useEffect(() => {
     const createNewPreparation = async () => {
