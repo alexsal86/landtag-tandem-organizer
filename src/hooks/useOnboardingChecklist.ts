@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
+import { STALE_TIME } from "@/lib/query-cache";
 
 export type ChecklistItem = {
   key: string;
@@ -15,54 +17,12 @@ export type ChecklistItem = {
 };
 
 const DEFAULT_ITEMS: ChecklistItem[] = [
-  {
-    key: "profile.complete",
-    label: "Profil vervollständigen",
-    description: "Foto, Anzeigename und Telefon hinterlegen.",
-    icon: "UserCircle2",
-    cta_route: "/einstellungen/profil",
-    source: "default",
-  },
-  {
-    key: "contact.first",
-    label: "Ersten Kontakt anlegen",
-    description: "Bürger*in oder Stakeholder erfassen.",
-    icon: "Users",
-    cta_route: "/kontakte",
-    source: "default",
-  },
-  {
-    key: "appointment.first",
-    label: "Ersten Termin planen",
-    description: "Termin im Kalender anlegen oder importieren.",
-    icon: "CalendarPlus",
-    cta_route: "/kalender",
-    source: "default",
-  },
-  {
-    key: "letter.first",
-    label: "Ersten Brief entwerfen",
-    description: "DIN-5008 Brief im Designer öffnen.",
-    icon: "Mail",
-    cta_route: "/briefe",
-    source: "default",
-  },
-  {
-    key: "team.invite",
-    label: "Team einladen",
-    description: "Mitarbeiter*innen zum Büro hinzufügen.",
-    icon: "UserPlus",
-    cta_route: "/administration/team",
-    required_role: "abgeordneter,bueroleitung",
-    source: "default",
-  },
-  {
-    key: "tour.complete",
-    label: "Einführungstour abgeschlossen",
-    description: "Die Welcome-Tour einmal durchlaufen.",
-    icon: "Sparkles",
-    source: "default",
-  },
+  { key: "profile.complete", label: "Profil vervollständigen", description: "Foto, Anzeigename und Telefon hinterlegen.", icon: "UserCircle2", cta_route: "/einstellungen/profil", source: "default" },
+  { key: "contact.first", label: "Ersten Kontakt anlegen", description: "Bürger*in oder Stakeholder erfassen.", icon: "Users", cta_route: "/kontakte", source: "default" },
+  { key: "appointment.first", label: "Ersten Termin planen", description: "Termin im Kalender anlegen oder importieren.", icon: "CalendarPlus", cta_route: "/kalender", source: "default" },
+  { key: "letter.first", label: "Ersten Brief entwerfen", description: "DIN-5008 Brief im Designer öffnen.", icon: "Mail", cta_route: "/briefe", source: "default" },
+  { key: "team.invite", label: "Team einladen", description: "Mitarbeiter*innen zum Büro hinzufügen.", icon: "UserPlus", cta_route: "/administration/team", required_role: "abgeordneter,bueroleitung", source: "default" },
+  { key: "tour.complete", label: "Einführungstour abgeschlossen", description: "Die Welcome-Tour einmal durchlaufen.", icon: "Sparkles", source: "default" },
 ];
 
 type DbRow = {
@@ -75,6 +35,12 @@ type DbRow = {
   required_role: string | null;
   active: boolean;
 };
+
+interface OnboardingData {
+  progress: Record<string, boolean>;
+  dismissed: boolean;
+  tenantItems: ChecklistItem[];
+}
 
 export interface OnboardingChecklist {
   loading: boolean;
@@ -95,62 +61,58 @@ function roleAllowed(item: ChecklistItem, role: string | null): boolean {
   return !!role && allowed.includes(role);
 }
 
+async function fetchOnboarding(userId: string, tenantId: string): Promise<OnboardingData> {
+  const [stateRes, itemsRes] = await Promise.all([
+    supabase
+      .from("user_onboarding_state")
+      .select("checklist_progress, checklist_dismissed_at")
+      .eq("user_id", userId)
+      .eq("tenant_id", tenantId)
+      .maybeSingle(),
+    supabase
+      .from("tenant_onboarding_checklist_items")
+      .select("item_key,label,description,icon,cta_route,position,required_role,active")
+      .eq("tenant_id", tenantId)
+      .eq("active", true)
+      .order("position", { ascending: true }),
+  ]);
+
+  const rows = (itemsRes.data ?? []) as DbRow[];
+  return {
+    progress: (stateRes.data?.checklist_progress ?? {}) as Record<string, boolean>,
+    dismissed: !!stateRes.data?.checklist_dismissed_at,
+    tenantItems: rows.map((r) => ({
+      key: r.item_key,
+      label: r.label,
+      description: r.description ?? "",
+      icon: r.icon || "Circle",
+      cta_route: r.cta_route ?? undefined,
+      required_role: r.required_role,
+      source: "tenant",
+    })),
+  };
+}
+
+const EMPTY: OnboardingData = { progress: {}, dismissed: false, tenantItems: [] };
+
 export function useOnboardingChecklist(): OnboardingChecklist {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { role } = useResolvedUserRole();
   const userId = user?.id ?? null;
   const tenantId = currentTenant?.id ?? null;
+  const queryClient = useQueryClient();
+  const queryKey = ["onboarding-checklist", userId, tenantId] as const;
 
-  const [loading, setLoading] = useState(true);
-  const [progress, setProgress] = useState<Record<string, boolean>>({});
-  const [dismissed, setDismissed] = useState(false);
-  const [tenantItems, setTenantItems] = useState<ChecklistItem[]>([]);
+  const { data, isLoading } = useQuery({
+    queryKey,
+    enabled: !!userId && !!tenantId,
+    staleTime: STALE_TIME.LIST,
+    gcTime: STALE_TIME.LIST_WITH_REALTIME,
+    queryFn: () => fetchOnboarding(userId as string, tenantId as string),
+  });
 
-  useEffect(() => {
-    if (!userId || !tenantId) {
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      const [stateRes, itemsRes] = await Promise.all([
-        supabase
-          .from("user_onboarding_state")
-          .select("checklist_progress, checklist_dismissed_at")
-          .eq("user_id", userId)
-          .eq("tenant_id", tenantId)
-          .maybeSingle(),
-        supabase
-          .from("tenant_onboarding_checklist_items")
-          .select("item_key,label,description,icon,cta_route,position,required_role,active")
-          .eq("tenant_id", tenantId)
-          .eq("active", true)
-          .order("position", { ascending: true }),
-      ]);
-      if (cancelled) return;
-      const progressMap = (stateRes.data?.checklist_progress ?? {}) as Record<string, boolean>;
-      setProgress(progressMap);
-      setDismissed(!!stateRes.data?.checklist_dismissed_at);
-      const rows = (itemsRes.data ?? []) as DbRow[];
-      setTenantItems(
-        rows.map((r) => ({
-          key: r.item_key,
-          label: r.label,
-          description: r.description ?? "",
-          icon: r.icon || "Circle",
-          cta_route: r.cta_route ?? undefined,
-          required_role: r.required_role,
-          source: "tenant",
-        })),
-      );
-      setLoading(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [userId, tenantId]);
+  const { progress, dismissed, tenantItems } = data ?? EMPTY;
 
   const items = useMemo(() => {
     const all: ChecklistItem[] = [...DEFAULT_ITEMS, ...tenantItems];
@@ -172,43 +134,51 @@ export function useOnboardingChecklist(): OnboardingChecklist {
     [userId, tenantId],
   );
 
+  const updateCache = useCallback(
+    (patch: Partial<OnboardingData>) => {
+      queryClient.setQueryData<OnboardingData>(queryKey, (prev) => ({
+        ...(prev ?? EMPTY),
+        ...patch,
+      }));
+    },
+    [queryClient, queryKey],
+  );
+
   const setItemDone = useCallback(
     async (key: string, done: boolean) => {
       const next = { ...progress, [key]: done };
-      setProgress(next);
+      updateCache({ progress: next });
       await persistProgress(next);
     },
-    [progress, persistProgress],
+    [progress, persistProgress, updateCache],
   );
 
   const dismiss = useCallback(async () => {
     if (!userId || !tenantId) return;
-    setDismissed(true);
+    updateCache({ dismissed: true });
     await supabase
       .from("user_onboarding_state")
       .upsert(
         { user_id: userId, tenant_id: tenantId, checklist_dismissed_at: new Date().toISOString() },
         { onConflict: "user_id,tenant_id" },
       );
-  }, [userId, tenantId]);
+  }, [userId, tenantId, updateCache]);
 
   const restore = useCallback(async () => {
     if (!userId || !tenantId) return;
-    setDismissed(false);
+    updateCache({ dismissed: false });
     await supabase
       .from("user_onboarding_state")
       .upsert(
         { user_id: userId, tenant_id: tenantId, checklist_dismissed_at: null },
         { onConflict: "user_id,tenant_id" },
       );
-  }, [userId, tenantId]);
+  }, [userId, tenantId, updateCache]);
 
-  // Auto-Erkennung: wenn z.B. ein Kontakt existiert, Item automatisch erledigen.
   const detectAndSync = useCallback(async () => {
     if (!userId || !tenantId) return;
     const next: Record<string, boolean> = { ...progress };
     let changed = false;
-
     const set = (k: string, v: boolean) => {
       if (v && !next[k]) {
         next[k] = true;
@@ -231,13 +201,13 @@ export function useOnboardingChecklist(): OnboardingChecklist {
     if ((teamRes.count ?? 0) > 1) set("team.invite", true);
 
     if (changed) {
-      setProgress(next);
+      updateCache({ progress: next });
       await persistProgress(next);
     }
-  }, [userId, tenantId, progress, persistProgress]);
+  }, [userId, tenantId, progress, persistProgress, updateCache]);
 
   return {
-    loading,
+    loading: isLoading,
     items,
     progress,
     completedCount,

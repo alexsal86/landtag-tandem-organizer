@@ -114,7 +114,7 @@ export const useTeamFeedbackFeed = (filters?: TeamFeedbackFeedFilters) => {
     };
 
     const channel = supabase
-      .channel(`team-feedback-feed-${currentTenant.id}-${user.id}`)
+      .channel(`team-feedback-feed-${currentTenant.id}-${user.id}-${crypto.randomUUID()}`)
       // Der Feed basiert nicht nur auf appointment_feedback. Sichtbarkeit und Darstellung hängen auch an
       // appointments, external_events + external_calendars, meeting_participants, tasks und profiles.
       // Ein enger Filter wie appointment_feedback.user_id = current user wäre deshalb zu schmal:
