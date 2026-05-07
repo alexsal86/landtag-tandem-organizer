@@ -165,15 +165,23 @@ export function PreparationDataCards({
   onRemoveTalkingPointItem,
   onTalkingPointKeyDown,
   onReorderTalkingPoints,
+  showFacts = true,
+  showTalkingPoints = true,
+  showQa = true,
+  showInhalteHeaderCards = true,
+  showInhalteRahmen = true,
 }: PreparationDataCardsProps) {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const allEmpty = Object.values(FIELD_SECTIONS).every((section) =>
     section.fields.every((field) => !editData[field.key]),
   );
 
+  const showInhalteCard = showInhalteHeaderCards || showFacts || showTalkingPoints || showQa;
+
   return (
     <>
-      {/* Inhalte & Kommunikation */}
+      {showInhalteCard && (
+      /* Inhalte & Kommunikation */
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
