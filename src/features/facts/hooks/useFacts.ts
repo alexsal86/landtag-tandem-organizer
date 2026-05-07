@@ -10,11 +10,45 @@ export function useFacts(filters: FactsFilters = {}) {
   const tenantId = currentTenant?.id;
   const sortField = filters.sortField ?? "updated_at";
   const sortDir = filters.sortDir ?? "desc";
+
+  return useQuery({
+    queryKey: ["facts", tenantId, filters],
+    enabled: !!tenantId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      let q = supabase
+        .from("facts")
+        .select("*")
+        .eq("tenant_id", tenantId!)
+        .order(sortField, { ascending: sortDir === "asc", nullsFirst: false })
+        .limit(500);
+
+      if (!filters.includeArchived) q = q.eq("is_archived", false);
+      if (filters.dossierId) q = q.eq("dossier_id", filters.dossierId);
+      if (filters.contactId) q = q.eq("contact_id", filters.contactId);
+      if (filters.tags && filters.tags.length > 0) q = q.contains("tags", filters.tags);
+      if (filters.search && filters.search.trim()) {
+        const term = filters.search.trim().replace(/[%,]/g, " ");
+        q = q.or(`text.ilike.%${term}%,source.ilike.%${term}%`);
+      }
+
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as FactRow[];
+    },
+  });
+}
+
+export function useFactsPaginated(filters: FactsFilters = {}) {
+  const { currentTenant } = useTenant();
+  const tenantId = currentTenant?.id;
+  const sortField = filters.sortField ?? "updated_at";
+  const sortDir = filters.sortDir ?? "desc";
   const page = filters.page ?? 0;
   const pageSize = filters.pageSize ?? 25;
 
   return useQuery({
-    queryKey: ["facts", tenantId, filters],
+    queryKey: ["facts-paginated", tenantId, filters],
     enabled: !!tenantId,
     staleTime: 60_000,
     queryFn: async () => {
