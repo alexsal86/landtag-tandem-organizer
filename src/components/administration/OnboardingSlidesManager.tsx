@@ -151,6 +151,82 @@ export function OnboardingSlidesManager(): React.JSX.Element {
     await load();
   };
 
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const exportJson = (): void => {
+    const payload = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      tenantName: currentTenant?.name ?? null,
+      slides: rows
+        .slice()
+        .sort((a, b) => a.position - b.position)
+        .map((r) => ({
+          position: r.position,
+          title: r.title,
+          body: r.body,
+          icon: r.icon,
+          accent: r.accent,
+          active: r.active,
+        })),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const safeName = (currentTenant?.name ?? "buero").replace(/[^a-z0-9-_]+/gi, "-").toLowerCase();
+    a.href = url;
+    a.download = `onboarding-slides-${safeName}-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const importJson = async (file: File): Promise<void> => {
+    if (!tenantId) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text) as { slides?: Array<Partial<Row>> } | Array<Partial<Row>>;
+      const incoming = Array.isArray(parsed) ? parsed : parsed.slides ?? [];
+      if (!Array.isArray(incoming) || incoming.length === 0) {
+        toast({ title: "Keine Slides gefunden", variant: "destructive" });
+        return;
+      }
+      const replace = confirm(
+        `${incoming.length} Slide(s) importieren.\n\nOK = bestehende ersetzen, Abbrechen = anhängen.`,
+      );
+      if (replace && rows.length > 0) {
+        const { error: delErr } = await supabase
+          .from("tenant_onboarding_slides")
+          .delete()
+          .eq("tenant_id", tenantId);
+        if (delErr) {
+          toast({ title: "Fehler beim Ersetzen", description: delErr.message, variant: "destructive" });
+          return;
+        }
+      }
+      const baseOffset = replace ? 0 : rows.length;
+      const payload = incoming.map((s, i) => ({
+        tenant_id: tenantId,
+        title: String(s.title ?? "").trim() || "Ohne Titel",
+        body: String(s.body ?? "").trim(),
+        icon: (s.icon as string) || "Building2",
+        accent: (s.accent as string) || "#155EEF",
+        active: s.active ?? true,
+        position: typeof s.position === "number" ? baseOffset + s.position : baseOffset + i,
+      }));
+      const { error } = await supabase.from("tenant_onboarding_slides").insert(payload);
+      if (error) {
+        toast({ title: "Import fehlgeschlagen", description: error.message, variant: "destructive" });
+        return;
+      }
+      await load();
+      toast({ title: `${payload.length} Slide(s) importiert` });
+    } catch (e) {
+      toast({ title: "Ungültige JSON-Datei", description: (e as Error).message, variant: "destructive" });
+    }
+  };
+
   const previewSlides: OnboardingSlide[] = [
     ...DEFAULT_SLIDES,
     ...rows.filter((r) => r.active).map((r) => ({
