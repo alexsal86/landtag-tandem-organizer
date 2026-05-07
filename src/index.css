@@ -668,6 +668,18 @@ All colors MUST be HSL.
   border-radius: var(--radius);
 }
 
+/* Phase E: respect reduced-motion for all custom animations */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Large notification toast styling - uses high specificity to override Sonner inline styles */
 [data-sonner-toaster] [data-sonner-toast].toast-large {
   --width: 520px;
