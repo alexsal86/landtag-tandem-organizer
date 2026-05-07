@@ -31,13 +31,13 @@ export function AvatarStack({ participants, maxVisible = 4, size = 'sm', showToo
   const getResponseIcon = (responseType: string | null | undefined) => {
     switch (responseType) {
       case 'yes':
-        return <Check className="h-2.5 w-2.5 text-green-600" />;
+        return <Check className="h-2.5 w-2.5 text-palette-green" />;
       case 'no':
-        return <X className="h-2.5 w-2.5 text-red-600" />;
+        return <X className="h-2.5 w-2.5 text-palette-red" />;
       case 'question':
-        return <MessageCircle className="h-2.5 w-2.5 text-orange-600" />;
+        return <MessageCircle className="h-2.5 w-2.5 text-palette-orange" />;
       default:
-        if (responseType) return <Check className="h-2.5 w-2.5 text-blue-600" />;
+        if (responseType) return <Check className="h-2.5 w-2.5 text-palette-blue" />;
         return <Clock className="h-2.5 w-2.5 text-muted-foreground" />;
     }
   };
@@ -101,9 +101,9 @@ export function AvatarStack({ participants, maxVisible = 4, size = 'sm', showToo
               <TooltipContent side="top" className="text-xs z-[120] max-w-xs">
                 <div className="flex items-center gap-1.5">
                   <span>{participant.display_name || 'Unbekannt'}</span>
-                  {participant.response_type === 'yes' && <span className="text-green-600">✓ Ja</span>}
-                  {participant.response_type === 'no' && <span className="text-red-600">✕ Nein</span>}
-                  {participant.response_type === 'question' && <span className="text-orange-600">? Rückfrage</span>}
+                  {participant.response_type === 'yes' && <span className="text-palette-green">✓ Ja</span>}
+                  {participant.response_type === 'no' && <span className="text-palette-red">✕ Nein</span>}
+                  {participant.response_type === 'question' && <span className="text-palette-orange">? Rückfrage</span>}
                   {!participant.response_type && <span className="text-muted-foreground">Ausstehend</span>}
                 </div>
               </TooltipContent>
