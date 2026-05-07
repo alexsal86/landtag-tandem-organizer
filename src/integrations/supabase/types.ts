@@ -678,6 +678,7 @@ export type Database = {
           is_archived: boolean
           notes: string | null
           preparation_data: Json
+          shared_with: string[]
           status: string
           template_id: string | null
           tenant_id: string
@@ -694,6 +695,7 @@ export type Database = {
           is_archived?: boolean
           notes?: string | null
           preparation_data?: Json
+          shared_with?: string[]
           status?: string
           template_id?: string | null
           tenant_id: string
@@ -710,6 +712,7 @@ export type Database = {
           is_archived?: boolean
           notes?: string | null
           preparation_data?: Json
+          shared_with?: string[]
           status?: string
           template_id?: string | null
           tenant_id?: string
@@ -8631,6 +8634,48 @@ export type Database = {
           started_at?: string
           task_id?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      preparation_templates: {
+        Row: {
+          anlasstyp: string | null
+          checklist_items: Json
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_global: boolean
+          name: string
+          preparation_data: Json
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          anlasstyp?: string | null
+          checklist_items?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_global?: boolean
+          name: string
+          preparation_data?: Json
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          anlasstyp?: string | null
+          checklist_items?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_global?: boolean
+          name?: string
+          preparation_data?: Json
+          tenant_id?: string
+          updated_at?: string
         }
         Relationships: []
       }
