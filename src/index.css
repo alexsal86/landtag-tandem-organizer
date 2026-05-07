@@ -59,6 +59,13 @@ All colors MUST be HSL.
     --event-foreground: 0 0% 100%;          /* white */
     --event-foreground-dark: 0 0% 13%;      /* near-black for light bg */
 
+    /* Agenda category tokens (meeting templates / sections) */
+    --agenda-appointments: 217 91% 60%;     /* blue */
+    --agenda-notes: 38 92% 50%;             /* amber */
+    --agenda-tasks: 142 71% 45%;            /* green */
+    --agenda-birthdays: 330 81% 60%;        /* pink */
+    --agenda-decisions: 271 91% 65%;        /* violet */
+
     --border: 210 15% 88%;
     --input: 210 15% 88%;
     --ring: 100 57% 41%;
