@@ -62,22 +62,58 @@ export function VoiceNoteSheet({
     try {
       const fileName = `${userId}/quicknotes/${Date.now()}.m4a`;
       const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-      const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-      const { error: upErr } = await supabase.storage
-        .from('audio-recordings')
-        .upload(fileName, bytes, { contentType: 'audio/m4a', upsert: false });
-      if (upErr) throw upErr;
-      const { error: nErr } = await supabase.from('quick_notes').insert({
-        user_id: userId,
-        title: title.trim() || `Sprachnotiz (${seconds}s)`,
-        content: `🎙 Sprachnotiz (${seconds}s)\nstorage://audio-recordings/${fileName}`,
-        category: 'mobile-voice',
-      });
-      if (nErr) throw nErr;
-      toast.success('Sprachnotiz gespeichert');
+
+      // Try transcription (best-effort, falls back to length placeholder)
+      let transcript = '';
+      try {
+        const { data, error } = await supabase.functions.invoke('transcribe-voice-note', {
+          body: { audioBase64: base64, mimeType: 'audio/m4a', language: 'de' },
+        });
+        if (!error && data && typeof (data as { text?: string }).text === 'string') {
+          transcript = (data as { text: string }).text.trim();
+        }
+      } catch {
+        // offline → leave transcript empty, will sync later
+      }
+
+      const noteContent = transcript
+        ? `🎙 Sprachnotiz (${seconds}s)\n\n${transcript}\n\nstorage://audio-recordings/${fileName}`
+        : `🎙 Sprachnotiz (${seconds}s)\nstorage://audio-recordings/${fileName}`;
+      const noteTitle = title.trim() || (transcript ? transcript.slice(0, 60) : `Sprachnotiz (${seconds}s)`);
+
+      try {
+        const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+        const { error: upErr } = await supabase.storage
+          .from('audio-recordings')
+          .upload(fileName, bytes, { contentType: 'audio/m4a', upsert: false });
+        if (upErr) throw upErr;
+        const { error: nErr } = await supabase.from('quick_notes').insert({
+          user_id: userId,
+          title: noteTitle,
+          content: noteContent,
+          category: 'mobile-voice',
+        });
+        if (nErr) throw nErr;
+        toast.success('Sprachnotiz gespeichert');
+      } catch (uploadErr) {
+        // Offline / upload failed → enqueue text-only note for later sync
+        await enqueue('quick_note', {
+          user_id: userId,
+          title: noteTitle,
+          content: noteContent,
+          category: 'mobile-voice-offline',
+        });
+        toast.success('Offline gespeichert – Sync bei Verbindung');
+        // best-effort flush in background
+        void flushOutbox();
+        throw uploadErr instanceof Error ? uploadErr : new Error(String(uploadErr));
+      }
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Fehler');
+      // Already enqueued above; only show generic error if neither path worked
+      if (e instanceof Error && e.message && !e.message.includes('Offline')) {
+        // toast already shown
+      }
     } finally {
       setBusy(false);
     }
