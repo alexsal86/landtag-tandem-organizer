@@ -23,6 +23,7 @@ import { useMyWorkActiveTab } from "@/components/my-work/hooks/useMyWorkActiveTa
 import { useMyWorkShellData } from "@/components/my-work/hooks/useMyWorkShellData";
 import { trackPageVisit } from "@/hooks/useRecentlyVisited";
 import { MY_WORK_TABS } from "@/components/my-work/myWorkTabs";
+import { OnboardingChecklistCard } from "@/components/onboarding/OnboardingChecklistCard";
 
 const MyWorkQuickCapture = lazyWithRetry(() => import("@/components/my-work/MyWorkQuickCapture").then(m => ({ default: m.MyWorkQuickCapture })));
 const MyWorkNotesList = lazyWithRetry(() => import("@/components/my-work/MyWorkNotesList").then(m => ({ default: m.MyWorkNotesList })));
