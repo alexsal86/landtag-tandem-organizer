@@ -17,15 +17,15 @@ export function PhotoSheet({
   useEffect(() => { if (!visible) { setUri(null); setCaption(''); } }, [visible]);
 
   const fromCamera = async () => {
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) { toast.error('Kamera-Zugriff verweigert'); return; }
+    const ok = await ensurePermission('camera');
+    if (!ok) return;
     const r = await ImagePicker.launchCameraAsync({ quality: 0.7, mediaTypes: ImagePicker.MediaTypeOptions.Images });
     if (!r.canceled && r.assets[0]) setUri(r.assets[0].uri);
   };
 
   const fromLibrary = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) { toast.error('Foto-Zugriff verweigert'); return; }
+    const ok = await ensurePermission('mediaLibrary');
+    if (!ok) return;
     const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.7, mediaTypes: ImagePicker.MediaTypeOptions.Images });
     if (!r.canceled && r.assets[0]) setUri(r.assets[0].uri);
   };

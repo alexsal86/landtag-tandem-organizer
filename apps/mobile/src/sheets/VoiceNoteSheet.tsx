@@ -34,8 +34,8 @@ export function VoiceNoteSheet({
   };
 
   const start = async () => {
-    const perm = await Audio.requestPermissionsAsync();
-    if (!perm.granted) { toast.error('Mikrofon-Zugriff verweigert'); return; }
+    const ok = await ensurePermission('microphone');
+    if (!ok) return;
     await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
     const rec = new Audio.Recording();
     await rec.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
