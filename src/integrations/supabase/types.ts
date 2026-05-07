@@ -6040,6 +6040,66 @@ export type Database = {
           },
         ]
       }
+      gdpr_requests: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          processed_at: string | null
+          reason: string | null
+          request_type: string
+          requested_by: string
+          result_storage_path: string | null
+          result_summary: Json | null
+          status: string
+          subject_contact_id: string | null
+          subject_email: string | null
+          subject_name: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          processed_at?: string | null
+          reason?: string | null
+          request_type: string
+          requested_by: string
+          result_storage_path?: string | null
+          result_summary?: Json | null
+          status?: string
+          subject_contact_id?: string | null
+          subject_email?: string | null
+          subject_name?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          processed_at?: string | null
+          reason?: string | null
+          request_type?: string
+          requested_by?: string
+          result_storage_path?: string | null
+          result_summary?: Json | null
+          status?: string
+          subject_contact_id?: string | null
+          subject_email?: string | null
+          subject_name?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       habit_completions: {
         Row: {
           completion_date: string
@@ -9809,6 +9869,36 @@ export type Database = {
           },
         ]
       }
+      security_audit_snapshots: {
+        Row: {
+          captured_at: string
+          critical_count: number
+          findings: Json
+          id: string
+          rls_enabled_count: number
+          total_tables: number
+          warning_count: number
+        }
+        Insert: {
+          captured_at?: string
+          critical_count?: number
+          findings?: Json
+          id?: string
+          rls_enabled_count?: number
+          total_tables?: number
+          warning_count?: number
+        }
+        Update: {
+          captured_at?: string
+          critical_count?: number
+          findings?: Json
+          id?: string
+          rls_enabled_count?: number
+          total_tables?: number
+          warning_count?: number
+        }
+        Relationships: []
+      }
       sender_information: {
         Row: {
           created_at: string
@@ -10610,6 +10700,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      system_health: {
+        Row: {
+          check_name: string
+          checked_at: string
+          details: Json | null
+          id: string
+          status: string
+        }
+        Insert: {
+          check_name: string
+          checked_at?: string
+          details?: Json | null
+          id?: string
+          status: string
+        }
+        Update: {
+          check_name?: string
+          checked_at?: string
+          details?: Json | null
+          id?: string
+          status?: string
+        }
+        Relationships: []
       }
       tags: {
         Row: {
@@ -12810,6 +12924,17 @@ export type Database = {
           },
         ]
       }
+      v_rls_coverage: {
+        Row: {
+          has_tenant_id: boolean | null
+          has_user_id: boolean | null
+          policy_count: number | null
+          rls_enabled: boolean | null
+          rls_forced: boolean | null
+          table_name: unknown
+        }
+        Relationships: []
+      }
     }
     Functions: {
       _meeting_default_end: { Args: { _date: string }; Returns: string }
@@ -12825,6 +12950,16 @@ export type Database = {
       assign_contact_to_organization: {
         Args: { contact_id: string; org_id: string }
         Returns: undefined
+      }
+      audit_rls_gaps: {
+        Args: never
+        Returns: {
+          has_tenant_id: boolean
+          policy_count: number
+          reason: string
+          severity: string
+          table_name: string
+        }[]
       }
       auto_archive_completed_preparations: { Args: never; Returns: undefined }
       auto_update_poll_status: { Args: never; Returns: undefined }
@@ -13208,6 +13343,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      snapshot_rls_coverage: { Args: never; Returns: string }
       sync_birthday_appointments: { Args: never; Returns: undefined }
       sync_existing_contact_tags: { Args: never; Returns: undefined }
       update_contact_usage: {
