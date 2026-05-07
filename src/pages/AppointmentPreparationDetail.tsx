@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Edit, FileText, Upload, Calendar, Clock, MapPin, Briefcase, ExternalLink, Notebook, Download } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, MapPin, ExternalLink, Notebook, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -217,109 +217,60 @@ export default function AppointmentPreparationDetail() {
           </Button>
         </div>
 
-        {/* Prominent Appointment Info Header */}
-        <Card className="bg-card shadow-elegant border-border mb-6 overflow-hidden">
-          <div className="bg-primary/5 border-b border-border px-6 py-4">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="flex min-w-0 flex-1 items-start gap-3">
-                <div className="mt-1 rounded-full bg-background/80 p-2 text-primary shadow-sm">
-                  <Notebook className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <h1 className="text-3xl font-bold leading-tight">
-                      {appointmentInfo?.title ?? preparation.title}
-                    </h1>
+        {/* Compact Appointment Info Header */}
+        <Card className="bg-card shadow-card border-border mb-6 overflow-hidden">
+          <div className="px-6 py-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start gap-3">
+                  <div className="mt-1 rounded-full bg-primary/10 p-2 text-primary shrink-0">
+                    <Notebook className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <h1 className="text-xl font-semibold leading-tight truncate">
+                        {appointmentInfo?.title ?? preparation.title}
+                      </h1>
+                      {getStatusBadge(preparation.status)}
+                    </div>
                     {appointmentInfo && (
-                      <button
-                        type="button"
-                        onClick={() => setShowAppointmentSidebar(true)}
-                        className="inline-flex items-center gap-1 text-sm font-medium text-primary transition-colors hover:text-primary/80"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                        Termindetails öffnen
-                      </button>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                        <span className="inline-flex items-center gap-1.5">
+                          <Calendar className="h-3.5 w-3.5" />
+                          {format(new Date(appointmentInfo.start_time), 'EEE, dd. MMM yyyy', { locale: de })}
+                        </span>
+                        <span className="text-muted-foreground/50">·</span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <Clock className="h-3.5 w-3.5" />
+                          {format(new Date(appointmentInfo.start_time), 'HH:mm', { locale: de })}
+                          {'–'}
+                          {format(new Date(appointmentInfo.end_time), 'HH:mm', { locale: de })}
+                        </span>
+                        {appointmentInfo.location && (
+                          <>
+                            <span className="text-muted-foreground/50">·</span>
+                            <span className="inline-flex items-center gap-1.5 truncate max-w-xs">
+                              <MapPin className="h-3.5 w-3.5 shrink-0" />
+                              <span className="truncate">{appointmentInfo.location}</span>
+                            </span>
+                          </>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setShowAppointmentSidebar(true)}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-primary transition-colors hover:text-primary/80"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          Termindetails
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-col items-start gap-2 text-xs text-muted-foreground lg:ml-auto lg:items-end">
-                <div>{getStatusBadge(preparation.status)}</div>
-                <div className="text-left whitespace-nowrap lg:text-right">
-                  <p>Zuletzt bearbeitet</p>
-                  <p className="font-medium">{new Date(preparation.updated_at).toLocaleString('de-DE')}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {appointmentInfo && (
-            <CardContent className="py-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="flex items-center gap-3 rounded-lg bg-muted/40 px-4 py-3">
-                  <Calendar className="h-5 w-5 text-primary shrink-0" />
-                  <div>
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Datum</p>
-                    <p className="font-semibold">
-                      {format(new Date(appointmentInfo.start_time), 'EEEE, dd. MMMM yyyy', { locale: de })}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 rounded-lg bg-muted/40 px-4 py-3">
-                  <Clock className="h-5 w-5 text-primary shrink-0" />
-                  <div>
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Uhrzeit</p>
-                    <p className="font-semibold">
-                      {format(new Date(appointmentInfo.start_time), 'HH:mm', { locale: de })}
-                      {' – '}
-                      {format(new Date(appointmentInfo.end_time), 'HH:mm', { locale: de })} Uhr
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 rounded-lg bg-muted/40 px-4 py-3">
-                  <MapPin className="h-5 w-5 text-primary shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Ort</p>
-                    <p className="font-semibold truncate">
-                      {appointmentInfo.location ?? <span className="text-muted-foreground font-normal italic">Kein Ort angegeben</span>}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          )}
-        </Card>
-
-        {/* Tab Navigation */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="briefing" className="flex items-center gap-2">
-              <Briefcase className="h-4 w-4" />
-              Briefing
-            </TabsTrigger>
-            <TabsTrigger value="preparation" className="flex items-center gap-2">
-              <Edit className="h-4 w-4" />
-              Vorbereitung
-            </TabsTrigger>
-            <TabsTrigger value="checklist" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Checkliste
-            </TabsTrigger>
-            <TabsTrigger value="details" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Details
-            </TabsTrigger>
-            <TabsTrigger value="dokumente" className="flex items-center gap-2">
-              <Upload className="h-4 w-4" />
-              Dokumente
-            </TabsTrigger>
-          </TabsList>
-
-          <div className="mt-6">
-            <TabsContent value="briefing">
-              <div className="space-y-4">
-                <div className="flex justify-end gap-2">
+              <div className="flex flex-col items-start gap-2 lg:items-end shrink-0">
+                <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -342,21 +293,47 @@ export default function AppointmentPreparationDetail() {
                     }}
                   >
                     <Download className="h-4 w-4 mr-2" />
-                    {pdfLoading ? "Wird erstellt..." : "PDF herunterladen"}
+                    {pdfLoading ? "Wird erstellt..." : "PDF"}
                   </Button>
                   <Button
-                    variant="outline"
+                    variant="default"
                     size="sm"
                     onClick={() => navigate(`/briefing-live?preparationId=${preparation.id}${preparation.appointment_id ? `&appointmentId=${preparation.appointment_id}` : ''}`)}
                   >
-                    Live-Briefing öffnen
+                    Live-Briefing
                   </Button>
                 </div>
-                <AppointmentBriefingView
-                  preparation={preparation}
-                  appointmentInfo={appointmentInfo}
-                />
+                <p className="text-xs text-muted-foreground whitespace-nowrap">
+                  Zuletzt bearbeitet: {new Date(preparation.updated_at).toLocaleString('de-DE')}
+                </p>
               </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Tab Navigation */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="briefing">Briefing</TabsTrigger>
+            <TabsTrigger value="preparation">Vorbereitung</TabsTrigger>
+            <TabsTrigger value="checklist">
+              Checkliste
+              {preparation.checklist_items?.length ? (
+                <span className="ml-1.5 text-xs text-muted-foreground">
+                  ({preparation.checklist_items.filter(i => i.completed).length}/{preparation.checklist_items.length})
+                </span>
+              ) : null}
+            </TabsTrigger>
+            <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="dokumente">Dokumente</TabsTrigger>
+          </TabsList>
+
+          <div className="mt-6">
+            <TabsContent value="briefing">
+              <AppointmentBriefingView
+                preparation={preparation}
+                appointmentInfo={appointmentInfo}
+              />
             </TabsContent>
 
             <TabsContent value="preparation">
