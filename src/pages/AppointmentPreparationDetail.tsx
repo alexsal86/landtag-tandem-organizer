@@ -18,8 +18,9 @@ import { generateBriefingPdf } from "@/components/appointment-preparations/brief
 import { useAuth } from "@/hooks/useAuth";
 import { debugConsole } from "@/utils/debugConsole";
 import { useTenant } from "@/hooks/useTenant";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export interface AppointmentPreparationAppointmentDetails {
   id: string;
