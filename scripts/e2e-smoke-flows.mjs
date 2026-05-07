@@ -20,6 +20,18 @@ const FIXTURES = Object.freeze({
     initialStatus: 'offen',
     nextStatus: 'erledigt',
   },
+  letter: {
+    id: 'letter-smoke-001',
+    title: 'SMOKE_BRIEF_001',
+    initialStatus: 'draft',
+    reviewStatus: 'review',
+    approvedStatus: 'approved',
+    sentStatus: 'sent',
+  },
+  notification: {
+    id: 'notification-smoke-001',
+    title: 'SMOKE_BENACHRICHTIGUNG_001',
+  },
 });
 
 const createState = () => ({
@@ -32,6 +44,8 @@ const createState = () => ({
   ]),
   appointmentsByTenant: new Map(),
   tasksByTenant: new Map(),
+  lettersByTenant: new Map(),
+  notificationsByUser: new Map(),
 });
 
 const setupTenantBucket = (state, tenantId) => {
@@ -40,6 +54,9 @@ const setupTenantBucket = (state, tenantId) => {
   }
   if (!state.tasksByTenant.has(tenantId)) {
     state.tasksByTenant.set(tenantId, []);
+  }
+  if (!state.lettersByTenant.has(tenantId)) {
+    state.lettersByTenant.set(tenantId, []);
   }
 };
 
@@ -59,6 +76,15 @@ const clearFixtureRecords = (state, fixtures = FIXTURES) => {
       .get(fixtures.tenant.id)
       .filter((t) => t.id !== fixtures.task.id),
   );
+
+  state.lettersByTenant.set(
+    fixtures.tenant.id,
+    state.lettersByTenant
+      .get(fixtures.tenant.id)
+      .filter((l) => l.id !== fixtures.letter.id),
+  );
+
+  state.notificationsByUser.clear();
 };
 
 const login = (state, email, password) => {
@@ -137,6 +163,46 @@ const canAccessAdminArea = (state, sessionToken) => {
   return false;
 };
 
+const createLetter = (state, sessionToken, payload) => {
+  const { tenantId } = requireTenant(state, sessionToken);
+  const entries = state.lettersByTenant.get(tenantId) ?? [];
+  const withoutFixture = entries.filter((l) => l.id !== payload.id);
+  const created = { ...payload, tenantId };
+  state.lettersByTenant.set(tenantId, [...withoutFixture, created]);
+  return created;
+};
+
+const transitionLetterStatus = (state, sessionToken, letterId, nextStatus) => {
+  const { tenantId } = requireTenant(state, sessionToken);
+  const allowed = {
+    draft: ['review'],
+    review: ['approved', 'draft'],
+    approved: ['sent'],
+    sent: [],
+  };
+  const letters = state.lettersByTenant.get(tenantId) ?? [];
+  const letter = letters.find((l) => l.id === letterId);
+  if (!letter) throw new Error('Brief nicht gefunden');
+  if (!allowed[letter.status]?.includes(nextStatus)) {
+    throw new Error(`Unzulässiger Statuswechsel ${letter.status} -> ${nextStatus}`);
+  }
+  letter.status = nextStatus;
+  return letter;
+};
+
+const pushNotification = (state, userId, payload) => {
+  const list = state.notificationsByUser.get(userId) ?? [];
+  list.push({ ...payload, read: false });
+  state.notificationsByUser.set(userId, list);
+};
+
+const markAllNotificationsRead = (state, userId) => {
+  const list = state.notificationsByUser.get(userId) ?? [];
+  list.forEach((n) => { n.read = true; });
+  state.notificationsByUser.set(userId, list);
+  return list.filter((n) => !n.read).length;
+};
+
 const run = () => {
   const state = createState();
 
@@ -152,6 +218,11 @@ const run = () => {
       ...FIXTURES.task,
       id: `${FIXTURES.task.id}-${runtimeFixtureNamespace}`,
       title: `${FIXTURES.task.title}-${runtimeFixtureNamespace}`,
+    },
+    letter: {
+      ...FIXTURES.letter,
+      id: `${FIXTURES.letter.id}-${runtimeFixtureNamespace}`,
+      title: `${FIXTURES.letter.title}-${runtimeFixtureNamespace}`,
     },
   };
 
@@ -212,10 +283,43 @@ const run = () => {
       selectTenant(state, staffSession, deterministicFixtures.tenant.id);
       assert.equal(canAccessAdminArea(state, staffSession), false, 'Nicht-Admin darf keinen Zugriff auf den Admin-Bereich erhalten.');
     },
+    letterApprovalWorkflow: () => {
+      const letter = createLetter(state, flowContext.adminSession, {
+        id: deterministicFixtures.letter.id,
+        title: deterministicFixtures.letter.title,
+        status: deterministicFixtures.letter.initialStatus,
+      });
+      assert.equal(letter.status, 'draft', 'Brief startet im Status draft.');
+      const review = transitionLetterStatus(state, flowContext.adminSession, letter.id, 'review');
+      assert.equal(review.status, 'review', 'Brief muss in review wechseln.');
+      const approved = transitionLetterStatus(state, flowContext.adminSession, letter.id, 'approved');
+      assert.equal(approved.status, 'approved', 'Brief muss approved werden.');
+      const sent = transitionLetterStatus(state, flowContext.adminSession, letter.id, 'sent');
+      assert.equal(sent.status, 'sent', 'Brief muss versendet werden.');
+      assert.throws(
+        () => transitionLetterStatus(state, flowContext.adminSession, letter.id, 'draft'),
+        /Unzulässiger Statuswechsel/,
+        'Versendete Briefe dürfen nicht in draft zurückgesetzt werden.',
+      );
+    },
+    notificationsLifecycle: () => {
+      const adminId = deterministicFixtures.users.admin.id;
+      pushNotification(state, adminId, { id: 'n1', title: 'Brief freigeben' });
+      pushNotification(state, adminId, { id: 'n2', title: 'Aufgabe fällig' });
+      const unread = (state.notificationsByUser.get(adminId) ?? []).filter((n) => !n.read).length;
+      assert.equal(unread, 2, 'Es müssen 2 ungelesene Benachrichtigungen vorhanden sein.');
+      const remaining = markAllNotificationsRead(state, adminId);
+      assert.equal(remaining, 0, 'Nach markAllAsRead müssen 0 ungelesene übrig sein.');
+    },
   };
 
   const smokeRequiredFlowOrder = ['loginAndTenantSelection', 'appointmentLifecycle', 'taskLifecycle'];
-  const smokeExtendedFlowOrder = [...smokeRequiredFlowOrder, 'nonAdminAuthorization'];
+  const smokeExtendedFlowOrder = [
+    ...smokeRequiredFlowOrder,
+    'nonAdminAuthorization',
+    'letterApprovalWorkflow',
+    'notificationsLifecycle',
+  ];
   const selectedFlowOrder = requestedSuite === 'required' ? smokeRequiredFlowOrder : smokeExtendedFlowOrder;
 
   for (const flowName of selectedFlowOrder) {
