@@ -107,15 +107,18 @@ serve(withSafeHandler("sync-dossier-external-sources", async (req) => {
   const automationSecret = Deno.env.get("AUTOMATION_CRON_SECRET") ?? "";
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-  const authHeader = req.headers.get("Authorization");
   const internalSecret = req.headers.get("x-automation-secret");
-  const isInternalCall = Boolean(automationSecret && internalSecret === automationSecret);
+  const isInternalCall = Boolean(automationSecret && automationSecret.length >= 16 && internalSecret === automationSecret);
 
-  if (!authHeader && !isInternalCall) {
-    return new Response(JSON.stringify({ error: "Missing authorization header" }), {
-      status: 401,
-      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-    });
+  if (!isInternalCall) {
+    const { requireAuth } = await import("../_shared/security.ts");
+    const authed = await requireAuth(req);
+    if (!authed) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      });
+    }
   }
 
   const body = await req.json().catch(() => ({}));
