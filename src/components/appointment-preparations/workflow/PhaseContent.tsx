@@ -22,13 +22,37 @@ interface PhaseContentProps {
 }
 
 const PHASE_TITLES: Record<PhaseId, { idx: number; title: string; lead: string }> = {
-  anlass: { idx: 1, title: "Anlass & Annahme", lead: "Worum geht es bei diesem Termin? Anlass, Hintergrund und Annahme festlegen." },
-  team: { idx: 2, title: "Team & Logistik", lead: "Wer ist im Raum, wer begleitet, wie kommen wir hin." },
+  anlass: { idx: 1, title: "Anlass & Annahme", lead: "Worum geht es bei diesem Termin? Anlass und Hintergrund festlegen." },
+  team: { idx: 2, title: "Team, Logistik & Ablauf", lead: "Wer ist im Raum, wer begleitet, wie kommen wir hin, wie läuft es ab." },
   fakten: { idx: 3, title: "Fakten & Positionen", lead: "Was wir wissen müssen — Datenlage und unsere Position." },
-  themen: { idx: 4, title: "Themen, Talking Points & Q&A", lead: "Was wollen wir aus dem Gespräch mitnehmen — und worauf müssen wir vorbereitet antworten?" },
+  themen: { idx: 4, title: "Talking Points & Q&A", lead: "Was wollen wir mitnehmen — und worauf müssen wir antworten können?" },
   "qa-run": { idx: 5, title: "Q&A-Durchgang", lead: "Letzter Check: Sind alle Punkte für das Briefing abgehakt?" },
-  freigabe: { idx: 6, title: "Briefing-Freigabe", lead: "Status, Notizen und Freigabe für das fertige Briefing." },
+  freigabe: { idx: 6, title: "Briefing-Freigabe", lead: "Status, Öffentlichkeitsarbeit und Freigabe für das fertige Briefing." },
   nachbereitung: { idx: 7, title: "Nachbereitung", lead: "Was wurde besprochen? Ergebnisse, offene Punkte und Folgeaufgaben." },
+};
+
+import type { PreparationVisibleSections } from "../appointment-preparation-data/types";
+
+const PHASE_VISIBILITY: Partial<Record<PhaseId, PreparationVisibleSections>> = {
+  anlass: { sections: ["anlass"] },
+  team: { sections: ["gespraechspartner", "begleitpersonen", "logistik", "programm"] },
+  fakten: {
+    sections: ["inhalte"],
+    showFacts: true,
+    showTalkingPoints: false,
+    showQa: false,
+    showInhalteHeaderCards: false,
+    showInhalteRahmen: false,
+  },
+  themen: {
+    sections: ["inhalte"],
+    showFacts: false,
+    showTalkingPoints: true,
+    showQa: true,
+    showInhalteHeaderCards: false,
+    showInhalteRahmen: false,
+  },
+  freigabe: { sections: ["oeffentlichkeit"] },
 };
 
 export function PhaseContent({ phase, preparation, appointmentDetails, onUpdate, onOpenAppointmentDetails }: PhaseContentProps) {
@@ -71,6 +95,7 @@ export function PhaseContent({ phase, preparation, appointmentDetails, onUpdate,
             appointmentDetails={appointmentDetails}
             onUpdate={onUpdate}
             onOpenAppointmentDetails={onOpenAppointmentDetails}
+            visibleSections={PHASE_VISIBILITY[phase]}
           />
         </>
       )}
