@@ -545,20 +545,20 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'accepted': return <Badge className="bg-green-500 text-white"><Check className="h-3 w-3 mr-1" />Zugesagt</Badge>;
+      case 'accepted': return <Badge className="bg-palette-green text-white"><Check className="h-3 w-3 mr-1" />Zugesagt</Badge>;
       case 'declined': return <Badge variant="destructive"><X className="h-3 w-3 mr-1" />Abgesagt</Badge>;
-      case 'tentative': return <Badge className="bg-yellow-500 text-white"><AlertCircle className="h-3 w-3 mr-1" />Vorbehalt</Badge>;
+      case 'tentative': return <Badge className="bg-palette-yellow text-white"><AlertCircle className="h-3 w-3 mr-1" />Vorbehalt</Badge>;
       default: return <Badge variant="outline"><Clock className="h-3 w-3 mr-1" />Ausstehend</Badge>;
     }
   };
 
   const getPublicLinkLabel = (rsvp: EventRSVP) => {
     const link = publicLinksByRsvpId[rsvp.id];
-    if (!rsvp.invitation_sent) return <Badge variant="outline" className="border-orange-300 text-orange-600">Noch nicht versendet</Badge>;
+    if (!rsvp.invitation_sent) return <Badge variant="outline" className="border-palette-orange/40 text-palette-orange">Noch nicht versendet</Badge>;
     if (!link) return <Badge variant="outline">Wird beim Versand erzeugt</Badge>;
-    if (link.revoked_at) return <Badge variant="outline" className="border-rose-300 text-rose-600">Deaktiviert</Badge>;
-    if (link.expires_at && new Date(link.expires_at).getTime() <= Date.now()) return <Badge variant="outline" className="border-amber-300 text-amber-700">Abgelaufen</Badge>;
-    return <Badge className="bg-emerald-600 text-white">Aktiv</Badge>;
+    if (link.revoked_at) return <Badge variant="outline" className="border-palette-rose/40 text-palette-rose">Deaktiviert</Badge>;
+    if (link.expires_at && new Date(link.expires_at).getTime() <= Date.now()) return <Badge variant="outline" className="border-palette-amber/40 text-palette-amber">Abgelaufen</Badge>;
+    return <Badge className="bg-palette-green text-white">Aktiv</Badge>;
   };
 
   const formatDateTime = (value?: string | null, fallback = '-') => {
@@ -714,7 +714,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
       </CardHeader>
       <CardContent>
         <div className="mb-4 space-y-3">
-          <Alert className="border-blue-200 bg-blue-50/60">
+          <Alert className="border-palette-blue/30 bg-palette-blue/10">
             <Globe className="h-4 w-4" />
             <AlertTitle>Öffentliche Einladungslinks über alexander-salomon.de</AlertTitle>
             <AlertDescription>
@@ -738,11 +738,11 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
         ) : (
           <>
             <div className="flex gap-3 mb-4 text-sm flex-wrap">
-              <span className="text-green-600 font-medium">{accepted} zugesagt</span>
-              <span className="text-yellow-600 font-medium">{tentative} Vorbehalt</span>
+              <span className="text-palette-green font-medium">{accepted} zugesagt</span>
+              <span className="text-palette-yellow font-medium">{tentative} Vorbehalt</span>
               <span className="text-destructive font-medium">{declined} abgesagt</span>
               <span className="text-muted-foreground">{pending} ausstehend</span>
-              {unsent > 0 && <span className="text-orange-500 font-medium">{unsent} vorgemerkt</span>}
+              {unsent > 0 && <span className="text-palette-orange font-medium">{unsent} vorgemerkt</span>}
             </div>
             <Collapsible open={isRsvpListOpen} onOpenChange={(open) => { setIsRsvpListOpen(open); setHasUserToggledRsvpList(true); }}>
               <CollapsibleTrigger asChild>
@@ -778,7 +778,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
                             <TableCell className="text-sm text-muted-foreground">{rsvp.email}</TableCell>
                             <TableCell className="text-center text-sm">
                               <div className="space-y-1">
-                                {rsvp.invitation_sent ? <Badge className="bg-blue-600 text-white">Versendet</Badge> : <Badge variant="outline" className="border-orange-300 text-orange-600">Vorgemerkt</Badge>}
+                                {rsvp.invitation_sent ? <Badge className="bg-palette-blue text-white">Versendet</Badge> : <Badge variant="outline" className="border-palette-orange/40 text-palette-orange">Vorgemerkt</Badge>}
                                 <div className="text-xs text-muted-foreground">{formatDateTime(rsvp.invited_at, '-')}</div>
                               </div>
                             </TableCell>

@@ -38,11 +38,11 @@ type CaseFileOption = {
 };
 
 const STATUS_STYLES: Record<string, string> = {
-  neu: "bg-sky-500 text-white",
-  in_klaerung: "bg-amber-500 text-black",
-  antwort_ausstehend: "bg-violet-500 text-white",
-  erledigt: "bg-emerald-600 text-white",
-  archiviert: "bg-slate-400 text-white",
+  neu: "bg-palette-blue text-white",
+  in_klaerung: "bg-palette-amber text-black",
+  antwort_ausstehend: "bg-palette-violet text-white",
+  erledigt: "bg-palette-green text-white",
+  archiviert: "bg-muted text-white",
 };
 
 const PRIORITY_LABELS: Record<string, string> = {
@@ -528,7 +528,7 @@ export function MyWorkCaseItemsTab() {
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="truncate text-sm font-semibold">{item.title}</p>
                             {item.status && (
-                              <Badge className={cn("text-xs", STATUS_STYLES[normalizedStatus] || "bg-slate-500 text-white")}>
+                              <Badge className={cn("text-xs", STATUS_STYLES[normalizedStatus] || "bg-muted text-white")}>
                                 {STATUS_LABELS[normalizedStatus] || item.status}
                               </Badge>
                             )}

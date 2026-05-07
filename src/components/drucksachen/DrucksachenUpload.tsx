@@ -468,9 +468,9 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
   const getStatusIcon = (status: string, fileType?: 'pdf' | 'json') => {
     switch (status) {
       case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
+        return <CheckCircle className="h-4 w-4 text-palette-green" />;
       case 'error':
-        return <AlertCircle className="h-4 w-4 text-red-600" />;
+        return <AlertCircle className="h-4 w-4 text-palette-red" />;
       case 'processing':
       case 'uploading':
         return <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />;
@@ -646,8 +646,8 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
                             </p>
                             <span className={`text-xs px-2 py-1 rounded-full ${
                               fileData.fileType === 'json' 
-                                ? 'bg-blue-100 text-blue-800' 
-                                : 'bg-gray-100 text-gray-800'
+                                ? 'bg-palette-blue/20 text-palette-blue' 
+                                : 'bg-muted text-foreground'
                             }`}>
                               {fileData.fileType.toUpperCase()}
                             </span>
@@ -662,7 +662,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
                             </div>
                           )}
                           {fileData.status === 'error' && fileData.error && (
-                            <p className="text-xs text-red-600">{fileData.error}</p>
+                            <p className="text-xs text-palette-red">{fileData.error}</p>
                           )}
                         </div>
                       </div>

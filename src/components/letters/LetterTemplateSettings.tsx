@@ -271,7 +271,7 @@ export const LetterTemplateSettings: React.FC<LetterTemplateSettingsProps> = ({ 
             <TableBody>
               {AVAILABLE_VARIABLES.map(v => (
                 <TableRow key={v.key}>
-                  <TableCell className="font-mono text-xs text-amber-700 dark:text-amber-400">{v.key}</TableCell>
+                  <TableCell className="font-mono text-xs text-palette-amber">{v.key}</TableCell>
                   <TableCell className="text-sm">{v.label}</TableCell>
                   <TableCell>
                     {v.source === 'Automatisch' || v.source === 'Automatisch (Empfänger)' ? (

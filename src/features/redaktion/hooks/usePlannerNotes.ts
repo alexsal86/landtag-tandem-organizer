@@ -18,12 +18,12 @@ export interface PlannerNote {
 }
 
 export const NOTE_COLORS = [
-  { value: "yellow", label: "Gelb", bg: "bg-yellow-100 dark:bg-yellow-900/40", bgActive: "bg-yellow-50 dark:bg-yellow-900/25", border: "border-yellow-300 dark:border-yellow-700", solid: "bg-yellow-200 border-yellow-300", icon: "text-yellow-600 dark:text-yellow-300" },
-  { value: "orange", label: "Orange", bg: "bg-orange-100 dark:bg-orange-900/40", bgActive: "bg-orange-50 dark:bg-orange-900/25", border: "border-orange-300 dark:border-orange-700", solid: "bg-orange-200 border-orange-300", icon: "text-orange-600 dark:text-orange-300" },
-  { value: "pink", label: "Pink", bg: "bg-pink-100 dark:bg-pink-900/40", bgActive: "bg-pink-50 dark:bg-pink-900/25", border: "border-pink-300 dark:border-pink-700", solid: "bg-pink-200 border-pink-300", icon: "text-pink-600 dark:text-pink-300" },
-  { value: "purple", label: "Lila", bg: "bg-purple-100 dark:bg-purple-900/40", bgActive: "bg-purple-50 dark:bg-purple-900/25", border: "border-purple-300 dark:border-purple-700", solid: "bg-purple-200 border-purple-300", icon: "text-purple-600 dark:text-purple-300" },
-  { value: "blue", label: "Blau", bg: "bg-blue-100 dark:bg-blue-900/40", bgActive: "bg-blue-50 dark:bg-blue-900/25", border: "border-blue-300 dark:border-blue-700", solid: "bg-blue-200 border-blue-300", icon: "text-blue-600 dark:text-blue-300" },
-  { value: "green", label: "Grün", bg: "bg-green-100 dark:bg-green-900/40", bgActive: "bg-green-50 dark:bg-green-900/25", border: "border-green-300 dark:border-green-700", solid: "bg-green-200 border-green-300", icon: "text-green-600 dark:text-green-300" },
+  { value: "yellow", label: "Gelb", bg: "bg-palette-yellow/20", bgActive: "bg-palette-yellow/10", border: "border-palette-yellow/40", solid: "bg-palette-yellow/30 border-palette-yellow/40", icon: "text-palette-yellow" },
+  { value: "orange", label: "Orange", bg: "bg-palette-orange/20", bgActive: "bg-palette-orange/10", border: "border-palette-orange/40", solid: "bg-palette-orange/30 border-palette-orange/40", icon: "text-palette-orange" },
+  { value: "pink", label: "Pink", bg: "bg-palette-pink/20", bgActive: "bg-palette-pink/10", border: "border-palette-pink/40", solid: "bg-palette-pink/30 border-palette-pink/40", icon: "text-palette-pink" },
+  { value: "purple", label: "Lila", bg: "bg-palette-purple/20", bgActive: "bg-palette-purple/10", border: "border-palette-purple/40", solid: "bg-palette-purple/30 border-palette-purple/40", icon: "text-palette-purple" },
+  { value: "blue", label: "Blau", bg: "bg-palette-blue/20", bgActive: "bg-palette-blue/10", border: "border-palette-blue/40", solid: "bg-palette-blue/30 border-palette-blue/40", icon: "text-palette-blue" },
+  { value: "green", label: "Grün", bg: "bg-palette-green/20", bgActive: "bg-palette-green/10", border: "border-palette-green/40", solid: "bg-palette-green/30 border-palette-green/40", icon: "text-palette-green" },
 ] as const;
 
 export function getColorClasses(color: string) {

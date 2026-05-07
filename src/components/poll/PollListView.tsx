@@ -504,12 +504,12 @@ export const PollListView = () => {
 
             <TabsContent value="archive" className="mt-0">
               {archivedPolls.length > 0 && (
-                <Alert className="mb-4 border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
-                  <Archive className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  <AlertTitle className="text-blue-900 dark:text-blue-100 mb-2">
+                <Alert className="mb-4 border-palette-blue/30 bg-palette-blue/10">
+                  <Archive className="h-5 w-5 text-palette-blue" />
+                  <AlertTitle className="text-palette-blue mb-2">
                     Archivierte Terminabstimmungen
                   </AlertTitle>
-                  <AlertDescription className="text-blue-800 dark:text-blue-200 space-y-3 text-sm">
+                  <AlertDescription className="text-palette-blue space-y-3 text-sm">
                     <p>
                       Diese Abstimmungen wurden automatisch oder manuell archiviert und sind 
                       nicht mehr für Teilnehmer sichtbar.
@@ -519,13 +519,13 @@ export const PollListView = () => {
                       <p className="font-medium">Automatische Archivierung erfolgt bei:</p>
                       <ul className="list-none space-y-1.5 ml-2">
                         <li className="flex items-start gap-2">
-                          <CheckCircle className="h-4 w-4 mt-0.5 text-green-600 dark:text-green-500 flex-shrink-0" />
+                          <CheckCircle className="h-4 w-4 mt-0.5 text-palette-green flex-shrink-0" />
                           <span>
                             <strong>Abgeschlossen:</strong> Alle Teilnehmer haben geantwortet
                           </span>
                         </li>
                         <li className="flex items-start gap-2">
-                          <XCircle className="h-4 w-4 mt-0.5 text-red-600 dark:text-red-500 flex-shrink-0" />
+                          <XCircle className="h-4 w-4 mt-0.5 text-palette-red flex-shrink-0" />
                           <span>
                             <strong>Abgebrochen:</strong> Frist abgelaufen und weniger als 50% Beteiligung
                           </span>
@@ -537,7 +537,7 @@ export const PollListView = () => {
                       <p className="font-medium">Verfügbare Aktionen:</p>
                       <ul className="list-none space-y-1.5 ml-2">
                         <li className="flex items-start gap-2">
-                          <RotateCcw className="h-4 w-4 mt-0.5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                          <RotateCcw className="h-4 w-4 mt-0.5 text-palette-blue flex-shrink-0" />
                           <span>
                             <strong>Wiederherstellen:</strong> Setzt die Abstimmung zurück auf "Aktiv"
                           </span>
@@ -551,8 +551,8 @@ export const PollListView = () => {
                       </ul>
                     </div>
 
-                    <div className="pt-2 border-t border-blue-300 dark:border-blue-700">
-                      <p className="text-xs text-blue-700 dark:text-blue-300 flex items-start gap-2">
+                    <div className="pt-2 border-t border-palette-blue/40">
+                      <p className="text-xs text-palette-blue flex items-start gap-2">
                         <AlertCircle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
                         <span>
                           Das System prüft täglich um 6:00 Uhr automatisch alle aktiven Abstimmungen 

@@ -48,11 +48,11 @@ const COLOR_OPTIONS = PALETTE_PRESETS
   .map((p) => ({ value: p.legacyValue, label: p.label }));
 
 const DEFAULT_OCCASIONS = [
-  { key: 'statement', label: 'Stellungnahme', description: 'Politische Einordnung zu aktuellen Themen', icon: 'Megaphone', color: 'bg-blue-500', patterns: ['stellungnahme', 'einordnung', 'kommentar'] },
-  { key: 'event', label: 'Veranstaltung', description: 'Ankündigungen und Rückblicke', icon: 'Users', color: 'bg-amber-500', patterns: ['veranstaltung', 'termin', 'einladung'] },
-  { key: 'institution', label: 'Institutionell', description: 'Mitteilungen zu Fraktion, Landtag und Kreisverband', icon: 'Building2', color: 'bg-purple-500', patterns: ['fraktion', 'landtag', 'kreisverband'] },
-  { key: 'coalition', label: 'Kooperation', description: 'Gemeinsame Pressemitteilungen mit Partnern', icon: 'Handshake', color: 'bg-teal-500', patterns: ['kooperation', 'gemeinsam', 'partner'] },
-  { key: 'election', label: 'Wahlkreis & Abstimmung', description: 'Wahlkreisarbeit und parlamentarische Abstimmungen', icon: 'Vote', color: 'bg-indigo-500', patterns: ['wahlkreis', 'abstimmung', 'plenum'] },
+  { key: 'statement', label: 'Stellungnahme', description: 'Politische Einordnung zu aktuellen Themen', icon: 'Megaphone', color: 'bg-palette-blue', patterns: ['stellungnahme', 'einordnung', 'kommentar'] },
+  { key: 'event', label: 'Veranstaltung', description: 'Ankündigungen und Rückblicke', icon: 'Users', color: 'bg-palette-amber', patterns: ['veranstaltung', 'termin', 'einladung'] },
+  { key: 'institution', label: 'Institutionell', description: 'Mitteilungen zu Fraktion, Landtag und Kreisverband', icon: 'Building2', color: 'bg-palette-purple', patterns: ['fraktion', 'landtag', 'kreisverband'] },
+  { key: 'coalition', label: 'Kooperation', description: 'Gemeinsame Pressemitteilungen mit Partnern', icon: 'Handshake', color: 'bg-palette-teal', patterns: ['kooperation', 'gemeinsam', 'partner'] },
+  { key: 'election', label: 'Wahlkreis & Abstimmung', description: 'Wahlkreisarbeit und parlamentarische Abstimmungen', icon: 'Vote', color: 'bg-palette-indigo', patterns: ['wahlkreis', 'abstimmung', 'plenum'] },
   { key: 'sonstiges', label: 'Sonstiges', description: 'Freier Presseanlass', icon: 'FileText', color: 'bg-muted-foreground', patterns: [] },
 ];
 
@@ -78,7 +78,7 @@ export function PressOccasionManager() {
   const [showCreate, setShowCreate] = useState(false);
   const seedingRef = React.useRef(false);
   const [form, setForm] = useState({
-    key: '', label: '', description: '', icon: 'Megaphone', color: 'bg-blue-500',
+    key: '', label: '', description: '', icon: 'Megaphone', color: 'bg-palette-blue',
     default_template_id: '', template_match_patterns: '', is_active: true, sort_order: 0,
   });
 
@@ -196,7 +196,7 @@ export function PressOccasionManager() {
         label: occasion.label,
         description: occasion.description || '',
         icon: occasion.icon || 'Megaphone',
-        color: occasion.color || 'bg-blue-500',
+        color: occasion.color || 'bg-palette-blue',
         default_template_id: occasion.default_template_id || '',
         template_match_patterns: (occasion.template_match_patterns || []).join(', '),
         is_active: occasion.is_active,
@@ -210,7 +210,7 @@ export function PressOccasionManager() {
       label: '',
       description: '',
       icon: 'Megaphone',
-      color: 'bg-blue-500',
+      color: 'bg-palette-blue',
       default_template_id: '',
       template_match_patterns: '',
       is_active: true,

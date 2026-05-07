@@ -34,7 +34,7 @@ const statusConfig: Record<MessageStatusType, { icon: React.ReactNode; label: st
   read: { 
     icon: <CheckCheck className="h-3 w-3" />, 
     label: 'Gelesen', 
-    color: 'text-blue-500' 
+    color: 'text-palette-blue' 
   },
   error: { 
     icon: <AlertCircle className="h-3 w-3" />, 

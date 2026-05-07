@@ -190,19 +190,19 @@ export function WeekView({ weekStart, events, onAppointmentClick, onPreparationC
       case "meeting":
         return "bg-government-blue/80 text-white border-government-blue";
       case "appointment":
-        return "bg-green-100 text-green-800 border-green-300";
+        return "bg-palette-green/20 text-palette-green border-palette-green/40";
       case "deadline":
-        return "bg-red-100 text-red-800 border-red-300";
+        return "bg-palette-red/20 text-palette-red border-palette-red/40";
       case "blocked":
-        return "bg-orange-100 text-orange-800 border-orange-300";
+        return "bg-palette-orange/20 text-palette-orange border-palette-orange/40";
       case "veranstaltung":
-        return "bg-purple-100 text-purple-800 border-purple-300";
+        return "bg-palette-purple/20 text-palette-purple border-palette-purple/40";
       case "vacation":
-        return "bg-green-500/80 text-white border-green-500";
+        return "bg-palette-green/80 text-white border-palette-green";
       case "vacation_request":
-        return "bg-yellow-500/80 text-black border-yellow-500";
+        return "bg-palette-yellow/80 text-black border-palette-yellow";
       case "birthday":
-        return "bg-pink-500/80 text-white border-pink-500";
+        return "bg-palette-pink/80 text-white border-palette-pink";
       default:
         return "bg-muted text-muted-foreground border-muted";
     }

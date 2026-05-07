@@ -36,14 +36,14 @@ export const ResponseOptionsPreview = ({ options }: ResponseOptionsPreviewProps)
             <Badge
               key={option.key}
               variant="outline"
-              className={`${colorClasses.textClass} ${colorClasses.borderClass} ${option.recommended ? "ring-1 ring-amber-400/70" : ""}`}
+              className={`${colorClasses.textClass} ${colorClasses.borderClass} ${option.recommended ? "ring-1 ring-palette-amber/70" : ""}`}
             >
               {option.icon && getIcon(option.icon)}
               {!option.icon && <Circle className="h-3 w-3 mr-1" />}
               <span className="ml-1">{option.label || "..."}</span>
               {option.description && <Info className="h-2.5 w-2.5 ml-1 opacity-50" />}
               {option.recommended && (
-                <span className="ml-1 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-medium text-amber-700">
+                <span className="ml-1 rounded bg-palette-amber/20 px-1 py-0.5 text-[10px] font-medium text-palette-amber">
                   Empfohlen
                 </span>
               )}

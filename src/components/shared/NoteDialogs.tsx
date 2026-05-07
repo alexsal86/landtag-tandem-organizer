@@ -298,7 +298,7 @@ export function NoteDialogs(props: NoteDialogsProps) {
               <div className="flex items-center gap-3">
                 <Checkbox id="delete-task" checked={props.deleteLinkedTask} onCheckedChange={(checked) => props.setDeleteLinkedTask(!!checked)} />
                 <label htmlFor="delete-task" className="text-sm flex items-center gap-2 cursor-pointer">
-                  <CheckSquare className="h-4 w-4 text-blue-600" />Verknüpfte Aufgabe auch löschen
+                  <CheckSquare className="h-4 w-4 text-palette-blue" />Verknüpfte Aufgabe auch löschen
                 </label>
               </div>
             )}
@@ -306,7 +306,7 @@ export function NoteDialogs(props: NoteDialogsProps) {
               <div className="flex items-center gap-3">
                 <Checkbox id="delete-decision" checked={props.deleteLinkedDecision} onCheckedChange={(checked) => props.setDeleteLinkedDecision(!!checked)} />
                 <label htmlFor="delete-decision" className="text-sm flex items-center gap-2 cursor-pointer">
-                  <Vote className="h-4 w-4 text-purple-600" />Verknüpfte Entscheidung auch löschen
+                  <Vote className="h-4 w-4 text-palette-purple" />Verknüpfte Entscheidung auch löschen
                 </label>
               </div>
             )}
@@ -314,7 +314,7 @@ export function NoteDialogs(props: NoteDialogsProps) {
               <div className="flex items-center gap-3">
                 <Checkbox id="delete-case-item" checked={props.deleteLinkedCaseItem} onCheckedChange={(checked) => props.setDeleteLinkedCaseItem(!!checked)} />
                 <label htmlFor="delete-case-item" className="text-sm flex items-center gap-2 cursor-pointer">
-                  <FileText className="h-4 w-4 text-teal-600" />Verknüpften Vorgang archivieren
+                  <FileText className="h-4 w-4 text-palette-teal" />Verknüpften Vorgang archivieren
                 </label>
               </div>
             )}
@@ -322,7 +322,7 @@ export function NoteDialogs(props: NoteDialogsProps) {
               <div className="flex items-center gap-3">
                 <Checkbox id="delete-meeting" checked={props.deleteLinkedMeeting} onCheckedChange={(checked) => props.setDeleteLinkedMeeting(!!checked)} />
                 <label htmlFor="delete-meeting" className="text-sm flex items-center gap-2 cursor-pointer">
-                  <CalendarIcon className="h-4 w-4 text-emerald-600" />Vom Jour Fixe entfernen
+                  <CalendarIcon className="h-4 w-4 text-palette-green" />Vom Jour Fixe entfernen
                 </label>
               </div>
             )}

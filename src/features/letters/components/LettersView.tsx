@@ -292,10 +292,10 @@ const LettersView: React.FC = () => {
   };
 
   const statusColors: Record<Exclude<LetterStatusFilter, 'all'>, string> = {
-    draft: 'bg-gray-100 text-gray-800',
-    review: 'bg-yellow-100 text-yellow-800',
-    approved: 'bg-green-100 text-green-800',
-    sent: 'bg-blue-100 text-blue-800'
+    draft: 'bg-muted text-foreground',
+    review: 'bg-palette-yellow/20 text-palette-yellow',
+    approved: 'bg-palette-green/20 text-palette-green',
+    sent: 'bg-palette-blue/20 text-palette-blue'
   };
 
   return (
@@ -399,7 +399,7 @@ const LettersView: React.FC = () => {
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                 <CardTitle className="text-lg line-clamp-2">{letter.title}</CardTitle>
-                    <Badge className={`ml-2 ${statusColors[letter.status] || 'bg-gray-100 text-gray-800'}`}>
+                    <Badge className={`ml-2 ${statusColors[letter.status] || 'bg-muted text-foreground'}`}>
                       {statusLabels[letter.status] || letter.status}
                     </Badge>
                   </div>
@@ -432,7 +432,7 @@ const LettersView: React.FC = () => {
                     const isUrgent = daysUntil >= 0 && daysUntil <= 3;
                     if (!isOverdue && !isUrgent) return null;
                     return (
-                      <div className={`flex items-center gap-1.5 text-xs ${isOverdue ? 'text-destructive' : 'text-orange-600'}`}>
+                      <div className={`flex items-center gap-1.5 text-xs ${isOverdue ? 'text-destructive' : 'text-palette-orange'}`}>
                         {isOverdue ? <AlertTriangle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                         <span>{isOverdue ? `Antwort ${Math.abs(daysUntil)} Tag${Math.abs(daysUntil) !== 1 ? 'e' : ''} überfällig` : `Antwortfrist in ${daysUntil} Tag${daysUntil !== 1 ? 'en' : ''}`}</span>
                       </div>
@@ -522,7 +522,7 @@ const LettersView: React.FC = () => {
                       {letter.recipient_name || '-'}
                     </TableCell>
                     <TableCell>
-                      <Badge className={`${statusColors[letter.status] || 'bg-gray-100 text-gray-800'}`}>
+                      <Badge className={`${statusColors[letter.status] || 'bg-muted text-foreground'}`}>
                         {statusLabels[letter.status] || letter.status}
                       </Badge>
                     </TableCell>

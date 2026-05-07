@@ -52,7 +52,7 @@ export function AnnouncementProgress({ announcementId, expanded = false }: Annou
               className="flex items-center justify-between text-xs"
             >
               <div className="flex items-center gap-1.5">
-                <Check className="h-3.5 w-3.5 text-green-500" />
+                <Check className="h-3.5 w-3.5 text-palette-green" />
                 <span>{dismissal.display_name}</span>
               </div>
               <span className="text-muted-foreground">

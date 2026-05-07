@@ -57,12 +57,12 @@ export function EventPlanningTable({
             >
               <TableCell className="w-10">
                 {planning.confirmed_date ? (
-                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/20">
-                    <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-palette-green/20">
+                    <CheckCircle className="h-4 w-4 text-palette-green" />
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/20">
-                    <Clock className="h-4 w-4 text-amber-500" />
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-palette-amber/20">
+                    <Clock className="h-4 w-4 text-palette-amber" />
                   </div>
                 )}
               </TableCell>
@@ -107,7 +107,7 @@ export function EventPlanningTable({
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" className={cn("h-7 w-7", planning.is_completed && "text-green-600")}
+                          <Button variant="ghost" size="icon" className={cn("h-7 w-7", planning.is_completed && "text-palette-green")}
                             onClick={() => togglePlanningCompleted(planning.id, !planning.is_completed)}>
                             <CheckCircle className="h-4 w-4" />
                           </Button>

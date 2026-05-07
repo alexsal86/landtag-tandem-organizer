@@ -148,15 +148,15 @@ export default function ContactDetail() {
   const getCategoryColor = (category: ContactCategory | null | undefined): string => {
     switch (category) {
       case "citizen":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
+        return "bg-palette-blue/20 text-palette-blue";
       case "colleague":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
+        return "bg-palette-green/20 text-palette-green";
       case "business":
-        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300";
+        return "bg-palette-purple/20 text-palette-purple";
       case "media":
-        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300";
+        return "bg-palette-orange/20 text-palette-orange";
       case "lobbyist":
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
+        return "bg-muted text-foreground";
       default:
         return "bg-muted text-muted-foreground";
     }

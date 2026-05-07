@@ -31,7 +31,7 @@ export function PhaseSidebar({ phases, activePhase, onSelect, blockers }: PhaseS
                 >
                   <div className="mt-0.5 shrink-0">
                     {phase.status === "done" ? (
-                      <div className="h-5 w-5 rounded-full bg-emerald-500/15 text-emerald-600 flex items-center justify-center">
+                      <div className="h-5 w-5 rounded-full bg-palette-green/15 text-palette-green flex items-center justify-center">
                         <Check className="h-3 w-3" />
                       </div>
                     ) : phase.status === "active" ? (
@@ -70,7 +70,7 @@ export function PhaseSidebar({ phases, activePhase, onSelect, blockers }: PhaseS
           <ul className="space-y-1.5">
             {blockers.map((b) => (
               <li key={b} className="flex items-start gap-2 text-xs text-muted-foreground">
-                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-palette-amber shrink-0" />
                 <span>{b}</span>
               </li>
             ))}

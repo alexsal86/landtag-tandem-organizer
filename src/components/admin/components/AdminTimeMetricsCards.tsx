@@ -102,7 +102,7 @@ export function AdminTimeMetricsCards({
           ) : (
             <div className="flex items-baseline gap-4">
               <div
-                className={`text-3xl font-bold ${yearlyBalance >= 0 ? "text-green-600" : "text-destructive"}`}
+                className={`text-3xl font-bold ${yearlyBalance >= 0 ? "text-palette-green" : "text-destructive"}`}
               >
                 {yearlyBalance >= 0 ? "+" : ""}
                 {fmt(yearlyBalance)}
@@ -124,7 +124,7 @@ export function AdminTimeMetricsCards({
                     <TooltipTrigger asChild>
                       <Badge
                         variant={mb.balance >= 0 ? "default" : "destructive"}
-                        className={`cursor-help ${mb.balance >= 0 ? "bg-green-100 text-green-700 hover:bg-green-200" : ""}`}
+                        className={`cursor-help ${mb.balance >= 0 ? "bg-palette-green/20 text-palette-green hover:bg-palette-green/30" : ""}`}
                       >
                         {format(mb.month, "MMM", { locale: de })}:{" "}
                         {mb.balance >= 0 ? "+" : ""}
@@ -149,7 +149,7 @@ export function AdminTimeMetricsCards({
                           <span>+{fmt(mb.creditMinutes)}</span>
                         </div>
                         {mb.overtimeReductionMinutes > 0 && (
-                          <div className="flex justify-between gap-4 text-amber-600">
+                          <div className="flex justify-between gap-4 text-palette-amber">
                             <span>⏰ ÜA-Abbau:</span>
                             <span>{fmt(mb.overtimeReductionMinutes)}</span>
                           </div>
@@ -158,7 +158,7 @@ export function AdminTimeMetricsCards({
                           <span>Saldo:</span>
                           <span
                             className={
-                              mb.balance >= 0 ? "text-green-600" : "text-destructive"
+                              mb.balance >= 0 ? "text-palette-green" : "text-destructive"
                             }
                           >
                             {mb.balance >= 0 ? "+" : ""}
@@ -219,7 +219,7 @@ export function AdminTimeMetricsCards({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className="cursor-help">
-                    <div className="text-2xl font-bold text-blue-600">
+                    <div className="text-2xl font-bold text-palette-blue">
                       +{fmt(creditMinutes)}
                     </div>
                     <p className="text-xs text-muted-foreground">Urlaub, Krankheit, etc.</p>
@@ -311,7 +311,7 @@ export function AdminTimeMetricsCards({
                 <TooltipTrigger asChild>
                   <div className="cursor-help">
                     <div
-                      className={`text-2xl font-bold ${balanceMinutes >= 0 ? "text-green-600" : "text-destructive"}`}
+                      className={`text-2xl font-bold ${balanceMinutes >= 0 ? "text-palette-green" : "text-destructive"}`}
                     >
                       {balanceMinutes >= 0 ? "+" : ""}
                       {fmt(balanceMinutes)}
@@ -339,7 +339,7 @@ export function AdminTimeMetricsCards({
                       <span>+{fmt(creditMinutes)}</span>
                     </div>
                     {overtimeReductionMinutes > 0 && (
-                      <div className="flex justify-between gap-4 text-amber-600">
+                      <div className="flex justify-between gap-4 text-palette-amber">
                         <span>⏰ ÜA-Abbau:</span>
                         <span>{fmt(overtimeReductionMinutes)} (reduziert Saldo)</span>
                       </div>
@@ -348,7 +348,7 @@ export function AdminTimeMetricsCards({
                       <span>Saldo:</span>
                       <span
                         className={
-                          balanceMinutes >= 0 ? "text-green-600" : "text-destructive"
+                          balanceMinutes >= 0 ? "text-palette-green" : "text-destructive"
                         }
                       >
                         {balanceMinutes >= 0 ? "+" : ""}

@@ -19,13 +19,13 @@ export function ContactFundingsList({ contactId, isExpanded, onToggle }: Contact
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
-        return 'bg-green-500/10 text-green-700 dark:text-green-400';
+        return 'bg-palette-green/10 text-palette-green';
       case 'completed':
-        return 'bg-blue-500/10 text-blue-700 dark:text-blue-400';
+        return 'bg-palette-blue/10 text-palette-blue';
       case 'cancelled':
-        return 'bg-red-500/10 text-red-700 dark:text-red-400';
+        return 'bg-palette-red/10 text-palette-red';
       default:
-        return 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400';
+        return 'bg-palette-yellow/10 text-palette-yellow';
     }
   };
 

@@ -298,10 +298,10 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
 
   const getCategoryColor = (category?: string) => {
     switch (category) {
-      case 'meeting': return 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300';
-      case 'internal': return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300';
-      case 'external': return 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300';
-      case 'parliamentary': return 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300';
+      case 'meeting': return 'bg-palette-blue/20 text-palette-blue';
+      case 'internal': return 'bg-muted text-foreground/80';
+      case 'external': return 'bg-palette-green/20 text-palette-green';
+      case 'parliamentary': return 'bg-palette-purple/20 text-palette-purple';
       default: return 'bg-muted text-muted-foreground';
     }
   };
@@ -314,7 +314,7 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
         <div 
           className={cn(
             "flex items-start gap-3 py-2 px-3 rounded-md transition-colors",
-            isStarred ? "bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-950/50" : "hover:bg-muted/50"
+            isStarred ? "bg-palette-amber/10 hover:bg-palette-amber/20" : "hover:bg-muted/50"
           )}
           style={apt.isExternal && apt.calendarColor ? { borderLeft: `3px solid ${apt.calendarColor}` } : undefined}
         >
@@ -331,7 +331,7 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
               <Star 
                 className={cn(
                   "h-4 w-4 transition-colors",
-                  isStarred ? "fill-amber-400 text-amber-400" : "text-muted-foreground"
+                  isStarred ? "fill-palette-amber text-palette-amber" : "text-muted-foreground"
                 )} 
               />
             </Button>
@@ -341,7 +341,7 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
             <span className="text-lg font-bold text-foreground">{format(new Date(apt.start_time), 'd')}</span>
           </div>
           <div className="flex-1 min-w-0">
-            <div className={cn("font-medium text-sm truncate", isStarred && "text-amber-700 dark:text-amber-300")}>
+            <div className={cn("font-medium text-sm truncate", isStarred && "text-palette-amber")}>
               {apt.title}
             </div>
             <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
@@ -418,14 +418,14 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
         ) : (
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         )}
-        <Calendar className="h-4 w-4 text-blue-500" />
+        <Calendar className="h-4 w-4 text-palette-blue" />
         <span className="text-sm font-medium">
           Kommende Termine (nächste 2 Wochen)
         </span>
         <div className="ml-auto flex items-center gap-2">
           {starredCount > 0 && (
-            <Badge variant="outline" className="text-xs bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-950 dark:border-amber-800 dark:text-amber-300">
-              <Star className="h-3 w-3 mr-1 fill-amber-400" />
+            <Badge variant="outline" className="text-xs bg-palette-amber/10 border-palette-amber/30 text-palette-amber">
+              <Star className="h-3 w-3 mr-1 fill-palette-amber" />
               {starredCount}
             </Badge>
           )}

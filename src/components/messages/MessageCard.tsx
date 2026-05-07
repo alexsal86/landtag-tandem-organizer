@@ -75,7 +75,7 @@ export const SentMessageCard: React.FC<{ message: MessageItem; userId?: string }
                 <Avatar className="h-4 w-4"><AvatarImage src={r.profile?.avatarUrl ?? undefined} /><AvatarFallback className="text-xs">{r.profile?.displayName?.charAt(0) || 'U'}</AvatarFallback></Avatar>
                 <span>{r.profile?.displayName || 'Unbekannt'}</span>
                 {r.hasRead ? (
-                  <div className="flex items-center gap-1 text-green-600"><Check className="h-3 w-3" /><span className="text-xs">{r.readAt && formatShortDate(r.readAt)}</span></div>
+                  <div className="flex items-center gap-1 text-palette-green"><Check className="h-3 w-3" /><span className="text-xs">{r.readAt && formatShortDate(r.readAt)}</span></div>
                 ) : <span className="text-xs text-muted-foreground">Nicht gelesen</span>}
               </div>
             ))}
@@ -91,7 +91,7 @@ export const SentMessageCard: React.FC<{ message: MessageItem; userId?: string }
               <div key={c.userId} className="flex items-center gap-1 text-xs bg-muted/50 rounded px-2 py-1">
                 <Avatar className="h-4 w-4"><AvatarImage src={c.profile?.avatarUrl ?? undefined} /><AvatarFallback className="text-xs">{c.profile?.displayName?.charAt(0) || 'U'}</AvatarFallback></Avatar>
                 <span>{c.profile?.displayName || 'Unbekannt'}</span>
-                <div className="flex items-center gap-1 text-green-600"><Check className="h-3 w-3" /><span className="text-xs">{formatShortDate(c.confirmedAt)}</span></div>
+                <div className="flex items-center gap-1 text-palette-green"><Check className="h-3 w-3" /><span className="text-xs">{formatShortDate(c.confirmedAt)}</span></div>
               </div>
             ))}
           </div>
@@ -122,7 +122,7 @@ export const ArchivedMessageCard: React.FC<{ message: MessageItem; userId?: stri
         <p className="text-xs text-muted-foreground">Gesendet: {formatDate(message.createdAt)}</p>
 
         {message.authorId !== userId && (
-          <div className="mt-2"><div className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded inline-block">✓ Als gelesen bestätigt</div></div>
+          <div className="mt-2"><div className="text-xs bg-palette-green/20 text-palette-green px-2 py-1 rounded inline-block">✓ Als gelesen bestätigt</div></div>
         )}
 
         {message.authorId === userId && message.isForAllUsers && message.confirmations.length > 0 && (
@@ -130,7 +130,7 @@ export const ArchivedMessageCard: React.FC<{ message: MessageItem; userId?: stri
             <div className="text-xs font-medium text-muted-foreground mb-1">Bestätigt von:</div>
             <div className="flex flex-wrap gap-1">
               {message.confirmations.map((c) => (
-                <div key={c.userId} className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                <div key={c.userId} className="text-xs bg-palette-green/20 text-palette-green px-2 py-1 rounded">
                   {c.profile?.displayName || 'Unbekannt'} - {formatShortDate(c.confirmedAt)}
                 </div>
               ))}
@@ -143,7 +143,7 @@ export const ArchivedMessageCard: React.FC<{ message: MessageItem; userId?: stri
             <div className="text-xs font-medium text-muted-foreground mb-1">Gelesen von:</div>
             <div className="flex flex-wrap gap-1">
               {message.recipients.filter(r => r.hasRead).map((r) => (
-                <div key={r.recipientId} className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                <div key={r.recipientId} className="text-xs bg-palette-green/20 text-palette-green px-2 py-1 rounded">
                   {r.profile?.displayName || 'Unbekannt'} - {r.readAt && formatShortDate(r.readAt)}
                 </div>
               ))}

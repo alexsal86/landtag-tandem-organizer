@@ -54,7 +54,7 @@ export function TaskActionIcons({
                 aria-label="Wiedervorlage"
                 className={cn(
                   "h-6 w-6 hover:bg-muted/80 rounded-full",
-                  hasReminder && "text-amber-600"
+                  hasReminder && "text-palette-amber"
                 )}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -77,7 +77,7 @@ export function TaskActionIcons({
                 aria-label={assignTooltipText || "Zuweisen"}
                 className={cn(
                   "h-6 w-6 hover:bg-muted/80 rounded-full",
-                  hasMultipleAssignees && "text-cyan-600"
+                  hasMultipleAssignees && "text-palette-cyan"
                 )}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -100,7 +100,7 @@ export function TaskActionIcons({
                 aria-label="Kommentare"
                 className={cn(
                   "h-6 w-6 hover:bg-muted/80 rounded-full relative",
-                  (hasComments || commentCount > 0) && "text-blue-600"
+                  (hasComments || commentCount > 0) && "text-palette-blue"
                 )}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -109,7 +109,7 @@ export function TaskActionIcons({
               >
                 <MessageSquare className="h-3 w-3" />
                 {commentCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-3.5 h-3.5 px-1 rounded-full bg-blue-600 text-[9px] leading-none text-white flex items-center justify-center font-medium">
+                  <span className="absolute -top-1 -right-1 min-w-3.5 h-3.5 px-1 rounded-full bg-palette-blue text-[9px] leading-none text-white flex items-center justify-center font-medium">
                     {commentCount > 99 ? '99+' : commentCount}
                   </span>
                 )}
@@ -148,7 +148,7 @@ export function TaskActionIcons({
                 aria-label="Dokumente"
                 className={cn(
                   "h-6 w-6 hover:bg-muted/80 rounded-full",
-                  hasDocuments && "text-amber-600"
+                  hasDocuments && "text-palette-amber"
                 )}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -171,7 +171,7 @@ export function TaskActionIcons({
                 aria-label="Jour Fixe"
                 className={cn(
                   "h-6 w-6 hover:bg-muted/80 rounded-full",
-                  hasMeetingLink && "text-purple-600"
+                  hasMeetingLink && "text-palette-purple"
                 )}
                 onClick={(e) => {
                   e.stopPropagation();

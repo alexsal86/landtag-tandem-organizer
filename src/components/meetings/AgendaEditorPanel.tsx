@@ -360,7 +360,7 @@ export function AgendaEditorPanel({
                                 />
                                 {/* Carryover badge */}
                                 {item.source_meeting_id && (
-                                  <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 whitespace-nowrap">
+                                  <Badge variant="outline" className="text-[10px] bg-palette-amber/10 text-palette-amber border-palette-amber/30 whitespace-nowrap">
                                     ↩ {item.original_meeting_title ? `von ${item.original_meeting_title}` : 'Übertragen'}
                                   </Badge>
                                 )}
@@ -378,7 +378,7 @@ export function AgendaEditorPanel({
                                   </label>
                                 )}
                                 {hasContentIndicator(item) && (
-                                  <span className="h-2 w-2 rounded-full bg-sky-500/80 shrink-0" title="Enthält Beschreibung, Notizen oder Dokumente" />
+                                  <span className="h-2 w-2 rounded-full bg-palette-blue/80 shrink-0" title="Enthält Beschreibung, Notizen oder Dokumente" />
                                 )}
                                 {hasSubItems(item) && (
                                   <Button
@@ -504,7 +504,7 @@ export function AgendaEditorPanel({
                                             {agendaDocuments[item.id!].map((doc, docIndex) => (
                                               <div key={docIndex} className="flex items-center justify-between p-1.5 bg-background rounded border">
                                                 <div className="flex items-center gap-2">
-                                                  <FileText className="h-3.5 w-3.5 text-blue-600" />
+                                                  <FileText className="h-3.5 w-3.5 text-palette-blue" />
                                                   <span className="text-xs truncate">{doc.file_name}</span>
                                                 </div>
                                                 <div className="flex gap-1">
@@ -607,7 +607,7 @@ export function AgendaEditorPanel({
         <Card className="mt-4">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
-              <StickyNote className="h-5 w-5 text-amber-500" /> Quick Notes für dieses Meeting <Badge variant="secondary">{linkedQuickNotes.length}</Badge>
+              <StickyNote className="h-5 w-5 text-palette-amber" /> Quick Notes für dieses Meeting <Badge variant="secondary">{linkedQuickNotes.length}</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>

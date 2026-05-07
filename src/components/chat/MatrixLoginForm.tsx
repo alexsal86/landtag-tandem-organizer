@@ -346,9 +346,9 @@ export function MatrixLoginForm() {
       </CardHeader>
       <CardContent className="space-y-4">
         {isConnected && (
-          <Alert className="bg-green-500/10 border-green-500/30">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-700 dark:text-green-400">
+          <Alert className="bg-palette-green/10 border-palette-green/30">
+            <CheckCircle className="h-4 w-4 text-palette-green" />
+            <AlertDescription className="text-palette-green">
               Verbunden als {credentials?.userId}
             </AlertDescription>
           </Alert>
@@ -457,9 +457,9 @@ export function MatrixLoginForm() {
                 {isTesting ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : testResult === 'success' ? (
-                  <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                  <CheckCircle className="h-4 w-4 mr-2 text-palette-green" />
                 ) : testResult === 'error' ? (
-                  <XCircle className="h-4 w-4 mr-2 text-red-600" />
+                  <XCircle className="h-4 w-4 mr-2 text-palette-red" />
                 ) : (
                   <TestTube className="h-4 w-4 mr-2" />
                 )}
@@ -496,7 +496,7 @@ export function MatrixLoginForm() {
         )}
 
         {activeSasVerification && (
-          <Alert className="border-blue-500/40 bg-blue-500/5">
+          <Alert className="border-palette-blue/40 bg-palette-blue/5">
             <AlertDescription className="space-y-3">
               <p className="text-sm font-medium">Emoji-Verifizierung läuft{activeSasVerification.otherDeviceId ? ` (Gerät ${activeSasVerification.otherDeviceId})` : ''}.</p>
               {activeSasVerification.emojis.length > 0 ? (
@@ -568,7 +568,7 @@ export function MatrixLoginForm() {
                 variant="outline"
                 size="sm"
                 disabled={isStartingVerification}
-                className="text-amber-600 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950"
+                className="text-palette-amber border-palette-amber/40 hover:bg-palette-amber/10"
               >
                 Verschlüsselungs-Speicher zurücksetzen
               </Button>

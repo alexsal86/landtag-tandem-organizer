@@ -138,26 +138,26 @@ export function DistrictDetailDialog({ district, open, onOpenChange }: DistrictD
                   {district.representatives && district.representatives.length > 0 ? (
                     <div className="space-y-3">
                       {district.representatives.map((rep) => (
-                        <div key={rep.id} className="p-3 bg-gray-50 rounded-md">
+                        <div key={rep.id} className="p-3 bg-muted/30 rounded-md">
                           <div className="flex items-center gap-2 mb-1">
-                            {rep.mandate_type === 'direct' && <Award className="h-4 w-4 text-yellow-600" />}
+                            {rep.mandate_type === 'direct' && <Award className="h-4 w-4 text-palette-yellow" />}
                             <span className="font-medium">{rep.name}</span>
                             <Badge variant="outline">{rep.party}</Badge>
                           </div>
-                          <p className="text-xs text-gray-600">
+                          <p className="text-xs text-muted-foreground">
                             {rep.mandate_type === 'direct' ? 'Direktmandat' : 'Listenmandat'}
                           </p>
                           {rep.email && (
-                            <p className="text-xs text-gray-600 mt-1">📧 {rep.email}</p>
+                            <p className="text-xs text-muted-foreground mt-1">📧 {rep.email}</p>
                           )}
                           {rep.phone && (
-                            <p className="text-xs text-gray-600">📞 {rep.phone}</p>
+                            <p className="text-xs text-muted-foreground">📞 {rep.phone}</p>
                           )}
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-gray-500">Keine Abgeordneten-Daten verfügbar</p>
+                    <p className="text-muted-foreground">Keine Abgeordneten-Daten verfügbar</p>
                   )}
                 </CardContent>
               </Card>

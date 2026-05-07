@@ -80,12 +80,12 @@ export function SystemAgendaItem({
 
   const getIcon = () => {
     switch (systemType) {
-      case 'upcoming_appointments': return <CalendarDays className="h-4 w-4 text-blue-500" />;
-      case 'quick_notes': return <StickyNote className="h-4 w-4 text-amber-500" />;
-      case 'tasks': return <ListTodo className="h-4 w-4 text-green-500" />;
-      case 'birthdays': return <Cake className="h-4 w-4 text-pink-500" />;
-      case 'decisions': return <Scale className="h-4 w-4 text-violet-500" />;
-      case 'case_items': return <Briefcase className="h-4 w-4 text-teal-500" />;
+      case 'upcoming_appointments': return <CalendarDays className="h-4 w-4 text-palette-blue" />;
+      case 'quick_notes': return <StickyNote className="h-4 w-4 text-palette-amber" />;
+      case 'tasks': return <ListTodo className="h-4 w-4 text-palette-green" />;
+      case 'birthdays': return <Cake className="h-4 w-4 text-palette-pink" />;
+      case 'decisions': return <Scale className="h-4 w-4 text-palette-violet" />;
+      case 'case_items': return <Briefcase className="h-4 w-4 text-palette-teal" />;
       default: return null;
     }
   };
@@ -190,7 +190,7 @@ export function SystemAgendaItem({
           {linkedQuickNotes.length > 0 ? (
             compact ? (
               <ul className="space-y-1">
-                {linkedQuickNotes.map((note, index) => renderCompactItem(note.title || `Notiz ${index + 1}`, <StickyNote className="h-2.5 w-2.5 text-amber-500" />, index, note.user_id ? `von ${profiles?.find(p => p.user_id === note.user_id)?.display_name || 'unbekannt'}` : null, 'quick_note', note.id))}
+                {linkedQuickNotes.map((note, index) => renderCompactItem(note.title || `Notiz ${index + 1}`, <StickyNote className="h-2.5 w-2.5 text-palette-amber" />, index, note.user_id ? `von ${profiles?.find(p => p.user_id === note.user_id)?.display_name || 'unbekannt'}` : null, 'quick_note', note.id))}
               </ul>
             ) : (
               <div className="space-y-2">
@@ -218,7 +218,7 @@ export function SystemAgendaItem({
           {linkedTasks.length > 0 ? (
             compact ? (
               <ul className="space-y-1">
-                {linkedTasks.map((task, index) => renderCompactItem(task.title || 'Ohne Titel', <ListTodo className="h-2.5 w-2.5 text-green-500" />, index, task.user_id ? `von ${profiles?.find(p => p.user_id === task.user_id)?.display_name || 'unbekannt'}` : null, 'task', task.id))}
+                {linkedTasks.map((task, index) => renderCompactItem(task.title || 'Ohne Titel', <ListTodo className="h-2.5 w-2.5 text-palette-green" />, index, task.user_id ? `von ${profiles?.find(p => p.user_id === task.user_id)?.display_name || 'unbekannt'}` : null, 'task', task.id))}
               </ul>
             ) : (
               <div className="space-y-2">
@@ -251,7 +251,7 @@ export function SystemAgendaItem({
           {linkedDecisions.length > 0 ? (
             compact ? (
               <ul className="space-y-1">
-                {linkedDecisions.map((decision, index) => renderCompactItem(decision.title || 'Ohne Titel', <Scale className="h-2.5 w-2.5 text-violet-500" />, index, decision.created_by ? `von ${profiles?.find(p => p.user_id === decision.created_by)?.display_name || 'unbekannt'}` : null, 'decision', decision.id))}
+                {linkedDecisions.map((decision, index) => renderCompactItem(decision.title || 'Ohne Titel', <Scale className="h-2.5 w-2.5 text-palette-violet" />, index, decision.created_by ? `von ${profiles?.find(p => p.user_id === decision.created_by)?.display_name || 'unbekannt'}` : null, 'decision', decision.id))}
               </ul>
             ) : (
               <div className="space-y-2">
@@ -281,7 +281,7 @@ export function SystemAgendaItem({
           {linkedCaseItems.length > 0 ? (
             compact ? (
               <ul className="space-y-1">
-                {linkedCaseItems.map((ci, index) => renderCompactItem(ci.subject || 'Ohne Betreff', <Briefcase className="h-2.5 w-2.5 text-teal-500" />, index, ci.owner_user_id ? `von ${profiles?.find(p => p.user_id === ci.owner_user_id)?.display_name || 'unbekannt'}` : null, 'case_item', ci.id))}
+                {linkedCaseItems.map((ci, index) => renderCompactItem(ci.subject || 'Ohne Betreff', <Briefcase className="h-2.5 w-2.5 text-palette-teal" />, index, ci.owner_user_id ? `von ${profiles?.find(p => p.user_id === ci.owner_user_id)?.display_name || 'unbekannt'}` : null, 'case_item', ci.id))}
               </ul>
             ) : (
               <div className="space-y-2">

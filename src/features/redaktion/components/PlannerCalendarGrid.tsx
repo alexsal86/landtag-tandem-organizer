@@ -185,14 +185,14 @@ function DayCell({
             return (
               <div
                 key={`sd-${sd.month}-${sd.day}`}
-                className="rounded-md border border-amber-300 bg-amber-50/80 dark:bg-amber-950/30 dark:border-amber-700 p-1.5 text-[11px]"
+                className="rounded-md border border-palette-amber/40 bg-palette-amber/10/80 p-1.5 text-[11px]"
               >
                 <div className="flex items-center gap-1">
-                  <HintIcon className="h-3 w-3 shrink-0 text-amber-700 dark:text-amber-400" />
-                  <span className="font-medium text-amber-900 dark:text-amber-200 truncate">{sd.name}</span>
+                  <HintIcon className="h-3 w-3 shrink-0 text-palette-amber" />
+                  <span className="font-medium text-palette-amber truncate">{sd.name}</span>
                 </div>
                 {sd.hint && (
-                  <p className="text-[10px] text-amber-800/80 dark:text-amber-300/80 line-clamp-2 mt-0.5">{sd.hint}</p>
+                  <p className="text-[10px] text-palette-amber/80 line-clamp-2 mt-0.5">{sd.hint}</p>
                 )}
               </div>
             );

@@ -403,7 +403,7 @@ export function CaseItemDetailPanel({
                           </HoverCardContent>
                         </HoverCard>
                       ) : (
-                        <p className={cn("font-bold leading-4", isFrist && "text-amber-700 dark:text-amber-400")}>{entry.title}</p>
+                        <p className={cn("font-bold leading-4", isFrist && "text-palette-amber")}>{entry.title}</p>
                       )}
 
                       {entry.canDelete && entry.onDelete ? (

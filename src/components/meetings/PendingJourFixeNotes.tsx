@@ -97,27 +97,27 @@ export function PendingJourFixeNotes({ className, onNotesLinked }: PendingJourFi
   const getPriorityColor = (level?: number | null) => {
     switch (level) {
       case 3: return 'text-destructive';
-      case 2: return 'text-amber-500';
-      case 1: return 'text-blue-500';
+      case 2: return 'text-palette-amber';
+      case 1: return 'text-palette-blue';
       default: return 'text-muted-foreground';
     }
   };
 
   return (
-    <Card className={cn("border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-900", className)}>
+    <Card className={cn("border-palette-amber/30 bg-palette-amber/5", className)}>
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild>
-          <CardHeader className="pb-2 cursor-pointer hover:bg-amber-100/50 dark:hover:bg-amber-900/20 transition-colors">
+          <CardHeader className="pb-2 cursor-pointer hover:bg-palette-amber/20/50 transition-colors">
             <CardTitle className="text-base flex items-center gap-2">
-              <Hourglass className="h-4 w-4 text-amber-600" />
-              <span className="text-amber-800 dark:text-amber-200">
+              <Hourglass className="h-4 w-4 text-palette-amber" />
+              <span className="text-palette-amber">
                 Vorgemerkte Notizen für nächsten Jour Fixe
               </span>
-              <Badge variant="secondary" className="bg-amber-200 text-amber-800 dark:bg-amber-800 dark:text-amber-200">
+              <Badge variant="secondary" className="bg-palette-amber/30 text-palette-amber">
                 {notes.length}
               </Badge>
               <ChevronDown className={cn(
-                "h-4 w-4 ml-auto text-amber-600 transition-transform",
+                "h-4 w-4 ml-auto text-palette-amber transition-transform",
                 isOpen && "rotate-180"
               )} />
             </CardTitle>
@@ -125,13 +125,13 @@ export function PendingJourFixeNotes({ className, onNotesLinked }: PendingJourFi
         </CollapsibleTrigger>
         <CollapsibleContent>
           <CardContent className="pt-0 space-y-2">
-            <p className="text-xs text-amber-700 dark:text-amber-300 mb-3">
+            <p className="text-xs text-palette-amber mb-3">
               Diese Notizen werden automatisch dem nächsten erstellten Jour Fixe zugeordnet.
             </p>
             {notes.map((note) => (
               <div 
                 key={note.id} 
-                className="p-3 bg-white dark:bg-card rounded-md border border-amber-200 dark:border-amber-800"
+                className="p-3 bg-white dark:bg-card rounded-md border border-palette-amber/30"
               >
                 <div className="flex items-start gap-2">
                   <StickyNote className={cn("h-4 w-4 mt-0.5 shrink-0", getPriorityColor(note.priority_level))} />

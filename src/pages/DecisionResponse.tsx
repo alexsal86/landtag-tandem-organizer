@@ -164,11 +164,11 @@ export default function DecisionResponse() {
     const colorClasses = option ? getColorClasses(option.color) : getColorClasses("gray");
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-palette-blue/10 to-palette-indigo/20 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4">
-              <CheckCircle className="h-16 w-16 text-green-500" />
+              <CheckCircle className="h-16 w-16 text-palette-green" />
             </div>
             <CardTitle className="text-xl">Antwort gespeichert</CardTitle>
           </CardHeader>
@@ -202,7 +202,7 @@ export default function DecisionResponse() {
                   minHeight="80px"
                 />
                 {error && (
-                  <p className="text-sm text-red-600">{error}</p>
+                  <p className="text-sm text-palette-red">{error}</p>
                 )}
                 <Button
                   onClick={handleAddComment}
@@ -219,7 +219,7 @@ export default function DecisionResponse() {
 
             {result.commentAdded && (
               <div className="border-t pt-4 text-center">
-                <p className="text-sm text-green-600">✓ Kommentar wurde hinzugefügt</p>
+                <p className="text-sm text-palette-green">✓ Kommentar wurde hinzugefügt</p>
               </div>
             )}
           </CardContent>
@@ -230,10 +230,10 @@ export default function DecisionResponse() {
 
   if (!token || !participantId) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-palette-blue/10 to-palette-indigo/20 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <XCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+            <XCircle className="h-16 w-16 text-palette-red mx-auto mb-4" />
             <CardTitle className="text-xl">Ungültiger Link</CardTitle>
           </CardHeader>
           <CardContent className="text-center">
@@ -248,7 +248,7 @@ export default function DecisionResponse() {
 
   if (isLoadingOptions) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-palette-blue/10 to-palette-indigo/20 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardContent className="py-8 text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
@@ -262,7 +262,7 @@ export default function DecisionResponse() {
   // Check if any option requires comment for special handling
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-palette-blue/10 to-palette-indigo/20 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-xl">Entscheidungsanfrage</CardTitle>
@@ -272,8 +272,8 @@ export default function DecisionResponse() {
         </CardHeader>
         <CardContent className="space-y-6">
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-sm text-red-600">{error}</p>
+            <div className="p-3 bg-palette-red/10 border border-palette-red/30 rounded-md">
+              <p className="text-sm text-palette-red">{error}</p>
             </div>
           )}
 

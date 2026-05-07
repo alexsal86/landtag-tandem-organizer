@@ -344,9 +344,9 @@ export const DecisionEmailTemplates = () => {
                   .replace('{decision_title}', 'Freigabe der finalen Version')}
               </p>
               <p className="text-center mt-3">
-                <span className="bg-green-100 text-green-800 px-3 py-1 rounded mr-2">Ja</span>
-                <span className="bg-red-100 text-red-800 px-3 py-1 rounded mr-2">Nein</span>
-                <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded">Frage</span>
+                <span className="bg-palette-green/20 text-palette-green px-3 py-1 rounded mr-2">Ja</span>
+                <span className="bg-palette-red/20 text-palette-red px-3 py-1 rounded mr-2">Nein</span>
+                <span className="bg-palette-yellow/20 text-palette-yellow px-3 py-1 rounded">Frage</span>
               </p>
             </div>
             <p>{template.question_prompt}</p>

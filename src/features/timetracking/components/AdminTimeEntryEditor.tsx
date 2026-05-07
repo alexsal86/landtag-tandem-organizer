@@ -197,9 +197,9 @@ export function AdminTimeEntryEditor({
                 ))}
               </select>
               {isTypeChanged && (
-                <Alert variant="default" className="bg-amber-50 border-amber-200">
-                  <AlertCircle className="h-4 w-4 text-amber-600" />
-                  <AlertDescription className="text-amber-800">
+                <Alert variant="default" className="bg-palette-amber/10 border-palette-amber/30">
+                  <AlertCircle className="h-4 w-4 text-palette-amber" />
+                  <AlertDescription className="text-palette-amber">
                     {getTypeChangeWarning()}
                   </AlertDescription>
                 </Alert>

@@ -7,10 +7,10 @@ import type { TeamWorkStatusViewModel, WorkIndicatorVariant } from "@/components
 const indicatorClasses: Record<WorkIndicatorVariant, string> = {
   empty: "bg-muted-foreground/30",
   critical: "bg-destructive",
-  warning: "bg-orange-500",
-  progress: "bg-yellow-500",
-  good: "bg-green-500",
-  overtime: "bg-blue-500",
+  warning: "bg-palette-orange",
+  progress: "bg-palette-yellow",
+  good: "bg-palette-green",
+  overtime: "bg-palette-blue",
 };
 
 interface WorkStatusIndicatorProps {

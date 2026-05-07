@@ -250,7 +250,7 @@ export function ProtocolAnalytics({ protocolId, tenantId }: ProtocolAnalyticsPro
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center space-x-2">
-              <MessageCircle className="h-8 w-8 text-blue-500" />
+              <MessageCircle className="h-8 w-8 text-palette-blue" />
               <div>
                 <p className="text-2xl font-bold">{analytics.totalSpeeches}</p>
                 <p className="text-sm text-muted-foreground">Redebeiträge</p>
@@ -262,7 +262,7 @@ export function ProtocolAnalytics({ protocolId, tenantId }: ProtocolAnalyticsPro
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center space-x-2">
-              <Users className="h-8 w-8 text-green-500" />
+              <Users className="h-8 w-8 text-palette-green" />
               <div>
                 <p className="text-2xl font-bold">{analytics.totalSpeakers}</p>
                 <p className="text-sm text-muted-foreground">Redner</p>
@@ -274,7 +274,7 @@ export function ProtocolAnalytics({ protocolId, tenantId }: ProtocolAnalyticsPro
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center space-x-2">
-              <TrendingUp className="h-8 w-8 text-orange-500" />
+              <TrendingUp className="h-8 w-8 text-palette-orange" />
               <div>
                 <p className="text-2xl font-bold">{analytics.avgSpeechesPerSession}</p>
                 <p className="text-sm text-muted-foreground">Ø Reden/Sitzung</p>

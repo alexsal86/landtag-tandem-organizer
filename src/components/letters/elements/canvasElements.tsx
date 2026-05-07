@@ -43,7 +43,7 @@ export const TextCanvasElement: React.FC<TextCanvasElementProps> = ({
   return (
     <div
       aria-label={ariaLabel}
-      className={`absolute border ${isSelected ? 'border-primary border-dashed bg-primary/5' : isVariable ? 'border-amber-500 border-dashed' : 'border-transparent'} ${isEditing ? 'cursor-text' : 'cursor-move'}`}
+      className={`absolute border ${isSelected ? 'border-primary border-dashed bg-primary/5' : isVariable ? 'border-palette-amber border-dashed' : 'border-transparent'} ${isEditing ? 'cursor-text' : 'cursor-move'}`}
       style={{
         left: `${element.x * scaleX}px`,
         top: `${element.y * scaleY}px`,

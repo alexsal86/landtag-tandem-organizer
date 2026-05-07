@@ -21,7 +21,7 @@ interface JourFixeMeetingCardProps {
 
 const getMeetingStatusColor = (meeting: Meeting) => {
   const meetingDate = new Date(meeting.meeting_date);
-  if (isToday(meetingDate)) return "text-orange-500";
+  if (isToday(meetingDate)) return "text-palette-orange";
   if (isPast(meetingDate)) return "text-muted-foreground";
   return "text-foreground";
 };
@@ -53,7 +53,7 @@ export function JourFixeMeetingCard({
                 <Globe className="h-3 w-3 text-muted-foreground flex-shrink-0" />
               )}
               {isToday(meetingDate) && (
-                <Badge variant="secondary" className="text-xs px-1.5 py-0 bg-orange-100 text-orange-700">
+                <Badge variant="secondary" className="text-xs px-1.5 py-0 bg-palette-orange/20 text-palette-orange">
                   Heute
                 </Badge>
               )}

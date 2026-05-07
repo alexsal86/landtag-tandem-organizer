@@ -230,7 +230,7 @@ export function TasksView() {
                             <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => { e.stopPropagation(); setQuickNoteDialog({ open: true, taskId: task.id }); }} title="Quick Note erstellen"><StickyNote className="h-4 w-4" /></Button>
                             <TaskDecisionCreator taskId={task.id} onDecisionCreated={() => { data.loadTasks(); window.location.reload(); }} />
                             <Badge variant="secondary">{task.category === "legislation" ? "Gesetzgebung" : task.category === "committee" ? "Ausschuss" : task.category === "constituency" ? "Wahlkreis" : task.category === "call_followup" ? "Call Follow-up" : "Persönlich"}</Badge>
-                            <TooltipProvider><Tooltip><TooltipTrigger asChild><div className={`w-3 h-3 rounded-full ${task.priority === "high" ? "bg-red-500" : task.priority === "medium" ? "bg-yellow-500" : "bg-green-500"}`} /></TooltipTrigger><TooltipContent><p>{task.priority === "high" ? "Hoch" : task.priority === "medium" ? "Mittel" : "Niedrig"}</p></TooltipContent></Tooltip></TooltipProvider>
+                            <TooltipProvider><Tooltip><TooltipTrigger asChild><div className={`w-3 h-3 rounded-full ${task.priority === "high" ? "bg-palette-red" : task.priority === "medium" ? "bg-palette-yellow" : "bg-palette-green"}`} /></TooltipTrigger><TooltipContent><p>{task.priority === "high" ? "Hoch" : task.priority === "medium" ? "Mittel" : "Niedrig"}</p></TooltipContent></Tooltip></TooltipProvider>
                           </div>
                         </div>
                         <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">

@@ -56,11 +56,11 @@ type CaseFileRecord = {
 };
 
 const CASE_ITEM_STATUS_META: Record<CaseItemRecord["status"], { label: string; className: string }> = {
-  neu: { label: "Neu", className: "border-sky-500/40 text-sky-700 bg-sky-500/10" },
-  in_klaerung: { label: "In Klärung", className: "border-amber-500/40 text-amber-700 bg-amber-500/10" },
-  antwort_ausstehend: { label: "Antwort ausstehend", className: "border-violet-500/40 text-violet-700 bg-violet-500/10" },
-  erledigt: { label: "Erledigt", className: "border-emerald-500/40 text-emerald-700 bg-emerald-500/10" },
-  archiviert: { label: "Archiviert", className: "border-slate-400/40 text-slate-600 bg-slate-400/10" },
+  neu: { label: "Neu", className: "border-palette-blue/40 text-palette-blue bg-palette-blue/10" },
+  in_klaerung: { label: "In Klärung", className: "border-palette-amber/40 text-palette-amber bg-palette-amber/10" },
+  antwort_ausstehend: { label: "Antwort ausstehend", className: "border-palette-violet/40 text-palette-violet bg-palette-violet/10" },
+  erledigt: { label: "Erledigt", className: "border-palette-green/40 text-palette-green bg-palette-green/10" },
+  archiviert: { label: "Archiviert", className: "border-border/40 text-muted-foreground bg-muted/10" },
 };
 
 const CaseItemDetail = () => {

@@ -82,18 +82,18 @@ export const ExpenseWidget = ({ className }: ExpenseWidgetProps) => {
           </div>
           <div className="flex items-center gap-2">
             {balance >= 0 ? (
-              <TrendingDown className="h-3 w-3 text-green-600" />
+              <TrendingDown className="h-3 w-3 text-palette-green" />
             ) : (
-              <TrendingUp className="h-3 w-3 text-red-600" />
+              <TrendingUp className="h-3 w-3 text-palette-red" />
             )}
-            <span className={`text-xs font-medium ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <span className={`text-xs font-medium ${balance >= 0 ? 'text-palette-green' : 'text-palette-red'}`}>
               {Math.abs(balance).toFixed(2)} € {balance >= 0 ? 'übrig' : 'überschritten'}
             </span>
           </div>
           <div className="w-full bg-secondary rounded-full h-2">
             <div
               className={`h-2 rounded-full transition-all ${
-                usagePercent > 100 ? 'bg-red-500' : usagePercent > 80 ? 'bg-yellow-500' : 'bg-green-500'
+                usagePercent > 100 ? 'bg-palette-red' : usagePercent > 80 ? 'bg-palette-yellow' : 'bg-palette-green'
               }`}
               style={{ width: `${Math.min(usagePercent, 100)}%` }}
             />

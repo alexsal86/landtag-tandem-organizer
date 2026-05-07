@@ -104,17 +104,17 @@ export function EmployeeSelfView({ loading, selfSettings, selfLeaveAgg, selfProf
                 {selfSettings?.employment_start_date ? (
                   <div className="flex justify-between"><span>Beginn Arbeitsverhältnis</span><span>{new Date(selfSettings.employment_start_date).toLocaleDateString('de-DE')}</span></div>
                 ) : (
-                  <div className="flex justify-between"><span>Beginn Arbeitsverhältnis</span><span className="text-orange-600">Noch nicht eingetragen</span></div>
+                  <div className="flex justify-between"><span>Beginn Arbeitsverhältnis</span><span className="text-palette-orange">Noch nicht eingetragen</span></div>
                 )}
                 {!selfSettings ? (
-                  <div className="text-center text-blue-600 text-sm mt-2 p-3 bg-blue-50 rounded border border-blue-200">
+                  <div className="text-center text-palette-blue text-sm mt-2 p-3 bg-palette-blue/10 rounded border border-palette-blue/30">
                     <strong>Hinweis:</strong> Ihre Einstellungen werden geladen...<br/>
                     Falls Sie soeben vom Administrator eingetragen wurden, laden Sie die Seite neu (F5).
                     <br/>
                     <Button variant="outline" size="sm" className="mt-2" onClick={() => window.location.reload()}>Seite neu laden</Button>
                   </div>
                 ) : (
-                  <div className="text-center text-green-600 text-sm mt-1 p-2 bg-green-50 rounded">✓ Einstellungen erfolgreich geladen</div>
+                  <div className="text-center text-palette-green text-sm mt-1 p-2 bg-palette-green/10 rounded">✓ Einstellungen erfolgreich geladen</div>
                 )}
               </div>
             )}

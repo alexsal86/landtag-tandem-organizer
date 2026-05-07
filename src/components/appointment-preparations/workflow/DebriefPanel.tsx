@@ -208,7 +208,7 @@ export function DebriefPanel({ preparation, appointmentId, onUpdate }: DebriefPa
                     className="w-44"
                   />
                   {point.task_created ? (
-                    <span className="text-xs inline-flex items-center px-2 py-1 rounded bg-emerald-500/10 text-emerald-700">
+                    <span className="text-xs inline-flex items-center px-2 py-1 rounded bg-palette-green/10 text-palette-green">
                       ✓ Aufgabe erstellt
                     </span>
                   ) : (
@@ -238,7 +238,7 @@ export function DebriefPanel({ preparation, appointmentId, onUpdate }: DebriefPa
         </CardHeader>
         <CardContent>
           {followupScheduled ? (
-            <p className="text-sm text-emerald-700">✓ Reminder in 4 Wochen ist geplant.</p>
+            <p className="text-sm text-palette-green">✓ Reminder in 4 Wochen ist geplant.</p>
           ) : (
             <Button variant="outline" size="sm" onClick={scheduleFollowupReminder}>
               In 4 Wochen erinnern: „Hat das stattgefunden?"

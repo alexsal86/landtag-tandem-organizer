@@ -112,7 +112,7 @@ export function NoteCard({
             )}
             {showFollowUpBadge && note.follow_up_date && (
               <div className="flex items-center gap-1 flex-shrink-0">
-                <Badge variant="outline" className="text-xs px-1.5 py-0 h-5 text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-900/30">
+                <Badge variant="outline" className="text-xs px-1.5 py-0 h-5 text-palette-amber border-palette-amber/40 bg-palette-amber/10">
                   <Clock className="h-3 w-3 mr-1" />
                   {format(new Date(note.follow_up_date), "dd.MM.yy", { locale: de })}
                 </Badge>
@@ -157,11 +157,11 @@ export function NoteCard({
           <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <div className="flex items-center gap-1.5 group-hover:hidden">
-                {note.task_id && <div className="w-1.5 h-1.5 bg-blue-500" title="Aufgabe" />}
-                {note.decision_id && <div className="w-1.5 h-1.5 bg-purple-500" title="Entscheidung" />}
-                {note.case_item_id && <div className="w-1.5 h-1.5 bg-teal-500" title="Vorgang" />}
-                {note.meeting_id && <div className="w-1.5 h-1.5 bg-emerald-500" title="Jour Fixe" />}
-                {hasShared && <div className="w-1.5 h-1.5 bg-violet-500" title={note.is_shared ? `Geteilt von ${note.owner?.display_name || 'Unbekannt'}` : "Geteilt"} />}
+                {note.task_id && <div className="w-1.5 h-1.5 bg-palette-blue" title="Aufgabe" />}
+                {note.decision_id && <div className="w-1.5 h-1.5 bg-palette-purple" title="Entscheidung" />}
+                {note.case_item_id && <div className="w-1.5 h-1.5 bg-palette-teal" title="Vorgang" />}
+                {note.meeting_id && <div className="w-1.5 h-1.5 bg-palette-green" title="Jour Fixe" />}
+                {hasShared && <div className="w-1.5 h-1.5 bg-palette-violet" title={note.is_shared ? `Geteilt von ${note.owner?.display_name || 'Unbekannt'}` : "Geteilt"} />}
               </div>
               <div className="hidden group-hover:flex items-center gap-1.5 flex-wrap">
                 {note.task_id && <NoteLinkedBadge type="task" id={note.task_id} label="Aufgabe" />}
@@ -172,7 +172,7 @@ export function NoteCard({
                 )}
                 {(note.share_count || 0) > 0 && (
                   <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                    <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 text-violet-600 border-violet-300 bg-violet-50 dark:bg-violet-900/30 cursor-help">
+                    <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 text-palette-violet border-palette-violet/40 bg-palette-violet/10 cursor-help">
                       <Users className="h-3 w-3 mr-0.5" />{note.share_count}
                     </Badge>
                   </TooltipTrigger><TooltipContent>
@@ -212,27 +212,27 @@ export function NoteCard({
                       </Button>
                     </TooltipTrigger><TooltipContent side="top">Bearbeiten</TooltipContent></Tooltip>
                     <Tooltip><TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.task_id && "text-blue-600")} onClick={(e) => { e.stopPropagation(); note.task_id ? onRemoveTask(note) : onCreateTask(note); }}>
+                      <Button variant="ghost" size="icon" className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.task_id && "text-palette-blue")} onClick={(e) => { e.stopPropagation(); note.task_id ? onRemoveTask(note) : onCreateTask(note); }}>
                         <CheckSquare className="h-3 w-3" />
                       </Button>
                     </TooltipTrigger><TooltipContent side="top">{note.task_id ? "Aufgabe entfernen" : "Als Aufgabe"}</TooltipContent></Tooltip>
                     <Tooltip><TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.decision_id && "text-purple-600")} onClick={(e) => { e.stopPropagation(); note.decision_id ? onRemoveDecision(note) : onCreateDecision(note); }}>
+                      <Button variant="ghost" size="icon" className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.decision_id && "text-palette-purple")} onClick={(e) => { e.stopPropagation(); note.decision_id ? onRemoveDecision(note) : onCreateDecision(note); }}>
                         <Vote className="h-3 w-3" />
                       </Button>
                     </TooltipTrigger><TooltipContent side="top">{note.decision_id ? "Entscheidung zurücknehmen" : "Als Entscheidung"}</TooltipContent></Tooltip>
                     <Tooltip><TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.case_item_id && "text-teal-600")} onClick={(e) => { e.stopPropagation(); note.case_item_id ? onRemoveCaseItem(note) : onCreateCaseItem(note); }}>
+                      <Button variant="ghost" size="icon" className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.case_item_id && "text-palette-teal")} onClick={(e) => { e.stopPropagation(); note.case_item_id ? onRemoveCaseItem(note) : onCreateCaseItem(note); }}>
                         <FileText className="h-3 w-3" />
                       </Button>
                     </TooltipTrigger><TooltipContent side="top">{note.case_item_id ? "Vorgang entfernen" : "Als Vorgang"}</TooltipContent></Tooltip>
                     <Tooltip><TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.follow_up_date && "text-amber-600")} onClick={(e) => { e.stopPropagation(); onOpenDatePicker(note); }}>
+                      <Button variant="ghost" size="icon" className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.follow_up_date && "text-palette-amber")} onClick={(e) => { e.stopPropagation(); onOpenDatePicker(note); }}>
                         <Clock className="h-3 w-3" />
                       </Button>
                     </TooltipTrigger><TooltipContent side="top">Wiedervorlage</TooltipContent></Tooltip>
                     <Tooltip><TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.meeting_id && "text-emerald-600")} onClick={(e) => { e.stopPropagation(); note.meeting_id ? onRemoveFromMeeting(note.id) : onOpenMeetingSelector(note); }}>
+                      <Button variant="ghost" size="icon" className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.meeting_id && "text-palette-green")} onClick={(e) => { e.stopPropagation(); note.meeting_id ? onRemoveFromMeeting(note.id) : onOpenMeetingSelector(note); }}>
                         <CalendarIcon className="h-3 w-3" />
                       </Button>
                     </TooltipTrigger><TooltipContent side="top">{note.meeting_id ? "Von Jour Fixe entfernen" : "Auf Jour Fixe"}</TooltipContent></Tooltip>
@@ -251,7 +251,7 @@ export function NoteCard({
                                 size="icon"
                                 className={cn(
                                   "h-6 w-6 hover:bg-muted/80 rounded-full",
-                                  isInThemenspeicher && "text-amber-600",
+                                  isInThemenspeicher && "text-palette-amber",
                                 )}
                                 disabled={isTransferringToThemenspeicher}
                                 onClick={(e) => {
@@ -282,7 +282,7 @@ export function NoteCard({
                               setTransferPopoverOpen(false);
                             }}
                           >
-                            <Lightbulb className="h-4 w-4 text-amber-500" />
+                            <Lightbulb className="h-4 w-4 text-palette-amber" />
                             <span>In Themenspeicher verschieben</span>
                           </button>
                         </PopoverContent>
@@ -316,7 +316,7 @@ export function NoteCard({
                   </DropdownMenuItem>
                 )}
                 {note.task_id ? (
-                  <DropdownMenuItem onClick={() => onRemoveTask(note)} className="text-blue-600">
+                  <DropdownMenuItem onClick={() => onRemoveTask(note)} className="text-palette-blue">
                     <CheckSquare className="h-3 w-3 mr-2" />Aufgabe entfernen
                   </DropdownMenuItem>
                 ) : (
@@ -325,7 +325,7 @@ export function NoteCard({
                   </DropdownMenuItem>
                 )}
                 {note.decision_id ? (
-                  <DropdownMenuItem disabled className="text-purple-600">
+                  <DropdownMenuItem disabled className="text-palette-purple">
                     <Vote className="h-3 w-3 mr-2" />Entscheidung aktiv
                   </DropdownMenuItem>
                 ) : (
@@ -334,7 +334,7 @@ export function NoteCard({
                   </DropdownMenuItem>
                 )}
                 {note.case_item_id ? (
-                  <DropdownMenuItem onClick={() => onRemoveCaseItem(note)} className="text-teal-600">
+                  <DropdownMenuItem onClick={() => onRemoveCaseItem(note)} className="text-palette-teal">
                     <FileText className="h-3 w-3 mr-2" />Vorgang entfernen
                   </DropdownMenuItem>
                 ) : (
@@ -343,7 +343,7 @@ export function NoteCard({
                   </DropdownMenuItem>
                 )}
                 {note.meeting_id ? (
-                  <DropdownMenuItem onClick={() => onRemoveFromMeeting(note.id)} className="text-emerald-600">
+                  <DropdownMenuItem onClick={() => onRemoveFromMeeting(note.id)} className="text-palette-green">
                     <CalendarIcon className="h-3 w-3 mr-2" />Von Jour Fixe entfernen
                   </DropdownMenuItem>
                 ) : (
@@ -361,13 +361,13 @@ export function NoteCard({
                   <DropdownMenuSubTrigger><Star className="h-3 w-3 mr-2" />Priorität</DropdownMenuSubTrigger>
                   <DropdownMenuPortal><DropdownMenuSubContent>
                     <DropdownMenuItem onClick={() => onSetPriority(note.id, 3)}>
-                      <span className="text-amber-500 mr-2">★★★</span> Level 3{note.priority_level === 3 && <span className="ml-auto text-xs">✓</span>}
+                      <span className="text-palette-amber mr-2">★★★</span> Level 3{note.priority_level === 3 && <span className="ml-auto text-xs">✓</span>}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onSetPriority(note.id, 2)}>
-                      <span className="text-amber-500 mr-2">★★</span> Level 2{note.priority_level === 2 && <span className="ml-auto text-xs">✓</span>}
+                      <span className="text-palette-amber mr-2">★★</span> Level 2{note.priority_level === 2 && <span className="ml-auto text-xs">✓</span>}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onSetPriority(note.id, 1)}>
-                      <span className="text-amber-500 mr-2">★</span> Level 1{note.priority_level === 1 && <span className="ml-auto text-xs">✓</span>}
+                      <span className="text-palette-amber mr-2">★</span> Level 1{note.priority_level === 1 && <span className="ml-auto text-xs">✓</span>}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => onSetPriority(note.id, 0)}>
@@ -378,7 +378,7 @@ export function NoteCard({
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
                     <Clock className="h-3 w-3 mr-2" />Wiedervorlage
-                    {note.follow_up_date && <span className="ml-auto text-xs text-amber-600">●</span>}
+                    {note.follow_up_date && <span className="ml-auto text-xs text-palette-amber">●</span>}
                   </DropdownMenuSubTrigger>
                   <DropdownMenuPortal><DropdownMenuSubContent>
                     <DropdownMenuItem onClick={() => onSetFollowUp(note.id, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000))}>In 7 Tagen</DropdownMenuItem>
@@ -433,7 +433,7 @@ export function NoteCard({
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => onTogglePin(note)}>
-                  <Pin className={cn("h-3 w-3 mr-2", note.is_pinned && "text-amber-500")} />
+                  <Pin className={cn("h-3 w-3 mr-2", note.is_pinned && "text-palette-amber")} />
                   {note.is_pinned ? 'Loslösen' : 'Anpinnen'}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onArchive(note.id)}>
@@ -457,7 +457,7 @@ export function NoteCard({
           <div className="flex items-center gap-1.5 flex-wrap justify-end">
             {note.pending_for_jour_fixe && !note.meeting_id && (
               <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                <Badge variant="outline" className="text-xs px-1 py-0 h-4 text-amber-600 cursor-help">
+                <Badge variant="outline" className="text-xs px-1 py-0 h-4 text-palette-amber cursor-help">
                   <Hourglass className="h-3 w-3 mr-0.5" />JF
                 </Badge>
               </TooltipTrigger><TooltipContent>Wartet auf nächsten Jour Fixe</TooltipContent></Tooltip></TooltipProvider>
@@ -473,7 +473,7 @@ export function NoteCard({
       </div>
 
       {note.is_pinned && (
-        <div className="absolute top-0 right-0 w-0 h-0 border-t-[16px] border-l-[16px] border-t-amber-400 border-l-transparent rounded-tr-lg" title="Angepinnt" />
+        <div className="absolute top-0 right-0 w-0 h-0 border-t-[16px] border-l-[16px] border-t-palette-amber/60 border-l-transparent rounded-tr-lg" title="Angepinnt" />
       )}
 
       {hasLinkedItems && (

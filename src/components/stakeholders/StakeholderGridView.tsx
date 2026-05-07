@@ -64,7 +64,7 @@ export function StakeholderGridView({
                         <div className="flex items-center gap-2 mb-1">
                           <CardTitle className="text-lg font-semibold truncate">{stakeholder.name}</CardTitle>
                           <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onToggleFavorite(stakeholder.id, !stakeholder.is_favorite); }} className="p-1 h-6 w-6 flex-shrink-0">
-                            <Star className={`h-3 w-3 transition-colors ${stakeholder.is_favorite ? 'text-yellow-500 fill-current' : 'text-muted-foreground hover:text-yellow-500'}`} />
+                            <Star className={`h-3 w-3 transition-colors ${stakeholder.is_favorite ? 'text-palette-yellow fill-current' : 'text-muted-foreground hover:text-palette-yellow'}`} />
                           </Button>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">

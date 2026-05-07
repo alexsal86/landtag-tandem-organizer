@@ -114,7 +114,7 @@ const getPriorityBadgeClass = (priority?: Contact["priority"]): string => {
     case "high":
       return "border-destructive text-destructive";
     case "medium":
-      return "border-yellow-500 text-yellow-600";
+      return "border-palette-yellow text-palette-yellow";
     default:
       return "border-muted-foreground text-muted-foreground";
   }
@@ -202,7 +202,7 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
 
   const getInitials = (name: string) => name.split(" ").map(n => n[0]).join("").toUpperCase();
   const handleEditSuccess = () => { setIsEditing(false); fetchContact(); fetchCallLogs(); onContactUpdate(); };
-  const getCallTypeIcon = (type: 'outgoing' | 'incoming' | 'missed') => <PhoneCall className={`h-4 w-4 ${type === 'outgoing' ? 'text-green-500' : type === 'incoming' ? 'text-blue-500' : 'text-red-500'}`} />;
+  const getCallTypeIcon = (type: 'outgoing' | 'incoming' | 'missed') => <PhoneCall className={`h-4 w-4 ${type === 'outgoing' ? 'text-palette-green' : type === 'incoming' ? 'text-palette-blue' : 'text-palette-red'}`} />;
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const detailLineParts =
     contact?.contact_type === "organization"
@@ -255,7 +255,7 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
                 aria-label={contact.is_favorite ? "Favorit entfernen" : "Als Favorit markieren"}
                 title={contact.is_favorite ? "Favorit entfernen" : "Als Favorit markieren"}
               >
-                <Star className={`h-4 w-4 ${contact.is_favorite ? "text-yellow-500 fill-current" : "text-muted-foreground"}`} />
+                <Star className={`h-4 w-4 ${contact.is_favorite ? "text-palette-yellow fill-current" : "text-muted-foreground"}`} />
               </Button>
               <Button onClick={() => setIsEditing(true)} size="sm" className="rounded-full px-5">
                 Bearbeiten

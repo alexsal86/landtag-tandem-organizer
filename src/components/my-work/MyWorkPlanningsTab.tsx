@@ -312,7 +312,7 @@ export function MyWorkPlanningsTab() {
               <Badge variant="secondary" className="text-xs">Mitwirkend</Badge>
             )}
             {planning.is_completed && (
-              <Badge variant="outline" className="text-xs text-green-600 border-green-200">Erledigt</Badge>
+              <Badge variant="outline" className="text-xs text-palette-green border-palette-green/30">Erledigt</Badge>
             )}
           </div>
 
@@ -396,7 +396,7 @@ export function MyWorkPlanningsTab() {
                       }}
                     >
                       {item.is_completed ? (
-                        <CheckSquare className="h-4 w-4 text-green-600" />
+                        <CheckSquare className="h-4 w-4 text-palette-green" />
                       ) : (
                         <Square className="h-4 w-4 text-muted-foreground" />
                       )}
@@ -440,7 +440,7 @@ export function MyWorkPlanningsTab() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={cn("h-7 w-7", planning.is_completed && "text-green-600")}
+                  className={cn("h-7 w-7", planning.is_completed && "text-palette-green")}
                   onClick={(e) => {
                     e.stopPropagation();
                     toggleCompleted(planning.id, !planning.is_completed);

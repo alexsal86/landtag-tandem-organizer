@@ -243,10 +243,10 @@ export function MatrixChatView() {
             <div className={cn(
               "flex items-center gap-1.5 px-2 py-1 rounded-full text-xs",
               isConnecting
-                ? "bg-amber-500/10 text-amber-600"
+                ? "bg-palette-amber/10 text-palette-amber"
                 : isConnected
-                  ? "bg-green-500/10 text-green-600"
-                  : "bg-red-500/10 text-red-600"
+                  ? "bg-palette-green/10 text-palette-green"
+                  : "bg-palette-red/10 text-palette-red"
             )}>
               {isConnecting ? (
                 <>
@@ -347,8 +347,8 @@ export function MatrixChatView() {
                     <span className={cn(
                       "flex items-center gap-1 text-xs px-1.5 py-0.5 rounded",
                       cryptoEnabled 
-                        ? "text-green-600 bg-green-500/10" 
-                        : "text-amber-600 bg-amber-500/10"
+                        ? "text-palette-green bg-palette-green/10" 
+                        : "text-palette-amber bg-palette-amber/10"
                     )}>
                       <Lock className="h-3 w-3" />
                       {cryptoEnabled ? 'E2EE' : 'E2EE nicht verfügbar'}
@@ -409,7 +409,7 @@ export function MatrixChatView() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="text-amber-600 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950"
+                        className="text-palette-amber border-palette-amber/40 hover:bg-palette-amber/10"
                         onClick={async () => {
                           try {
                             await resetCryptoStore();

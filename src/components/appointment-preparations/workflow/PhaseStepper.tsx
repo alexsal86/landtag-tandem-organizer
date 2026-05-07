@@ -25,7 +25,7 @@ export function PhaseStepper({ phases, activePhase, onSelect }: PhaseStepperProp
                   isActive
                     ? "bg-primary text-primary-foreground"
                     : isDone
-                      ? "text-emerald-600 hover:bg-emerald-500/10"
+                      ? "text-palette-green hover:bg-palette-green/10"
                       : "text-muted-foreground hover:bg-muted/60",
                 )}
               >
@@ -35,7 +35,7 @@ export function PhaseStepper({ phases, activePhase, onSelect }: PhaseStepperProp
                     isActive
                       ? "bg-primary-foreground/20"
                       : isDone
-                        ? "bg-emerald-500/15"
+                        ? "bg-palette-green/15"
                         : "bg-muted",
                   )}
                 >

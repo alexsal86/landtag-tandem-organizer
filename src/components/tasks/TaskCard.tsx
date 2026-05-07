@@ -202,8 +202,8 @@ export function TaskCard({
   const getDueDateColor = (dueDate: string | null) => {
     if (!dueDate) return "text-muted-foreground";
     const date = new Date(dueDate);
-    if (isPast(date) && !isToday(date)) return "text-red-500";
-    if (isToday(date)) return "text-orange-500";
+    if (isPast(date) && !isToday(date)) return "text-palette-red";
+    if (isToday(date)) return "text-palette-orange";
     return "text-muted-foreground";
   };
 
@@ -373,7 +373,7 @@ export function TaskCard({
             {followUpDate && (
               <Badge
                 variant="outline"
-                className="mr-1 h-6 px-2 text-[11px] border-amber-400 text-amber-700 bg-amber-50"
+                className="mr-1 h-6 px-2 text-[11px] border-palette-amber/60 text-palette-amber bg-palette-amber/10"
               >
                 <Clock3 className="h-3 w-3 mr-1" />
                 {format(new Date(followUpDate), "dd.MM.yy", { locale: de })}

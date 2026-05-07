@@ -356,7 +356,7 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
                         {format(new Date(pr.created_at), "dd.MM.yyyy", { locale: de })}
                       </span>
                       {pr.status === 'published' && pr.published_at && (
-                        <span className="flex items-center gap-1 text-blue-600">
+                        <span className="flex items-center gap-1 text-palette-blue">
                           <Globe className="h-3 w-3" />
                           Veröffentlicht am {format(new Date(pr.published_at), "dd.MM.yyyy", { locale: de })}
                           {pr.published_by && profiles[pr.published_by] && (
@@ -369,14 +369,14 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
                           href={pr.ghost_post_url} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline"
+                          className="text-palette-blue hover:underline"
                           onClick={(e) => e.stopPropagation()}
                         >
                           Auf Webseite ansehen →
                         </a>
                       )}
                       {pr.email_sent_at && (
-                        <span className="flex items-center gap-1 text-green-600">
+                        <span className="flex items-center gap-1 text-palette-green">
                           <Mail className="h-3 w-3" />
                           E-Mail versandt am {format(new Date(pr.email_sent_at), "dd.MM.yyyy", { locale: de })}
                           {pr.email_sent_by && profiles[pr.email_sent_by] && (

@@ -666,13 +666,13 @@ export function MyWorkCasesWorkspace() {
   const priorityMeta = useCallback((priority: string | null) => {
     switch (priority) {
       case "low":
-        return { color: "text-emerald-500", label: "Niedrig" };
+        return { color: "text-palette-green", label: "Niedrig" };
       case "high":
       case "urgent":
-        return { color: "text-red-500", label: priority === "urgent" ? "Dringend" : "Hoch" };
+        return { color: "text-palette-red", label: priority === "urgent" ? "Dringend" : "Hoch" };
       case "medium":
       default:
-        return { color: "text-amber-500", label: "Mittel" };
+        return { color: "text-palette-amber", label: "Mittel" };
     }
   }, []);
 
@@ -836,7 +836,7 @@ export function MyWorkCasesWorkspace() {
         id: "source-received",
         timestamp: `${editableCaseItem.sourceReceivedAt}T08:00:00`,
         title: "Eingang",
-        accentClass: "bg-sky-500",
+        accentClass: "bg-palette-blue",
         icon: Inbox,
       });
     }
@@ -845,7 +845,7 @@ export function MyWorkCasesWorkspace() {
         id: "due-at",
         timestamp: `${editableCaseItem.dueAt}T18:00:00`,
         title: "Frist",
-        accentClass: "bg-amber-500",
+        accentClass: "bg-palette-amber",
         icon: Timer,
       });
     }

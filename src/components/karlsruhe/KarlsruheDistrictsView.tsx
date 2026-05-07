@@ -389,7 +389,7 @@ export const KarlsruheDistrictsView = () => {
             </div>
             
             <div className="flex items-center gap-2">
-              <div className="flex items-center justify-center w-6 h-6 rounded-full bg-green-500/20 text-lg">
+              <div className="flex items-center justify-center w-6 h-6 rounded-full bg-palette-green/20 text-lg">
                 🏢
               </div>
               <span className="text-sm text-muted-foreground">Stakeholder (Tag-basiert)</span>
@@ -397,7 +397,7 @@ export const KarlsruheDistrictsView = () => {
 
             {showElectionPrecincts && (
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded border border-blue-700 bg-blue-400/20" />
+                <div className="w-6 h-6 rounded border border-palette-blue bg-palette-blue/60/20" />
                 <span className="text-sm text-muted-foreground">Wahlbezirke Landtagswahl 2021</span>
               </div>
             )}
@@ -405,7 +405,7 @@ export const KarlsruheDistrictsView = () => {
             {showHeatmap && (
               <div className="pt-2 border-t">
                 <p className="text-xs text-muted-foreground mb-2">Heatmap-Intensität:</p>
-                <div className="h-3 rounded-full bg-gradient-to-r from-blue-500 via-yellow-500 to-red-500" />
+                <div className="h-3 rounded-full bg-gradient-to-r from-palette-blue via-palette-yellow to-palette-red" />
                 <div className="flex justify-between text-xs text-muted-foreground mt-1">
                   <span>Niedrig</span>
                   <span>Hoch</span>

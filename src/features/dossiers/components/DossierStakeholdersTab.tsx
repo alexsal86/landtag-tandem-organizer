@@ -101,10 +101,10 @@ export function DossierStakeholdersTab({ dossierId }: DossierStakeholdersTabProp
   // Quadrant matrix: x = influence (1..5), y = stance (pro top, contra bottom)
   const stanceY: Record<StakeholderStance, number> = { pro: 0.8, neutral: 0.5, unklar: 0.5, contra: 0.2 };
   const stanceColor: Record<StakeholderStance, string> = {
-    pro: "fill-emerald-500",
-    contra: "fill-rose-500",
+    pro: "fill-palette-green",
+    contra: "fill-palette-rose",
     neutral: "fill-muted-foreground",
-    unklar: "fill-amber-500",
+    unklar: "fill-palette-amber",
   };
 
   return (

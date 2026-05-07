@@ -174,7 +174,7 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
     const hasQuestions = summary.questionCount > 0;
     
     if (hasQuestions) {
-      return 'border-l-orange-500'; // Es gibt Rückfragen
+      return 'border-l-palette-orange'; // Es gibt Rückfragen
     }
     
     if (!allResponsesReceived) {
@@ -183,7 +183,7 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
     
     // Alle haben abgestimmt, keine Rückfragen
     if (summary.yesCount > summary.noCount) {
-      return 'border-l-green-500'; // Mehr ja als nein
+      return 'border-l-palette-green'; // Mehr ja als nein
     } else {
       return 'border-l-red-600'; // Mehr nein als ja (oder gleich)
     }
@@ -212,10 +212,10 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
                     variant="outline" 
                     className={`${
                       summary.questionCount > 0 
-                        ? 'text-orange-600 border-orange-600'
+                        ? 'text-palette-orange border-palette-orange'
                         : allResponsesReceived 
-                          ? 'text-green-600 border-green-600' 
-                          : 'text-orange-600 border-orange-600'
+                          ? 'text-palette-green border-palette-green' 
+                          : 'text-palette-orange border-palette-orange'
                     }`}
                   >
                     {summary.questionCount > 0 
@@ -246,15 +246,15 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
             <CardContent className="pt-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4 text-xs">
-                  <span className="flex items-center text-green-600">
+                  <span className="flex items-center text-palette-green">
                     <Check className="h-3 w-3 mr-1" />
                     {summary.yesCount}
                   </span>
-                  <span className="flex items-center text-orange-600">
+                  <span className="flex items-center text-palette-orange">
                     <MessageCircle className="h-3 w-3 mr-1" />
                     {summary.questionCount}
                   </span>
-                  <span className="flex items-center text-red-600">
+                  <span className="flex items-center text-palette-red">
                     <X className="h-3 w-3 mr-1" />
                     {summary.noCount}
                   </span>
@@ -285,19 +285,19 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
                                 {latestResponse ? (
                                   <div className="flex items-center space-x-2">
                                     {latestResponse.response_type === 'yes' && (
-                                      <Badge variant="outline" className="text-green-600 border-green-600">
+                                      <Badge variant="outline" className="text-palette-green border-palette-green">
                                         <Check className="h-3 w-3 mr-1" />
                                         Ja
                                       </Badge>
                                     )}
                                     {latestResponse.response_type === 'no' && (
-                                      <Badge variant="outline" className="text-red-600 border-red-600">
+                                      <Badge variant="outline" className="text-palette-red border-palette-red">
                                         <X className="h-3 w-3 mr-1" />
                                         Nein
                                       </Badge>
                                     )}
                                     {latestResponse.response_type === 'question' && (
-                                      <Badge variant="outline" className="text-orange-600 border-orange-600">
+                                      <Badge variant="outline" className="text-palette-orange border-palette-orange">
                                         <MessageCircle className="h-3 w-3 mr-1" />
                                         Rückfrage
                                       </Badge>

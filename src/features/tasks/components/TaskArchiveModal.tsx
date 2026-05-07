@@ -369,9 +369,9 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
       case "committee":
         return "bg-government-blue text-white";
       case "constituency":
-        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300";
+        return "bg-palette-purple/20 text-palette-purple";
       case "personal":
-        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300";
+        return "bg-palette-orange/20 text-palette-orange";
     }
   };
 

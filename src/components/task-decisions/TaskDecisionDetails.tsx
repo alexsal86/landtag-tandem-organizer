@@ -836,7 +836,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
                   {summary.responseOptions.some(option => option.key === 'question') && summary.questionCount > 0 ? (
                     <Badge 
                       variant="outline" 
-                      className="text-sm text-orange-600 border-orange-600 bg-orange-50 dark:bg-orange-950"
+                      className="text-sm text-palette-orange border-palette-orange bg-palette-orange/10"
                     >
                       <HelpCircle className="h-3.5 w-3.5 mr-1" />
                       Rückfragen offen
@@ -844,7 +844,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
                   ) : summary.yesCount > summary.noCount ? (
                     <Badge 
                       variant="outline" 
-                      className="text-sm text-green-600 border-green-600 bg-green-50 dark:bg-green-950"
+                      className="text-sm text-palette-green border-palette-green bg-palette-green/10"
                     >
                       <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
                       Angenommen
@@ -852,7 +852,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
                   ) : (
                     <Badge 
                       variant="outline" 
-                      className="text-sm text-red-600 border-red-600 bg-red-50 dark:bg-red-950"
+                      className="text-sm text-palette-red border-palette-red bg-palette-red/10"
                     >
                       <XCircle className="h-3.5 w-3.5 mr-1" />
                       Abgelehnt

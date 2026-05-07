@@ -81,7 +81,7 @@ export const PlannerNoteCard = memo(function PlannerNoteCard({ note, onUpdate, o
                     onClick={(e) => e.stopPropagation()}
                     aria-label="Notizfarbe ändern"
                   >
-                    <span className={cn("h-5 w-5 rounded-full border-2", NOTE_COLORS.find((c) => c.value === note.color)?.solid || "bg-yellow-200")} />
+                    <span className={cn("h-5 w-5 rounded-full border-2", NOTE_COLORS.find((c) => c.value === note.color)?.solid || "bg-palette-yellow/30")} />
                     <ChevronDown className={cn("h-3.5 w-3.5", colors.icon)} />
                   </button>
                 </PopoverTrigger>

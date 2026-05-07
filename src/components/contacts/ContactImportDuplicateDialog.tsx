@@ -43,9 +43,9 @@ export function ContactImportDuplicateDialog({
   const topDuplicate = duplicates[0];
 
   const getMatchColor = (score: number) => {
-    if (score >= 0.9) return "bg-red-100 text-red-800 border-red-200";
-    if (score >= 0.7) return "bg-orange-100 text-orange-800 border-orange-200";
-    return "bg-yellow-100 text-yellow-800 border-yellow-200";
+    if (score >= 0.9) return "bg-palette-red/20 text-palette-red border-palette-red/30";
+    if (score >= 0.7) return "bg-palette-orange/20 text-palette-orange border-palette-orange/30";
+    return "bg-palette-yellow/20 text-palette-yellow border-palette-yellow/30";
   };
 
   return (
@@ -53,7 +53,7 @@ export function ContactImportDuplicateDialog({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-orange-600" />
+            <AlertCircle className="h-5 w-5 text-palette-orange" />
             Mögliches Duplikat gefunden
           </DialogTitle>
           <DialogDescription>
@@ -102,7 +102,7 @@ export function ContactImportDuplicateDialog({
             </h3>
             <div className="space-y-2">
               {duplicates.slice(0, 3).map((dup, index) => (
-                <Card key={index} className="border-l-4 border-orange-500">
+                <Card key={index} className="border-l-4 border-palette-orange">
                   <CardContent className="pt-4">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">

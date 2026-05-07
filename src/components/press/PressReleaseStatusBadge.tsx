@@ -5,23 +5,23 @@ export type PressReleaseStatus = 'draft' | 'pending_approval' | 'revision_reques
 const statusConfig: Record<PressReleaseStatus, { label: string; className: string }> = {
   draft: {
     label: 'Entwurf',
-    className: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
+    className: 'bg-muted text-foreground',
   },
   pending_approval: {
     label: 'Zur Freigabe',
-    className: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+    className: 'bg-palette-orange/20 text-palette-orange',
   },
   revision_requested: {
     label: 'Überarbeitung',
-    className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+    className: 'bg-palette-yellow/20 text-palette-yellow',
   },
   approved: {
     label: 'Freigegeben',
-    className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+    className: 'bg-palette-green/20 text-palette-green',
   },
   published: {
     label: 'Veröffentlicht',
-    className: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    className: 'bg-palette-blue/20 text-palette-blue',
   },
 };
 

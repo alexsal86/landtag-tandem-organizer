@@ -271,8 +271,8 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
   };
 
   const getHabitColor = (habit: HabitWithStats) => {
-    if (habit.isCompletedToday) return 'text-green-500';
-    if (habit.todayCount > 0) return 'text-amber-500';
+    if (habit.isCompletedToday) return 'text-palette-green';
+    if (habit.todayCount > 0) return 'text-palette-amber';
     return 'text-muted-foreground';
   };
 
@@ -346,7 +346,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
                 key={habit.id}
                 className={`p-3 border rounded-lg transition-colors ${
                   habit.isCompletedToday 
-                    ? 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800' 
+                    ? 'bg-palette-green/10 border-palette-green/30' 
                     : 'hover:bg-muted/50'
                 }`}
               >
@@ -357,7 +357,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
                         {habit.name}
                       </h4>
                       {habit.isCompletedToday && (
-                        <Check className="h-4 w-4 text-green-500" />
+                        <Check className="h-4 w-4 text-palette-green" />
                       )}
                     </div>
                     
@@ -378,7 +378,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
                         <div className="flex items-center gap-3 text-xs text-muted-foreground">
                           {showStreak && (
                             <div className="flex items-center gap-1">
-                              <Flame className="h-3 w-3 text-orange-500" />
+                              <Flame className="h-3 w-3 text-palette-orange" />
                               <span>{habit.currentStreak} Tage</span>
                             </div>
                           )}

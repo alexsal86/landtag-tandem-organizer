@@ -238,9 +238,9 @@ export function CalendarTestSuite() {
 
   const getTestStatusColor = (status: TestResult['status']) => {
     switch (status) {
-      case 'pass': return 'bg-green-100 text-green-800 border-green-300';
-      case 'fail': return 'bg-red-100 text-red-800 border-red-300';
-      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      case 'pass': return 'bg-palette-green/20 text-palette-green border-palette-green/40';
+      case 'fail': return 'bg-palette-red/20 text-palette-red border-palette-red/40';
+      case 'pending': return 'bg-palette-yellow/20 text-palette-yellow border-palette-yellow/40';
     }
   };
 
@@ -327,7 +327,7 @@ export function CalendarTestSuite() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="p-4">
-              <h4 className="font-medium mb-2 text-green-600">✅ Erfolgreiche Features</h4>
+              <h4 className="font-medium mb-2 text-palette-green">✅ Erfolgreiche Features</h4>
               <ul className="text-sm space-y-1">
                 <li>• Enhanced Event Components mit besserer UX</li>
                 <li>• Vollständige View-Integration (Tag/Woche/Monat)</li>
@@ -339,7 +339,7 @@ export function CalendarTestSuite() {
             </Card>
             
             <Card className="p-4">
-              <h4 className="font-medium mb-2 text-blue-600">📊 Performance Metrics</h4>
+              <h4 className="font-medium mb-2 text-palette-blue">📊 Performance Metrics</h4>
               <ul className="text-sm space-y-1">
                 <li>• Rendering: {"<"} 100ms für 100 Events</li>
                 <li>• Memory: Optimiert durch Virtual Grid</li>
@@ -351,7 +351,7 @@ export function CalendarTestSuite() {
             </Card>
           </div>
 
-          <Card className="p-4 bg-gradient-to-r from-green-50 to-blue-50">
+          <Card className="p-4 bg-gradient-to-r from-palette-green/10 to-palette-blue/10">
             <h4 className="font-medium mb-2">🏆 Gesamtbewertung</h4>
             <div className="text-sm space-y-2">
               <p>

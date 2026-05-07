@@ -91,7 +91,7 @@ export function ContactGridCard({
               aria-label={contact.is_favorite ? "Favorit entfernen" : "Als Favorit markieren"}
               title={contact.is_favorite ? "Favorit entfernen" : "Als Favorit markieren"}
             >
-              <Star className={`h-4 w-4 transition-colors ${contact.is_favorite ? 'text-yellow-500 fill-current' : 'text-muted-foreground hover:text-yellow-500'}`} />
+              <Star className={`h-4 w-4 transition-colors ${contact.is_favorite ? 'text-palette-yellow fill-current' : 'text-muted-foreground hover:text-palette-yellow'}`} />
             </Button>
           </div>
         </CardHeader>

@@ -442,7 +442,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
                   width: '26px',
                   height: '26px',
                 }}
-                className="rounded-full bg-green-600 text-white shadow-md flex items-center justify-center hover:bg-green-700 transition-colors z-30"
+                className="rounded-full bg-palette-green text-white shadow-md flex items-center justify-center hover:bg-palette-green transition-colors z-30"
               >
                 <Pencil className="h-3 w-3" />
               </button>

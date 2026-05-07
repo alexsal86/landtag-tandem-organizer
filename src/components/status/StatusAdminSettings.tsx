@@ -185,7 +185,7 @@ export const StatusAdminSettings: React.FC = () => {
                     <Input id="color" type="color" value={formData.color} onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))} className="w-full h-10" />
                     <div className="flex gap-2 flex-wrap">
                       {predefinedColors.map((color) => (
-                        <button key={color} type="button" className="w-6 h-6 rounded border-2 border-gray-300 hover:border-gray-500 transition-colors" style={{ backgroundColor: color }} onClick={() => setFormData(prev => ({ ...prev, color }))} />
+                        <button key={color} type="button" className="w-6 h-6 rounded border-2 border-border hover:border-border transition-colors" style={{ backgroundColor: color }} onClick={() => setFormData(prev => ({ ...prev, color }))} />
                       ))}
                     </div>
                   </div>

@@ -360,14 +360,14 @@ export const DashboardAppointments = ({ data }: Props) => {
       {specialDayHint && isSpecialDayHintVisible && <Separator className="my-2" />}
 
       {specialDayHint && isSpecialDayHintVisible && (
-        <div className="group relative bg-amber-50 dark:bg-amber-950/30 border-l-2 border-amber-400 px-3 py-1.5 pr-9 rounded text-sm text-foreground flex items-start gap-2">
-          {HintIcon && <HintIcon className="h-4 w-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />}
+        <div className="group relative bg-palette-amber/10 border-l-2 border-palette-amber/60 px-3 py-1.5 pr-9 rounded text-sm text-foreground flex items-start gap-2">
+          {HintIcon && <HintIcon className="h-4 w-4 mt-0.5 shrink-0 text-palette-amber" />}
           <span dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(specialDayHint.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>')) }} />
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="absolute right-1.5 top-1.5 h-6 w-6 rounded-full text-amber-700 opacity-0 transition-opacity hover:bg-amber-100 hover:text-amber-900 focus-visible:opacity-100 group-hover:opacity-100 dark:text-amber-300 dark:hover:bg-amber-900/60 dark:hover:text-amber-100"
+            className="absolute right-1.5 top-1.5 h-6 w-6 rounded-full text-palette-amber opacity-0 transition-opacity hover:bg-palette-amber/20 hover:text-palette-amber focus-visible:opacity-100 group-hover:opacity-100"
             onClick={dismissSpecialDayHint}
             aria-label="Hinweis ausblenden"
           >

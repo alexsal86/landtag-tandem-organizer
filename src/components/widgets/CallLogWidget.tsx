@@ -379,19 +379,19 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
 
   const getCallTypeIcon = (type: 'outgoing' | 'incoming' | 'missed') => {
     switch (type) {
-      case 'outgoing': return <PhoneCall className="h-4 w-4 text-green-500" />;
-      case 'incoming': return <PhoneIncoming className="h-4 w-4 text-blue-500" />;
-      case 'missed': return <PhoneMissed className="h-4 w-4 text-red-500" />;
+      case 'outgoing': return <PhoneCall className="h-4 w-4 text-palette-green" />;
+      case 'incoming': return <PhoneIncoming className="h-4 w-4 text-palette-blue" />;
+      case 'missed': return <PhoneMissed className="h-4 w-4 text-palette-red" />;
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'urgent': return 'bg-red-500 text-white';
-      case 'high': return 'bg-orange-500 text-white';
-      case 'medium': return 'bg-blue-500 text-white';
-      case 'low': return 'bg-gray-500 text-white';
-      default: return 'bg-gray-500 text-white';
+      case 'urgent': return 'bg-palette-red text-white';
+      case 'high': return 'bg-palette-orange text-white';
+      case 'medium': return 'bg-palette-blue text-white';
+      case 'low': return 'bg-muted text-white';
+      default: return 'bg-muted text-white';
     }
   };
 
@@ -574,7 +574,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
                     className="h-8 text-xs"
                   />
                   {suggestedContact && (
-                    <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded border dark:bg-amber-950/20 dark:text-amber-400">
+                    <div className="text-xs text-palette-amber bg-palette-amber/10 p-2 rounded border">
                       📞 Kontakt bereits vorhanden: {suggestedContact.name}
                       <Button
                         size="sm"
@@ -698,13 +698,13 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
         {showFollowUps && pendingFollowUps.length > 0 && (
           <div className="space-y-2">
             <h4 className="text-sm font-medium flex items-center gap-1">
-              <AlertCircle className="h-4 w-4 text-amber-500" />
+              <AlertCircle className="h-4 w-4 text-palette-amber" />
               Ausstehende Follow-ups
             </h4>
             {pendingFollowUps.slice(0, 3).map(log => (
               <div
                 key={log.id}
-                className="p-2 border rounded-lg bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800"
+                className="p-2 border rounded-lg bg-palette-amber/10 border-palette-amber/30"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
@@ -801,7 +801,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
                           </Badge>
                         )}
                         {log.follow_up_required && !log.follow_up_completed && (
-                          <AlertCircle className="h-3 w-3 text-amber-500" />
+                          <AlertCircle className="h-3 w-3 text-palette-amber" />
                         )}
                       </div>
                       

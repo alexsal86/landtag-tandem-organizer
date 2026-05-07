@@ -23,11 +23,11 @@ function formatDeadline(deadline: string | null): { label: string; isOverdue: bo
 }
 
 const PROMPT_COLOR_CLASS: Record<string, string> = {
-  green: 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/40 dark:bg-emerald-950/30',
-  red: 'border-red-200 bg-red-50 dark:border-red-900/40 dark:bg-red-950/30',
-  orange: 'border-orange-200 bg-orange-50 dark:border-orange-900/40 dark:bg-orange-950/30',
-  yellow: 'border-yellow-200 bg-yellow-50 dark:border-yellow-900/40 dark:bg-yellow-950/30',
-  blue: 'border-blue-200 bg-blue-50 dark:border-blue-900/40 dark:bg-blue-950/30',
+  green: 'border-palette-green/30 bg-palette-green/10',
+  red: 'border-palette-red/30 bg-palette-red/10',
+  orange: 'border-palette-orange/30 bg-palette-orange/10',
+  yellow: 'border-palette-yellow/30 bg-palette-yellow/10',
+  blue: 'border-palette-blue/30 bg-palette-blue/10',
   default: 'border-border bg-muted/40',
 };
 
@@ -98,7 +98,7 @@ function DecisionRow({ decision, onRefresh, onOpen, onPromptOpen, onPromptClose,
     >
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <Vote className="h-3.5 w-3.5 shrink-0 text-purple-500" />
+          <Vote className="h-3.5 w-3.5 shrink-0 text-palette-purple" />
           <span className="text-sm font-medium truncate">{decision.title}</span>
         </div>
         <span className={`text-xs shrink-0 tabular-nums ${isOverdue ? 'text-destructive' : 'text-muted-foreground'}`}>
@@ -108,9 +108,9 @@ function DecisionRow({ decision, onRefresh, onOpen, onPromptOpen, onPromptClose,
 
       {summary.total > 0 && (
         <div className="flex items-center gap-1 mb-2" aria-hidden>
-          {Array.from({ length: summary.yesCount }).map((_, i) => <span key={`y${i}`} className="h-1.5 flex-1 rounded-sm bg-emerald-500" />)}
+          {Array.from({ length: summary.yesCount }).map((_, i) => <span key={`y${i}`} className="h-1.5 flex-1 rounded-sm bg-palette-green" />)}
           {Array.from({ length: summary.noCount }).map((_, i) => <span key={`n${i}`} className="h-1.5 flex-1 rounded-sm bg-destructive" />)}
-          {Array.from({ length: summary.questionCount }).map((_, i) => <span key={`q${i}`} className="h-1.5 flex-1 rounded-sm bg-amber-500" />)}
+          {Array.from({ length: summary.questionCount }).map((_, i) => <span key={`q${i}`} className="h-1.5 flex-1 rounded-sm bg-palette-amber" />)}
           {Array.from({ length: summary.pending }).map((_, i) => <span key={`p${i}`} className="h-1.5 flex-1 rounded-sm bg-muted" />)}
         </div>
       )}

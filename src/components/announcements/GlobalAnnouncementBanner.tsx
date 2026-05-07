@@ -9,32 +9,32 @@ import { de } from "date-fns/locale";
 
 const priorityStyles = {
   critical: {
-    bg: "bg-red-100 dark:bg-red-950/50",
-    border: "border-red-500",
-    text: "text-red-800 dark:text-red-200",
+    bg: "bg-palette-red/20",
+    border: "border-palette-red",
+    text: "text-palette-red",
     icon: AlertTriangle,
-    iconColor: "text-red-600 dark:text-red-400",
+    iconColor: "text-palette-red",
   },
   warning: {
-    bg: "bg-orange-100 dark:bg-orange-950/50",
-    border: "border-orange-500",
-    text: "text-orange-800 dark:text-orange-200",
+    bg: "bg-palette-orange/20",
+    border: "border-palette-orange",
+    text: "text-palette-orange",
     icon: AlertCircle,
-    iconColor: "text-orange-600 dark:text-orange-400",
+    iconColor: "text-palette-orange",
   },
   info: {
-    bg: "bg-blue-100 dark:bg-blue-950/50",
-    border: "border-blue-500",
-    text: "text-blue-800 dark:text-blue-200",
+    bg: "bg-palette-blue/20",
+    border: "border-palette-blue",
+    text: "text-palette-blue",
     icon: Info,
-    iconColor: "text-blue-600 dark:text-blue-400",
+    iconColor: "text-palette-blue",
   },
   success: {
-    bg: "bg-green-100 dark:bg-green-950/50",
-    border: "border-green-500",
-    text: "text-green-800 dark:text-green-200",
+    bg: "bg-palette-green/20",
+    border: "border-palette-green",
+    text: "text-palette-green",
     icon: CheckCircle,
-    iconColor: "text-green-600 dark:text-green-400",
+    iconColor: "text-palette-green",
   },
 };
 

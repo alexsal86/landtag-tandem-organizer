@@ -71,11 +71,11 @@ interface UseCombinedTimeEntriesParams {
 
 const typeConfig = {
   work: { icon: '', label: null, className: '' },
-  sick: { icon: '🤒', label: 'Krankheit', className: 'bg-orange-50 dark:bg-orange-950/20' },
-  vacation: { icon: '🏖️', label: 'Urlaub', className: 'bg-blue-50 dark:bg-blue-950/20' },
-  holiday: { icon: '🎉', label: 'Feiertag', className: 'bg-green-50 dark:bg-green-950/20' },
-  medical: { icon: '🏥', label: 'Arzttermin', className: 'bg-purple-50 dark:bg-purple-950/20' },
-  overtime_reduction: { icon: '⏰', label: 'Überstundenabbau', className: 'bg-amber-50 dark:bg-amber-950/20' },
+  sick: { icon: '🤒', label: 'Krankheit', className: 'bg-palette-orange/10' },
+  vacation: { icon: '🏖️', label: 'Urlaub', className: 'bg-palette-blue/10' },
+  holiday: { icon: '🎉', label: 'Feiertag', className: 'bg-palette-green/10' },
+  medical: { icon: '🏥', label: 'Arzttermin', className: 'bg-palette-purple/10' },
+  overtime_reduction: { icon: '⏰', label: 'Überstundenabbau', className: 'bg-palette-amber/10' },
 };
 
 export function useCombinedTimeEntries({

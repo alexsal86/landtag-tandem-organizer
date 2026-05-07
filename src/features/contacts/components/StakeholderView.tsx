@@ -53,11 +53,11 @@ export function StakeholderView({
 
   const getCategoryColor = (category: Contact["category"]) => {
     switch (category) {
-      case "citizen": return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
-      case "colleague": return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
-      case "business": return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300";
-      case "media": return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300";
-      case "lobbyist": return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
+      case "citizen": return "bg-palette-blue/20 text-palette-blue";
+      case "colleague": return "bg-palette-green/20 text-palette-green";
+      case "business": return "bg-palette-purple/20 text-palette-purple";
+      case "media": return "bg-palette-orange/20 text-palette-orange";
+      case "lobbyist": return "bg-muted text-foreground";
       default: return "bg-muted text-muted-foreground";
     }
   };

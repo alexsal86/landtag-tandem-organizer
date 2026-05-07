@@ -169,19 +169,19 @@ export function EnhancedCalendarGrid({
             <h5 className="font-medium">Enhanced Layout Features:</h5>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="flex items-center gap-1">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <div className="w-2 h-2 bg-palette-green rounded-full"></div>
                 <span>Überlappungserkennung</span>
               </div>
               <div className="flex items-center gap-1">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <div className="w-2 h-2 bg-palette-green rounded-full"></div>
                 <span>Intelligente Positionierung</span>
               </div>
               <div className="flex items-center gap-1">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <div className="w-2 h-2 bg-palette-green rounded-full"></div>
                 <span>Performance-Optimierung</span>
               </div>
               <div className="flex items-center gap-1">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <div className="w-2 h-2 bg-palette-green rounded-full"></div>
                 <span>Konfliktbehandlung</span>
               </div>
             </div>
@@ -201,7 +201,7 @@ export function EnhancedCalendarGrid({
                       key={event.id} 
                       className={`p-2 rounded border cursor-pointer transition-all ${
                         isSelected ? 'ring-2 ring-primary' : ''
-                      } ${conflicts.length > 0 ? 'border-amber-300 bg-amber-50' : 'border-border'}`}
+                      } ${conflicts.length > 0 ? 'border-palette-amber/40 bg-palette-amber/10' : 'border-border'}`}
                       onClick={() => onEventClick(event)}
                     >
                       <div className="flex justify-between items-center">
@@ -211,7 +211,7 @@ export function EnhancedCalendarGrid({
                           compact={true}
                         />
                         {conflicts.length > 0 && (
-                          <div className="text-xs text-amber-600 font-medium">
+                          <div className="text-xs text-palette-amber font-medium">
                             {conflicts.length} Konflikte
                           </div>
                         )}

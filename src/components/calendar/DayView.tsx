@@ -256,9 +256,9 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
       case "deadline":
         return "bg-destructive text-destructive-foreground";
       case "blocked":
-        return "bg-orange-500 text-white";
+        return "bg-palette-orange text-white";
       case "veranstaltung":
-        return "bg-purple-600 text-white";
+        return "bg-palette-purple text-white";
       default:
         return "bg-muted text-muted-foreground";
     }
@@ -341,11 +341,11 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
                   style={{ top: `${currentTimePos}px` }}
                 >
                   <div className="flex items-center">
-                    <div className="w-[80px] bg-red-500 h-0.5"></div>
-                    <div className="flex-1 bg-red-500 h-0.5"></div>
+                    <div className="w-[80px] bg-palette-red h-0.5"></div>
+                    <div className="flex-1 bg-palette-red h-0.5"></div>
                   </div>
                   <div 
-                    className="absolute -left-1 -top-1 w-2 h-2 bg-red-500 rounded-full"
+                    className="absolute -left-1 -top-1 w-2 h-2 bg-palette-red rounded-full"
                   ></div>
                 </div>
               );

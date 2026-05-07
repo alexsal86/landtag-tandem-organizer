@@ -154,10 +154,10 @@ function GuestResponse() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-palette-blue/10 to-palette-purple/10">
         <div className="text-center">
           <div className="animate-pulse">
-            <Calendar className="h-16 w-16 mx-auto mb-4 text-blue-500" />
+            <Calendar className="h-16 w-16 mx-auto mb-4 text-palette-blue" />
           </div>
           <p className="text-muted-foreground">Lade Einladung...</p>
         </div>
@@ -167,10 +167,10 @@ function GuestResponse() {
 
   if (error || !appointment || !guest) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-pink-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-palette-red/10 to-palette-pink/10">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center">
-            <XCircle className="h-16 w-16 mx-auto mb-4 text-red-500" />
+            <XCircle className="h-16 w-16 mx-auto mb-4 text-palette-red" />
             <h2 className="text-xl font-semibold mb-2">Einladung nicht gefunden</h2>
             <p className="text-muted-foreground">
               {error || 'Die Einladung ist möglicherweise abgelaufen oder ungültig.'}
@@ -184,13 +184,13 @@ function GuestResponse() {
   const hasResponded = guest.status !== 'invited';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-palette-blue/10 to-palette-purple/10 py-8 px-4">
       <div className="max-w-2xl mx-auto">
         
         {/* Header */}
         <div className="text-center mb-8">
-          <Calendar className="h-16 w-16 mx-auto mb-4 text-blue-600" />
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Termineinladung</h1>
+          <Calendar className="h-16 w-16 mx-auto mb-4 text-palette-blue" />
+          <h1 className="text-3xl font-bold text-foreground mb-2">Termineinladung</h1>
           <p className="text-muted-foreground">
             Sie wurden zu folgendem Termin eingeladen
           </p>
@@ -205,7 +205,7 @@ function GuestResponse() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-blue-600" />
+                <Calendar className="h-5 w-5 text-palette-blue" />
                 <div>
                   <p className="font-medium">Datum</p>
                   <p className="text-sm text-muted-foreground">
@@ -215,7 +215,7 @@ function GuestResponse() {
               </div>
               
               <div className="flex items-center gap-3">
-                <Clock className="h-5 w-5 text-green-600" />
+                <Clock className="h-5 w-5 text-palette-green" />
                 <div>
                   <p className="font-medium">Zeit</p>
                   <p className="text-sm text-muted-foreground">
@@ -227,7 +227,7 @@ function GuestResponse() {
 
             {appointment.location && (
               <div className="flex items-center gap-3">
-                <MapPin className="h-5 w-5 text-red-600" />
+                <MapPin className="h-5 w-5 text-palette-red" />
                 <div>
                   <p className="font-medium">Ort</p>
                   <p className="text-sm text-muted-foreground">{appointment.location}</p>
@@ -236,7 +236,7 @@ function GuestResponse() {
             )}
 
             <div className="flex items-center gap-3">
-              <User className="h-5 w-5 text-purple-600" />
+              <User className="h-5 w-5 text-palette-purple" />
               <div>
                 <p className="font-medium">Eingeladen als</p>
                 <p className="text-sm text-muted-foreground">{guest.name}</p>
@@ -263,9 +263,9 @@ function GuestResponse() {
             <CardTitle className="flex items-center gap-2">
               {hasResponded ? (
                 guest.status === 'confirmed' ? (
-                  <CheckCircle className="h-6 w-6 text-green-600" />
+                  <CheckCircle className="h-6 w-6 text-palette-green" />
                 ) : (
-                  <XCircle className="h-6 w-6 text-red-600" />
+                  <XCircle className="h-6 w-6 text-palette-red" />
                 )
               ) : null}
               {hasResponded ? 'Ihre Antwort' : 'Bitte antworten Sie'}

@@ -210,7 +210,7 @@ export function RoomList({ rooms, selectedRoomId, onSelectRoom }: RoomListProps)
                       </span>
                       {room.isEncrypted && (
                         <span title="Ende-zu-Ende verschlüsselt">
-                          <Lock className="h-3 w-3 text-green-500 flex-shrink-0" />
+                          <Lock className="h-3 w-3 text-palette-green flex-shrink-0" />
                         </span>
                       )}
                     </div>

@@ -23,10 +23,10 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
 const priorityConfig = {
-  critical: { label: "Kritisch", icon: AlertTriangle, color: "bg-red-500", textColor: "text-red-700 dark:text-red-300" },
-  warning: { label: "Warnung", icon: AlertCircle, color: "bg-orange-500", textColor: "text-orange-700 dark:text-orange-300" },
-  info: { label: "Info", icon: Info, color: "bg-blue-500", textColor: "text-blue-700 dark:text-blue-300" },
-  success: { label: "Erfolg", icon: CheckCircle, color: "bg-green-500", textColor: "text-green-700 dark:text-green-300" },
+  critical: { label: "Kritisch", icon: AlertTriangle, color: "bg-palette-red", textColor: "text-palette-red" },
+  warning: { label: "Warnung", icon: AlertCircle, color: "bg-palette-orange", textColor: "text-palette-orange" },
+  info: { label: "Info", icon: Info, color: "bg-palette-blue", textColor: "text-palette-blue" },
+  success: { label: "Erfolg", icon: CheckCircle, color: "bg-palette-green", textColor: "text-palette-green" },
 };
 
 export function TeamAnnouncementsManager() {

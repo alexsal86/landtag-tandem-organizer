@@ -82,7 +82,7 @@ export function TimeTrackingView() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className={`text-3xl font-bold ${data.yearlyBalance >= 0 ? "text-green-600" : "text-destructive"}`}>
+              <div className={`text-3xl font-bold ${data.yearlyBalance >= 0 ? "text-palette-green" : "text-destructive"}`}>
                 {data.yearlyBalance >= 0 ? "+" : ""}{fmt(data.yearlyBalance)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">Summe aller Monate bis heute</p>
@@ -92,7 +92,7 @@ export function TimeTrackingView() {
                     <TooltipProvider key={idx}>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Badge variant={mb.balance >= 0 ? "default" : "destructive"} className={`cursor-help ${mb.balance >= 0 ? "bg-green-100 text-green-700 hover:bg-green-200" : ""}`}>
+                          <Badge variant={mb.balance >= 0 ? "default" : "destructive"} className={`cursor-help ${mb.balance >= 0 ? "bg-palette-green/20 text-palette-green hover:bg-palette-green/30" : ""}`}>
                             {format(mb.month, "MMM", { locale: de })}: {mb.balance >= 0 ? "+" : ""}{fmt(mb.balance)}
                           </Badge>
                         </TooltipTrigger>
@@ -104,7 +104,7 @@ export function TimeTrackingView() {
                             <div className="flex justify-between gap-4"><span>Gutschriften:</span><span>+{fmt(mb.creditMinutes)}</span></div>
                             <div className="flex justify-between gap-4 font-medium border-t pt-1">
                               <span>Saldo:</span>
-                              <span className={mb.balance >= 0 ? "text-green-600" : "text-destructive"}>{mb.balance >= 0 ? "+" : ""}{fmt(mb.balance)}</span>
+                              <span className={mb.balance >= 0 ? "text-palette-green" : "text-destructive"}>{mb.balance >= 0 ? "+" : ""}{fmt(mb.balance)}</span>
                             </div>
                           </div>
                         </TooltipContent>
@@ -131,14 +131,14 @@ export function TimeTrackingView() {
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <div className="flex justify-between cursor-help"><span className="text-muted-foreground">Gutschriften:</span><span className="font-mono text-blue-600">+{fmt(data.monthlyTotals.credit)}</span></div>
+                          <div className="flex justify-between cursor-help"><span className="text-muted-foreground">Gutschriften:</span><span className="font-mono text-palette-blue">+{fmt(data.monthlyTotals.credit)}</span></div>
                         </TooltipTrigger>
                         <TooltipContent side="left" className="max-w-xs">
                           <div className="space-y-1 text-xs">
                             {data.monthlyTotals.holidayCount > 0 && <div className="flex justify-between gap-4"><span>🎉 Feiertage:</span><span className="font-mono">{data.monthlyTotals.holidayCount} Tage (kein Soll)</span></div>}
                             {data.monthlyTotals.sickMinutes > 0 && <div className="flex justify-between gap-4"><span>🤒 Krankheit:</span><span className="font-mono">{fmt(data.monthlyTotals.sickMinutes)}</span></div>}
                             {data.monthlyTotals.vacationMinutes > 0 && <div className="flex justify-between gap-4"><span>🏖️ Urlaub:</span><span className="font-mono">{fmt(data.monthlyTotals.vacationMinutes)}</span></div>}
-                            {data.monthlyTotals.overtimeMinutes > 0 && <div className="flex justify-between gap-4"><span>⏰ Überstundenabbau (Abzug):</span><span className="font-mono text-amber-700 dark:text-amber-300">-{fmt(data.monthlyTotals.overtimeMinutes)}</span></div>}
+                            {data.monthlyTotals.overtimeMinutes > 0 && <div className="flex justify-between gap-4"><span>⏰ Überstundenabbau (Abzug):</span><span className="font-mono text-palette-amber">-{fmt(data.monthlyTotals.overtimeMinutes)}</span></div>}
                             {data.monthlyTotals.medicalMinutes > 0 && <div className="flex justify-between gap-4"><span>🏥 Arzttermine:</span><span className="font-mono">{fmt(data.monthlyTotals.medicalMinutes)}</span></div>}
                             {data.monthlyTotals.credit === 0 && <p className="text-muted-foreground">Keine Gutschriften in diesem Monat</p>}
                           </div>
@@ -153,8 +153,8 @@ export function TimeTrackingView() {
                   <div className="pl-6 space-y-1 text-sm">
                     <div className="flex justify-between"><span className="text-muted-foreground">Monatssoll:</span><span className="font-mono">{fmt(data.monthlyTotals.target)}</span></div>
                     <div className="flex justify-between">
-                      <span className={data.monthlyTotals.difference >= 0 ? "text-green-600" : "text-red-600"}>Differenz:</span>
-                      <span className={`font-mono font-bold ${data.monthlyTotals.difference >= 0 ? "text-green-600" : "text-red-600"}`}>{data.monthlyTotals.difference >= 0 ? "+" : ""}{fmt(Math.abs(data.monthlyTotals.difference))}</span>
+                      <span className={data.monthlyTotals.difference >= 0 ? "text-palette-green" : "text-palette-red"}>Differenz:</span>
+                      <span className={`font-mono font-bold ${data.monthlyTotals.difference >= 0 ? "text-palette-green" : "text-palette-red"}`}>{data.monthlyTotals.difference >= 0 ? "+" : ""}{fmt(Math.abs(data.monthlyTotals.difference))}</span>
                     </div>
                     <div className="flex justify-between"><span className="text-muted-foreground">Status:</span><span className="font-mono">{data.monthlyTotals.target > 0 ? Math.round(data.monthlyTotals.totalActual / data.monthlyTotals.target * 100) : 0}% erfüllt</span></div>
                   </div>
@@ -165,10 +165,10 @@ export function TimeTrackingView() {
                     <div className="pl-6 space-y-1 text-sm">
                       <div className="flex justify-between"><span className="text-muted-foreground">Soll ({data.projectionTotals.workedDaysSoFar}/{data.monthlyTotals.workingDays} AT):</span><span className="font-mono">{fmt(data.projectionTotals.targetSoFar)}</span></div>
                       <div className="flex justify-between"><span className="text-muted-foreground">Gearbeitet:</span><span className="font-mono">{fmt(data.projectionTotals.workedSoFar || 0)}</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">+ Gutschriften:</span><span className="font-mono text-blue-600">+{fmt(data.projectionTotals.creditSoFar || 0)}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">+ Gutschriften:</span><span className="font-mono text-palette-blue">+{fmt(data.projectionTotals.creditSoFar || 0)}</span></div>
                       <div className="flex justify-between">
-                        <span className={data.projectionTotals.differenceSoFar >= 0 ? "text-green-600" : "text-red-600"}>Differenz:</span>
-                        <span className={`font-mono font-bold ${data.projectionTotals.differenceSoFar >= 0 ? "text-green-600" : "text-red-600"}`}>{data.projectionTotals.differenceSoFar >= 0 ? "+" : ""}{fmt(Math.abs(data.projectionTotals.differenceSoFar))}</span>
+                        <span className={data.projectionTotals.differenceSoFar >= 0 ? "text-palette-green" : "text-palette-red"}>Differenz:</span>
+                        <span className={`font-mono font-bold ${data.projectionTotals.differenceSoFar >= 0 ? "text-palette-green" : "text-palette-red"}`}>{data.projectionTotals.differenceSoFar >= 0 ? "+" : ""}{fmt(Math.abs(data.projectionTotals.differenceSoFar))}</span>
                       </div>
                     </div>
                   </div>
@@ -229,7 +229,7 @@ export function TimeTrackingView() {
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-300 dark:border-blue-800 shrink-0">✏️</Badge>
+                                    <Badge variant="outline" className="bg-palette-blue/10 text-palette-blue border-palette-blue/30 shrink-0">✏️</Badge>
                                   </TooltipTrigger>
                                   <TooltipContent>
                                     <p className="font-medium">Bearbeitet von Admin</p>
@@ -247,7 +247,7 @@ export function TimeTrackingView() {
                               <Button variant="ghost" size="icon" onClick={() => ops.handleEditEntry(entry as TimeEntryRow)} title="Bearbeiten"><Edit className="h-4 w-4" /></Button>
                             )}
                             {entry.is_deletable && (
-                              <Button variant="ghost" size="icon" onClick={() => ops.handleDeleteEntry(entry.id)} title="Löschen"><Trash2 className="h-4 w-4 text-red-500" /></Button>
+                              <Button variant="ghost" size="icon" onClick={() => ops.handleDeleteEntry(entry.id)} title="Löschen"><Trash2 className="h-4 w-4 text-palette-red" /></Button>
                             )}
                           </div>
                         </TableCell>
@@ -349,15 +349,15 @@ export function TimeTrackingView() {
                         <TableCell className="font-medium">{format(mb.month, "MMMM", { locale: de })}</TableCell>
                         <TableCell className="text-right">{fmt(mb.targetMinutes)}</TableCell>
                         <TableCell className="text-right">{fmt(mb.workedMinutes)}</TableCell>
-                        <TableCell className="text-right text-blue-600">+{fmt(mb.creditMinutes)}</TableCell>
-                        <TableCell className={`text-right font-medium ${mb.balance >= 0 ? "text-green-600" : "text-destructive"}`}>{mb.balance >= 0 ? "+" : ""}{fmt(mb.balance)}</TableCell>
-                        <TableCell className={`text-right font-bold ${cumulative >= 0 ? "text-green-600" : "text-destructive"}`}>{cumulative >= 0 ? "+" : ""}{fmt(cumulative)}</TableCell>
+                        <TableCell className="text-right text-palette-blue">+{fmt(mb.creditMinutes)}</TableCell>
+                        <TableCell className={`text-right font-medium ${mb.balance >= 0 ? "text-palette-green" : "text-destructive"}`}>{mb.balance >= 0 ? "+" : ""}{fmt(mb.balance)}</TableCell>
+                        <TableCell className={`text-right font-bold ${cumulative >= 0 ? "text-palette-green" : "text-destructive"}`}>{cumulative >= 0 ? "+" : ""}{fmt(cumulative)}</TableCell>
                       </TableRow>
                     );
                   })}
                   <TableRow className="bg-muted/50 font-bold">
                     <TableCell colSpan={4}>Gesamt {getYear(selectedMonth)}</TableCell>
-                    <TableCell className={`text-right ${data.yearlyBalance >= 0 ? "text-green-600" : "text-destructive"}`}>{data.yearlyBalance >= 0 ? "+" : ""}{fmt(data.yearlyBalance)}</TableCell>
+                    <TableCell className={`text-right ${data.yearlyBalance >= 0 ? "text-palette-green" : "text-destructive"}`}>{data.yearlyBalance >= 0 ? "+" : ""}{fmt(data.yearlyBalance)}</TableCell>
                     <TableCell></TableCell>
                   </TableRow>
                 </TableBody>

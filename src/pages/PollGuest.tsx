@@ -11,7 +11,7 @@ export default function PollGuest() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600">Ungültiger Link</h1>
+          <h1 className="text-2xl font-bold text-palette-red">Ungültiger Link</h1>
           <p className="text-muted-foreground mt-2">
             Der Abstimmungslink ist ungültig oder beschädigt.
           </p>

@@ -161,7 +161,7 @@ export function DossierSummaryTab({ dossier, recentEntries }: DossierSummaryTabP
         <section>
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold flex items-center gap-1.5">
-              <Scale className="h-4 w-4 text-blue-600" /> Positionen
+              <Scale className="h-4 w-4 text-palette-blue" /> Positionen
             </h3>
             {!editingPositions && (
               <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setEditingPositions(true)}>
@@ -189,7 +189,7 @@ export function DossierSummaryTab({ dossier, recentEntries }: DossierSummaryTabP
               </div>
             </div>
           ) : dossier.positions?.trim() ? (
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed rounded-md bg-blue-50/60 border border-blue-200/70 p-3">
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed rounded-md bg-palette-blue/10 border border-palette-blue/30/70 p-3">
               {dossier.positions}
             </p>
           ) : (

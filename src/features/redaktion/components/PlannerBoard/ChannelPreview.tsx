@@ -41,7 +41,7 @@ export function ChannelPreview({
     return (
       <div className="rounded-md border bg-background text-sm shadow-sm overflow-hidden max-w-sm">
         <div className="flex items-center gap-2 px-3 py-2 border-b">
-          <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-pink-500 to-yellow-400" />
+          <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-palette-pink to-palette-yellow/60" />
           <span className="font-semibold text-xs">{authorName}</span>
         </div>
         {imageUrl ? (
@@ -102,7 +102,7 @@ export function ChannelPreview({
     return (
       <div className="rounded-md border bg-background text-sm p-3 max-w-sm shadow-sm">
         <div className="flex items-center gap-2 mb-2">
-          <div className="h-10 w-10 rounded-full bg-blue-600" />
+          <div className="h-10 w-10 rounded-full bg-palette-blue" />
           <div>
             <p className="font-semibold text-xs">{authorName}</p>
             <p className="text-[11px] text-muted-foreground">Beitrag · Jetzt</p>
@@ -123,7 +123,7 @@ export function ChannelPreview({
     return (
       <div className="rounded-md border bg-background text-sm p-3 max-w-sm shadow-sm">
         <div className="flex items-center gap-2 mb-2">
-          <div className="h-10 w-10 rounded-full bg-blue-500" />
+          <div className="h-10 w-10 rounded-full bg-palette-blue" />
           <div>
             <p className="font-semibold text-xs">{authorName}</p>
             <p className="text-[11px] text-muted-foreground">Jetzt · Öffentlich</p>

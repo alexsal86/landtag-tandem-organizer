@@ -296,8 +296,8 @@ export function QuickNotesList({
                   <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors">
                     <div className="flex items-center gap-2">
                       <ChevronDown className={cn("h-4 w-4 transition-transform", !hook.followUpExpanded && "-rotate-90")} />
-                      <Clock className="h-4 w-4 text-amber-600" />
-                      <span className="text-xs font-medium text-amber-600">Fällige Wiedervorlagen</span>
+                      <Clock className="h-4 w-4 text-palette-amber" />
+                      <span className="text-xs font-medium text-palette-amber">Fällige Wiedervorlagen</span>
                       <Badge variant="destructive" className="text-xs px-1.5 py-0">{hook.followUpNotes.length}</Badge>
                     </div>
                   </CollapsibleTrigger>
@@ -318,7 +318,7 @@ export function QuickNotesList({
               <div key={group.level}>
                 {index > 0 && <Separator className="my-3" />}
                 <div className="flex items-center gap-2 mb-2">
-                  {group.level > 0 && <span className="text-amber-500 text-sm">{'★'.repeat(group.level)}</span>}
+                  {group.level > 0 && <span className="text-palette-amber text-sm">{'★'.repeat(group.level)}</span>}
                   <span className="text-xs font-medium text-muted-foreground">{group.label}</span>
                 </div>
                 <Droppable droppableId={`level-${group.level}`}>

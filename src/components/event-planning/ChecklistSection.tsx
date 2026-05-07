@@ -280,7 +280,7 @@ export function ChecklistSection(props: ChecklistSectionProps) {
                 <Paperclip className="h-3 w-3" />
                 {(itemDocuments[item.id]?.length || 0) > 0 && <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full text-[10px] w-4 h-4 flex items-center justify-center">{itemDocuments[item.id]?.length}</span>}
               </Button>
-              <Button variant="ghost" size="sm" className={cn("h-7 w-7 p-0", itemEmailActions[item.id]?.is_enabled && "text-blue-500")} onClick={() => { setSelectedEmailItemId(item.id); setEmailDialogOpen(true); }}>
+              <Button variant="ghost" size="sm" className={cn("h-7 w-7 p-0", itemEmailActions[item.id]?.is_enabled && "text-palette-blue")} onClick={() => { setSelectedEmailItemId(item.id); setEmailDialogOpen(true); }}>
                 <Mail className="h-3 w-3" />
               </Button>
               <Button variant="ghost" size="sm" onClick={() => deleteChecklistItem(item.id)} className="h-7 w-7 p-0 text-destructive hover:text-destructive">

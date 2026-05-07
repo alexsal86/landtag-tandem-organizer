@@ -175,9 +175,9 @@ export const getDecisionSummaryItems = (decision: MyWorkDecision, isAppointmentR
   }
 
   return [
-    { key: "yes", label: isAppointmentRequest ? "Zusage" : "Ja", count: summary.yesCount, textClass: "text-green-600" },
-    { key: "no", label: isAppointmentRequest ? "Absage" : "Nein", count: summary.noCount, textClass: "text-red-600" },
-    { key: "question", label: "Rückfrage", count: summary.questionCount, textClass: "text-orange-600" },
+    { key: "yes", label: isAppointmentRequest ? "Zusage" : "Ja", count: summary.yesCount, textClass: "text-palette-green" },
+    { key: "no", label: isAppointmentRequest ? "Absage" : "Nein", count: summary.noCount, textClass: "text-palette-red" },
+    { key: "question", label: "Rückfrage", count: summary.questionCount, textClass: "text-palette-orange" },
   ];
 };
 
@@ -196,9 +196,9 @@ export const getWinningDecisionResponse = (
 
   const textClass = isAppointmentRequest
     ? winner.key === "yes"
-      ? "text-green-600"
+      ? "text-palette-green"
       : winner.key === "no"
-        ? "text-red-600"
+        ? "text-palette-red"
         : winner.textClass
     : winner.textClass;
 

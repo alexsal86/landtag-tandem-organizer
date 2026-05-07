@@ -84,9 +84,9 @@ export function CalendarImplementationStatus() {
   const getStatusIcon = (status: FeatureStatus['status']) => {
     switch (status) {
       case 'complete':
-        return <CheckCircle2 className="w-4 h-4 text-green-500" />;
+        return <CheckCircle2 className="w-4 h-4 text-palette-green" />;
       case 'partial':
-        return <AlertCircle className="w-4 h-4 text-yellow-500" />;
+        return <AlertCircle className="w-4 h-4 text-palette-yellow" />;
       case 'missing':
         return <Circle className="w-4 h-4 text-muted-foreground" />;
     }
@@ -95,9 +95,9 @@ export function CalendarImplementationStatus() {
   const getStatusBadge = (status: FeatureStatus['status']) => {
     switch (status) {
       case 'complete':
-        return <Badge variant="secondary" className="bg-green-100 text-green-800">Complete</Badge>;
+        return <Badge variant="secondary" className="bg-palette-green/20 text-palette-green">Complete</Badge>;
       case 'partial':
-        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Partial</Badge>;
+        return <Badge variant="secondary" className="bg-palette-yellow/20 text-palette-yellow">Partial</Badge>;
       case 'missing':
         return <Badge variant="outline">Missing</Badge>;
     }

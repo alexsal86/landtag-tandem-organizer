@@ -96,11 +96,11 @@ export function SubtasksSection({
                 <div className="flex-1">
                   <p className={`text-sm font-medium ${subtask.is_completed ? "line-through text-muted-foreground" : ""}`}>{subtask.title || subtask.description}</p>
                   {subtask.is_completed && subtask.result_text && (
-                    <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded border-l-4 border-green-500">
-                      <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">Ergebnis:</p>
-                      <p className="text-sm text-green-800 dark:text-green-200">{subtask.result_text}</p>
+                    <div className="mt-2 p-2 bg-palette-green/10 rounded border-l-4 border-palette-green">
+                      <p className="text-xs font-medium text-palette-green mb-1">Ergebnis:</p>
+                      <p className="text-sm text-palette-green">{subtask.result_text}</p>
                       {subtask.completed_at && (
-                        <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                        <p className="text-xs text-palette-green mt-1">
                           Erledigt am: {new Date(subtask.completed_at).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                         </p>
                       )}

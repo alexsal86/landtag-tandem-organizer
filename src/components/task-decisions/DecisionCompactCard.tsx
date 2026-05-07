@@ -104,18 +104,18 @@ export function DecisionCompactCard({
         <div className="flex items-center justify-between gap-2 mb-2">
           <div className="flex items-center gap-2 flex-wrap">
             {summary.questionCount > 0 ? (
-              <Badge className="bg-orange-100 hover:bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400 text-sm px-3 py-1 font-bold">
-                <span className="w-2 h-2 rounded-full bg-orange-500 mr-1.5 inline-block" />
+              <Badge className="bg-palette-orange/20 hover:bg-palette-orange/20 text-palette-orange text-sm px-3 py-1 font-bold">
+                <span className="w-2 h-2 rounded-full bg-palette-orange mr-1.5 inline-block" />
                 Rückfrage
               </Badge>
             ) : summary.pending === 0 && summary.total > 0 ? (
-              <Badge className="bg-green-100 hover:bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400 text-sm px-3 py-1 font-bold">
-                <span className="w-2 h-2 rounded-full bg-green-500 mr-1.5 inline-block" />
+              <Badge className="bg-palette-green/20 hover:bg-palette-green/20 text-palette-green text-sm px-3 py-1 font-bold">
+                <span className="w-2 h-2 rounded-full bg-palette-green mr-1.5 inline-block" />
                 Entschieden
               </Badge>
             ) : summary.total > 0 ? (
-              <Badge className="bg-blue-100 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 text-sm px-3 py-1 font-bold">
-                <span className="w-2 h-2 rounded-full bg-blue-500 mr-1.5 inline-block" />
+              <Badge className="bg-palette-blue/20 hover:bg-palette-blue/20 text-palette-blue text-sm px-3 py-1 font-bold">
+                <span className="w-2 h-2 rounded-full bg-palette-blue mr-1.5 inline-block" />
                 Ausstehend
               </Badge>
             ) : null}
@@ -124,7 +124,7 @@ export function DecisionCompactCard({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                    <Star className="h-4 w-4 text-palette-amber fill-palette-amber" />
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>Prioritär</p>
@@ -147,7 +147,7 @@ export function DecisionCompactCard({
             )}
 
             {decision.hasResponded && decision.isParticipant && (
-              <CheckCircle className="h-4 w-4 text-emerald-500" />
+              <CheckCircle className="h-4 w-4 text-palette-green" />
             )}
           </div>
 
@@ -421,16 +421,16 @@ function VotingResults({ decision, summary }: VotingResultsProps) {
     }
 
     const winnerTextColorMap: Record<string, string> = {
-      green: "text-green-600",
-      red: "text-red-600",
-      orange: "text-orange-600",
-      yellow: "text-yellow-600",
-      blue: "text-blue-600",
-      purple: "text-purple-600",
-      teal: "text-teal-600",
-      pink: "text-pink-600",
-      lime: "text-lime-600",
-      gray: "text-gray-600",
+      green: "text-palette-green",
+      red: "text-palette-red",
+      orange: "text-palette-orange",
+      yellow: "text-palette-yellow",
+      blue: "text-palette-blue",
+      purple: "text-palette-purple",
+      teal: "text-palette-teal",
+      pink: "text-palette-pink",
+      lime: "text-palette-lime",
+      gray: "text-muted-foreground",
     };
 
     return (
@@ -469,22 +469,22 @@ function VotingResults({ decision, summary }: VotingResultsProps) {
         <span
           className={cn(
             "text-lg font-extrabold",
-            summary.yesCount >= summary.noCount ? "text-green-600" : "text-red-600",
+            summary.yesCount >= summary.noCount ? "text-palette-green" : "text-palette-red",
           )}
         >
           Ergebnis: {summary.yesCount >= summary.noCount ? "Ja" : "Nein"}
         </span>
       )}
       <div className="flex items-center gap-1 flex-wrap justify-end">
-        <span className="text-green-600">{summary.yesCount} Ja</span>
+        <span className="text-palette-green">{summary.yesCount} Ja</span>
         <span className="text-muted-foreground">•</span>
-        <span className="text-red-600">{summary.noCount} Nein</span>
+        <span className="text-palette-red">{summary.noCount} Nein</span>
         <span className="text-muted-foreground">•</span>
-        <span className="text-orange-600">{summary.questionCount} Rückfrage</span>
+        <span className="text-palette-orange">{summary.questionCount} Rückfrage</span>
         {summary.otherCount > 0 && (
           <>
             <span className="text-muted-foreground">•</span>
-            <span className="text-blue-600">{summary.otherCount} Sonstige</span>
+            <span className="text-palette-blue">{summary.otherCount} Sonstige</span>
           </>
         )}
       </div>

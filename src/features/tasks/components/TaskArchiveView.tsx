@@ -313,9 +313,9 @@ export function TaskArchiveView() {
       case "committee":
         return "bg-government-blue text-white";
       case "constituency":
-        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300";
+        return "bg-palette-purple/20 text-palette-purple";
       case "personal":
-        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300";
+        return "bg-palette-orange/20 text-palette-orange";
     }
   };
 
@@ -437,13 +437,13 @@ export function TaskArchiveView() {
           </h2>
           <div className="space-y-3">
             {archivedDecisions.map((decision) => (
-              <Card key={decision.id} className="border-l-4 border-l-orange-500 bg-card shadow-card">
+              <Card key={decision.id} className="border-l-4 border-l-palette-orange bg-card shadow-card">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <h3 className="font-medium text-muted-foreground line-through">{decision.title}</h3>
-                        <Badge variant="outline" className="text-orange-600 border-orange-600">
+                        <Badge variant="outline" className="text-palette-orange border-palette-orange">
                           Entscheidung
                         </Badge>
                       </div>
@@ -459,13 +459,13 @@ export function TaskArchiveView() {
                       </div>
                       
                       <div className="flex items-center gap-4 text-xs">
-                        <span className="flex items-center text-green-600">
+                        <span className="flex items-center text-palette-green">
                           ✓ {decision.yes_count} Ja
                         </span>
-                        <span className="flex items-center text-orange-600">
+                        <span className="flex items-center text-palette-orange">
                           ? {decision.question_count} Rückfragen
                         </span>
-                        <span className="flex items-center text-red-600">
+                        <span className="flex items-center text-palette-red">
                           ✗ {decision.no_count} Nein
                         </span>
                       </div>

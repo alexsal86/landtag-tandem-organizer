@@ -20,21 +20,21 @@ const FIELDS = [
     label: "Offene Fragen",
     icon: HelpCircle,
     placeholder: "Welche Fragen sind noch ungeklärt?",
-    color: "text-amber-600",
+    color: "text-palette-amber",
   },
   {
     key: "positions" as const,
     label: "Positionen",
     icon: Users,
     placeholder: "Welche Positionen/Standpunkte gibt es?",
-    color: "text-blue-600",
+    color: "text-palette-blue",
   },
   {
     key: "risks_opportunities" as const,
     label: "Risiken & Chancen",
     icon: AlertTriangle,
     placeholder: "Welche Risiken und Chancen sind zu beachten?",
-    color: "text-red-600",
+    color: "text-palette-red",
   },
 ] as const;
 

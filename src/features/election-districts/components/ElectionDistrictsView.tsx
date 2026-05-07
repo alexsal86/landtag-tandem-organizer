@@ -206,7 +206,7 @@ export const ElectionDistrictsView = () => {
                             </h4>
                             {byLegislature[period].map((rep) => (
                               <div key={rep.id} className="flex items-center gap-2 text-sm">
-                                {rep.mandate_type === 'direct' && <Award className="h-3 w-3 text-yellow-600" />}
+                                {rep.mandate_type === 'direct' && <Award className="h-3 w-3 text-palette-yellow" />}
                                 <span className="font-medium">{rep.name}</span>
                                 <Badge 
                                   variant="outline" 
@@ -322,29 +322,29 @@ export const ElectionDistrictsView = () => {
                         <span>CDU</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 bg-red-600 rounded"></div>
+                        <div className="w-3 h-3 bg-palette-red rounded"></div>
                         <span>SPD</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 bg-green-600 rounded"></div>
+                        <div className="w-3 h-3 bg-palette-green rounded"></div>
                         <span>GRÜNE</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 bg-yellow-400 rounded"></div>
+                        <div className="w-3 h-3 bg-palette-yellow/60 rounded"></div>
                         <span>FDP</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 bg-blue-800 rounded"></div>
+                        <div className="w-3 h-3 bg-palette-blue rounded"></div>
                         <span>AfD</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 bg-purple-600 rounded"></div>
+                        <div className="w-3 h-3 bg-palette-purple rounded"></div>
                         <span>LINKE</span>
                       </div>
                     </div>
                     <div className="pt-2 border-t">
                       <div className="flex items-center gap-2 mb-1">
-                        <Award className="h-3 w-3 text-yellow-600" />
+                        <Award className="h-3 w-3 text-palette-yellow" />
                         <span className="text-xs">Direktmandat</span>
                       </div>
                       <p className="text-xs text-muted-foreground">
@@ -357,7 +357,7 @@ export const ElectionDistrictsView = () => {
                   <div className={hasElectionData ? "pt-2 border-t" : ""}>
                     <div className="text-sm text-muted-foreground mb-2">Verwaltungsgrenzen:</div>
                     <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 bg-purple-600 rounded-sm opacity-60"></div>
+                      <div className="w-3 h-3 bg-palette-purple rounded-sm opacity-60"></div>
                       <span className="text-xs">Landkreise (gestrichelt)</span>
                     </div>
                   </div>

@@ -111,8 +111,8 @@ export function BlackBoard() {
   const getPriorityIcon = (createdAt: string) => {
     const hoursAgo = Math.floor((new Date().getTime() - new Date(createdAt).getTime()) / (1000 * 60 * 60));
     
-    if (hoursAgo < 2) return <AlertTriangle className="h-3 w-3 text-orange-500" />;
-    if (hoursAgo < 24) return <Clock className="h-3 w-3 text-blue-500" />;
+    if (hoursAgo < 2) return <AlertTriangle className="h-3 w-3 text-palette-orange" />;
+    if (hoursAgo < 24) return <Clock className="h-3 w-3 text-palette-blue" />;
     return <Pin className="h-3 w-3 text-muted-foreground" />;
   };
 

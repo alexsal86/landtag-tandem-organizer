@@ -246,7 +246,7 @@ export function MyWorkTasksTab() {
             onOpenChange={setDueFollowUpsExpanded}
           >
             <CollapsibleContent className="pt-2">
-              <div className="rounded-lg border border-amber-200 bg-amber-50/40 p-3">
+              <div className="rounded-lg border border-palette-amber/30 bg-palette-amber/10/40 p-3">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                   <TaskCollectionView
                     {...sharedTaskListProps}

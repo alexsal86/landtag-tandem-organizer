@@ -21,12 +21,12 @@ export const getOwnerLabel = (userProfiles: Record<string, UserProfileData>, use
 };
 
 export const getSystemItemIcon = (systemType: string | null | undefined) => {
-  if (systemType === "quick_notes") return <StickyNote className="h-3 w-3 text-amber-500" />;
-  if (systemType === "upcoming_appointments") return <Calendar className="h-3 w-3 text-blue-500" />;
-  if (systemType === "tasks") return <ListTodo className="h-3 w-3 text-green-500" />;
-  if (systemType === "decisions") return <Scale className="h-3 w-3 text-violet-500" />;
-  if (systemType === "birthdays") return <Cake className="h-3 w-3 text-pink-500" />;
-  if (systemType === "case_items") return <Briefcase className="h-3 w-3 text-teal-500" />;
+  if (systemType === "quick_notes") return <StickyNote className="h-3 w-3 text-palette-amber" />;
+  if (systemType === "upcoming_appointments") return <Calendar className="h-3 w-3 text-palette-blue" />;
+  if (systemType === "tasks") return <ListTodo className="h-3 w-3 text-palette-green" />;
+  if (systemType === "decisions") return <Scale className="h-3 w-3 text-palette-violet" />;
+  if (systemType === "birthdays") return <Cake className="h-3 w-3 text-palette-pink" />;
+  if (systemType === "case_items") return <Briefcase className="h-3 w-3 text-palette-teal" />;
   return null;
 };
 
@@ -50,7 +50,7 @@ export const getSystemEntries = ({
   if (systemType === "quick_notes") {
     return notes.map((note, index) => ({
       id: note.id,
-      icon: <StickyNote className="h-2.5 w-2.5 text-amber-500" />,
+      icon: <StickyNote className="h-2.5 w-2.5 text-palette-amber" />,
       label: note.title || `Notiz ${index + 1}`,
       ownerLabel: getOwnerLabel(userProfiles, note.user_id),
     }));
@@ -59,7 +59,7 @@ export const getSystemEntries = ({
   if (systemType === "tasks") {
     return tasks.map((task) => ({
       id: task.id,
-      icon: <ListTodo className="h-2.5 w-2.5 text-green-500" />,
+      icon: <ListTodo className="h-2.5 w-2.5 text-palette-green" />,
       label: task.title || "Ohne Titel",
       ownerLabel: getOwnerLabel(userProfiles, task.user_id),
     }));
@@ -68,7 +68,7 @@ export const getSystemEntries = ({
   if (systemType === "decisions") {
     return decisions.map((decision) => ({
       id: decision.id,
-      icon: <Scale className="h-2.5 w-2.5 text-violet-500" />,
+      icon: <Scale className="h-2.5 w-2.5 text-palette-violet" />,
       label: decision.title || "Ohne Titel",
       ownerLabel: getOwnerLabel(userProfiles, decision.user_id),
     }));
@@ -77,7 +77,7 @@ export const getSystemEntries = ({
   if (systemType === "birthdays") {
     return birthdays.map((birthday) => ({
       id: birthday.id,
-      icon: <Cake className="h-2.5 w-2.5 text-pink-500" />,
+      icon: <Cake className="h-2.5 w-2.5 text-palette-pink" />,
       label: `${birthday.name} (geb. ${format(birthday.birthDate, "dd.MM.yyyy", { locale: de })}, ${birthday.age} Jahre)`,
     }));
   }
@@ -85,7 +85,7 @@ export const getSystemEntries = ({
   if (systemType === "case_items") {
     return caseItems.map((caseItem) => ({
       id: caseItem.id,
-      icon: <Briefcase className="h-2.5 w-2.5 text-teal-500" />,
+      icon: <Briefcase className="h-2.5 w-2.5 text-palette-teal" />,
       label: caseItem.subject || "Ohne Betreff",
       ownerLabel: getOwnerLabel(userProfiles, caseItem.owner_user_id ?? undefined),
     }));

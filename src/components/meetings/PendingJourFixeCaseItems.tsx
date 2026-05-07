@@ -24,8 +24,8 @@ interface PendingJourFixeCaseItemsProps {
 
 const priorityColors: Record<string, string> = {
   dringend: 'text-destructive',
-  hoch: 'text-orange-500',
-  mittel: 'text-amber-500',
+  hoch: 'text-palette-orange',
+  mittel: 'text-palette-amber',
   niedrig: 'text-muted-foreground',
 };
 
@@ -65,20 +65,20 @@ export function PendingJourFixeCaseItems({ className }: PendingJourFixeCaseItems
   if (loading || items.length === 0) return null;
 
   return (
-    <Card className={cn("border-teal-200 bg-teal-50/50 dark:bg-teal-950/20 dark:border-teal-900", className)}>
+    <Card className={cn("border-palette-teal/30 bg-palette-teal/5", className)}>
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild>
-          <CardHeader className="pb-2 cursor-pointer hover:bg-teal-100/50 dark:hover:bg-teal-900/20 transition-colors">
+          <CardHeader className="pb-2 cursor-pointer hover:bg-palette-teal/20/50 transition-colors">
             <CardTitle className="text-base flex items-center gap-2">
-              <Hourglass className="h-4 w-4 text-teal-600" />
-              <span className="text-teal-800 dark:text-teal-200">
+              <Hourglass className="h-4 w-4 text-palette-teal" />
+              <span className="text-palette-teal">
                 Vorgemerkte Vorgänge für nächsten Jour Fixe
               </span>
-              <Badge variant="secondary" className="bg-teal-200 text-teal-800 dark:bg-teal-800 dark:text-teal-200">
+              <Badge variant="secondary" className="bg-palette-teal/30 text-palette-teal">
                 {items.length}
               </Badge>
               <ChevronDown className={cn(
-                "h-4 w-4 ml-auto text-teal-600 transition-transform",
+                "h-4 w-4 ml-auto text-palette-teal transition-transform",
                 isOpen && "rotate-180"
               )} />
             </CardTitle>
@@ -86,13 +86,13 @@ export function PendingJourFixeCaseItems({ className }: PendingJourFixeCaseItems
         </CollapsibleTrigger>
         <CollapsibleContent>
           <CardContent className="pt-0 space-y-2">
-            <p className="text-xs text-teal-700 dark:text-teal-300 mb-3">
+            <p className="text-xs text-palette-teal mb-3">
               Diese Vorgänge wurden für den nächsten Jour Fixe vorgemerkt.
             </p>
             {items.map((item) => (
               <div
                 key={item.id}
-                className="p-3 bg-white dark:bg-card rounded-md border border-teal-200 dark:border-teal-800"
+                className="p-3 bg-white dark:bg-card rounded-md border border-palette-teal/30"
               >
                 <div className="flex items-start gap-2">
                   <Briefcase className={cn("h-4 w-4 mt-0.5 shrink-0", priorityColors[item.priority] || 'text-muted-foreground')} />

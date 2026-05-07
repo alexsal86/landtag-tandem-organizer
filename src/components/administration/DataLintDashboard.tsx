@@ -101,7 +101,7 @@ export function DataLintDashboard() {
 
   const severityIcon = (s: string) =>
     s === "error" ? <AlertCircle className="h-4 w-4 text-destructive" /> :
-    s === "warning" ? <AlertTriangle className="h-4 w-4 text-orange-500" /> :
+    s === "warning" ? <AlertTriangle className="h-4 w-4 text-palette-orange" /> :
     <CheckCircle2 className="h-4 w-4 text-muted-foreground" />;
 
   return (
@@ -129,7 +129,7 @@ export function DataLintDashboard() {
           </div>
         ) : findings.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            <CheckCircle2 className="h-10 w-10 mx-auto mb-2 text-green-500" />
+            <CheckCircle2 className="h-10 w-10 mx-auto mb-2 text-palette-green" />
             Keine offenen Hinweise. Ihre Daten sind sauber.
           </div>
         ) : (

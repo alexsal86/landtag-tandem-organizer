@@ -77,13 +77,13 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   const getStatusRingColor = (statusType: string) => {
     switch (statusType) {
       case 'available':
-        return 'ring-green-500';
+        return 'ring-palette-green';
       case 'busy':
-        return 'ring-red-500';
+        return 'ring-palette-red';
       case 'away':
-        return 'ring-yellow-500';
+        return 'ring-palette-yellow';
       case 'in_meeting':
-        return 'ring-blue-500';
+        return 'ring-palette-blue';
       default:
         return 'ring-gray-500';
     }

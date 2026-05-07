@@ -37,7 +37,7 @@ export function AutosaveIndicator({ status, lastSavedAt }: AutosaveIndicatorProp
   if (status === "saved" && lastSavedAt) {
     return (
       <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Check className="h-3 w-3 text-emerald-600" />
+        <Check className="h-3 w-3 text-palette-green" />
         Gespeichert vor {formatDistanceToNow(lastSavedAt, { locale: de })}
       </span>
     );

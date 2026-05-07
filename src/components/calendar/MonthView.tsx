@@ -17,19 +17,19 @@ export function MonthView({ date, events, onDateSelect }: MonthViewProps) {
       case "meeting":
         return "bg-government-blue";
       case "appointment":
-        return "bg-green-500";
+        return "bg-palette-green";
       case "deadline":
         return "bg-destructive";
       case "blocked":
-        return "bg-orange-500";
+        return "bg-palette-orange";
       case "veranstaltung":
-        return "bg-purple-600";
+        return "bg-palette-purple";
       case "vacation":
-        return "bg-green-500";
+        return "bg-palette-green";
       case "vacation_request":
-        return "bg-yellow-500";
+        return "bg-palette-yellow";
       case "birthday":
-        return "bg-pink-500";
+        return "bg-palette-pink";
       default:
         return "bg-muted";
     }

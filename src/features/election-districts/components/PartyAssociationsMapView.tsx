@@ -236,13 +236,13 @@ const PartyAssociationMap: React.FC<PartyAssociationMapProps> = ({
       <div className="absolute top-4 right-4 z-[1000]">
         <div className="bg-card/95 backdrop-blur-sm border border-border rounded-lg p-3 text-xs text-muted-foreground shadow-lg">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-green-600">🌱</span>
+            <span className="text-palette-green">🌱</span>
             <span className="font-medium text-foreground">GRÜNE Kreisverbände</span>
           </div>
           <div className="space-y-1">
             <div className="flex items-center gap-1">
-              <Building className="h-3 w-3 text-green-600" />
-              <span className="text-green-600">{associations.length} Verbände</span>
+              <Building className="h-3 w-3 text-palette-green" />
+              <span className="text-palette-green">{associations.length} Verbände</span>
             </div>
             <div className="flex items-center gap-1">
               <MapPin className="h-3 w-3" />
@@ -322,7 +322,7 @@ export const PartyAssociationsMapView = () => {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="flex items-center gap-2">
-          <Loader2 className="h-6 w-6 animate-spin text-green-600" />
+          <Loader2 className="h-6 w-6 animate-spin text-palette-green" />
           <span>Kreisverbände werden geladen...</span>
         </div>
       </div>
@@ -338,9 +338,9 @@ export const PartyAssociationsMapView = () => {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center gap-2 mb-6">
-        <span className="text-green-600 text-2xl">🌱</span>
+        <span className="text-palette-green text-2xl">🌱</span>
         <h1 className="text-3xl font-bold">GRÜNE Kreisverbände</h1>
-        <Badge variant="outline" className="ml-2 border-green-600 text-green-600">Baden-Württemberg</Badge>
+        <Badge variant="outline" className="ml-2 border-palette-green text-palette-green">Baden-Württemberg</Badge>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -348,7 +348,7 @@ export const PartyAssociationsMapView = () => {
         <div className="lg:col-span-3">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-green-700">
+              <CardTitle className="flex items-center gap-2 text-palette-green">
                 <MapPin className="h-5 w-5" />
                 Karte der Kreisverbände
               </CardTitle>
@@ -380,7 +380,7 @@ export const PartyAssociationsMapView = () => {
         <div className="lg:col-span-1 space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2 text-green-700">
+              <CardTitle className="text-lg flex items-center gap-2 text-palette-green">
                 <Users className="h-5 w-5" />
                 Übersicht
             </CardTitle>
@@ -389,19 +389,19 @@ export const PartyAssociationsMapView = () => {
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Gesamt</span>
-                  <Badge variant="secondary" className="bg-green-100 text-green-800">
+                  <Badge variant="secondary" className="bg-palette-green/20 text-palette-green">
                     {activeAssociations.length}
                   </Badge>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Mit Kontakt</span>
-                  <Badge variant="outline" className="border-green-600 text-green-600">
+                  <Badge variant="outline" className="border-palette-green text-palette-green">
                     {associationsWithContact.length}
                   </Badge>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Mit Adresse</span>
-                  <Badge variant="outline" className="border-green-600 text-green-600">
+                  <Badge variant="outline" className="border-palette-green text-palette-green">
                     {associationsWithAddress.length}
                   </Badge>
                 </div>
@@ -410,13 +410,13 @@ export const PartyAssociationsMapView = () => {
           </Card>
 
           {selectedAssociation && (
-            <Card className="border-green-200">
+            <Card className="border-palette-green/30">
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg text-green-700 flex items-center gap-2">
+                <CardTitle className="text-lg text-palette-green flex items-center gap-2">
                   <span>🌱</span>
                   {selectedAssociation.name}
                 </CardTitle>
-                <CardDescription className="text-green-600 font-medium">
+                <CardDescription className="text-palette-green font-medium">
                   Kreisverband Details
                 </CardDescription>
               </CardHeader>
@@ -424,7 +424,7 @@ export const PartyAssociationsMapView = () => {
                 {selectedAssociation.fullAddress && (
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <MapPin className="h-4 w-4 text-green-600" />
+                      <MapPin className="h-4 w-4 text-palette-green" />
                       <span className="text-sm font-medium">Adresse</span>
                     </div>
                     <p className="text-sm text-muted-foreground pl-6">
@@ -436,11 +436,11 @@ export const PartyAssociationsMapView = () => {
                 {selectedAssociation.phone && (
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <Phone className="h-4 w-4 text-green-600" />
+                      <Phone className="h-4 w-4 text-palette-green" />
                       <span className="text-sm font-medium">Telefon</span>
                     </div>
                     <p className="text-sm text-muted-foreground pl-6">
-                      <a href={`tel:${selectedAssociation.phone}`} className="text-green-600 hover:underline">
+                      <a href={`tel:${selectedAssociation.phone}`} className="text-palette-green hover:underline">
                         {selectedAssociation.phone}
                       </a>
                     </p>
@@ -450,11 +450,11 @@ export const PartyAssociationsMapView = () => {
                 {selectedAssociation.email && (
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <Mail className="h-4 w-4 text-green-600" />
+                      <Mail className="h-4 w-4 text-palette-green" />
                       <span className="text-sm font-medium">E-Mail</span>
                     </div>
                     <p className="text-sm text-muted-foreground pl-6">
-                      <a href={`mailto:${selectedAssociation.email}`} className="text-green-600 hover:underline break-all">
+                      <a href={`mailto:${selectedAssociation.email}`} className="text-palette-green hover:underline break-all">
                         {selectedAssociation.email}
                       </a>
                     </p>
@@ -464,7 +464,7 @@ export const PartyAssociationsMapView = () => {
                 {selectedAssociation.website && (
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <Globe className="h-4 w-4 text-green-600" />
+                      <Globe className="h-4 w-4 text-palette-green" />
                       <span className="text-sm font-medium">Website</span>
                     </div>
                     <p className="text-sm text-muted-foreground pl-6">
@@ -472,7 +472,7 @@ export const PartyAssociationsMapView = () => {
                         href={selectedAssociation.website} 
                         target="_blank" 
                         rel="noopener noreferrer" 
-                        className="text-green-600 hover:underline break-all"
+                        className="text-palette-green hover:underline break-all"
                       >
                         Website besuchen
                       </a>

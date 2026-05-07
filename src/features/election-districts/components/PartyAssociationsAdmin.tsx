@@ -413,7 +413,7 @@ export const PartyAssociationsAdmin: React.FC = () => {
                             href={association.website} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline"
+                            className="text-palette-blue hover:underline"
                           >
                             Website
                           </a>

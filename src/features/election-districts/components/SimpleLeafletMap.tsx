@@ -249,17 +249,17 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
                 <span class="px-2 py-1 rounded text-white text-xs font-medium" style="background-color: ${partyColor}">${district.district_number}</span>
                 <h3 class="font-semibold">${district.district_name || (isAdministrative ? `Kreis ${district.district_number}` : `Wahlkreis ${district.district_number}`)}</h3>
               </div>
-              <div class="space-y-1 text-sm text-gray-600">
+              <div class="space-y-1 text-sm text-muted-foreground">
           `;
 
           if (isPartyBoundary) {
             popupContent += `
-                <div class="mb-2 p-2 border-l-4 border-green-500 bg-green-50">
-                  <div class="flex items-center gap-2 text-green-700">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" class="text-green-600" style="display: inline;"><path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L19 8V7L17 8V7C15 7 13.5 8.5 13.5 10.5S15 14 17 14V13L19 14V13L21 14V12C21 10.34 19.66 9 18 9H16C14.34 9 13 10.34 13 12V14C13 15.66 14.34 17 16 17H18C19.66 17 21 15.66 21 14V12C21 10.34 19.66 9 18 9ZM12 7C13.66 7 15 8.34 15 10V14C15 15.66 13.66 17 12 17S9 15.66 9 14V10C9 8.34 10.34 7 12 7ZM3 9V7L5 8V7L7 8V7C9 7 10.5 8.5 10.5 10.5S9 14 7 14V13L5 14V13L3 14V12C3 10.34 4.34 9 6 9H8C9.66 9 11 10.34 11 12V14C11 15.66 9.66 17 8 17H6C4.34 17 3 15.66 3 14V12C3 10.34 4.34 9 6 9Z"/></svg>
+                <div class="mb-2 p-2 border-l-4 border-palette-green bg-palette-green/10">
+                  <div class="flex items-center gap-2 text-palette-green">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" class="text-palette-green" style="display: inline;"><path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L19 8V7L17 8V7C15 7 13.5 8.5 13.5 10.5S15 14 17 14V13L19 14V13L21 14V12C21 10.34 19.66 9 18 9H16C14.34 9 13 10.34 13 12V14C13 15.66 14.34 17 16 17H18C19.66 17 21 15.66 21 14V12C21 10.34 19.66 9 18 9ZM12 7C13.66 7 15 8.34 15 10V14C15 15.66 13.66 17 12 17S9 15.66 9 14V10C9 8.34 10.34 7 12 7ZM3 9V7L5 8V7L7 8V7C9 7 10.5 8.5 10.5 10.5S9 14 7 14V13L5 14V13L3 14V12C3 10.34 4.34 9 6 9H8C9.66 9 11 10.34 11 12V14C11 15.66 9.66 17 8 17H6C4.34 17 3 15.66 3 14V12C3 10.34 4.34 9 6 9Z"/></svg>
                     <strong>Grüner Kreisverband: ${associationName}</strong>
                   </div>
-                  <div class="text-xs text-green-600 mt-1">Verwaltungsgrenze als Zuständigkeitsgebiet</div>
+                  <div class="text-xs text-palette-green mt-1">Verwaltungsgrenze als Zuständigkeitsgebiet</div>
                 </div>
                 <div class="mb-2">
                   <strong>Typ:</strong> Verwaltungsgrenze<br>
@@ -275,8 +275,8 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
             `;
           } else {
             popupContent += `
-                ${directMandate ? `<div class="flex items-center gap-2"><span>🏆</span><span><strong>${directMandate.name}</strong> (${directMandate.party})</span></div>` : '<div class="text-gray-500">Kein Direktmandat</div>'}
-                ${district.representatives && district.representatives.length > 1 ? `<div class="text-xs text-gray-500">${district.representatives.length - 1} weitere Abgeordnete</div>` : ''}
+                ${directMandate ? `<div class="flex items-center gap-2"><span>🏆</span><span><strong>${directMandate.name}</strong> (${directMandate.party})</span></div>` : '<div class="text-muted-foreground">Kein Direktmandat</div>'}
+                ${district.representatives && district.representatives.length > 1 ? `<div class="text-xs text-muted-foreground">${district.representatives.length - 1} weitere Abgeordnete</div>` : ''}
             `;
           }
 
@@ -489,7 +489,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
             )}
             {districts.filter(d => d.district_type === 'verwaltungsgrenze').length > 0 && (
               <div className="flex items-center gap-1">
-                <Square className="h-3 w-3 text-purple-500" />
+                <Square className="h-3 w-3 text-palette-purple" />
                 <span>{districts.filter(d => d.district_type === 'verwaltungsgrenze').length} Verwaltungsgrenzen</span>
               </div>
             )}
@@ -499,8 +499,8 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
             </div>
             {showPartyAssociations && (
               <div className="flex items-center gap-1">
-                <span className="text-green-600">🌱</span>
-                <span className="text-green-600">
+                <span className="text-palette-green">🌱</span>
+                <span className="text-palette-green">
                   {associations.reduce((count, assoc) => 
                     count + (assoc.boundary_districts?.length || 0), 0
                   )} Grüne Verwaltungsgebiete

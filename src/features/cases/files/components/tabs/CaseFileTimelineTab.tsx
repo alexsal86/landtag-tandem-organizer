@@ -27,12 +27,12 @@ interface CaseFileTimelineTabProps {
 }
 
 const EVENT_TYPES = [
-  { value: 'milestone', label: 'Meilenstein', icon: Flag, color: 'bg-purple-500' },
-  { value: 'meeting', label: 'Besprechung', icon: Calendar, color: 'bg-blue-500' },
-  { value: 'decision', label: 'Entscheidung', icon: CheckSquare, color: 'bg-green-500' },
-  { value: 'document', label: 'Dokument', icon: FileText, color: 'bg-orange-500' },
-  { value: 'correspondence', label: 'Korrespondenz', icon: Mail, color: 'bg-cyan-500' },
-  { value: 'note', label: 'Notiz', icon: Clock, color: 'bg-gray-500' },
+  { value: 'milestone', label: 'Meilenstein', icon: Flag, color: 'bg-palette-purple' },
+  { value: 'meeting', label: 'Besprechung', icon: Calendar, color: 'bg-palette-blue' },
+  { value: 'decision', label: 'Entscheidung', icon: CheckSquare, color: 'bg-palette-green' },
+  { value: 'document', label: 'Dokument', icon: FileText, color: 'bg-palette-orange' },
+  { value: 'correspondence', label: 'Korrespondenz', icon: Mail, color: 'bg-palette-cyan' },
+  { value: 'note', label: 'Notiz', icon: Clock, color: 'bg-muted' },
 ];
 
 export function CaseFileTimelineTab({ timeline, onAddEntry, onDeleteEntry }: CaseFileTimelineTabProps) {

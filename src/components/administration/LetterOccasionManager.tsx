@@ -51,12 +51,12 @@ const COLOR_OPTIONS = PALETTE_PRESETS
   .map((p) => ({ value: p.legacyValue, label: p.label }));
 
 const DEFAULT_OCCASIONS = [
-  { key: 'buergeranliegen', label: 'Bürgeranliegen', description: 'Antwort auf Anfragen von Bürgern', icon: 'Users', color: 'bg-blue-500', patterns: ['bürger', 'anliegen', 'antwort', 'citizen'] },
-  { key: 'ministerium', label: 'Ministerium', description: 'Formelle Korrespondenz mit Ministerien', icon: 'Building2', color: 'bg-purple-500', patterns: ['minister', 'formal', 'amt'] },
-  { key: 'einladung', label: 'Einladung', description: 'Veranstaltungseinladungen', icon: 'PartyPopper', color: 'bg-amber-500', patterns: ['einladung', 'invitation', 'event'] },
-  { key: 'gruss', label: 'Gruß & Dank', description: 'Glückwünsche, Beileid, Dankschreiben', icon: 'Heart', color: 'bg-rose-500', patterns: ['gruß', 'gruss', 'dank', 'beileid', 'glückwunsch'] },
-  { key: 'parlamentarische_anfrage', label: 'Parlamentarische Anfrage', description: 'Anfragen an die Regierung', icon: 'FileQuestion', color: 'bg-teal-500', patterns: ['anfrage', 'parlament', 'regierung'] },
-  { key: 'stellungnahme', label: 'Stellungnahme', description: 'Offizielle Positionierung', icon: 'MessageSquare', color: 'bg-indigo-500', patterns: ['stellungnahme', 'position', 'statement'] },
+  { key: 'buergeranliegen', label: 'Bürgeranliegen', description: 'Antwort auf Anfragen von Bürgern', icon: 'Users', color: 'bg-palette-blue', patterns: ['bürger', 'anliegen', 'antwort', 'citizen'] },
+  { key: 'ministerium', label: 'Ministerium', description: 'Formelle Korrespondenz mit Ministerien', icon: 'Building2', color: 'bg-palette-purple', patterns: ['minister', 'formal', 'amt'] },
+  { key: 'einladung', label: 'Einladung', description: 'Veranstaltungseinladungen', icon: 'PartyPopper', color: 'bg-palette-amber', patterns: ['einladung', 'invitation', 'event'] },
+  { key: 'gruss', label: 'Gruß & Dank', description: 'Glückwünsche, Beileid, Dankschreiben', icon: 'Heart', color: 'bg-palette-rose', patterns: ['gruß', 'gruss', 'dank', 'beileid', 'glückwunsch'] },
+  { key: 'parlamentarische_anfrage', label: 'Parlamentarische Anfrage', description: 'Anfragen an die Regierung', icon: 'FileQuestion', color: 'bg-palette-teal', patterns: ['anfrage', 'parlament', 'regierung'] },
+  { key: 'stellungnahme', label: 'Stellungnahme', description: 'Offizielle Positionierung', icon: 'MessageSquare', color: 'bg-palette-indigo', patterns: ['stellungnahme', 'position', 'statement'] },
   { key: 'sonstiges', label: 'Sonstiges', description: 'Freie Briefform', icon: 'FileText', color: 'bg-muted-foreground', patterns: [] },
 ];
 
@@ -83,7 +83,7 @@ export function LetterOccasionManager() {
   const [showCreate, setShowCreate] = useState(false);
   const seedingRef = React.useRef(false);
   const [form, setForm] = useState({
-    key: '', label: '', description: '', icon: 'FileText', color: 'bg-blue-500',
+    key: '', label: '', description: '', icon: 'FileText', color: 'bg-palette-blue',
     default_template_id: '', template_match_patterns: '', is_active: true, sort_order: 0,
   });
 
@@ -166,7 +166,7 @@ export function LetterOccasionManager() {
         label: occasion.label,
         description: occasion.description || '',
         icon: occasion.icon || 'FileText',
-        color: occasion.color || 'bg-blue-500',
+        color: occasion.color || 'bg-palette-blue',
         default_template_id: occasion.default_template_id || '',
         template_match_patterns: (occasion.template_match_patterns || []).join(', '),
         is_active: occasion.is_active,
@@ -174,7 +174,7 @@ export function LetterOccasionManager() {
       });
     } else {
       setForm({
-        key: '', label: '', description: '', icon: 'FileText', color: 'bg-blue-500',
+        key: '', label: '', description: '', icon: 'FileText', color: 'bg-palette-blue',
         default_template_id: '', template_match_patterns: '', is_active: true,
         sort_order: occasions.length,
       });
