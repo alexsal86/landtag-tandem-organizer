@@ -439,7 +439,7 @@ export function AppointmentPreparationDataTab({
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Linke Spalte */}
         <div className="space-y-4">
-          {/* Anlass des Besuchs */}
+          {showSection('anlass') && (
           <Card>
             <CardContent className="pt-6">
               <Collapsible open={expandedSections.anlass} onOpenChange={() => toggleSection('anlass')}>
@@ -484,7 +484,9 @@ export function AppointmentPreparationDataTab({
               </Collapsible>
             </CardContent>
           </Card>
+          )}
 
+          {showSection('gespraechspartner') && (
           <ConversationPartnersCard
             conversationPartners={conversationPartners}
             contacts={contacts}
@@ -506,7 +508,9 @@ export function AppointmentPreparationDataTab({
             onPartnerSearchChange={(partnerId, value) => setPartnerSearchTexts((prev) => ({ ...prev, [partnerId]: value }))}
             onFieldChange={handleFieldChange}
           />
+          )}
 
+          {showSection('begleitpersonen') && (
           <CompanionsCard
             companions={companions}
             expandedSection={expandedSections.begleitpersonen}
@@ -515,6 +519,7 @@ export function AppointmentPreparationDataTab({
             onUpdate={updateCompanion}
             onRemove={removeCompanion}
           />
+          )}
 
           {/* Logistik */}
           <Card>
