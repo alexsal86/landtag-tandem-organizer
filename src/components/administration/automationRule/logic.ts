@@ -33,7 +33,7 @@ function toComparableNumber(fieldType: FieldType, value: string): number | null 
   return null;
 }
 
-function evaluateCondition(condition: ConditionItem, fieldType: FieldType, sampleValue: unknown): boolean {
+export function evaluateCondition(condition: ConditionItem, fieldType: FieldType, sampleValue: unknown): boolean {
   const sample = sampleValue == null ? "" : String(sampleValue);
   switch (condition.operator) {
     case "equals":

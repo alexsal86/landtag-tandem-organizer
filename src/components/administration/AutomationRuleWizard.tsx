@@ -34,6 +34,7 @@ import {
   countConditions,
   collectSemanticIssues,
   sanitizeTriggerValue,
+  evaluateCondition,
 } from "./automationRule/logic";
 import type {
   ActionItem,
