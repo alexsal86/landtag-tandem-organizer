@@ -5,6 +5,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { supabase } from '@/lib/supabase';
 import { SheetShell } from '@/ui/SheetShell';
 import { useToast } from '@/ui/Toast';
+import { ensurePermission } from '@/lib/permissions';
 
 export function VoiceNoteSheet({
   visible, onClose, userId,
@@ -34,8 +35,8 @@ export function VoiceNoteSheet({
   };
 
   const start = async () => {
-    const perm = await Audio.requestPermissionsAsync();
-    if (!perm.granted) { toast.error('Mikrofon-Zugriff verweigert'); return; }
+    const ok = await ensurePermission('microphone');
+    if (!ok) return;
     await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
     const rec = new Audio.Recording();
     await rec.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
