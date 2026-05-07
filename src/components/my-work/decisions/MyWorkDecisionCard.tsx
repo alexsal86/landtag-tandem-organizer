@@ -24,38 +24,9 @@ import { DecisionCardResponses } from "./card/DecisionCardResponses";
 import { DecisionCardMeta } from "./card/DecisionCardMeta";
 import { DecisionCardActivity } from "./card/DecisionCardActivity";
 import { CalendarDays, ChevronDown, ChevronUp, Info } from "lucide-react";
+import { getPalettePromptClasses } from "@/lib/paletteStyles";
 
-interface MyWorkDecisionCardProps {
-  decision: MyWorkDecision;
-  isHighlighted?: boolean;
-  highlightRef?: (el: HTMLElement | null) => void;
-  onOpenDetails: (decisionId: string) => void;
-  onEdit: (decisionId: string) => void;
-  onArchive: (decisionId: string) => void;
-  onDelete: (decisionId: string) => void;
-  onCreateTask: (decision: MyWorkDecision) => void;
-  onResponseSubmitted: () => void;
-  onOpenComments: (decisionId: string, title: string) => void;
-  onReply?: (payload: { responseId: string; text: string; mode: "creator_response" | "participant_followup" }) => Promise<void>;
-  commentCount: number;
-  creatingTaskId: string | null;
-  archivingDecisionId?: string | null;
-  deletingDecisionId?: string | null;
-  currentUserId: string;
-}
-
-const getPromptColorClasses = (color: string) => {
-  switch (color) {
-    case "red": return { container: "border-red-300 bg-red-50", icon: "text-red-600", submitButton: "bg-red-600 hover:bg-red-700 text-white" };
-    case "orange": return { container: "border-orange-300 bg-orange-50", icon: "text-orange-600", submitButton: "bg-orange-600 hover:bg-orange-700 text-white" };
-    case "yellow": return { container: "border-yellow-300 bg-yellow-50", icon: "text-yellow-700", submitButton: "bg-yellow-500 hover:bg-yellow-600 text-black" };
-    case "blue": return { container: "border-blue-300 bg-blue-50", icon: "text-blue-600", submitButton: "bg-blue-600 hover:bg-blue-700 text-white" };
-    case "purple": return { container: "border-purple-300 bg-purple-50", icon: "text-purple-600", submitButton: "bg-purple-600 hover:bg-purple-700 text-white" };
-    case "lime": return { container: "border-lime-300 bg-lime-50", icon: "text-lime-700", submitButton: "bg-lime-600 hover:bg-lime-700 text-white" };
-    case "gray": return { container: "border-gray-300 bg-gray-50", icon: "text-gray-600", submitButton: "bg-gray-600 hover:bg-gray-700 text-white" };
-    default: return { container: "border-green-300 bg-green-50", icon: "text-green-600", submitButton: "bg-green-600 hover:bg-green-700 text-white" };
-  }
-};
+const getPromptColorClasses = (color: string) => getPalettePromptClasses(color);
 
 const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpenDetails, onEdit, onArchive, onDelete, onCreateTask, onResponseSubmitted, onOpenComments, onReply, commentCount, creatingTaskId, archivingDecisionId, deletingDecisionId, currentUserId }: MyWorkDecisionCardProps) => {
   const [previewEmail, setPreviewEmail] = useState<{ file_path: string; file_name: string } | null>(null);
