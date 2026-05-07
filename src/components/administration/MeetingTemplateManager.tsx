@@ -492,18 +492,11 @@ export function MeetingTemplateManager() {
                                               <p className="text-xs text-muted-foreground mb-2">Dynamische Inhalte:</p>
                                               <div className="flex flex-wrap gap-1">
                                                 {(['upcoming_appointments', 'quick_notes', 'tasks', 'birthdays', 'decisions'] as const).map(type => {
-                                                  const colors: Record<string, string> = {
-                                                    upcoming_appointments: 'border-blue-200 text-blue-700',
-                                                    quick_notes: 'border-amber-200 text-amber-700',
-                                                    tasks: 'border-green-200 text-green-700',
-                                                    birthdays: 'border-pink-200 text-pink-700',
-                                                    decisions: 'border-violet-200 text-violet-700',
-                                                  };
                                                   const labels: Record<string, string> = {
                                                     upcoming_appointments: 'Termine', quick_notes: 'Notizen', tasks: 'Aufgaben', birthdays: 'Geburtstage', decisions: 'Entscheidungen',
                                                   };
                                                   return (
-                                                    <Button key={type} variant="outline" size="sm" className={`flex-1 justify-start ${colors[type]} h-7 text-xs`} onClick={() => { addSystemTemplateItem(type, index); setChildPopoverOpen(null); }}>
+                                                    <Button key={type} variant="outline" size="sm" className={`flex-1 justify-start ${getAgendaToggleClass(type)} h-7 text-xs`} onClick={() => { addSystemTemplateItem(type, index); setChildPopoverOpen(null); }}>
                                                       {getSmallIcon(type)}<span className="ml-1">{labels[type]}</span>
                                                     </Button>
                                                   );
