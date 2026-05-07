@@ -2,7 +2,7 @@
 
 Digitale Arbeitsplattform für politische Büros – Termine, Kontakte, Vorgänge, Aufgaben, Dokumente, Sitzungen und mehr. Multi-Tenant-fähig mit rollenbasiertem Zugriff.
 
-**Lovable-Projekt:** [https://lovable.dev/projects/7d09a65d-5cbe-421b-a580-38a4fe244277](https://lovable.dev/projects/7d09a65d-5cbe-421b-a580-38a4fe244277)
+
 
 ---
 
@@ -41,7 +41,7 @@ npm install
 npm run dev
 ```
 
-Alternativ direkt in Lovable entwickeln – Änderungen werden automatisch committet.
+
 
 ---
 
@@ -198,9 +198,7 @@ npm run test:e2e-smoke
 
 ## Deployment
 
-**Via Lovable:** Share → Publish
-
-**Custom Domain:** Project → Settings → Domains → Connect Domain. Siehe [Lovable Docs](https://docs.lovable.dev/tips-tricks/custom-domain).
+Build (`npm run build`) erzeugt einen statischen Output unter `dist/`, der auf jedem Hosting (z. B. Plesk Passenger, Node.js v21+, Entrypoint `app.js`) ausgeliefert werden kann. Custom Domains werden im jeweiligen Hosting-/DNS-Setup konfiguriert.
 
 ---
 

@@ -76,7 +76,7 @@ export function MatrixChatView() {
   }), [rooms]);
 
   const selectedRoom = rooms.find(r => r.roomId === selectedRoomId);
-  const isLovableHost = window.location.hostname.includes('lovable');
+  const isPreviewHost = window.location.hostname.includes('lovable');
   const isTopLevelTab = (() => { try { return window.self === window.top; } catch { return false; } })();
 
   // Auto-select first room
@@ -373,12 +373,12 @@ export function MatrixChatView() {
                     )}
                     {e2eeDiagnostics.coiBlockedReason === 'iframe-preview' && (
                       <p className="text-xs mb-2">
-                        Lovable läuft hier im eingebetteten Preview-iframe. In diesem Modus ist die benötigte Cross-Origin-Isolation technisch blockiert.
+                        Die Anwendung läuft hier in einem eingebetteten Preview-iframe. In diesem Modus ist die benötigte Cross-Origin-Isolation technisch blockiert.
                       </p>
                     )}
-                    {isLovableHost && isTopLevelTab && (
+                    {isPreviewHost && isTopLevelTab && (
                       <p className="text-xs mb-2">
-                        Diagnose: Lovable-Host im Top-Level-Tab erkannt (kein iframe). COI wird hier nicht pauschal blockiert.
+                        Diagnose: Preview-Host im Top-Level-Tab erkannt (kein iframe). COI wird hier nicht pauschal blockiert.
                       </p>
                     )}
                     Die Verschlüsselung konnte in dieser Sitzung nicht initialisiert werden. Laut Matrix JS SDK sollten für Rust-Crypto mindestens sicherer Kontext, Cross-Origin-Isolation und SharedArrayBuffer verfügbar sein.

@@ -16,7 +16,7 @@ export interface CalendarInviteRequest {
 }
 
 export function generateUID(): string {
-  return `${Date.now()}-${Math.random().toString(36).substring(2)}@lovable.app`;
+  return `${Date.now()}-${Math.random().toString(36).substring(2)}@landtagsos.app`;
 }
 
 export function formatDateToICS(date: string): string {
@@ -64,7 +64,7 @@ export function generateICS(request: CalendarInviteRequest): string {
   const icsContent = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Lovable//Appointment Scheduler//DE',
+    'PRODID:-//LandtagsOS//Appointment Scheduler//DE',
     'CALSCALE:GREGORIAN',
     'METHOD:REQUEST',
     'BEGIN:VEVENT',
