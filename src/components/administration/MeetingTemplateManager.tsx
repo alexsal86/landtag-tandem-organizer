@@ -255,12 +255,13 @@ export function MeetingTemplateManager() {
   };
 
   const getSystemIcon = (systemType: string) => {
+    const cls = `h-4 w-4 ${getAgendaIconColor(systemType)}`;
     switch (systemType) {
-      case 'upcoming_appointments': return <CalendarDays className="h-4 w-4 text-blue-600" />;
-      case 'quick_notes': return <StickyNote className="h-4 w-4 text-amber-600" />;
-      case 'tasks': return <ListTodo className="h-4 w-4 text-green-600" />;
-      case 'birthdays': return <Cake className="h-4 w-4 text-pink-600" />;
-      case 'decisions': return <Scale className="h-4 w-4 text-violet-600" />;
+      case 'upcoming_appointments': return <CalendarDays className={cls} />;
+      case 'quick_notes': return <StickyNote className={cls} />;
+      case 'tasks': return <ListTodo className={cls} />;
+      case 'birthdays': return <Cake className={cls} />;
+      case 'decisions': return <Scale className={cls} />;
       default: return null;
     }
   };
