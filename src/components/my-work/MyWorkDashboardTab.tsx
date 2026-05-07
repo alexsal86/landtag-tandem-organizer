@@ -122,6 +122,9 @@ export function MyWorkDashboardTab() {
       {isEmployee && !isAbgeordneter && <BriefingComposerCard />}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,35fr)_minmax(0,35fr)_minmax(0,30fr)] gap-6 items-start">
         <div className="flex flex-col gap-6 min-w-0">
+          <AppointmentsWidget />
+        </div>
+        <div className="flex flex-col gap-6 min-w-0">
           <DeadlinesWidget />
           <DashboardWidgetContainer
             title={<span className="inline-flex items-center gap-2"><Vote className="h-4 w-4" />Entscheidungen</span>}
@@ -132,9 +135,6 @@ export function MyWorkDashboardTab() {
               <DashboardDecisionsWidget />
             </ErrorBoundary>
           </DashboardWidgetContainer>
-        </div>
-        <div className="flex flex-col gap-6 min-w-0">
-          <AppointmentsWidget />
         </div>
         <div className="flex flex-col gap-6 min-w-0">
           <DashboardWidgetContainer
