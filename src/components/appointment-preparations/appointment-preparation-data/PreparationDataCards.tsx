@@ -243,8 +243,27 @@ export function PreparationDataCards({
               </span>
             </div>
             {talkingPointItems.map((item, idx) => (
-              <div key={item.id} className="rounded-lg border bg-muted/20 p-3 space-y-2">
+              <div
+                key={item.id}
+                draggable={!!onReorderTalkingPoints}
+                onDragStart={() => setDragIdx(idx)}
+                onDragOver={(e) => { if (dragIdx !== null) e.preventDefault(); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (dragIdx !== null && dragIdx !== idx) {
+                    onReorderTalkingPoints?.(dragIdx, idx);
+                  }
+                  setDragIdx(null);
+                }}
+                onDragEnd={() => setDragIdx(null)}
+                className={`rounded-lg border bg-muted/20 p-3 space-y-2 transition-opacity ${dragIdx === idx ? 'opacity-50' : ''}`}
+              >
                 <div className="flex items-start gap-2">
+                  {onReorderTalkingPoints && (
+                    <button type="button" className="mt-2 cursor-grab text-muted-foreground/50 hover:text-muted-foreground" aria-label="Verschieben">
+                      <GripVertical className="h-4 w-4" />
+                    </button>
+                  )}
                   <Input
                     value={item.point}
                     onChange={(e) => onUpdateTalkingPointItem(idx, 'point', e.target.value)}
