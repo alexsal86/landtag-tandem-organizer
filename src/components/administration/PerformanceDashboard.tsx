@@ -207,18 +207,22 @@ export function PerformanceDashboard(): JSX.Element {
               config={{ size: { label: "DB-Größe", color: "hsl(var(--primary))" } }}
               className="h-[280px] w-full"
             >
+              {/* @ts-expect-error recharts JSX type incompatibility with React 18 */}
               <RechartsPrimitive.AreaChart data={series}>
+                {/* @ts-expect-error recharts JSX type incompatibility */}
                 <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" />
+                {/* @ts-expect-error recharts JSX type incompatibility */}
                 <RechartsPrimitive.XAxis dataKey="date" tickLine={false} axisLine={false} />
+                {/* @ts-expect-error recharts JSX type incompatibility */}
                 <RechartsPrimitive.YAxis
-                  tickFormatter={(v) => formatBytes(Number(v))}
+                  tickFormatter={(v: number) => formatBytes(Number(v))}
                   tickLine={false}
                   axisLine={false}
                   width={70}
                 />
-                <ChartTooltip
-                  content={<ChartTooltipContent formatter={(v) => formatBytes(Number(v))} />}
-                />
+                {/* @ts-expect-error chart tooltip content */}
+                <ChartTooltip content={<ChartTooltipContent formatter={(v) => formatBytes(Number(v))} />} />
+                {/* @ts-expect-error recharts JSX type incompatibility */}
                 <RechartsPrimitive.Area
                   type="monotone"
                   dataKey="size"
