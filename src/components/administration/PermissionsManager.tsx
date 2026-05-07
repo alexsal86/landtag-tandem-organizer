@@ -31,6 +31,20 @@ const ACTION_KEYS: Array<{ key: string; label: string }> = [
   { key: "tenant.invite_user", label: "Mitarbeiter einladen" },
 ];
 
+// Vorgeschlagene sensible Felder. Admin kann pro Rolle read/write togglen.
+const FIELD_TARGETS: Array<{ table: string; column: string; label: string }> = [
+  { table: "contacts", column: "phone", label: "Kontakt · Telefon" },
+  { table: "contacts", column: "email", label: "Kontakt · E-Mail" },
+  { table: "contacts", column: "notes", label: "Kontakt · Notizen" },
+  { table: "employees", column: "salary", label: "Mitarbeiter · Gehalt" },
+  { table: "employees", column: "private_notes", label: "Mitarbeiter · Private Notizen" },
+  { table: "case_items", column: "internal_notes", label: "Vorgang · Interne Notizen" },
+  { table: "letters", column: "draft_content", label: "Brief · Entwurfsinhalt" },
+];
+
+interface FieldPerm { can_read: boolean; can_write: boolean }
+
+
 export function PermissionsManager() {
   const { currentTenant } = useTenant();
   const { toast } = useToast();
@@ -38,6 +52,8 @@ export function PermissionsManager() {
 
   const [flags, setFlags] = useState<Map<string, boolean>>(new Map());
   const [actions, setActions] = useState<Map<string, AppRole[]>>(new Map());
+  // key = `${table}.${column}.${role}`
+  const [fields, setFields] = useState<Map<string, FieldPerm>>(new Map());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -45,21 +61,32 @@ export function PermissionsManager() {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const [flagsRes, actionsRes] = await Promise.all([
+      const [flagsRes, actionsRes, fieldsRes] = await Promise.all([
         supabase.from("tenant_feature_flags").select("feature_key, enabled").eq("tenant_id", tenantId),
         supabase.from("action_permissions").select("action_key, allowed_roles").eq("tenant_id", tenantId),
+        supabase.from("field_permissions")
+          .select("table_name, column_name, role, can_read, can_write")
+          .eq("tenant_id", tenantId),
       ]);
       if (cancelled) return;
       const fmap = new Map<string, boolean>();
       for (const r of flagsRes.data ?? []) fmap.set(r.feature_key, r.enabled);
       const amap = new Map<string, AppRole[]>();
       for (const r of actionsRes.data ?? []) amap.set(r.action_key, (r.allowed_roles ?? []) as AppRole[]);
+      const fdmap = new Map<string, FieldPerm>();
+      for (const r of fieldsRes.data ?? []) {
+        fdmap.set(`${r.table_name}.${r.column_name}.${r.role}`, {
+          can_read: r.can_read, can_write: r.can_write,
+        });
+      }
       setFlags(fmap);
       setActions(amap);
+      setFields(fdmap);
       setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [tenantId]);
+
 
   const toggleFlag = async (key: string, enabled: boolean) => {
     if (!tenantId) return;
