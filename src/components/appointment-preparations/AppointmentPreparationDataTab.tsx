@@ -47,7 +47,18 @@ export function AppointmentPreparationDataTab({
   appointmentDetails,
   onUpdate,
   onOpenAppointmentDetails,
+  visibleSections,
 }: AppointmentPreparationDataTabProps) {
+  const sectionSet = visibleSections?.sections
+    ? new Set(visibleSections.sections)
+    : null;
+  const showSection = (key: string) => !sectionSet || sectionSet.has(key as never);
+  const showFacts = visibleSections?.showFacts ?? true;
+  const showTalkingPoints = visibleSections?.showTalkingPoints ?? true;
+  const showQa = visibleSections?.showQa ?? true;
+  const showInhalteRahmen = visibleSections?.showInhalteRahmen ?? true;
+  const showInhalteHeaderCards = visibleSections?.showInhalteHeaderCards ?? true;
+  const showInhaltePanel = showSection('inhalte') && (showFacts || showTalkingPoints || showQa || showInhalteRahmen || showInhalteHeaderCards);
   const extendedPreparation = preparation as ExtendedAppointmentPreparation;
   const preparationDataWithDefaults = getPreparationDataWithDefaults(preparation.preparation_data);
 
