@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { debugConsole } from "@/utils/debugConsole";
+import { useOnboardingGate } from "@/hooks/useOnboardingGate";
 
 interface AppSettings {
   app_name: string;
@@ -302,6 +303,33 @@ export function GeneralSettings() {
         </CardContent>
       </Card>
 
+      <OnboardingResetCard />
     </div>
+  );
+}
+
+function OnboardingResetCard(): React.JSX.Element {
+  const { reopen } = useOnboardingGate();
+  const { toast } = useToast();
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Einführung erneut anzeigen</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Lass die Einführungs-Slides beim nächsten Laden erneut erscheinen – inklusive der büro-spezifischen Ergänzungen.
+        </p>
+        <Button
+          variant="outline"
+          onClick={async () => {
+            await reopen();
+            toast({ title: "Einführung wird erneut angezeigt" });
+          }}
+        >
+          Einführung erneut starten
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

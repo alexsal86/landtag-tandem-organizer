@@ -41,6 +41,7 @@ import { SuperadminTenantManagement } from "@/components/administration/Superadm
 import { GeoDataImport } from "@/components/administration/GeoDataImport";
 import { MapLayerAdmin } from "@/components/administration/MapLayerAdmin";
 import { MyWorkSystemOverview } from "@/components/administration/MyWorkSystemOverview";
+import { OnboardingSlidesManager } from "@/components/administration/OnboardingSlidesManager";
 import { DashboardHintSettings } from "@/components/administration/DashboardHintSettings";
 import { MotivationalMessagesOverview } from "@/components/administration/MotivationalMessagesOverview";
 import { StakeholderNetworkTagSettings } from "@/components/administration/StakeholderNetworkTagSettings";
@@ -258,6 +259,7 @@ export default function Administration(): React.JSX.Element | null {
         case "matrix": return <MatrixSettings />;
         case "office-social-media": return <OfficeSocialMediaSettings />;
         case "vacation-checklist": return <VacationChecklistAdmin />;
+        case "onboarding": return <OnboardingSlidesManager />;
         default: return <StatusAdminSettings />;
       }
     }

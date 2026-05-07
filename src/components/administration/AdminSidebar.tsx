@@ -96,6 +96,7 @@ export const adminMenuItems: AdminMenuItem[] = [
       { id: "matrix", label: "Matrix-Chat", icon: MessageSquare },
       { id: "office-social-media", label: "Büro-Social-Media", icon: Globe2 },
       { id: "vacation-checklist", label: "Urlaubs-Checkliste", icon: ClipboardCheck },
+      { id: "onboarding", label: "Büro-Onboarding", icon: Sparkles },
     ],
   },
   {
