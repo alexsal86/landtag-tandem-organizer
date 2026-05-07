@@ -207,7 +207,7 @@ export function useElectionDistrictNotes(districtId?: string) {
       setLoading(true);
       const { data, error } = await supabase
         .from("election_district_notes")
-        .select("*")
+        .select("id, user_id, tenant_id, district_id, title, content, priority, category, due_date, is_completed, tags, created_at, updated_at")
         .eq("district_id", districtId)
         .order("created_at", { ascending: false });
 
