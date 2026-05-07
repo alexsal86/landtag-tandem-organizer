@@ -250,6 +250,7 @@ export default function Administration(): React.JSX.Element | null {
           return <UserRolesManager />;
         case "tenants": return <SuperadminTenantManagement />;
         case "auditlogs": return <AuditLogViewer />;
+        case "permissions": return <PermissionsManager />;
         case "security-cockpit":
           if (!isSuperAdmin) return null;
           return <SecurityCockpit />;
