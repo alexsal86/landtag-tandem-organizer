@@ -576,7 +576,7 @@ export function AppointmentPreparationDataTab({
         </div>
 
         {/* Mittelspalte */}
-        <div className="space-y-4 xl:col-span-5">
+        <div className="space-y-4 xl:col-span-4">
           <ProgramCard
             programRows={programRows}
             expandedSection={expandedSections.programm}
@@ -608,32 +608,31 @@ export function AppointmentPreparationDataTab({
           />
         </div>
 
-        {/* Live-Vorschau (sticky) */}
-        <div className="hidden xl:block xl:col-span-3">
-          <div className="sticky top-4">
-            <Card className="bg-muted/20 border-dashed">
-              <CardContent className="pt-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Live-Vorschau</h3>
-                </div>
-                <div className="max-h-[calc(100vh-8rem)] overflow-y-auto rounded-md bg-background p-3 text-xs origin-top scale-[0.85]">
-                  <AppointmentBriefingView
-                    preparation={{
-                      ...preparation,
-                      preparation_data: buildPreparationData(editData),
-                    }}
-                    appointmentInfo={appointmentDetails ? {
-                      title: appointmentDetails.title,
-                      start_time: appointmentDetails.start_time,
-                      end_time: appointmentDetails.end_time,
-                      location: appointmentDetails.location ?? null,
-                    } : null}
-                    compact
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+        {/* Live-Vorschau */}
+        <div className="hidden xl:block xl:col-span-4 self-start sticky top-4">
+          <Card className="bg-card">
+            <CardContent className="pt-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Live-Vorschau</h3>
+                {saving && (
+                  <span className="text-xs text-muted-foreground">autosave…</span>
+                )}
+              </div>
+              <AppointmentBriefingView
+                preparation={{
+                  ...preparation,
+                  preparation_data: buildPreparationData(editData),
+                }}
+                appointmentInfo={appointmentDetails ? {
+                  title: appointmentDetails.title,
+                  start_time: appointmentDetails.start_time,
+                  end_time: appointmentDetails.end_time,
+                  location: appointmentDetails.location ?? null,
+                } : null}
+                compact
+              />
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
