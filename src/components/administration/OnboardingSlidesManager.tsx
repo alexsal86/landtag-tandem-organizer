@@ -251,6 +251,25 @@ export function OnboardingSlidesManager(): React.JSX.Element {
             </CardDescription>
           </div>
           <div className="flex gap-2 shrink-0">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void importJson(f);
+                e.target.value = "";
+              }}
+            />
+            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+              <Upload className="w-4 h-4 mr-2" />
+              Import
+            </Button>
+            <Button variant="outline" size="sm" onClick={exportJson} disabled={rows.length === 0}>
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setPreviewOpen(true)}>
               <Eye className="w-4 h-4 mr-2" />
               Vorschau
