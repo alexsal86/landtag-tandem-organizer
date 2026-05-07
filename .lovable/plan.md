@@ -1,80 +1,82 @@
-# Refactor: 10 große Dateien in Sub-Module splitten
+## Ziel
+Konfigurierbare KI-Anbindung: Standard bleibt der Lovable AI Gateway, neue oder bestehende Edge Functions können per ENV-Variable auf **OpenAI direkt** (eigener API-Key) umgeschaltet werden. Default-Modell für OpenAI: `gpt-5-mini`.
 
-Ziel: Alle 10 Dateien > 1000 Zeilen werden in fokussierte Sub-Module aufgeteilt. Pro Datei gilt: jeder neue Teil ≤ ~600 Zeilen, klare Trennung nach **types / constants / hooks / sub-components**. Public API (Default-/Named-Export) bleibt gleich, sodass keine Imports an anderen Stellen angepasst werden müssen.
+## Architektur
 
-## Vorgehen pro Datei
+Eine zentrale Helper-Datei `supabase/functions/_shared/aiClient.ts` kapselt beide Provider hinter einer einheitlichen API:
 
-### 1. `components/administration/AutomationRuleWizard.tsx` (1481)
-Enthält bereits viele freistehende Konstanten, Typen und Validatoren — leicht extrahierbar.
-- `AutomationRuleWizard.constants.ts` → `MODULE_OPTIONS`, `CONDITION_OPERATORS`, `ACTION_TYPES`, `MODULE_TO_TABLE`, `STATUS_TABLE_OPTIONS`, `TASK_PRIORITY_OPTIONS`, `TRIGGER_TYPES`, `RULE_TEMPLATES`, `DEFAULT_*`.
-- `AutomationRuleWizard.types.ts` → `FieldType`, `FieldSpec`, `ConditionItem`, `ConditionGroup`, `ActionItem`, `WizardForm`.
-- `AutomationRuleWizard.logic.ts` → `validateConditionGroup`, `countConditions`, `evaluateCondition`, `evaluateConditionGroup`, `collectSemanticIssues`, `sanitizeTriggerValue`, `isIsoDate`, `toComparableNumber`.
-- Hauptdatei behält nur die Wizard-Komponente + `useState`/Steps.
+```text
+Edge Function ──► aiClient.chat({ messages, tools, model? })
+                       │
+                       ├── AI_PROVIDER=lovable  → ai.gateway.lovable.dev (LOVABLE_API_KEY)
+                       └── AI_PROVIDER=openai   → api.openai.com         (OPENAI_API_KEY)
+```
 
-### 2. `components/navigation/AppNavigation.tsx` (1480)
-Mehrere Sidebar-Panels in einer Datei.
-- `AppNavigation.types.ts` → `ActivePanel`, `NotificationFilter`, `QuickAccessAddCategory`, `UpcomingAppointmentItem`, `NavigationProps`.
-- `panels/HomePanel.tsx`, `panels/NotificationsPanel.tsx`, `panels/CasefilesPanel.tsx`, `panels/AppointmentsPanel.tsx` (je ein Panel-Render-Block).
-- `useAppointmentsForPanel.ts` falls Datenladen lokal vorhanden.
-- Haupt-`AppNavigation.tsx` orchestriert nur noch Layout + Panel-Switch.
+**Provider-Auswahl-Reihenfolge:**
+1. Optionaler Parameter `provider` im Funktionsaufruf (überschreibt alles)
+2. Pro-Funktion-ENV: `AI_PROVIDER_<FUNCTION_NAME>` (z. B. `AI_PROVIDER_GENERATE_PREPARATION_SUGGESTIONS=openai`)
+3. Globale ENV: `AI_PROVIDER` (Default: `lovable`)
 
-### 3. `components/my-work/MyWorkCasesWorkspace.tsx` (1321)
-- `MyWorkCasesWorkspace.types.ts` → `TimelineEntry` und Hilfs-Typen.
-- `useMyWorkCases.ts` → Datenladen/Filter (Query-Hook + Memos).
-- `MyWorkCasesList.tsx`, `MyWorkCaseDetail.tsx`, `MyWorkCaseTimeline.tsx` als Sub-Komponenten der Master-Detail-Ansicht.
+So lässt sich pro Use Case entscheiden, ohne Code anzufassen.
 
-### 4. `components/meetings/FocusModeView.tsx` (1238)
-- `FocusModeView.types.ts` → `AgendaItem`, `Meeting`, `Profile`, `NavigableItem`, `SystemSubItemResultEntry`, `FocusModeViewProps`.
-- `FocusModeView.utils.ts` → `formatMeetingTime` u. ä.
-- `FocusAgendaList.tsx`, `FocusItemDetail.tsx`, `FocusKeyboardShortcuts.ts` (Tastatur-Bindings als Hook).
+## Schritte
 
-### 5. `components/administration/SuperadminTenantManagement.tsx` (1174)
-- `SuperadminTenantManagement.constants.ts` → `BUNDESLAENDER`, `ROLE_OPTIONS`.
-- `SuperadminTenantManagement.types.ts` → `TenantWithStats`, `UserWithTenants`.
-- `TenantList.tsx`, `TenantUsersDialog.tsx`, `CreateTenantDialog.tsx` als drei Sub-Komponenten.
+### 1. Secrets vorbereiten
+- User trägt `OPENAI_API_KEY` als Supabase Secret ein (über Secret-Tool angefordert).
+- Optional: `AI_PROVIDER` global setzen (Default `lovable` wenn leer).
 
-### 6. `components/task-decisions/TaskDecisionDetails.tsx` (1138)
-- `TaskDecisionDetails.types.ts` → `DecisionDetailsState`, `ResponseThread`, `Participant`, `TaskDecisionDetailsProps`.
-- `TaskDecisionResponses.tsx` (Antworten-Liste/Threads), `TaskDecisionParticipants.tsx`, `TaskDecisionComments.tsx`.
-- Konstante `DELETED_COMMENT_TEXT` + Sub-Component-Helfer in `TaskDecisionDetails.constants.ts`.
+### 2. Shared AI Client (`supabase/functions/_shared/aiClient.ts`)
+- Einheitliches Interface: `chat({ messages, tools?, tool_choice?, model?, stream?, provider? })`.
+- Mappt Modellnamen automatisch:
+  - `google/gemini-3-flash-preview` ↔ `gpt-5-mini` (OpenAI-Default)
+  - `openai/gpt-5` → `gpt-5` (durchgereicht)
+  - explizit übergebene Modellnamen bleiben unverändert
+- Identische Response-Form für beide Provider (OpenAI-kompatibles Schema – passt ohnehin schon).
+- Einheitliche Fehlerbehandlung: 401/402/429/500 → strukturierte JSON-Antwort.
 
-### 7. `contexts/matrix/MatrixClientProvider.tsx` (1063)
-Schwierigster Kandidat: ein großer Provider mit vielen privaten Helfern.
-- `matrixClient/createClient.ts` → Initialisierung & Login-Helfer.
-- `matrixClient/syncHandlers.ts` → Event-Listener-Setup.
-- `matrixClient/notificationBridge.ts` → Push-/Toast-Bridge.
-- Provider-Datei orchestriert nur noch State + Effekte.
-- `useMatrixClient`-Export bleibt unverändert.
+### 3. Bestehende KI-Funktion anpassen
+`supabase/functions/generate-preparation-suggestions/index.ts` als Referenz umstellen:
+- Statt direktem `fetch(...)` → `aiClient.chat(...)`.
+- Tool-Calling-Schema (`suggest_preparation`) bleibt identisch (OpenAI Function Calling = gleiche Form).
+- Verhalten 1:1 erhalten, nur Provider austauschbar.
 
-### 8. `features/employees/components/EmployeeMeetingProtocol.tsx` (1040)
-Schon teilweise modular: enthält intern `RatingScale`, `StatusProgress`, `SaveIndicator`, `ProtocolField`.
-- Diese vier in eigene Dateien unter `EmployeeMeetingProtocol/` extrahieren.
-- `EmployeeMeetingProtocol.utils.ts` → `extractPlainTextFromHtml`, Konstante `ACTION_ITEM_MIN_LENGTH`.
+### 4. Admin-UI (klein) für Provider-Status (optional, empfohlen)
+Im Bereich `/admin` oder `/superadmin` eine kleine Read-Only-Anzeige:
+- Aktueller globaler Provider (aus neuer Edge Function `get-ai-config`)
+- Liste der KI-Funktionen mit jeweiligem effektivem Provider
+- Hinweis-Text, wo Secrets/ENV gesetzt werden (Supabase-Dashboard-Link)
 
-### 9. `components/letters/DIN5008LetterLayout.tsx` (1016)
-- `DIN5008LetterLayout.types.ts` → `DIN5008LetterLayoutProps` und ggf. interne Block-Typen.
-- `din5008/AddressBlock.tsx`, `din5008/SubjectBlock.tsx`, `din5008/BodyBlock.tsx`, `din5008/SignatureBlock.tsx`, `din5008/AttachmentsBlock.tsx`.
-- Hauptdatei platziert die Blöcke nur im 210×297mm-Canvas.
+Keine Edit-UI – Konfiguration läuft bewusst über Secrets, nicht über DB (Sicherheit, Auditierbarkeit).
 
-### 10. `hooks/useQuickNotes.ts` (1001)
-- `quickNotes/constants.ts` → `noteColors`, Default-Werte.
-- `quickNotes/utils.ts` → `stripHtml`, `toEditorHtml`, `getCardBackground`, `hasInactiveMeetingLink`, `normalizeMeetingLink`.
-- `quickNotes/types.ts` → `GroupedNotes` etc.
-- Haupthook behält Query/Mutation-Logik.
+### 5. Dokumentation
+Kurze README-Notiz in `supabase/functions/_shared/README.md`:
+- Welche ENV-Variablen wofür
+- Wie man eine neue KI-Funktion auf OpenAI zwingt
+- Beispiel-Snippet `aiClient.chat(...)`
 
-## Allgemeine Regeln
+## Technische Details
 
-- Public API (`export`-Namen der Hauptdateien) bleibt 1:1 erhalten — keine Konsumenten müssen geändert werden.
-- TypeScript-Strict beibehalten; wo `as any` lauert, durch `@ts-expect-error` mit Begründung ersetzen.
-- Nach jedem Split: `tsc`-Prüfung wird vom Harness automatisch ausgeführt; bei Fehlern direkt korrigieren.
-- Keine Funktionsänderung, kein Verhaltens-Refactor — rein strukturell.
+**Modell-Mapping (Standardfall):**
+| Lovable Gateway | OpenAI direkt |
+|---|---|
+| `google/gemini-3-flash-preview` (default) | `gpt-5-mini` (default) |
+| `openai/gpt-5` | `gpt-5` |
+| `openai/gpt-5-mini` | `gpt-5-mini` |
 
-## Out of Scope
+**Streaming:** `aiClient.chatStream()` als zweite Funktion, gibt ReadableStream zurück (für künftige Chat-UIs). Aktuell genutzt: nur non-streaming `chat()`.
 
-- `src/integrations/supabase/types.ts` (auto-generiert).
-- Tests/Story-Files (sofern vorhanden) bleiben unverändert, sofern Imports stabil sind.
-- Keine Performance- oder Style-Optimierungen in diesem Schritt.
+**Fehler-Response (vereinheitlicht):**
+```json
+{ "error": "rate_limited" | "payment_required" | "unauthorized" | "ai_error", "message": "..." }
+```
+Frontend kann generisch reagieren, egal welcher Provider zugrunde liegt.
 
-## Risiko
+**Was NICHT geändert wird:**
+- Keine bestehenden Tool-Schemata (`suggest_preparation` etc.) – bleiben kompatibel.
+- Keine DB-Migrationen.
+- Lovable AI Gateway bleibt aktiv und Default.
 
-Mittel. Hauptrisiken: zirkuläre Imports zwischen extrahierten Sub-Dateien (Lösung: Typen/Konstanten in dedizierte Dateien ohne React-Imports) und Matrix-Provider-Refactor (komplexester Teil; konservativ extrahieren, Effekte beibehalten).
+## Nach Implementierung
+1. User fügt `OPENAI_API_KEY` hinzu (wird im Build über Secret-Dialog angefragt).
+2. Optional: `AI_PROVIDER_GENERATE_PREPARATION_SUGGESTIONS=openai` setzen, um diese Funktion auf OpenAI umzustellen.
+3. Test über `/termine` → Briefing-Vorschläge generieren.
