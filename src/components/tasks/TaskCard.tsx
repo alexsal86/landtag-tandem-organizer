@@ -133,7 +133,9 @@ export function TaskCard({
   const CHECKBOX_TOP_IN_CARD = 12 + 2; // p-3 + mt-0.5
   const CONNECTOR_X = CHECKBOX_CENTER + 8;
   const [parentLineHeight, setParentLineHeight] = useState<number | null>(null);
+  const [parentLineTop, setParentLineTop] = useState<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const childrenRef = useRef<HTMLDivElement>(null);
   const measureRafIdRef = useRef<number | null>(null);
 
@@ -159,14 +161,19 @@ export function TaskCard({
     const measure = () => {
       const container = containerRef.current;
       const childrenEl = childrenRef.current;
+      const cardEl = cardRef.current;
       if (!container || !childrenEl) return;
       const lastChild = childrenEl.lastElementChild as HTMLElement | null;
       if (!lastChild) return;
 
       const containerTop = container.getBoundingClientRect().top;
       const lastChildRect = lastChild.getBoundingClientRect();
-      const lineStart = connectorParentLineStartTop;
-      const lineEnd = lastChildRect.top - containerTop;
+      // Linie startet knapp unter der Parent-Card statt mittig in ihr.
+      const lineStart = cardEl
+        ? cardEl.getBoundingClientRect().bottom - containerTop + 2
+        : connectorParentLineStartTop;
+      const lineEnd = lastChildRect.top - containerTop + connectorChildTargetTop;
+      setParentLineTop(lineStart);
       setParentLineHeight(Math.max(0, lineEnd - lineStart));
     };
 
@@ -181,6 +188,7 @@ export function TaskCard({
     scheduleMeasure();
     const observer = new ResizeObserver(scheduleMeasure);
     observer.observe(childrenRef.current);
+    if (cardRef.current) observer.observe(cardRef.current);
 
     return () => {
       observer.disconnect();
@@ -189,7 +197,7 @@ export function TaskCard({
         measureRafIdRef.current = null;
       }
     };
-  }, [hasSubtasks, childTasks.length]);
+  }, [hasSubtasks, childTasks.length, connectorChildTargetTop, connectorParentLineStartTop]);
 
   const getDueDateColor = (dueDate: string | null) => {
     if (!dueDate) return "text-muted-foreground";
