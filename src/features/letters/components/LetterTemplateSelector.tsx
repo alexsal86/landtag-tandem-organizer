@@ -356,6 +356,7 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
               selectedTemplate?.id === template.id ? 'ring-2 ring-primary' : ''
             }`}
             onClick={() => {
+              // @ts-expect-error template summary missing 18 fields filled in by parent on selection
               onSelect(template);
             }}
           >

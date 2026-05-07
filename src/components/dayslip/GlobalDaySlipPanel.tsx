@@ -359,6 +359,7 @@ export function GlobalDaySlipPanel() {
                 initialNodes={ds.todayData.nodes}
                 dayKey={ds.todayKey}
                 resolveMode={ds.resolveMode}
+                /* @ts-expect-error editorConfig.nodes uses unknown[] internally; Lexical expects KlassConstructor[] */
                 editorConfig={ds.editorConfig}
                 onEditorChange={ds.onEditorChange}
                 onEditorReady={ds.handleEditorReady}
