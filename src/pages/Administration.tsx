@@ -52,6 +52,7 @@ import { PushNotificationTest } from "@/dev/PushNotificationTest";
 import { VapidKeyTest } from "@/dev/VapidKeyTest";
 import { DirectPushTest } from "@/dev/DirectPushTest";
 import { AutomationRulesManager } from "@/components/administration/AutomationRulesManager";
+import { WorkflowEngineManager } from "@/components/administration/WorkflowEngineManager";
 import { MeetingTemplateManager } from "@/components/administration/MeetingTemplateManager";
 import { PlanningTemplateManager } from "@/components/administration/PlanningTemplateManager";
 import { UserRolesManager } from "@/components/administration/UserRolesManager";
