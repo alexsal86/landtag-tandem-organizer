@@ -420,9 +420,9 @@ export function AppointmentPreparationDataTab({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-12">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Linke Spalte */}
-        <div className="space-y-4 xl:col-span-4">
+        <div className="space-y-4">
           {/* Anlass des Besuchs */}
           <Card>
             <CardContent className="pt-6">
@@ -575,8 +575,8 @@ export function AppointmentPreparationDataTab({
           </Card>
         </div>
 
-        {/* Mittelspalte */}
-        <div className="space-y-4 xl:col-span-4">
+        {/* Rechte Spalte */}
+        <div className="space-y-4">
           <ProgramCard
             programRows={programRows}
             expandedSection={expandedSections.programm}
@@ -608,32 +608,6 @@ export function AppointmentPreparationDataTab({
           />
         </div>
 
-        {/* Live-Vorschau */}
-        <div className="hidden xl:block xl:col-span-4 self-start sticky top-4">
-          <Card className="bg-card">
-            <CardContent className="pt-4">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Live-Vorschau</h3>
-                {saving && (
-                  <span className="text-xs text-muted-foreground">autosave…</span>
-                )}
-              </div>
-              <AppointmentBriefingView
-                preparation={{
-                  ...preparation,
-                  preparation_data: buildPreparationData(editData),
-                }}
-                appointmentInfo={appointmentDetails ? {
-                  title: appointmentDetails.title,
-                  start_time: appointmentDetails.start_time,
-                  end_time: appointmentDetails.end_time,
-                  location: appointmentDetails.location ?? null,
-                } : null}
-                compact
-              />
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </div>
   );
