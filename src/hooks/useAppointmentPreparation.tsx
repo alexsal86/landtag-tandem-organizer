@@ -99,6 +99,14 @@ export interface AppointmentPreparation {
       task_created?: boolean;
     }>;
     debrief_followup_scheduled?: boolean;
+    // Strukturierte Fakten mit Zuordnung zu Partner/Thema
+    structured_facts?: Array<{
+      id: string;
+      text: string;
+      source?: string;
+      link_type: 'general' | 'partner' | 'topic';
+      link_id?: string;
+    }>;
   };
   checklist_items: Array<{
     id: string;
