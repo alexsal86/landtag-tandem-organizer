@@ -20,6 +20,8 @@ import { MyWorkTasksToolbar } from "./MyWorkTasksToolbar";
 import { MyWorkTasksBoard } from "./MyWorkTasksBoard";
 import { MyWorkTasksList } from "./MyWorkTasksList";
 import { MyWorkTaskDialogs } from "./MyWorkTaskDialogs";
+import { MyWorkEmptyState } from "./MyWorkEmptyState";
+import { ListTodo } from "lucide-react";
 import { useMyWorkTaskActions } from "./useMyWorkTaskActions";
 
 export function MyWorkTasksTab() {
