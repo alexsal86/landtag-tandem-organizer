@@ -72,22 +72,22 @@ const getIcon = (iconName?: string) => {
 const getSolidColorClasses = (color: string) => {
   switch (color) {
     case "red":
-      return "bg-red-600 hover:bg-red-700 border-red-700 text-white";
+      return "bg-palette-red hover:bg-palette-red border-palette-red text-white";
     case "orange":
-      return "bg-orange-600 hover:bg-orange-700 border-orange-700 text-white";
+      return "bg-palette-orange hover:bg-palette-orange border-palette-orange text-white";
     case "yellow":
-      return "bg-yellow-500 hover:bg-yellow-600 border-yellow-600 text-black";
+      return "bg-palette-yellow hover:bg-palette-yellow border-palette-yellow text-black";
     case "blue":
-      return "bg-blue-600 hover:bg-blue-700 border-blue-700 text-white";
+      return "bg-palette-blue hover:bg-palette-blue border-palette-blue text-white";
     case "purple":
-      return "bg-purple-600 hover:bg-purple-700 border-purple-700 text-white";
+      return "bg-palette-purple hover:bg-palette-purple border-palette-purple text-white";
     case "lime":
-      return "bg-lime-600 hover:bg-lime-700 border-lime-700 text-white";
+      return "bg-palette-lime hover:bg-palette-lime border-palette-lime text-white";
     case "gray":
-      return "bg-gray-600 hover:bg-gray-700 border-gray-700 text-white";
+      return "bg-palette-gray hover:bg-palette-gray border-palette-gray text-white";
     case "green":
     default:
-      return "bg-green-600 hover:bg-green-700 border-green-700 text-white";
+      return "bg-palette-green hover:bg-palette-green border-palette-green text-white";
   }
 };
 
@@ -595,7 +595,7 @@ export const TaskDecisionResponse = ({
     if (!option?.recommended) return null;
 
     const badge = (
-      <span className="ml-1 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-medium text-amber-700">
+      <span className="ml-1 rounded bg-palette-amber/20 px-1 py-0.5 text-[10px] font-medium text-palette-amber">
         Empfohlen
       </span>
     );
@@ -640,7 +640,7 @@ export const TaskDecisionResponse = ({
 
     const baseButtonClasses = isSelected
       ? `${solidColorClasses} border`
-      : `${colorClasses.textClass} ${colorClasses.borderClass} hover:${colorClasses.bgClass} ${option.recommended ? "ring-1 ring-amber-400/70" : ""}`;
+      : `${colorClasses.textClass} ${colorClasses.borderClass} hover:${colorClasses.bgClass} ${option.recommended ? "ring-1 ring-palette-amber/70" : ""}`;
 
     const button = option.requires_comment ? (
       <Dialog key={option.key} open={isQuestionDialogOpen} onOpenChange={setIsQuestionDialogOpen}>

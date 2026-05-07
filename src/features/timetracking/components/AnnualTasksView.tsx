@@ -89,10 +89,10 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
-  employee: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  admin: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-  calendar: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  system: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
+  employee: "bg-palette-blue/20 text-palette-blue",
+  admin: "bg-palette-purple/20 text-palette-purple",
+  calendar: "bg-palette-green/20 text-palette-green",
+  system: "bg-muted text-foreground",
 };
 
 const FUNCTION_DESCRIPTIONS: Record<string, { title: string; actions: string[] }> = {
@@ -326,11 +326,11 @@ export function AnnualTasksView() {
   const getStatusIcon = (status: AnnualTaskWithStatus['status']) => {
     switch (status) {
       case 'completed':
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+        return <CheckCircle2 className="h-4 w-4 text-palette-green" />;
       case 'overdue':
-        return <AlertTriangle className="h-4 w-4 text-red-500" />;
+        return <AlertTriangle className="h-4 w-4 text-palette-red" />;
       case 'due':
-        return <Clock className="h-4 w-4 text-orange-500" />;
+        return <Clock className="h-4 w-4 text-palette-orange" />;
       default:
         return <Calendar className="h-4 w-4 text-muted-foreground" />;
     }
@@ -339,11 +339,11 @@ export function AnnualTasksView() {
   const getStatusBadge = (status: AnnualTaskWithStatus['status']) => {
     switch (status) {
       case 'completed':
-        return <Badge variant="default" className="bg-green-500">Erledigt</Badge>;
+        return <Badge variant="default" className="bg-palette-green">Erledigt</Badge>;
       case 'overdue':
         return <Badge variant="destructive">Überfällig</Badge>;
       case 'due':
-        return <Badge variant="secondary" className="bg-orange-100 text-orange-800">Fällig</Badge>;
+        return <Badge variant="secondary" className="bg-palette-orange/20 text-palette-orange">Fällig</Badge>;
       default:
         return <Badge variant="outline">Anstehend</Badge>;
     }
@@ -508,9 +508,9 @@ export function AnnualTasksView() {
                     key={task.id}
                     className={cn(
                       "flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors",
-                      task.status === 'overdue' && "border-l-4 border-l-red-500",
-                      task.status === 'due' && "border-l-4 border-l-orange-500",
-                      task.status === 'completed' && "border-l-4 border-l-green-500"
+                      task.status === 'overdue' && "border-l-4 border-l-palette-red",
+                      task.status === 'due' && "border-l-4 border-l-palette-orange",
+                      task.status === 'completed' && "border-l-4 border-l-palette-green"
                     )}
                   >
                     <div className="mt-0.5">
@@ -535,7 +535,7 @@ export function AnnualTasksView() {
                           </Badge>
                         )}
                         {task.execute_function && (
-                          <Badge variant="outline" className="gap-1 text-blue-600">
+                          <Badge variant="outline" className="gap-1 text-palette-blue">
                             <Zap className="h-3 w-3" />
                             Aktion
                           </Badge>
@@ -551,7 +551,7 @@ export function AnnualTasksView() {
                         {task.due_day && `, ${task.due_day}.`}
                       </p>
                       {task.completion?.completed_at && (
-                        <p className="text-xs text-green-600 mt-1">
+                        <p className="text-xs text-palette-green mt-1">
                           Erledigt am {format(new Date(task.completion.completed_at), "dd.MM.yyyy", { locale: de })}
                         </p>
                       )}
@@ -586,7 +586,7 @@ export function AnnualTasksView() {
             <DialogTitle className="flex items-center gap-2">
               {selectedTask?.execute_function ? (
                 <>
-                  <Zap className="h-5 w-5 text-blue-500" />
+                  <Zap className="h-5 w-5 text-palette-blue" />
                   Aufgabe ausführen
                 </>
               ) : (
@@ -606,23 +606,23 @@ export function AnnualTasksView() {
 
             {/* Function Actions Preview */}
             {selectedTask?.execute_function && (
-              <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4 space-y-3">
-                <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+              <div className="bg-palette-blue/10 rounded-lg p-4 space-y-3">
+                <div className="flex items-center gap-2 text-palette-blue">
                   <Info className="h-4 w-4" />
                   <span className="font-medium text-sm">Diese Aufgabe führt folgende Aktionen aus:</span>
                 </div>
-                <ul className="space-y-1.5 text-sm text-blue-600 dark:text-blue-400">
+                <ul className="space-y-1.5 text-sm text-palette-blue">
                   {getFunctionInfo(selectedTask.execute_function)?.actions.map((action, i) => (
                     <li key={i} className="flex items-start gap-2">
-                      <span className="text-blue-500">•</span>
+                      <span className="text-palette-blue">•</span>
                       {action}
                     </li>
                   ))}
                 </ul>
                 {affectedCount !== null && (
-                  <div className="flex items-center gap-2 pt-2 border-t border-blue-200 dark:border-blue-800">
-                    <Users className="h-4 w-4 text-blue-500" />
-                    <span className="text-sm text-blue-700 dark:text-blue-300">
+                  <div className="flex items-center gap-2 pt-2 border-t border-palette-blue/30">
+                    <Users className="h-4 w-4 text-palette-blue" />
+                    <span className="text-sm text-palette-blue">
                       Betroffene Mitarbeiter: <strong>{affectedCount}</strong>
                     </span>
                   </div>
@@ -635,8 +635,8 @@ export function AnnualTasksView() {
               <div className={cn(
                 "rounded-lg p-4",
                 executionResult.success 
-                  ? "bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300"
-                  : "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300"
+                  ? "bg-palette-green/10 text-palette-green"
+                  : "bg-palette-red/10 text-palette-red"
               )}>
                 <div className="flex items-center gap-2">
                   {executionResult.success ? (

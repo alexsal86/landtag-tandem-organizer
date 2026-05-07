@@ -55,7 +55,7 @@ const responseButtonConfig: Array<{
     status: "accepted",
     label: "Zusagen",
     mobileLabel: "Zusage",
-    className: "bg-green-600 text-white hover:bg-green-700",
+    className: "bg-palette-green text-white hover:bg-palette-green",
     icon: Check,
   },
   {
@@ -63,7 +63,7 @@ const responseButtonConfig: Array<{
     label: "Unter Vorbehalt",
     mobileLabel: "Vorbehalt",
     variant: "outline",
-    className: "border-amber-300 text-amber-700 hover:bg-amber-50",
+    className: "border-palette-amber/40 text-palette-amber hover:bg-palette-amber/10",
     icon: Clock3,
   },
   {
@@ -80,8 +80,8 @@ const statusCopy: Record<
   { label: string; className?: string; variant?: "outline" | "destructive" }
 > = {
   invited: { label: "Noch offen", variant: "outline" },
-  accepted: { label: "Zugesagt", className: "bg-green-500 text-white" },
-  tentative: { label: "Unter Vorbehalt", className: "bg-amber-500 text-white" },
+  accepted: { label: "Zugesagt", className: "bg-palette-green text-white" },
+  tentative: { label: "Unter Vorbehalt", className: "bg-palette-amber text-white" },
   declined: { label: "Abgesagt", variant: "destructive" },
 };
 
@@ -209,7 +209,7 @@ export default function EventRSVP() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+      <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
         <div className="text-sm text-muted-foreground animate-pulse">
           Einladung wird geladen…
         </div>
@@ -219,7 +219,7 @@ export default function EventRSVP() {
 
   if (!code || loadError || !invitation) {
     return (
-      <div className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6">
+      <div className="min-h-screen bg-muted/30 px-4 py-8 sm:px-6">
         <div className="mx-auto max-w-lg space-y-4">
           <Alert>
             <Info className="h-4 w-4" />
@@ -253,7 +253,7 @@ export default function EventRSVP() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white px-4 py-4 sm:px-6 sm:py-8">
+    <div className="min-h-screen bg-gradient-to-b from-muted/30 to-white px-4 py-4 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-2xl space-y-4">
         <Alert>
           <Info className="h-4 w-4" />
@@ -279,11 +279,11 @@ export default function EventRSVP() {
             </p>
           </AlertDescription>
         </Alert>
-        <Card className="overflow-hidden border-slate-200 shadow-lg shadow-slate-200/50">
+        <Card className="overflow-hidden border-border shadow-lg shadow-slate-200/50">
           <CardHeader className="space-y-4 bg-white p-5 sm:p-8">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-2">
-                <p className="text-sm font-medium uppercase tracking-[0.2em] text-slate-500">
+                <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
                   Veranstaltungseinladung
                 </p>
                 <CardTitle className="flex items-start gap-3 text-2xl leading-tight sm:text-3xl">
@@ -298,21 +298,21 @@ export default function EventRSVP() {
                 {badgeConfig.label}
               </Badge>
             </div>
-            <CardDescription className="space-y-4 text-sm leading-6 text-slate-700 sm:text-base">
+            <CardDescription className="space-y-4 text-sm leading-6 text-foreground/80 sm:text-base">
               {invitation.eventDescription && (
                 <p className="whitespace-pre-line">
                   {invitation.eventDescription}
                 </p>
               )}
-              <div className="grid gap-3 rounded-2xl bg-slate-50 p-4 sm:grid-cols-2">
+              <div className="grid gap-3 rounded-2xl bg-muted/30 p-4 sm:grid-cols-2">
                 {formattedDate && (
                   <div className="flex items-start gap-3">
-                    <CalendarIcon className="mt-0.5 h-4 w-4 text-slate-500" />
+                    <CalendarIcon className="mt-0.5 h-4 w-4 text-muted-foreground" />
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-slate-500">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
                         Datum
                       </p>
-                      <p className="font-medium text-slate-900">
+                      <p className="font-medium text-foreground">
                         {formattedDate}
                       </p>
                     </div>
@@ -320,22 +320,22 @@ export default function EventRSVP() {
                 )}
                 {invitation.eventLocation && (
                   <div className="flex items-start gap-3">
-                    <MapPin className="mt-0.5 h-4 w-4 text-slate-500" />
+                    <MapPin className="mt-0.5 h-4 w-4 text-muted-foreground" />
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-slate-500">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
                         Ort
                       </p>
-                      <p className="font-medium text-slate-900">
+                      <p className="font-medium text-foreground">
                         {invitation.eventLocation}
                       </p>
                     </div>
                   </div>
                 )}
                 <div className="sm:col-span-2">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
                     Eingeladene Person
                   </p>
-                  <p className="font-medium text-slate-900">
+                  <p className="font-medium text-foreground">
                     {invitation.guestDisplayName ?? "Unbekannter Gast"}
                   </p>
                 </div>
@@ -345,13 +345,13 @@ export default function EventRSVP() {
 
           <CardContent className="space-y-6 p-5 sm:p-8">
             {confirmationVisible ? (
-              <div className="space-y-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4 sm:p-5">
+              <div className="space-y-4 rounded-2xl border border-palette-green/20 bg-palette-green/10 p-4 sm:p-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h2 className="text-lg font-semibold text-slate-900">
+                    <h2 className="text-lg font-semibold text-foreground">
                       Antwort bestätigt
                     </h2>
-                    <p className="text-sm text-slate-600">
+                    <p className="text-sm text-muted-foreground">
                       Ihre Rückmeldung wurde auf dieser Website gespeichert und
                       kann bei Bedarf erneut geändert werden.
                     </p>
@@ -365,10 +365,10 @@ export default function EventRSVP() {
                 </div>
                 {comment.trim() && (
                   <div className="rounded-xl bg-white/80 p-4">
-                    <p className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                    <p className="flex items-center gap-2 text-sm font-medium text-foreground/80">
                       <MessageSquare className="h-4 w-4" /> Ihr Kommentar
                     </p>
-                    <p className="mt-2 whitespace-pre-line text-sm text-slate-600">
+                    <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">
                       {comment}
                     </p>
                   </div>
@@ -388,7 +388,7 @@ export default function EventRSVP() {
                 <div className="space-y-2">
                   <Label
                     htmlFor="comment"
-                    className="text-sm font-medium text-slate-900"
+                    className="text-sm font-medium text-foreground"
                   >
                     Kommentar
                   </Label>
@@ -398,17 +398,17 @@ export default function EventRSVP() {
                     onChange={(event) => setComment(event.target.value)}
                     placeholder="Optional: Hinweise zur Teilnahme, Begleitperson oder Anreise"
                     rows={4}
-                    className="resize-none rounded-2xl border-slate-200 bg-white text-base shadow-sm"
+                    className="resize-none rounded-2xl border-border bg-white text-base shadow-sm"
                   />
                 </div>
 
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700">
-                  <p className="font-medium text-slate-900">
+                <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm leading-6 text-foreground/80">
+                  <p className="font-medium text-foreground">
                     Antwortlogik für diesen Link
                   </p>
                   <p>{responsePolicyText}</p>
                   {invitation.expiresAt && (
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       Gültig bis{" "}
                       {format(
                         new Date(invitation.expiresAt),
@@ -447,7 +447,7 @@ export default function EventRSVP() {
               </div>
             ) : null}
 
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">
+            <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-xs leading-5 text-muted-foreground">
               Technischer Hinweis: Dieser RSVP-Link gehört zur Übergangsphase
               der alten Einladungsstrecke. Neue Einladungen verweisen ab sofort
               auf{" "}

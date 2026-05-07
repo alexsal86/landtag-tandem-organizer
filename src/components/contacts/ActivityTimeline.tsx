@@ -65,24 +65,24 @@ const getActivityIcon = (type: string) => {
 const getActivityColor = (type: string) => {
   switch (type) {
     case 'call':
-      return 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300';
+      return 'bg-palette-green/20 text-palette-green';
     case 'email':
-      return 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300';
+      return 'bg-palette-blue/20 text-palette-blue';
     case 'meeting':
     case 'appointment':
-      return 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300';
+      return 'bg-palette-purple/20 text-palette-purple';
     case 'letter':
-      return 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300';
+      return 'bg-palette-orange/20 text-palette-orange';
     case 'edit':
-      return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300';
+      return 'bg-palette-yellow/20 text-palette-yellow';
     case 'note':
-      return 'bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300';
+      return 'bg-palette-pink/20 text-palette-pink';
     case 'created':
-      return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300';
+      return 'bg-palette-indigo/20 text-palette-indigo';
     case 'deleted':
-      return 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300';
+      return 'bg-palette-red/20 text-palette-red';
     default:
-      return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300';
+      return 'bg-muted text-foreground/80';
   }
 };
 

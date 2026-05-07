@@ -113,23 +113,23 @@ export function PendingLeavesTable({ pendingLeaves, onLeaveAction, onCancelAppro
                 const workingDays = calculateWorkingDays(req.start_date, req.end_date);
                 const isCancelRequest = req.status === 'cancel_requested';
                 return (
-                  <TableRow key={req.id} className={isCancelRequest ? "bg-amber-50/50" : ""}>
+                  <TableRow key={req.id} className={isCancelRequest ? "bg-palette-amber/5" : ""}>
                     <TableCell>{req.user_name}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={
-                        req.type === "medical" ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/20 dark:text-purple-300 dark:border-purple-800" :
-                        req.type === "overtime_reduction" ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-300 dark:border-amber-800" :
-                        req.type === "sick" ? "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/20 dark:text-orange-300 dark:border-orange-800" :
-                        req.type === "vacation" ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-300 dark:border-blue-800" : undefined
+                        req.type === "medical" ? "bg-palette-purple/10 text-palette-purple border-palette-purple/30" :
+                        req.type === "overtime_reduction" ? "bg-palette-amber/10 text-palette-amber border-palette-amber/30" :
+                        req.type === "sick" ? "bg-palette-orange/10 text-palette-orange border-palette-orange/30" :
+                        req.type === "vacation" ? "bg-palette-blue/10 text-palette-blue border-palette-blue/30" : undefined
                       }>
                         {req.type === "vacation" ? "🏖️ Urlaub" : req.type === "sick" ? "🤒 Krank" : req.type === "medical" ? "🏥 Arzttermin" : req.type === "overtime_reduction" ? "⏰ Überstundenabbau" : "Sonstiges"}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       {isCancelRequest ? (
-                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300"><Undo2 className="h-3 w-3 mr-1" />Stornierung</Badge>
+                        <Badge variant="outline" className="bg-palette-amber/10 text-palette-amber border-palette-amber/40"><Undo2 className="h-3 w-3 mr-1" />Stornierung</Badge>
                       ) : (
-                        <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Neu</Badge>
+                        <Badge variant="secondary" className="bg-palette-yellow/20 text-palette-yellow">Neu</Badge>
                       )}
                     </TableCell>
                     <TableCell>{new Date(req.start_date).toLocaleDateString("de-DE")}</TableCell>
@@ -138,7 +138,7 @@ export function PendingLeavesTable({ pendingLeaves, onLeaveAction, onCancelAppro
                     <TableCell>
                       {isCancelRequest ? (
                         <div className="flex gap-2">
-                          <Button size="sm" variant="outline" className="text-green-700 hover:bg-green-50" onClick={() => onCancelApproval(req.id, true)}>
+                          <Button size="sm" variant="outline" className="text-palette-green hover:bg-palette-green/10" onClick={() => onCancelApproval(req.id, true)}>
                             <Check className="h-4 w-4 mr-1" />Stornierung genehmigen
                           </Button>
                           <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => onCancelApproval(req.id, false)}>
@@ -234,7 +234,7 @@ export function EmployeeListTable({
                         <div className="flex items-center gap-2">
                           <Input type="number" step="0.5" value={e.hours_per_week}
                             onChange={(ev) => { const v = Number(ev.target.value); if (v >= 1 && v <= 39.5) { setEmployees(prev => prev.map(emp => emp.user_id === e.user_id ? { ...emp, hours_per_week: v } : emp)); updateHours(e.user_id, v); } }}
-                            className="w-24 h-10 rounded-lg border-slate-200 bg-slate-50/80 font-medium" min="1" max="39.5" />
+                            className="w-24 h-10 rounded-lg border-border bg-muted/40 font-medium" min="1" max="39.5" />
                           <Badge variant="outline" className="text-xs whitespace-nowrap">{Math.round((e.hours_per_week / 39.5) * 100)}%</Badge>
                           <EmployeeHistoryPopover userId={e.user_id} />
                         </div>
@@ -242,29 +242,29 @@ export function EmployeeListTable({
                       <TableCell>
                         <Input type="number" value={e.days_per_week}
                           onChange={(ev) => { const v = Number(ev.target.value); if (v >= 1 && v <= 5) { setEmployees(prev => prev.map(emp => emp.user_id === e.user_id ? { ...emp, days_per_week: v } : emp)); updateDaysPerWeek(e.user_id, v); } }}
-                          className="w-24 h-10 rounded-lg border-slate-200 bg-slate-50/80 font-medium" min="1" max="5" />
+                          className="w-24 h-10 rounded-lg border-border bg-muted/40 font-medium" min="1" max="5" />
                       </TableCell>
                       <TableCell>
                         <Input type="number" value={e.annual_vacation_days}
                           onChange={(ev) => { const v = Number(ev.target.value); if (v >= 0 && v <= 50) { setEmployees(prev => prev.map(emp => emp.user_id === e.user_id ? { ...emp, annual_vacation_days: v } : emp)); updateVacationDays(e.user_id, v); } }}
-                          className="w-24 h-10 rounded-lg border-slate-200 bg-slate-50/80 font-medium" min="0" max="50" />
+                          className="w-24 h-10 rounded-lg border-border bg-muted/40 font-medium" min="0" max="50" />
                       </TableCell>
                       <TableCell>
                         <Input type="date" value={e.employment_start_date || "2025-01-01"}
                           onChange={(ev) => { const v = ev.target.value; setEmployees(prev => prev.map(emp => emp.user_id === e.user_id ? { ...emp, employment_start_date: v } : emp)); updateStartDate(e.user_id, v); }}
-                          className="w-44 h-10 rounded-lg border-slate-200 bg-slate-50/80 font-medium" />
+                          className="w-44 h-10 rounded-lg border-border bg-muted/40 font-medium" />
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline">{sickDays[e.user_id] || 0} Tage</Badge>
-                          {(a?.pending?.sick || 0) > 0 && <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-300">⏳ {a?.pending.sick}</Badge>}
+                          {(a?.pending?.sick || 0) > 0 && <Badge variant="outline" className="text-xs bg-palette-orange/10 text-palette-orange border-palette-orange/40">⏳ {a?.pending.sick}</Badge>}
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
                           <Badge variant="secondary">{vacApproved} von {e.annual_vacation_days + (e.carry_over_days || 0)} Tagen</Badge>
                           {(e.carry_over_days || 0) > 0 && (
-                            <div className="text-xs text-amber-600 flex items-center gap-1">
+                            <div className="text-xs text-palette-amber flex items-center gap-1">
                               <span>+{e.carry_over_days} Resturlaub</span>
                               <TooltipProvider><Tooltip><TooltipTrigger asChild><AlertCircle className="h-3 w-3 cursor-help" /></TooltipTrigger>
                                 <TooltipContent><p>Resturlaub aus {new Date().getFullYear() - 1}</p><p className="text-xs text-muted-foreground">Verfällt am 31.03.{new Date().getFullYear()}</p></TooltipContent>
@@ -274,7 +274,7 @@ export function EmployeeListTable({
                           {remainingVacationDays + (e.carry_over_days || 0) > 0 && (
                             <div className="text-xs text-muted-foreground">{remainingVacationDays + (e.carry_over_days || 0)} verbleibend</div>
                           )}
-                          {(a?.pending?.vacation || 0) > 0 && <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-300">⏳ {a?.pending.vacation} ausstehend</Badge>}
+                          {(a?.pending?.vacation || 0) > 0 && <Badge variant="outline" className="text-xs bg-palette-yellow/10 text-palette-yellow border-palette-yellow/40">⏳ {a?.pending.vacation} ausstehend</Badge>}
                         </div>
                       </TableCell>
                       <TableCell>
