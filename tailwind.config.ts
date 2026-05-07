@@ -79,6 +79,13 @@ export default {
 					foreground: 'hsl(var(--event-foreground))',
 					'foreground-dark': 'hsl(var(--event-foreground-dark))'
 				},
+				agenda: {
+					appointments: 'hsl(var(--agenda-appointments))',
+					notes: 'hsl(var(--agenda-notes))',
+					tasks: 'hsl(var(--agenda-tasks))',
+					birthdays: 'hsl(var(--agenda-birthdays))',
+					decisions: 'hsl(var(--agenda-decisions))'
+				},
 				muted: {
 					DEFAULT: 'hsl(var(--muted))',
 					foreground: 'hsl(var(--muted-foreground))'
