@@ -4,12 +4,18 @@ import { gzipSync } from 'node:zlib';
 
 const distDir = path.resolve('dist/assets');
 const reportPath = path.resolve('dist/bundle-size-report.md');
+const budgetPath = path.resolve('scripts/bundle-budget.json');
+
+const args = new Set(process.argv.slice(2));
+const checkMode = args.has('--check');
 
 const formatSize = (bytes) => {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`;
   return `${(bytes / (1024 * 1024)).toFixed(2)} MiB`;
 };
+
+const KiB = (bytes) => bytes / 1024;
 
 const main = async () => {
   let files;
@@ -58,6 +64,34 @@ const main = async () => {
 
   await fs.writeFile(reportPath, markdown, 'utf8');
   console.log(markdown);
+
+  if (checkMode) {
+    const budget = JSON.parse(await fs.readFile(budgetPath, 'utf8'));
+    const initialPattern = new RegExp(budget.initialChunkPattern);
+    const initialChunks = rows.filter((r) => initialPattern.test(r.file));
+    const initialGzip = initialChunks.reduce((s, r) => s + r.gzipSize, 0);
+
+    const violations = [];
+    if (KiB(totalGzip) > budget.totalGzipKiB) {
+      violations.push(`Total gzip ${formatSize(totalGzip)} > Budget ${budget.totalGzipKiB} KiB`);
+    }
+    if (KiB(initialGzip) > budget.initialGzipKiB) {
+      violations.push(`Initial gzip ${formatSize(initialGzip)} > Budget ${budget.initialGzipKiB} KiB`);
+    }
+    for (const r of rows) {
+      if (KiB(r.gzipSize) > budget.perChunkGzipKiB) {
+        violations.push(`Chunk ${r.file} gzip ${formatSize(r.gzipSize)} > Budget ${budget.perChunkGzipKiB} KiB`);
+      }
+    }
+
+    if (violations.length > 0) {
+      console.error('\n❌ Bundle-Budget überschritten:');
+      for (const v of violations) console.error(`  - ${v}`);
+      process.exit(1);
+    } else {
+      console.log('\n✅ Bundle-Budget eingehalten.');
+    }
+  }
 };
 
 await main();
