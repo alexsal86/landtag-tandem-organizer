@@ -66,6 +66,28 @@ All colors MUST be HSL.
     --agenda-birthdays: 330 81% 60%;        /* pink */
     --agenda-decisions: 271 91% 65%;        /* violet */
 
+    /* Generic palette tokens (color picker / categorization) */
+    --palette-red: 0 84% 60%;
+    --palette-orange: 25 95% 53%;
+    --palette-amber: 38 92% 50%;
+    --palette-yellow: 48 96% 53%;
+    --palette-lime: 84 81% 44%;
+    --palette-green: 142 71% 45%;
+    --palette-teal: 173 80% 40%;
+    --palette-cyan: 189 94% 43%;
+    --palette-blue: 217 91% 60%;
+    --palette-indigo: 239 84% 67%;
+    --palette-purple: 271 91% 65%;
+    --palette-violet: 271 91% 65%;
+    --palette-pink: 330 81% 60%;
+    --palette-rose: 350 89% 60%;
+    --palette-gray: 0 0% 45%;
+
+    /* Priority semantics */
+    --priority-high: 0 84% 60%;
+    --priority-medium: 25 95% 53%;
+    --priority-low: 142 71% 45%;
+
     --border: 210 15% 88%;
     --input: 210 15% 88%;
     --ring: 100 57% 41%;
@@ -165,6 +187,27 @@ All colors MUST be HSL.
     --agenda-tasks: 142 71% 50%;
     --agenda-birthdays: 330 81% 65%;
     --agenda-decisions: 271 91% 70%;
+
+    /* Palette dark mode */
+    --palette-red: 0 84% 65%;
+    --palette-orange: 25 95% 58%;
+    --palette-amber: 38 92% 60%;
+    --palette-yellow: 48 96% 60%;
+    --palette-lime: 84 81% 54%;
+    --palette-green: 142 71% 50%;
+    --palette-teal: 173 80% 48%;
+    --palette-cyan: 189 94% 52%;
+    --palette-blue: 217 91% 65%;
+    --palette-indigo: 239 84% 72%;
+    --palette-purple: 271 91% 70%;
+    --palette-violet: 271 91% 70%;
+    --palette-pink: 330 81% 65%;
+    --palette-rose: 350 89% 65%;
+    --palette-gray: 0 0% 60%;
+
+    --priority-high: 0 84% 65%;
+    --priority-medium: 25 95% 58%;
+    --priority-low: 142 71% 50%;
 
     --border: 217.2 32.6% 20%;           /* Etwas heller */
     --input: 217.2 32.6% 20%;
