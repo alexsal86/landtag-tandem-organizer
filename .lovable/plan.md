@@ -1,89 +1,116 @@
-# Mobile App – Quick Actions Startscreen + erweiterter Login
+# Mobile App – Plan A + C parallel
 
-## Schema-Klärung quick_notes (erledigt)
+Wir bauen die "Erfassen unterwegs"-Aktionen echt aus **und** machen die App optisch/produktreif. In einem Rutsch.
 
-`public.quick_notes` hat `user_id` (NOT NULL, auth user) und `content` (NOT NULL). Kein `tenant_id` nötig. Wir schreiben minimal: `{ user_id, content, title?, category: 'mobile' }`.
+## Teil A — Quick Actions echt machen
 
-## Erweiterter Login (Antwort auf Frage 3)
+### 1. Sprachnotiz 🎙
+- `expo-av` für Mikrofon-Aufnahme (Start/Stop, Dauer-Anzeige)
+- Upload als `.m4a` in Storage-Bucket `audio-recordings`, Pfad `${user_id}/quicknotes/${uuid}.m4a` (Bucket per Migration anlegen falls nicht vorhanden, mit RLS-Policy "user_id im Pfad")
+- Insert in `quick_notes`: `content` enthält Platzhaltertext + signierte URL bzw. Storage-Pfad-Marker, `category='mobile-voice'`
+- v1 ohne Transkription. Transkription kann später als Edge-Function-Hook draufkommen.
 
-Vorschlag für die mobile App, **mehrstufig** angeordnet:
+### 2. Anruf-Erfassung 📞
+- Bottom-Sheet mit zwei Modi:
+  - **Bekannter Kontakt**: Kontakt suchen (gleiche Suche wie Quick-Action 👤) → `contact_id` füllen
+  - **Unbekannte Nummer**: nur `caller_name` + `caller_phone` füllen
+- Felder: `call_type` (eingehend/ausgehend Toggle), `duration_minutes` (optional), `notes`, `follow_up_required` (Switch)
+- Insert in `call_logs` mit `user_id`, `tenant_id`, `created_by_name` (aus Profil)
+- Kann auch direkt aus Kontakt-Detail "Nach Anruf erfassen" gestartet werden (nach `tel:` Link)
 
-1. **Erstanmeldung** – mehrere Wege zur Auswahl auf dem Login-Screen:
-   - **E-Mail + Passwort** (wie bisher, bleibt als Fallback)
-   - **Magic Link** – ein Tipp auf "Login-Link per Mail", User klickt im Mail-Programm, Deep-Link `landtagmobile://auth/callback` öffnet die App und legt die Session an
-   - **Google Sign-In** – nativer Button via `expo-auth-session` / Google Provider (in Supabase Dashboard zu aktivieren)
-   - *(Apple Sign-In als Folgeschritt sobald iOS-Build relevant wird – auf Android nicht erlaubt von Apple)*
-2. **Folgeanmeldungen auf demselben Gerät** – nach erstem erfolgreichem Login:
-   - **Biometrie** (Face ID / Fingerprint) via `expo-local-authentication`
-   - Refresh-Token liegt verschlüsselt im `expo-secure-store`, Biometrie schaltet ihn nur frei
-   - User kann Biometrie in den App-Einstellungen wieder ausschalten
-3. **Logout** löscht Refresh-Token und Biometrie-Flag aus SecureStore.
+### 3. Termin-Schnellerfassung 📅
+- Bottom-Sheet: Titel, Datum+Uhrzeit (native Picker), Dauer (Chips: 15/30/60/90 Min), Ort optional
+- Insert in `appointments`: `user_id`, `tenant_id`, `start_time`, `end_time`, `category='meeting'`, `status='planned'`
+- Kein Recurring, kein Polling — bewusst minimal. Komplexere Terminorga bleibt im Web.
 
-Damit hat man: bequem (Magic Link/Google beim ersten Mal), schnell (Biometrie ab dem zweiten Mal), sicher (kein Passwort dauerhaft auf dem Gerät).
+### 4. Foto/Beleg-Aufnahme 📷
+- Neue 7. Kachel "Foto" oder als Anhang-Aktion innerhalb Notiz-Sheet
+- `expo-image-picker` mit Kamera-Option
+- Upload nach Storage-Bucket `documents`, Pfad `${user_id}/mobile/${uuid}.jpg`
+- An Notiz angehängt: Foto-Pfad in `quick_notes.content` als Markdown-Bildlink, oder als separate Spalte falls vorhanden
+- v1: einfacher Weg → Foto erzeugt automatisch eine `quick_notes` mit Bildlink
 
-## Quick-Actions-Startscreen
-
-Nach Login einziger Hauptscreen, 6 Touch-Kacheln (2 Spalten):
+### Quick-Actions-Layout danach
 
 ```text
 ┌──────────────┬──────────────┐
 │ 📝 Notiz     │ 🎙 Sprach-   │
-│              │ notiz        │
 ├──────────────┼──────────────┤
 │ ✅ Aufgabe   │ 📅 Termin    │
 ├──────────────┼──────────────┤
 │ 👤 Kontakt   │ 📞 Anruf     │
-│ suchen       │ erfassen     │
+├──────────────┼──────────────┤
+│ 📷 Foto      │              │
 └──────────────┴──────────────┘
 ```
 
-Header: aktiver Tenant + Settings-Icon (Logout, Biometrie an/aus).
+(7 Kacheln, eine Lücke — oder wir machen 8 mit "Letzte Eingaben" als Kachel zur Übersicht der zuletzt erfassten Items.)
 
-### v1-Umfang (echt funktionierend)
+## Teil C — Produktreif machen
 
-- **📝 Notiz**: Bottom-Sheet → Titel (optional) + Inhalt → Insert in `quick_notes`
-- **✅ Aufgabe**: Titel + Fälligkeit (optional) → Insert in `tasks` (`category='mobile'`, `created_by=profiles.id`, `tenant_id` aus aktivem Tenant)
-- **👤 Kontakt suchen**: Suchfeld → Live-Suche `contacts` (Tenant-gefiltert) → Trefferliste → Detail mit "Anrufen" (`tel:`) und "Mailen" (`mailto:`)
+### 5. App-Icon + Splash + Branding
+- Icon (1024×1024) und Splash erstellen — ich generiere Vorschläge mit Imagegen, du wählst aus
+- `app.json` ergänzen: `icon`, `splash`, `adaptiveIcon` (Android), `ios.icon`, Background-Color
+- Status-Bar-Style passend zum Hintergrund
 
-### v1-Platzhalter (Kachel sichtbar, "Bald verfügbar"-Toast)
+### 6. Onboarding (3 Slides)
+- Beim allerersten App-Start vor Login:
+  1. "Schnell erfassen unterwegs" + Symbol
+  2. "Sicher per Biometrie" + Symbol
+  3. "Wir brauchen Mikrofon, Kamera, Benachrichtigungen" + "Los geht's"-Button
+- Flag in SecureStore (`landtag.onboardingDone`)
+- Skip-Button rechts oben
 
-- 🎙 Sprachnotiz, 📅 Termin, 📞 Anruf erfassen
+### 7. Google OAuth fertig konfigurieren
+- `expo-auth-session` mit Google-Provider verdrahten
+- **Du musst beisteuern**: in Google Cloud Console OAuth-Client-IDs für Android (`expo` Bundle) und iOS anlegen, Web-Client-ID für Supabase
+- Sobald die IDs da sind, `androidClientId` / `iosClientId` / `webClientId` in `app.json` extra-config + Code eintragen
+- Magic-Link-Redirect `landtagmobile://auth/callback` musst du in Supabase als Redirect-URL freigeben
 
-## Umsetzungsschritte
+### 8. Bessere Fehler-/Erfolgs-UX
+- `Alert.alert` raus, stattdessen Toast/Snackbar (z.B. eigene kleine Komponente — keine externe Lib nötig)
+- Lade-States auf Buttons (Spinner statt nur disabled)
+- Empty States in Kontakt-Suche mit Hinweistexten
 
-1. **Dependencies** in `apps/mobile`:
-   - `@supabase/supabase-js`
-   - `@react-native-async-storage/async-storage`
-   - `expo-secure-store`
-   - `expo-local-authentication`
-   - `expo-auth-session` + `expo-crypto` + `expo-web-browser` (für Google + Magic-Link-Callback)
-   - `expo-linking` (für `landtagmobile://` Deep-Links)
-2. **Supabase-Client** in `packages/api-client/src/supabase.ts` – mit AsyncStorage als Auth-Storage, `autoRefreshToken: true`, `persistSession: true`
-3. **AuthContext** in `apps/mobile/src/state/AuthContext.tsx` – hält `session`, `profileId`, lädt beim App-Start `getSession()`, hört auf `onAuthStateChange`
-4. **TenantContext** – lädt Memberships (`tenant_users` + `tenants`), persistiert aktive Tenant-ID in SecureStore
-5. **Routing** mit Expo Router Gruppen:
-   - `app/(auth)/login.tsx` (E-Mail/Passwort + Magic Link + Google + Biometrie-Schnellzugang)
-   - `app/(auth)/callback.tsx` (Deep-Link-Handler für Magic-Link)
-   - `app/(app)/_layout.tsx` (Guard: ohne Session → Redirect)
-   - `app/(app)/index.tsx` → Quick-Actions-Grid
-   - `app/(app)/settings.tsx` (Biometrie an/aus, Tenant wechseln, Logout)
-6. **Quick-Action-Sheets** – React-Native Modals (`Modal` aus `react-native`), kein extra Lib
-7. **App-Identität minimal** – Platzhalter-Icon/Splash via Expo-CLI, damit `eas build` durchläuft
-8. **`app.json` ergänzen** – `scheme: 'landtagmobile'`, iOS/Android Intent-Filter für Deep-Links, Google-OAuth-`androidClientId`/`iosClientId` (kommen später aus Google Cloud Console)
+### 9. Permissions ehrlich anfragen
+- Mikrofon (Sprachnotiz), Kamera (Foto), Foto-Bibliothek (Beleg)
+- Beim ersten Tipp auf die jeweilige Aktion Permission anfragen, bei Verweigerung freundlicher Hinweis mit Link in System-Einstellungen
 
-## Was du außerhalb von Code noch tun musst
+### 10. Header polieren
+- Aktiver Tenant + Avatar/Initialen-Bubble + Settings-Icon
+- Beim Pull-down: Tenant-Wechsel-Sheet (statt Umweg über Settings)
 
-- **Google OAuth** in Supabase aktivieren (Dashboard → Authentication → Providers) und Client-IDs für Android/iOS in der Google Cloud Console anlegen. Ich kann erst integrieren, wenn die Client-IDs da sind – bis dahin liefere ich den Button mit Hinweis "noch nicht konfiguriert" aus.
-- **Magic Link Redirect** in Supabase erlauben: `landtagmobile://auth/callback` zur Liste der erlaubten Redirect-URLs hinzufügen.
+## Datenbank/Storage-Migrationen
 
-## Aus Scope ausgenommen (kommt später)
+- Bucket `audio-recordings` anlegen (private), RLS: nur eigene Dateien (`storage.foldername(name)[1] = auth.uid()`)
+- Bucket `documents` ist vermutlich da (Memory bestätigt) — falls nicht, gleiches Muster
+- Keine neuen Tabellen nötig: `call_logs`, `appointments`, `quick_notes` reichen
 
-Push-Notifications, Offline-Cache, MyWork-Listen, Kalenderansicht, Briefings, Sprachnotiz-Recording, native Termin-Erfassung, native Anrufaufzeichnung.
+## Was du außerhalb von Code beisteuerst
 
-## Bestätigung
+- Google Cloud OAuth-Client-IDs (Android + iOS + Web)
+- Supabase: `landtagmobile://auth/callback` als Redirect-URL freigeben
+- Optional: gewünschte Brand-Farbe für Icon/Splash (sonst nehme ich das bestehende Blau `#155EEF`)
 
-OK so? Speziell:
-- Login-Mix **E-Mail+Passwort + Magic Link + Google + Biometrie ab 2. Login** – passt das?
-- Kachel-Auswahl wie oben (3 echt, 3 Platzhalter)?
+## Bewusst nicht jetzt
 
-Wenn ja, setze ich um.
+- Sprachnotiz-Transkription (kommt später als Edge Function)
+- Push-Notifications (gehört zu Plan B "Reagieren")
+- Offline-Outbox
+- Termin-Recurring/Polls
+- Kontakt-Anlage aus Telefon-Adressbuch
+
+## Reihenfolge der Umsetzung
+
+1. Migrationen (audio-recordings Bucket + Policies)
+2. Permissions-Helper
+3. Sprachnotiz-Sheet
+4. Anruf-Sheet
+5. Termin-Sheet
+6. Foto-Flow
+7. Toast-System + Buttons polieren
+8. Icon + Splash + app.json
+9. Onboarding-Slides
+10. Google OAuth (sobald Client-IDs da sind)
+
+OK so? Wenn ja, lege ich los.
