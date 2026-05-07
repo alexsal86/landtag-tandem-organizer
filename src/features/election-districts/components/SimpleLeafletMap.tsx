@@ -61,6 +61,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 }) => {
   const { associations } = usePartyAssociations();
   const [zoomLevel, setZoomLevel] = useState(8);
+  const [mapReady, setMapReady] = useState(0);
   const mapEl = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const districtLayerRef = useRef<L.LayerGroup | null>(null);
