@@ -116,27 +116,8 @@ export function MyWorkCasesWorkspace() {
     return true;
   }, [setCaseItems]);
 
-  // Decision integration types
-  type LinkedDecision = {
-    id: string;
-    title: string;
-    description: string | null;
-    status: string;
-    created_at: string;
-    response_deadline: string | null;
-    created_by: string | null;
-    task_decision_participants: Array<{
-      id: string;
-      user_id: string;
-      task_decision_responses: Array<{ id: string; response_type: string }>;
-    }>;
-  };
+  // Decision integration state extracted to hook (see below)
 
-  // Decision integration state
-  const [isDecisionCreatorOpen, setIsDecisionCreatorOpen] = useState(false);
-  const [decisionCreatorItemId, setDecisionCreatorItemId] = useState<string | null>(null);
-  const [linkedDecisions, setLinkedDecisions] = useState<Record<string, LinkedDecision[]>>({});
-  const [loadingDecisions, setLoadingDecisions] = useState(false);
 
   // Jour Fixe meeting selector state
   const [isMeetingSelectorOpen, setIsMeetingSelectorOpen] = useState(false);
