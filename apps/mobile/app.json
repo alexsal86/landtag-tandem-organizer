@@ -6,15 +6,57 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#155EEF"
+    },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "de.landtag.mobile"
+      "bundleIdentifier": "de.landtag.mobile",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Wird für Sprachnotizen verwendet.",
+        "NSCameraUsageDescription": "Wird genutzt, um Belege und Notizfotos aufzunehmen.",
+        "NSPhotoLibraryUsageDescription": "Wird genutzt, um Fotos zu Notizen hinzuzufügen.",
+        "NSFaceIDUsageDescription": "Schnelle Anmeldung per Face ID."
+      }
     },
     "android": {
-      "package": "de.landtag.mobile"
+      "package": "de.landtag.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#155EEF"
+      },
+      "permissions": [
+        "RECORD_AUDIO",
+        "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
+      ]
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Wird genutzt, um Fotos zu Notizen hinzuzufügen.",
+          "cameraPermission": "Wird genutzt, um Belege und Notizfotos aufzunehmen."
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Wird für Sprachnotizen verwendet."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Schnelle Anmeldung per Face ID."
+        }
+      ]
     ]
   }
 }
