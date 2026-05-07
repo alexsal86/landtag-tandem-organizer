@@ -127,13 +127,13 @@ export function MyWorkFeedbackFeedTab() {
           onlyWithTasks={onlyWithTasks}
           setOnlyWithTasks={setOnlyWithTasks}
         />
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-          <MessageSquare className="w-12 h-12 mb-3 opacity-30" />
-          <p className="text-sm font-medium">Keine passenden Rückmeldungen gefunden</p>
-          <p className="text-xs mt-1">
-            Passe die Filter an oder wechsle den Zeitraum.
-          </p>
-        </div>
+        <MyWorkEmptyState
+          icon={MessageSquare}
+          title="Keine passenden Rückmeldungen"
+          description="Passe Filter und Zeitraum an oder gehe zum Kalender, um Termine mit Rückmeldung zu erfassen."
+          actionLabel="Zum Kalender"
+          onAction={() => navigate('/calendar')}
+        />
       </div>
     );
   }
