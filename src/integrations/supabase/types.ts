@@ -11924,6 +11924,59 @@ export type Database = {
           },
         ]
       }
+      tenant_onboarding_checklist_items: {
+        Row: {
+          active: boolean
+          created_at: string
+          cta_route: string | null
+          description: string | null
+          icon: string | null
+          id: string
+          item_key: string
+          label: string
+          position: number
+          required_role: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          cta_route?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          item_key: string
+          label: string
+          position?: number
+          required_role?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          cta_route?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          item_key?: string
+          label?: string
+          position?: number
+          required_role?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_onboarding_checklist_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_onboarding_slides: {
         Row: {
           accent: string | null
@@ -12476,6 +12529,8 @@ export type Database = {
       }
       user_onboarding_state: {
         Row: {
+          checklist_dismissed_at: string | null
+          checklist_progress: Json
           completed_at: string | null
           created_at: string
           tenant_id: string
@@ -12483,6 +12538,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          checklist_dismissed_at?: string | null
+          checklist_progress?: Json
           completed_at?: string | null
           created_at?: string
           tenant_id: string
@@ -12490,6 +12547,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          checklist_dismissed_at?: string | null
+          checklist_progress?: Json
           completed_at?: string | null
           created_at?: string
           tenant_id?: string
