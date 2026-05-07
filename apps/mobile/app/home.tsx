@@ -47,6 +47,9 @@ export default function HomeScreen(): React.JSX.Element {
           <Text style={styles.tenantLabel}>Tenant</Text>
           <Text style={styles.tenantName} numberOfLines={1}>{activeTenant?.name ?? '—'}</Text>
         </View>
+        <Pressable onPress={() => router.push('/today')} style={styles.iconBtn}>
+          <Text style={{ fontSize: 18 }}>📆</Text>
+        </Pressable>
         <Pressable onPress={() => router.push('/settings')} style={styles.iconBtn}>
           <Text style={{ fontSize: 18 }}>⚙️</Text>
         </Pressable>
