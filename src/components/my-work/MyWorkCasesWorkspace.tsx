@@ -40,6 +40,7 @@ import {
   interactionTypeOptions,
   priorityOptions,
 } from "./myWorkCasesWorkspace/constants";
+import { useLinkedDecisions } from "./myWorkCasesWorkspace/useLinkedDecisions";
 
 export function MyWorkCasesWorkspace() {
   const { user } = useAuth();
