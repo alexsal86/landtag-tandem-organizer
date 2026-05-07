@@ -267,9 +267,13 @@ export default function ContactDetail() {
         <Tabs defaultValue="details" className="space-y-4">
           <TabsList>
             <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="facts">Fakten</TabsTrigger>
             <TabsTrigger value="briefing-memory">Briefing-Gedächtnis</TabsTrigger>
             <TabsTrigger value="activities">Aktivitäten</TabsTrigger>
           </TabsList>
+          <TabsContent value="facts">
+            {id && <ContactFactsSection contactId={id} />}
+          </TabsContent>
           <TabsContent value="details">
             <Card className={`bg-card shadow-elegant border-border ${getPriorityColor(contact.priority)}`}>
               <CardHeader className="pb-8">
