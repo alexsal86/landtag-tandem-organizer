@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { debugConsole } from '@/utils/debugConsole';
 import { notifyQuickNoteShared } from "@/utils/shareNotifications";
+import { STALE_TIME } from "@/lib/query-cache";
 
 export interface NoteShare {
   id: string;
@@ -19,59 +21,49 @@ export interface NoteShare {
   };
 }
 
+async function fetchShares(noteId: string): Promise<NoteShare[]> {
+  const { data, error } = await supabase
+    .from("quick_note_shares")
+    .select("id, note_id, shared_with_user_id, shared_by_user_id, permission_type, created_at")
+    .eq("note_id", noteId);
+  if (error) throw error;
+  if (!data || data.length === 0) return [];
+
+  const userIds = data.map((s: { shared_with_user_id: string }) => s.shared_with_user_id);
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, display_name, avatar_url")
+    .in("id", userIds);
+
+  return data.map((share: { id: string; note_id: string; shared_with_user_id: string; shared_by_user_id: string; permission_type: string; created_at: string }) => ({
+    ...share,
+    permission_type: share.permission_type as "view" | "edit",
+    shared_with_user: profiles?.find((p: { id: string }) => p.id === share.shared_with_user_id),
+  }));
+}
+
 export const useNoteSharing = (noteId?: string) => {
   const { user } = useAuth();
-  const [shares, setShares] = useState<NoteShare[]>([]);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
+  const queryKey = ["note-shares", noteId] as const;
 
-  const loadShares = useCallback(async () => {
-    if (!noteId || !user) return;
+  const { data, isLoading, refetch } = useQuery({
+    queryKey,
+    enabled: !!noteId && !!user,
+    staleTime: STALE_TIME.LIST,
+    queryFn: () => fetchShares(noteId as string),
+  });
 
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("quick_note_shares")
-        .select("id, note_id, shared_with_user_id, shared_by_user_id, permission_type, created_at")
-        .eq("note_id", noteId);
-
-      if (error) throw error;
-
-      // Load user profiles for shared users
-      if (data && data.length > 0) {
-        const userIds = data.map((s: Record<string, any>) => s.shared_with_user_id);
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, display_name, avatar_url")
-          .in("id", userIds);
-
-        const sharesWithUsers = data.map((share: Record<string, any>) => ({
-          ...share,
-          permission_type: share.permission_type as "view" | "edit",
-          shared_with_user: profiles?.find((p: Record<string, any>) => p.id === share.shared_with_user_id),
-        }));
-
-        setShares(sharesWithUsers);
-      } else {
-        setShares([]);
-      }
-    } catch (error) {
-      debugConsole.error("Error loading shares:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [noteId, user]);
-
-  useEffect(() => {
-    loadShares();
-  }, [loadShares]);
+  const invalidate = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey });
+  }, [queryClient, queryKey]);
 
   const shareNote = async (
     targetNoteId: string,
     sharedWithUserId: string,
-    permissionType: "view" | "edit" = "view"
+    permissionType: "view" | "edit" = "view",
   ) => {
     if (!user) return false;
-
     try {
       const { error } = await supabase.from("quick_note_shares").insert([{
         note_id: targetNoteId,
@@ -96,7 +88,6 @@ export const useNoteSharing = (noteId?: string) => {
         .select("display_name")
         .eq("user_id", user.id)
         .maybeSingle();
-
       const { data: noteData } = await supabase
         .from("quick_notes")
         .select("title")
@@ -110,7 +101,7 @@ export const useNoteSharing = (noteId?: string) => {
         itemId: targetNoteId,
       });
 
-      loadShares();
+      invalidate();
       return true;
     } catch (error) {
       debugConsole.error("Error sharing note:", error);
@@ -120,35 +111,19 @@ export const useNoteSharing = (noteId?: string) => {
   };
 
   const unshareNote = async (shareId: string) => {
-    
-    
     try {
-      // Hole zuerst die note_id für die RLS-Policy
-      const { data: shareData } = await supabase
-        .from("quick_note_shares")
-        .select("note_id")
-        .eq("id", shareId)
-        .single();
-
-      
-
-      const { data, error } = await supabase
+      const { data: deleted, error } = await supabase
         .from("quick_note_shares")
         .delete()
         .eq("id", shareId)
         .select();
-
-      
-
       if (error) throw error;
-
-      if (!data || data.length === 0) {
+      if (!deleted || deleted.length === 0) {
         toast.error("Freigabe konnte nicht entfernt werden");
         return false;
       }
-
       toast.success("Freigabe entfernt");
-      loadShares();
+      invalidate();
       return true;
     } catch (error) {
       debugConsole.error("Error removing share:", error);
@@ -159,44 +134,31 @@ export const useNoteSharing = (noteId?: string) => {
 
   const updatePermission = async (shareId: string, permissionType: "view" | "edit") => {
     if (!user) return false;
-
-    
-
     try {
-      // First get the note_id for the share (helps RLS policy evaluate correctly)
       const { data: shareData, error: fetchError } = await supabase
         .from("quick_note_shares")
         .select("note_id")
         .eq("id", shareId)
         .single();
-
       if (fetchError || !shareData) {
         debugConsole.error("Error fetching share:", fetchError);
         toast.error("Freigabe nicht gefunden");
         return false;
       }
 
-      
-
-      // Update with note_id filter to help RLS policy
-      const { data, error } = await supabase
+      const { data: updated, error } = await supabase
         .from("quick_note_shares")
         .update({ permission_type: permissionType })
         .eq("id", shareId)
         .eq("note_id", shareData.note_id)
         .select();
-
-      
-
       if (error) throw error;
-
-      if (!data || data.length === 0) {
+      if (!updated || updated.length === 0) {
         toast.error("Berechtigung konnte nicht aktualisiert werden");
         return false;
       }
-
       toast.success("Berechtigung aktualisiert");
-      loadShares();
+      invalidate();
       return true;
     } catch (error) {
       debugConsole.error("Error updating permission:", error);
@@ -206,11 +168,11 @@ export const useNoteSharing = (noteId?: string) => {
   };
 
   return {
-    shares,
-    loading,
+    shares: data ?? [],
+    loading: isLoading,
     shareNote,
     unshareNote,
     updatePermission,
-    refreshShares: loadShares,
+    refreshShares: refetch,
   };
 };
