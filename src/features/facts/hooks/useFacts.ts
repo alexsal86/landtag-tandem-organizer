@@ -127,7 +127,7 @@ export function useUpsertFact() {
       return data.id;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["facts"] });
+      (qc.invalidateQueries({ queryKey: ["facts"] }), qc.invalidateQueries({ queryKey: ["facts-paginated"] }));
     },
     onError: (e: Error) => toast.error(`Fehler: ${e.message}`),
   });
@@ -140,7 +140,7 @@ export function useArchiveFact() {
       const { error } = await supabase.from("facts").update({ is_archived: archived }).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["facts"] }),
+    onSuccess: () => (qc.invalidateQueries({ queryKey: ["facts"] }), qc.invalidateQueries({ queryKey: ["facts-paginated"] })),
     onError: (e: Error) => toast.error(`Fehler: ${e.message}`),
   });
 }
@@ -153,7 +153,7 @@ export function useDeleteFact() {
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["facts"] });
+      (qc.invalidateQueries({ queryKey: ["facts"] }), qc.invalidateQueries({ queryKey: ["facts-paginated"] }));
       toast.success("Fakt gelöscht");
     },
     onError: (e: Error) => toast.error(`Fehler: ${e.message}`),
