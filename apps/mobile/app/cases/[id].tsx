@@ -17,9 +17,10 @@ interface CaseDetail {
 }
 interface Interaction {
   id: string;
-  channel: string | null;
-  body: string | null;
-  occurred_at: string;
+  interaction_type: string | null;
+  summary: string | null;
+  details: string | null;
+  interaction_at: string;
 }
 
 const STATUSES = ['open', 'in_progress', 'waiting', 'closed'];
@@ -44,9 +45,9 @@ export default function CaseDetailScreen(): React.JSX.Element {
     setItem((data as CaseDetail) ?? null);
     const { data: ints } = await supabase
       .from('case_item_interactions')
-      .select('id, channel, body, occurred_at')
+      .select('id, interaction_type, summary, details, interaction_at')
       .eq('case_item_id', id)
-      .order('occurred_at', { ascending: false })
+      .order('interaction_at', { ascending: false })
       .limit(30);
     setInteractions((ints ?? []) as Interaction[]);
     setLoading(false);
@@ -64,12 +65,18 @@ export default function CaseDetailScreen(): React.JSX.Element {
   const addInteraction = async () => {
     if (!newInteraction.trim() || !item || !session?.user.id) return;
     setSaving(true);
+    // Resolve tenant_id from the case_item to satisfy RLS
+    const { data: ci } = await supabase.from('case_items').select('tenant_id').eq('id', item.id).maybeSingle();
+    const tenantId = (ci as { tenant_id: string } | null)?.tenant_id;
+    if (!tenantId) { setSaving(false); toast.show('Tenant fehlt', 'error'); return; }
     const { error } = await supabase.from('case_item_interactions').insert({
       case_item_id: item.id,
-      channel: 'mobile_note',
-      body: newInteraction.trim(),
+      tenant_id: tenantId,
+      interaction_type: 'note',
+      summary: newInteraction.trim().slice(0, 120),
+      details: newInteraction.trim(),
       created_by: session.user.id,
-      occurred_at: new Date().toISOString(),
+      interaction_at: new Date().toISOString(),
     });
     setSaving(false);
     if (error) { toast.show('Fehler beim Speichern', 'error'); return; }
@@ -132,8 +139,9 @@ export default function CaseDetailScreen(): React.JSX.Element {
             <Text style={styles.empty}>Noch keine Einträge.</Text>
           ) : interactions.map((i) => (
             <View key={i.id} style={styles.intRow}>
-              <Text style={styles.intMeta}>{new Date(i.occurred_at).toLocaleString('de-DE')} · {i.channel ?? ''}</Text>
-              {i.body ? <Text style={styles.intBody}>{i.body}</Text> : null}
+              <Text style={styles.intMeta}>{new Date(i.interaction_at).toLocaleString('de-DE')} · {i.interaction_type ?? ''}</Text>
+              {i.summary ? <Text style={styles.intBody}>{i.summary}</Text> : null}
+              {i.details && i.details !== i.summary ? <Text style={styles.intBody}>{i.details}</Text> : null}
             </View>
           ))}
         </View>
