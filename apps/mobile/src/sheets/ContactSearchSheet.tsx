@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { FlatList, Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { SheetShell } from '@/ui/SheetShell';
 
