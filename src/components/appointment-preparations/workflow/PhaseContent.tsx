@@ -80,6 +80,9 @@ export function PhaseContent({ phase, preparation, appointmentDetails, onUpdate,
           {(phase === "fakten" || phase === "themen") && (
             <LinkedItemsPanel preparation={preparation} />
           )}
+          {phase === "fakten" && (
+            <StructuredFactsPanel preparation={preparation} onUpdate={onUpdate} />
+          )}
           {(phase === "themen" || phase === "fakten") && (
             <PreparationMemoryPanel preparation={preparation} onUpdate={onUpdate} />
           )}
