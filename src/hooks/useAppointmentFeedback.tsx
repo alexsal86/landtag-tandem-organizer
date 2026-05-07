@@ -279,7 +279,7 @@ export const useAppointmentFeedback = () => {
 
       const { data, error } = await supabase
         .from('appointment_preparations')
-        .select('*')
+        .select('id, title, status, notes, appointment_id, template_id, tenant_id, created_by, created_at, updated_at, is_archived, archived_at, preparation_data, checklist_items')
         .in('appointment_id', appointmentIds)
         .eq('is_archived', false);
 
