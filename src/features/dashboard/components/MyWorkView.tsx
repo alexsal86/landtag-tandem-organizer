@@ -108,6 +108,7 @@ export function MyWorkView() {
 
   return (
     <div className="min-h-[calc(100vh-8rem)] p-6">
+      <OnboardingChecklistCard className="mb-4" />
       {countLoadError && (
         <Alert className="mb-4" variant="destructive">
           <AlertDescription className="flex items-center justify-between gap-3">
