@@ -7,9 +7,11 @@ import { useDashboardAppointmentsData } from '@/hooks/useDashboardAppointmentsDa
 import { useDashboardDeadlines } from '@/hooks/useDashboardDeadlines';
 import { NewsWidget } from '@/components/widgets/NewsWidget';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
-import { CalendarDays, ClipboardList, Newspaper } from 'lucide-react';
+import { CalendarDays, ClipboardList, Newspaper, Vote, Users } from 'lucide-react';
 import { useResolvedUserRole } from '@/hooks/useResolvedUserRole';
 import { BriefingComposerCard, TodayBriefingPanel } from '@/features/briefings';
+import { DashboardDecisionsWidget } from '@/components/dashboard/DashboardDecisionsWidget';
+import { DashboardJourFixeWidget } from '@/components/dashboard/DashboardJourFixeWidget';
 
 interface DashboardWidgetContainerProps {
   title: ReactNode;
