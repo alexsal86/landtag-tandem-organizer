@@ -1,11 +1,11 @@
-import { GripVertical } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronRight, GripVertical } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { DeadlineItem, GroupedDeadlineItems } from '@/types/dashboardDeadlines';
 import { DeadlineSnoozeButton } from './DeadlineSnoozeButton';
 import {
   formatDeadlineDateLabel,
   getDeadlineContextLabel,
-  getDeadlineStatus,
 } from '@/utils/deadlineFormatting';
 
 const TYPE_CONFIG = {
@@ -25,6 +25,7 @@ const stripOverduePrefix = (label: string) => label.replace(/^überfällig\s·\s
 
 export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionProps) => {
   const navigate = useNavigate();
+  const [showLater, setShowLater] = useState(false);
 
   const handleDragStart = (event: React.DragEvent<HTMLElement>, title: string, id?: string, type?: string) => {
     event.dataTransfer.effectAllowed = 'copy';
@@ -43,26 +44,10 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
   const overdueCount = grouped.overdue.length;
   const activeCount = items.length;
 
-  // Flatten in priority order
-  const ordered: DeadlineItem[] = [
-    ...grouped.overdue,
-    ...grouped.today,
-    ...grouped.thisWeek,
-    ...grouped.later,
-  ];
-
   const renderItem = (item: DeadlineItem, index: number) => {
     const cfg = TYPE_CONFIG[item.type];
-    const status = getDeadlineStatus(item.dueDate);
     const dateLabel = stripOverduePrefix(formatDeadlineDateLabel(item.dueDate));
     const contextLabel = getDeadlineContextLabel(item.type);
-
-    const badge =
-      status === 'overdue'
-        ? { label: 'überfällig', className: 'bg-destructive/10 text-destructive' }
-        : status === 'today'
-          ? { label: 'heute', className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' }
-          : null;
 
     return (
       <div
@@ -96,12 +81,21 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
           </div>
         </div>
 
-        {badge && (
-          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${badge.className}`}>
-            {badge.label}
-          </span>
-        )}
         {item.canSnooze ? <DeadlineSnoozeButton item={item} /> : null}
+      </div>
+    );
+  };
+
+  const renderGroup = (label: string, list: DeadlineItem[], labelClass = 'text-muted-foreground') => {
+    if (list.length === 0) return null;
+    return (
+      <div className="mt-4 first:mt-0">
+        <div className={`section-label flex items-center gap-2 px-3 pb-1 ${labelClass}`}>
+          <span>{label}</span>
+          <span className="tabular-nums opacity-70">{list.length}</span>
+          <span className="flex-1 h-px bg-border/60" aria-hidden />
+        </div>
+        <div>{list.map(renderItem)}</div>
       </div>
     );
   };
@@ -116,7 +110,30 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
         {activeCount} aktiv
         {overdueCount > 0 && <> · <span className="text-destructive ml-1">{overdueCount} überfällig</span></>}
       </div>
-      <div>{ordered.map(renderItem)}</div>
+
+      {renderGroup('Überfällig', grouped.overdue, 'text-destructive')}
+      {renderGroup('Heute', grouped.today, 'text-emerald-600 dark:text-emerald-400')}
+      {renderGroup('Diese Woche', grouped.thisWeek)}
+
+      {grouped.later.length > 0 && (
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => setShowLater((v) => !v)}
+            className="section-label flex w-full items-center gap-2 px-3 pb-1 text-muted-foreground hover:text-foreground transition-colors"
+            aria-expanded={showLater}
+          >
+            <ChevronRight
+              className={`h-3 w-3 transition-transform ${showLater ? 'rotate-90' : ''}`}
+              aria-hidden
+            />
+            <span>Später</span>
+            <span className="tabular-nums opacity-70">{grouped.later.length}</span>
+            <span className="flex-1 h-px bg-border/60" aria-hidden />
+          </button>
+          {showLater && <div>{grouped.later.map(renderItem)}</div>}
+        </div>
+      )}
     </div>
   );
 };
