@@ -496,10 +496,13 @@ export function MyWorkPlanningsTab() {
       <section className="space-y-2">
         <h3 className="text-sm font-semibold text-foreground">Planungs-Karten</h3>
         {plannings.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground rounded-lg border bg-card">
-            <CalendarPlus className="h-10 w-10 mx-auto mb-2 opacity-50" />
-            <p>Keine Planungen</p>
-          </div>
+          <MyWorkEmptyState
+            icon={CalendarPlus}
+            title="Noch keine Planungen"
+            description="Erstelle deine erste Veranstaltungs-Planung mit Checklisten und Beteiligten."
+            actionLabel="Planung erstellen"
+            onAction={() => navigate('/eventplanning?action=create')}
+          />
         ) : (
           <>
             {openPlannings.map((planning) => renderPlanningCard(planning))}
