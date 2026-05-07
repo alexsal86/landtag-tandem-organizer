@@ -2,6 +2,7 @@
 // Liest aktive workflow_definitions zu einem Trigger, prüft Bedingungen
 // und führt Aktionen aus. Erzeugt workflow_runs + workflow_action_log.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireServiceRole, forbiddenResponse } from "../_shared/security.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -52,6 +53,8 @@ function renderTemplate(tpl: string, payload: Record<string, unknown>): string {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+
+  if (!requireServiceRole(req)) return forbiddenResponse("Service role required");
   try {
     const body = (await req.json()) as DispatchBody;
     if (!body.trigger_type || !body.tenant_id) {
