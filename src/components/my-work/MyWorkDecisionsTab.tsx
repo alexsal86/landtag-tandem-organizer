@@ -14,7 +14,7 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { StandaloneDecisionCreator } from "@/components/task-decisions/StandaloneDecisionCreator";
-import { Search, Settings2 } from "lucide-react";
+import { Search } from "lucide-react";
 import { DecisionListToolbar } from "./decisions/DecisionListToolbar";
 import { DecisionList } from "./decisions/DecisionList";
 import { DecisionDialogs } from "./decisions/DecisionDialogs";
