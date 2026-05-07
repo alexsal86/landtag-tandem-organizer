@@ -25,68 +25,14 @@ import { de } from "date-fns/locale";
 import { ResponseOption, getColorClasses, getDefaultOptions } from "@/lib/decisionTemplates";
 import type { ParticipantProfile } from "@/types/taskDecisions";
 
-type DecisionProfile = ParticipantProfile;
-
-interface DecisionDetailsState {
-  id: string;
-  title: string;
-  description: string | null;
-  response_options: ResponseOption[] | null;
-  response_deadline: string | null;
-  created_by: string;
-  created_at: string;
-  status: string;
-  meeting_id?: string | null;
-  pending_for_jour_fixe?: boolean | null;
-  tasks: { id: string; title: string } | null;
-  topicIds: string[];
-}
-
-interface ResponseThread {
-  id: string;
-  response_type: string;
-  comment: string | null;
-  created_at: string;
-  updated_at: string;
-  creator_response: string | null;
-  parent_response_id: string | null;
-  participant_id: string;
-  // Profile of the participant who wrote this response
-  participant_profile?: {
-    display_name: string | null;
-    badge_color: string | null;
-    avatar_url: string | null;
-  };
-  replies?: ResponseThread[];
-}
-
-const DELETED_COMMENT_TEXT = "Dieser Kommentar wurde gelöscht.";
-
-interface Participant {
-  id: string;
-  user_id: string;
-  profile: {
-    display_name: string | null;
-    badge_color: string | null;
-  };
-  responses: Array<{
-    id: string;
-    response_type: string;
-    comment: string | null;
-    created_at: string;
-    creator_response?: string | null;
-    parent_response_id?: string | null;
-  }>;
-}
-
-interface TaskDecisionDetailsProps {
-  decisionId: string | null;
-  isOpen: boolean;
-  onClose: () => void;
-  onArchived?: () => void;
-  highlightCommentId?: string | null;
-  highlightResponseId?: string | null;
-}
+import {
+  DELETED_COMMENT_TEXT,
+  type DecisionProfile,
+  type DecisionDetailsState,
+  type ResponseThread,
+  type Participant,
+  type TaskDecisionDetailsProps,
+} from "./taskDecisionDetails/types";
 
 export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, highlightCommentId = null, highlightResponseId = null }: TaskDecisionDetailsProps) => {
   const [decision, setDecision] = useState<DecisionDetailsState | null>(null);
