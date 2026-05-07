@@ -12854,9 +12854,11 @@ export type Database = {
           conditions: Json
           created_at: string
           created_by: string | null
+          cron_expression: string | null
           description: string | null
           id: string
           is_active: boolean
+          last_triggered_at: string | null
           name: string
           tenant_id: string
           trigger_config: Json
@@ -12868,9 +12870,11 @@ export type Database = {
           conditions?: Json
           created_at?: string
           created_by?: string | null
+          cron_expression?: string | null
           description?: string | null
           id?: string
           is_active?: boolean
+          last_triggered_at?: string | null
           name: string
           tenant_id: string
           trigger_config?: Json
@@ -12882,9 +12886,11 @@ export type Database = {
           conditions?: Json
           created_at?: string
           created_by?: string | null
+          cron_expression?: string | null
           description?: string | null
           id?: string
           is_active?: boolean
+          last_triggered_at?: string | null
           name?: string
           tenant_id?: string
           trigger_config?: Json
@@ -12899,9 +12905,11 @@ export type Database = {
           finished_at: string | null
           id: string
           is_dry_run: boolean
+          parent_run_id: string | null
           result: Json | null
           started_at: string
           status: string
+          step_log: Json
           tenant_id: string
           trigger_payload: Json | null
           trigger_type: string
@@ -12912,9 +12920,11 @@ export type Database = {
           finished_at?: string | null
           id?: string
           is_dry_run?: boolean
+          parent_run_id?: string | null
           result?: Json | null
           started_at?: string
           status?: string
+          step_log?: Json
           tenant_id: string
           trigger_payload?: Json | null
           trigger_type: string
@@ -12925,15 +12935,24 @@ export type Database = {
           finished_at?: string | null
           id?: string
           is_dry_run?: boolean
+          parent_run_id?: string | null
           result?: Json | null
           started_at?: string
           status?: string
+          step_log?: Json
           tenant_id?: string
           trigger_payload?: Json | null
           trigger_type?: string
           workflow_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "workflow_runs_parent_run_id_fkey"
+            columns: ["parent_run_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_runs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "workflow_runs_workflow_id_fkey"
             columns: ["workflow_id"]
