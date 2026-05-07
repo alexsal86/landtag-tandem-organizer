@@ -63,7 +63,14 @@ export function DecisionList({
   tenantUsers,
 }: DecisionListProps) {
   if (decisions.length === 0) {
-    return <div className="py-8 text-center text-xs text-muted-foreground">{emptyMessage}</div>;
+    return (
+      <MyWorkEmptyState
+        icon={GitBranch}
+        title={emptyMessage}
+        description="Entscheidungen bündeln Optionen, Stimmen und Begründungen an einem Ort."
+        compact
+      />
+    );
   }
 
   return (
