@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { STALE_TIME } from "@/lib/query-cache";
 
 export interface TaskStatusOption {
   name: string;
@@ -15,6 +16,8 @@ export const DEFAULT_TASK_STATUSES: TaskStatusOption[] = [
 export function useTaskStatuses() {
   const query = useQuery({
     queryKey: ["task-statuses"],
+    staleTime: STALE_TIME.LOOKUP,
+    gcTime: STALE_TIME.LOOKUP * 2,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("task_statuses")

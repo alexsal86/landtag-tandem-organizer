@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
+import { STALE_TIME } from "@/lib/query-cache";
 
 export interface TenantProfileOption {
   user_id: string;
@@ -13,6 +14,8 @@ export function useTenantProfiles() {
   const query = useQuery({
     queryKey: ["tenant-profiles", currentTenant?.id],
     enabled: Boolean(currentTenant?.id),
+    staleTime: STALE_TIME.PROFILE,
+    gcTime: STALE_TIME.PROFILE * 2,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
