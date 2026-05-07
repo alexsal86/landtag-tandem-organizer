@@ -46,7 +46,7 @@ export function useContactBriefingMemory(contactIds: string[] | string | null | 
     try {
       const { data, error } = await supabase
         .from("contact_briefing_memory")
-        .select("*")
+        .select("id, tenant_id, contact_id, kind, content, question, answer, source_preparation_id, pinned_by, created_at, updated_at")
         .eq("tenant_id", currentTenant.id)
         .in("contact_id", ids)
         .order("created_at", { ascending: false });
