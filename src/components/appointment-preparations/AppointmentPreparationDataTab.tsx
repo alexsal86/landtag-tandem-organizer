@@ -623,15 +623,12 @@ export function AppointmentPreparationDataTab({
                       preparation_data: buildPreparationData(editData),
                     }}
                     appointmentInfo={appointmentDetails ? {
-                      id: appointmentDetails.id,
                       title: appointmentDetails.title,
                       start_time: appointmentDetails.start_time,
                       end_time: appointmentDetails.end_time,
                       location: appointmentDetails.location ?? null,
-                      description: appointmentDetails.description ?? null,
-                      category: appointmentDetails.category ?? null,
-                      priority: appointmentDetails.priority ?? null,
                     } : null}
+                    compact
                   />
                 </div>
               </CardContent>
