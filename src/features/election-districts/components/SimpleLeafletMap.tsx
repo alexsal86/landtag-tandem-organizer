@@ -61,6 +61,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 }) => {
   const { associations } = usePartyAssociations();
   const [zoomLevel, setZoomLevel] = useState(8);
+  const [mapReady, setMapReady] = useState(0);
   const mapEl = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const districtLayerRef = useRef<L.LayerGroup | null>(null);
@@ -101,6 +102,8 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
     // Create separate layer groups for polygons and markers
     districtLayerRef.current = L.layerGroup().addTo(map);
     markerLayerRef.current = L.layerGroup().addTo(map);
+    hasFittedBoundsRef.current = false;
+    setMapReady((n) => n + 1);
 
     return () => {
       map.remove();
@@ -465,7 +468,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
         map.setView([48.7758, 9.1829], 8);
       }
     }
-  }, [districts, selectedDistrict, showPartyAssociations, associations]);
+  }, [districts, selectedDistrict, showPartyAssociations, associations, mapReady]);
 
   return (
     <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] bg-card rounded-lg overflow-hidden border border-border z-0">
