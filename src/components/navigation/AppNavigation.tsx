@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, type ElementType } from "react";
+import { useNavPanelData } from "./appNavigation/useNavPanelData";
 import { NavDossierCapture } from "@/components/search/NavDossierCapture";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -39,7 +40,7 @@ import { useNotifications } from "@/contexts/NotificationContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserStatus } from "@/hooks/useUserStatus";
 import { useTenant } from "@/hooks/useTenant";
-import { supabase } from "@/integrations/supabase/client";
+
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -65,7 +66,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { navigationGroups, getNavigationGroups, NavGroup } from "@/components/navigation/navigationConfig";
 import { HelpDialog } from "@/components/navigation/HelpDialog";
-import { formatDistanceToNow, format, isToday, isYesterday, isTomorrow, addDays } from "date-fns";
+import { formatDistanceToNow, format, isToday, isYesterday, isTomorrow } from "date-fns";
 import { de } from "date-fns/locale";
 import { Clock } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
@@ -73,7 +74,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useQuery } from "@tanstack/react-query";
+
 import { useAppointmentRequest } from "@/hooks/useAppointmentRequest";
 import { buildDeepLinkPath } from "@/utils/notificationDeepLinks";
 
@@ -152,216 +153,24 @@ export function AppNavigation({
   const [notificationFilter, setNotificationFilter] = useState<NotificationFilter>('unread');
   const [quickAccessPageIndex, setQuickAccessPageIndex] = useState(0);
   
-  // User profile
-  const [userProfile, setUserProfile] = useState<{ display_name?: string | null; avatar_url?: string | null } | null>(null);
-
-  // Load user profile
-  useEffect(() => {
-    const loadProfile = async () => {
-      if (user && currentTenant?.id) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('display_name, avatar_url')
-          .eq('user_id', user.id)
-          .eq('tenant_id', currentTenant.id)
-          .maybeSingle();
-        setUserProfile(profile ?? null);
-      }
-    };
-    void loadProfile();
-  }, [user, currentTenant?.id]);
-
-  // Upcoming appointments query (for appointments panel)
-  const endDate = addDays(new Date(), 5);
-  const { data: upcomingAppointments = [] } = useQuery({
-    queryKey: ['nav-upcoming-appointments', currentTenant?.id],
-    queryFn: async () => {
-      if (!currentTenant?.id || !user?.id) return [];
-      const nowIso = new Date().toISOString();
-
-      const [appointmentsResult, externalEventsResult] = await Promise.all([
-        supabase
-          .from('appointments')
-          .select('id, title, start_time, end_time, location, is_all_day')
-          .eq('tenant_id', currentTenant.id)
-          .eq('user_id', user.id)
-          .gte('start_time', nowIso)
-          .lte('start_time', endDate.toISOString())
-          .order('start_time', { ascending: true })
-          .limit(20),
-        supabase
-          .from('external_events')
-          .select('id, title, start_time, end_time, location, all_day, external_calendars!inner(user_id, tenant_id)')
-          .eq('external_calendars.tenant_id', currentTenant.id)
-          .eq('external_calendars.user_id', user.id)
-          .gte('start_time', nowIso)
-          .lte('start_time', endDate.toISOString())
-          .order('start_time', { ascending: true })
-          .limit(20),
-      ]);
-
-      const internalAppointments: UpcomingAppointmentItem[] = (appointmentsResult.data || []).map((appointment: Record<string, any>) => ({
-        id: appointment.id,
-        title: appointment.title,
-        start_time: appointment.start_time,
-        end_time: appointment.end_time,
-        location: appointment.location,
-        is_all_day: appointment.is_all_day ?? false,
-      }));
-
-      const externalAppointments: UpcomingAppointmentItem[] = (externalEventsResult.data || []).map((event: Record<string, any>) => ({
-        id: event.id,
-        title: event.title,
-        start_time: event.start_time,
-        end_time: event.end_time,
-        location: event.location,
-        is_all_day: event.all_day ?? false,
-      }));
-
-      return [...internalAppointments, ...externalAppointments]
-        .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
-        .slice(0, 20);
-    },
-    enabled: !!currentTenant?.id && !!user?.id && activePanel === 'appointments',
-    staleTime: 2 * 60 * 1000,
+  // User profile + panel data extracted to dedicated hook
+  const {
+    userProfile,
+    upcomingAppointments,
+    pendingFeedbacks,
+    caseFiles,
+    quickAccessCaseItems,
+    isCaseItemsLoading,
+    quickAccessDocuments,
+    isDocumentsLoading,
+    quickAccessEventPlannings,
+    isEventPlanningsLoading,
+  } = useNavPanelData({
+    activePanel,
+    quickAccessPopoverOpen,
+    quickAccessAddCategory,
   });
 
-  // Appointment feedback query
-  const { data: pendingFeedbacks = [] } = useQuery({
-    queryKey: ['nav-pending-feedbacks', currentTenant?.id],
-    queryFn: async () => {
-      if (!currentTenant?.id || !user?.id) return [];
-      const { data } = await supabase
-        .from('appointment_feedback')
-        .select('id, event_type, created_at, appointment_id')
-        .eq('tenant_id', currentTenant.id)
-        .eq('user_id', user.id)
-        .eq('feedback_status', 'pending')
-        .limit(10);
-      return data || [];
-    },
-    enabled: !!currentTenant?.id && !!user?.id && activePanel === 'appointments',
-    staleTime: 2 * 60 * 1000,
-  });
-
-  // Case files query (for casefiles panel)
-  const { data: caseFiles = [] } = useQuery({
-    queryKey: ['nav-casefiles', currentTenant?.id],
-    queryFn: async () => {
-      if (!currentTenant?.id || !user?.id) return [];
-      const { data } = await supabase
-        .from('case_files')
-        .select('id, title, status, priority, case_type, reference_number, updated_at')
-        .eq('tenant_id', currentTenant.id)
-        .or(`user_id.eq.${user.id},assigned_to.eq.${user.id}`)
-        .order('updated_at', { ascending: false })
-        .limit(30);
-      return data || [];
-    },
-    enabled: !!currentTenant?.id && !!user?.id && activePanel === 'casefiles',
-    staleTime: 2 * 60 * 1000,
-  });
-
-
-
-  const { data: quickAccessCaseItems = [], isLoading: isCaseItemsLoading } = useQuery({
-    queryKey: ['quick-access-case-items', currentTenant?.id, user?.id],
-    queryFn: async () => {
-      if (!currentTenant?.id || !user?.id) return [];
-      const { data, error } = await supabase
-        .from('case_items')
-        .select('id, subject, updated_at, user_id, owner_user_id, status')
-        .eq('tenant_id', currentTenant.id)
-        .neq('status', 'archiviert')
-        .order('updated_at', { ascending: false })
-        .limit(40);
-
-      if (error) throw error;
-
-      return (data || [])
-        .map((item: Record<string, any>) => ({
-          id: item.id,
-          label: item.subject?.trim() || 'Vorgang ohne Betreff',
-          preferred: item.owner_user_id === user.id || item.user_id === user.id,
-          updatedAt: item.updated_at,
-        }))
-        .sort((a: Record<string, any>, b: Record<string, any>) => {
-          if (a.preferred !== b.preferred) return a.preferred ? -1 : 1;
-          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-        });
-    },
-    enabled: !!quickAccessPopoverOpen && quickAccessAddCategory === 'case-items' && !!currentTenant?.id && !!user?.id,
-    staleTime: 2 * 60 * 1000,
-  });
-
-  const { data: quickAccessDocuments = [], isLoading: isDocumentsLoading } = useQuery({
-    queryKey: ['quick-access-documents', currentTenant?.id, user?.id],
-    queryFn: async () => {
-      if (!currentTenant?.id || !user?.id) return [];
-      const { data, error } = await supabase
-        .from('documents')
-        .select('id, title, updated_at, user_id')
-        .eq('tenant_id', currentTenant.id)
-        .order('updated_at', { ascending: false })
-        .limit(40);
-
-      if (error) throw error;
-
-      return (data || [])
-        .map((item: Record<string, any>) => ({
-          id: item.id,
-          label: item.title?.trim() || 'Dokument ohne Titel',
-          preferred: item.user_id === user.id,
-          updatedAt: item.updated_at,
-        }))
-        .sort((a: Record<string, any>, b: Record<string, any>) => {
-          if (a.preferred !== b.preferred) return a.preferred ? -1 : 1;
-          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-        });
-    },
-    enabled: !!quickAccessPopoverOpen && quickAccessAddCategory === 'documents' && !!currentTenant?.id && !!user?.id,
-    staleTime: 2 * 60 * 1000,
-  });
-
-  const { data: quickAccessEventPlannings = [], isLoading: isEventPlanningsLoading } = useQuery({
-    queryKey: ['quick-access-event-plannings', currentTenant?.id, user?.id],
-    queryFn: async () => {
-      if (!currentTenant?.id || !user?.id) return [];
-
-      const [planningsResult, collaboratorsResult] = await Promise.all([
-        supabase
-          .from('event_plannings')
-          .select('id, title, updated_at, user_id, is_archived')
-          .eq('tenant_id', currentTenant.id)
-          .or('is_archived.is.null,is_archived.eq.false')
-          .order('updated_at', { ascending: false })
-          .limit(40),
-        supabase
-          .from('event_planning_collaborators')
-          .select('event_planning_id')
-          .eq('user_id', user.id),
-      ]);
-
-      if (planningsResult.error) throw planningsResult.error;
-      if (collaboratorsResult.error) throw collaboratorsResult.error;
-
-      const collaboratorIds = new Set((collaboratorsResult.data || []).map((entry: Record<string, any>) => entry.event_planning_id));
-
-      return (planningsResult.data || [])
-        .map((planning: Record<string, any>) => ({
-          id: planning.id,
-          label: planning.title?.trim() || 'Planung ohne Titel',
-          preferred: planning.user_id === user.id || collaboratorIds.has(planning.id),
-          updatedAt: planning.updated_at,
-        }))
-        .sort((a: Record<string, any>, b: Record<string, any>) => {
-          if (a.preferred !== b.preferred) return a.preferred ? -1 : 1;
-          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-        });
-    },
-    enabled: !!quickAccessPopoverOpen && quickAccessAddCategory === 'event-plannings' && !!currentTenant?.id && !!user?.id,
-    staleTime: 2 * 60 * 1000,
-  });
 
   const quickAccessPageOptions = useMemo(() => {
     return availableQuickPages
