@@ -3,6 +3,7 @@ import { AppointmentPreparationDataTab } from "../AppointmentPreparationDataTab"
 import { AppointmentPreparationChecklistTab } from "../AppointmentPreparationChecklistTab";
 import { AppointmentPreparationDetailsTab } from "../AppointmentPreparationDetailsTab";
 import { AppointmentPreparationFileUpload } from "@/components/appointments/AppointmentPreparationFileUpload";
+import { PreparationMemoryPanel } from "./PreparationMemoryPanel";
 import type { PhaseId } from "./usePhaseStatus";
 import type { AppointmentPreparation } from "@/hooks/useAppointmentPreparation";
 import type { AppointmentPreparationAppointmentDetails } from "@/pages/AppointmentPreparationDetail";
@@ -39,12 +40,17 @@ export function PhaseContent({ phase, preparation, appointmentDetails, onUpdate,
       </div>
 
       {(phase === "anlass" || phase === "team" || phase === "fakten" || phase === "themen") && (
-        <AppointmentPreparationDataTab
-          preparation={preparation}
-          appointmentDetails={appointmentDetails}
-          onUpdate={onUpdate}
-          onOpenAppointmentDetails={onOpenAppointmentDetails}
-        />
+        <>
+          {(phase === "themen" || phase === "fakten") && (
+            <PreparationMemoryPanel preparation={preparation} onUpdate={onUpdate} />
+          )}
+          <AppointmentPreparationDataTab
+            preparation={preparation}
+            appointmentDetails={appointmentDetails}
+            onUpdate={onUpdate}
+            onOpenAppointmentDetails={onOpenAppointmentDetails}
+          />
+        </>
       )}
 
       {phase === "qa-run" && (

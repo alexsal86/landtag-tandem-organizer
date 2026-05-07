@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ActivityTimeline, type Activity } from "@/components/contacts/ActivityTimeline";
+import { ContactBriefingMemoryTab } from "@/components/contacts/ContactBriefingMemoryTab";
 import { debugConsole } from "@/utils/debugConsole";
 import type { Contact, ContactCategory, ContactPriority } from "@/types/contact";
 
@@ -265,9 +266,9 @@ export default function ContactDetail() {
         <Tabs defaultValue="details" className="space-y-4">
           <TabsList>
             <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="briefing-memory">Briefing-Gedächtnis</TabsTrigger>
             <TabsTrigger value="activities">Aktivitäten</TabsTrigger>
           </TabsList>
-
           <TabsContent value="details">
             <Card className={`bg-card shadow-elegant border-border ${getPriorityColor(contact.priority)}`}>
               <CardHeader className="pb-8">
@@ -372,6 +373,10 @@ export default function ContactDetail() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="briefing-memory">
+            {id && <ContactBriefingMemoryTab contactId={id} />}
           </TabsContent>
 
           <TabsContent value="activities">
