@@ -16,6 +16,7 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import type { EventPlanningCollaborationRow, EventPlanningRow, PlanningCard } from "@/components/my-work/types";
+import { MyWorkEmptyState } from "@/components/my-work/MyWorkEmptyState";
 
 export function MyWorkPlanningsTab() {
   const { user } = useAuth();
