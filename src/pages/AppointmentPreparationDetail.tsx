@@ -18,8 +18,9 @@ import { generateBriefingPdf } from "@/components/appointment-preparations/brief
 import { useAuth } from "@/hooks/useAuth";
 import { debugConsole } from "@/utils/debugConsole";
 import { useTenant } from "@/hooks/useTenant";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export interface AppointmentPreparationAppointmentDetails {
   id: string;
@@ -49,6 +50,7 @@ export default function AppointmentPreparationDetail() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [showAppointmentSidebar, setShowAppointmentSidebar] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [responsiblePerson, setResponsiblePerson] = useState<{ display_name: string | null; avatar_url: string | null } | null>(null);
 
   const appointmentId = searchParams.get('appointmentId');
   const title = searchParams.get('title');
@@ -107,6 +109,22 @@ export default function AppointmentPreparationDetail() {
 
     fetchAppointmentInfo(apptId);
   }, [fetchAppointmentInfo, preparation?.appointment_id]);
+
+  // Fetch responsible person (created_by)
+  useEffect(() => {
+    if (!preparation?.created_by) {
+      setResponsiblePerson(null);
+      return;
+    }
+    (async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('display_name, avatar_url')
+        .eq('user_id', preparation.created_by)
+        .maybeSingle();
+      setResponsiblePerson(data ?? null);
+    })();
+  }, [preparation?.created_by]);
 
   // Create new preparation if we have URL parameters but no ID
   useEffect(() => {
@@ -270,6 +288,25 @@ export default function AppointmentPreparationDetail() {
               </div>
 
               <div className="flex flex-col items-start gap-2 lg:items-end shrink-0">
+                <div className="flex items-center gap-3">
+                  {appointmentInfo && new Date(appointmentInfo.start_time).getTime() > Date.now() && (
+                    <div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                      <Clock className="h-3 w-3" />
+                      In {formatDistanceToNow(new Date(appointmentInfo.start_time), { locale: de })}
+                    </div>
+                  )}
+                  {responsiblePerson && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src={responsiblePerson.avatar_url ?? undefined} />
+                        <AvatarFallback className="text-[10px]">
+                          {(responsiblePerson.display_name ?? '?').slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span>{responsiblePerson.display_name ?? 'Unbekannt'}</span>
+                    </div>
+                  )}
+                </div>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
