@@ -15,6 +15,12 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { MeetingTemplateParticipantsEditor } from "@/components/meetings/MeetingTemplateParticipantsEditor";
 import { Plus, Save, X, Check, GripVertical, Minus, Edit, Trash2, CalendarDays, StickyNote, ListTodo, Cake, Scale, MoveVertical, ArrowUp, ArrowDown, CornerUpLeft } from "lucide-react";
 import type { MeetingTemplateChildItem, MeetingTemplateItem, MeetingTemplateRecord } from "@/types/meetingTemplate";
+import {
+  getAgendaSystemItemClass,
+  getAgendaChildClass,
+  getAgendaIconColor,
+  getAgendaToggleClass,
+} from "@/components/administration/agendaSystemStyles";
 
 export function MeetingTemplateManager() {
   const { user } = useAuth();
