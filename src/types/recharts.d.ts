@@ -113,10 +113,12 @@ declare module 'recharts' {
   export const CartesianGrid: ComponentType<BaseRechartsProps>;
   export const Bar: ComponentType<BarProps>;
   export const Line: ComponentType<LineProps>;
+  export const Area: ComponentType<LineProps & { fill?: string }>;
   export const Pie: ComponentType<PieProps>;
   export const Cell: ComponentType<CellProps>;
   export const ResponsiveContainer: ComponentType<ResponsiveContainerProps>;
   export const BarChart: ComponentType<ChartWrapperProps>;
   export const LineChart: ComponentType<ChartWrapperProps>;
+  export const AreaChart: ComponentType<ChartWrapperProps>;
   export const PieChart: ComponentType<ChartWrapperProps>;
 }
