@@ -721,6 +721,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string): UseDaySlipS
   return {
     store, setStore, resolveMode, setResolveMode,
     recurringItems, setRecurringItems, dayTemplates, setDayTemplates,
+    // @ts-expect-error consumer treats this as MutableRefObject; the nullable initial value is intentional
     editorRef, editorReadyVersion, saveTimeoutRef,
     todayKey, todayData, yesterdayKey, yesterdayCarryLines,
     allLineEntries, struckLineIds, resolvedItems, resolvedByLineId,

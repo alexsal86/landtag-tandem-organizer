@@ -73,7 +73,6 @@ function PdfPreview({ url, fileName }: { url: string; fileName: string }) {
         canvas.height = viewport.height;
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
-        // @ts-expect-error pdf.js v4 RenderParameters type lags behind runtime API
         await page.render({ canvasContext: ctx, viewport, canvas }).promise;
       } catch (e) {
         debugConsole.error("PDF render error:", e);
