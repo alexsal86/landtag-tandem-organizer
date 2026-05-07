@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { NewsShareDialog } from './NewsShareDialog';
 import { NewsToTaskDialog } from './NewsToTaskDialog';
+import { EmptyState, LoadingState, ErrorState } from '@/components/ui-patterns';
 
 interface NewsArticle {
   id: string;
@@ -137,12 +138,12 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
     return (
       <>
         <div>
-          {loading && <div className="animate-pulse space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-12 bg-muted rounded" />)}</div>}
-          {error && <p className="text-xs text-muted-foreground">{error}</p>}
+          {loading && <LoadingState variant="list" rows={3} />}
+          {error && <ErrorState description={error} onRetry={fetchNews} />}
           {!loading && !error && (
             <div className="divide-y divide-border">
               {filteredArticles.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Keine Artikel gefunden</p>
+                <EmptyState icon={Rss} size="sm" title="Keine Artikel gefunden" />
               ) : (
                 filteredArticles.slice(0, 6).map((article) => (
                   <div
@@ -242,21 +243,14 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
       
       <CardContent className="flex-1 p-0">
         {error && (
-          <div className="p-4 text-center text-sm text-muted-foreground">
-            {error}
-            <Button variant="link" onClick={fetchNews} className="ml-2 p-0 h-auto">
-              Erneut versuchen
-            </Button>
+          <div className="p-md">
+            <ErrorState description={error} onRetry={fetchNews} />
           </div>
         )}
-        
+
         {loading && (
-          <div className="p-4 text-center">
-            <div className="animate-pulse space-y-2">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="h-16 bg-muted rounded" />
-              ))}
-            </div>
+          <div className="p-md">
+            <LoadingState variant="card" rows={3} />
           </div>
         )}
 
@@ -264,9 +258,7 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
           <ScrollArea className="h-full">
             <div className="space-y-3 p-4">
               {filteredArticles.length === 0 ? (
-                <div className="text-center text-sm text-muted-foreground py-8">
-                  Keine Artikel gefunden
-                </div>
+                <EmptyState icon={Rss} title="Keine Artikel gefunden" description="Wähle eine andere Kategorie oder lade die Liste neu." action={{ label: 'Neu laden', icon: RefreshCw, onClick: fetchNews }} />
               ) : (
                 filteredArticles.map((article) => (
                   <div
