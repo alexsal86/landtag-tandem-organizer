@@ -6,6 +6,7 @@ import { useTenant } from "./useTenant";
 import { useToast } from "@/components/ui/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import { hasOwnProperty, isRecord } from "@/utils/typeSafety";
+import { STALE_TIME } from "@/lib/query-cache";
 import {
   type ElectionDistrictFeature,
   type GeoContactInfo,

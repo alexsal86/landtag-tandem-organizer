@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect, useState } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
+import { STALE_TIME } from '@/lib/query-cache';
 
 export interface KarlsruheDistrict {
   id: string;
