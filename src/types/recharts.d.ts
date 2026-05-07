@@ -63,6 +63,11 @@ interface LegendPayloadItem {
 
 interface CartesianAxisProps extends BaseRechartsProps {
   dataKey?: string | ((entry: RechartsDataPoint) => unknown);
+  tickLine?: boolean;
+  axisLine?: boolean;
+  tickFormatter?: (value: unknown, index?: number) => string;
+  width?: number;
+  hide?: boolean;
 }
 
 interface BarProps extends BaseRechartsProps {
