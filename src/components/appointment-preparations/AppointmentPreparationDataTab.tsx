@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo, type KeyboardEvent } from "react";
 import { debugConsole } from "@/utils/debugConsole";
 import { Card, CardContent } from "@/components/ui/card";
-import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
