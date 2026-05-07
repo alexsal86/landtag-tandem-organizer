@@ -1,11 +1,19 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { supabase } from '@/lib/supabase';
 import { SheetShell } from '@/ui/SheetShell';
 import { useToast } from '@/ui/Toast';
 import { ensurePermission } from '@/lib/permissions';
+
+type OcrKind = 'contact' | 'letter' | 'unknown';
+interface OcrResult {
+  kind: OcrKind;
+  contact?: Record<string, string>;
+  letter?: Record<string, string>;
+  confidence?: number;
+}
 
 export function PhotoSheet({
   visible, onClose, userId,
