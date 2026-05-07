@@ -126,7 +126,7 @@ export function MatrixLoginForm() {
             user: localpart,
           },
           password: loginPassword,
-          initial_device_display_name: 'Lovable App',
+          initial_device_display_name: 'LandtagsOS',
         }),
       });
 

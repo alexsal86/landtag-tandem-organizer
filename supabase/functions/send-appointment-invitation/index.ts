@@ -36,7 +36,7 @@ interface InvitationRequest {
 
 // ICS Calendar generation functions
 function generateUID(): string {
-  return `${Date.now()}-${Math.random().toString(36).substring(2)}@lovable.app`;
+  return `${Date.now()}-${Math.random().toString(36).substring(2)}@landtagsos.app`;
 }
 
 function formatDateToICS(date: string): string {
@@ -62,7 +62,7 @@ function generateICS(appointment: any, organizer: { name: string; email: string 
   let icsContent = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Lovable//Appointment Scheduler//DE',
+    'PRODID:-//LandtagsOS//Appointment Scheduler//DE',
     'CALSCALE:GREGORIAN',
     'METHOD:REQUEST',
     'BEGIN:VEVENT',
