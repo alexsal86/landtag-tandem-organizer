@@ -4,6 +4,8 @@ import { AppointmentPreparationChecklistTab } from "../AppointmentPreparationChe
 import { AppointmentPreparationDetailsTab } from "../AppointmentPreparationDetailsTab";
 import { AppointmentPreparationFileUpload } from "@/components/appointments/AppointmentPreparationFileUpload";
 import { PreparationMemoryPanel } from "./PreparationMemoryPanel";
+import { AiSuggestionsPanel } from "./AiSuggestionsPanel";
+import { DebriefPanel } from "./DebriefPanel";
 import type { PhaseId } from "./usePhaseStatus";
 import type { AppointmentPreparation } from "@/hooks/useAppointmentPreparation";
 import type { AppointmentPreparationAppointmentDetails } from "@/pages/AppointmentPreparationDetail";
@@ -23,7 +25,7 @@ const PHASE_TITLES: Record<PhaseId, { idx: number; title: string; lead: string }
   themen: { idx: 4, title: "Themen, Talking Points & Q&A", lead: "Was wollen wir aus dem Gespräch mitnehmen — und worauf müssen wir vorbereitet antworten?" },
   "qa-run": { idx: 5, title: "Q&A-Durchgang", lead: "Letzter Check: Sind alle Punkte für das Briefing abgehakt?" },
   freigabe: { idx: 6, title: "Briefing-Freigabe", lead: "Status, Notizen und Freigabe für das fertige Briefing." },
-  nachbereitung: { idx: 7, title: "Nachbereitung", lead: "Dokumente, Gesprächsnotiz und Folgetermine." },
+  nachbereitung: { idx: 7, title: "Nachbereitung", lead: "Was wurde besprochen? Ergebnisse, offene Punkte und Folgeaufgaben." },
 };
 
 export function PhaseContent({ phase, preparation, appointmentDetails, onUpdate, onOpenAppointmentDetails }: PhaseContentProps) {
@@ -44,6 +46,14 @@ export function PhaseContent({ phase, preparation, appointmentDetails, onUpdate,
           {(phase === "themen" || phase === "fakten") && (
             <PreparationMemoryPanel preparation={preparation} onUpdate={onUpdate} />
           )}
+          {(phase === "fakten" || phase === "themen") && (
+            <AiSuggestionsPanel
+              preparation={preparation}
+              appointmentTitle={appointmentDetails?.title}
+              phase={phase}
+              onUpdate={onUpdate}
+            />
+          )}
           <AppointmentPreparationDataTab
             preparation={preparation}
             appointmentDetails={appointmentDetails}
@@ -62,17 +72,24 @@ export function PhaseContent({ phase, preparation, appointmentDetails, onUpdate,
       )}
 
       {phase === "nachbereitung" && (
-        <Card className="bg-card shadow-card border-border">
-          <CardHeader>
-            <CardTitle>Dokumente & Nachbereitung</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <AppointmentPreparationFileUpload
-              preparationId={preparation.id}
-              tenantId={preparation.tenant_id}
-            />
-          </CardContent>
-        </Card>
+        <>
+          <DebriefPanel
+            preparation={preparation}
+            appointmentId={preparation.appointment_id}
+            onUpdate={onUpdate}
+          />
+          <Card className="bg-card shadow-card border-border">
+            <CardHeader>
+              <CardTitle>Dokumente</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AppointmentPreparationFileUpload
+                preparationId={preparation.id}
+                tenantId={preparation.tenant_id}
+              />
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
   );
