@@ -35,17 +35,19 @@ export default function TaskDetailScreen(): React.JSX.Element {
       .maybeSingle();
     setTask((data as TaskDetail) ?? null);
     if (activeTenantId) {
-      const { data: m } = await supabase
+      const { data: tu } = await supabase
         .from('tenant_users')
-        .select('user_id, profiles(display_name)')
+        .select('user_id')
         .eq('tenant_id', activeTenantId)
         .eq('active', true);
-      type R = { user_id: string; profiles: { display_name: string | null } | { display_name: string | null }[] | null };
-      const rows = (m ?? []) as R[];
-      setMembers(rows.map((r) => {
-        const p = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
-        return { user_id: r.user_id, display_name: p?.display_name ?? null };
-      }));
+      const userIds = (tu ?? []).map((r) => (r as { user_id: string }).user_id);
+      if (userIds.length) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('user_id, display_name')
+          .in('user_id', userIds);
+        setMembers((profs ?? []) as Member[]);
+      }
     }
     setLoading(false);
   }, [id, activeTenantId]);
