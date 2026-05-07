@@ -45,6 +45,9 @@ import { OnboardingSlidesManager } from "@/components/administration/OnboardingS
 import { DashboardHintSettings } from "@/components/administration/DashboardHintSettings";
 import { MotivationalMessagesOverview } from "@/components/administration/MotivationalMessagesOverview";
 import { StakeholderNetworkTagSettings } from "@/components/administration/StakeholderNetworkTagSettings";
+import { DataLintDashboard } from "@/components/administration/DataLintDashboard";
+import { DuplicateScanDashboard } from "@/components/administration/DuplicateScanDashboard";
+import { BulkActionAuditViewer } from "@/components/administration/BulkActionAuditViewer";
 import { PushNotificationTest } from "@/dev/PushNotificationTest";
 import { VapidKeyTest } from "@/dev/VapidKeyTest";
 import { DirectPushTest } from "@/dev/DirectPushTest";
