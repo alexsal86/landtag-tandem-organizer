@@ -159,6 +159,13 @@ All colors MUST be HSL.
     --event-foreground: 0 0% 100%;
     --event-foreground-dark: 0 0% 13%;
 
+    /* Agenda category tokens — dark mode */
+    --agenda-appointments: 217 91% 65%;
+    --agenda-notes: 38 92% 60%;
+    --agenda-tasks: 142 71% 50%;
+    --agenda-birthdays: 330 81% 65%;
+    --agenda-decisions: 271 91% 70%;
+
     --border: 217.2 32.6% 20%;           /* Etwas heller */
     --input: 217.2 32.6% 20%;
     --ring: 100 57% 55%;
