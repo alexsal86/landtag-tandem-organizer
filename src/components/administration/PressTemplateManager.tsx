@@ -230,7 +230,7 @@ export function PressTemplateManager() {
     { value: 'general', label: 'Allgemein' },
   ], []);
 
-  if (loading) return <div className="text-sm text-muted-foreground p-4">Laden...</div>;
+  if (loading) return <LoadingState variant="card" rows={3} className="p-md" />;
 
   return (
     <div className="space-y-4">
@@ -390,7 +390,7 @@ export function PressTemplateManager() {
         ))}
 
         {templates.length === 0 && !isEditing && (
-          <p className="text-sm text-muted-foreground text-center py-8">Noch keine Pressevorlagen vorhanden. Legen Sie eine neue Vorlage an.</p>
+          <EmptyState icon={FileText} title="Noch keine Pressevorlagen" description="Lege eine neue Vorlage an, um loszulegen." />
         )}
       </div>
 

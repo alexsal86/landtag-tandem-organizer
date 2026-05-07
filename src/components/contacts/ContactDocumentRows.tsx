@@ -38,8 +38,8 @@ export function ContactDocumentRows({ contactId, contactTags }: ContactDocumentR
   if (loading) {
     return (
       <TableRow className="bg-muted/30 border-l-4 border-l-primary/30">
-        <TableCell colSpan={8} className="text-center py-4">
-          <span className="text-sm text-muted-foreground">Laden...</span>
+        <TableCell colSpan={8} className="py-sm">
+          <LoadingState variant="inline" />
         </TableCell>
       </TableRow>
     );
@@ -50,8 +50,8 @@ export function ContactDocumentRows({ contactId, contactTags }: ContactDocumentR
   if (allDocuments.length === 0) {
     return (
       <TableRow className="bg-muted/30 border-l-4 border-l-primary/30">
-        <TableCell colSpan={8} className="text-center py-4">
-          <span className="text-sm text-muted-foreground">Keine Dokumente gefunden</span>
+        <TableCell colSpan={8} className="py-sm">
+          <span className="text-caption text-muted-foreground">Keine Dokumente verknüpft</span>
         </TableCell>
       </TableRow>
     );

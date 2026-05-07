@@ -242,7 +242,7 @@ export function LetterOccasionManager() {
   const selectedIconOption = ICON_OPTIONS.find((option) => option.value === form.icon);
   const SelectedFormIcon = getIconComponent(form.icon);
 
-  if (loading) return <div className="text-sm text-muted-foreground p-4">Laden...</div>;
+  if (loading) return <LoadingState variant="list" rows={4} className="p-md" />;
 
   return (
     <div className="space-y-4">
@@ -393,9 +393,11 @@ export function LetterOccasionManager() {
           );
         })}
         {occasions.length === 0 && !isEditing && (
-          <p className="text-sm text-muted-foreground text-center py-8">
-            Noch keine Anlässe konfiguriert. Klicken Sie auf "Standard-Anlässe erstellen" oder fügen Sie einen neuen Anlass hinzu.
-          </p>
+          <EmptyState
+            icon={Mail}
+            title="Noch keine Anlässe"
+            description='Klicke auf „Standard-Anlässe erstellen" oder lege einen neuen Anlass an.'
+          />
         )}
       </div>
 

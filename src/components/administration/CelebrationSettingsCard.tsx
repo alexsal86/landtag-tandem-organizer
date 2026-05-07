@@ -38,9 +38,7 @@ export function CelebrationSettingsCard() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-48 flex items-center justify-center">
-            <div className="animate-pulse text-muted-foreground">Laden...</div>
-          </div>
+          <LoadingState variant="detail" />
         </CardContent>
       </Card>
     );

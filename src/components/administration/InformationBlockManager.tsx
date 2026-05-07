@@ -331,7 +331,7 @@ export const InformationBlockManager: React.FC = () => {
   };
 
   if (loading) {
-    return <div>Laden...</div>;
+    return <LoadingState variant="card" rows={3} />;
   }
 
   return (
@@ -471,10 +471,8 @@ export const InformationBlockManager: React.FC = () => {
 
       {blocks.length === 0 && (
         <Card>
-          <CardContent className="text-center py-8">
-            <p className="text-muted-foreground">
-              Noch keine Informationsblöcke vorhanden.
-            </p>
+          <CardContent className="py-md">
+            <EmptyState title="Noch keine Informationsblöcke" description="Lege einen Informationsblock für die rechte Seitenleiste deiner Briefe an." />
           </CardContent>
         </Card>
       )}

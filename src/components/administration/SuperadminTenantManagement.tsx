@@ -479,7 +479,7 @@ export function SuperadminTenantManagement(): React.JSX.Element {
             </div>
 
             {loading ? (
-              <div className="text-center py-8 text-muted-foreground">Laden...</div>
+              <LoadingState variant="table" rows={5} />
             ) : (
               <Table>
                 <TableHeader>
@@ -625,7 +625,7 @@ export function SuperadminTenantManagement(): React.JSX.Element {
             </div>
 
             {usersLoading ? (
-              <div className="text-center py-8 text-muted-foreground">Laden...</div>
+              <LoadingState variant="table" rows={6} />
             ) : (
               <Table>
                 <TableHeader>
