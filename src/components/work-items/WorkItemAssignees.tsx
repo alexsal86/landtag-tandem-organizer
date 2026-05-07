@@ -42,7 +42,7 @@ export function WorkItemAssignees({ assignees, max = 3, className, onClick }: Pr
   return (
     <div className={cn('flex items-center -space-x-1.5', className)} onClick={onClick}>
       {visible.map((a) => {
-        const profile = profiles.find((p) => p.user_id === a.user_id || p.id === a.user_id);
+        const profile = profiles.find((p) => p.user_id === a.user_id);
         const name = profile?.display_name ?? a.display_name ?? '?';
         const initials = name
           .split(/\s+/)
@@ -53,7 +53,7 @@ export function WorkItemAssignees({ assignees, max = 3, className, onClick }: Pr
           .toUpperCase();
         return (
           <Avatar key={a.user_id} className="h-6 w-6 ring-2 ring-background">
-            {profile?.avatar_url && <AvatarImage src={profile.avatar_url} alt={name} />}
+            {a.avatar_url && <AvatarImage src={a.avatar_url} alt={name} />}
             <AvatarFallback className="text-caption">{initials}</AvatarFallback>
           </Avatar>
         );
