@@ -31,7 +31,7 @@ export const useMapFlagTypes = () => {
       
       const { data, error } = await supabase
         .from('map_flag_types')
-        .select('*')
+        .select('id, tenant_id, name, icon, color, is_active, order_index, created_by, created_at, updated_at, tag_filter, description')
         .eq('tenant_id', currentTenant.id)
         .eq('is_active', true)
         .order('order_index');
