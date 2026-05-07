@@ -260,7 +260,7 @@ export function TaskCard({
           aria-hidden="true"
           style={{
             left: `${CONNECTOR_X}px`,
-            top: `${connectorParentLineStartTop}px`,
+            top: `${parentLineTop}px`,
             height: `${parentLineHeight}px`,
             width: "2px",
           }}
@@ -284,6 +284,7 @@ export function TaskCard({
       )}
 
       <div
+        ref={cardRef}
         className={cn(
           "border border-border rounded-lg bg-card",
           isHighlighted?.(task.id) && "notification-highlight",
