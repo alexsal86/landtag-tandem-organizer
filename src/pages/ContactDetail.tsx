@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ActivityTimeline, type Activity } from "@/components/contacts/ActivityTimeline";
 import { ContactBriefingMemoryTab } from "@/components/contacts/ContactBriefingMemoryTab";
+import { ContactFactsSection } from "@/features/facts/components/ContactFactsSection";
 import { debugConsole } from "@/utils/debugConsole";
 import type { Contact, ContactCategory, ContactPriority } from "@/types/contact";
 
