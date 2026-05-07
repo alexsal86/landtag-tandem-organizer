@@ -40,6 +40,7 @@ const SelftestView = lazyWithRetry(() => import("@/features/selftest/components/
 const CreateAppointmentDialog = lazyWithRetry(() => import("@/features/appointments/components/CreateAppointmentDialog").then(m => ({ default: m.CreateAppointmentDialog })));
 const GlobalQuickActionHandler = lazyWithRetry(() => import("@/components/layout/GlobalQuickActionHandler").then(m => ({ default: m.GlobalQuickActionHandler })));
 const GlobalAnnouncementBanner = lazyWithRetry(() => import("@/components/announcements/GlobalAnnouncementBanner").then(m => ({ default: m.GlobalAnnouncementBanner })));
+import { OnboardingHost } from "@/components/onboarding/OnboardingHost";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -322,7 +323,10 @@ const Index = (): React.JSX.Element => {
         
         {/* Global QuickAction Handler - für Actions, die Navigation erfordern */}
         <GlobalQuickActionHandler />
-        
+
+        {/* Onboarding Modal (allgemein + büro-spezifisch) */}
+        <OnboardingHost />
+
         {/* Create Appointment Dialog */}
         <CreateAppointmentDialog
           open={showCreateAppointmentDialog}
