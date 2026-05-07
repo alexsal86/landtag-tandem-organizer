@@ -34,6 +34,7 @@ export function DossiersSidePanel({
     { key: "radar" as DossierTab, label: "Mein Radar", icon: Radio, count: null },
     { key: "dossiers" as DossierTab, label: "Dossiers", icon: FolderOpen, count: dossiersCount },
     { key: "artikel" as DossierTab, label: "Artikel", icon: FileText, count: null },
+    { key: "fakten" as DossierTab, label: "Fakten", icon: Hash, count: null },
   ];
 
   return (
