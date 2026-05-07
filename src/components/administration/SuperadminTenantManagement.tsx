@@ -17,6 +17,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/components/ui/use-toast";
 import { Building2, Plus, Edit, Trash2, Users, UserPlus, RefreshCw, Copy, Check, MapPin, ChevronDown, Sparkles } from "lucide-react";
+import { LoadingState } from "@/components/ui-patterns";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { TenantProvisioningWizard } from "./tenant-wizard/TenantProvisioningWizard";
@@ -479,7 +480,7 @@ export function SuperadminTenantManagement(): React.JSX.Element {
             </div>
 
             {loading ? (
-              <div className="text-center py-8 text-muted-foreground">Laden...</div>
+              <LoadingState variant="table" rows={5} />
             ) : (
               <Table>
                 <TableHeader>
@@ -625,7 +626,7 @@ export function SuperadminTenantManagement(): React.JSX.Element {
             </div>
 
             {usersLoading ? (
-              <div className="text-center py-8 text-muted-foreground">Laden...</div>
+              <LoadingState variant="table" rows={6} />
             ) : (
               <Table>
                 <TableHeader>

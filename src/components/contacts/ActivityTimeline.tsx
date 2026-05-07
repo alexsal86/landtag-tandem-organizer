@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { getInitials } from '@/components/contacts/utils/contactFormatters';
+import { EmptyState, LoadingState } from '@/components/ui-patterns';
 
 export interface Activity {
   id: string;
@@ -103,36 +104,16 @@ export function ActivityTimeline({ activities, loading = false }: ActivityTimeli
   };
 
   if (loading) {
-    return (
-      <div className="space-y-4">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="animate-pulse">
-            <div className="flex gap-4">
-              <div className="w-10 h-10 bg-muted rounded-full" />
-              <div className="flex-1 space-y-2">
-                <div className="h-4 bg-muted rounded w-3/4" />
-                <div className="h-3 bg-muted rounded w-1/2" />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
+    return <LoadingState variant="list" rows={3} />;
   }
 
   if (activities.length === 0) {
     return (
-      <Card className="p-8 text-center">
-        <div className="flex flex-col items-center gap-2">
-          <FileText className="h-12 w-12 text-muted-foreground" />
-          <p className="text-muted-foreground">
-            Noch keine Aktivitäten vorhanden
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Aktivitäten werden automatisch protokolliert
-          </p>
-        </div>
-      </Card>
+      <EmptyState
+        icon={FileText}
+        title="Noch keine Aktivitäten"
+        description="Aktivitäten werden automatisch protokolliert, sobald du mit diesem Kontakt interagierst."
+      />
     );
   }
 

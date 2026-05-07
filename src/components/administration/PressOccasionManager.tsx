@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Edit, Trash2, Save, X, Megaphone, Building2, Users, FileText, Handshake, Vote } from 'lucide-react';
+import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { debugConsole } from '@/utils/debugConsole';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
@@ -265,7 +266,7 @@ export function PressOccasionManager() {
   const SelectedFormIcon = getIconComponent(form.icon);
   const isEditing = editingId || showCreate;
 
-  if (loading) return <div className="text-sm text-muted-foreground p-4">Laden...</div>;
+  if (loading) return <LoadingState variant="list" rows={4} className="p-md" />;
 
   return (
     <div className="space-y-4">
@@ -416,9 +417,11 @@ export function PressOccasionManager() {
           );
         })}
         {occasions.length === 0 && !isEditing && (
-          <p className="text-sm text-muted-foreground text-center py-8">
-            Noch keine Anlässe konfiguriert. Klicken Sie auf "Standard-Anlässe erstellen" oder fügen Sie einen neuen Anlass hinzu.
-          </p>
+          <EmptyState
+            icon={FileText}
+            title="Noch keine Anlässe"
+            description='Klicke auf „Standard-Anlässe erstellen" oder lege einen neuen Anlass an.'
+          />
         )}
       </div>
 

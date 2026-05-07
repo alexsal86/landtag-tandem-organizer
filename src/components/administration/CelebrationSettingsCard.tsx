@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Separator } from "@/components/ui/separator";
 import { Sparkles, Eye } from "lucide-react";
+import { LoadingState } from "@/components/ui-patterns";
 import { useCelebrationSettings } from "@/hooks/useCelebrationSettings";
 import { CelebrationAnimationSystem } from "@/components/celebrations";
 
@@ -38,9 +39,7 @@ export function CelebrationSettingsCard() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-48 flex items-center justify-center">
-            <div className="animate-pulse text-muted-foreground">Laden...</div>
-          </div>
+          <LoadingState variant="detail" />
         </CardContent>
       </Card>
     );
