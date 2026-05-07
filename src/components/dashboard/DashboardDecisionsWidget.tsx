@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Vote, MessageSquare, Undo2 } from 'lucide-react';
 import { differenceInCalendarDays, format } from 'date-fns';
@@ -35,35 +35,30 @@ interface DecisionRowProps {
   decision: MyWorkDecision;
   onRefresh: () => void;
   onOpen: (id: string) => void;
+  onPromptOpen: (id: string) => void;
+  onPromptClose: (id: string) => void;
+  forcePrompt?: { color: string } | null;
 }
 
-function DecisionRow({ decision, onRefresh, onOpen }: DecisionRowProps) {
+function DecisionRow({ decision, onRefresh, onOpen, onPromptOpen, onPromptClose, forcePrompt }: DecisionRowProps) {
   const summary = getResponseSummary(decision.participants);
   const { label, isOverdue } = formatDeadline(decision.response_deadline);
-  const [prompt, setPrompt] = useState<{ color: string } | null>(null);
-  const timeoutRef = useRef<number | null>(null);
+  const [prompt, setPrompt] = useState<{ color: string } | null>(forcePrompt ?? null);
   const { toast } = useToast();
 
-  useEffect(() => () => { if (timeoutRef.current) window.clearTimeout(timeoutRef.current); }, []);
-
-  const startPromptTimer = () => {
-    if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
-    timeoutRef.current = window.setTimeout(() => {
-      setPrompt(null);
-      onRefresh();
-    }, 10000);
-  };
+  useEffect(() => {
+    if (forcePrompt && !prompt) setPrompt(forcePrompt);
+  }, [forcePrompt, prompt]);
 
   const handleSubmitted = (meta?: { responseType: string; color?: string }) => {
     const color = meta?.color
       || decision.response_options?.find((o) => o.key === meta?.responseType)?.color
       || 'green';
     setPrompt({ color });
-    startPromptTimer();
+    onPromptOpen(decision.id);
   };
 
   const handleUndo = async () => {
-    if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
     if (!decision.participant_id) return;
     const { error } = await supabase
       .from('task_decision_responses')
@@ -77,13 +72,20 @@ function DecisionRow({ decision, onRefresh, onOpen }: DecisionRowProps) {
     }
     toast({ title: 'Antwort zurückgenommen' });
     setPrompt(null);
+    onPromptClose(decision.id);
     onRefresh();
   };
 
   const handleAddJustification = () => {
-    if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
     setPrompt(null);
+    onPromptClose(decision.id);
     onOpen(decision.id);
+  };
+
+  const handleDismiss = () => {
+    setPrompt(null);
+    onPromptClose(decision.id);
+    onRefresh();
   };
 
   return (
@@ -140,14 +142,17 @@ function DecisionRow({ decision, onRefresh, onOpen }: DecisionRowProps) {
             <MessageSquare className="h-3.5 w-3.5" /> Entscheidung erfasst.
           </div>
           <div className="text-muted-foreground mb-2">
-            Aktualisierung in 10 Sekunden – oder direkt:
+            Du kannst die Antwort zurücknehmen oder begründen:
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={handleAddJustification}>
               <MessageSquare className="h-3 w-3 mr-1" />Begründung hinzufügen
             </Button>
             <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={handleUndo}>
               <Undo2 className="h-3 w-3 mr-1" />Rückgängig
+            </Button>
+            <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs ml-auto" onClick={handleDismiss}>
+              Fertig
             </Button>
           </div>
         </div>
@@ -160,10 +165,16 @@ export function DashboardDecisionsWidget() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { decisions, loading, loadDecisions } = useMyWorkDecisionsData(user?.id);
+  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
+
+  const handlePromptOpen = (id: string) =>
+    setPendingIds((prev) => { const n = new Set(prev); n.add(id); return n; });
+  const handlePromptClose = (id: string) =>
+    setPendingIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
 
   const items = useMemo(() => {
     return [...decisions]
-      .filter((d) => d.status !== 'resolved')
+      .filter((d) => d.status !== 'resolved' && (!d.hasResponded || pendingIds.has(d.id)))
       .sort((a, b) => {
         if (!a.response_deadline && !b.response_deadline) return 0;
         if (!a.response_deadline) return 1;
@@ -171,7 +182,7 @@ export function DashboardDecisionsWidget() {
         return new Date(a.response_deadline).getTime() - new Date(b.response_deadline).getTime();
       })
       .slice(0, 3);
-  }, [decisions]);
+  }, [decisions, pendingIds]);
 
   const goToDecision = (id: string) => {
     navigate(`/mywork?tab=decisions&highlight=${id}`);
@@ -191,6 +202,9 @@ export function DashboardDecisionsWidget() {
           decision={d}
           onRefresh={() => loadDecisions({ silent: true })}
           onOpen={goToDecision}
+          onPromptOpen={handlePromptOpen}
+          onPromptClose={handlePromptClose}
+          forcePrompt={pendingIds.has(d.id) && d.hasResponded ? { color: 'green' } : null}
         />
       ))}
     </div>
