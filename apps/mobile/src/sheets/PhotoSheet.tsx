@@ -21,22 +21,40 @@ export function PhotoSheet({
   const [uri, setUri] = useState<string | null>(null);
   const [caption, setCaption] = useState('');
   const [busy, setBusy] = useState(false);
+  const [ocrEnabled, setOcrEnabled] = useState(true);
+  const [ocr, setOcr] = useState<OcrResult | null>(null);
   const toast = useToast();
 
-  useEffect(() => { if (!visible) { setUri(null); setCaption(''); } }, [visible]);
+  useEffect(() => {
+    if (!visible) { setUri(null); setCaption(''); setOcr(null); }
+  }, [visible]);
 
   const fromCamera = async () => {
     const ok = await ensurePermission('camera');
     if (!ok) return;
     const r = await ImagePicker.launchCameraAsync({ quality: 0.7, mediaTypes: ImagePicker.MediaTypeOptions.Images });
-    if (!r.canceled && r.assets[0]) setUri(r.assets[0].uri);
+    if (!r.canceled && r.assets[0]) { setUri(r.assets[0].uri); setOcr(null); }
   };
 
   const fromLibrary = async () => {
     const ok = await ensurePermission('mediaLibrary');
     if (!ok) return;
     const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.7, mediaTypes: ImagePicker.MediaTypeOptions.Images });
-    if (!r.canceled && r.assets[0]) setUri(r.assets[0].uri);
+    if (!r.canceled && r.assets[0]) { setUri(r.assets[0].uri); setOcr(null); }
+  };
+
+  const runOcr = async (imageBase64: string): Promise<OcrResult | null> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('extract-photo-data', {
+        body: { imageBase64, mimeType: 'image/jpeg', mode: 'auto' },
+      });
+      if (error) throw error;
+      const payload = (data as { ok?: boolean; data?: OcrResult })?.data ?? null;
+      return payload;
+    } catch (e) {
+      console.warn('OCR failed', e);
+      return null;
+    }
   };
 
   const save = async () => {
@@ -51,14 +69,45 @@ export function PhotoSheet({
         .upload(fileName, bytes, { contentType: 'image/jpeg', upsert: false });
       if (upErr) throw upErr;
       const { data: urlData } = supabase.storage.from('documents').getPublicUrl(fileName);
+
+      // Best-effort OCR
+      let ocrResult: OcrResult | null = null;
+      if (ocrEnabled) {
+        ocrResult = await runOcr(base64);
+        setOcr(ocrResult);
+      }
+
+      // Auto-Anlage Kontakt
+      if (ocrResult?.kind === 'contact' && ocrResult.contact) {
+        const c = ocrResult.contact;
+        const fullName = [c.first_name, c.last_name].filter(Boolean).join(' ').trim() || c.organization || 'Visitenkarte';
+        const { error: cErr } = await supabase.from('contacts').insert({
+          user_id: userId,
+          name: fullName,
+          email: c.email || null,
+          phone: c.phone || c.mobile || null,
+          organization: c.organization || null,
+          role: c.role || null,
+          category: 'stakeholder',
+          notes: [c.notes, `Aus Visitenkarte: ${urlData.publicUrl}`].filter(Boolean).join('\n'),
+        } as never);
+        if (cErr) console.warn('Kontakt konnte nicht angelegt werden', cErr);
+      }
+
+      const ocrSummary = ocrResult?.kind === 'contact'
+        ? `\nErkannt: Visitenkarte (${ocrResult.contact?.first_name ?? ''} ${ocrResult.contact?.last_name ?? ''})`
+        : ocrResult?.kind === 'letter'
+        ? `\nErkannt: Brief – ${ocrResult.letter?.subject ?? ''}`
+        : '';
+
       const { error: nErr } = await supabase.from('quick_notes').insert({
         user_id: userId,
-        title: caption.trim() || 'Foto-Notiz',
-        content: `📷 ${caption.trim() || 'Foto'}\n${urlData.publicUrl}`,
-        category: 'mobile-photo',
+        title: caption.trim() || (ocrResult?.kind === 'letter' ? 'Brief-Foto' : 'Foto-Notiz'),
+        content: `📷 ${caption.trim() || 'Foto'}\n${urlData.publicUrl}${ocrSummary}`,
+        category: ocrResult?.kind === 'contact' ? 'mobile-photo-card' : 'mobile-photo',
       });
       if (nErr) throw nErr;
-      toast.success('Foto gespeichert');
+      toast.success(ocrResult?.kind === 'contact' ? 'Kontakt angelegt' : 'Foto gespeichert');
       onClose();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Fehler');
