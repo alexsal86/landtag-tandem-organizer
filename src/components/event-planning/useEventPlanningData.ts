@@ -13,7 +13,6 @@ import { debounce } from '@/utils/debounce';
 import { useChecklistOperations } from "./hooks/useChecklistOperations";
 import { useItemDetails } from "./hooks/useItemDetails";
 import type {
-import { notify } from "@/lib/notify";
   EventPlanning,
   EventPlanningContact,
   EventPlanningSpeaker,
@@ -24,6 +23,7 @@ import { notify } from "@/lib/notify";
   Profile,
   AppointmentPreparation,
 } from "./types";
+import { notify } from "@/lib/notify";
 
 interface PlanningTemplateDto {
   id: string;

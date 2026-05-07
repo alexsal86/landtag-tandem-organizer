@@ -25,7 +25,6 @@ import { ResponseOption, getColorClasses, getDefaultOptions } from "@/lib/decisi
 import type { ParticipantProfile } from "@/types/taskDecisions";
 
 import {
-import { notify } from "@/lib/notify";
   DELETED_COMMENT_TEXT,
   type DecisionProfile,
   type DecisionDetailsState,
@@ -33,6 +32,7 @@ import { notify } from "@/lib/notify";
   type Participant,
   type TaskDecisionDetailsProps,
 } from "./taskDecisionDetails/types";
+import { notify } from "@/lib/notify";
 
 export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, highlightCommentId = null, highlightResponseId = null }: TaskDecisionDetailsProps) => {
   const [decision, setDecision] = useState<DecisionDetailsState | null>(null);

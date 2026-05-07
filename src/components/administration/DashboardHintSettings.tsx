@@ -12,13 +12,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import {
-import { notify } from "@/lib/notify";
   AVAILABLE_HINT_ICONS,
   DEFAULT_SPECIAL_DAYS,
   isValidSpecialDayDate,
   parseSpecialDaysSetting,
   type SpecialDay
 } from '@/utils/dashboard/specialDays';
+import { notify } from "@/lib/notify";
 
 const SETTINGS_KEY = 'dashboard_special_day_hints';
 

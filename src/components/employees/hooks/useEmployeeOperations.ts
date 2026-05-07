@@ -4,7 +4,6 @@ import type { Database } from "@/integrations/supabase/types";
 import type { Dispatch, SetStateAction } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import {
-import { notify } from "@/lib/notify";
   EmployeeMutationActionResult,
   EmployeeMutationDTO,
   EmployeeRow,
@@ -12,6 +11,7 @@ import { notify } from "@/lib/notify";
   LeaveType,
   calculateWorkingDays,
 } from "../types";
+import { notify } from "@/lib/notify";
 
 type EmployeeUpdateSetter = Dispatch<SetStateAction<EmployeeRow[]>>;
 type PendingLeaveSetter = Dispatch<SetStateAction<PendingLeaveRequest[]>>;

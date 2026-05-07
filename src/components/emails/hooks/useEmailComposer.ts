@@ -7,10 +7,10 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { debugConsole } from '@/utils/debugConsole';
 import {
-import { notify } from "@/lib/notify";
   PRESS_EMAIL_TEMPLATE_BODY_DEFAULT,
   PRESS_EMAIL_TEMPLATE_SUBJECT_DEFAULT,
 } from "@/lib/pressEmailTemplateDefaults";
+import { notify } from "@/lib/notify";
 
 // ── Types ────────────────────────────────────────────────────
 export interface Contact {

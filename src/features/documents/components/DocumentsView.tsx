@@ -47,12 +47,12 @@ import { DocumentDialogs } from "@/components/documents/DocumentDialogs";
 import { STATUS_LABELS, getStatusColor, formatFileSize } from "@/components/documents/types";
 import type { Document, Letter, DocumentFolder } from "@/components/documents/types";
 import {
-import { notify } from "@/lib/notify";
   isDocumentCategoryOption,
   isDocumentTagOption,
   isDocumentFolderWithCount,
   type DocumentDialogState,
 } from "@/components/documents/operationsContract";
+import { notify } from "@/lib/notify";
 
 const AUTO_ARCHIVE_DEFAULT_DAYS = 30;
 const AUTO_ARCHIVE_SETTING_KEY = "letters_auto_archive_days";

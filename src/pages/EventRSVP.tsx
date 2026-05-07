@@ -25,13 +25,13 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { debugConsole } from "@/utils/debugConsole";
 import {
-import { notify } from "@/lib/notify";
   fetchPublicInvitation,
   PublicInvitationApiError,
   respondToPublicInvitation,
   type InvitationStatus,
   type PublicInvitationData,
 } from "@/services/publicInvitationApi";
+import { notify } from "@/lib/notify";
 
 type ResponseStatus = Exclude<InvitationStatus, "invited">;
 

@@ -8,7 +8,6 @@ import { debugConsole } from "@/utils/debugConsole";
 import { hasOwnProperty, isRecord } from "@/utils/typeSafety";
 import { STALE_TIME } from "@/lib/query-cache";
 import {
-import { notify } from "@/lib/notify";
   type ElectionDistrictFeature,
   type GeoContactInfo,
   type GeoPoint,
@@ -17,6 +16,7 @@ import { notify } from "@/lib/notify";
   normalizeGeoPoint,
   normalizeStringArray,
 } from "./geoContracts";
+import { notify } from "@/lib/notify";
 
 interface ElectionRepresentative {
   id: string;

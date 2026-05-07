@@ -27,12 +27,12 @@ import {
   RefreshCw
 } from 'lucide-react';
 import {
-import { notify } from "@/lib/notify";
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { notify } from "@/lib/notify";
 interface Protocol {
   id: string;
   protocol_date: string;

@@ -18,7 +18,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import type { DashboardLayout } from '@/types/dashboardWidgets';
 import type {
-import { notify } from "@/lib/notify";
   BroadcastPayloadEnvelope,
   DashboardPresenceUser,
   DashboardPresenceState,
@@ -27,6 +26,7 @@ import { notify } from "@/lib/notify";
   LayoutUpdatePayload,
   WidgetUpdatePayload,
 } from '@/types/dashboard';
+import { notify } from "@/lib/notify";
 interface RealTimeSyncProps {
   currentLayout: DashboardLayout;
   onLayoutUpdate: (layout: DashboardLayout) => void;

@@ -16,11 +16,11 @@ import {
 } from '@/types/letterLayout';
 import { parseFooterLinesForEditor, toFooterLineData } from '@/components/letters/footerBlockUtils';
 import {
-import { notify } from "@/lib/notify";
   LetterTemplate, SenderInformation, InformationBlock, GalleryImage,
   normalizeImageItem, normalizeLayoutBlockContentImages, createDefaultAttachmentElements,
   MarginKey, TabRect,
 } from '../types';
+import { notify } from "@/lib/notify";
 
 export function useLetterTemplateData() {
   const { currentTenant } = useTenant();

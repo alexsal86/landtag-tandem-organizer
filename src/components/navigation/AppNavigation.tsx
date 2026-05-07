@@ -82,13 +82,13 @@ import { buildDeepLinkPath } from "@/utils/notificationDeepLinks";
 export { getNavigationGroups };
 
 import type {
-import { notify } from "@/lib/notify";
   ActivePanel,
   NotificationFilter,
   QuickAccessAddCategory,
   NavigationProps,
   UpcomingAppointmentItem,
 } from "./appNavigation/types";
+import { notify } from "@/lib/notify";
 
 // Available pages for quick access
 const availableQuickPages: QuickAccessPage[] = [

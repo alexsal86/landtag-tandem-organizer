@@ -8,13 +8,13 @@ import { UserBadge } from "@/components/ui/user-badge";
 import { AVAILABLE_COLORS } from "@/utils/userColors";
 import { Loader2, RefreshCw, Wand2 } from "lucide-react";
 import {
-import { notify } from "@/lib/notify";
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { notify } from "@/lib/notify";
 
 interface UserProfile {
   user_id: string;

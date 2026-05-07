@@ -29,7 +29,6 @@ import { CompanionsCard } from "./appointment-preparation-data/CompanionsCard";
 import { ProgramCard } from "./appointment-preparation-data/ProgramCard";
 import { PreparationDataCards } from "./appointment-preparation-data/PreparationDataCards";
 import type {
-import { notify } from "@/lib/notify";
   AppointmentPreparationDataTabProps,
   Companion,
   ContactOption,
@@ -41,6 +40,7 @@ import { notify } from "@/lib/notify";
   TalkingPointItem,
   TopicItem,
 } from "./appointment-preparation-data/types";
+import { notify } from "@/lib/notify";
 
 export function AppointmentPreparationDataTab({
   preparation,

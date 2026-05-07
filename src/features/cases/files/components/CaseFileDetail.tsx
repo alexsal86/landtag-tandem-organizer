@@ -348,12 +348,12 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
 
 // Simple full-screen dialog wrapper for reusing tab components
 import {
-import { notify } from "@/lib/notify";
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { notify } from "@/lib/notify";
 
 function DialogWrapper({
   open,

@@ -22,7 +22,6 @@ import { cn } from "@/lib/utils";
 import type { ActionItem, ActionItemOwner, EmployeeMeeting, MeetingPreparationData, ProtocolData } from "@/components/employees/types";
 
 import {
-import { notify } from "@/lib/notify";
   ACTION_ITEM_MIN_LENGTH,
   extractPlainTextFromHtml,
   RatingScale,
@@ -30,6 +29,7 @@ import { notify } from "@/lib/notify";
   SaveIndicator,
   ProtocolField,
 } from "./employeeMeetingProtocol/parts";
+import { notify } from "@/lib/notify";
 
 interface EmployeeMeetingProtocolProps {
   meetingId: string;

@@ -16,12 +16,12 @@ import { MeetingTemplateParticipantsEditor } from "@/components/meetings/Meeting
 import { Plus, Save, X, Check, GripVertical, Minus, Edit, Trash2, CalendarDays, StickyNote, ListTodo, Cake, Scale, MoveVertical, ArrowUp, ArrowDown, CornerUpLeft } from "lucide-react";
 import type { MeetingTemplateChildItem, MeetingTemplateItem, MeetingTemplateRecord } from "@/types/meetingTemplate";
 import {
-import { notify } from "@/lib/notify";
   getAgendaSystemItemClass,
   getAgendaChildClass,
   getAgendaIconColor,
   getAgendaToggleClass,
 } from "@/components/administration/agendaSystemStyles";
+import { notify } from "@/lib/notify";
 
 export function MeetingTemplateManager() {
   const { user } = useAuth();

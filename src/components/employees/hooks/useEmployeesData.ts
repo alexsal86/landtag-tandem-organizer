@@ -8,7 +8,6 @@ import { debugConsole } from '@/utils/debugConsole';
 import { getErrorMessage } from '@/utils/errorHandler';
 import { startOfYear, endOfYear } from "date-fns";
 import {
-import { notify } from "@/lib/notify";
   Employee,
   EmployeeRow,
   EmployeeSettingsRow,
@@ -18,6 +17,7 @@ import { notify } from "@/lib/notify";
   PendingLeaveRequest,
   calculateWorkingDays, initLeaveAgg,
 } from "../types";
+import { notify } from "@/lib/notify";
 
 type AdminOverviewResponse = {
   employees: Array<Employee & { leave_agg?: LeaveAgg; sick_days_count?: number }>;

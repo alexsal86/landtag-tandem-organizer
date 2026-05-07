@@ -11,7 +11,6 @@ import { MessageComposer } from "./MessageComposer";
 import { debugConsole } from "@/utils/debugConsole";
 import { ReceivedMessageCard, SentMessageCard, ArchivedMessageCard, PaginationControls } from "@/components/messages/MessageCard";
 import type {
-import { notify } from "@/lib/notify";
   ConfirmationRow,
   MessageItem,
   MessageSection,
@@ -20,6 +19,7 @@ import { notify } from "@/lib/notify";
   RecipientRow,
   RpcMessageRow,
 } from "@/types/messages";
+import { notify } from "@/lib/notify";
 
 const emptyParticipant = (userId: string): ParticipantSummary => ({
   userId,

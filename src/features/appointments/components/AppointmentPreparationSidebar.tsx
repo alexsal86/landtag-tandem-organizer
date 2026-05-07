@@ -19,7 +19,6 @@ import { de } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import type { CheckedState } from '@radix-ui/react-checkbox';
 import type {
-import { notify } from "@/lib/notify";
   AppointmentPreparation,
   AppointmentPreparationTemplate,
   ChecklistItem,
@@ -28,6 +27,7 @@ import { notify } from "@/lib/notify";
   PreparationStatus,
   TemplateSection,
 } from '@/types/appointmentPreparation';
+import { notify } from "@/lib/notify";
 
 
 interface AppointmentPreparationSidebarProps {

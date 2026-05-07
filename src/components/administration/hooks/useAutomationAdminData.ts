@@ -3,7 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { STALE_TIME } from "@/lib/query-cache";
 import { useToast } from "@/components/ui/use-toast";
 import {
-import { notify } from "@/lib/notify";
   toAutomationRuleInsert,
   toAutomationRuleRecordView,
   toAutomationRuleUpdate,
@@ -11,6 +10,7 @@ import { notify } from "@/lib/notify";
   toAutomationRunStepRecordView,
   type AutomationRuleMutationPayload,
 } from "../automationShared";
+import { notify } from "@/lib/notify";
 
 const automationKeys = {
   membership: (tenantId: string, userId: string) => ["automation-admin", tenantId, "membership", userId] as const,

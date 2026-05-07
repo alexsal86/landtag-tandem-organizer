@@ -18,7 +18,6 @@ import { debugConsole } from '@/utils/debugConsole';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import {
-import { notify } from "@/lib/notify";
   ArrowLeft,
   FileDown,
   StickyNote,
@@ -31,6 +30,7 @@ import { notify } from "@/lib/notify";
   Plus,
   Check,
 } from 'lucide-react';
+import { notify } from "@/lib/notify";
 
 interface CreatedTask {
   id: string;

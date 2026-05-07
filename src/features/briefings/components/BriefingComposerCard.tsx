@@ -16,11 +16,11 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { nextWorkingDay, toDateString } from "../utils";
 import {
-import { notify } from "@/lib/notify";
   useDeleteBriefing,
   useMyBriefingForDate,
   useSaveBriefing,
 } from "../hooks/useMyDraftBriefing";
+import { notify } from "@/lib/notify";
 
 export function BriefingComposerCard() {
   const [expanded, setExpanded] = useState(false);
