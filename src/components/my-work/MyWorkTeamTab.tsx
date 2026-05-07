@@ -7,6 +7,7 @@ import { MyWorkExpenseWidget } from "@/components/my-work/MyWorkExpenseWidget";
 import { TEAM_TAB_ACCESS_RULES, useMyWorkTeamData } from "@/components/my-work/hooks/useMyWorkTeamData";
 import { TeamMemberRow } from "@/components/my-work/team/TeamMemberRow";
 import { TeamOverviewHeader } from "@/components/my-work/team/TeamOverviewHeader";
+import { MyWorkEmptyState } from "@/components/my-work/MyWorkEmptyState";
 
 export function MyWorkTeamTab() {
   const navigate = useNavigate();
@@ -65,10 +66,13 @@ export function MyWorkTeamTab() {
         <TeamOverviewHeader overview={overview} />
 
         {teamMembers.length === 0 ? (
-          <div className="py-8 text-center text-muted-foreground">
-            <Users className="mx-auto mb-2 h-10 w-10 opacity-50" />
-            <p>Keine Mitarbeiter</p>
-          </div>
+          <MyWorkEmptyState
+            icon={Users}
+            title="Noch keine Teammitglieder"
+            description="Lade Mitarbeitende ein, um Gespräche zu koordinieren und die Zeiterfassung im Blick zu behalten."
+            actionLabel="Mitarbeiter verwalten"
+            onAction={() => navigate("/employee")}
+          />
         ) : (
           <ScrollArea className="max-h-[32rem] pr-3">
             <div className="space-y-2">

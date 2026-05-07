@@ -20,6 +20,8 @@ import { MyWorkTasksToolbar } from "./MyWorkTasksToolbar";
 import { MyWorkTasksBoard } from "./MyWorkTasksBoard";
 import { MyWorkTasksList } from "./MyWorkTasksList";
 import { MyWorkTaskDialogs } from "./MyWorkTaskDialogs";
+import { MyWorkEmptyState } from "./MyWorkEmptyState";
+import { ListTodo } from "lucide-react";
 import { useMyWorkTaskActions } from "./useMyWorkTaskActions";
 
 export function MyWorkTasksTab() {
@@ -278,8 +280,14 @@ export function MyWorkTasksTab() {
       )}
 
       {totalTasks === 0 ? (
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-muted-foreground">Keine offenen Aufgaben</p>
+        <div className="flex-1 flex items-center justify-center p-4">
+          <MyWorkEmptyState
+            icon={ListTodo}
+            title="Noch keine Aufgaben"
+            description="Erstelle eine Aufgabe, um Themen zu sortieren, zuzuweisen und nachzuverfolgen."
+            actionLabel="Aufgabe erstellen"
+            onAction={() => setTodoCreateOpen(true)}
+          />
         </div>
       ) : (
         <div
