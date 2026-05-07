@@ -22,7 +22,7 @@ export function VoiceNoteSheet({
       stopAndCleanup();
       setUri(null); setTitle(''); setSeconds(0);
     }
-    return () => stopAndCleanup();
+    return () => { void stopAndCleanup(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
