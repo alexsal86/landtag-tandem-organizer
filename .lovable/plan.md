@@ -1,116 +1,46 @@
-# Mobile App – Plan A + C parallel
+# Onboarding & Branding aufwerten
 
-Wir bauen die "Erfassen unterwegs"-Aktionen echt aus **und** machen die App optisch/produktreif. In einem Rutsch.
+Ausgangslage: Onboarding-Slides, Skip, Splash und App-Icon existieren bereits. Routing in `app/index.tsx` schickt Nutzer:innen vor dem Login durchs Onboarding. Was jetzt fehlt: bessere Optik, schärfere Inhalte und ein Wiederholen-Eintrag in den Settings.
 
-## Teil A — Quick Actions echt machen
+## 1. Inhalte überarbeiten (`app/onboarding.tsx`)
 
-### 1. Sprachnotiz 🎙
-- `expo-av` für Mikrofon-Aufnahme (Start/Stop, Dauer-Anzeige)
-- Upload als `.m4a` in Storage-Bucket `audio-recordings`, Pfad `${user_id}/quicknotes/${uuid}.m4a` (Bucket per Migration anlegen falls nicht vorhanden, mit RLS-Policy "user_id im Pfad")
-- Insert in `quick_notes`: `content` enthält Platzhaltertext + signierte URL bzw. Storage-Pfad-Marker, `category='mobile-voice'`
-- v1 ohne Transkription. Transkription kann später als Edge-Function-Hook draufkommen.
+Vier statt drei Slides, klar auf Plan A (Quick Actions) zugeschnitten:
 
-### 2. Anruf-Erfassung 📞
-- Bottom-Sheet mit zwei Modi:
-  - **Bekannter Kontakt**: Kontakt suchen (gleiche Suche wie Quick-Action 👤) → `contact_id` füllen
-  - **Unbekannte Nummer**: nur `caller_name` + `caller_phone` füllen
-- Felder: `call_type` (eingehend/ausgehend Toggle), `duration_minutes` (optional), `notes`, `follow_up_required` (Switch)
-- Insert in `call_logs` mit `user_id`, `tenant_id`, `created_by_name` (aus Profil)
-- Kann auch direkt aus Kontakt-Detail "Nach Anruf erfassen" gestartet werden (nach `tel:` Link)
+1. **Willkommen** – „Dein Büro in der Tasche" · kurze Einordnung, was die App ist (mobile Erfassung fürs Abgeordnetenbüro).
+2. **Schnell erfassen** – Sprachnotiz, Anruf, Termin, Foto, Aufgabe, Notiz. Sechs Mini-Tiles als Vorschau.
+3. **Sicher & nahtlos** – Magic Link / Passwort beim ersten Mal, danach Face ID / Fingerabdruck. Tenant-Wechsel im Header.
+4. **Berechtigungen on demand** – Mikro/Kamera/Fotos werden erst beim ersten Tap angefragt, nichts vorab.
 
-### 3. Termin-Schnellerfassung 📅
-- Bottom-Sheet: Titel, Datum+Uhrzeit (native Picker), Dauer (Chips: 15/30/60/90 Min), Ort optional
-- Insert in `appointments`: `user_id`, `tenant_id`, `start_time`, `end_time`, `category='meeting'`, `status='planned'`
-- Kein Recurring, kein Polling — bewusst minimal. Komplexere Terminorga bleibt im Web.
+Pro Slide: Headline, 1–2 Sätze Body, kein Marketing-Sprech.
 
-### 4. Foto/Beleg-Aufnahme 📷
-- Neue 7. Kachel "Foto" oder als Anhang-Aktion innerhalb Notiz-Sheet
-- `expo-image-picker` mit Kamera-Option
-- Upload nach Storage-Bucket `documents`, Pfad `${user_id}/mobile/${uuid}.jpg`
-- An Notiz angehängt: Foto-Pfad in `quick_notes.content` als Markdown-Bildlink, oder als separate Spalte falls vorhanden
-- v1: einfacher Weg → Foto erzeugt automatisch eine `quick_notes` mit Bildlink
+## 2. Optik aufwerten
 
-### Quick-Actions-Layout danach
+- **Echte Icons statt Emoji**: `lucide-react-native` (ist im Monorepo bereits über lucide vorhanden, sonst `lucide-react-native` als Mobile-Variante hinzufügen). Pro Slide ein großes Icon in Kreis-Badge (96px, weißer Kreis mit Schatten auf farbigem Hintergrund).
+- **Hintergrund**: weicher vertikaler Verlauf statt Volltonblau (`expo-linear-gradient`, Top `#1E40AF` → Bottom `#155EEF`). Pro Slide leicht andere Akzentfarbe für die Icon-Badge (Indigo, Violet, Emerald, Amber), Hintergrund bleibt konsistent.
+- **Typografie**: Headline 32/700, Body 16/400 mit `lineHeight 24`, Buchstabenabstand `-0.3` auf Headline. Body-Farbe `rgba(255,255,255,0.85)`.
+- **Mini-Tiles auf Slide 2**: 3×2 Grid von 64×64-Kacheln (Mic, Phone, Calendar, Camera, CheckSquare, FileText) mit halbtransparentem Weiß und Icon innen — gibt dem Onboarding ein konkretes Vorschau-Gefühl.
+- **Animation**: beim Slide-Wechsel Icon-Badge mit `Animated` (scale 0.8 → 1, opacity 0 → 1, 250ms). Body-Text fadet 100ms verzögert nach.
+- **Dots → Progress**: dünne Progress-Bar oben (4 Segmente, aktives gefüllt) statt Dots unten — wirkt aufgeräumter und zeigt klarer, wie weit man ist.
+- **CTA**: weiß auf Verlauf, mit „Weiter" + Pfeil (ChevronRight). Letzter Slide: „Loslegen". Skip oben rechts in `rgba(255,255,255,0.7)`, klein.
+- **Safe Area**: `react-native-safe-area-context` (`SafeAreaView`) statt fixe `paddingTop: 60`, damit es auf Geräten mit/ohne Notch sauber sitzt.
 
-```text
-┌──────────────┬──────────────┐
-│ 📝 Notiz     │ 🎙 Sprach-   │
-├──────────────┼──────────────┤
-│ ✅ Aufgabe   │ 📅 Termin    │
-├──────────────┼──────────────┤
-│ 👤 Kontakt   │ 📞 Anruf     │
-├──────────────┼──────────────┤
-│ 📷 Foto      │              │
-└──────────────┴──────────────┘
-```
+## 3. Skip = „Aus Settings erneut öffnen"
 
-(7 Kacheln, eine Lücke — oder wir machen 8 mit "Letzte Eingaben" als Kachel zur Übersicht der zuletzt erfassten Items.)
+- Verhalten von Skip/„Loslegen" bleibt: setzt `landtag.onboardingDone = '1'` in `SecureStore`, navigiert zu `/login`.
+- In `app/settings.tsx` neuer Listeneintrag „Einführung erneut anzeigen". Tap → löscht den Flag und `router.push('/onboarding')`. Danach landet man wieder normal in `/login` bzw. `/home`.
+- Wir versuchen NICHT, das Onboarding nach dem Login zu zeigen. Es bleibt Pre-Login-Schritt; aus Settings kann man es auch eingeloggt nochmal triggern (es navigiert dann nach Abschluss zurück zu `/home`, weil Session schon existiert — `finish()` ruft `router.replace('/')`, der Index-Router routet korrekt weiter).
 
-## Teil C — Produktreif machen
+## 4. Code-Punkte (technisch)
 
-### 5. App-Icon + Splash + Branding
-- Icon (1024×1024) und Splash erstellen — ich generiere Vorschläge mit Imagegen, du wählst aus
-- `app.json` ergänzen: `icon`, `splash`, `adaptiveIcon` (Android), `ios.icon`, Background-Color
-- Status-Bar-Style passend zum Hintergrund
+- `apps/mobile/package.json`: `expo-linear-gradient`, `react-native-safe-area-context` (vermutlich schon da), `lucide-react-native` ergänzen falls nicht vorhanden.
+- `app/_layout.tsx`: `SafeAreaProvider` außen herum.
+- `app/onboarding.tsx`: komplette Überarbeitung wie oben. Slides als typisierte Konstante mit `{ id, icon: LucideIcon, accent, title, body, preview? }`.
+- `app/settings.tsx`: neuer Eintrag mit `RotateCcw`-Icon, `SecureStore.deleteItemAsync('landtag.onboardingDone')` + Navigation.
+- `app/index.tsx`: keine Änderung nötig.
+- Branding-Assets (`icon.png`, `adaptive-icon.png`, `splash.png`) bleiben vorerst — falls du echtes Logo hast, separat tauschen.
 
-### 6. Onboarding (3 Slides)
-- Beim allerersten App-Start vor Login:
-  1. "Schnell erfassen unterwegs" + Symbol
-  2. "Sicher per Biometrie" + Symbol
-  3. "Wir brauchen Mikrofon, Kamera, Benachrichtigungen" + "Los geht's"-Button
-- Flag in SecureStore (`landtag.onboardingDone`)
-- Skip-Button rechts oben
+## Was nicht zum Plan gehört
 
-### 7. Google OAuth fertig konfigurieren
-- `expo-auth-session` mit Google-Provider verdrahten
-- **Du musst beisteuern**: in Google Cloud Console OAuth-Client-IDs für Android (`expo` Bundle) und iOS anlegen, Web-Client-ID für Supabase
-- Sobald die IDs da sind, `androidClientId` / `iosClientId` / `webClientId` in `app.json` extra-config + Code eintragen
-- Magic-Link-Redirect `landtagmobile://auth/callback` musst du in Supabase als Redirect-URL freigeben
-
-### 8. Bessere Fehler-/Erfolgs-UX
-- `Alert.alert` raus, stattdessen Toast/Snackbar (z.B. eigene kleine Komponente — keine externe Lib nötig)
-- Lade-States auf Buttons (Spinner statt nur disabled)
-- Empty States in Kontakt-Suche mit Hinweistexten
-
-### 9. Permissions ehrlich anfragen
-- Mikrofon (Sprachnotiz), Kamera (Foto), Foto-Bibliothek (Beleg)
-- Beim ersten Tipp auf die jeweilige Aktion Permission anfragen, bei Verweigerung freundlicher Hinweis mit Link in System-Einstellungen
-
-### 10. Header polieren
-- Aktiver Tenant + Avatar/Initialen-Bubble + Settings-Icon
-- Beim Pull-down: Tenant-Wechsel-Sheet (statt Umweg über Settings)
-
-## Datenbank/Storage-Migrationen
-
-- Bucket `audio-recordings` anlegen (private), RLS: nur eigene Dateien (`storage.foldername(name)[1] = auth.uid()`)
-- Bucket `documents` ist vermutlich da (Memory bestätigt) — falls nicht, gleiches Muster
-- Keine neuen Tabellen nötig: `call_logs`, `appointments`, `quick_notes` reichen
-
-## Was du außerhalb von Code beisteuerst
-
-- Google Cloud OAuth-Client-IDs (Android + iOS + Web)
-- Supabase: `landtagmobile://auth/callback` als Redirect-URL freigeben
-- Optional: gewünschte Brand-Farbe für Icon/Splash (sonst nehme ich das bestehende Blau `#155EEF`)
-
-## Bewusst nicht jetzt
-
-- Sprachnotiz-Transkription (kommt später als Edge Function)
-- Push-Notifications (gehört zu Plan B "Reagieren")
-- Offline-Outbox
-- Termin-Recurring/Polls
-- Kontakt-Anlage aus Telefon-Adressbuch
-
-## Reihenfolge der Umsetzung
-
-1. Migrationen (audio-recordings Bucket + Policies)
-2. Permissions-Helper
-3. Sprachnotiz-Sheet
-4. Anruf-Sheet
-5. Termin-Sheet
-6. Foto-Flow
-7. Toast-System + Buttons polieren
-8. Icon + Splash + app.json
-9. Onboarding-Slides
-10. Google OAuth (sobald Client-IDs da sind)
-
-OK so? Wenn ja, lege ich los.
+- Kein neues App-Icon/Splash (du wolltest „Inhalte + Optik", nicht „Branding ersetzen"). Bestehende Platzhalter bleiben.
+- Keine Server- oder Datenbankänderung.
+- Kein i18n-System; Texte bleiben auf Deutsch hartcodiert wie heute.

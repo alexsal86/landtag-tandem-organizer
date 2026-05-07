@@ -89,6 +89,23 @@ export default function SettingsScreen(): React.JSX.Element {
         </View>
       ) : null}
 
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Hilfe</Text>
+        <Pressable
+          onPress={async () => {
+            await SecureStore.deleteItemAsync('landtag.onboardingDone');
+            router.push('/onboarding');
+          }}
+          style={styles.row}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rowTitle}>Einführung erneut anzeigen</Text>
+            <Text style={styles.muted}>Die Onboarding-Slides nochmal durchgehen</Text>
+          </View>
+          <Text style={styles.check}>↻</Text>
+        </Pressable>
+      </View>
+
       <Pressable
         onPress={async () => { await signOut(); router.replace('/login'); }}
         style={[styles.row, { marginTop: 24, justifyContent: 'center' }]}
