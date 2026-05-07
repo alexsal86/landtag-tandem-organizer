@@ -401,7 +401,7 @@ export function AppointmentDetailsSidebar({
       case "deadline":
         return "bg-destructive text-destructive-foreground";
       case "blocked":
-        return "bg-orange-500 text-white";
+        return "bg-palette-orange text-white";
       default:
         return "bg-muted text-muted-foreground";
     }
@@ -449,9 +449,9 @@ export function AppointmentDetailsSidebar({
       case "high":
         return "bg-destructive text-destructive-foreground";
       case "medium":
-        return "bg-yellow-500 text-yellow-50";
+        return "bg-palette-yellow text-white";
       case "low":
-        return "bg-green-500 text-green-50";
+        return "bg-palette-green text-white";
       default:
         return "bg-muted text-muted-foreground";
     }
@@ -460,13 +460,13 @@ export function AppointmentDetailsSidebar({
   const getGuestStatusColor = (status: string) => {
     switch (status) {
       case "confirmed":
-        return "bg-green-100 text-green-800 border-green-300";
+        return "bg-palette-green/20 text-palette-green border-palette-green/40";
       case "declined":
-        return "bg-red-100 text-red-800 border-red-300";
+        return "bg-palette-red/20 text-palette-red border-palette-red/40";
       case "invited":
-        return "bg-blue-100 text-blue-800 border-blue-300";
+        return "bg-palette-blue/20 text-palette-blue border-palette-blue/40";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-300";
+        return "bg-muted text-foreground border-border";
     }
   };
 
@@ -512,13 +512,13 @@ export function AppointmentDetailsSidebar({
   const getFeedbackStatusColor = (status: 'pending' | 'completed' | 'skipped') => {
     switch (status) {
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+        return 'bg-palette-yellow/20 text-palette-yellow border-palette-yellow/40';
       case 'completed':
-        return 'bg-green-100 text-green-800 border-green-300';
+        return 'bg-palette-green/20 text-palette-green border-palette-green/40';
       case 'skipped':
-        return 'bg-gray-100 text-gray-800 border-gray-300';
+        return 'bg-muted text-foreground border-border';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-300';
+        return 'bg-muted text-foreground border-border';
     }
   };
 
@@ -681,7 +681,7 @@ export function AppointmentDetailsSidebar({
                   {appointment.location ? (
                     appointment.location.startsWith?.("Digital") ? (
                       <div className="space-y-1">
-                        <div className="font-medium text-blue-600">🔗 Online-Meeting</div>
+                        <div className="font-medium text-palette-blue">🔗 Online-Meeting</div>
                         <div className="text-xs">{appointment.location.replace("Digital - ", "")}</div>
                       </div>
                     ) : (

@@ -202,21 +202,21 @@ export function MyWorkDecisionSidebar({
                 {/* Open Questions */}
                 {openQuestions.length > 0 && (
                   <div className="space-y-1.5">
-                    <div className="flex items-center gap-1 text-xs font-medium text-orange-600">
+                    <div className="flex items-center gap-1 text-xs font-medium text-palette-orange">
                       <MessageCircle className="h-3 w-3" />
                       <span>Rückfragen</span>
-                      <Badge variant="outline" className="text-orange-600 border-orange-600 text-xs px-1.5 py-0">
+                      <Badge variant="outline" className="text-palette-orange border-palette-orange text-xs px-1.5 py-0">
                         {openQuestions.length}
                       </Badge>
                     </div>
                     {openQuestions.map((q) => (
                       <div
                         key={q.id}
-                        className="p-2 rounded-md border-l-2 border-l-orange-500 bg-orange-50 dark:bg-orange-950/20"
+                        className="p-2 rounded-md border-l-2 border-l-palette-orange bg-palette-orange/10"
                       >
                         <button
                           onClick={() => onQuestionClick(q.decisionId)}
-                          className="w-full text-left hover:bg-orange-100 dark:hover:bg-orange-950/40 transition-colors rounded -m-0.5 p-0.5"
+                          className="w-full text-left hover:bg-palette-orange/20 transition-colors rounded -m-0.5 p-0.5"
                         >
                           <p className="text-xs font-semibold line-clamp-2">{q.decisionTitle}</p>
                           <div className="flex items-center gap-1 mt-0.5">
@@ -236,7 +236,7 @@ export function MyWorkDecisionSidebar({
                         </button>
 
                         {respondingTo === q.id ? (
-                          <div className="mt-1.5 pt-1.5 border-t border-orange-200 dark:border-orange-800 space-y-1.5">
+                          <div className="mt-1.5 pt-1.5 border-t border-palette-orange/30 space-y-1.5">
                             <SimpleRichTextEditor
                               initialContent=""
                               onChange={setResponseText}
@@ -278,21 +278,21 @@ export function MyWorkDecisionSidebar({
 
                 {pendingDirectReplies.length > 0 && (
                   <div className="space-y-1.5">
-                    <div className="flex items-center gap-1 text-xs font-medium text-blue-600">
+                    <div className="flex items-center gap-1 text-xs font-medium text-palette-blue">
                       <Reply className="h-3 w-3" />
                       <span>Antworten auf dich</span>
-                      <Badge variant="outline" className="text-blue-600 border-blue-600 text-xs px-1.5 py-0">
+                      <Badge variant="outline" className="text-palette-blue border-palette-blue text-xs px-1.5 py-0">
                         {pendingDirectReplies.length}
                       </Badge>
                     </div>
                     {pendingDirectReplies.map((reply) => (
                       <div
                         key={`reply-${reply.id}`}
-                        className="p-2 rounded-md border-l-2 border-l-blue-500 bg-blue-50 dark:bg-blue-950/20"
+                        className="p-2 rounded-md border-l-2 border-l-palette-blue bg-palette-blue/10"
                       >
                         <button
                           onClick={() => onCommentClick(reply.decisionId)}
-                          className="w-full text-left hover:bg-blue-100 dark:hover:bg-blue-950/40 transition-colors rounded -m-0.5 p-0.5"
+                          className="w-full text-left hover:bg-palette-blue/20 transition-colors rounded -m-0.5 p-0.5"
                         >
                           <p className="text-xs font-semibold line-clamp-2">{reply.decisionTitle}</p>
                           <div className="flex items-center gap-1 mt-0.5">
@@ -312,7 +312,7 @@ export function MyWorkDecisionSidebar({
                         </button>
 
                         {respondingTo === reply.id ? (
-                          <div className="mt-1.5 pt-1.5 border-t border-blue-200 dark:border-blue-800 space-y-1.5">
+                          <div className="mt-1.5 pt-1.5 border-t border-palette-blue/30 space-y-1.5">
                             <SimpleRichTextEditor
                               initialContent=""
                               onChange={setResponseText}
@@ -368,18 +368,18 @@ export function MyWorkDecisionSidebar({
                         key={c.id}
                         className={cn(
                           "p-2 rounded-md border-l-2",
-                          c.responseType === 'yes' && "border-l-green-500 bg-green-50 dark:bg-green-950/20",
-                          c.responseType === 'no' && "border-l-red-500 bg-red-50 dark:bg-red-950/20",
-                          c.responseType === 'question' && "border-l-orange-500 bg-orange-50 dark:bg-orange-950/20",
+                          c.responseType === 'yes' && "border-l-palette-green bg-palette-green/10",
+                          c.responseType === 'no' && "border-l-palette-red bg-palette-red/10",
+                          c.responseType === 'question' && "border-l-palette-orange bg-palette-orange/10",
                         )}
                       >
                         <button
                           onClick={() => onCommentClick(c.decisionId)}
                           className={cn(
                             "w-full text-left transition-colors rounded -m-0.5 p-0.5",
-                            c.responseType === 'yes' && "hover:bg-green-100",
-                            c.responseType === 'no' && "hover:bg-red-100",
-                            c.responseType === 'question' && "hover:bg-orange-100",
+                            c.responseType === 'yes' && "hover:bg-palette-green/20",
+                            c.responseType === 'no' && "hover:bg-palette-red/20",
+                            c.responseType === 'question' && "hover:bg-palette-orange/20",
                           )}
                         >
                           <p className="text-xs font-semibold line-clamp-2">{c.decisionTitle}</p>

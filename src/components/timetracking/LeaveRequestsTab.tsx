@@ -18,11 +18,11 @@ import { fmt, getMedicalReasonLabel } from "./types";
 
 const getStatusBadge = (status: string) => {
   const config = {
-    approved: { label: "✓ Genehmigt", className: "bg-green-100 text-green-800 border-green-200" },
-    pending: { label: "⏳ Ausstehend", className: "bg-yellow-100 text-yellow-800 border-yellow-200" },
-    rejected: { label: "✗ Abgelehnt", className: "bg-red-100 text-red-800 border-red-200" },
-    cancel_requested: { label: "↩ Stornierung angefragt", className: "bg-amber-50 text-amber-700 border-amber-300" },
-    cancelled: { label: "✗ Storniert", className: "bg-gray-100 text-gray-600 border-gray-200" },
+    approved: { label: "✓ Genehmigt", className: "bg-palette-green/20 text-palette-green border-palette-green/30" },
+    pending: { label: "⏳ Ausstehend", className: "bg-palette-yellow/20 text-palette-yellow border-palette-yellow/30" },
+    rejected: { label: "✗ Abgelehnt", className: "bg-palette-red/20 text-palette-red border-palette-red/30" },
+    cancel_requested: { label: "↩ Stornierung angefragt", className: "bg-palette-amber/10 text-palette-amber border-palette-amber/40" },
+    cancelled: { label: "✗ Storniert", className: "bg-muted text-muted-foreground border-border" },
   };
   const { label, className } = config[status as keyof typeof config] || config.pending;
   return <Badge className={className}>{label}</Badge>;
@@ -87,9 +87,9 @@ export function LeaveRequestsTab(props: LeaveRequestsTabProps) {
     <div className="space-y-6">
       {/* Pending Requests Alert */}
       {props.pendingLeaves.length > 0 && (
-        <Card className="border-yellow-300 bg-yellow-50">
+        <Card className="border-palette-yellow/40 bg-palette-yellow/10">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2 text-yellow-800">
+            <CardTitle className="text-sm flex items-center gap-2 text-palette-yellow">
               <Clock className="h-4 w-4" />
               Ausstehende Anträge ({props.pendingLeaves.length})
             </CardTitle>
@@ -98,7 +98,7 @@ export function LeaveRequestsTab(props: LeaveRequestsTabProps) {
             <ul className="space-y-2 text-sm">
               {props.pendingLeaves.map(p => (
                 <li key={p.id} className="flex items-center gap-2">
-                  <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
+                  <Badge variant="outline" className="bg-palette-yellow/20 text-palette-yellow border-palette-yellow/40">
                     {p.type === "vacation" ? "🏖️ Urlaub" : p.type === "sick" ? "🤒 Krankheit" : p.type === "medical" ? "🏥 Arzttermin" : p.type === "overtime_reduction" ? "⏰ Überstundenabbau" : "📋 Sonstiges"}
                   </Badge>
                   <span>{format(parseISO(p.start_date), "dd.MM.yyyy")} - {format(parseISO(p.end_date), "dd.MM.yyyy")}</span>
@@ -147,26 +147,26 @@ export function LeaveRequestsTab(props: LeaveRequestsTabProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             {props.vacationBalance.carryOver > 0 && !props.vacationBalance.carryOverExpired && (
-              <div className="p-3 rounded-lg border border-amber-200 bg-amber-50">
+              <div className="p-3 rounded-lg border border-palette-amber/30 bg-palette-amber/10">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-amber-600" />
-                    <span className="font-medium text-amber-800">Resturlaub aus {year - 1}</span>
+                    <AlertTriangle className="h-4 w-4 text-palette-amber" />
+                    <span className="font-medium text-palette-amber">Resturlaub aus {year - 1}</span>
                   </div>
-                  <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
+                  <Badge variant="outline" className="bg-palette-amber/20 text-palette-amber border-palette-amber/40">
                     {props.vacationBalance.carryOverRemaining} von {props.vacationBalance.carryOver} Tagen übrig
                   </Badge>
                 </div>
-                <p className="text-xs text-amber-700 mt-1">
+                <p className="text-xs text-palette-amber mt-1">
                   ⚠️ Verfällt am {props.employeeSettings?.carry_over_expires_at ? format(new Date(props.employeeSettings.carry_over_expires_at), "dd.MM.yyyy") : `31.03.${year}`} – Wird zuerst verbraucht!
                 </p>
               </div>
             )}
             {props.vacationBalance.carryOverExpired && (
-              <div className="p-3 rounded-lg border border-red-200 bg-red-50">
+              <div className="p-3 rounded-lg border border-palette-red/30 bg-palette-red/10">
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-red-600" />
-                  <span className="text-sm text-red-800">Resturlaub aus dem Vorjahr ist am 31.03. verfallen.</span>
+                  <AlertTriangle className="h-4 w-4 text-palette-red" />
+                  <span className="text-sm text-palette-red">Resturlaub aus dem Vorjahr ist am 31.03. verfallen.</span>
                 </div>
               </div>
             )}
@@ -176,9 +176,9 @@ export function LeaveRequestsTab(props: LeaveRequestsTabProps) {
                 <div className="font-semibold text-lg">{props.vacationBalance.newVacationRemaining} / {props.vacationBalance.prorated} Tage</div>
               </div>
               {props.vacationBalance.carryOver > 0 && !props.vacationBalance.carryOverExpired && (
-                <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
-                  <div className="text-amber-700">Resturlaub</div>
-                  <div className="font-semibold text-lg text-amber-800">{props.vacationBalance.carryOverRemaining} / {props.vacationBalance.carryOver} Tage</div>
+                <div className="p-3 rounded-lg bg-palette-amber/10 border border-palette-amber/30">
+                  <div className="text-palette-amber">Resturlaub</div>
+                  <div className="font-semibold text-lg text-palette-amber">{props.vacationBalance.carryOverRemaining} / {props.vacationBalance.carryOver} Tage</div>
                 </div>
               )}
             </div>
@@ -209,7 +209,7 @@ export function LeaveRequestsTab(props: LeaveRequestsTabProps) {
                               <Undo2 className="h-4 w-4 mr-1" />Stornieren
                             </Button>
                           )}
-                          {isCancelRequested && <span className="text-xs text-amber-600 flex items-center gap-1"><Clock className="h-3 w-3" />Wird geprüft</span>}
+                          {isCancelRequested && <span className="text-xs text-palette-amber flex items-center gap-1"><Clock className="h-3 w-3" />Wird geprüft</span>}
                         </TableCell>
                       </TableRow>
                     );
@@ -267,7 +267,7 @@ export function LeaveRequestsTab(props: LeaveRequestsTabProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Stethoscope className="h-5 w-5 text-purple-600" />Arzttermin melden</CardTitle>
+            <CardTitle className="flex items-center gap-2"><Stethoscope className="h-5 w-5 text-palette-purple" />Arzttermin melden</CardTitle>
             <CardDescription>Bezahlte Freistellung für akute Arztbesuche, Facharzttermine oder Nachsorge</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -294,7 +294,7 @@ export function LeaveRequestsTab(props: LeaveRequestsTabProps) {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Stethoscope className="h-5 w-5 text-purple-600" />Arzttermine {year}</CardTitle>
+            <CardTitle className="flex items-center gap-2"><Stethoscope className="h-5 w-5 text-palette-purple" />Arzttermine {year}</CardTitle>
           </CardHeader>
           <CardContent>
             {props.medicalLeaves.length === 0 ? (
@@ -319,7 +319,7 @@ export function LeaveRequestsTab(props: LeaveRequestsTabProps) {
                               <Undo2 className="h-4 w-4 mr-1" />Stornieren
                             </Button>
                           )}
-                          {isCancelRequested && <span className="text-xs text-amber-600 flex items-center gap-1"><Clock className="h-3 w-3" />Wird geprüft</span>}
+                          {isCancelRequested && <span className="text-xs text-palette-amber flex items-center gap-1"><Clock className="h-3 w-3" />Wird geprüft</span>}
                         </TableCell>
                       </TableRow>
                     );
@@ -335,14 +335,14 @@ export function LeaveRequestsTab(props: LeaveRequestsTabProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Timer className="h-5 w-5 text-amber-600" />Überstundenabbau beantragen</CardTitle>
+            <CardTitle className="flex items-center gap-2"><Timer className="h-5 w-5 text-palette-amber" />Überstundenabbau beantragen</CardTitle>
             <CardDescription>Mehrstunden als freie Tage nehmen statt Urlaub</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="p-3 rounded-lg bg-muted/50 text-sm">
               <div className="flex justify-between">
                 <span>Überstundensaldo (gesamt):</span>
-                <span className={`font-mono font-bold ${props.yearlyBalance >= 0 ? "text-green-600" : "text-destructive"}`}>
+                <span className={`font-mono font-bold ${props.yearlyBalance >= 0 ? "text-palette-green" : "text-destructive"}`}>
                   {props.yearlyBalance >= 0 ? "+" : ""}{fmt(props.yearlyBalance)}
                 </span>
               </div>
@@ -357,7 +357,7 @@ export function LeaveRequestsTab(props: LeaveRequestsTabProps) {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Timer className="h-5 w-5 text-amber-600" />Überstundenabbau {year}</CardTitle>
+            <CardTitle className="flex items-center gap-2"><Timer className="h-5 w-5 text-palette-amber" />Überstundenabbau {year}</CardTitle>
           </CardHeader>
           <CardContent>
             {props.overtimeLeaves.length === 0 ? (
@@ -383,7 +383,7 @@ export function LeaveRequestsTab(props: LeaveRequestsTabProps) {
                               <Undo2 className="h-4 w-4 mr-1" />Stornieren
                             </Button>
                           )}
-                          {isCancelRequested && <span className="text-xs text-amber-600 flex items-center gap-1"><Clock className="h-3 w-3" />Wird geprüft</span>}
+                          {isCancelRequested && <span className="text-xs text-palette-amber flex items-center gap-1"><Clock className="h-3 w-3" />Wird geprüft</span>}
                         </TableCell>
                       </TableRow>
                     );
