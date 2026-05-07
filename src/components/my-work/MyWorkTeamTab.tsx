@@ -7,6 +7,7 @@ import { MyWorkExpenseWidget } from "@/components/my-work/MyWorkExpenseWidget";
 import { TEAM_TAB_ACCESS_RULES, useMyWorkTeamData } from "@/components/my-work/hooks/useMyWorkTeamData";
 import { TeamMemberRow } from "@/components/my-work/team/TeamMemberRow";
 import { TeamOverviewHeader } from "@/components/my-work/team/TeamOverviewHeader";
+import { MyWorkEmptyState } from "@/components/my-work/MyWorkEmptyState";
 
 export function MyWorkTeamTab() {
   const navigate = useNavigate();
