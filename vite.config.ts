@@ -194,27 +194,30 @@ export default defineConfig(({ mode }) => ({
     target: 'esnext',
     rollupOptions: {
       output: {
-        manualChunks: {
-          // Core React runtime — never changes between deploys, maximizes long-term cache hits
-          'vendor-react-core': ['react', 'react-dom'],
-          // Router & data-fetching split from core so a React Query upgrade doesn't bust the core cache
-          'vendor-react-router': ['react-router-dom'],
-          'vendor-react-query': ['@tanstack/react-query'],
-          // Lexical Core (immer geladen wenn Editor sichtbar)
-          'vendor-lexical-core': ['lexical', '@lexical/react', '@lexical/utils', '@lexical/selection'],
-          // Lexical-Plugins (Letter-Designer / Tageszettel laden on-demand)
-          'vendor-lexical-plugins': ['@lexical/rich-text', '@lexical/list', '@lexical/link', '@lexical/markdown', '@lexical/html', '@lexical/code', '@lexical/table'],
-          'vendor-lexical-collab': ['@lexical/yjs'],
-          'vendor-matrix': ['matrix-js-sdk', 'yjs', 'y-websocket', 'y-indexeddb'],
-          'vendor-pdf': ['pdfjs-dist', 'jspdf', 'docx'],
-          // recharts, leaflet, proj4 jeweils separat — selten gleichzeitig genutzt
-          'vendor-charts': ['recharts'],
-          'vendor-maps': ['leaflet', 'react-leaflet', 'proj4'],
-          'vendor-date': ['date-fns', 'rrule'],
-          'vendor-motion': ['framer-motion'],
-          'vendor-dnd': ['@hello-pangea/dnd'],
-          'vendor-search': ['cmdk'],
-          'vendor-ui': ['class-variance-authority', 'clsx', 'tailwind-merge', 'input-otp', 'embla-carousel-react', 'vaul', 'sonner'],
+        manualChunks(id: string) {
+          if (!id.includes('node_modules')) return undefined;
+          // Lexical: subpath-only exports — must match by path, not bare name
+          if (/node_modules\/(lexical|@lexical\/yjs)/.test(id)) {
+            if (id.includes('@lexical/yjs')) return 'vendor-lexical-collab';
+            return 'vendor-lexical-core';
+          }
+          if (/node_modules\/@lexical\/(rich-text|list|link|markdown|html|code|table)/.test(id)) {
+            return 'vendor-lexical-plugins';
+          }
+          if (/node_modules\/@lexical\//.test(id)) return 'vendor-lexical-core';
+          if (/node_modules\/(matrix-js-sdk|yjs|y-websocket|y-indexeddb)/.test(id)) return 'vendor-matrix';
+          if (/node_modules\/(pdfjs-dist|jspdf|docx)/.test(id)) return 'vendor-pdf';
+          if (/node_modules\/recharts/.test(id)) return 'vendor-charts';
+          if (/node_modules\/(leaflet|react-leaflet|proj4)/.test(id)) return 'vendor-maps';
+          if (/node_modules\/(date-fns|rrule)/.test(id)) return 'vendor-date';
+          if (/node_modules\/framer-motion/.test(id)) return 'vendor-motion';
+          if (/node_modules\/@hello-pangea\/dnd/.test(id)) return 'vendor-dnd';
+          if (/node_modules\/cmdk/.test(id)) return 'vendor-search';
+          if (/node_modules\/(class-variance-authority|clsx|tailwind-merge|input-otp|embla-carousel-react|vaul|sonner)/.test(id)) return 'vendor-ui';
+          if (/node_modules\/@tanstack\/react-query/.test(id)) return 'vendor-react-query';
+          if (/node_modules\/react-router/.test(id)) return 'vendor-react-router';
+          if (/node_modules\/(react|react-dom|scheduler)\//.test(id)) return 'vendor-react-core';
+          return undefined;
         },
       },
     },
