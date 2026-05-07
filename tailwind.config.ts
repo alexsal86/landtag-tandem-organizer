@@ -259,15 +259,24 @@ export default {
 				'gradient-subtle': 'var(--gradient-subtle)'
 			},
 			boxShadow: {
-				'elegant': 'var(--shadow-elegant)',
-				'card': 'var(--shadow-card)'
+				xs: 'var(--shadow-xs)',
+				sm: 'var(--shadow-sm)',
+				md: 'var(--shadow-md)',
+				lg: 'var(--shadow-lg)',
+				popover: 'var(--shadow-popover)',
+				'focus-ring': 'var(--shadow-focus-ring)',
+				elegant: 'var(--shadow-elegant)',
+				card: 'var(--shadow-card)'
 			},
 			zIndex: {
-				'widget': '10',
-				'controls': '50',
-				'dropdown': '60',
-				'modal': '70',
-				'overlay': '80'
+				base: '1',
+				dropdown: '50',
+				sticky: '100',
+				overlay: '200',
+				modal: '300',
+				toast: '400',
+				widget: '10',
+				controls: '50'
 			}
 		}
 	},
