@@ -173,6 +173,8 @@ export function useElectionDistricts() {
     queryKey: ["election-districts", user?.id],
     queryFn: fetchDistricts,
     enabled: Boolean(user),
+    staleTime: STALE_TIME.GEO,
+    gcTime: STALE_TIME.GEO * 2,
   });
 
   useEffect(() => {

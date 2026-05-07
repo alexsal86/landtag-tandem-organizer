@@ -21,6 +21,8 @@ export const useKarlsruheDistricts = () => {
 
   const { data: districts, isLoading, error, refetch } = useQuery({
     queryKey: ['karlsruhe-districts'],
+    staleTime: STALE_TIME.GEO,
+    gcTime: STALE_TIME.GEO * 2,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('karlsruhe_districts')
