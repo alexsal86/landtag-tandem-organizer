@@ -200,12 +200,17 @@ interface AppointmentPreparationRow {
   archived_at: string | null;
   preparation_data: AppointmentPreparationData | null;
   checklist_items: AppointmentChecklistItem[] | null;
+  shared_with: string[] | null;
 }
+
+export type AutosaveStatus = "idle" | "saving" | "saved" | "error";
 
 export function useAppointmentPreparation(preparationId: string | undefined) {
   const [preparation, setPreparation] = useState<AppointmentPreparation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<AutosaveStatus>("idle");
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const { user } = useAuth();
 
   const normalizePreparationData = (
