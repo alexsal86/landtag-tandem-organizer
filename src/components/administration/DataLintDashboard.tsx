@@ -64,7 +64,6 @@ export function DataLintDashboard() {
   const runScan = async () => {
     if (!currentTenant?.id) return;
     setRunning(true);
-    // @ts-expect-error RPC types not generated for new functions yet
     const { data, error } = await supabase.rpc("run_data_lint", { _tenant_id: currentTenant.id });
     setRunning(false);
     if (error) {
