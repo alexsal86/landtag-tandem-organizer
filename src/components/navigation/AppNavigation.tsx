@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, type ElementType } from "react";
+import { useNavPanelData } from "./appNavigation/useNavPanelData";
 import { NavDossierCapture } from "@/components/search/NavDossierCapture";
 import { useNavigate } from "react-router-dom";
 import { 
