@@ -288,6 +288,25 @@ export default function AppointmentPreparationDetail() {
               </div>
 
               <div className="flex flex-col items-start gap-2 lg:items-end shrink-0">
+                <div className="flex items-center gap-3">
+                  {appointmentInfo && new Date(appointmentInfo.start_time).getTime() > Date.now() && (
+                    <div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                      <Clock className="h-3 w-3" />
+                      In {formatDistanceToNow(new Date(appointmentInfo.start_time), { locale: de })}
+                    </div>
+                  )}
+                  {responsiblePerson && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src={responsiblePerson.avatar_url ?? undefined} />
+                        <AvatarFallback className="text-[10px]">
+                          {(responsiblePerson.display_name ?? '?').slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span>{responsiblePerson.display_name ?? 'Unbekannt'}</span>
+                    </div>
+                  )}
+                </div>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
