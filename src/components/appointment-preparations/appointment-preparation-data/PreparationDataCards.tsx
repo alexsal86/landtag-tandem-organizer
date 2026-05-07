@@ -159,7 +159,9 @@ export function PreparationDataCards({
   onUpdateTalkingPointItem,
   onRemoveTalkingPointItem,
   onTalkingPointKeyDown,
+  onReorderTalkingPoints,
 }: PreparationDataCardsProps) {
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
   const allEmpty = Object.values(FIELD_SECTIONS).every((section) =>
     section.fields.every((field) => !editData[field.key]),
   );
