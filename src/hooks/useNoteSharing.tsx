@@ -31,7 +31,7 @@ export const useNoteSharing = (noteId?: string) => {
     try {
       const { data, error } = await supabase
         .from("quick_note_shares")
-        .select("*")
+        .select("id, note_id, shared_with_user_id, shared_by_user_id, permission_type, created_at")
         .eq("note_id", noteId);
 
       if (error) throw error;
