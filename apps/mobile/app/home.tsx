@@ -50,6 +50,12 @@ export default function HomeScreen(): React.JSX.Element {
         <Pressable onPress={() => router.push('/today')} style={styles.iconBtn}>
           <Text style={{ fontSize: 18 }}>📆</Text>
         </Pressable>
+        <Pressable onPress={() => router.push('/tasks')} style={styles.iconBtn}>
+          <Text style={{ fontSize: 18 }}>✅</Text>
+        </Pressable>
+        <Pressable onPress={() => router.push('/cases')} style={styles.iconBtn}>
+          <Text style={{ fontSize: 18 }}>📂</Text>
+        </Pressable>
         <Pressable onPress={() => router.push('/settings')} style={styles.iconBtn}>
           <Text style={{ fontSize: 18 }}>⚙️</Text>
         </Pressable>
