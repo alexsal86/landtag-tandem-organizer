@@ -47,10 +47,13 @@ export function MyWorkJourFixeTab() {
     <section className="space-y-4 p-4">
       <h3 className="text-sm font-semibold text-foreground">Meeting-Übersicht</h3>
       {totalMeetings === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">
-          <Calendar className="h-10 w-10 mx-auto mb-2 opacity-50" />
-          <p>Keine Jour Fixe Meetings</p>
-        </div>
+        <MyWorkEmptyState
+          icon={Calendar}
+          title="Noch kein Jour Fixe geplant"
+          description="Lege ein wiederkehrendes oder einmaliges Meeting an, um Themen, Aufgaben und Entscheidungen zu bündeln."
+          actionLabel="Meeting erstellen"
+          onAction={() => setIsCreateMeetingOpen(true)}
+        />
       ) : (
         <>
           <JourFixeMeetingList
