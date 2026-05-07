@@ -102,7 +102,8 @@ export interface AppointmentPreparation {
     // Strukturierte Fakten mit Zuordnung zu Partner/Thema
     structured_facts?: Array<{
       id: string;
-      text: string;
+      fact_id?: string; // Referenz auf public.facts
+      text: string;     // bei fact_id leer = Live-Wert; gefüllt = lokaler Override
       source?: string;
       link_type: 'general' | 'partner' | 'topic';
       link_id?: string;
