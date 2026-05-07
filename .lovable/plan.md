@@ -1,128 +1,114 @@
-## Ziel
+## Pakete A–E ohne KI-Funktionen
 
-Drei große Arbeitspakete, die deutlich Credits verbrauchen und langfristig Stabilität, Kosten und mobilen Mehrwert verbessern:
+KI-Aktionen (Themencluster, Antwortentwürfe, Trend-Erkennung per LLM) sind aus allen Paketen entfernt. Alle Funktionen arbeiten rein deterministisch mit SQL, Heuristiken und klassischen Algorithmen.
 
-1. **Performance & Egress** – vollständiger Audit + persistentes Monitoring
-2. **Test-Coverage** – kritische Pfade tief + Smoke-Tests breit
-3. **Mobile-App** – Offline-Notizen/Sprachmemos, Foto-OCR, Termine/Briefings
-
-Reihenfolge: 1 → 2 → 3 (Performance zuerst, damit neue Tests/Mobile auf optimierter Basis laufen).
+Reihenfolge: A → B → E → C → D (Mehrwert vor Scope-Risiko).
 
 ---
 
-## 1) Performance & Egress – voll inkl. Monitoring
+### A) Mobile Phase 2 — Vom Capture-Tool zum Arbeitsgerät
 
-### 1.1 Audit (read-only, dokumentiert in `docs/performance-audit-2026-05.md`)
-- Alle `useQuery`-Hooks scannen: fehlende `staleTime`, `select('*')` statt expliziter Spalten, fehlende Realtime-Filter.
-- Bundle-Analyse via `scripts/report-bundle-size.mjs`: Top-20 größter Chunks identifizieren.
-- Realtime-Channels prüfen: doppelte Subscriptions, fehlende `tenant_id`-Filter, nicht-eindeutige Channelnamen.
-- React-Profiler-Pass auf Dashboard, Kalender, Vorgänge, Meine Arbeit.
+**Scope**
+- Mobile **Aufgabenliste**: Tabs Inbox / Heute / Diese Woche, Erledigen, Snoozen (1h/heute Abend/morgen), Delegieren (Sheet mit Team-Mitgliedern).
+- Mobile **Vorgangs-Detail**: Lesen, Status ändern, Interaktion erfassen, Verlauf anzeigen.
+- Mobile **Kontakt-Detail**: Stammdaten, Briefing-Memory anzeigen, Schnellaktion „Anruf protokollieren" (Erstellt `call_log` + verlinkten Vorgang/Task).
+- **Server-Push**: Edge-Function `dispatch-mobile-push` (Expo Push API), getriggert in `create_notification` RPC für alle Mobile-Tokens des Empfängers.
+- **Tiefe Deep-Links**: `landtagmobile://vorgang/{id}`, `…/task/{id}`, `…/contact/{id}` → Expo Linking → entsprechende Screens.
 
-### 1.2 Quick Fixes (Top-Treffer aus Audit)
-- Explizite Spaltenlisten in den 20 teuersten Queries (Vorgänge, Decisions, Tasks, Letters, Briefings, Contacts, Calendar).
-- Einheitliche `staleTime` (60–300 s) und `gcTime` für stabile Daten (profiles, tenant_users, categories, statuses).
-- Realtime-Subscriptions: scoped Filter (`tenant_id`, `user_id`) + 250 ms Debounce.
-- Lazy-Loading: Lexical-Plugins, Letter-Designer, Map-Layer, Knowledge-Dossier, Charts (recharts) erst on-demand.
-- Icon-Tree-Shake: `lucide-react` nur Named-Imports, keine Sammel-Re-Exports.
-- Memoization: `useCallback`/`useMemo` für teure Callbacks in Dashboard-Widgets.
+**Technik**
+- Expo Router neue Screens `app/tasks/index.tsx`, `app/tasks/[id].tsx`, `app/cases/[id].tsx`, `app/contacts/[id].tsx`.
+- Reuse der bestehenden `useTasks`/`useCases`/`useContacts` Hooks, nur Mobile-Wrapper-Komponenten.
+- `expo-server-sdk` als Deno-kompatibler Fetch in `dispatch-mobile-push`.
 
-### 1.3 Monitoring (neu)
-- Tabelle `egress_metrics` (tenant_id, day, requests, bytes_in, bytes_out, slow_query_count, source).
-- Edge Function `collect-egress-metrics` (täglicher Cron 02:00) liest pg_stat_statements + storage logs aggregiert pro Tenant.
-- Admin-Dashboard `/admin/performance`: Diagramm Egress/Tag, Top-Queries, Top-Tabellen, Realtime-Auslastung, Bundle-History.
-- Alerting: Edge Function `check-egress-anomaly` (täglich) erstellt eine Notification an Platform-Admins, wenn ein Tenant 2× Median überschreitet.
-
-### 1.4 Definition of Done
-- Audit-Report committet, Top-20 Quick Fixes umgesetzt.
-- `/admin/performance` zeigt 14-Tage-Egress live.
-- Mindestens 30 % Reduktion der durchschnittlichen Response-Größe der Top-5 Queries (gemessen vorher/nachher).
+**DoD**
+- 4 Hauptscreens nutzbar, Push erreicht Gerät in < 5 s, Deep-Link öffnet korrekten Screen.
 
 ---
 
-## 2) Test-Coverage – kritische Pfade tief + Smoke breit
+### B) Datenqualität & Duplikat-Hygiene
 
-### 2.1 Kritische Pfade (Vitest + React Testing Library)
-- `useAuth`, `tenant`-Switching, `ProtectedRoute`, Rollen-Guards.
-- Vorgänge: Anlage, Status-Wechsel, Verlinkung Decision/Task/Letter.
-- Decisions: `get_my_work_decisions`, Antworten, Archivierung, Sync zu Meeting-Archiv.
-- Tasks: Multi-Assign, Snooze, Subtask-Logik, Jour-Fixe-Verknüpfung.
-- Letters: Workflow Draft → Approval → Versand, DOCX/PDF-Export-Helper.
-- Briefings: Vortag-Regel, Empfänger-Auflösung, Read-Tracking.
-- Time-Tracking: Soll/Ist, Überstunden, Stellvertreter.
+**Scope**
+- **Duplikat-Erkennung Kontakte**: SQL-Function `find_contact_duplicates(tenant_id)` mit Score aus normalisierter Email/Telefon (exakt) + Name (trigram `pg_trgm` similarity) + Adresse (PLZ+Hausnr).
+- **Merge-UI** unter `/admin/datenqualitaet/duplikate`: Master wählen, Felder feldweise übernehmen, alle Verknüpfungen (Vorgänge, Briefe, Termine, Tasks) automatisch umhängen.
+- **Daten-Lint Dashboard** `/admin/datenqualitaet/lint`: Kontakte ohne Kategorie, Vorgänge ohne Owner/Status, Briefe ohne Empfänger, verwaiste Tasks (Owner gelöscht), Termine in der Vergangenheit ohne Feedback. Score pro Tenant.
+- **Bulk-Aktionen**: Tags zuweisen, Owner umhängen, Kategorie setzen, archivieren — Tabelle mit Filter + Mehrfachauswahl.
+- **Audit & Reverse**: jede Merge/Bulk-Aktion in `data_quality_audit` (snapshot_before JSONB), 30 Tage Reverse-Möglichkeit.
 
-### 2.2 Smoke-Tests breit
-- `scripts/e2e-smoke-flows.mjs` ausbauen: jede Hauptseite (Dashboard, Meine Arbeit, Kalender, Vorgänge, Kontakte, Wissen, Briefe, Redaktion, Zeit, Wahlkreise, Admin) lädt fehlerfrei für jede Rolle.
-- Edge-Function-Smoke: alle deployten Functions auf 200/401-Verhalten.
-- Snapshot-Tests für Empty-States (`MyWorkEmptyState`-Varianten).
+**Technik**
+- Edge-Function `merge-contacts` mit transaktionalem Update (`UPDATE … FROM`) und Audit-Insert.
+- `pg_trgm` Extension aktivieren, GIN-Index auf normalisiertem Namen.
 
-### 2.3 Quality Gates
-- CI-Schwelle: Coverage kritischer Module ≥ 70 % Lines, ≥ 60 % Branches.
-- Pre-merge: Smoke-Suite muss grün sein.
-- Report `docs/test-coverage-2026-05.md` mit Heatmap pro Feature.
-
-### 2.4 Definition of Done
-- ≥ 60 neue Tests, alle 7 kritischen Pfade abgedeckt.
-- Smoke-Suite läuft < 3 min und deckt alle Hauptseiten + alle Rollen ab.
-- CI-Gate aktiv.
+**DoD**
+- Duplikat-Score messbar reduziert (Vorher/Nachher-Report), Lint-Dashboard live, Reverse einer Merge funktioniert.
 
 ---
 
-## 3) Mobile-App ausbauen (Capacitor, bestehende `apps/mobile`)
+### E) Workflow-Engine 2.0 (vorgezogen, da Plattform-Hebel)
 
-Fokus laut deiner Auswahl: Offline-Notizen/Sprachmemos, Foto-OCR, Termine & Briefings.
+**Scope** (**ohne** KI-Aktion „Antwortentwurf")
+- Domain-Modell: `workflow_definitions` (trigger_type, conditions JSONB, actions JSONB[], is_active), `workflow_runs` (status, payload, error, dry_run).
+- **Trigger-Typen**: `case_created`, `case_status_changed`, `task_due_soon`, `letter_approved`, `appointment_created`, `cron` (täglich/wöchentlich).
+- **Bedingungen**: einfacher JSON-Logic-Builder (Feld, Operator, Wert; AND/OR).
+- **Aktionen**: Task anlegen, Notification senden, Brief aus Vorlage erzeugen, Vorgang-Status ändern, Tag setzen, Kontakt-Kategorie setzen, E-Mail (transactional) versenden.
+- **UI-Builder** unter `/admin/workflows`: Definition anlegen, Aktionen sortierbar, Live-Validierung.
+- **Dry-Run-Modus**: Lauf simulieren, alle Side-Effects nur loggen.
+- **Audit-Log** + Run-History pro Definition.
 
-### 3.1 Offline-Notizen & Sprachmemos
-- Lokaler Store (SQLite via Capacitor-SQLite oder WatermelonDB) für `quick_notes` mit `sync_state` (pending/synced/error).
-- Sprachaufnahme via `@capacitor/voice-recorder` → m4a-Datei lokal, Upload + Transkription per Edge Function `transcribe-voice-note` (Lovable AI: Gemini 2.5 Flash für Transkription/Zusammenfassung; ElevenLabs Scribe optional, falls bessere Qualität gewünscht).
-- Konflikt-Strategie: server-wins mit lokaler Backup-Kopie der überschriebenen Version.
-- Sync-Indikator (Sidebar-Footer der Mobile-App): „X ausstehend, zuletzt synchronisiert HH:MM".
+**Technik**
+- Trigger über DB-Trigger → `pg_notify` → Edge-Function `workflow-dispatcher`, Cron-Trigger über `pg_cron`.
+- Pre-built Workflows als Seed: „Neuer Bürger-Vorgang → Eingangsbestätigung", „Brief genehmigt → Task ‚Versenden'", „Termin in 24h → Briefing-Reminder".
 
-### 3.2 Foto-OCR (Visitenkarten / Briefe)
-- `@capacitor/camera` Foto → komprimiert (WebP 80 %, max. 1600 px Längsseite).
-- Upload nach Storage-Bucket `mobile-captures/${user_id}/...`.
-- Edge Function `ocr-extract` ruft Lovable AI (Gemini 2.5 Pro vision) mit Tool-Calling für strukturierte Ausgabe:
-  - **Visitenkarte** → Vorschlag `contacts`-Eintrag (Name, Org, Mail, Telefon, Adresse).
-  - **Brief/Schreiben** → Vorschlag `case_items` (Betreff, Absender, Datum, Klassifizierung).
-- Mobile-Sheet zeigt Vorschau + „Übernehmen / Bearbeiten / Verwerfen".
-
-### 3.3 Termine & Briefings
-- Heute-View: nächste 5 Termine, jeweils mit „Check-in", „Briefing öffnen", „Rückmeldung erfassen".
-- Briefings: Read-Only Lexical-Renderer + Sprachmemo-Anhang als Rückmeldung.
-- Rückmeldung: Kurzformular (Erfolg 1–5, Stichworte, optional Sprachnotiz) → schreibt in bestehendes `appointment_feedback`.
-- Push: bestehende `create_notification`-RPC nutzt FCM-Token → 30 min vor Termin Reminder.
-
-### 3.4 Infrastruktur
-- Neuer Bucket `mobile-captures` (private, Pfad `${user_id}/...`).
-- Neue Tabelle `mobile_capture_drafts` (id, user_id, tenant_id, type, raw_url, parsed_jsonb, status, created_at).
-- RLS: nur Owner liest/schreibt eigene Drafts; Admins lesen tenant-weit.
-- Edge Functions: `transcribe-voice-note`, `ocr-extract`, `mobile-sync-pull`, `mobile-sync-push`.
-
-### 3.5 Definition of Done
-- Mobile-App zeigt Heute-Briefing, kann offline Notizen/Sprachmemos erfassen und syncen.
-- Foto-OCR erstellt brauchbare Vorschläge für mind. 80 % der Test-Visitenkarten.
-- Push-Reminder für Termine funktioniert in Android-Emulator.
+**DoD**
+- 5 vorgefertigte Workflows aktiv, Builder voll funktional, Dry-Run + Audit getestet.
 
 ---
 
-## Reihenfolge & Lieferschritte
+### C) Wahlkreis-Analytics (rein deterministisch)
 
-1. **Performance-Audit + Quick Fixes** (kein DB-Schema)
-2. **Egress-Monitoring** (Tabelle + Edge Functions + `/admin/performance`)
-3. **Test-Suite kritische Pfade**
-4. **Smoke-Suite breit + CI-Gate**
-5. **Mobile: Offline-Notizen + Sprachmemos** (Bucket, Tabelle, Edge Functions, UI)
-6. **Mobile: Foto-OCR**
-7. **Mobile: Termine/Briefings + Push**
+**Scope** (**ohne** KI-Themencluster, **ohne** LLM-Trends)
+- **Heatmap Wahlkreis**: Vorgänge & Kontakte pro Stadtteil/PLZ als Choropleth auf bestehender Karte (`react-leaflet`), Toggle Vorgänge/Kontakte/Briefe.
+- **Themen-Statistik**: Auswertung über vorhandene Kategorien & Tags (keine KI), Top-10 pro Zeitraum, Vergleich Vormonat (% Δ).
+- **Trend-Erkennung deterministisch**: Z-Score je Kategorie über 8-Wochen-Median; Markierung wenn aktuelle Woche > 2σ.
+- **Stakeholder-Graph**: Sigma.js-Graph über geteilte Vorgänge/Briefe/Termine, Filter nach Beziehungsstärke (Anzahl gemeinsamer Objekte).
+- **Quartalsbericht-PDF**: Knopfdruck-Export mit Kennzahlen, Top-Stadtteilen, Top-Kategorien, Trend-Markern (`pdf-lib`, A4, DIN-konform).
 
-Jeder Schritt wird einzeln implementiert und getestet, bevor der nächste beginnt – so behältst du Kontrolle über Credits und kannst nach jedem Schritt stoppen.
+**Technik**
+- Materialized Views `mv_district_stats`, `mv_category_weekly` mit nightly Refresh (`pg_cron`).
+- Bestehende GeoJSON-Layer wiederverwenden.
+
+**DoD**
+- 3 neue Dashboards live, PDF-Export erzeugt korrekten Bericht, Materialized Views < 500 ms.
 
 ---
 
-## Technische Details
+### D) Bürger-Self-Service-Portal (öffentlich)
 
-- **AI-Provider**: Lovable AI Gateway, Default `google/gemini-3-flash-preview`; Vision/OCR `google/gemini-2.5-pro`. Kein Direkt-Call vom Client, alles via Edge Functions.
-- **Mobile-Stack**: bestehender Capacitor-Setup unter `apps/mobile`, Expo Router, Supabase-JS bereits eingerichtet.
-- **Storage**: alle Uploads `${user_id}/...` (Memory-Regel).
-- **Realtime**: `crypto.randomUUID()`-Channelnamen, Debounce 250 ms.
-- **TypeScript**: kein `as any`, JSX-Imports gemäß Memory-Regeln.
-- **Sync-Bibliothek Mobile**: vorzugsweise SQLite + eigene Push/Pull-Edge-Functions (kein WatermelonDB-Lock-in).
+**Scope**
+- **Öffentliche Landingpage** `/buergeranliegen/{tenant-slug}`: Formular Name, E-Mail, PLZ, Anliegen (Kategorie-Dropdown), Freitext, optional Anhang.
+- **Magic-Link-Statusseite** `/buergeranliegen/status/{token}`: aktueller Stand (öffentlich sichtbarer Statustext), History der öffentlich freigegebenen Updates — kein Login.
+- **E-Mail-Benachrichtigung** an Bürger bei Statuswechsel via bestehender `send-transactional-email` Queue.
+- **Anti-Spam**: Cloudflare Turnstile, Honey-Pot-Feld, IP-Rate-Limit (5/Std), max. 5MB Anhang.
+- **Admin-Moderationsqueue** unter `/admin/buergeranliegen`: eingehende Submissions prüfen → Spam markieren oder als regulären Vorgang anlegen (Mapping auf bestehende `cases`).
+- **DSGVO**: Pflicht-Checkbox, Datenschutz-Hinweistext, Lösch-Frist 6 Monate für Spam.
+
+**Technik**
+- Public route ohne Auth, eigene RLS-Policy (insert-only `public_case_submissions`).
+- Edge-Functions `submit-public-case`, `public-case-status`, beide ohne JWT, mit Turnstile-Validierung.
+- Tenant-Slug-Resolver via `tenant_public_settings.slug`.
+
+**DoD**
+- End-to-End-Journey funktioniert, Spam < 5%, DSGVO-Texte vorhanden, Moderationsqueue im Einsatz.
+
+---
+
+### Aufwand grob
+
+| Paket | Datei-Touches | Migrationen | Edge-Funcs | Risiko |
+|---|---|---|---|---|
+| A Mobile Phase 2 | ~25 | 1 | 1 | mittel |
+| B Datenqualität | ~15 | 2 | 1 | mittel |
+| E Workflow-Engine | ~30 | 3 | 2 | hoch |
+| C Analytics | ~20 | 2 (MV) | 1 (Cron) | mittel |
+| D Bürger-Portal | ~20 | 2 | 3 | hoch |
+
+Sage **„weiter"** und ich starte mit **Paket A (Mobile Phase 2)**, oder nenn die Reihenfolge die du bevorzugst.
