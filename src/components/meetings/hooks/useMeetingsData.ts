@@ -1,3 +1,4 @@
+import { toast } from "@/hooks/use-toast";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { debugConsole } from '@/utils/debugConsole';
 import { handleAppError } from '@/utils/errorHandler';
