@@ -5,6 +5,7 @@ import { de } from "date-fns/locale";
 import type { AgendaItem, Meeting, Profile } from "@/components/meetings/types";
 import type { MeetingsDataReturn } from "./useMeetingsData";
 import { normalizeTaskAssigneeIds, serializeLegacyTaskAssignees, syncTaskAssignees } from "@/lib/taskAssignees";
+import { toast } from "@/hooks/use-toast";
 
 type ArchiveDeps = Pick<MeetingsDataReturn, 
   'user' | 'currentTenant' | 'toast' | 'profiles' | 'linkedQuickNotes' | 'meetingLinkedCaseItems' |

@@ -13,6 +13,7 @@ import type { NotificationType } from '@/hooks/useNotifications';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { notify } from "@/lib/notify";
+import { toast } from "@/hooks/use-toast";
 interface NotificationTypeSettings {
   id: string;
   notification_type_id: string;

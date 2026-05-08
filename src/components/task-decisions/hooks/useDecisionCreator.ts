@@ -5,6 +5,7 @@ import { useDecisionAttachmentUpload } from "@/hooks/useDecisionAttachmentUpload
 import type { EmailMetadata } from "@/utils/emlParser";
 import { saveDecisionTopics } from "@/hooks/useDecisionTopics";
 import {
+import { toast } from "@/hooks/use-toast";
   DEFAULT_TEMPLATE_ID,
   ResponseOption,
   getTemplateById,

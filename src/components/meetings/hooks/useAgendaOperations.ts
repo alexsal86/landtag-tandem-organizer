@@ -3,6 +3,7 @@ import type { AgendaItem } from "@/components/meetings/types";
 import type { MeetingsDataReturn } from "./useMeetingsData";
 import type { DropResult } from "@hello-pangea/dnd";
 import { debugConsole } from "@/utils/debugConsole";
+import { toast } from "@/hooks/use-toast";
 
 type AgendaOpsDeps = Pick<MeetingsDataReturn,
   'selectedMeeting' | 'activeMeeting' | 'agendaItems' | 'setAgendaItems' | 'setActiveMeeting' |
