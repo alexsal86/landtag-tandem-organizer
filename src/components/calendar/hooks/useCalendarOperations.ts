@@ -1,3 +1,4 @@
+import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { handleAppError } from "@/utils/errorHandler";
 import type { CalendarEvent } from "../types";

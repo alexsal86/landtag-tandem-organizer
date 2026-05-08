@@ -11,6 +11,7 @@ import { useMeetingsData } from "@/components/meetings/hooks/useMeetingsData";
 import { useMeetingArchive } from "@/components/meetings/hooks/useMeetingArchive";
 import { useAgendaOperations } from "@/components/meetings/hooks/useAgendaOperations";
 import { useMeetingCreate } from "@/components/meetings/hooks/useMeetingCreate";
+import { toast } from "@/hooks/use-toast";
 
 export function MeetingsView() {
   const data = useMeetingsData();

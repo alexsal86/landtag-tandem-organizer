@@ -15,6 +15,7 @@ import { EmployeeMeetingScheduler } from "@/features/employees/components/Employ
 import { debugConsole } from "@/utils/debugConsole";
 import { fetchPendingMeetingRequests, PendingMeetingRequest } from "@/components/employees/hooks/meetingRequests";
 import { notify } from "@/lib/notify";
+import { toast } from "@/hooks/use-toast";
 
 interface MeetingRequestManagerProps {
   onPendingCountChange?: (count: number) => void;

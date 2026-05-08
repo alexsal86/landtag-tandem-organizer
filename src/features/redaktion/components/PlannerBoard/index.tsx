@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useTenantUsers } from "@/hooks/useTenantUsers";
 import {
+import { toast } from "@/hooks/use-toast";
   type SocialContentMediaType,
   type SocialContentPlatformStatus,
   type SocialContentVariant,
