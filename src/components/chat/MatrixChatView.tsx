@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { MatrixReplyPreview } from '@/types/matrix';
 import { notify } from "@/lib/notify";
+import { toast } from "@/hooks/use-toast";
 
 export function MatrixChatView() {
   const {

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import type { CaseItemIntakePayload } from "@/features/cases/items/types";
 import { buildCaseItemUpdatePayload } from "@/features/cases/shared/utils/caseInteropAdapters";
 import { debugConsole } from "@/utils/debugConsole";

@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import type { CelebrationSettings } from '@/components/celebrations';
 import { debugConsole } from '@/utils/debugConsole';
 import { notify } from "@/lib/notify";
+import { toast } from "@/hooks/use-toast";
 
 interface AnimationDefinition {
   id: string;

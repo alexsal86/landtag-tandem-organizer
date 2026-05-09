@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { debugConsole } from '@/utils/debugConsole';
 import { notify } from "@/lib/notify";
+import { toast } from "@/hooks/use-toast";
 
 interface TimeSlot {
   id: string;

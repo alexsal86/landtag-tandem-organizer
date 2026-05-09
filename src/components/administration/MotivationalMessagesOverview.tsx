@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, RotateCcw, Save, Search } from "lucide-react";
 import {
+import { toast } from "@/hooks/use-toast";
   DASHBOARD_MESSAGES_SETTING_KEY,
   messages as defaultMessages,
   parseDashboardMessagesSetting,

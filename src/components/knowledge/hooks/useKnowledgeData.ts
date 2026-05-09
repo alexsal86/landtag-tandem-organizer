@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { debugConsole } from '@/utils/debugConsole';
 import { notify } from "@/lib/notify";
+import { toast } from "@/hooks/use-toast";
 
 export interface KnowledgeDocument {
   id: string;

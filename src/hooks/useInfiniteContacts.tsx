@@ -6,6 +6,7 @@ import { debounce } from "@/utils/debounce";
 import { debugConsole } from '@/utils/debugConsole';
 import type { Contact } from "@/types/contact";
 import { notify } from "@/lib/notify";
+import { toast } from "@/hooks/use-toast";
 export type { Contact } from "@/types/contact";
 
 interface UseInfiniteContactsProps {

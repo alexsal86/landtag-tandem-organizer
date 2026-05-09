@@ -10,6 +10,7 @@ import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { debugConsole } from '@/utils/debugConsole';
 import { notify } from "@/lib/notify";
+import { toast } from "@/hooks/use-toast";
 
 interface TimeSlot {
   id: string;

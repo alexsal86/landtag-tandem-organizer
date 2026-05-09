@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import type { Database } from '@/integrations/supabase/types';
 import type { LetterAttachmentRecord } from '@/types/letterLayout';
 import { notify } from "@/lib/notify";
+import { toast } from "@/hooks/use-toast";
 
 type Attachment = LetterAttachmentRecord;
 type LinkedDocument = Database['public']['Tables']['documents']['Row'];

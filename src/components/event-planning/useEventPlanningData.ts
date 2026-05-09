@@ -12,8 +12,8 @@ import { handleAppError } from '@/utils/errorHandler';
 import { debounce } from '@/utils/debounce';
 import { useChecklistOperations } from "./hooks/useChecklistOperations";
 import { useItemDetails } from "./hooks/useItemDetails";
-import type {
 import { toast } from "@/hooks/use-toast";
+import type {
   EventPlanning,
   EventPlanningContact,
   EventPlanningSpeaker,

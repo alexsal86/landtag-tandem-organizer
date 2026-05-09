@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { ClipboardCheck, Loader2, CheckCircle2, AlertTriangle, AlertCircle, RefreshCcw, ExternalLink } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { notify } from "@/lib/notify";

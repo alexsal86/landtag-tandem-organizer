@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Slider } from "@/components/ui/slider";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { Users2, Loader2, Merge, RefreshCcw, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { notify } from "@/lib/notify";

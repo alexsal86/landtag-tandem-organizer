@@ -4,8 +4,8 @@ import { debugConsole } from '@/utils/debugConsole';
 import { handleAppError } from '@/utils/errorHandler';
 import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
-import {
 import { toast } from "@/hooks/use-toast";
+import {
   DEFAULT_DIN5008_LAYOUT,
   type BlockContentEntry,
   type BlockEditorKey,

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { debugConsole } from "@/utils/debugConsole";
 import { notify } from "@/lib/notify";
+import { toast } from "@/hooks/use-toast";
 
 const SETTINGS_KEY = "stakeholder_network_tag_synonyms";
 
