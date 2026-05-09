@@ -20,6 +20,7 @@ import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { cn } from "@/lib/utils";
 import type { ActionItem, ActionItemOwner, EmployeeMeeting, MeetingPreparationData, ProtocolData } from "@/components/employees/types";
+import { toast } from "@/hooks/use-toast";
 
 import {
   ACTION_ITEM_MIN_LENGTH,

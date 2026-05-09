@@ -7,6 +7,7 @@ import type { Database } from '@/integrations/supabase/types';
 import type { LetterContentNodes } from '../types';
 import type { SenderInformationRecord, InformationBlockRecord } from '@/types/letterLayout';
 import { notify } from "@/lib/notify";
+import { toast } from "@/hooks/use-toast";
 
 type LetterAttachment = Database['public']['Tables']['letter_attachments']['Row'];
 

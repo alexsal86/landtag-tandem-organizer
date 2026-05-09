@@ -1,9 +1,10 @@
+import { toast } from "@/hooks/use-toast";
 // @refresh reset
 import { useState, useEffect, useCallback } from 'react';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
-import { useToast } from './use-toast';
+import { toast } from './use-toast';
 import { debugConsole } from '@/utils/debugConsole';
 import type { UnknownRecord } from '@/utils/typeSafety';
 import { notify } from "@/lib/notify";

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { Globe } from "lucide-react";
 import { Facebook, Instagram, Linkedin, Twitter, YouTube, TikTok, Threads, Mastodon } from "@/components/icons/SocialIcons";
 import { debugConsole } from "@/utils/debugConsole";

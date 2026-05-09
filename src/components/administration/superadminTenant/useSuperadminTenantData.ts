@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import type { TenantWithStats, UserWithTenants } from "./constants";
 import { notify } from "@/lib/notify";

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { debugConsole } from "@/utils/debugConsole";
 import { notify } from "@/lib/notify";
+import { toast } from "@/hooks/use-toast";
 
 export default function EmployeeMeetingDetail() {
   const { meetingId, subId } = useParams<{ meetingId?: string; subId?: string }>();

@@ -25,6 +25,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { notify } from "@/lib/notify";
+import { toast } from "@/hooks/use-toast";
 
 export interface AppointmentPreparationAppointmentDetails {
   id: string;

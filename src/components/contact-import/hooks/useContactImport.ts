@@ -13,6 +13,7 @@ import type { DuplicateMatch } from "@/utils/duplicateDetection";
 import type { ParsedVCard, SpreadsheetRow } from "@/types/contactImport";
 import { ImportData, FieldMapping, FIELD_MAPPINGS } from "../types";
 import { notify } from "@/lib/notify";
+import { toast } from "@/hooks/use-toast";
 
 export function useContactImport() {
   const [file, setFile] = useState<File | null>(null);

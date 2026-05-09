@@ -4,8 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useDecisionAttachmentUpload } from "@/hooks/useDecisionAttachmentUpload";
 import type { EmailMetadata } from "@/utils/emlParser";
 import { saveDecisionTopics } from "@/hooks/useDecisionTopics";
-import {
 import { toast } from "@/hooks/use-toast";
+import {
   DEFAULT_TEMPLATE_ID,
   ResponseOption,
   getTemplateById,

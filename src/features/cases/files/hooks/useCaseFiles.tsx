@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import { handleAppError } from "@/utils/errorHandler";
 import type { Json, Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
