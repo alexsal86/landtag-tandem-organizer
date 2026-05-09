@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, type ComponentType } from "react";
 import { useNavigate } from "react-router-dom";
-import {
 import { toast } from "@/hooks/use-toast";
+import {
   Mail,
   Phone,
   MapPin,
