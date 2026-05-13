@@ -1,27 +1,25 @@
-## Problem
+## Beobachtung
 
-Im Tab „Quick Notes" (Meine Arbeit → Capture) kollabieren beide Karten („Quick Notes" und „Meine Notizen") auf ~50–80 px Breite. Texte und Platzhalter brechen wortweise um, obwohl mittig genug Platz ist. Andere Tabs (Vorgänge, Aufgaben …) sind unauffällig.
+- In der DB existieren 14 aktive/offene `task_decisions`, davon 9 sichtbar für `56188e2c…` (RPC-Test serverseitig).
+- `get_my_work_decisions` ist `SECURITY INVOKER` (kein DEFINER) und verlässt sich vollständig auf die RLS von `task_decisions`. RLS verlangt `tenant_id = ANY(get_user_tenant_ids(auth.uid()))`.
+- Es gibt aktuell keine Konsolen-/Netzwerk-Logs (User ist auf `/auth`), also kein Direktbefund. Ohne Login-Identität des betroffenen Users lässt sich nicht entscheiden, ob:
+  1. der RPC clientseitig nie ausgelöst wird (z. B. `user?.id` undefined),
+  2. der RPC eine PostgREST-Fehlerantwort liefert (RLS / `get_user_tenant_ids`-Permission-Denied → leere Liste),
+  3. die Antwort zurückkommt, aber `filterDecisionsByTab` alles wegfiltert (z. B. weil die aktive Tab-Auswahl in `localStorage` einen Zustand hat, in dem alle Tabs ausgeblendet sind).
 
-## Vermutete Ursachen (in Reihenfolge)
+## Plan
 
-1. **Lexical-Editor erzwingt `min-content`-Breite über die `prose`-Klasse.** `SimpleRichTextEditor` rendert `<ContentEditable className="p-3 prose prose-sm max-w-none">`. In Tailwind v4 (mit `@tailwindcss/typography`) setzt `prose-sm` zusätzlich Eigenschaften, die das Eltern-Wrapper-`<div className="border rounded-lg">` nicht zu `width:100%` zwingen. Da das umgebende `relative`-`<div>` keine eigene Breite vorgibt, schrumpft alles auf den Inhalt – und der Inhalt ist nur der absolut positionierte Placeholder.
-2. **Container `mx-auto w-full max-w-3xl space-y-6`** ist korrekt, aber die Cards selbst tragen flex-only-Klassen (`self-start` in `MyWorkQuickCapture`, `flex-1` in `MyWorkNotesList`), die im Block-Parent wirkungslos sind und Verwirrung stiften – sollten entfernt/ersetzt werden, damit `w-full` greift.
-3. Tailwind v4 generiert `prose`-Klassen ohne unsere Erwartung an Default-Breite – möglicherweise fehlt ein `w-full` auf dem äußeren Editor-Wrapper.
+1. **Diagnose-Hilfsausgabe ergänzen** in `useMyWorkDecisionsData.ts` und `useDecisionOverviewData.ts`:
+   - Bei jedem Load `debugConsole.log` mit `userId`, Anzahl Roh-Entscheidungen aus RPC, Anzahl nach Dedupe.
+   - Bei RPC-Fehler `notify.error` mit Code statt nur `setError`, damit der User den Hinweis sieht.
+2. **Sichtbarer Empty-State** in `MyWorkDecisionsTab.tsx`: zusätzlich zur tabbezogenen Empty-Message einen Hinweis „0 Entscheidungen geladen" anzeigen, wenn `decisions.length === 0` (statt nur tab-spezifischer Text).
+3. **Tab-Reset-Schutz**: in `useMyWorkSettings.tsx` sicherstellen, dass `hiddenDecisionTabs` niemals alle 4 Tabs ausblendet (Sanitizer ergänzen). Falls Storage einen kaputten Zustand enthält → auf Default zurückfallen.
+4. **`get_my_work_decisions` zu `SECURITY DEFINER` umstellen** (Migration), damit ein Permission-Issue auf `get_user_tenant_ids` (anon-Aufrufe) RPC-Antworten nicht beeinflussen kann; intern weiterhin `tenant_id`-Check via `get_user_tenant_ids(p_user_id)`. Nur ausführen, wenn Schritt 1–3 das Problem nicht beseitigen.
+5. **Verifikation**:
+   - User bittet sich neu einzuloggen, Konsole zeigt jetzt RPC-Resultatlänge.
+   - Falls `length > 0` → Filter-/Tab-Logik ist Ursache (Schritt 3 deckt's ab).
+   - Falls `length === 0` mit Fehler → Schritt 4 ausführen und ggf. RLS prüfen.
 
-## Umsetzung
+## Rückfrage
 
-1. **`src/components/ui/SimpleRichTextEditor.tsx`** (Zeile ~427-456):
-   - Äußerem Wrapper `w-full block` hinzufügen.
-   - `<div className="relative">` → `<div className="relative w-full">`.
-   - `ContentEditable` className: `block w-full` ergänzen.
-2. **`src/components/my-work/MyWorkQuickCapture.tsx`** (Zeile 89):
-   - `self-start` durch `w-full` ersetzen, damit die Card explizit volle Breite einnimmt.
-3. **`src/components/my-work/MyWorkNotesList.tsx`** (Zeile 28):
-   - `flex-1` → `w-full`.
-4. **`src/features/dashboard/components/MyWorkView.tsx`** (Zeile 239):
-   - Container von `mx-auto w-full max-w-3xl space-y-6` → `mx-auto w-full max-w-3xl flex flex-col gap-6`. Dadurch ist klar, dass beide Karten als Block-Items volle Breite halten, und `space-y` wird nicht durch fragmentierte Kind-Listen umgangen.
-5. Live im Preview prüfen (Karten ≈ 768 px breit, Placeholder einzeilig).
-
-## Hinweis
-
-Falls das Problem nach diesen Anpassungen weiterbesteht, ist der nächste Schritt, im laufenden Preview per DevTools das `min-width`/`width` jedes Vorfahren der Card auszulesen – das deutet dann auf eine andere globale CSS-Regel (z. B. in `lexical-editor.css` oder `index.css`).
+Bevor ich Code ändere: bitte die Anzeige-Mail oder User-ID des betroffenen Accounts nennen, damit ich gezielt prüfen kann, ob `user_tenant_memberships` für diesen User aktiv sind und ob die RPC-Antwort > 0 ist. Andernfalls fahre ich mit den Diagnose-Schritten 1–3 fort.
