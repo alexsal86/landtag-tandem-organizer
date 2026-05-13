@@ -1,46 +1,27 @@
-# Konsistenz-Sweep finalisieren
+## Problem
 
-Ausgangslage nach Welle 1–7: `ui-patterns`, Foundation-Tokens, Typografie-System und `notify`-Wrapper stehen — werden aber noch nicht durchgängig genutzt. Scan zeigt:
+Im Tab „Quick Notes" (Meine Arbeit → Capture) kollabieren beide Karten („Quick Notes" und „Meine Notizen") auf ~50–80 px Breite. Texte und Platzhalter brechen wortweise um, obwohl mittig genug Platz ist. Andere Tabs (Vorgänge, Aufgaben …) sind unauffällig.
 
-- **268 Dateien** rufen `sonner`/`use-toast` direkt auf (89× sonner direkt, 179× `useToast`), **0× `notify`**.
-- **67 Dateien** mit `Laden...` oder rohem `animate-pulse`-Skeleton.
-- **176 Dateien** mit ad-hoc Empty-State-Text (`Noch keine …`, `Keine … gefunden`).
-- **109 Dateien** mit nativem `title="…"` statt shadcn-`Tooltip`.
+## Vermutete Ursachen (in Reihenfolge)
 
-Ziel: konsistente Toasts, einheitliche Empty/Loading/Error-States und einheitliche Tooltips über die ganze App.
+1. **Lexical-Editor erzwingt `min-content`-Breite über die `prose`-Klasse.** `SimpleRichTextEditor` rendert `<ContentEditable className="p-3 prose prose-sm max-w-none">`. In Tailwind v4 (mit `@tailwindcss/typography`) setzt `prose-sm` zusätzlich Eigenschaften, die das Eltern-Wrapper-`<div className="border rounded-lg">` nicht zu `width:100%` zwingen. Da das umgebende `relative`-`<div>` keine eigene Breite vorgibt, schrumpft alles auf den Inhalt – und der Inhalt ist nur der absolut positionierte Placeholder.
+2. **Container `mx-auto w-full max-w-3xl space-y-6`** ist korrekt, aber die Cards selbst tragen flex-only-Klassen (`self-start` in `MyWorkQuickCapture`, `flex-1` in `MyWorkNotesList`), die im Block-Parent wirkungslos sind und Verwirrung stiften – sollten entfernt/ersetzt werden, damit `w-full` greift.
+3. Tailwind v4 generiert `prose`-Klassen ohne unsere Erwartung an Default-Breite – möglicherweise fehlt ein `w-full` auf dem äußeren Editor-Wrapper.
 
-## Welle 8 — Toast-Migration auf `notify`-Wrapper
+## Umsetzung
 
-- `useToast`/`toast({ title, description, variant })` durchgängig durch `notify.success/error/warning/info` ersetzen.
-- Direkte `import { toast } from "sonner"`-Aufrufe ebenfalls auf `notify` umstellen.
-- `variant: "destructive"` → `notify.error`, sonst `notify.success`/`info`.
-- In Batches nach Bereich abarbeiten: `features/tasks` → `features/letters` → `features/contacts` → `features/employees` → `features/redaktion` → `features/calendar` → `features/knowledge` → `features/timetracking` → `pages/*` → `hooks/*` → `components/*`.
-- Memory-Eintrag erweitern: „Immer `@/lib/notify` statt direktem sonner/useToast".
+1. **`src/components/ui/SimpleRichTextEditor.tsx`** (Zeile ~427-456):
+   - Äußerem Wrapper `w-full block` hinzufügen.
+   - `<div className="relative">` → `<div className="relative w-full">`.
+   - `ContentEditable` className: `block w-full` ergänzen.
+2. **`src/components/my-work/MyWorkQuickCapture.tsx`** (Zeile 89):
+   - `self-start` durch `w-full` ersetzen, damit die Card explizit volle Breite einnimmt.
+3. **`src/components/my-work/MyWorkNotesList.tsx`** (Zeile 28):
+   - `flex-1` → `w-full`.
+4. **`src/features/dashboard/components/MyWorkView.tsx`** (Zeile 239):
+   - Container von `mx-auto w-full max-w-3xl space-y-6` → `mx-auto w-full max-w-3xl flex flex-col gap-6`. Dadurch ist klar, dass beide Karten als Block-Items volle Breite halten, und `space-y` wird nicht durch fragmentierte Kind-Listen umgangen.
+5. Live im Preview prüfen (Karten ≈ 768 px breit, Placeholder einzeilig).
 
-## Welle 9 — Empty/Loading/Error-Sweep Restbestand
+## Hinweis
 
-- Verbleibende `Laden...`-Texte und `animate-pulse`-Skeletons durch `<LoadingState variant="list|card|table|detail|inline" />` ersetzen.
-- Ad-hoc Empty-States (`Noch keine …`, „Keine … gefunden") durch `<EmptyState icon={…} title description />` ersetzen — passende Lucide-Icons je Domäne.
-- Fehler-Pfade (Toast-only oder roter Text) durch `<ErrorState onRetry={…} />` ersetzen, wo eine Retry-Action sinnvoll ist.
-- Bereiche: `features/calendar`, `features/employees`, `features/redaktion`, `features/knowledge`, `features/timetracking`, `features/letters` (Listen, Sidebars, Editor-Panels), `features/meetings`, restliche Widgets.
-
-## Welle 10 — Tooltip-Konsistenz
-
-- Native `title="…"`-Attribute auf Buttons/Icons durch shadcn `<Tooltip><TooltipTrigger asChild>…</TooltipTrigger><TooltipContent>…</TooltipContent></Tooltip>` ersetzen.
-- Sicherstellen, dass `TooltipProvider` einmal global im App-Root sitzt; dann lokale Provider entfernen.
-- `title=` nur dort lassen, wo es Accessibility-Backup für native Form-Controls ist (Inputs, Selects ohne Visual Trigger).
-
-## Reihenfolge & Verifikation
-
-1. Welle 8a: `features/tasks` + `features/letters` + `pages/*` (Toast).
-2. Welle 8b: `features/contacts` + `features/employees` + `features/redaktion` + restliche.
-3. Welle 9a: `features/calendar` + `features/employees` + `features/meetings`.
-4. Welle 9b: `features/redaktion` + `features/knowledge` + `features/timetracking` + Widgets.
-5. Welle 10: Tooltips (in einem Rutsch, eher mechanisch).
-
-Nach jeder Welle: `bunx tsc --noEmit` + Spot-Check Preview. Memory-Index aktualisieren, sobald `notify` Pflicht ist.
-
-## Out of Scope
-
-- Performance/Bundle, Mobile-Sweep, Resilienz/RLS — eigene Hebel, nicht Teil dieses Plans.
-- Funktionale Logik bleibt unverändert; rein Presentation-Layer.
+Falls das Problem nach diesen Anpassungen weiterbesteht, ist der nächste Schritt, im laufenden Preview per DevTools das `min-width`/`width` jedes Vorfahren der Card auszulesen – das deutet dann auf eine andere globale CSS-Regel (z. B. in `lexical-editor.css` oder `index.css`).

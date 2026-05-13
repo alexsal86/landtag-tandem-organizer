@@ -426,17 +426,17 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
 
   return (
     <div className={cn(
-      "border border-border rounded-lg bg-background",
+      "block w-full border border-border rounded-lg bg-background",
       disabled && "opacity-50 pointer-events-none"
     )}>
       <LexicalComposer initialConfig={initialConfig}>
         {showToolbar && <Toolbar />}
-        <div className="relative">
+        <div className="relative w-full">
           <RichTextPlugin
             contentEditable={
               <ContentEditable 
                 className={cn(
-                  "p-3 focus:outline-none prose prose-sm max-w-none",
+                  "block w-full p-3 focus:outline-none prose prose-sm max-w-none",
                   scrollable && "overflow-y-auto"
                 )}
                 style={{ minHeight, maxHeight }}
