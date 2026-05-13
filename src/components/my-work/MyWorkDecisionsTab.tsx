@@ -166,6 +166,11 @@ export function MyWorkDecisionsTab() {
                 </div>
                 <StandaloneDecisionCreator isOpen={state.isCreateOpen} onOpenChange={actions.setCreateOpen} onDecisionCreated={actions.handleDecisionCreated} />
               </div>
+              {decisions.length === 0 && !loading && !error && (
+                <div className="mt-3 rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                  Keine Entscheidungen geladen. Falls Sie welche erwarten: prüfen Sie Ihre Tenant-Mitgliedschaft oder die Browser-Konsole (Tag <code>useMyWorkDecisionsData</code>).
+                </div>
+              )}
               <TabsContent value={activeTab} className="mt-3">
                 <DecisionList
                   archivingDecisionId={state.archivingDecisionId}

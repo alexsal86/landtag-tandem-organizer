@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { handleAppError } from "@/utils/errorHandler";
 import { debugConsole } from '@/utils/debugConsole';
+import { notify } from "@/lib/notify";
 import { MyWorkDecision, getResponseSummary } from "@/components/my-work/decisions/types";
 import type { ResponseOption } from "@/lib/decisionTemplates";
 
@@ -73,7 +74,17 @@ export function useMyWorkDecisionsData(userId?: string) {
         .rpc('get_my_work_decisions', { p_user_id: userId });
 
       if (!isCurrentRequest()) return;
-      if (rpcError) throw rpcError;
+      if (rpcError) {
+        debugConsole.error('[useMyWorkDecisionsData] RPC error', { userId, rpcError });
+        notify.error('Entscheidungen konnten nicht geladen werden', { description: rpcError.message });
+        throw rpcError;
+      }
+      debugConsole.log('[useMyWorkDecisionsData] RPC ok', {
+        userId,
+        rawCount: Array.isArray((rpcData as { decisions?: unknown[] } | null)?.decisions)
+          ? (rpcData as { decisions: unknown[] }).decisions.length
+          : 0,
+      });
 
       type RpcDecision = {
         id: string; title: string; description: string | null; response_deadline: string | null;
