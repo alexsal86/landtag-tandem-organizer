@@ -74,7 +74,17 @@ export function useMyWorkDecisionsData(userId?: string) {
         .rpc('get_my_work_decisions', { p_user_id: userId });
 
       if (!isCurrentRequest()) return;
-      if (rpcError) throw rpcError;
+      if (rpcError) {
+        debugConsole.error('[useMyWorkDecisionsData] RPC error', { userId, rpcError });
+        notify.error('Entscheidungen konnten nicht geladen werden', { description: rpcError.message });
+        throw rpcError;
+      }
+      debugConsole.log('[useMyWorkDecisionsData] RPC ok', {
+        userId,
+        rawCount: Array.isArray((rpcData as { decisions?: unknown[] } | null)?.decisions)
+          ? (rpcData as { decisions: unknown[] }).decisions.length
+          : 0,
+      });
 
       type RpcDecision = {
         id: string; title: string; description: string | null; response_deadline: string | null;
