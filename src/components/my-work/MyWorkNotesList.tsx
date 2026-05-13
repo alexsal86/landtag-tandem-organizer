@@ -25,7 +25,7 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
 
   return (
     <>
-      <Card className="flex-1">
+      <Card className="w-full">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">Meine Notizen</CardTitle>
