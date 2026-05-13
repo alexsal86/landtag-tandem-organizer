@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { handleAppError } from "@/utils/errorHandler";
 import { debugConsole } from '@/utils/debugConsole';
+import { notify } from "@/lib/notify";
 import { MyWorkDecision, getResponseSummary } from "@/components/my-work/decisions/types";
 import type { ResponseOption } from "@/lib/decisionTemplates";
 
