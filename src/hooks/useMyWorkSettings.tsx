@@ -40,9 +40,13 @@ export function useMyWorkSettings(): MyWorkSettingsResult {
       ? hiddenTabs.filter((tab): tab is DecisionTabId => DEFAULT_DECISION_TAB_ORDER.includes(tab as DecisionTabId))
       : [];
 
+    const dedupedHidden = Array.from(new Set(normalizedHiddenTabs));
+    // Safety: never hide all tabs — fall back to defaults if storage is corrupted
+    const safeHidden = dedupedHidden.length >= DEFAULT_DECISION_TAB_ORDER.length ? [] : dedupedHidden;
+
     return {
       order: mergedOrder,
-      hiddenTabs: Array.from(new Set(normalizedHiddenTabs)),
+      hiddenTabs: safeHidden,
     };
   }, []);
 
