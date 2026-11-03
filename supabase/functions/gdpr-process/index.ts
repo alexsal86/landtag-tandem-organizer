@@ -1,7 +1,6 @@
 // Edge Function: gdpr-process
 // Verarbeitet eine gdpr_requests-Zeile (export ODER delete).
 // Auth: JWT Pflicht; nur Tenant-Admins (abgeordneter/bueroleitung); für 'delete' zusätzlich approved_by ≠ requested_by.
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import JSZip from "https://esm.sh/jszip@3.10.1";
 import { requireAuth, withSafeHandler } from "../_shared/security.ts";
 import { createServiceRoleClient } from "../_shared/supabase.ts";
