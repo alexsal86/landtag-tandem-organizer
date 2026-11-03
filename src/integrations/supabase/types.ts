@@ -13185,6 +13185,10 @@ export type Database = {
     Functions: {
       _meeting_default_end: { Args: { _date: string }; Returns: string }
       _meeting_default_start: { Args: { _date: string }; Returns: string }
+      approve_gdpr_delete: {
+        Args: { p_request_id: string }
+        Returns: undefined
+      }
       archive_completed_task: {
         Args: { p_task_id: string; p_user_id: string }
         Returns: string
