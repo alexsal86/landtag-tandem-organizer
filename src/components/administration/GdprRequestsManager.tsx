@@ -17,7 +17,6 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { useToast } from "@/components/ui/use-toast";
 import { Shield, Plus, Download, Play, Check } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { de } from "date-fns/locale";
@@ -52,6 +51,8 @@ export function GdprRequestsManager(): JSX.Element {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const [open, setOpen] = useState(false);
+  const [approvalRequest, setApprovalRequest] = useState<GdprRequest | null>(null);
+  const [approving, setApproving] = useState(false);
   const [form, setForm] = useState({
     request_type: "export" as "export" | "delete",
     subject_email: "",
@@ -110,16 +111,17 @@ export function GdprRequestsManager(): JSX.Element {
 });
       return;
     }
-    const { error } = await supabase
-      .from("gdpr_requests")
-      .update({ status: "approved", approved_by: user.id, approved_at: new Date().toISOString() })
-      .eq("id", req.id);
+    if (req.tenant_id !== currentTenant?.id || approving) return;
+    setApproving(true);
+    const { error } = await supabase.rpc("approve_gdpr_delete", { p_request_id: req.id });
+    setApproving(false);
     if (error) {
       notify.error("Fehler", { description: error.message
 });
       return;
     }
     notify.success("Freigegeben");
+    setApprovalRequest(null);
     void requestsQuery.refetch();
   };
 
@@ -259,7 +261,7 @@ export function GdprRequestsManager(): JSX.Element {
                   <TableCell className="text-caption max-w-xs truncate">{r.reason ?? "—"}</TableCell>
                   <TableCell className="text-right space-x-1">
                     {r.request_type === "delete" && r.status === "pending" && (
-                      <Button size="sm" variant="outline" onClick={() => approveDelete(r)}>
+                      <Button size="sm" variant="outline" disabled={r.requested_by === user?.id} onClick={() => setApprovalRequest(r)}>
                         <Check className="mr-1 h-3 w-3" /> Freigeben
                       </Button>
                     )}
@@ -287,6 +289,22 @@ export function GdprRequestsManager(): JSX.Element {
           </Table>
         </CardContent>
       </Card>
+      <Dialog open={!!approvalRequest} onOpenChange={(isOpen) => { if (!isOpen && !approving) setApprovalRequest(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Löschung persönlich freigeben</DialogTitle>
+            <DialogDescription>Ich stimme als zweite berechtigte Person der Löschung beziehungsweise Anonymisierung dieser Daten zu.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 text-body">
+            <p>{approvalRequest?.subject_name || approvalRequest?.subject_email || approvalRequest?.subject_contact_id}</p>
+            {approvalRequest?.reason && <p className="text-muted-foreground">{approvalRequest.reason}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" disabled={approving} onClick={() => setApprovalRequest(null)}>Abbrechen</Button>
+            <Button disabled={approving} onClick={() => { if (approvalRequest) void approveDelete(approvalRequest); }}> {approving ? "Wird bestätigt…" : "Ich bestätige die Freigabe"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
