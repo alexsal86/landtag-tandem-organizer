@@ -9526,58 +9526,66 @@ export type Database = {
       }
       quick_note_global_shares: {
         Row: {
-          tenant_id: string | null
           created_at: string
           id: string
           permission_type: string
           shared_with_user_id: string
+          tenant_id: string | null
           user_id: string
         }
         Insert: {
-          tenant_id?: string | null
           created_at?: string
           id?: string
           permission_type?: string
           shared_with_user_id: string
+          tenant_id?: string | null
           user_id: string
         }
         Update: {
-          tenant_id?: string | null
           created_at?: string
           id?: string
           permission_type?: string
           shared_with_user_id?: string
+          tenant_id?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "quick_note_global_shares_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       quick_note_shares: {
         Row: {
-          tenant_id: string | null
           created_at: string
           id: string
           note_id: string
           permission_type: string
           shared_by_user_id: string
           shared_with_user_id: string
+          tenant_id: string | null
         }
         Insert: {
-          tenant_id?: string | null
           created_at?: string
           id?: string
           note_id: string
           permission_type?: string
           shared_by_user_id: string
           shared_with_user_id: string
+          tenant_id?: string | null
         }
         Update: {
-          tenant_id?: string | null
           created_at?: string
           id?: string
           note_id?: string
           permission_type?: string
           shared_by_user_id?: string
           shared_with_user_id?: string
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -9587,33 +9595,40 @@ export type Database = {
             referencedRelation: "quick_notes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "quick_note_shares_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
         ]
       }
       quick_note_versions: {
         Row: {
-          tenant_id: string | null
           content: string
           created_at: string | null
           id: string
           note_id: string
+          tenant_id: string | null
           title: string | null
           user_id: string
         }
         Insert: {
-          tenant_id?: string | null
           content: string
           created_at?: string | null
           id?: string
           note_id: string
+          tenant_id?: string | null
           title?: string | null
           user_id: string
         }
         Update: {
-          tenant_id?: string | null
           content?: string
           created_at?: string | null
           id?: string
           note_id?: string
+          tenant_id?: string | null
           title?: string | null
           user_id?: string
         }
@@ -9625,12 +9640,17 @@ export type Database = {
             referencedRelation: "quick_notes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "quick_note_versions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
         ]
       }
       quick_notes: {
         Row: {
-          tenant_id: string | null
-          revision: number
           added_to_meeting_at: string | null
           archived_at: string | null
           case_item_id: string | null
@@ -9652,17 +9672,17 @@ export type Database = {
           pending_for_jour_fixe: boolean | null
           permanent_delete_at: string | null
           priority_level: number | null
+          revision: number
           tags: string[] | null
           task_archived_info: Json | null
           task_id: string | null
+          tenant_id: string | null
           title: string | null
           topic_backlog_id: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
-          tenant_id?: string | null
-          revision?: number
           added_to_meeting_at?: string | null
           archived_at?: string | null
           case_item_id?: string | null
@@ -9684,17 +9704,17 @@ export type Database = {
           pending_for_jour_fixe?: boolean | null
           permanent_delete_at?: string | null
           priority_level?: number | null
+          revision?: number
           tags?: string[] | null
           task_archived_info?: Json | null
           task_id?: string | null
+          tenant_id?: string | null
           title?: string | null
           topic_backlog_id?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
-          tenant_id?: string | null
-          revision?: number
           added_to_meeting_at?: string | null
           archived_at?: string | null
           case_item_id?: string | null
@@ -9716,9 +9736,11 @@ export type Database = {
           pending_for_jour_fixe?: boolean | null
           permanent_delete_at?: string | null
           priority_level?: number | null
+          revision?: number
           tags?: string[] | null
           task_archived_info?: Json | null
           task_id?: string | null
+          tenant_id?: string | null
           title?: string | null
           topic_backlog_id?: string | null
           updated_at?: string
@@ -9751,6 +9773,13 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quick_notes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
           {
@@ -13198,11 +13227,6 @@ export type Database = {
       }
     }
     Functions: {
-      list_quick_notes: { Args: { p_tenant_id: string; p_note_id?: string }; Returns: Json }
-      save_quick_note: {
-        Args: { p_tenant_id: string; p_note_id: string; p_operation_id: string; p_actor_id: string; p_title: string | null; p_content: string; p_base_revision?: number; p_create?: boolean; p_color?: string | null; p_is_pinned?: boolean }
-        Returns: Json
-      }
       _meeting_default_end: { Args: { _date: string }; Returns: string }
       _meeting_default_start: { Args: { _date: string }; Returns: string }
       approve_gdpr_delete: {
@@ -13609,6 +13633,15 @@ export type Database = {
         Args: { p_assigned_to: string }
         Returns: string[]
       }
+      quick_note_access: {
+        Args: { p_edit?: boolean; p_note_id: string }
+        Returns: boolean
+      }
+      quick_note_member: {
+        Args: { p_tenant_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      quick_note_owned: { Args: { p_note_id: string }; Returns: boolean }
       reconcile_employee_meeting_requests: {
         Args: {
           p_employee_id?: string
