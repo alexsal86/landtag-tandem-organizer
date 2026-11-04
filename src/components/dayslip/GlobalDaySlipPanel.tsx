@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { WeeklyRoutineGrid } from "@/components/dayslip/WeeklyRoutineGrid";
 import { WeekPlanningBanner } from "@/components/dayslip/WeekPlanningBanner";
 import { DaySlipLexicalEditor } from "@/components/dayslip/DaySlipLexicalEditor";
+import { DaySlipCommandHelp } from "@/components/dayslip/DaySlipCommandHelp";
 import { useDaySlipStore } from "@/components/dayslip/hooks/useDaySlipStore";
 import {
   type DayTemplate, type TaskOptions,
@@ -266,6 +267,7 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
               <p className="text-xs text-muted-foreground">{formatDate(ds.todayKey)}</p>
             </div>
             <div className="flex items-center gap-2">
+              <DaySlipCommandHelp />
               <button type="button" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => switchView(showSettings ? "default" : "settings")} aria-label="Einstellungen anzeigen"><Settings className="h-4 w-4" /></button>
               <button type="button" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => switchView(showArchive ? "default" : "archive")} aria-label="Archiv anzeigen"><Folder className="h-4 w-4" /></button>
               <button type="button" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" onClick={animateClosePanel} aria-label="Panel schließen"><X className="h-4 w-4" /></button>
