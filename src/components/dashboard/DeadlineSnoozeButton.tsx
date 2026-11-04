@@ -51,22 +51,16 @@ export const DeadlineSnoozeButton = ({ item }: DeadlineSnoozeButtonProps) => {
 
   return (
     <span
-      className={cn(
-        'inline-flex items-center overflow-hidden shrink-0 transition-all duration-200 ease-out',
-        // Hover-driven slide-in (always visible while popover open)
-        popoverOpen
-          ? 'max-w-12 opacity-100 ml-1'
-          : 'max-w-0 opacity-0 ml-0 group-hover:max-w-12 group-hover:opacity-100 group-hover:ml-1',
-      )}
+      className="inline-flex items-center shrink-0"
       onClick={(e) => e.stopPropagation()}
     >
       <button
         type="button"
         onClick={handleQuickClick}
         disabled={isPending}
-        title="Wiedervorlage in 7 Tagen"
-        aria-label="Wiedervorlage in 7 Tagen"
-        className="rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-50"
+        title="Frist um 7 Tage ab heute verschieben"
+        aria-label="Frist um 7 Tage ab heute verschieben"
+        className="rounded p-2 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-50"
       >
         <AlarmClockPlus className="h-3.5 w-3.5" />
       </button>
@@ -86,9 +80,9 @@ export const DeadlineSnoozeButton = ({ item }: DeadlineSnoozeButtonProps) => {
               setPopoverOpen((v) => !v);
             }}
             disabled={isPending}
-            title="Anderes Intervall"
-            aria-label="Anderes Intervall wählen"
-            className="rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-50"
+            title="Neue Frist setzen"
+            aria-label="Neue Frist setzen"
+            className="rounded p-2 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-50"
           >
             <ChevronDown className="h-3 w-3" />
           </button>
@@ -110,7 +104,7 @@ export const DeadlineSnoozeButton = ({ item }: DeadlineSnoozeButtonProps) => {
           ) : (
             <div className="flex flex-col min-w-[180px]">
               <div className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Wiedervorlage in
+                Neue Frist setzen
               </div>
               {PRESETS.map((preset) => (
                 <button

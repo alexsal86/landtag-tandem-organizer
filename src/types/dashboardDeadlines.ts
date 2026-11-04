@@ -7,6 +7,8 @@ export interface DeadlineItem {
   type: DeadlineKind;
   planningId?: string;
   canSnooze: boolean;
+  priority?: number;
+  checklistItemId?: string;
 }
 
 export interface GroupedDeadlineItems {
@@ -17,6 +19,7 @@ export interface GroupedDeadlineItems {
 }
 
 export interface EventPlanningRelation {
+  user_id?: string;
   id?: string;
   title?: string;
   is_archived?: boolean;

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { addDays, isAfter, isBefore, isToday, startOfDay } from 'date-fns';
+import { groupDeadlineItems } from '@/utils/deadlineFormatting';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
@@ -26,7 +26,7 @@ const isAssignedToUser = (assignedTo: string | null | undefined, userId: string)
 
 const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<DeadlineItem[]> => {
   const [tasksRes, notesRes, casesRes, decisionsRes, planningDeadlinesRes] = await Promise.all([
-    supabase.from('tasks').select('id, title, due_date, assigned_to, user_id')
+    supabase.from('tasks').select('id, title, due_date, assigned_to, user_id, priority')
       .or(`assigned_to.eq.${userId},assigned_to.ilike.%${userId}%,user_id.eq.${userId}`)
       .neq('status', 'completed')
       .not('due_date', 'is', null),
@@ -36,12 +36,12 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
       .or('is_archived.is.null,is_archived.eq.false')
       .not('follow_up_date', 'is', null),
     tenantId
-      ? supabase.from('case_items').select('id, subject, due_at')
+      ? supabase.from('case_items').select('id, subject, due_at, priority, owner_user_id, user_id')
           .eq('tenant_id', tenantId)
           .not('due_at', 'is', null)
           .neq('status', 'erledigt')
       : Promise.resolve({ data: [] }),
-    supabase.from('task_decisions').select('id, title, response_deadline, created_by')
+    supabase.from('task_decisions').select('id, title, response_deadline, created_by, priority')
       .neq('status', 'resolved')
       .is('archived_at', null)
       .not('response_deadline', 'is', null),
@@ -56,33 +56,40 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
       `),
   ]);
 
+  for (const result of [tasksRes, notesRes, casesRes, decisionsRes, planningDeadlinesRes]) {
+    if ('error' in result && result.error) throw result.error;
+  }
+
   const all: DeadlineItem[] = [
-    ...(tasksRes.data || []).filter((t: Record<string, any>) => t.due_date && t.title?.trim()).map((t: Record<string, any>) => ({
+    ...(tasksRes.data || []).filter((t) => t.due_date && t.title?.trim()).map((t) => ({
       id: t.id,
       title: t.title.trim(),
-      dueDate: t.due_date,
+      dueDate: t.due_date!,
       type: 'task' as const,
+      priority: ({ urgent: 3, high: 2, medium: 1 } as Record<string, number>)[t.priority] ?? 0,
       canSnooze: isAssignedToUser(t.assigned_to, userId) || t.user_id === userId,
     })),
-    ...(notesRes.data || []).filter((n: Record<string, any>) => n.follow_up_date).map((n: Record<string, any>) => ({
+    ...(notesRes.data || []).filter((n) => n.follow_up_date).map((n) => ({
       id: n.id,
       title: (n.title || n.content || '').trim().substring(0, 80),
-      dueDate: n.follow_up_date,
+      dueDate: n.follow_up_date!,
       type: 'note' as const,
       canSnooze: true, // already filtered by user_id
     })),
-    ...(casesRes.data || []).filter((c: Record<string, any>) => c.due_at).map((c: Record<string, any>) => ({
+    ...(casesRes.data || []).filter((c) => c.due_at).map((c) => ({
       id: c.id,
       title: (c.subject || 'Vorgang').trim(),
-      dueDate: c.due_at,
+      dueDate: c.due_at!,
       type: 'case' as const,
-      canSnooze: false,
+      canSnooze: c.owner_user_id === userId || c.user_id === userId,
+      priority: ({ urgent: 3, high: 2, medium: 1 } as Record<string, number>)[c.priority] ?? 0,
     })),
-    ...(decisionsRes.data || []).filter((d: Record<string, any>) => d.response_deadline && d.title?.trim()).map((d: Record<string, any>) => ({
+    ...(decisionsRes.data || []).filter((d) => d.response_deadline && d.title?.trim()).map((d) => ({
       id: d.id,
       title: d.title.trim(),
-      dueDate: d.response_deadline,
+      dueDate: d.response_deadline!,
       type: 'decision' as const,
+      priority: d.priority ?? 0,
       canSnooze: d.created_by === userId,
     })),
     ...(((planningDeadlinesRes.data || []) as PlanningTimelineAssignment[])
@@ -101,15 +108,16 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
       .map((assignment) => {
         const planning = pickFirst<EventPlanningRelation>(assignment.event_plannings);
         const checklistItem = pickFirst<ChecklistRelation>(assignment.event_planning_checklist_items);
-        const checklistTitle = checklistItem?.title?.trim();
+        const checklistTitle = checklistItem?.title?.trim() ?? 'Veranstaltung';
         const planningTitle = planning?.title?.trim();
         return {
           id: assignment.id,
           title: planningTitle ? `${checklistTitle} · ${planningTitle}` : checklistTitle,
-          dueDate: assignment.due_date,
+          dueDate: assignment.due_date!,
           type: 'eventPlanning' as const,
-          planningId: planning?.id ?? assignment.event_planning_id,
-          canSnooze: false,
+          planningId: planning?.id ?? assignment.event_planning_id ?? undefined,
+          checklistItemId: checklistItem?.id,
+          canSnooze: planning?.user_id === userId,
         };
       })),
   ];
@@ -131,25 +139,7 @@ export const useDashboardDeadlines = () => {
     refetchOnWindowFocus: false,
   });
 
-  const grouped = useMemo<GroupedDeadlineItems>(() => {
-    const overdue: DeadlineItem[] = [];
-    const today: DeadlineItem[] = [];
-    const thisWeek: DeadlineItem[] = [];
-    const later: DeadlineItem[] = [];
-    const now = new Date();
-    const todayStart = startOfDay(now);
-    const sevenDaysOut = addDays(todayStart, 7);
-
-    for (const item of query.data ?? []) {
-      const date = new Date(item.dueDate);
-      if (isBefore(date, todayStart)) overdue.push(item);
-      else if (isToday(date)) today.push(item);
-      else if (!isAfter(date, sevenDaysOut)) thisWeek.push(item);
-      else later.push(item);
-    }
-
-    return { overdue, today, thisWeek, later };
-  }, [query.data]);
+  const grouped = useMemo<GroupedDeadlineItems>(() => groupDeadlineItems(query.data ?? []), [query.data]);
 
   return {
     items: query.data ?? [],

@@ -10,7 +10,8 @@ interface SnoozePayload {
   newDate: Date;
 }
 
-const performSnooze = async ({ item, newDate }: SnoozePayload): Promise<void> => {
+export const performSnooze = async ({ item, newDate }: SnoozePayload): Promise<void> => {
+  if (!item.canSnooze) throw new Error('Keine Berechtigung zum Ändern dieser Frist.');
   // Never schedule into the past — clamp to today at minimum.
   const today = startOfDay(new Date());
   const safeDate = newDate < today ? today : newDate;
@@ -22,7 +23,7 @@ const performSnooze = async ({ item, newDate }: SnoozePayload): Promise<void> =>
       const { error } = await supabase
         .from('tasks')
         .update({ due_date: dateStr })
-        .eq('id', item.id);
+        .eq('id', item.id).eq('due_date', item.dueDate).select('id').single();
       if (error) throw error;
       return;
     }
@@ -31,7 +32,7 @@ const performSnooze = async ({ item, newDate }: SnoozePayload): Promise<void> =>
       const { error } = await supabase
         .from('quick_notes')
         .update({ follow_up_date: safeDate.toISOString() })
-        .eq('id', item.id);
+        .eq('id', item.id).eq('follow_up_date', item.dueDate).select('id').single();
       if (error) throw error;
       return;
     }
@@ -40,8 +41,18 @@ const performSnooze = async ({ item, newDate }: SnoozePayload): Promise<void> =>
       const { error } = await supabase
         .from('task_decisions')
         .update({ response_deadline: safeDate.toISOString() })
-        .eq('id', item.id);
+        .eq('id', item.id).eq('response_deadline', item.dueDate).select('id').single();
       if (error) throw error;
+      return;
+    }
+    case 'case': {
+      const { error, data } = await supabase.from('case_items').update({ due_at: safeDate.toISOString() }).eq('id', item.id).eq('due_at', item.dueDate).select('id').single();
+      if (error || !data) throw error ?? new Error('Frist wurde zwischenzeitlich geändert.');
+      return;
+    }
+    case 'eventPlanning': {
+      const { error, data } = await supabase.from('event_planning_timeline_assignments').update({ due_date: format(safeDate, 'yyyy-MM-dd') }).eq('id', item.id).eq('due_date', item.dueDate).select('id').single();
+      if (error || !data) throw error ?? new Error('Frist wurde zwischenzeitlich geändert.');
       return;
     }
     default:
@@ -55,7 +66,7 @@ export const useSnoozeDeadline = () => {
   return useMutation({
     mutationFn: performSnooze,
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['dashboard-deadlines'] });
+      queryClient.invalidateQueries();
       const today = startOfDay(new Date());
       const safe = variables.newDate < today ? today : variables.newDate;
       notify.success(`Frist verschoben auf ${format(safe, 'EEEE, dd.MM.yyyy', { locale: de })}`);
