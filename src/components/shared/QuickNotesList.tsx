@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -380,7 +380,7 @@ export function QuickNotesList({
         ))}
       </div>
     );
-    const section = (label: string, notes: QuickNote[], icon?: React.ReactNode, followUp = false) =>
+    const section = (label: string, notes: QuickNote[], icon?: ReactNode, followUp = false) =>
       notes.length > 0 && (
         <section className="space-y-2">
           <div className="section-label flex items-center gap-1.5">{icon}{label}<span className="tabular-nums">· {notes.length}</span></div>
