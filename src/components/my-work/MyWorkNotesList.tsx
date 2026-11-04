@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Globe, Archive, Search, X, CheckSquare, Trash2, Settings2 } from "lucide-react";
+import { Globe, Archive, Search, X, CheckSquare, Trash2, Settings2, Filter } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNoteColorPalette, colorLabel } from "@/components/my-work/useNoteColorPalette";
 import { NoteColorPaletteDialog } from "@/components/my-work/NoteColorPaletteDialog";
@@ -32,6 +32,7 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
   const [visibleIds, setVisibleIds] = useState<string[]>([]);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const { palette, save } = useNoteColorPalette();
 
   const refresh = () => setLocalRefreshTrigger((prev) => prev + 1);
@@ -68,7 +69,16 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
     <>
       <section className="w-full space-y-4" aria-label="Meine Notizen">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-title font-semibold mr-auto">Meine Notizen</h2>
+          <Button
+            variant={showFilters || filterActive ? "secondary" : "ghost"}
+            size="sm"
+            className="mr-auto"
+            onClick={() => setShowFilters((v) => !v)}
+            aria-expanded={showFilters}
+          >
+            <Filter className="h-4 w-4" />
+            <span className="ml-1.5">Filter{filterActive ? " aktiv" : ""}</span>
+          </Button>
           <div className="relative w-56">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -96,7 +106,7 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
           </Button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        {(showFilters || filterActive) && <div className="flex flex-wrap items-center gap-2">
           {QUICK_NOTE_FILTERS.map((f) => (
             <button
               key={f.value}
@@ -143,7 +153,7 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
               {counts.filteredCount} von {counts.totalCount}
             </span>
           )}
-        </div>
+        </div>}
 
         {selectMode && (
           <div className="sticky top-0 z-sticky flex flex-wrap items-center gap-2 rounded-lg border bg-card px-3 py-2 shadow-sm">
