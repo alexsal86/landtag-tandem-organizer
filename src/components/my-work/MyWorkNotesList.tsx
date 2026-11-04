@@ -101,6 +101,7 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
             <button
               key={f.value}
               type="button"
+              title={f.hint}
               onClick={() => setFilter(f.value)}
               aria-pressed={filter === f.value}
               className={cn(
