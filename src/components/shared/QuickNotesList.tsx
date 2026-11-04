@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -17,6 +17,8 @@ import { NoteDialogs } from "@/components/shared/NoteDialogs";
 import { useTopicBacklog } from "@/features/redaktion/hooks/useTopicBacklog";
 import { supabase } from "@/integrations/supabase/client";
 import { notify } from "@/lib/notify";
+import { sendToDaySlip } from "@/lib/daySlipBridge";
+import { matchesNoteFilter, toggleChecklistItem, type QuickNoteFilter } from "@/components/shared/quickNoteBoard";
 // Type for archived info from database (JSON)
 type ArchivedInfo = { id: string; title: string; archived_at: string } | null;
 
@@ -69,6 +71,14 @@ interface QuickNotesListProps {
   searchQuery?: string;
   onSearchQueryChange?: (value: string) => void;
   onCountsChange?: (counts: { filteredCount: number; totalCount: number }) => void;
+  /** "list" = classic priority groups with drag & drop, "grid" = Keep-style board */
+  layout?: "list" | "grid";
+  filter?: QuickNoteFilter;
+  colorFilter?: string | null;
+  selectable?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (noteId: string) => void;
+  onVisibleIdsChange?: (ids: string[]) => void;
 }
 
 export function QuickNotesList({
@@ -80,6 +90,13 @@ export function QuickNotesList({
   searchQuery,
   onSearchQueryChange,
   onCountsChange,
+  layout = "list",
+  filter = "all",
+  colorFilter = null,
+  selectable = false,
+  selectedIds,
+  onToggleSelect,
+  onVisibleIdsChange,
 }: QuickNotesListProps) {
   const hook = useQuickNotes(refreshTrigger, searchQuery);
   const { isHighlighted, highlightRef } = useNotificationHighlight();
@@ -92,12 +109,20 @@ export function QuickNotesList({
     [onSearchQueryChange, hook.setSearchQuery]
   );
 
+  const matches = (note: QuickNote) => matchesNoteFilter(note, filter, colorFilter);
+  const visibleNotes = hook.filteredNotes.filter(matches);
+  const visibleIdsKey = visibleNotes.map((n) => n.id).join(",");
+
   useEffect(() => {
     onCountsChange?.({
-      filteredCount: hook.filteredNotes.length,
+      filteredCount: visibleNotes.length,
       totalCount: hook.notes.length,
     });
-  }, [hook.filteredNotes.length, hook.notes.length, onCountsChange]);
+  }, [visibleNotes.length, hook.notes.length, onCountsChange]);
+
+  useEffect(() => {
+    onVisibleIdsChange?.(visibleIdsKey ? visibleIdsKey.split(",") : []);
+  }, [visibleIdsKey, onVisibleIdsChange]);
 
   if (hook.loading) {
     return (
@@ -222,7 +247,27 @@ export function QuickNotesList({
     }
   };
 
+  const handleSendToDaySlip = (note: QuickNote) => {
+    const text = stripHtml(note.title || "") || stripHtml(note.content).slice(0, 160);
+    if (!text) { notify.error("Die Notiz ist leer"); return; }
+    sendToDaySlip({ text: `📝 ${text}`, source: { type: "note", id: note.id } });
+  };
+
+  const handleToggleChecklist = async (note: QuickNote, index: number) => {
+    const { error } = await supabase
+      .from("quick_notes")
+      .update({ content: toggleChecklistItem(note.content, index) })
+      .eq("id", note.id);
+    if (error) { notify.error("Punkt konnte nicht abgehakt werden"); return; }
+    await hook.loadNotes();
+  };
+
   const noteCardProps = (note: QuickNote) => ({
+    onSendToDaySlip: handleSendToDaySlip,
+    onToggleChecklist: handleToggleChecklist,
+    selectable,
+    selected: selectedIds?.has(note.id) ?? false,
+    onToggleSelect,
     note,
     userId: hook.user?.id,
     isExpanded: hook.expandedNotes.has(note.id),
@@ -258,6 +303,117 @@ export function QuickNotesList({
     isInThemenspeicher: !!note.topic_backlog_id,
     isTransferringToThemenspeicher: topicActionNoteId === note.id,
   });
+
+  const dialogs = (
+      <NoteDialogs
+        meetingSelectorOpen={hook.meetingSelectorOpen}
+        setMeetingSelectorOpen={hook.setMeetingSelectorOpen}
+        noteForMeeting={hook.noteForMeeting}
+        addNoteToMeeting={hook.addNoteToMeeting}
+        markForNextJourFixe={hook.markForNextJourFixe}
+        datePickerOpen={hook.datePickerOpen}
+        setDatePickerOpen={hook.setDatePickerOpen}
+        noteForDatePicker={hook.noteForDatePicker}
+        handleSetFollowUp={hook.handleSetFollowUp}
+        editDialogOpen={hook.editDialogOpen}
+        setEditDialogOpen={hook.setEditDialogOpen}
+        editingNote={hook.editingNote}
+        editTitle={hook.editTitle}
+        setEditTitle={hook.setEditTitle}
+        editContent={hook.editContent}
+        setEditContent={hook.setEditContent}
+        handleSaveEdit={hook.handleSaveEdit}
+        shareDialogOpen={hook.shareDialogOpen}
+        setShareDialogOpen={hook.setShareDialogOpen}
+        noteForShare={hook.noteForShare}
+        setNoteForShare={hook.setNoteForShare}
+        loadNotes={hook.loadNotes}
+        globalShareDialogOpen={hook.globalShareDialogOpen}
+        setGlobalShareDialogOpen={hook.setGlobalShareDialogOpen}
+        decisionCreatorOpen={hook.decisionCreatorOpen}
+        setDecisionCreatorOpen={hook.setDecisionCreatorOpen}
+        noteForDecision={hook.noteForDecision}
+        setNoteForDecision={hook.setNoteForDecision}
+        versionHistoryOpen={hook.versionHistoryOpen}
+        setVersionHistoryOpen={hook.setVersionHistoryOpen}
+        versionHistoryNote={hook.versionHistoryNote}
+        versions={hook.versions}
+        restoreVersion={hook.restoreVersion}
+        confirmDeleteTaskNote={hook.confirmDeleteTaskNote}
+        setConfirmDeleteTaskNote={hook.setConfirmDeleteTaskNote}
+        removeTaskFromNote={hook.removeTaskFromNote}
+        confirmRemoveDecision={hook.confirmRemoveDecision}
+        setConfirmRemoveDecision={hook.setConfirmRemoveDecision}
+        removeDecisionFromNote={hook.removeDecisionFromNote}
+        confirmRemoveCaseItem={hook.confirmRemoveCaseItem}
+        setConfirmRemoveCaseItem={hook.setConfirmRemoveCaseItem}
+        removeCaseItemFromNote={hook.removeCaseItemFromNote}
+        confirmDeleteLinkedNote={hook.confirmDeleteLinkedNote}
+        setConfirmDeleteLinkedNote={hook.setConfirmDeleteLinkedNote}
+        deleteLinkedTask={hook.deleteLinkedTask}
+        setDeleteLinkedTask={hook.setDeleteLinkedTask}
+        deleteLinkedDecision={hook.deleteLinkedDecision}
+        setDeleteLinkedDecision={hook.setDeleteLinkedDecision}
+        deleteLinkedCaseItem={hook.deleteLinkedCaseItem}
+        setDeleteLinkedCaseItem={hook.setDeleteLinkedCaseItem}
+        deleteLinkedMeeting={hook.deleteLinkedMeeting}
+        setDeleteLinkedMeeting={hook.setDeleteLinkedMeeting}
+        handleDeleteNoteWithLinks={hook.handleDeleteNoteWithLinks}
+      />
+  );
+
+  if (layout === "grid") {
+    const byPriority = (a: QuickNote, b: QuickNote) =>
+      (b.priority_level || 0) - (a.priority_level || 0) ||
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    const due = hook.followUpNotes.filter(matches);
+    const scheduled = hook.scheduledFollowUps.filter(matches);
+    const rest = hook.groups.flatMap((g) => g.notes).filter(matches).sort(byPriority);
+    const pinned = rest.filter((n) => n.is_pinned);
+    const others = rest.filter((n) => !n.is_pinned);
+    const board = (notes: QuickNote[], followUp = false) => (
+      <div className="columns-1 sm:columns-2 xl:columns-3 gap-4">
+        {notes.map((note) => (
+          <div key={note.id} className="mb-4 break-inside-avoid">
+            <NoteCard {...noteCardProps(note)} showFollowUpBadge={followUp} />
+          </div>
+        ))}
+      </div>
+    );
+    const section = (label: string, notes: QuickNote[], icon?: ReactNode, followUp = false) =>
+      notes.length > 0 && (
+        <section className="space-y-2">
+          <div className="section-label flex items-center gap-1.5">{icon}{label}<span className="tabular-nums">· {notes.length}</span></div>
+          {board(notes, followUp)}
+        </section>
+      );
+
+    return (
+      <>
+        <div className="space-y-6">
+          {visibleNotes.length === 0 && (
+            <div className="p-6 text-center text-muted-foreground">
+              <StickyNote className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">Keine Notizen für diesen Filter</p>
+            </div>
+          )}
+          {section("Fällige Wiedervorlagen", due, <Clock className="h-3.5 w-3.5 text-palette-amber" />, true)}
+          {section("Angeheftet", pinned)}
+          {section(pinned.length > 0 ? "Weitere" : "Notizen", others)}
+          {scheduled.length > 0 && (
+            <Collapsible open={hook.scheduledFollowUpsExpanded} onOpenChange={hook.setScheduledFollowUpsExpanded}>
+              <CollapsibleTrigger className="section-label flex items-center gap-1.5 rounded px-1 py-1 hover:bg-muted/50">
+                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !hook.scheduledFollowUpsExpanded && "-rotate-90")} />
+                <Hourglass className="h-3.5 w-3.5" />Geplant (bis zum Datum ausgeblendet)<span className="tabular-nums">· {scheduled.length}</span>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-2">{board(scheduled, true)}</CollapsibleContent>
+            </Collapsible>
+          )}
+        </div>
+        {dialogs}
+      </>
+    );
+  }
 
   return (
     <>
@@ -370,62 +526,7 @@ export function QuickNotesList({
         </DragDropContext>
       </ScrollArea>
 
-      {/* All Dialogs */}
-      <NoteDialogs
-        meetingSelectorOpen={hook.meetingSelectorOpen}
-        setMeetingSelectorOpen={hook.setMeetingSelectorOpen}
-        noteForMeeting={hook.noteForMeeting}
-        addNoteToMeeting={hook.addNoteToMeeting}
-        markForNextJourFixe={hook.markForNextJourFixe}
-        datePickerOpen={hook.datePickerOpen}
-        setDatePickerOpen={hook.setDatePickerOpen}
-        noteForDatePicker={hook.noteForDatePicker}
-        handleSetFollowUp={hook.handleSetFollowUp}
-        editDialogOpen={hook.editDialogOpen}
-        setEditDialogOpen={hook.setEditDialogOpen}
-        editingNote={hook.editingNote}
-        editTitle={hook.editTitle}
-        setEditTitle={hook.setEditTitle}
-        editContent={hook.editContent}
-        setEditContent={hook.setEditContent}
-        handleSaveEdit={hook.handleSaveEdit}
-        shareDialogOpen={hook.shareDialogOpen}
-        setShareDialogOpen={hook.setShareDialogOpen}
-        noteForShare={hook.noteForShare}
-        setNoteForShare={hook.setNoteForShare}
-        loadNotes={hook.loadNotes}
-        globalShareDialogOpen={hook.globalShareDialogOpen}
-        setGlobalShareDialogOpen={hook.setGlobalShareDialogOpen}
-        decisionCreatorOpen={hook.decisionCreatorOpen}
-        setDecisionCreatorOpen={hook.setDecisionCreatorOpen}
-        noteForDecision={hook.noteForDecision}
-        setNoteForDecision={hook.setNoteForDecision}
-        versionHistoryOpen={hook.versionHistoryOpen}
-        setVersionHistoryOpen={hook.setVersionHistoryOpen}
-        versionHistoryNote={hook.versionHistoryNote}
-        versions={hook.versions}
-        restoreVersion={hook.restoreVersion}
-        confirmDeleteTaskNote={hook.confirmDeleteTaskNote}
-        setConfirmDeleteTaskNote={hook.setConfirmDeleteTaskNote}
-        removeTaskFromNote={hook.removeTaskFromNote}
-        confirmRemoveDecision={hook.confirmRemoveDecision}
-        setConfirmRemoveDecision={hook.setConfirmRemoveDecision}
-        removeDecisionFromNote={hook.removeDecisionFromNote}
-        confirmRemoveCaseItem={hook.confirmRemoveCaseItem}
-        setConfirmRemoveCaseItem={hook.setConfirmRemoveCaseItem}
-        removeCaseItemFromNote={hook.removeCaseItemFromNote}
-        confirmDeleteLinkedNote={hook.confirmDeleteLinkedNote}
-        setConfirmDeleteLinkedNote={hook.setConfirmDeleteLinkedNote}
-        deleteLinkedTask={hook.deleteLinkedTask}
-        setDeleteLinkedTask={hook.setDeleteLinkedTask}
-        deleteLinkedDecision={hook.deleteLinkedDecision}
-        setDeleteLinkedDecision={hook.setDeleteLinkedDecision}
-        deleteLinkedCaseItem={hook.deleteLinkedCaseItem}
-        setDeleteLinkedCaseItem={hook.setDeleteLinkedCaseItem}
-        deleteLinkedMeeting={hook.deleteLinkedMeeting}
-        setDeleteLinkedMeeting={hook.setDeleteLinkedMeeting}
-        handleDeleteNoteWithLinks={hook.handleDeleteNoteWithLinks}
-      />
+      {dialogs}
     </>
   );
 }

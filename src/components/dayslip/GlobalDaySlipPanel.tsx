@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { DAY_SLIP_APPEND_EVENT, type DaySlipAppendDetail } from "@/lib/daySlipBridge";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useTenantUsers } from "@/hooks/useTenantUsers";
@@ -213,6 +214,19 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
     const sourceType = ["task", "note", "case", "decision"].includes(droppedItemType) ? droppedItemType as "task" | "note" | "case" | "decision" : "task";
     ds.appendLinesToToday([withIcon], droppedTaskId ? { type: sourceType, id: droppedTaskId } : undefined);
     setOpen(true); ds.setResolveMode(false); setShowArchive(false); setShowSettings(false);
+  }, [ds]);
+
+  useEffect(() => {
+    const onAppend = (event: Event) => {
+      const detail = (event as CustomEvent<DaySlipAppendDetail>).detail;
+      const text = detail?.text?.trim();
+      if (!text) return;
+      if (ds.todayData.completedAt || !ds.ready || ds.isProcessing) { toast.info("Bitte den Tageszettel zuerst öffnen und den Tag gegebenenfalls wieder öffnen."); return; }
+      ds.appendLinesToToday([text], detail.source);
+      toast.success("Auf den Tageszettel gesetzt");
+    };
+    window.addEventListener(DAY_SLIP_APPEND_EVENT, onAppend);
+    return () => window.removeEventListener(DAY_SLIP_APPEND_EVENT, onAppend);
   }, [ds]);
 
   const handleDaySlipButtonDragOver = useCallback((event: DragEvent<HTMLButtonElement>) => {
