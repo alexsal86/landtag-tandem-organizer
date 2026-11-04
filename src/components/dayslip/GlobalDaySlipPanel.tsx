@@ -16,6 +16,7 @@ import { WeeklyRoutineGrid } from "@/components/dayslip/WeeklyRoutineGrid";
 import { WeekPlanningBanner } from "@/components/dayslip/WeekPlanningBanner";
 import { DaySlipLexicalEditor } from "@/components/dayslip/DaySlipLexicalEditor";
 import { DaySlipCommandHelp } from "@/components/dayslip/DaySlipCommandHelp";
+import { DaySlipPages } from "@/components/dayslip/DaySlipPages";
 import { useDaySlipStore } from "@/components/dayslip/hooks/useDaySlipStore";
 import {
   type DayTemplate, type TaskOptions,
@@ -388,13 +389,14 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
               />
 
               {ds.resolveMode && ds.triageEntries.length > 0 && (
-                <div className="flex-1 border-b border-border/60">
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-b border-border/60">
                   <div className="border-b border-border/60 bg-muted/30 px-4 py-3">
                     <p className="text-sm font-medium">
                       {ds.unresolvedCount > 0 ? `${ds.unresolvedCount} ${ds.unresolvedCount === 1 ? "Eintrag" : "Einträge"} noch offen – was soll damit passieren?` : "Alle Einträge sind zugewiesen. Du kannst den Tag jetzt abschließen."}
                     </p>
                   </div>
-                  <div className="h-full space-y-2 overflow-y-auto p-4">
+                  <DaySlipPages>
+                  <div className="space-y-2 p-4">
                     {ds.unresolvedCount === 0 && (() => {
                       const resolved = ds.resolvedItems;
                       const noteCount = resolved.filter(r => r.target === "note").length;
@@ -475,10 +477,11 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
                       );
                     })}
                   </div>
+                  </DaySlipPages>
                 </div>
               )}
 
-              {Object.entries(ds.todayData.sources ?? {}).length > 0 && <div className="max-h-24 overflow-y-auto border-b px-4 py-2 text-xs">
+              {Object.entries(ds.todayData.sources ?? {}).length > 0 && <div className="max-h-24 shrink-0 overflow-y-auto border-b px-4 py-2 text-xs">
                 {Object.entries(ds.todayData.sources ?? {}).map(([lineId, source]) => <button key={lineId} className="mb-1 flex items-center gap-1 text-primary underline" onClick={() => navigate(sourcePath(source))}><ExternalLink className="h-3 w-3" />{ds.allLineEntries.find(line => line.id === lineId)?.text || "Original öffnen"}</button>)}
               </div>}
               {!ds.resolveMode && ds.resolvedItems.length > 0 && <div className="border-b px-4 py-2 text-xs">
@@ -487,7 +490,7 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
                 {!ds.todayData.completedAt && <button className="mt-1 underline" onClick={() => ds.setResolveMode(true)}>Zuordnung prüfen</button>}
               </div>}
               {/* Footer */}
-              <div className="space-y-2 p-3">
+              <div className="shrink-0 space-y-2 p-3">
                 {ds.resolveMode && (
                   <div className="rounded-lg border border-border/60 px-3 py-2">
                     <p className="mb-1 text-[11px] text-muted-foreground">Wie war dein Tag?</p>

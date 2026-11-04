@@ -26,6 +26,7 @@ import FloatingTextFormatToolbar from "@/components/lexical/FloatingTextFormatTo
 import { $createDaySlipLineNode } from "@/components/lexical/DaySlipLineNode";
 import { $createLabeledHorizontalRuleNode } from "@/components/lexical/LabeledHorizontalRuleNode";
 import { parseRuleLine } from "./dayslipTypes";
+import { DaySlipPages } from "./DaySlipPages";
 
 // ─── Lexical Plugins ─────────────────────────────────────────────────────────
 
@@ -158,7 +159,7 @@ export const DaySlipLexicalEditor = memo(function DaySlipLexicalEditor(props: Da
 
   return (
     <div
-      className={`relative flex-1 border-b border-border/60${hidden ? " hidden" : ""}`}
+      className={`relative flex min-h-0 flex-1 flex-col overflow-hidden border-b border-border/60${hidden ? " hidden" : ""}`}
       onClick={onEditorClick}
       onContextMenu={onEditorContextMenu}
       onDragOver={(event) => event.preventDefault()}
@@ -166,9 +167,9 @@ export const DaySlipLexicalEditor = memo(function DaySlipLexicalEditor(props: Da
     >
       <LexicalComposer initialConfig={editorConfig}>
         <EditorEditablePlugin editable={!resolveMode && !readOnly} />
-        <div className="relative h-full">
+        <DaySlipPages>
           <RichTextPlugin
-            contentEditable={<ContentEditable className="editor-input h-full min-h-[340px] p-4 text-sm focus:outline-none" />}
+            contentEditable={<ContentEditable className="editor-input min-h-full flex-1 p-4 text-sm focus:outline-none" />}
             placeholder={
               <div className={`pointer-events-none absolute left-4 top-4 whitespace-pre-line text-base italic text-muted-foreground transition-opacity duration-200 ${isFocused ? "opacity-0" : "opacity-100"}`}>
                 {"Was steht heute an? Einfach drauflos schreiben …\n\n— Rückruf Joschka\n— Pressemitteilung Schulgesetz abstimmen\n— Unterlagen Ausschusssitzung"}
@@ -177,7 +178,7 @@ export const DaySlipLexicalEditor = memo(function DaySlipLexicalEditor(props: Da
             ErrorBoundary={LexicalErrorBoundary}
           />
           {!resolveMode && !readOnly && <FloatingTextFormatToolbar />}
-        </div>
+        </DaySlipPages>
         <OnChangePlugin onChange={onEditorChange} ignoreSelectionChange />
         <EditorReadyPlugin onEditorReady={onEditorReady} />
         <HistoryPlugin />
