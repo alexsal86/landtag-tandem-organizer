@@ -94,7 +94,7 @@ export function NoteCard({
   const [transferPopoverOpen, setTransferPopoverOpen] = useState(false);
   const fullText = note.content.replace(/<[^>]*>/g, '');
   const needsTruncation = fullText.length > 150;
-  const hasLinkedItems = note.task_id || note.decision_id || note.meeting_id;
+  const hasLinkedItems = note.task_id || note.decision_id || note.meeting_id || note.case_item_id;
   const hasShared = (note.share_count || 0) > 0 || note.is_shared === true;
 
   return (
@@ -219,16 +219,16 @@ export function NoteCard({
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              {hasLinkedItems && <span className="text-sm text-muted-foreground hidden group-hover:inline group-hover:opacity-0">→</span>}
+            <div className="flex items-center gap-1 flex-shrink-0 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
               {note.user_id === userId && (
                 <DropdownMenu>
+                  <TooltipProvider><Tooltip><TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-6 px-2 gap-1 rounded-full text-xs text-muted-foreground hover:text-foreground" onClick={(e) => e.stopPropagation()} aria-label="Umwandeln in">
+                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80" onClick={(e) => e.stopPropagation()} aria-label="Umwandeln">
                       <Wand2 className="h-3 w-3" />
-                      <span className="hidden sm:inline">Umwandeln</span>
                     </Button>
                   </DropdownMenuTrigger>
+                  </TooltipTrigger><TooltipContent side="top">Umwandeln</TooltipContent></Tooltip></TooltipProvider>
                   <DropdownMenuContent align="end" className="w-60" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenuItem onClick={() => (note.task_id ? onRemoveTask(note) : onCreateTask(note))} className={cn(note.task_id && "text-palette-blue")}>
                       <CheckSquare className="h-3 w-3 mr-2" />{note.task_id ? "Aufgabe entfernen" : "Aufgabe"}
@@ -263,7 +263,7 @@ export function NoteCard({
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
-              <div className={cn("flex items-center gap-1", "opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200")}>
+              <div className="flex items-center gap-1 text-muted-foreground">
                 {hasLinkedItems && (
                   <>
                     <button className="text-xs text-muted-foreground hover:text-foreground flex items-center" onClick={(e) => onToggleDetailsExpand(note.id, e)}>
@@ -276,17 +276,17 @@ export function NoteCard({
                 {note.user_id === userId && (
                   <TooltipProvider><div className="flex items-center gap-1">
                     <Tooltip><TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-muted/80 rounded-full" onClick={(e) => { e.stopPropagation(); onOpenEdit(note); }}>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-full" onClick={(e) => { e.stopPropagation(); onOpenEdit(note); }}>
                         <Pencil className="h-3 w-3" />
                       </Button>
                     </TooltipTrigger><TooltipContent side="top">Bearbeiten</TooltipContent></Tooltip>
                     <Tooltip><TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.follow_up_date && "text-palette-amber")} onClick={(e) => { e.stopPropagation(); onOpenDatePicker(note); }}>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-full" onClick={(e) => { e.stopPropagation(); onOpenDatePicker(note); }}>
                         <Clock className="h-3 w-3" />
                       </Button>
                     </TooltipTrigger><TooltipContent side="top">Wiedervorlage</TooltipContent></Tooltip>
                     <Tooltip><TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-muted/80 rounded-full" onClick={(e) => { e.stopPropagation(); onArchive(note.id); }}>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-full" onClick={(e) => { e.stopPropagation(); onArchive(note.id); }}>
                         <Archive className="h-3 w-3" />
                       </Button>
                     </TooltipTrigger><TooltipContent side="top">Archivieren</TooltipContent></Tooltip>
