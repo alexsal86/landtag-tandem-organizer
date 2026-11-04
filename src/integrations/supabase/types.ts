@@ -13183,6 +13183,10 @@ export type Database = {
       }
     }
     Functions: {
+      delete_quick_note_with_links: {
+        Args: { p_note_id: string; p_delete_task?: boolean; p_delete_decision?: boolean; p_archive_case_item?: boolean; p_remove_meeting?: boolean }
+        Returns: undefined
+      }
       _meeting_default_end: { Args: { _date: string }; Returns: string }
       _meeting_default_start: { Args: { _date: string }; Returns: string }
       approve_gdpr_delete: {

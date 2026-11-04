@@ -34,6 +34,7 @@ interface NoteDialogsProps {
   noteForDatePicker: QuickNote | null;
   handleSetFollowUp: (noteId: string, date: Date | null) => void;
 
+  draftStatus?: string;
   // Edit dialog
   editDialogOpen: boolean;
   setEditDialogOpen: (open: boolean) => void;
@@ -42,6 +43,7 @@ interface NoteDialogsProps {
   setEditTitle: (val: string) => void;
   editContent: string;
   setEditContent: (val: string) => void;
+  savingEdit?: boolean;
   handleSaveEdit: () => void;
 
   // Share
@@ -91,27 +93,28 @@ interface NoteDialogsProps {
   setDeleteLinkedCaseItem: (val: boolean) => void;
   deleteLinkedMeeting: boolean;
   setDeleteLinkedMeeting: (val: boolean) => void;
+  deletingLinkedNote?: boolean;
   handleDeleteNoteWithLinks: () => void;
 }
 
 export function NoteDialogs(props: NoteDialogsProps) {
   const handleEditTitleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !e.nativeEvent.isComposing) {
       const mentionMenuOpen = !!document.querySelector('.mentions-menu');
       if (mentionMenuOpen) return;
       e.preventDefault();
-      if (stripHtml(props.editTitle) || stripHtml(props.editContent)) {
+      if (!props.savingEdit && (stripHtml(props.editTitle) || stripHtml(props.editContent))) {
         void props.handleSaveEdit();
       }
     }
   };
 
   const handleEditContentKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !e.nativeEvent.isComposing) {
       const mentionMenuOpen = !!document.querySelector('.mentions-menu');
       if (mentionMenuOpen) return;
       e.preventDefault();
-      if (stripHtml(props.editTitle) || stripHtml(props.editContent)) {
+      if (!props.savingEdit && (stripHtml(props.editTitle) || stripHtml(props.editContent))) {
         void props.handleSaveEdit();
       }
     }
@@ -148,7 +151,7 @@ export function NoteDialogs(props: NoteDialogsProps) {
       </Dialog>
 
       {/* Edit Dialog */}
-      <Dialog open={props.editDialogOpen} onOpenChange={props.setEditDialogOpen}>
+      <Dialog open={props.editDialogOpen} onOpenChange={(open) => { if (!props.savingEdit) props.setEditDialogOpen(open); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Notiz bearbeiten</DialogTitle>
@@ -158,6 +161,7 @@ export function NoteDialogs(props: NoteDialogsProps) {
             <SimpleRichTextEditor
               key={`title-${props.editDialogOpen ? props.editingNote?.id : 'closed'}`}
               initialContent={props.editTitle}
+              disabled={props.savingEdit}
               onChange={props.setEditTitle}
               onKeyDown={handleEditTitleKeyDown}
               placeholder="Titel (optional)"
@@ -167,16 +171,18 @@ export function NoteDialogs(props: NoteDialogsProps) {
             <SimpleRichTextEditor
               key={props.editDialogOpen ? props.editingNote?.id : 'closed'}
               initialContent={props.editContent}
+              disabled={props.savingEdit}
               onChange={props.setEditContent}
               onKeyDown={handleEditContentKeyDown}
               placeholder="Inhalt"
               minHeight="150px"
             />
-            <p className="text-xs text-muted-foreground">Enter speichert, Shift + Enter erzeugt eine neue Zeile.</p>
+            <p role="status" className="text-xs text-muted-foreground">{props.draftStatus}</p>
+            <p className="text-xs text-muted-foreground">Enter erzeugt einen Absatz. Strg/Cmd + Enter speichert.</p>
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => props.setEditDialogOpen(false)}>Abbrechen</Button>
-            <Button onClick={props.handleSaveEdit} disabled={!stripHtml(props.editTitle) && !stripHtml(props.editContent)}>Speichern</Button>
+            <Button variant="outline" disabled={props.savingEdit} onClick={() => props.setEditDialogOpen(false)}>Schließen</Button>
+            <Button onClick={props.handleSaveEdit} disabled={props.savingEdit || (!stripHtml(props.editTitle) && !stripHtml(props.editContent))}>{props.savingEdit ? "Wird gespeichert…" : "Speichern"}</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -287,16 +293,16 @@ export function NoteDialogs(props: NoteDialogsProps) {
       </AlertDialog>
 
       {/* Confirm Delete Note with Links */}
-      <AlertDialog open={!!props.confirmDeleteLinkedNote} onOpenChange={(open) => !open && props.setConfirmDeleteLinkedNote(null)}>
+      <AlertDialog open={!!props.confirmDeleteLinkedNote} onOpenChange={(open) => !open && !props.deletingLinkedNote && props.setConfirmDeleteLinkedNote(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Notiz mit Verknüpfungen löschen?</AlertDialogTitle>
-            <AlertDialogDescription>Diese Notiz hat verknüpfte Elemente. Was soll mit ihnen geschehen?</AlertDialogDescription>
+            <AlertDialogDescription>Nur die Notiz wird in den Papierkorb verschoben. Verknüpfte Elemente bleiben erhalten, sofern Sie diese nicht ausdrücklich auswählen.</AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-3 py-4">
             {props.confirmDeleteLinkedNote?.task_id && (
               <div className="flex items-center gap-3">
-                <Checkbox id="delete-task" checked={props.deleteLinkedTask} onCheckedChange={(checked) => props.setDeleteLinkedTask(!!checked)} />
+                <Checkbox disabled={props.deletingLinkedNote} id="delete-task" checked={props.deleteLinkedTask} onCheckedChange={(checked) => props.setDeleteLinkedTask(!!checked)} />
                 <label htmlFor="delete-task" className="text-sm flex items-center gap-2 cursor-pointer">
                   <CheckSquare className="h-4 w-4 text-palette-blue" />Verknüpfte Aufgabe auch löschen
                 </label>
@@ -304,7 +310,7 @@ export function NoteDialogs(props: NoteDialogsProps) {
             )}
             {props.confirmDeleteLinkedNote?.decision_id && (
               <div className="flex items-center gap-3">
-                <Checkbox id="delete-decision" checked={props.deleteLinkedDecision} onCheckedChange={(checked) => props.setDeleteLinkedDecision(!!checked)} />
+                <Checkbox disabled={props.deletingLinkedNote} id="delete-decision" checked={props.deleteLinkedDecision} onCheckedChange={(checked) => props.setDeleteLinkedDecision(!!checked)} />
                 <label htmlFor="delete-decision" className="text-sm flex items-center gap-2 cursor-pointer">
                   <Vote className="h-4 w-4 text-palette-purple" />Verknüpfte Entscheidung auch löschen
                 </label>
@@ -312,7 +318,7 @@ export function NoteDialogs(props: NoteDialogsProps) {
             )}
             {props.confirmDeleteLinkedNote?.case_item_id && (
               <div className="flex items-center gap-3">
-                <Checkbox id="delete-case-item" checked={props.deleteLinkedCaseItem} onCheckedChange={(checked) => props.setDeleteLinkedCaseItem(!!checked)} />
+                <Checkbox disabled={props.deletingLinkedNote} id="delete-case-item" checked={props.deleteLinkedCaseItem} onCheckedChange={(checked) => props.setDeleteLinkedCaseItem(!!checked)} />
                 <label htmlFor="delete-case-item" className="text-sm flex items-center gap-2 cursor-pointer">
                   <FileText className="h-4 w-4 text-palette-teal" />Verknüpften Vorgang archivieren
                 </label>
@@ -320,7 +326,7 @@ export function NoteDialogs(props: NoteDialogsProps) {
             )}
             {props.confirmDeleteLinkedNote?.meeting_id && (
               <div className="flex items-center gap-3">
-                <Checkbox id="delete-meeting" checked={props.deleteLinkedMeeting} onCheckedChange={(checked) => props.setDeleteLinkedMeeting(!!checked)} />
+                <Checkbox disabled={props.deletingLinkedNote} id="delete-meeting" checked={props.deleteLinkedMeeting} onCheckedChange={(checked) => props.setDeleteLinkedMeeting(!!checked)} />
                 <label htmlFor="delete-meeting" className="text-sm flex items-center gap-2 cursor-pointer">
                   <CalendarIcon className="h-4 w-4 text-palette-green" />Vom Jour Fixe entfernen
                 </label>
@@ -328,9 +334,9 @@ export function NoteDialogs(props: NoteDialogsProps) {
             )}
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-            <AlertDialogAction onClick={props.handleDeleteNoteWithLinks} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Löschen
+            <AlertDialogCancel disabled={props.deletingLinkedNote}>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction disabled={props.deletingLinkedNote} onClick={(e) => { e.preventDefault(); props.handleDeleteNoteWithLinks(); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {props.deletingLinkedNote ? "Wird gelöscht…" : "Löschen"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

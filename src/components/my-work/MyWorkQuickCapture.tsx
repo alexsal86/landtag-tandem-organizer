@@ -1,3 +1,4 @@
+import { useQuickNoteDraft } from "@/hooks/useQuickNoteDraft";
 import { useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,8 +17,7 @@ interface MyWorkQuickCaptureProps {
 }
 
 export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
-  const [content, setContent] = useState("");
-  const [title, setTitle] = useState("");
+  const { title, content, setTitle, setContent, clearDraft, draftStatus } = useQuickNoteDraft("capture");
   const [selectedColor, setSelectedColor] = useState("#3b82f6");
   const [isPinned, setIsPinned] = useState(false);
   const [editorResetKey, setEditorResetKey] = useState(0);
@@ -27,8 +27,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
   const canSaveNote = Boolean(stripHtml(title) || stripHtml(content));
 
   const resetQuickCaptureForm = () => {
-    setContent("");
-    setTitle("");
+    clearDraft();
     setSelectedColor("#3b82f6");
     setIsPinned(false);
     setEditorResetKey((prev) => prev + 1);
@@ -51,9 +50,9 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
   });
 
   const handleEditorKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !e.nativeEvent.isComposing) {
       e.preventDefault();
-      if (!saving && canSaveNote) {
+      if (!saving && !savingAsTask && canSaveNote) {
         void handleSaveNote();
       }
     }
@@ -71,12 +70,12 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
       }
       return;
     }
-    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !e.nativeEvent.isComposing) {
       const mentionMenuOpen = !!document.querySelector('.mentions-menu');
       if (mentionMenuOpen) return;
 
       e.preventDefault();
-      if (!saving && canSaveNote) {
+      if (!saving && !savingAsTask && canSaveNote) {
         void handleSaveNote();
       }
     }
@@ -91,7 +90,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
           className="flex flex-1 items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
         >
           <StickyNote className="h-4 w-4" />
-          <span className="flex-1 text-body">Notiz erfassen…</span>
+          <span className="flex-1 text-body">{canSaveNote ? "Entwurf fortsetzen…" : "Notiz erfassen…"}</span>
         </button>
         <TooltipProvider>
           <Tooltip>
@@ -103,7 +102,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
             <TooltipContent side="bottom" className="max-w-xs space-y-1">
               <p>„[ ] Punkt" am Zeilenanfang wird zur abhakbaren Checkbox.</p>
               <p>Über „Umwandeln" landet eine Notiz als Aufgabe, Entscheidung, Vorgang, im Jour fixe oder auf dem Tageszettel.</p>
-              <p>Enter speichert, Shift + Enter erzeugt eine neue Zeile.</p>
+              <p>Enter erzeugt einen Absatz. Strg/Cmd + Enter speichert.</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -129,7 +128,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Enter speichert, Shift + Enter erzeugt eine neue Zeile.</p>
+                  <p>Enter erzeugt einen Absatz. Strg/Cmd + Enter speichert.</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -175,6 +174,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
         <SimpleRichTextEditor
           key={`title-${editorResetKey}`}
           initialContent={toEditorHtml(title)}
+          disabled={saving || savingAsTask}
           onChange={setTitle}
           onKeyDown={handleTitleKeyDown}
           placeholder="Titel (@ für Mentions)"
@@ -186,16 +186,18 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
           <SimpleRichTextEditor
             key={editorResetKey}
             initialContent={toEditorHtml(content)}
+            disabled={saving || savingAsTask}
             onChange={setContent}
             onKeyDown={handleEditorKeyDown}
             placeholder="Was möchtest du festhalten? „[ ] “ am Zeilenanfang = Checkbox, Mikrofon = Diktat"
             minHeight="100px"
           />
         </div>
+        <p role="status" className="text-xs text-muted-foreground">{draftStatus}</p>
         <div className="flex gap-2 flex-wrap">
           <Button
             onClick={handleSaveNote}
-            disabled={!canSaveNote || saving}
+            disabled={!canSaveNote || saving || savingAsTask}
             size="sm"
           >
             {saving ? (
@@ -208,7 +210,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
           <Button
             variant="outline"
             onClick={handleSaveAsTask}
-            disabled={!stripHtml(content) || savingAsTask}
+            disabled={!stripHtml(content) || saving || savingAsTask}
             size="sm"
           >
             {savingAsTask ? (
@@ -218,7 +220,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
             )}
             Als Aufgabe
           </Button>
-          <Button variant="ghost" size="sm" className="ml-auto" onClick={() => setExpanded(false)}>
+          <Button variant="ghost" size="sm" className="ml-auto" disabled={saving || savingAsTask} onClick={() => setExpanded(false)}>
             <ChevronUp className="mr-1.5 h-4 w-4" />
             Schließen
           </Button>

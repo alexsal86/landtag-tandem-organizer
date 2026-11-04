@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useQuickNoteDraft } from "@/hooks/useQuickNoteDraft";
+import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { StickyNote, Keyboard, Loader2, Info } from "lucide-react";
@@ -20,8 +21,7 @@ interface GlobalQuickNoteDialogProps {
 export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDialogProps) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
+  const { title, content, setTitle, setContent, clearDraft, draftStatus } = useQuickNoteDraft("global");
   const [saving, setSaving] = useState(false);
   const [mentionPromptOpen, setMentionPromptOpen] = useState(false);
   const [newNoteId, setNewNoteId] = useState<string | null>(null);
@@ -37,14 +37,6 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")}</p>`;
   };
-
-  // Reset form when dialog opens
-  useEffect(() => {
-    if (open) {
-      setTitle("");
-      setContent("");
-    }
-  }, [open]);
 
   const handleSave = async () => {
     if (savingRef.current) return;
@@ -115,6 +107,7 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
         detail: { note: data } 
       }));
       
+      clearDraft();
       onOpenChange(false);
     } catch (error: unknown) {
       debugConsole.error("Error creating quick note:", error);
@@ -150,7 +143,7 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
 
   // Handle Enter key in title editor for quick save
   const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !e.nativeEvent.isComposing) {
       const mentionMenuOpen = !!document.querySelector('.mentions-menu');
 
       if (!mentionMenuOpen) {
@@ -163,7 +156,7 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
   };
 
   const handleContentKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !e.nativeEvent.isComposing) {
       e.preventDefault();
       if (!savingRef.current) {
         void handleSave();
@@ -172,7 +165,7 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!savingRef.current) onOpenChange(nextOpen); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -185,6 +178,7 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
           <SimpleRichTextEditor
             key={open ? 'global-quick-note-title-open' : 'global-quick-note-title-closed'}
             initialContent={toEditorHtml(title)}
+            disabled={saving}
             onChange={setTitle}
             placeholder="Titel (@ für Mentions)"
             minHeight="44px"
@@ -202,6 +196,7 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
           />
         </div>
         
+        <p role="status" className="text-xs text-muted-foreground">{draftStatus}</p>
         <DialogFooter className="flex-col sm:flex-row gap-2">
           <div className="flex items-center gap-2 text-xs text-muted-foreground mr-auto">
             <div className="flex items-center gap-1">
@@ -216,13 +211,13 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Im Titel speichert Enter direkt. Im Inhalt speichert Cmd/Ctrl + Enter.</p>
+                  <p>Enter erzeugt einen Absatz. Strg/Cmd + Enter speichert.</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Abbrechen
+            Schließen
           </Button>
           <Button onClick={handleSave} disabled={saving}>
             {saving ? (

@@ -1,3 +1,4 @@
+import { useQuickNoteDraft } from "@/hooks/useQuickNoteDraft";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { debugConsole } from '@/utils/debugConsole';
 import { getErrorMessage } from '@/utils/errorHandler';
@@ -41,8 +42,7 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
   const [noteForMeeting, setNoteForMeeting] = useState<QuickNote | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<QuickNote | null>(null);
-  const [editTitle, setEditTitle] = useState("");
-  const [editContent, setEditContent] = useState("");
+  const { title: editTitle, content: editContent, setTitle: setEditTitle, setContent: setEditContent, clearDraft, draftStatus } = useQuickNoteDraft(`edit:${editingNote?.id ?? "none"}`, { title: toEditorHtml(editingNote?.title), content: toEditorHtml(editingNote?.content) });
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [noteForDatePicker, setNoteForDatePicker] = useState<QuickNote | null>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
@@ -64,10 +64,10 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
   const [confirmDeleteLinkedNote, setConfirmDeleteLinkedNote] = useState<QuickNote | null>(null);
   const [confirmRemoveDecision, setConfirmRemoveDecision] = useState<QuickNote | null>(null);
   const [confirmRemoveCaseItem, setConfirmRemoveCaseItem] = useState<QuickNote | null>(null);
-  const [deleteLinkedTask, setDeleteLinkedTask] = useState(true);
-  const [deleteLinkedDecision, setDeleteLinkedDecision] = useState(true);
+  const [deleteLinkedTask, setDeleteLinkedTask] = useState(false);
+  const [deleteLinkedDecision, setDeleteLinkedDecision] = useState(false);
   const [deleteLinkedMeeting, setDeleteLinkedMeeting] = useState(false);
-  const [deleteLinkedCaseItem, setDeleteLinkedCaseItem] = useState(true);
+  const [deleteLinkedCaseItem, setDeleteLinkedCaseItem] = useState(false);
 
   // ── Data Loading ──────────────────────────────────────────────────────
 
@@ -617,37 +617,40 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
   const handleDeleteWithConfirmation = (note: QuickNote) => {
     const hasLinks = note.task_id || note.decision_id || note.meeting_id || note.case_item_id;
     if (hasLinks) {
-      setDeleteLinkedTask(!!note.task_id);
-      setDeleteLinkedDecision(!!note.decision_id);
+      setDeleteLinkedTask(false);
+      setDeleteLinkedDecision(false);
       setDeleteLinkedMeeting(false);
-      setDeleteLinkedCaseItem(!!note.case_item_id);
+      setDeleteLinkedCaseItem(false);
       setConfirmDeleteLinkedNote(note);
     } else {
       handleDelete(note.id);
     }
   };
 
+  const linkedDeleteBusy = useRef(false);
+  const [deletingLinkedNote, setDeletingLinkedNote] = useState(false);
   const handleDeleteNoteWithLinks = async () => {
-    if (!confirmDeleteLinkedNote || !user?.id) return;
-    const note = confirmDeleteLinkedNote;
+    if (!confirmDeleteLinkedNote || !user?.id || linkedDeleteBusy.current) return;
+    linkedDeleteBusy.current = true;
+    setDeletingLinkedNote(true);
     try {
-      if (note.task_id && deleteLinkedTask) {
-        await supabase.from('tasks').delete().eq('id', note.task_id);
-      }
-      if (note.decision_id && deleteLinkedDecision) {
-        await supabase.from('task_decisions').delete().eq('id', note.decision_id);
-      }
-      if (note.meeting_id && deleteLinkedMeeting) {
-        await supabase.from("quick_notes").update({ meeting_id: null, added_to_meeting_at: null }).eq("id", note.id).eq("user_id", user.id);
-      }
-      if (note.case_item_id && deleteLinkedCaseItem) {
-        await supabase.from('case_items').update({ status: 'archiviert' }).eq('id', note.case_item_id);
-      }
-      await handleDelete(note.id);
+      const { error } = await supabase.rpc("delete_quick_note_with_links", {
+        p_note_id: confirmDeleteLinkedNote.id,
+        p_delete_task: deleteLinkedTask,
+        p_delete_decision: deleteLinkedDecision,
+        p_archive_case_item: deleteLinkedCaseItem,
+        p_remove_meeting: deleteLinkedMeeting,
+      });
+      if (error) throw error;
       setConfirmDeleteLinkedNote(null);
+      notify.success("Notiz in den Papierkorb verschoben");
+      await loadNotes();
     } catch (error) {
       debugConsole.error("Error deleting note with links:", error);
-      notify.error("Fehler beim Löschen");
+      notify.error(`Löschen konnte nicht bestätigt werden: ${getErrorMessage(error)}. Bitte aktualisieren Sie die Notizen vor einem erneuten Versuch.`);
+    } finally {
+      linkedDeleteBusy.current = false;
+      setDeletingLinkedNote(false);
     }
   };
 
@@ -714,14 +717,17 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
 
   const openEditDialog = (note: QuickNote) => {
     setEditingNote(note);
-    setEditTitle(toEditorHtml(note.title));
-    setEditContent(toEditorHtml(note.content));
     setEditDialogOpen(true);
   };
 
+  const editSaveBusy = useRef(false);
+  const [savingEdit, setSavingEdit] = useState(false);
   const handleSaveEdit = async () => {
+    if (editSaveBusy.current) return;
     if (!editingNote || !user?.id) return;
     if (!stripHtml(editTitle) && !stripHtml(editContent)) { notify.error("Bitte Titel oder Inhalt eingeben"); return; }
+    editSaveBusy.current = true;
+    setSavingEdit(true);
     try {
       await supabase.from("quick_note_versions").insert([{ note_id: editingNote.id, title: editingNote.title, content: editingNote.content, user_id: user.id }]);
       let updateQuery = supabase.from("quick_notes").update({ title: editTitle.trim() || null, content: editContent.trim() }).eq("id", editingNote.id);
@@ -729,6 +735,7 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
       const { data, error } = await updateQuery.select();
       if (error) throw error;
       if (!data || data.length === 0) { notify.error("Keine Berechtigung zum Bearbeiten dieser Notiz"); return; }
+      clearDraft();
       notify.success("Notiz aktualisiert");
       setEditDialogOpen(false);
       setEditingNote(null);
@@ -736,6 +743,9 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
     } catch (error) {
       debugConsole.error("Error updating note:", error);
       notify.error("Fehler beim Speichern");
+    } finally {
+      editSaveBusy.current = false;
+      setSavingEdit(false);
     }
   };
 
@@ -935,6 +945,7 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
     noteForDecision, setNoteForDecision,
     versionHistoryOpen, setVersionHistoryOpen,
     versionHistoryNote,
+    draftStatus,
     versions,
 
     // Confirmation state
@@ -951,10 +962,12 @@ export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: s
     loadNotes,
     handleTogglePin, handleDelete, handleArchive,
     handleSetPriority, handleSetColor, handleSetColorMode,
+    deletingLinkedNote,
     handleSetFollowUp, handleDeleteWithConfirmation, handleDeleteNoteWithLinks,
     createTaskFromNote, removeTaskFromNote, removeDecisionFromNote,
     createCaseItemFromNote, removeCaseItemFromNote,
     addNoteToMeeting, markForNextJourFixe, removeFromJourFixeQueue, removeNoteFromMeeting,
+    savingEdit,
     openEditDialog, handleSaveEdit,
     openVersionHistory, restoreVersion,
     splitNoteIntoBullets,

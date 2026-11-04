@@ -315,6 +315,7 @@ export function QuickNotesList({
         setDatePickerOpen={hook.setDatePickerOpen}
         noteForDatePicker={hook.noteForDatePicker}
         handleSetFollowUp={hook.handleSetFollowUp}
+        draftStatus={hook.draftStatus}
         editDialogOpen={hook.editDialogOpen}
         setEditDialogOpen={hook.setEditDialogOpen}
         editingNote={hook.editingNote}
@@ -322,6 +323,7 @@ export function QuickNotesList({
         setEditTitle={hook.setEditTitle}
         editContent={hook.editContent}
         setEditContent={hook.setEditContent}
+        savingEdit={hook.savingEdit}
         handleSaveEdit={hook.handleSaveEdit}
         shareDialogOpen={hook.shareDialogOpen}
         setShareDialogOpen={hook.setShareDialogOpen}
@@ -358,6 +360,7 @@ export function QuickNotesList({
         setDeleteLinkedCaseItem={hook.setDeleteLinkedCaseItem}
         deleteLinkedMeeting={hook.deleteLinkedMeeting}
         setDeleteLinkedMeeting={hook.setDeleteLinkedMeeting}
+        deletingLinkedNote={hook.deletingLinkedNote}
         handleDeleteNoteWithLinks={hook.handleDeleteNoteWithLinks}
       />
   );
