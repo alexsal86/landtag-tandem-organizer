@@ -371,8 +371,48 @@ export function QuickNotesList({
     const rest = hook.groups.flatMap((g) => g.notes).filter(matches).sort(byPriority);
     const pinned = rest.filter((n) => n.is_pinned);
     const others = rest.filter((n) => !n.is_pinned);
+    const topLevel = Math.max(3, ...others.map((n) => n.priority_level || 0));
+    const levels = Array.from({ length: topLevel + 1 }, (_, i) => topLevel - i);
+    const columns = (
+      <DragDropContext onDragEnd={hook.handleNoteDragEnd}>
+        <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${levels.length}, minmax(240px, 1fr))` }}>
+          {levels.map((level) => {
+            const colNotes = others.filter((n) => (n.priority_level || 0) === level);
+            return (
+              <div key={level} className="min-w-0 space-y-2">
+                <div className="section-label flex items-center gap-1.5">
+                  {level > 0 ? <span className="text-palette-amber">{"★".repeat(level)}</span> : null}
+                  {level > 0 ? `Priorität ${level}` : "Ohne Priorität"}
+                  <span className="tabular-nums">· {colNotes.length}</span>
+                </div>
+                <Droppable droppableId={`level-${level}`}>
+                  {(provided, snapshot) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      className={cn("min-h-24 space-y-3 rounded-lg p-1 transition-colors", snapshot.isDraggingOver ? "bg-muted/60" : "bg-muted/20")}
+                    >
+                      {colNotes.map((note, index) => (
+                        <Draggable key={note.id} draggableId={note.id} index={index} isDragDisabled={note.user_id !== hook.user?.id}>
+                          {(dragProvided) => (
+                            <div ref={dragProvided.innerRef} {...dragProvided.draggableProps}>
+                              <NoteCard {...noteCardProps(note)} dragHandleProps={dragProvided.dragHandleProps} />
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </div>
+            );
+          })}
+        </div>
+      </DragDropContext>
+    );
     const board = (notes: QuickNote[], followUp = false) => (
-      <div className="columns-1 sm:columns-2 xl:columns-3 gap-4">
+      <div className="columns-1 sm:columns-2 lg:columns-3 2xl:columns-4 gap-4">
         {notes.map((note) => (
           <div key={note.id} className="mb-4 break-inside-avoid">
             <NoteCard {...noteCardProps(note)} showFollowUpBadge={followUp} />
@@ -399,7 +439,7 @@ export function QuickNotesList({
           )}
           {section("Fällige Wiedervorlagen", due, <Clock className="h-3.5 w-3.5 text-palette-amber" />, true)}
           {section("Angeheftet", pinned)}
-          {section(pinned.length > 0 ? "Weitere" : "Notizen", others)}
+          <div className="overflow-x-auto pb-2">{columns}</div>
           {scheduled.length > 0 && (
             <Collapsible open={hook.scheduledFollowUpsExpanded} onOpenChange={hook.setScheduledFollowUpsExpanded}>
               <CollapsibleTrigger className="section-label flex items-center gap-1.5 rounded px-1 py-1 hover:bg-muted/50">
