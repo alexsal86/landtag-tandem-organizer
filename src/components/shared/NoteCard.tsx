@@ -26,7 +26,7 @@ import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { sanitizeRichHtml } from "@/utils/htmlSanitizer";
 import { noteColors, getCardBackground, stripHtml } from "@/hooks/useQuickNotes";
 import type { QuickNote } from "@/components/shared/QuickNotesList";
-import { renderChecklistHtml, countChecklist } from "@/components/shared/quickNoteBoard";
+import { renderChecklistHtml, countChecklist, isNoteStale } from "@/components/shared/quickNoteBoard";
 
 interface NoteCardProps {
   note: QuickNote;
@@ -154,11 +154,18 @@ export function NoteCard({
               </div>
             )}
           </div>
+          {note.sync_status && <p role="status" className={cn("text-xs mb-2", note.sync_status === "pending" ? "text-muted-foreground" : "text-destructive")}>
+            {note.sync_status === "pending" ? "Auf diesem Gerät gespeichert · Synchronisierung ausstehend" : note.sync_status === "conflict" ? "Synchronisierungskonflikt · lokaler Text bleibt erhalten" : "Synchronisierung fehlgeschlagen · lokaler Text bleibt erhalten"}
+          </p>}
+          {isNoteStale(note) && <div className="mb-2 flex flex-wrap items-center gap-2 rounded-md bg-palette-amber/10 px-2 py-1">
+            <span className="text-xs text-muted-foreground">Seit über 30 Tagen unverändert</span>
+            {note.user_id === userId && <Button variant="ghost" size="sm" className="h-8 ml-auto" onClick={e => { e.stopPropagation(); onArchive(note.id); }}><Archive className="h-3.5 w-3.5 mr-1" />Archivieren</Button>}
+          </div>}
           {isExpanded ? (
             <div>
               <div
                 className="text-sm text-muted-foreground/70 prose prose-sm max-w-none [&>p]:mb-1 [&>ul]:mb-1 [&>ol]:mb-1"
-                dangerouslySetInnerHTML={{ __html: renderChecklistHtml(sanitizeRichHtml(note.content)) }}
+                dangerouslySetInnerHTML={{ __html: renderChecklistHtml(sanitizeRichHtml(note.content), note.user_id === userId || note.can_edit === true) }}
               />
               {needsTruncation && (
                 <button className="inline-flex items-center mt-1 text-primary hover:underline" onClick={(e) => onToggleExpand(note.id, e)}>
@@ -169,7 +176,7 @@ export function NoteCard({
             </div>
           ) : (
             <div className="text-sm text-muted-foreground/70">
-              <div className="line-clamp-2 prose prose-sm max-w-none [&>p]:mb-0 [&>ul]:mb-0 [&>ol]:mb-0" dangerouslySetInnerHTML={{ __html: renderChecklistHtml(sanitizeRichHtml(note.content)) }} />
+              <div className="line-clamp-2 prose prose-sm max-w-none [&>p]:mb-0 [&>ul]:mb-0 [&>ol]:mb-0" dangerouslySetInnerHTML={{ __html: renderChecklistHtml(sanitizeRichHtml(note.content), note.user_id === userId || note.can_edit === true) }} />
               {needsTruncation && (
                 <button className="inline-flex items-center text-primary hover:underline align-baseline mt-0.5" onClick={(e) => onToggleExpand(note.id, e)}>
                   <ArrowRight className="h-3.5 w-3.5 inline ml-0.5" strokeWidth={2.5} />

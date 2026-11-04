@@ -9526,6 +9526,7 @@ export type Database = {
       }
       quick_note_global_shares: {
         Row: {
+          tenant_id: string | null
           created_at: string
           id: string
           permission_type: string
@@ -9533,6 +9534,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          tenant_id?: string | null
           created_at?: string
           id?: string
           permission_type?: string
@@ -9540,6 +9542,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          tenant_id?: string | null
           created_at?: string
           id?: string
           permission_type?: string
@@ -9550,6 +9553,7 @@ export type Database = {
       }
       quick_note_shares: {
         Row: {
+          tenant_id: string | null
           created_at: string
           id: string
           note_id: string
@@ -9558,6 +9562,7 @@ export type Database = {
           shared_with_user_id: string
         }
         Insert: {
+          tenant_id?: string | null
           created_at?: string
           id?: string
           note_id: string
@@ -9566,6 +9571,7 @@ export type Database = {
           shared_with_user_id: string
         }
         Update: {
+          tenant_id?: string | null
           created_at?: string
           id?: string
           note_id?: string
@@ -9585,6 +9591,7 @@ export type Database = {
       }
       quick_note_versions: {
         Row: {
+          tenant_id: string | null
           content: string
           created_at: string | null
           id: string
@@ -9593,6 +9600,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          tenant_id?: string | null
           content: string
           created_at?: string | null
           id?: string
@@ -9601,6 +9609,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          tenant_id?: string | null
           content?: string
           created_at?: string | null
           id?: string
@@ -9620,6 +9629,8 @@ export type Database = {
       }
       quick_notes: {
         Row: {
+          tenant_id: string | null
+          revision: number
           added_to_meeting_at: string | null
           archived_at: string | null
           case_item_id: string | null
@@ -9650,6 +9661,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          tenant_id?: string | null
+          revision?: number
           added_to_meeting_at?: string | null
           archived_at?: string | null
           case_item_id?: string | null
@@ -9680,6 +9693,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          tenant_id?: string | null
+          revision?: number
           added_to_meeting_at?: string | null
           archived_at?: string | null
           case_item_id?: string | null
@@ -13183,6 +13198,11 @@ export type Database = {
       }
     }
     Functions: {
+      list_quick_notes: { Args: { p_tenant_id: string; p_note_id?: string }; Returns: Json }
+      save_quick_note: {
+        Args: { p_tenant_id: string; p_note_id: string; p_operation_id: string; p_actor_id: string; p_title: string | null; p_content: string; p_base_revision?: number; p_create?: boolean; p_color?: string | null; p_is_pinned?: boolean }
+        Returns: Json
+      }
       _meeting_default_end: { Args: { _date: string }; Returns: string }
       _meeting_default_start: { Args: { _date: string }; Returns: string }
       approve_gdpr_delete: {

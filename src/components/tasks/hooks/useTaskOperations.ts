@@ -387,7 +387,7 @@ export function useTaskOperations({
     if (!task) return undefined;
     try {
       const { error } = await supabase.from("quick_notes").insert([{
-        user_id: user.id,
+        user_id: user.id, tenant_id: currentTenant?.id,
         title: `Task Note: ${task.title}`,
         content: content.trim(),
         category: "task",

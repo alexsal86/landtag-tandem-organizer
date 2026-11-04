@@ -18,6 +18,10 @@ vi.mock("@/integrations/supabase/client", () => {
   const channel = { on: () => channel, subscribe: () => channel };
   return { supabase: { from: () => query, channel: () => channel, removeChannel: vi.fn(), rpc: mocks.rpc } };
 });
+vi.mock("@/features/quick-notes/useQuickNotesData", () => ({ useQuickNotesData: () => ({
+  notes: [], loading: false, loadNotes: vi.fn(), patchNote: vi.fn(),
+  repository: { scope: { userId: "owner", tenantId: "tenant" }, getSnapshot: () => ({ writes: [] }), removeCachedNote: vi.fn(), getNotes: () => [] },
+}) }));
 const note: QuickNote = {
   id: "note", user_id: "owner", title: "Titel", content: "Inhalt", color: null,
   created_at: "", updated_at: "", is_pinned: false,

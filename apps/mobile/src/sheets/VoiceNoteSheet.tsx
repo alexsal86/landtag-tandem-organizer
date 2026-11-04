@@ -9,8 +9,8 @@ import { ensurePermission } from '@/lib/permissions';
 import { enqueue, flushOutbox } from '@/lib/offlineOutbox';
 
 export function VoiceNoteSheet({
-  visible, onClose, userId,
-}: { visible: boolean; onClose: () => void; userId: string }): React.JSX.Element {
+  visible, onClose, userId, tenantId,
+}: { visible: boolean; onClose: () => void; userId: string; tenantId: string | null }): React.JSX.Element {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [uri, setUri] = useState<string | null>(null);
   const [seconds, setSeconds] = useState(0);
@@ -89,6 +89,7 @@ export function VoiceNoteSheet({
         if (upErr) throw upErr;
         const { error: nErr } = await supabase.from('quick_notes').insert({
           user_id: userId,
+          tenant_id: tenantId,
           title: noteTitle,
           content: noteContent,
           category: 'mobile-voice',
@@ -99,6 +100,7 @@ export function VoiceNoteSheet({
         // Offline / upload failed → enqueue text-only note for later sync
         await enqueue('quick_note', {
           user_id: userId,
+          tenant_id: tenantId,
           title: noteTitle,
           content: noteContent,
           category: 'mobile-voice-offline',

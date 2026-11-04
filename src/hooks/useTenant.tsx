@@ -60,6 +60,7 @@ const isTenant = (tenant: UserTenantMembership["tenant"]): tenant is Tenant => {
 
 export const TenantProvider = ({ children }: { children: React.ReactNode }): React.JSX.Element => {
   const { user } = useAuth();
+  const [tenantUserId, setTenantUserId] = useState<string | null>(null);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [currentTenant, setCurrentTenant] = useState<Tenant | null>(null);
   const [memberships, setMemberships] = useState<UserTenantMembership[]>([]);
@@ -67,6 +68,7 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
 
   const fetchTenants = async (isBackgroundRefresh = false): Promise<void> => {
     if (!user?.id) {
+      setTenantUserId(null);
       setTenants([]);
       setCurrentTenant(null);
       setMemberships([]);
@@ -90,6 +92,18 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
 
       const tenantStorageKey = `currentTenantId_${user.id}`;
 
+      // Offline access uses only a previously verified snapshot for this user.
+      // Server RLS is always checked again before queued writes are applied.
+      if (!navigator.onLine) {
+        const raw = safeGetItem(`tenant-memberships:${user.id}`);
+        const cached = raw ? normalizeMembershipData(JSON.parse(raw)).filter(m => m.user_id === user.id && m.is_active) : [];
+        const available = cached.map(m => m.tenant).filter(isTenant);
+        const selected = available.find(t => t.id === safeGetItem(tenantStorageKey)) ?? available[0] ?? null;
+        setTenantUserId(user.id);
+        setMemberships(cached); setTenants(available); setCurrentTenant(selected);
+        return;
+      }
+
       const { data: membershipData, error: membershipError } = await supabase
         .from("user_tenant_memberships")
         .select(`
@@ -102,6 +116,8 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
 
       if (membershipError) {
         debugConsole.error("❌ Error fetching tenant memberships:", membershipError);
+        setTenantUserId(user.id);
+        safeRemoveItem(`tenant-memberships:${user.id}`);
         setTenants([]);
         setCurrentTenant(null);
         setMemberships([]);
@@ -110,12 +126,14 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
       }
 
       const membershipsWithTenants = normalizeMembershipData(membershipData);
+      safeSetItem(`tenant-memberships:${user.id}`, JSON.stringify(membershipsWithTenants));
       debugConsole.log("🏢 Tenant memberships:", membershipsWithTenants);
 
       const tenantsData = membershipsWithTenants
         .map((membership) => membership.tenant)
         .filter(isTenant);
 
+      setTenantUserId(user.id);
       setMemberships(membershipsWithTenants);
       setTenants(tenantsData);
       debugConsole.log("🏢 Available tenants for user:", tenantsData.map((tenant) => tenant.name));
@@ -184,11 +202,19 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
+  useEffect(() => {
+    const reconnect = () => { void fetchTenants(true); };
+    window.addEventListener("online", reconnect);
+    return () => window.removeEventListener("online", reconnect);
+    // Reconnect must revalidate membership for the current authenticated user.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   const value: TenantContextType = {
-    tenants,
-    currentTenant,
-    memberships,
-    loading,
+    tenants: tenantUserId === user?.id ? tenants : [],
+    currentTenant: tenantUserId === user?.id ? currentTenant : null,
+    memberships: tenantUserId === user?.id ? memberships : [],
+    loading: loading || (!!user && tenantUserId !== user.id),
     switchTenant,
     refreshTenants,
   };

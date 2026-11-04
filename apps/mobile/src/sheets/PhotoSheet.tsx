@@ -16,8 +16,8 @@ interface OcrResult {
 }
 
 export function PhotoSheet({
-  visible, onClose, userId,
-}: { visible: boolean; onClose: () => void; userId: string }): React.JSX.Element {
+  visible, onClose, userId, tenantId,
+}: { visible: boolean; onClose: () => void; userId: string; tenantId: string | null }): React.JSX.Element {
   const [uri, setUri] = useState<string | null>(null);
   const [caption, setCaption] = useState('');
   const [busy, setBusy] = useState(false);
@@ -83,6 +83,7 @@ export function PhotoSheet({
         const fullName = [c.first_name, c.last_name].filter(Boolean).join(' ').trim() || c.organization || 'Visitenkarte';
         const { error: cErr } = await supabase.from('contacts').insert({
           user_id: userId,
+          tenant_id: tenantId,
           name: fullName,
           email: c.email || null,
           phone: c.phone || c.mobile || null,
@@ -102,6 +103,7 @@ export function PhotoSheet({
 
       const { error: nErr } = await supabase.from('quick_notes').insert({
         user_id: userId,
+          tenant_id: tenantId,
         title: caption.trim() || (ocrResult?.kind === 'letter' ? 'Brief-Foto' : 'Foto-Notiz'),
         content: `📷 ${caption.trim() || 'Foto'}\n${urlData.publicUrl}${ocrSummary}`,
         category: ocrResult?.kind === 'contact' ? 'mobile-photo-card' : 'mobile-photo',

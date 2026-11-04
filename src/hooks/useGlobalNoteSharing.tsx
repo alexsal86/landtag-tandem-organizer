@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { debugConsole } from "@/utils/debugConsole";
+import { useTenant } from "@/hooks/useTenant";
 import { notify } from "@/lib/notify";
+import { getErrorMessage } from "@/utils/errorHandler";
 
 export interface GlobalNoteShare {
   id: string;
@@ -10,202 +11,44 @@ export interface GlobalNoteShare {
   shared_with_user_id: string;
   permission_type: "view" | "edit";
   created_at: string;
-  shared_with_user?: {
-    id: string;
-    display_name: string | null;
-    avatar_url: string | null;
-  };
+  shared_with_user?: { id: string; display_name: string | null; avatar_url: string | null };
 }
-
 export const useGlobalNoteSharing = () => {
   const { user } = useAuth();
-  const [globalShares, setGlobalShares] = useState<GlobalNoteShare[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const loadGlobalShares = useCallback(async () => {
-    if (!user) return;
-
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("quick_note_global_shares")
-        .select("id, user_id, shared_with_user_id, permission_type, created_at")
-        .eq("user_id", user.id);
-
+  const { currentTenant } = useTenant();
+  const client = useQueryClient();
+  const key = ["global-note-shares", user?.id, currentTenant?.id] as const;
+  const query = useQuery({
+    queryKey: key, enabled: !!user && !!currentTenant,
+    queryFn: async (): Promise<GlobalNoteShare[]> => {
+      const { data, error } = await supabase.from("quick_note_global_shares")
+        .select("id,user_id,shared_with_user_id,permission_type,created_at")
+        .eq("user_id", user!.id).eq("tenant_id", currentTenant!.id);
       if (error) throw error;
-
-      if (data && data.length > 0) {
-        const userIds = data.map((s: Record<string, any>) => s.shared_with_user_id);
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, display_name, avatar_url")
-          .in("id", userIds);
-
-        const sharesWithUsers = data.map((share: Record<string, any>) => ({
-          ...share,
-          permission_type: share.permission_type as "view" | "edit",
-          shared_with_user: profiles?.find((p: Record<string, any>) => p.id === share.shared_with_user_id),
-        }));
-
-        setGlobalShares(sharesWithUsers);
-      } else {
-        setGlobalShares([]);
-      }
-    } catch (error) {
-      debugConsole.error("Error loading global shares:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    loadGlobalShares();
-  }, [loadGlobalShares]);
-
-  const addGlobalShare = async (
-    sharedWithUserId: string,
-    permissionType: "view" | "edit" = "view"
-  ) => {
-    if (!user) return false;
-
+      if (!data?.length) return [];
+      const { data: profiles, error: profileError } = await supabase.from("profiles")
+        .select("user_id,display_name,avatar_url").eq("tenant_id", currentTenant!.id).in("user_id", data.map(share => share.shared_with_user_id));
+      if (profileError) throw profileError;
+      return data.map(share => {
+        const profile = profiles?.find(person => person.user_id === share.shared_with_user_id);
+        return { ...share, permission_type: share.permission_type === "edit" ? "edit" : "view", shared_with_user: profile ? { id: profile.user_id, display_name: profile.display_name, avatar_url: profile.avatar_url } : undefined };
+      });
+    },
+  });
+  const run = async (action: () => PromiseLike<{ error: unknown }>, message: string) => {
+    if (!user || !currentTenant) return false;
     try {
-      const { error } = await supabase.from("quick_note_global_shares").insert([{
-        user_id: user.id,
-        shared_with_user_id: sharedWithUserId,
-        permission_type: permissionType,
-      }]);
-
-      if (error) {
-        if (error.code === "23505") {
-          notify.error("Bereits für diese Person freigegeben");
-        } else {
-          throw error;
-        }
-        return false;
-      }
-
-      notify.success("Alle Notizen erfolgreich freigegeben");
-      loadGlobalShares();
-      return true;
-    } catch (error) {
-      debugConsole.error("Error adding global share:", error);
-      notify.error("Fehler beim Freigeben");
-      return false;
-    }
+      const { error } = await action(); if (error) throw error;
+      await client.invalidateQueries({ queryKey: key });
+      notify.success(message); return true;
+    } catch (error) { notify.error(getErrorMessage(error)); return false; }
   };
-
-  const removeGlobalShare = async (shareId: string) => {
-    if (!shareId) {
-      debugConsole.error("No share ID provided for removal");
-      notify.error("Fehler: Keine Freigabe-ID");
-      return false;
-    }
-
-    if (!user) {
-      debugConsole.error("No user authenticated for share removal");
-      notify.error("Fehler: Nicht authentifiziert");
-      return false;
-    }
-
-    debugConsole.log("Attempting to remove global share:", shareId);
-    
-    try {
-      const { error, data } = await supabase
-        .from("quick_note_global_shares")
-        .delete()
-        .eq("id", shareId)
-        .eq("user_id", user.id)
-        .select();
-
-      if (error) {
-        debugConsole.error("Supabase delete error:", error);
-        throw error;
-      }
-
-      debugConsole.log("Deleted share result:", data);
-      
-      if (!data || data.length === 0) {
-        debugConsole.warn("No share found with ID:", shareId);
-        notify.error("Freigabe nicht gefunden");
-        return false;
-      }
-
-      notify.success("Globale Freigabe entfernt");
-      loadGlobalShares();
-      return true;
-    } catch (error) {
-      debugConsole.error("Error removing global share:", error);
-      notify.error("Fehler beim Entfernen der Freigabe");
-      return false;
-    }
-  };
-
-  const updateGlobalPermission = async (shareId: string, permissionType: "view" | "edit") => {
-    if (!user) {
-      notify.error("Nicht angemeldet");
-      return false;
-    }
-
-    debugConsole.log("Updating global permission:", { shareId, permissionType, userId: user.id });
-
-    try {
-      const { data, error } = await supabase
-        .from("quick_note_global_shares")
-        .update({ permission_type: permissionType })
-        .eq("id", shareId)
-        .eq("user_id", user.id)
-        .select();
-
-      debugConsole.log("Update result:", { data, error });
-
-      if (error) {
-        debugConsole.error("Supabase update error:", error);
-        throw error;
-      }
-
-      if (!data || data.length === 0) {
-        debugConsole.warn("No rows updated - checking if share exists");
-        const { data: existingShare } = await supabase
-          .from("quick_note_global_shares")
-          .select("id, user_id, shared_with_user_id, permission_type, created_at")
-          .eq("id", shareId)
-          .single();
-        
-        debugConsole.log("Existing share:", existingShare);
-        
-        if (!existingShare) {
-          notify.error("Freigabe nicht gefunden");
-          return false;
-        }
-        
-        if (existingShare.user_id !== user.id) {
-          notify.error("Keine Berechtigung für diese Freigabe");
-          return false;
-        }
-        
-        if (existingShare.permission_type === permissionType) {
-          notify.success("Berechtigung bereits gesetzt");
-          loadGlobalShares();
-          return true;
-        }
-      }
-
-      notify.success("Berechtigung aktualisiert");
-      loadGlobalShares();
-      return true;
-    } catch (error) {
-      debugConsole.error("Error updating permission:", error);
-      notify.error("Fehler beim Aktualisieren der Berechtigung");
-      return false;
-    }
-  };
-
   return {
-    globalShares,
-    loading,
-    addGlobalShare,
-    removeGlobalShare,
-    updateGlobalPermission,
-    refreshGlobalShares: loadGlobalShares,
+    globalShares: query.data ?? [], loading: query.isLoading,
+    addGlobalShare: (target: string, permission: "view" | "edit" = "view") => run(() => supabase.from("quick_note_global_shares")
+      .insert({ user_id: user!.id, tenant_id: currentTenant!.id, shared_with_user_id: target, permission_type: permission }).select().single(), "Notizen dieses Arbeitsbereichs freigegeben"),
+    removeGlobalShare: (id: string) => run(() => supabase.from("quick_note_global_shares").delete().eq("id", id).eq("user_id", user!.id).eq("tenant_id", currentTenant!.id).select().single(), "Freigabe entfernt"),
+    updateGlobalPermission: (id: string, permission: "view" | "edit") => run(() => supabase.from("quick_note_global_shares").update({ permission_type: permission }).eq("id", id).eq("user_id", user!.id).eq("tenant_id", currentTenant!.id).select().single(), "Berechtigung aktualisiert"),
+    refreshGlobalShares: query.refetch,
   };
 };

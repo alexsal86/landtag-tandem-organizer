@@ -1,5 +1,31 @@
 // Unified Service Worker: Push Notifications + Cross-Origin Isolation
-const CACHE_NAME = 'notification-cache-v1';
+// Only public application assets enter Cache Storage. Notes and tokens never do.
+try { importScripts('/quick-notes-shell.js'); } catch { /* Vite development has no build manifest. */ }
+const SHELL = self.QUICK_NOTES_SHELL;
+const CACHE_PREFIX = 'quick-notes-shell-';
+const CACHE_NAME = CACHE_PREFIX + (SHELL?.version || 'dev');
+async function shellFetch(request) {
+  const url = new URL(request.url);
+  const isAsset = request.method === 'GET' && url.pathname.startsWith('/assets/') && /\.(js|css|woff2?|png|svg|ico)$/.test(url.pathname);
+  if (SHELL && isAsset) {
+    const cached = await caches.match(request, { cacheName: CACHE_NAME });
+    if (cached) return cached;
+  }
+  try {
+    const response = await fetch(request);
+    if (SHELL && isAsset && response.ok && response.type === 'basic') {
+      const cache = await caches.open(CACHE_NAME);
+      await cache.put(request, response.clone()).catch(() => {});
+    }
+    return response;
+  } catch (error) {
+    if (SHELL && request.mode === 'navigate' && !url.pathname.startsWith('/api/')) {
+      const cached = await caches.match('/index.html', { cacheName: CACHE_NAME });
+      if (cached) return cached;
+    }
+    throw error;
+  }
+}
 
 // ── COI Configuration ──
 let coepCredentialless = false;
@@ -7,13 +33,13 @@ let coepCredentialless = false;
 // Install event
 self.addEventListener('install', (event) => {
   console.log('Service Worker installing');
-  self.skipWaiting();
+  event.waitUntil((SHELL ? caches.open(CACHE_NAME).then(cache => cache.addAll(SHELL.assets)) : Promise.resolve()).then(() => self.skipWaiting()));
 });
 
 // Activate event
 self.addEventListener('activate', (event) => {
   console.log('Service Worker activating');
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim()));
 });
 
 // Message handler (COI deregister + credentialless toggle)
@@ -61,7 +87,7 @@ self.addEventListener('fetch', function (e) {
     : r;
 
   e.respondWith(
-    fetch(s).then(function (response) {
+    shellFetch(s).then(function (response) {
       if (response.status === 0) return response;
 
       const headers = new Headers(response.headers);

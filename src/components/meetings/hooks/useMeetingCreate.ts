@@ -95,7 +95,7 @@ export function useMeetingCreate(deps: UseMeetingCreateDeps) {
       // Auto-assign pending notes
       try {
         const { data: pendingNotes, error: pendingError } = await supabase
-          .from('quick_notes').select('id').eq('user_id', user.id).eq('pending_for_jour_fixe', true).is('deleted_at', null);
+          .from('quick_notes').select('id').eq('user_id', user.id).eq('tenant_id', currentTenant?.id ?? '').eq('pending_for_jour_fixe', true).is('deleted_at', null);
         if (!pendingError && pendingNotes && pendingNotes.length > 0) {
           const noteIds = pendingNotes.map((n: Record<string, any>) => n.id);
           const { error: updateError } = await supabase

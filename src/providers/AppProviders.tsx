@@ -1,3 +1,4 @@
+import { QuickNotesRuntime } from "@/features/quick-notes/useQuickNotesData";
 import type { PropsWithChildren } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/hooks/useAuth";
@@ -22,6 +23,7 @@ export const AppProviders = ({ children }: PropsWithChildren): React.JSX.Element
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TenantProvider>
+        <QuickNotesRuntime />
         <AppSettingsProvider>
           <NotificationProvider>
             <TooltipProvider>

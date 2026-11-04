@@ -433,3 +433,13 @@ span[data-lexical-mention="true"] {
 .draggable-block-component-picker {
   max-width: 260px;
 }
+
+/* Real Lexical checklist nodes, with large mouse/touch targets. */
+ul.note-editor-checklist { list-style: none; margin-left: 0; padding-left: 0; }
+.note-editor-check { position: relative; list-style: none; padding-left: 2rem; min-height: 28px; }
+.note-editor-check::before { content: ""; position: absolute; left: 0; top: 2px; width: 22px; height: 22px; border: 1px solid currentColor; border-radius: 4px; cursor: pointer; }
+.note-editor-check--done::before { content: "✓"; text-align: center; }
+.note-editor-check--done { text-decoration: line-through; }
+ul[data-note-checklist="true"] { list-style: none; padding-left: 0; }
+
+.note-check-item--done { text-decoration: line-through; }

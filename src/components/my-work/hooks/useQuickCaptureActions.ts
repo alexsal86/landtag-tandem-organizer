@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useQuickNotesData } from "@/features/quick-notes/useQuickNotesData";
+import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { debugConsole } from "@/utils/debugConsole";
-import { extractMentionedUserIds } from "@/utils/noteMentions";
+import { extractMentionedUsers } from "@/utils/noteMentions";
 import { notifyQuickNoteShared } from "@/utils/shareNotifications";
 import { stripHtml } from "@/components/my-work/utils/editorContent";
 import { notify } from "@/lib/notify";
@@ -35,6 +36,8 @@ export function useQuickCaptureActions({
 }: UseQuickCaptureActionsParams) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const { queueNote, repository } = useQuickNotesData();
+  const saveBusy = useRef(false);
 
   const [saving, setSaving] = useState(false);
   const [savingAsTask, setSavingAsTask] = useState(false);
@@ -43,65 +46,45 @@ export function useQuickCaptureActions({
   const [mentionedUsers, setMentionedUsers] = useState<MentionedUser[]>([]);
 
   const handleSaveNote = async () => {
-    if (!canSaveNote || !user) return;
+    if (!canSaveNote || !user || !currentTenant || saveBusy.current) return;
+    saveBusy.current = true;
 
     setSaving(true);
     try {
-      const { data, error } = await supabase
-        .from("quick_notes")
-        .insert([
-          {
-            user_id: user.id,
-            title: values.title.trim() || null,
-            content: stripHtml(values.content) ? values.content.trim() : "",
-            color: values.selectedColor,
-            is_pinned: values.isPinned,
-            category: "general",
-          },
-        ])
-        .select("id")
-        .single();
+      const data = await queueNote({
+        title: values.title.trim() || null,
+        content: stripHtml(values.content) ? values.content.trim() : "",
+        color: values.selectedColor, isPinned: values.isPinned,
+      });
 
-      if (error) throw error;
-
-      const mentionedUserIds = extractMentionedUserIds(values.title, values.content).filter(
-        (mentionedUserId) => mentionedUserId !== user.id
-      );
-
-      if (mentionedUserIds.length > 0 && currentTenant?.id && data?.id) {
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("user_id, display_name")
-          .eq("tenant_id", currentTenant.id)
-          .in("user_id", mentionedUserIds);
-
-        setNewNoteId(data.id);
-        setMentionedUsers(
-          mentionedUserIds.map((userId) => ({
-            id: userId,
-            displayName:
-              profiles?.find((profile: Record<string, any>) => profile.user_id === userId)?.display_name || "Unbekannt",
-          }))
-        );
-        setMentionPromptOpen(true);
+      const mentions = extractMentionedUsers(values.title, values.content).filter(person => person.id !== user.id);
+      if (mentions.length > 0) {
+        setNewNoteId(data.id); setMentionedUsers(mentions); setMentionPromptOpen(true);
       }
 
-      notify.success("Notiz gespeichert");
+      notify.success(navigator.onLine ? "Notiz lokal gespeichert" : "Offline auf diesem Gerät gespeichert");
       onResetForm();
       onNoteSaved?.();
     } catch (error) {
       debugConsole.error("Error saving note:", error);
       notify.error("Fehler beim Speichern");
     } finally {
+      saveBusy.current = false;
       setSaving(false);
     }
   };
 
   const handleShareMentionedUsers = async (userIds: string[], permission: "view" | "edit") => {
     if (!newNoteId || !user?.id || userIds.length === 0) return;
+    await repository.sync();
+    if (repository.getSnapshot().writes.some(write => write.noteId === newNoteId)) {
+      notify.error("Die Notiz muss vor der Freigabe synchronisiert werden. Du kannst sie später über das Notizmenü teilen.");
+      return;
+    }
 
     const { error } = await supabase.from("quick_note_shares").insert(
       userIds.map((sharedWithUserId) => ({
+        tenant_id: currentTenant?.id,
         note_id: newNoteId,
         shared_with_user_id: sharedWithUserId,
         shared_by_user_id: user.id,

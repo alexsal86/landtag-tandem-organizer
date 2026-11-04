@@ -188,6 +188,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
             initialContent={toEditorHtml(content)}
             disabled={saving || savingAsTask}
             onChange={setContent}
+            enableChecklists
             onKeyDown={handleEditorKeyDown}
             placeholder="Was möchtest du festhalten? „[ ] “ am Zeilenanfang = Checkbox, Mikrofon = Diktat"
             minHeight="100px"

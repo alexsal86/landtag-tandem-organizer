@@ -76,13 +76,13 @@ export default function HomeScreen(): React.JSX.Element {
         ))}
       </View>
 
-      <NoteSheet visible={sheet === 'note'} onClose={() => setSheet(null)} userId={session.user.id} />
-      <VoiceNoteSheet visible={sheet === 'voice'} onClose={() => setSheet(null)} userId={session.user.id} />
+      <NoteSheet tenantId={activeTenantId} visible={sheet === 'note'} onClose={() => setSheet(null)} userId={session.user.id} />
+      <VoiceNoteSheet tenantId={activeTenantId} visible={sheet === 'voice'} onClose={() => setSheet(null)} userId={session.user.id} />
       <TaskSheet visible={sheet === 'task'} onClose={() => setSheet(null)} userId={session.user.id} tenantId={activeTenantId} />
       <AppointmentSheet visible={sheet === 'appointment'} onClose={() => setSheet(null)} userId={session.user.id} tenantId={activeTenantId} />
       <ContactSearchSheet visible={sheet === 'contact'} onClose={() => setSheet(null)} tenantId={activeTenantId} />
       <CallLogSheet visible={sheet === 'call'} onClose={() => setSheet(null)} userId={session.user.id} tenantId={activeTenantId} />
-      <PhotoSheet visible={sheet === 'photo'} onClose={() => setSheet(null)} userId={session.user.id} />
+      <PhotoSheet tenantId={activeTenantId} visible={sheet === 'photo'} onClose={() => setSheet(null)} userId={session.user.id} />
     </SafeAreaView>
   );
 }

@@ -1,3 +1,4 @@
+import { quickNotesOfflineShell } from "./scripts/viteQuickNotesOffline";
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import tailwindcss from "@tailwindcss/vite";
@@ -142,6 +143,7 @@ export default defineConfig(({ mode }) => ({
     headers: securityHeaders,
   },
   plugins: [
+    quickNotesOfflineShell(),
     lexicalDedupePlugin(),
     publicInvitationApiProxy(),
     react(),

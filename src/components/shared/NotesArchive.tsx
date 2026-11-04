@@ -1,3 +1,4 @@
+import { useTenant } from "@/hooks/useTenant";
 import { useState, useEffect, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,6 +56,7 @@ interface NotesArchiveProps {
 
 export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const [notes, setNotes] = useState<DeletedNote[]>([]);
   const [archivedNotes, setArchivedNotes] = useState<ArchivedNote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,7 +72,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
       const { data, error } = await supabase
         .from("quick_notes")
         .select("id, title, content, color, deleted_at, permanent_delete_at")
-        .eq("user_id", user.id)
+        .eq("user_id", user.id).eq("tenant_id", currentTenant?.id ?? "")
         .not("deleted_at", "is", null)
         .order("deleted_at", { ascending: false });
 
@@ -79,7 +81,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
     } catch (error) {
       debugConsole.error("Error loading deleted notes:", error);
     }
-  }, [user]);
+  }, [user, currentTenant?.id]);
 
   const loadArchivedNotes = useCallback(async () => {
     if (!user) return;
@@ -88,7 +90,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
       const { data, error } = await supabase
         .from("quick_notes")
         .select("id, title, content, color, archived_at")
-        .eq("user_id", user.id)
+        .eq("user_id", user.id).eq("tenant_id", currentTenant?.id ?? "")
         .eq("is_archived", true)
         .is("deleted_at", null)
         .order("archived_at", { ascending: false });
@@ -100,7 +102,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, currentTenant?.id]);
 
   useEffect(() => {
     // Load both note types in parallel for faster loading
@@ -116,13 +118,13 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
           supabase
             .from("quick_notes")
             .select("id, title, content, color, deleted_at, permanent_delete_at")
-            .eq("user_id", user.id)
+            .eq("user_id", user.id).eq("tenant_id", currentTenant?.id ?? "")
             .not("deleted_at", "is", null)
             .order("deleted_at", { ascending: false }),
           supabase
             .from("quick_notes")
             .select("id, title, content, color, archived_at")
-            .eq("user_id", user.id)
+            .eq("user_id", user.id).eq("tenant_id", currentTenant?.id ?? "")
             .eq("is_archived", true)
             .is("deleted_at", null)
             .order("archived_at", { ascending: false })
@@ -138,7 +140,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
     };
     
     loadAllNotes();
-  }, [user, refreshTrigger]);
+  }, [user, currentTenant?.id, refreshTrigger]);
 
   const handleRestore = async (noteId: string) => {
     if (!user?.id) {
@@ -151,7 +153,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
         .from("quick_notes")
         .update({ deleted_at: null, permanent_delete_at: null })
         .eq("id", noteId)
-        .eq("user_id", user.id)
+        .eq("user_id", user.id).eq("tenant_id", currentTenant?.id ?? "")
         .select();
 
       if (error) throw error;
@@ -184,7 +186,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
         .from("quick_notes")
         .update({ is_archived: false, archived_at: null })
         .eq("id", noteId)
-        .eq("user_id", user.id)
+        .eq("user_id", user.id).eq("tenant_id", currentTenant?.id ?? "")
         .select();
 
       if (error) throw error;
@@ -212,7 +214,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
       const { error } = await supabase
         .from("quick_notes")
         .delete()
-        .eq("id", noteId);
+        .eq("id", noteId).eq("tenant_id", currentTenant?.id ?? "");
 
       if (error) throw error;
       notify.success("Notiz endgültig gelöscht");
@@ -229,7 +231,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
       const { error } = await supabase
         .from("quick_notes")
         .update({ permanent_delete_at: newDate.toISOString() })
-        .eq("id", noteId);
+        .eq("id", noteId).eq("tenant_id", currentTenant?.id ?? "");
 
       if (error) throw error;
       notify.success(`Löschdatum geändert auf ${format(newDate, "dd.MM.yyyy", { locale: de })}`);

@@ -71,7 +71,7 @@ async function setupCrossOriginIsolation(): Promise<void> {
       host: window.location.hostname,
       isPreviewHost: coiStatus.isPreviewHost,
     });
-    await navigator.serviceWorker.register('/sw.js?v=2026-04-15-v1');
+    await navigator.serviceWorker.register('/sw.js?v=2026-11-04-notes');
     return;
   }
 

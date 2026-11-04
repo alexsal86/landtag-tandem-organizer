@@ -1,4 +1,5 @@
-import { useCallback } from "react";
+import { useTenant } from "@/hooks/useTenant";
+import { useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -21,37 +22,42 @@ export interface NoteShare {
   };
 }
 
-async function fetchShares(noteId: string): Promise<NoteShare[]> {
+async function fetchShares(noteId: string, tenantId: string): Promise<NoteShare[]> {
   const { data, error } = await supabase
     .from("quick_note_shares")
     .select("id, note_id, shared_with_user_id, shared_by_user_id, permission_type, created_at")
-    .eq("note_id", noteId);
+    .eq("note_id", noteId).eq("tenant_id", tenantId);
   if (error) throw error;
   if (!data || data.length === 0) return [];
 
   const userIds = data.map((s: { shared_with_user_id: string }) => s.shared_with_user_id);
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, display_name, avatar_url")
-    .in("id", userIds);
+    .select("user_id, display_name, avatar_url")
+    .eq("tenant_id", tenantId)
+    .in("user_id", userIds);
 
   return data.map((share: { id: string; note_id: string; shared_with_user_id: string; shared_by_user_id: string; permission_type: string; created_at: string }) => ({
     ...share,
     permission_type: share.permission_type as "view" | "edit",
-    shared_with_user: profiles?.find((p: { id: string }) => p.id === share.shared_with_user_id),
+    shared_with_user: (() => {
+      const profile = profiles?.find(p => p.user_id === share.shared_with_user_id);
+      return profile ? { id: profile.user_id, display_name: profile.display_name, avatar_url: profile.avatar_url } : undefined;
+    })(),
   }));
 }
 
 export const useNoteSharing = (noteId?: string) => {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const queryClient = useQueryClient();
-  const queryKey = ["note-shares", noteId] as const;
+  const queryKey = useMemo(() => ["note-shares", user?.id, currentTenant?.id, noteId] as const, [user?.id, currentTenant?.id, noteId]);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey,
-    enabled: !!noteId && !!user,
+    enabled: !!noteId && !!user && !!currentTenant,
     staleTime: STALE_TIME.LIST,
-    queryFn: () => fetchShares(noteId as string),
+    queryFn: () => fetchShares(noteId as string, currentTenant?.id ?? ""),
   });
 
   const invalidate = useCallback(() => {
@@ -66,6 +72,7 @@ export const useNoteSharing = (noteId?: string) => {
     if (!user) return false;
     try {
       const { error } = await supabase.from("quick_note_shares").insert([{
+        tenant_id: currentTenant?.id,
         note_id: targetNoteId,
         shared_with_user_id: sharedWithUserId,
         shared_by_user_id: user.id,

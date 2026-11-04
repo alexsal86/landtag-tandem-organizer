@@ -1,3 +1,5 @@
+import { useQuickNotesData } from "@/features/quick-notes/useQuickNotesData";
+import { QuickNotesSyncStatus } from "@/features/quick-notes/QuickNotesSyncStatus";
 import { useQuickNoteDraft } from "@/hooks/useQuickNoteDraft";
 import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -10,7 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { MentionSharePromptDialog } from "@/components/shared/MentionSharePromptDialog";
-import { extractMentionedUserIds } from "@/utils/noteMentions";
+import { extractMentionedUsers } from "@/utils/noteMentions";
 import { notify } from "@/lib/notify";
 
 interface GlobalQuickNoteDialogProps {
@@ -21,6 +23,7 @@ interface GlobalQuickNoteDialogProps {
 export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDialogProps) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const { queueNote, repository } = useQuickNotesData();
   const { title, content, setTitle, setContent, clearDraft, draftStatus } = useQuickNoteDraft("global");
   const [saving, setSaving] = useState(false);
   const [mentionPromptOpen, setMentionPromptOpen] = useState(false);
@@ -58,49 +61,14 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
     setSaving(true);
     
     try {
-      const insertData = {
-        user_id: user.id,
-        title: title.trim() || null,
-        content: plainContent ? content.trim() : "",
-        is_pinned: false,
-        priority_level: 0,
-        is_archived: false
-      };
-      
-      const { data, error } = await supabase
-        .from('quick_notes')
-        .insert(insertData)
-        .select('id')
-        .single();
+      const data = await queueNote({ title: title.trim() || null, content: plainContent ? content.trim() : "" });
 
-      if (error) {
-        debugConsole.error("Supabase error:", error);
-        throw error;
-      }
-      
-      const mentionedUserIds = extractMentionedUserIds(title, content).filter(
-        (mentionedUserId) => mentionedUserId !== user.id
-      );
-
-      if (mentionedUserIds.length > 0 && currentTenant?.id && data?.id) {
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("user_id, display_name")
-          .eq("tenant_id", currentTenant.id)
-          .in("user_id", mentionedUserIds);
-
-        const users = mentionedUserIds.map((userId) => ({
-          id: userId,
-          displayName:
-            profiles?.find((profile) => profile.user_id === userId)?.display_name || "Unbekannt",
-        }));
-
-        setNewNoteId(data.id);
-        setMentionedUsers(users);
-        setMentionPromptOpen(true);
+      const mentions = extractMentionedUsers(title, content).filter(person => person.id !== user.id);
+      if (mentions.length > 0) {
+        setNewNoteId(data.id); setMentionedUsers(mentions); setMentionPromptOpen(true);
       }
 
-      notify.success("Notiz erstellt");
+      notify.success(navigator.onLine ? "Notiz lokal gespeichert" : "Offline auf diesem Gerät gespeichert");
       
       // Dispatch event to refresh notes list immediately
       window.dispatchEvent(new CustomEvent('quick-note-created', { 
@@ -123,9 +91,15 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
     permission: "view" | "edit"
   ) => {
     if (!newNoteId || !user?.id || userIds.length === 0) return;
+    await repository.sync();
+    if (repository.getSnapshot().writes.some(write => write.noteId === newNoteId)) {
+      notify.error("Bitte die Notiz nach der Synchronisierung über das Notizmenü teilen");
+      return;
+    }
 
     const { error } = await supabase.from("quick_note_shares").insert(
       userIds.map((sharedWithUserId) => ({
+        tenant_id: currentTenant?.id,
         note_id: newNoteId,
         shared_with_user_id: sharedWithUserId,
         shared_by_user_id: user.id,
@@ -189,6 +163,7 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
             key={open ? 'global-quick-note-content-open' : 'global-quick-note-content-closed'}
             initialContent={toEditorHtml(content)}
             onChange={setContent}
+            enableChecklists
             placeholder="Notiz eingeben..."
             minHeight="120px"
             onKeyDown={handleContentKeyDown}
@@ -196,6 +171,7 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
           />
         </div>
         
+        <QuickNotesSyncStatus />
         <p role="status" className="text-xs text-muted-foreground">{draftStatus}</p>
         <DialogFooter className="flex-col sm:flex-row gap-2">
           <div className="flex items-center gap-2 text-xs text-muted-foreground mr-auto">

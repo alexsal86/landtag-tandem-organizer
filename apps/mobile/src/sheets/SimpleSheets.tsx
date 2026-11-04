@@ -5,18 +5,20 @@ import { SheetShell } from '@/ui/SheetShell';
 import { useToast } from '@/ui/Toast';
 
 export function NoteSheet({
-  visible, onClose, userId,
-}: { visible: boolean; onClose: () => void; userId: string }): React.JSX.Element {
+  visible, onClose, userId, tenantId,
+}: { visible: boolean; onClose: () => void; userId: string; tenantId: string | null }): React.JSX.Element {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [busy, setBusy] = useState(false);
   const toast = useToast();
 
   const save = async () => {
+    if (!tenantId) { toast.error('Bitte einen Arbeitsbereich wählen'); return; }
     if (!content.trim()) return;
     setBusy(true);
     const { error } = await supabase.from('quick_notes').insert({
       user_id: userId,
+      tenant_id: tenantId,
       title: title.trim() || null,
       content: content.trim(),
       category: 'mobile',

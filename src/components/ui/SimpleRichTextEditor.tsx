@@ -1,3 +1,7 @@
+import { CheckListPlugin } from "@lexical/react/LexicalCheckListPlugin";
+import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
+import { CHECK_LIST } from "@lexical/markdown";
+import { normalizeChecklistHtml, exportChecklistHtml } from "@/features/quick-notes/checklists";
 import '@/styles/lexical-editor.css';
 import React, { useCallback, useEffect, useRef } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
@@ -22,10 +26,11 @@ import {
   UNDO_COMMAND,
 } from 'lexical';
 import { 
+  INSERT_CHECK_LIST_COMMAND,
   INSERT_ORDERED_LIST_COMMAND, 
   INSERT_UNORDERED_LIST_COMMAND,
 } from '@lexical/list';
-import { Bold, Italic, Underline, List, ListOrdered, Mic } from 'lucide-react';
+import { Bold, Italic, Underline, List, ListOrdered, CheckSquare, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { MentionNode } from '@/components/nodes/MentionNode';
@@ -56,6 +61,7 @@ interface SimpleRichTextEditorProps {
   onKeyDown?: React.KeyboardEventHandler<HTMLDivElement>;
   showToolbar?: boolean;
   autoFocus?: boolean;
+  enableChecklists?: boolean;
 }
 
 const hashContent = (content: string): string => {
@@ -76,8 +82,14 @@ const AutoFocusPlugin = () => {
 };
 
 
+const EditablePlugin = ({ disabled }: { disabled: boolean }) => {
+  const [editor] = useLexicalComposerContext();
+  React.useLayoutEffect(() => { editor.setEditable(!disabled); }, [editor, disabled]);
+  return null;
+};
+
 // Toolbar Component
-const Toolbar = () => {
+const Toolbar = ({ enableChecklists = false }: { enableChecklists?: boolean }) => {
   const [editor] = useLexicalComposerContext();
   const [isBold, setIsBold] = React.useState(false);
   const [isItalic, setIsItalic] = React.useState(false);
@@ -278,6 +290,7 @@ const Toolbar = () => {
       >
         <ListOrdered className="h-4 w-4" />
       </Button>
+      {enableChecklists && <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" title="Checkliste" aria-label="Checkliste einfügen" onClick={() => editor.dispatchCommand(INSERT_CHECK_LIST_COMMAND, undefined)}><CheckSquare className="h-4 w-4" /></Button>}
       <div className="w-px h-5 bg-border mx-1" />
       <Button
         type="button"
@@ -335,9 +348,11 @@ const Toolbar = () => {
 const InitialContentPlugin = ({
   initialContent = '',
   rehydrateKey,
+  enableChecklists = false,
 }: {
   initialContent?: string;
   rehydrateKey: string;
+  enableChecklists?: boolean;
 }) => {
   const [editor] = useLexicalComposerContext();
   const lastAppliedRehydrateKey = React.useRef<string | null>(null);
@@ -350,7 +365,7 @@ const InitialContentPlugin = ({
       currentHtml = $generateHtmlFromNodes(editor, null);
     });
 
-    if (currentHtml === initialContent) {
+    if (enableChecklists ? exportChecklistHtml(currentHtml) === exportChecklistHtml(initialContent) : currentHtml === initialContent) {
       lastAppliedRehydrateKey.current = rehydrateKey;
       return;
     }
@@ -365,7 +380,7 @@ const InitialContentPlugin = ({
     });
 
     lastAppliedRehydrateKey.current = rehydrateKey;
-  }, [editor, initialContent, rehydrateKey]);
+  }, [editor, initialContent, rehydrateKey, enableChecklists]);
 
   return null;
 };
@@ -383,6 +398,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
   onKeyDown,
   showToolbar = true,
   autoFocus = false,
+  enableChecklists = false,
 }) => {
   const rehydrateKey = React.useMemo(
     () => String(contentVersion ?? hashContent(initialContent)),
@@ -403,6 +419,9 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
         ul: 'list-disc ml-6 mb-2',
         ol: 'list-decimal ml-6 mb-2',
         listitem: 'mb-1',
+        checklist: 'note-editor-checklist',
+        listitemChecked: 'note-editor-check note-editor-check--done',
+        listitemUnchecked: 'note-editor-check',
       }
     },
     nodes: [
@@ -420,7 +439,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
     
     editorState.read(() => {
       const htmlString = $generateHtmlFromNodes(editor, null);
-      onChange(htmlString);
+      onChange(enableChecklists ? exportChecklistHtml(htmlString) : htmlString);
     });
   };
 
@@ -430,7 +449,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
       disabled && "opacity-50 pointer-events-none"
     )}>
       <LexicalComposer initialConfig={initialConfig}>
-        {showToolbar && <Toolbar />}
+        {showToolbar && <Toolbar enableChecklists={enableChecklists} />}
         <div className="relative w-full">
           <RichTextPlugin
             contentEditable={
@@ -454,11 +473,14 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
             ErrorBoundary={LexicalErrorBoundary}
           />
         </div>
+        <EditablePlugin disabled={disabled} />
         <HistoryPlugin />
         <OnChangePlugin onChange={handleChange} />
         <ListPlugin />
+        {enableChecklists && <CheckListPlugin />}
+        {enableChecklists && <MarkdownShortcutPlugin transformers={[CHECK_LIST]} />}
         <MentionsPlugin onMentionInsert={onMentionInsert} />
-        <InitialContentPlugin initialContent={initialContent} rehydrateKey={rehydrateKey} />
+        <InitialContentPlugin initialContent={enableChecklists ? normalizeChecklistHtml(initialContent) : initialContent} rehydrateKey={rehydrateKey} enableChecklists={enableChecklists} />
         {autoFocus && <AutoFocusPlugin />}
       </LexicalComposer>
     </div>

@@ -35,6 +35,8 @@ interface NoteDialogsProps {
   handleSetFollowUp: (noteId: string, date: Date | null) => void;
 
   draftStatus?: string;
+  editSaveStatus?: string;
+  saveDraftAsCopy?: () => void;
   // Edit dialog
   editDialogOpen: boolean;
   setEditDialogOpen: (open: boolean) => void;
@@ -173,14 +175,16 @@ export function NoteDialogs(props: NoteDialogsProps) {
               initialContent={props.editContent}
               disabled={props.savingEdit}
               onChange={props.setEditContent}
+              enableChecklists
               onKeyDown={handleEditContentKeyDown}
               placeholder="Inhalt"
               minHeight="150px"
             />
-            <p role="status" className="text-xs text-muted-foreground">{props.draftStatus}</p>
+            <p role="status" className="text-xs text-muted-foreground">{props.editSaveStatus || props.draftStatus}</p>
             <p className="text-xs text-muted-foreground">Enter erzeugt einen Absatz. Strg/Cmd + Enter speichert.</p>
           </div>
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            {props.saveDraftAsCopy && <Button variant="ghost" disabled={props.savingEdit || (!stripHtml(props.editTitle) && !stripHtml(props.editContent))} onClick={props.saveDraftAsCopy}>Als neue Notiz sichern</Button>}
             <Button variant="outline" disabled={props.savingEdit} onClick={() => props.setEditDialogOpen(false)}>Schließen</Button>
             <Button onClick={props.handleSaveEdit} disabled={props.savingEdit || (!stripHtml(props.editTitle) && !stripHtml(props.editContent))}>{props.savingEdit ? "Wird gespeichert…" : "Speichern"}</Button>
           </div>

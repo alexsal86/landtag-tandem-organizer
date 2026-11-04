@@ -1,10 +1,11 @@
 import type { QuickNote } from "@/components/shared/QuickNotesList";
 
-export type QuickNoteFilter = "all" | "pinned" | "due" | "shared" | "open" | "linked";
+export type QuickNoteFilter = "all" | "pinned" | "due" | "shared" | "open" | "linked" | "stale";
 
 export const DEFAULT_NOTE_COLOR = "#3b82f6";
 
 export const QUICK_NOTE_FILTERS: Array<{ value: QuickNoteFilter; label: string; hint: string }> = [
+  { value: "stale", label: "Seit über 30 Tagen unverändert", hint: "Länger als 30 Tage nicht bearbeitet; zukünftige Wiedervorlagen ausgenommen" },
   { value: "all", label: "Alle", hint: "Alle aktiven Notizen" },
   { value: "pinned", label: "Angeheftet", hint: "Nur angeheftete Notizen" },
   { value: "due", label: "Wiedervorlage fällig", hint: "Wiedervorlage-Datum ist heute oder schon vorbei" },
@@ -27,6 +28,16 @@ export function isFollowUpDue(note: QuickNote, now: Date = new Date()): boolean 
   return new Date(note.follow_up_date).getTime() <= endOfToday.getTime();
 }
 
+export function isNoteStale(note: QuickNote, now: Date = new Date()): boolean {
+  const changed = new Date(note.updated_at || note.created_at).getTime();
+  if (!Number.isFinite(changed) || now.getTime() - changed <= 30 * 864e5) return false;
+  if (note.follow_up_date) {
+    const today = new Date(now); today.setHours(23, 59, 59, 999);
+    if (new Date(note.follow_up_date).getTime() > today.getTime()) return false;
+  }
+  return !note.sync_status;
+}
+
 export function matchesNoteFilter(
   note: QuickNote,
   filter: QuickNoteFilter,
@@ -35,6 +46,7 @@ export function matchesNoteFilter(
 ): boolean {
   if (color && (note.color || DEFAULT_NOTE_COLOR) !== color) return false;
   switch (filter) {
+    case "stale": return isNoteStale(note, now);
     case "pinned": return note.is_pinned;
     case "due": return isFollowUpDue(note, now);
     case "shared": return (note.share_count || 0) > 0 || note.is_shared === true;
@@ -44,29 +56,4 @@ export function matchesNoteFilter(
   }
 }
 
-const CHECK_PATTERN = /\[( |x|X)\]/g;
-
-/** Flips the n-th "[ ]" / "[x]" marker in the note content. */
-export function toggleChecklistItem(content: string, index: number): string {
-  let current = -1;
-  return content.replace(CHECK_PATTERN, (match, mark: string) => {
-    current += 1;
-    if (current !== index) return match;
-    return mark === " " ? "[x]" : "[ ]";
-  });
-}
-
-export function countChecklist(content: string): { done: number; total: number } {
-  const matches = content.match(CHECK_PATTERN) ?? [];
-  return { done: matches.filter((m) => m !== "[ ]").length, total: matches.length };
-}
-
-/** Turns markers in already-sanitized HTML into clickable checkbox buttons. */
-export function renderChecklistHtml(sanitizedHtml: string): string {
-  let index = -1;
-  return sanitizedHtml.replace(CHECK_PATTERN, (_match, mark: string) => {
-    index += 1;
-    const checked = mark !== " ";
-    return `<button type="button" data-check-index="${index}" aria-pressed="${checked}" aria-label="${checked ? "Erledigt" : "Offen"}" class="note-check${checked ? " note-check--done" : ""}">${checked ? "✓" : ""}</button>`;
-  });
-}
+export { countChecklist, toggleChecklistItem, renderChecklistHtml } from "@/features/quick-notes/checklists";

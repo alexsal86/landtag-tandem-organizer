@@ -1,3 +1,6 @@
+import { QuickNotesSyncStatus } from "@/features/quick-notes/QuickNotesSyncStatus";
+import { useQuickNotesData } from "@/features/quick-notes/useQuickNotesData";
+import { useQuickNoteDraft } from "@/hooks/useQuickNoteDraft";
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Save, Search, Settings, ListTodo, Square, ChevronDown, CheckSquare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -71,8 +74,10 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
 }) => {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const [newNote, setNewNote] = useState('');
-  const [newTitle, setNewTitle] = useState('');
+  const { title: newTitle, content: newNote, setTitle: setNewTitle, setContent: setNewNote, clearDraft } = useQuickNoteDraft("widget");
+  const { queueNote } = useQuickNotesData();
+  const noteSaveBusy = useRef(false);
+  const [creatingNote, setCreatingNote] = useState(false);
   const [selectedColor, setSelectedColor] = useState('#3b82f6');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(true);
@@ -208,30 +213,20 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
     const plainTitle = stripHtml(newTitle);
     const plainContent = newNote.trim();
 
-    if (!user || (!plainTitle && !plainContent)) return;
+    if (!user || !currentTenant || noteSaveBusy.current || (!plainTitle && !plainContent)) return;
+    noteSaveBusy.current = true;
+    setCreatingNote(true);
 
     try {
-      const { error } = await supabase
-        .from('quick_notes')
-        .insert([{
-          user_id: user.id,
-          title: newTitle.trim() || undefined,
-          content: plainContent,
-          color: selectedColor,
-          category: 'general'
-        }]);
-
-      if (error) throw error;
-
-      setNewNote('');
-      setNewTitle('');
+      await queueNote({ title: newTitle.trim() || null, content: plainContent, color: selectedColor });
+      clearDraft();
       setTitleEditorKey(prev => prev + 1);
       setRefreshTrigger(prev => prev + 1);
       notify.success('Notiz erstellt');
     } catch (error) {
       debugConsole.error('Error creating note:', error);
       notify.error('Fehler beim Erstellen der Notiz');
-    }
+    } finally { noteSaveBusy.current = false; setCreatingNote(false); }
   };
 
   const saveSettings = (newValue: boolean) => {
@@ -354,6 +349,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
             <SimpleRichTextEditor
               key={titleEditorKey}
               initialContent={toEditorHtml(newTitle)}
+              disabled={creatingNote}
               onChange={setNewTitle}
               placeholder="Titel (@ für Mentions)"
               minHeight="36px"
@@ -362,11 +358,12 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
           )}
           <Textarea
             placeholder="Neue Notiz..."
+            disabled={creatingNote}
             value={newNote}
             onChange={(e) => setNewNote(e.target.value)}
             className="min-h-[100px] text-xs resize-none"
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && e.ctrlKey) {
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) {
                 e.preventDefault();
                 createNote();
               }
@@ -392,6 +389,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
         </div>
 
         {/* Notes List (shared component) */}
+        <QuickNotesSyncStatus />
         <QuickNotesList 
           refreshTrigger={refreshTrigger} 
           showHeader={false}

@@ -1,3 +1,6 @@
+import { useQuickNotesData } from "@/features/quick-notes/useQuickNotesData";
+import { QuickNotesSyncStatus } from "@/features/quick-notes/QuickNotesSyncStatus";
+import { useTenant } from "@/hooks/useTenant";
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Globe, Archive, Search, X, CheckSquare, Trash2, Settings2, Filter } from "lucide-react";
@@ -9,7 +12,6 @@ import { GlobalNoteShareDialog } from "@/components/shared/GlobalNoteShareDialog
 import { NotesArchiveDialog } from "@/components/shared/NotesArchiveDialog";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { notify } from "@/lib/notify";
 import { QUICK_NOTE_FILTERS, type QuickNoteFilter } from "@/components/shared/quickNoteBoard";
@@ -20,6 +22,8 @@ interface MyWorkNotesListProps {
 
 export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
+  const { patchNote } = useQuickNotesData();
   const [globalShareOpen, setGlobalShareOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [localRefreshTrigger, setLocalRefreshTrigger] = useState(0);
@@ -48,19 +52,22 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
   const exitSelectMode = () => { setSelectMode(false); setSelectedIds(new Set()); };
 
   const runBulk = async (kind: "archive" | "delete") => {
-    if (!user?.id || selectedIds.size === 0) return;
+    if (!user?.id || !currentTenant || selectedIds.size === 0) return;
     setBulkBusy(true);
     const ids = [...selectedIds];
     const now = new Date();
     const patch = kind === "archive"
       ? { is_archived: true, archived_at: now.toISOString() }
       : { deleted_at: now.toISOString(), permanent_delete_at: new Date(now.getTime() + 30 * 864e5).toISOString() };
-    const { error } = await supabase.from("quick_notes").update(patch).in("id", ids).eq("user_id", user.id);
+    const results = await Promise.allSettled(ids.map(id => patchNote({ id, patch })));
     setBulkBusy(false);
-    if (error) { notify.error(kind === "archive" ? "Archivieren fehlgeschlagen" : "Löschen fehlgeschlagen"); return; }
-    notify.success(kind === "archive" ? `${ids.length} Notizen archiviert` : `${ids.length} Notizen in den Papierkorb verschoben`);
-    exitSelectMode();
-    refresh();
+    const failed = ids.filter((_id, index) => results[index].status === "rejected");
+    const count = ids.length - failed.length;
+    if (count) notify.success(kind === "archive" ? `${count} Notizen archiviert` : `${count} Notizen in den Papierkorb verschoben`);
+    if (failed.length) {
+      setSelectedIds(new Set(failed));
+      notify.error(`${failed.length} Notiz(en) konnten nicht geändert werden. Freigegebene oder noch nicht synchronisierte Notizen bitte einzeln prüfen.`);
+    } else exitSelectMode();
   };
 
   const filterActive = filter !== "all" || colorFilter !== null || searchQuery.length > 0;
@@ -171,6 +178,7 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
           </div>
         )}
 
+        <QuickNotesSyncStatus />
         <QuickNotesList
           refreshTrigger={(refreshTrigger || 0) + localRefreshTrigger}
           showHeader={false}

@@ -145,7 +145,7 @@ export const GlobalNoteShareDialog = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Globe className="h-5 w-5" />
-            Alle Notizen freigeben
+            Alle Notizen dieses Arbeitsbereichs freigeben
           </DialogTitle>
           <DialogDescription>
             Gib alle deine Quick Notes für Teammitglieder frei.

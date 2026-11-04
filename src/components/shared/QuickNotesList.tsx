@@ -15,52 +15,11 @@ import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { NoteCard } from "@/components/shared/NoteCard";
 import { NoteDialogs } from "@/components/shared/NoteDialogs";
 import { useTopicBacklog } from "@/features/redaktion/hooks/useTopicBacklog";
-import { supabase } from "@/integrations/supabase/client";
 import { notify } from "@/lib/notify";
 import { sendToDaySlip } from "@/lib/daySlipBridge";
-import { matchesNoteFilter, toggleChecklistItem, type QuickNoteFilter } from "@/components/shared/quickNoteBoard";
-// Type for archived info from database (JSON)
-type ArchivedInfo = { id: string; title: string; archived_at: string } | null;
-
-export interface QuickNote {
-  id: string;
-  title: string | null;
-  content: string;
-  topic_backlog_id?: string | null;
-  color: string | null;
-  color_full_card?: boolean;
-  is_pinned: boolean;
-  created_at: string;
-  updated_at: string;
-  task_id?: string;
-  meeting_id?: string;
-  decision_id?: string;
-  case_item_id?: string;
-  priority_level?: number;
-  follow_up_date?: string;
-  is_archived?: boolean;
-  user_id?: string;
-  is_shared?: boolean;
-  share_count?: number;
-  pending_for_jour_fixe?: boolean;
-  can_edit?: boolean;
-  task_archived_info?: ArchivedInfo | unknown;
-  decision_archived_info?: ArchivedInfo | unknown;
-  meeting_archived_info?: ArchivedInfo | unknown;
-  shared_with_users?: Array<{
-    id: string;
-    display_name: string | null;
-  }>;
-  owner?: {
-    display_name: string | null;
-    avatar_url: string | null;
-  } | null;
-  meetings?: {
-    title: string;
-    meeting_date: string;
-    status: string | null;
-  } | null;
-}
+import { matchesNoteFilter, type QuickNoteFilter } from "@/components/shared/quickNoteBoard";
+import type { QuickNote } from "@/features/quick-notes/types";
+export type { QuickNote } from "@/features/quick-notes/types";
 
 interface QuickNotesListProps {
   refreshTrigger?: number;
@@ -83,7 +42,7 @@ interface QuickNotesListProps {
 
 export function QuickNotesList({
   refreshTrigger,
-  showHeader = true,
+  showHeader: _showHeader = true,
   maxHeight = "400px",
   onNoteClick,
   searchPlacement = "top",
@@ -185,19 +144,7 @@ export function QuickNotesList({
         throw new Error("Themenspeicher-Eintrag konnte nicht erstellt werden");
       }
 
-      const { error } = await supabase
-        .from("quick_notes")
-        .update({
-          topic_backlog_id: createdTopic.id,
-        })
-        .eq("id", note.id)
-        .eq("user_id", hook.user.id);
-
-      if (error) {
-        throw error;
-      }
-
-      await hook.loadNotes();
+      await hook.patchNote({ id: note.id, patch: { topic_backlog_id: createdTopic.id } });
       notify.success("Notiz in den Themenspeicher kopiert");
       return createdTopic.id;
     } catch (error) {
@@ -209,42 +156,21 @@ export function QuickNotesList({
     }
   };
 
-  const handleCopyToThemenspeicher = async (note: QuickNote) => {
-    const linkedTopicId = await ensureTopicBacklogLink(note);
-    if (linkedTopicId) {
-      await hook.loadNotes();
-    }
-  };
+  const handleCopyToThemenspeicher = async (note: QuickNote) => { await ensureTopicBacklogLink(note); };
 
   const handleMoveToThemenspeicher = async (note: QuickNote) => {
     const linkedTopicId = await ensureTopicBacklogLink(note);
     if (!linkedTopicId || !hook.user?.id) return;
-
     setTopicActionNoteId(note.id);
-
     try {
-      const { error } = await supabase
-        .from("quick_notes")
-        .update({
-          deleted_at: new Date().toISOString(),
-          permanent_delete_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          topic_backlog_id: linkedTopicId,
-        })
-        .eq("id", note.id)
-        .eq("user_id", hook.user.id);
-
-      if (error) {
-        throw error;
-      }
-
-      await hook.loadNotes();
+      await hook.patchNote({ id: note.id, patch: {
+        deleted_at: new Date().toISOString(),
+        permanent_delete_at: new Date(Date.now() + 30 * 864e5).toISOString(),
+        topic_backlog_id: linkedTopicId,
+      } });
       notify.success("Notiz in den Themenspeicher verschoben");
-    } catch (error) {
-      console.error("Error moving quick note to themenspeicher:", error);
-      notify.error("Notiz konnte nicht in den Themenspeicher verschoben werden");
-    } finally {
-      setTopicActionNoteId(null);
-    }
+    } catch { notify.error("Notiz konnte nicht in den Themenspeicher verschoben werden"); }
+    finally { setTopicActionNoteId(null); }
   };
 
   const handleSendToDaySlip = (note: QuickNote) => {
@@ -254,12 +180,8 @@ export function QuickNotesList({
   };
 
   const handleToggleChecklist = async (note: QuickNote, index: number) => {
-    const { error } = await supabase
-      .from("quick_notes")
-      .update({ content: toggleChecklistItem(note.content, index) })
-      .eq("id", note.id);
-    if (error) { notify.error("Punkt konnte nicht abgehakt werden"); return; }
-    await hook.loadNotes();
+    try { await hook.toggleChecklist(note.id, index); }
+    catch { notify.error("Punkt konnte nicht lokal gespeichert werden"); }
   };
 
   const noteCardProps = (note: QuickNote) => ({
@@ -316,6 +238,8 @@ export function QuickNotesList({
         noteForDatePicker={hook.noteForDatePicker}
         handleSetFollowUp={hook.handleSetFollowUp}
         draftStatus={hook.draftStatus}
+        editSaveStatus={hook.editSaveStatus}
+        saveDraftAsCopy={hook.saveDraftAsCopy}
         editDialogOpen={hook.editDialogOpen}
         setEditDialogOpen={hook.setEditDialogOpen}
         editingNote={hook.editingNote}

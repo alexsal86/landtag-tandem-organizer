@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 
-type Draft = { title: string; content: string };
+type Draft = { title: string; content: string; baseRevision?: number };
 const EMPTY: Draft = { title: "", content: "" };
 
 /** Writes on every change so a reload cannot race a debounce or an effect. */
@@ -16,7 +16,7 @@ export function useQuickNoteDraft(scope: string, initial: Draft = EMPTY) {
       const value: unknown = key ? JSON.parse(localStorage.getItem(key) || "null") : null;
       if (value && typeof value === "object" && "title" in value && "content" in value &&
           typeof value.title === "string" && typeof value.content === "string") {
-        return { title: value.title, content: value.content };
+        return { title: value.title, content: value.content, baseRevision: "baseRevision" in value && typeof value.baseRevision === "number" ? value.baseRevision : undefined };
       }
     } catch { /* A blocked or malformed store must not prevent editing. */ }
     return null;
@@ -36,6 +36,8 @@ export function useQuickNoteDraft(scope: string, initial: Draft = EMPTY) {
   };
   return {
     ...value,
+    draftBaseRevision: value.baseRevision,
+    draftRestored: stored !== null,
     setTitle: (title: string) => write({ ...value, title }),
     setContent: (content: string) => write({ ...value, content }),
     clearDraft: () => {

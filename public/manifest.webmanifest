@@ -1,0 +1,10 @@
+{
+  "name": "LandtagsOS Quick Notes",
+  "short_name": "Quick Notes",
+  "start_url": "/mywork",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#167b48",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

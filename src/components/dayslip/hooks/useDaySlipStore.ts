@@ -145,7 +145,7 @@ export function useDaySlipStore(userId: string, tenantId: string) {
     if (!title) throw new Error("Der Eintrag benötigt einen Titel.");
     const description = `Aus Tageszettel (${key})`;
     const response = item.target === "note"
-      ? await supabase.from("quick_notes").insert({ id, user_id: userId, title, content: description })
+      ? await supabase.from("quick_notes").insert({ id, user_id: userId, tenant_id: tenantId, title, content: description })
       : item.target === "task"
         ? await supabase.from("tasks").insert({ id, user_id: userId, tenant_id: tenantId, title, description, status: "open", priority: item.text.startsWith("!!") ? "high" : "medium", category: "allgemein", assigned_to: item.taskOptions?.assignedTo || userId, due_date: item.taskOptions?.dueDate ? new Date(`${item.taskOptions.dueDate}T12:00:00`).toISOString() : null })
         : await supabase.from("task_decisions").insert({ id, created_by: userId, tenant_id: tenantId, title, description, status: "open" });
