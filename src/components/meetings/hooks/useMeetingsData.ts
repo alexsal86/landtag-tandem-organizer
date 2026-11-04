@@ -128,7 +128,7 @@ export function useMeetingsData() {
     } else {
       supabase
         .from('meetings')
-        .select("id, title, meeting_date, meeting_time, status, description, is_public, user_id, template_id, location, created_at, recurrence_rule, recurrence_end_date")
+        .select("id, title, meeting_date, meeting_time, status, description, is_public, user_id, template_id, location, created_at, recurrence_rule")
         .eq('id', urlMeetingId)
         .maybeSingle()
         .then(({ data }) => {
@@ -283,7 +283,7 @@ export function useMeetingsData() {
 
   const loadMeetings = async () => {
     try {
-      const meetingSelectFields = "id, title, meeting_date, meeting_time, status, description, is_public, user_id, template_id, location, created_at, recurrence_rule, recurrence_end_date";
+      const meetingSelectFields = "id, title, meeting_date, meeting_time, status, description, is_public, user_id, template_id, location, created_at, recurrence_rule";
       const { data: ownMeetings, error: ownError } = await supabase
         .from('meetings').select(meetingSelectFields).eq('user_id', user?.id ?? '').neq('status', 'archived').order('meeting_date', { ascending: false });
       if (ownError) throw ownError;
@@ -391,7 +391,7 @@ export function useMeetingsData() {
   const loadAgendaItems = async (meetingId: string) => {
     try {
       const { data, error } = await supabase
-        .from('meeting_agenda_items').select('id, meeting_id, title, description, duration_minutes, order_index, type, parent_id, task_id, result_text, assigned_to, is_completed, completed_at, planning_item_id').eq('meeting_id', meetingId).order('order_index');
+        .from('meeting_agenda_items').select('id, meeting_id, title, description, notes, order_index, parent_id, task_id, result_text, assigned_to, is_completed, system_type, is_optional, is_visible, carry_over_to_next, source_meeting_id, carried_over_from, original_meeting_date, original_meeting_title, carryover_notes, file_path, is_recurring, created_at, updated_at').eq('meeting_id', meetingId).order('order_index');
       if (error) throw error;
 
       const mainItems = (data || []).filter((item: Record<string, any>) => !item.parent_id).sort((a: Record<string, any>, b: Record<string, any>) => a.order_index - b.order_index);
