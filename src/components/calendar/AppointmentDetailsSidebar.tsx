@@ -1,3 +1,4 @@
+import { AppointmentContactCards } from "./AppointmentContactCards";
 import React, { useState, useEffect } from "react";
 import { debugConsole } from '@/utils/debugConsole';
 import { X, Edit, Trash2, MapPin, Clock, Users, Calendar as CalendarIcon, Save, Mail, UserPlus, Check, XIcon, ListTodo, CheckCircle2, FileText, CheckSquare, Megaphone } from "lucide-react";
@@ -650,6 +651,8 @@ export function AppointmentDetailsSidebar({
               </div>
             </div>
           </div>
+
+          <AppointmentContactCards key={appointment._originalId ?? appointment.id} appointmentId={appointment._originalId ?? appointment.id} />
 
           {/* Location */}
           <div className="flex items-start gap-3">

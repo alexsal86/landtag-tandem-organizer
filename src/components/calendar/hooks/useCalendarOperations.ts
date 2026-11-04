@@ -1,3 +1,4 @@
+import { canMoveAppointment } from "../collisions";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { handleAppError } from "@/utils/errorHandler";
@@ -7,7 +8,7 @@ import { notify } from "@/lib/notify";
 export function useCalendarOperations(refreshAppointments: () => void) {
 
   const handleEventDrop = async (event: CalendarEvent, start: Date, end: Date) => {
-    if (!event.id || event.id.startsWith("blocked-")) return;
+    if (!canMoveAppointment(event)) { notify.error("Dieser Termin muss in seiner Quelle bearbeitet werden."); return; }
     try {
       const { error } = await supabase
         .from("appointments")
@@ -23,6 +24,7 @@ export function useCalendarOperations(refreshAppointments: () => void) {
   };
 
   const handleEventResize = async (event: CalendarEvent, _start: Date, end: Date) => {
+    if (!canMoveAppointment(event)) { notify.error("Dieser Termin muss in seiner Quelle bearbeitet werden."); return; }
     try {
       const { error } = await supabase
         .from("appointments")

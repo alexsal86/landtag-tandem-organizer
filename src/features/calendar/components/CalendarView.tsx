@@ -1,3 +1,5 @@
+import { CollisionRadar } from "@/components/calendar/CollisionRadar";
+import { overlaps } from "@/components/calendar/collisions";
 import { useState, useEffect, useRef, startTransition, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
@@ -32,13 +34,6 @@ type HighlightEventRow = {
   is_all_day?: boolean | null;
 };
 
-const viewLabels: Record<string, string> = {
-  day: "Tag",
-  week: "Woche",
-  month: "Monat",
-  agenda: "Agenda",
-};
-
 export function CalendarView() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -57,6 +52,9 @@ export function CalendarView() {
     () => appointments.filter((appointment) => !appointment.sourceScope || !appointment.sourceId || !hiddenSourceKeys.includes(`${appointment.sourceScope}:${appointment.sourceId}`)),
     [appointments, hiddenSourceKeys],
   );
+
+  const radarAppointments = useMemo(() => visibleAppointments.map(event => ({ ...event, hasCollision: appointments.some(other => overlaps(event, other)) })), [visibleAppointments, appointments]);
+  const currentAppointment = appointments.find(event => event.id === selectedAppointment?.id) ?? selectedAppointment;
 
   const handleToggleSourceVisibility = (source: CalendarSource) => {
     const key = `${source.scope}:${source.id}`;
@@ -91,8 +89,8 @@ export function CalendarView() {
     (async () => {
       const isExt = highlightId.startsWith("external-");
       const id = isExt ? highlightId.replace(/^external-/, "") : highlightId;
-      let data: HighlightEventRow | null = null;
-      let error: unknown = null;
+      let data: HighlightEventRow | null;
+      let error: unknown;
 
       if (isExt) {
         const res = await supabase.from("external_events").select("id, title, start_time, end_time, location, all_day").eq("id", id).maybeSingle();
@@ -150,8 +148,9 @@ export function CalendarView() {
     <div className="h-full overflow-hidden bg-gradient-subtle">
       <div className="flex h-full min-h-0 transition-all duration-300">
         {/* Sidebar */}
-        <div className="w-[260px] shrink-0 min-h-0">
+        <div className={`${sidebarOpen ? "w-[60px]" : "w-[260px]"} shrink-0 min-h-0 transition-all duration-300`}>
           <CalendarHeader
+            collapsed={sidebarOpen}
             selectedDate={currentDate}
             onSelectDate={(date) => {
               setCurrentDate(date);
@@ -162,18 +161,6 @@ export function CalendarView() {
             onToggleSourceVisibility={handleToggleSourceVisibility}
           />
         </div>
-
-        {/* Detail sidebar */}
-        {sidebarOpen && selectedAppointment && (
-          <div className="w-[420px] shrink-0 min-h-0 border-x border-border overflow-hidden">
-            <AppointmentDetailsSidebar
-              appointment={selectedAppointment}
-              open={sidebarOpen}
-              onClose={() => { setSidebarOpen(false); setSelectedAppointment(null); }}
-              onUpdate={refreshAppointments}
-            />
-          </div>
-        )}
 
         {/* Main calendar area */}
         <div className="flex-1 min-w-0 min-h-0 flex flex-col transition-all duration-300 overflow-hidden pl-5 pt-4 pb-1 pr-0">
@@ -247,7 +234,7 @@ export function CalendarView() {
                 <div className="text-center py-8 text-muted-foreground">Termine werden geladen...</div>
               ) : isCalendarView(view) ? (
                 <ProperReactBigCalendar
-                  events={visibleAppointments}
+                  events={radarAppointments}
                   view={view}
                   date={currentDate}
                   onNavigate={setCurrentDate}
@@ -263,6 +250,20 @@ export function CalendarView() {
             </CardContent>
           </Card>
         </div>
+        {/* Detail sidebar */}
+        {sidebarOpen && selectedAppointment && (
+          <div className="w-[420px] shrink-0 min-h-0 border-x border-border overflow-hidden flex flex-col">
+            {currentAppointment && <CollisionRadar event={currentAppointment} events={appointments} onMove={handleEventDrop} />}
+            <div className="flex-1 min-h-0">
+              <AppointmentDetailsSidebar
+              appointment={currentAppointment}
+              open={sidebarOpen}
+              onClose={() => { setSidebarOpen(false); setSelectedAppointment(null); }}
+              onUpdate={refreshAppointments}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       <AppointmentPreparationSidebar

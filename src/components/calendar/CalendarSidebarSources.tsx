@@ -70,12 +70,14 @@ async function fetchCalendarSources(tenantId: string): Promise<CalendarSource[]>
 }
 
 interface CalendarSidebarSourcesProps {
+  collapsed?: boolean;
   onColorsUpdated?: () => void;
   hiddenSourceKeys?: string[];
   onToggleVisibility?: (source: CalendarSource) => void;
 }
 
 export function CalendarSidebarSources({
+  collapsed = false,
   onColorsUpdated,
   hiddenSourceKeys = [],
   onToggleVisibility,
@@ -204,6 +206,15 @@ export function CalendarSidebarSources({
       </div>
     );
   };
+
+  if (collapsed) return <div className="space-y-2" aria-label="Kalenderquellen">
+    {calendarSources.map(source => {
+      const visible = !hiddenSourceKeys.includes(`${source.scope}:${source.id}`);
+      return <Button key={`${source.scope}:${source.id}`} size="icon" variant="ghost" title={`${source.name} ${visible ? "ausblenden" : "einblenden"}`} aria-label={source.name} aria-pressed={visible} onClick={() => onToggleVisibility?.(source)}>
+        <span className={cn("h-4 w-4 rounded-full border-2", !visible && "opacity-30")} style={{ backgroundColor: visible ? source.color : "transparent", borderColor: source.color }} />
+      </Button>;
+    })}
+  </div>;
 
   return (
     <div className="mt-6 rounded-lg border bg-background/70 p-3">

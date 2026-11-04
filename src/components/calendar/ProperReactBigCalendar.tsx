@@ -33,6 +33,7 @@ const MonthEvent = ({ event }: { event: RBCEvent }) => {
       {timeStr && (
         <span className="font-semibold opacity-90">{timeStr}</span>
       )}
+      {toCalendarEventViewModel(event)?.resource.hasCollision && <span className="rounded bg-destructive text-white px-1 font-bold" title="Terminkollision – Details für Lösungen öffnen" aria-label="Terminkollision">⚠</span>}
       <span className="truncate">{rbcEvent.title}</span>
     </div>
   );
@@ -416,6 +417,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
         views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
         defaultView={Views.WEEK}
         components={{
+          event: MonthEvent as React.ComponentType<EventProps<RBCEvent>>,
           week: {
             header: WeekHeader,
           },

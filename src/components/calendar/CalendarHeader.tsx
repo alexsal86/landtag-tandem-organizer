@@ -1,10 +1,11 @@
 import { useNavigate } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { Plus, Vote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarSidebarSources, type CalendarSource } from "./CalendarSidebarSources";
 
 interface CalendarHeaderProps {
+  collapsed?: boolean;
   onShowPolls: () => void;
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
@@ -13,6 +14,7 @@ interface CalendarHeaderProps {
 }
 
 export function CalendarHeader({
+  collapsed = false,
   onShowPolls,
   selectedDate,
   onSelectDate,
@@ -33,6 +35,14 @@ export function CalendarHeader({
 
     onSelectDate(new Date(targetYear, targetMonth, Math.min(day, daysInTargetMonth)));
   };
+
+  if (collapsed) return (
+    <div className="h-full border-r bg-muted/30 p-2 overflow-y-auto space-y-3">
+      <Button size="icon" title="Neuer Termin" aria-label="Neuer Termin" onClick={() => navigate("/calendar?action=create-appointment")}><Plus className="h-4 w-4" /></Button>
+      <Button size="icon" variant="outline" title="Abstimmungen" aria-label="Abstimmungen" onClick={onShowPolls}><Vote className="h-4 w-4" /></Button>
+      <CalendarSidebarSources collapsed hiddenSourceKeys={hiddenSourceKeys} onToggleVisibility={onToggleSourceVisibility} />
+    </div>
+  );
 
   return (
     <div className="h-full border-r bg-muted/30 p-4 overflow-y-auto">

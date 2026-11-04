@@ -308,6 +308,7 @@ async function fetchCalendarData(currentDate: Date, view: string, tenantId: stri
       type: (appointment.category as CalendarEvent["type"]) || "meeting",
       priority: (appointment.priority as CalendarEvent["priority"]) || "medium",
       participants, attendees: participants.length,
+      _isRecurring: appointment._isRecurring, _originalId: appointment._originalId,
       category_color: appointment.category ? categoryMetadata.get(appointment.category)?.color : undefined,
       is_all_day: appointment.is_all_day || false,
       sourceScope: "internal",
@@ -404,7 +405,7 @@ export function useCalendarData(currentDate: Date, view: string) {
     return ["calendar-data", start.toISOString(), end.toISOString(), currentTenant?.id];
   }, [currentDate, view, currentTenant?.id]);
 
-  const { data: appointments = [], isLoading: loading, refetch } = useQuery({
+  const { data: appointments = [], isLoading: loading, isError, refetch } = useQuery({
     queryKey,
     queryFn: () => fetchCalendarData(currentDate, view, currentTenant?.id),
     enabled: view !== "polls" && !!currentTenant,
@@ -435,5 +436,5 @@ export function useCalendarData(currentDate: Date, view: string) {
 
   const refreshAppointments = () => { refetch(); };
 
-  return { appointments, loading, refreshAppointments };
+  return { appointments, loading, isError, refreshAppointments };
 }

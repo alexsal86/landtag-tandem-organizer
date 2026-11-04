@@ -1,6 +1,7 @@
 export interface CalendarEvent {
   id: string;
   title: string;
+  hasCollision?: boolean;
   description?: string;
   time: string;
   duration: string;

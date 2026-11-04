@@ -1,3 +1,4 @@
+import { DaySlipAppointments } from "./DaySlipAppointments";
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { DAY_SLIP_APPEND_EVENT, type DaySlipAppendDetail } from "@/lib/daySlipBridge";
@@ -373,6 +374,7 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
             {ds.saveStatus === "error" && <><p className="mt-1 text-destructive">{ds.saveError}</p><button className="mt-1 underline" onClick={() => void ds.retrySave()}>Erneut versuchen</button></>}
             {ds.deadlineError && <p className="mt-1 text-destructive">Fristen konnten nicht aktualisiert werden. Die Aktualisierung wird erneut versucht.</p>}
           </div>
+          {!showArchive && !showSettings && <DaySlipAppointments />}
           {!ds.ready ? <div className="flex-1 p-4 text-sm text-muted-foreground">{ds.saveStatus === "error" ? "Deine lokalen Einträge bleiben erhalten. Bitte versuche das Laden erneut." : "Deine Einträge werden geladen …"}</div> : showSettings ? (
             <div className={`flex-1 space-y-4 overflow-y-auto p-4 transition-all duration-300 ease-out ${contentTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
               <div><p className="text-sm font-medium">Einstellungen</p><p className="text-xs text-muted-foreground">Wiederkehrende Punkte verwalten</p></div>
