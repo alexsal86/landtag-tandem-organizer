@@ -9,9 +9,7 @@ import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { MentionSharePromptDialog } from "@/components/shared/MentionSharePromptDialog";
 import { useQuickCaptureActions } from "@/components/my-work/hooks/useQuickCaptureActions";
 import { stripHtml, toEditorHtml } from "@/components/my-work/utils/editorContent";
-import { QUICK_NOTE_COLORS } from "@/components/my-work/quickNoteColors";
-
-const COLORS = QUICK_NOTE_COLORS;
+import { useNoteColorPalette, colorLabel } from "@/components/my-work/useNoteColorPalette";
 
 interface MyWorkQuickCaptureProps {
   onNoteSaved?: () => void;
@@ -24,6 +22,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
   const [isPinned, setIsPinned] = useState(false);
   const [editorResetKey, setEditorResetKey] = useState(0);
   const [expanded, setExpanded] = useState(false);
+  const { palette } = useNoteColorPalette();
 
   const canSaveNote = Boolean(stripHtml(title) || stripHtml(content));
 
@@ -85,22 +84,37 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
 
   if (!expanded) {
     return (
-      <button
-        type="button"
-        onClick={() => setExpanded(true)}
-        className="mx-auto flex w-full max-w-2xl items-center gap-3 rounded-xl border bg-card px-4 py-3 text-left text-muted-foreground shadow-sm transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <StickyNote className="h-4 w-4" />
-        <span className="flex-1 text-body">Notiz erfassen…</span>
-        <span className="text-caption hidden sm:inline">Klicken zum Schreiben</span>
-      </button>
+      <div className="flex w-full items-center gap-3 rounded-xl border bg-card px-4 py-3 text-muted-foreground shadow-sm transition-shadow hover:shadow-md">
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="flex flex-1 items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+        >
+          <StickyNote className="h-4 w-4" />
+          <span className="flex-1 text-body">Notiz erfassen…</span>
+        </button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button type="button" className="hover:text-foreground" aria-label="Tipps">
+                <Info className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-xs space-y-1">
+              <p>„[ ] Punkt" am Zeilenanfang wird zur abhakbaren Checkbox.</p>
+              <p>Über „Umwandeln" landet eine Notiz als Aufgabe, Entscheidung, Vorgang, im Jour fixe oder auf dem Tageszettel.</p>
+              <p>Enter speichert, Shift + Enter erzeugt eine neue Zeile.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
     );
   }
 
   return (
     <>
       <Card
-        className="mx-auto max-w-2xl transition-colors border-l-4 w-full shadow-md"
+        className="transition-colors border-l-4 w-full shadow-md"
         onKeyDown={(e) => { if (e.key === "Escape" && !canSaveNote) setExpanded(false); }}
         style={{ borderLeftColor: selectedColor }}>
       <CardHeader className="pb-3">
@@ -137,7 +151,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
               </PopoverTrigger>
               <PopoverContent className="w-auto p-2" align="end">
                 <div className="flex gap-1">
-                  {COLORS.map((color) => (
+                  {palette.map((color) => (
                     <button
                       key={color.value}
                       className={cn(
@@ -148,7 +162,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
                       )}
                       style={{ backgroundColor: color.value }}
                       onClick={() => setSelectedColor(color.value)}
-                      title={color.name}
+                      title={colorLabel(color)}
                     />
                   ))}
                 </div>

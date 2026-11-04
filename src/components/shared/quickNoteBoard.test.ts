@@ -30,3 +30,11 @@ describe("checklists", () => {
     expect(countChecklist(html)).toEqual({ done: 1, total: 3 });
   });
 });
+
+describe("linked filter includes Jour fixe", () => {
+  it("counts notes only marked for the next Jour fixe as linked, not open", () => {
+    const note = { id: "n", title: null, content: "x", color: null, is_pinned: false, created_at: "", updated_at: "", pending_for_jour_fixe: true };
+    expect(matchesNoteFilter(note, "linked")).toBe(true);
+    expect(matchesNoteFilter(note, "open")).toBe(false);
+  });
+});

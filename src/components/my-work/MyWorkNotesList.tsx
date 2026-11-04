@@ -1,6 +1,9 @@
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Globe, Archive, Search, X, CheckSquare, Trash2, NotebookPen } from "lucide-react";
+import { Globe, Archive, Search, X, CheckSquare, Trash2, Settings2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useNoteColorPalette, colorLabel } from "@/components/my-work/useNoteColorPalette";
+import { NoteColorPaletteDialog } from "@/components/my-work/NoteColorPaletteDialog";
 import { QuickNotesList } from "@/components/shared/QuickNotesList";
 import { GlobalNoteShareDialog } from "@/components/shared/GlobalNoteShareDialog";
 import { NotesArchiveDialog } from "@/components/shared/NotesArchiveDialog";
@@ -10,7 +13,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { notify } from "@/lib/notify";
 import { QUICK_NOTE_FILTERS, type QuickNoteFilter } from "@/components/shared/quickNoteBoard";
-import { QUICK_NOTE_COLORS } from "@/components/my-work/quickNoteColors";
 
 interface MyWorkNotesListProps {
   refreshTrigger?: number;
@@ -29,6 +31,8 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [visibleIds, setVisibleIds] = useState<string[]>([]);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const { palette, save } = useNoteColorPalette();
 
   const refresh = () => setLocalRefreshTrigger((prev) => prev + 1);
 
@@ -97,6 +101,7 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
             <button
               key={f.value}
               type="button"
+              title={f.hint}
               onClick={() => setFilter(f.value)}
               aria-pressed={filter === f.value}
               className={cn(
@@ -108,18 +113,31 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
             </button>
           ))}
           <div className="mx-1 h-5 w-px bg-border" />
-          {QUICK_NOTE_COLORS.map((c) => (
-            <button
-              key={c.value}
-              type="button"
-              title={`Farbe: ${c.name}`}
-              aria-label={`Nach Farbe ${c.name} filtern`}
-              aria-pressed={colorFilter === c.value}
-              onClick={() => setColorFilter((prev) => (prev === c.value ? null : c.value))}
-              className={cn("h-5 w-5 rounded-full border-2 transition-transform", colorFilter === c.value ? "border-foreground scale-110" : "border-transparent")}
-              style={{ backgroundColor: c.value }}
-            />
-          ))}
+          <TooltipProvider>
+            {palette.map((c) => (
+              <Tooltip key={c.value}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={`Nach Farbe ${colorLabel(c)} filtern`}
+                    aria-pressed={colorFilter === c.value}
+                    onClick={() => setColorFilter((prev) => (prev === c.value ? null : c.value))}
+                    className={cn("h-5 w-5 rounded-full border-2 transition-transform", colorFilter === c.value ? "border-foreground scale-110" : "border-transparent")}
+                    style={{ backgroundColor: c.value }}
+                  />
+                </TooltipTrigger>
+                <TooltipContent>{colorLabel(c)}</TooltipContent>
+              </Tooltip>
+            ))}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button type="button" onClick={() => setPaletteOpen(true)} className="flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground hover:text-foreground" aria-label="Farben anpassen">
+                  <Settings2 className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Farben & Bedeutungen anpassen</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           {filterActive && (
             <span className="ml-auto text-caption text-muted-foreground tabular-nums">
               {counts.filteredCount} von {counts.totalCount}
@@ -160,11 +178,9 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
           onVisibleIdsChange={setVisibleIds}
         />
 
-        <p className="flex items-center gap-1.5 text-caption text-muted-foreground">
-          <NotebookPen className="h-3.5 w-3.5" />
-          Tipp: „[ ] Punkt" am Zeilenanfang wird zur abhakbaren Checkbox. Über „Umwandeln" landet eine Notiz auch auf dem Tageszettel.
-        </p>
       </section>
+
+      <NoteColorPaletteDialog open={paletteOpen} onOpenChange={setPaletteOpen} palette={palette} onSave={save} />
 
       <GlobalNoteShareDialog open={globalShareOpen} onOpenChange={setGlobalShareOpen} />
 
