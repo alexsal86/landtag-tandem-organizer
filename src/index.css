@@ -705,3 +705,24 @@ All colors MUST be HSL.
   width: 24px !important;
   height: 24px !important;
 }
+
+/* Quick-Notes checklist markers ("[ ]" / "[x]") rendered as checkboxes */
+.note-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.95rem;
+  height: 0.95rem;
+  margin-right: 0.35rem;
+  vertical-align: -0.15rem;
+  border: 1.5px solid hsl(var(--muted-foreground));
+  border-radius: 0.25rem;
+  font-size: 0.7rem;
+  line-height: 1;
+  color: hsl(var(--primary-foreground));
+  cursor: pointer;
+}
+.note-check--done {
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+}

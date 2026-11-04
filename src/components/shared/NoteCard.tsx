@@ -132,6 +132,11 @@ export function NoteCard({
                 <RichTextDisplay content={note.title} />
               </div>
             )}
+            {checklist.total > 0 && (
+              <Badge variant="outline" className="text-xs px-1.5 py-0 h-5 flex-shrink-0 tabular-nums" title="Erledigte Punkte">
+                {checklist.done}/{checklist.total}
+              </Badge>
+            )}
             {showFollowUpBadge && note.follow_up_date && (
               <div className="flex items-center gap-1 flex-shrink-0">
                 <Badge variant="outline" className="text-xs px-1.5 py-0 h-5 text-palette-amber border-palette-amber/40 bg-palette-amber/10">
