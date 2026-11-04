@@ -1,0 +1,69 @@
+import type { QuickNote } from "@/components/shared/QuickNotesList";
+
+export type QuickNoteFilter = "all" | "pinned" | "due" | "shared" | "open" | "linked";
+
+export const DEFAULT_NOTE_COLOR = "#3b82f6";
+
+export const QUICK_NOTE_FILTERS: Array<{ value: QuickNoteFilter; label: string }> = [
+  { value: "all", label: "Alle" },
+  { value: "pinned", label: "Angeheftet" },
+  { value: "due", label: "Wiedervorlage fällig" },
+  { value: "shared", label: "Geteilt" },
+  { value: "open", label: "Offen" },
+  { value: "linked", label: "Verknüpft" },
+];
+
+export function isNoteLinked(note: QuickNote): boolean {
+  return Boolean(note.task_id || note.decision_id || note.case_item_id || note.meeting_id || note.topic_backlog_id);
+}
+
+export function isFollowUpDue(note: QuickNote, now: Date = new Date()): boolean {
+  if (!note.follow_up_date) return false;
+  const endOfToday = new Date(now);
+  endOfToday.setHours(23, 59, 59, 999);
+  return new Date(note.follow_up_date).getTime() <= endOfToday.getTime();
+}
+
+export function matchesNoteFilter(
+  note: QuickNote,
+  filter: QuickNoteFilter,
+  color: string | null = null,
+  now: Date = new Date(),
+): boolean {
+  if (color && (note.color || DEFAULT_NOTE_COLOR) !== color) return false;
+  switch (filter) {
+    case "pinned": return note.is_pinned;
+    case "due": return isFollowUpDue(note, now);
+    case "shared": return (note.share_count || 0) > 0 || note.is_shared === true;
+    case "open": return !isNoteLinked(note);
+    case "linked": return isNoteLinked(note);
+    default: return true;
+  }
+}
+
+const CHECK_PATTERN = /\[( |x|X)\]/g;
+
+/** Flips the n-th "[ ]" / "[x]" marker in the note content. */
+export function toggleChecklistItem(content: string, index: number): string {
+  let current = -1;
+  return content.replace(CHECK_PATTERN, (match, mark: string) => {
+    current += 1;
+    if (current !== index) return match;
+    return mark === " " ? "[x]" : "[ ]";
+  });
+}
+
+export function countChecklist(content: string): { done: number; total: number } {
+  const matches = content.match(CHECK_PATTERN) ?? [];
+  return { done: matches.filter((m) => m !== "[ ]").length, total: matches.length };
+}
+
+/** Turns markers in already-sanitized HTML into clickable checkbox buttons. */
+export function renderChecklistHtml(sanitizedHtml: string): string {
+  let index = -1;
+  return sanitizedHtml.replace(CHECK_PATTERN, (_match, mark: string) => {
+    index += 1;
+    const checked = mark !== " ";
+    return `<button type="button" data-check-index="${index}" aria-pressed="${checked}" aria-label="${checked ? "Erledigt" : "Offen"}" class="note-check${checked ? " note-check--done" : ""}">${checked ? "✓" : ""}</button>`;
+  });
+}
