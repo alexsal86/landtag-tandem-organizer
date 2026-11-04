@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DashboardTasksSection } from '@/components/dashboard/DashboardTasksSection';
@@ -18,6 +19,8 @@ import { cn } from '@/lib/utils';
 interface DashboardWidgetContainerProps {
   title: ReactNode;
   className?: string;
+  headerAction?: ReactNode;
+  compactTitle?: boolean;
   isLoading?: boolean;
   hasError?: boolean;
   loadingVariant?: 'list' | 'card' | 'detail' | 'inline';
@@ -28,6 +31,8 @@ interface DashboardWidgetContainerProps {
 function DashboardWidgetContainer({
   title,
   className,
+  headerAction,
+  compactTitle = false,
   isLoading = false,
   hasError = false,
   loadingVariant = 'list',
@@ -44,8 +49,9 @@ function DashboardWidgetContainer({
 
   return (
     <Card className={cn('shadow-sm border-border/60 animate-fade-in', className)}>
-      <CardHeader className="py-space-sm px-space-md">
-        <CardTitle className="text-body-lg font-medium">{title}</CardTitle>
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 py-space-sm px-space-md">
+        <CardTitle className={cn("font-medium", compactTitle ? "text-base" : "text-body-lg")}>{title}</CardTitle>
+        {headerAction}
       </CardHeader>
       <CardContent className="px-space-md pb-space-md pt-0">{content}</CardContent>
     </Card>
@@ -80,9 +86,11 @@ function AppointmentsWidget() {
       title={
         <span className="inline-flex items-center gap-space-xs">
           <CalendarDays className="h-4 w-4 text-muted-foreground" />
-          Deine nächsten Termine
+          Nächste Termine
         </span>
       }
+      compactTitle
+      headerAction={<Link to="/calendar" className="text-sm text-primary hover:underline focus-visible:outline-primary">Kalender öffnen</Link>}
       isLoading={dashboardData.isLoading || dashboardData.tenantLoading}
       hasError={dashboardData.isError}
       loadingVariant="card"

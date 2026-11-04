@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { addDays, format, isSameDay } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
-import { X, ChevronDown, ChevronRight, FileText, Video } from 'lucide-react';
+import { X, Download, MapPin, Check, CircleAlert, Video } from 'lucide-react';
 import { getLucideIcon } from '@/utils/iconUtils';
 import { Separator } from '@/components/ui/separator';
 import { AppointmentBriefingView } from '@/components/appointment-preparations/AppointmentBriefingView';
@@ -115,20 +115,28 @@ export const DashboardAppointments = ({ data }: Props) => {
   } = data;
 
   const [preparations, setPreparations] = useState<Map<string, AppointmentPreparation>>(new Map());
+  const [preparationsError, setPreparationsError] = useState(false);
+  const [preparationsLoaded, setPreparationsLoaded] = useState(false);
   const [expandedBriefingId, setExpandedBriefingId] = useState<string | null>(null);
 
 
   // Fetch preparations for today's appointments
   useEffect(() => {
+    let cancelled = false;
+    setPreparations(new Map());
+    setPreparationsLoaded(false);
+    setPreparationsError(false);
     const fetchPreparations = async () => {
       if (!currentTenant?.id || appointments.length === 0) return;
       const aptIds = appointments.map(a => a.id);
       try {
-        const { data: preps } = await supabase
+        const { data: preps, error } = await supabase
           .from('appointment_preparations')
           .select('*')
           .in('appointment_id', aptIds)
           .eq('is_archived', false);
+        if (error) throw error;
+        if (cancelled) return;
         if (preps && preps.length > 0) {
           const prepMap = new Map<string, AppointmentPreparation>();
           for (const p of preps) {
@@ -151,9 +159,13 @@ export const DashboardAppointments = ({ data }: Props) => {
           }
           setPreparations(prepMap);
         }
-      } catch { /* ignore */ }
+        setPreparationsLoaded(true);
+      } catch {
+        if (!cancelled) setPreparationsError(true);
+      }
     };
     fetchPreparations();
+    return () => { cancelled = true; };
   }, [currentTenant?.id, appointments]);
 
   const specialDayHint = useMemo(() => getSpecialDayHint(new Date(), specialDays), [specialDays]);
@@ -201,7 +213,7 @@ export const DashboardAppointments = ({ data }: Props) => {
     : null;
 
   return (
-    <div className="space-y-4">
+    <div className="@container space-y-4">
       <div>
         {(isShowingTomorrow || appointments.length === 0) && (
           <p className="mb-3 text-sm text-muted-foreground">
@@ -231,93 +243,81 @@ export const DashboardAppointments = ({ data }: Props) => {
                 }
               } catch { /* Location is a place rather than a meeting URL. */ }
               return (
-                <div key={apt.id}>
-                  <div
-                    className={`flex flex-wrap items-center gap-2 text-sm rounded px-1 py-2 transition-colors ${
-                      active
-                        ? 'bg-primary/10 ring-1 ring-primary/30'
-                        : 'hover:bg-muted/40'
-                    }`}
-                  >
-                    {active && (
-                      <span className="relative flex h-2 w-2 shrink-0">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-                      </span>
-                    )}
-                    <div className="min-w-0 flex-1 basis-40">
-                      <button
-                        type="button"
-                        className={`block max-w-full truncate text-left hover:underline focus-visible:outline-primary ${active ? 'text-foreground font-medium' : 'text-foreground'}`}
-                        onClick={() => navigate(`/calendar?date=${aptDate}&event=${apt.id}`)}
-                        aria-label={`Termindetails öffnen: ${apt.title}`}
-                      >
-                        {apt.title}
-                      </button>
-                      <p className="text-xs text-muted-foreground">
-                        {apt.is_all_day ? 'Ganztägig' : <>
-                          <span className="font-mono">{format(start, 'HH:mm')}{end && end > start ? `–${isSameDay(start, end) ? '' : format(end, 'd. MMM. ', { locale: de })}${format(end, 'HH:mm')}` : ''}</span>
-                          {end && end > start && <span> · {Math.round((end.getTime() - start.getTime()) / 60000)} Min.</span>}
-                        </>}
+                <div key={apt.id} className="border-b border-border/60 last:border-b-0">
+                  <div className={`relative grid grid-cols-[4rem_minmax(0,1fr)] @min-[32rem]:grid-cols-[4rem_minmax(0,1fr)_auto] gap-x-3 gap-y-3 rounded-lg px-3 py-4 transition-colors hover:bg-muted/40 focus-within:bg-muted/40 ${active ? 'bg-primary/10 ring-1 ring-primary/30' : ''}`}>
+                    <button
+                      type="button"
+                      className="absolute inset-0 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                      aria-label={`Termindetails öffnen: ${apt.title}`}
+                      onClick={() => navigate(`/calendar?date=${aptDate}&event=${apt.id}`)}
+                    />
+                    <div className="pointer-events-none relative tabular-nums">
+                      <p className={apt.is_all_day ? 'text-sm font-semibold' : 'text-xl font-semibold leading-7 text-foreground'}>
+                        {apt.is_all_day ? 'Ganztägig' : format(start, 'HH:mm')}
                       </p>
-                      {apt.location && !meetingUrl && <p className="truncate text-xs text-muted-foreground">{apt.location}</p>}
+                      {!apt.is_all_day && end && end > start && (
+                        <p className="text-sm text-muted-foreground">{isSameDay(start, end) ? '' : format(end, 'd. MMM. ', { locale: de })}{format(end, 'HH:mm')}</p>
+                      )}
                     </div>
-                    {meetingUrl && (
-                      <a href={meetingUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded px-2 py-2 text-xs text-primary hover:underline focus-visible:outline-primary">
-                        <Video className="h-4 w-4" aria-hidden="true" />Meeting beitreten
-                      </a>
-                    )}
-                    {hasPrep && (
-                      <TooltipProvider delayDuration={200}>
-                        <div className="flex flex-wrap items-center gap-1 ml-auto shrink-0">
-                          <Tooltip>
-                          <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="inline-flex min-h-9 items-center gap-1 rounded px-2 text-xs hover:bg-muted/60 transition-colors focus-visible:outline-primary"
-                          aria-label="Briefing-PDF herunterladen"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (prep) generateBriefingPdf({
-                              preparation: prep,
-                              appointmentTitle: apt.title,
-                              appointmentStartTime: apt.start_time,
-                              appointmentEndTime: apt.end_time || apt.start_time,
-                              appointmentLocation: apt.location || undefined,
-                            }).catch(console.error);
-                          }}
-                        >
-                          <FileText className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
-                          Briefing-PDF
-                        </button>
-                          </TooltipTrigger>
-                          <TooltipContent>Briefing als PDF herunterladen</TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                          <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="inline-flex min-h-9 items-center gap-1 rounded px-2 text-xs hover:bg-muted/60 transition-colors focus-visible:outline-primary"
-                          aria-label={isBriefingExpanded ? 'Briefing einklappen' : 'Briefing anzeigen'}
-                          aria-expanded={isBriefingExpanded}
-                          aria-controls={`dashboard-briefing-${apt.id}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setExpandedBriefingId(prev => prev === apt.id ? null : apt.id);
-                          }}
-                        >
-                          Briefing
-                          {isBriefingExpanded
-                            ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                            : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                          }
-                        </button>
-                          </TooltipTrigger>
-                          <TooltipContent>{isBriefingExpanded ? 'Briefing einklappen' : 'Briefing zum Termin anzeigen'}</TooltipContent>
-                          </Tooltip>
-                        </div>
-                      </TooltipProvider>
-                    )}
+                    <div className="pointer-events-none relative min-w-0">
+                      <p className="break-words text-base font-medium text-foreground">{apt.title}</p>
+                      {apt.location && !meetingUrl && (
+                        <p className="mt-1 flex items-start gap-1 text-sm text-muted-foreground">
+                          <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                          <span className="break-words">{apt.location}</span>
+                        </p>
+                      )}
+                      <span className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${!preparationsLoaded ? 'bg-muted text-muted-foreground' : !hasPrep ? 'bg-destructive/10 text-destructive' : prep?.status === 'completed' ? 'bg-palette-green/10 text-palette-green' : 'bg-muted text-muted-foreground'}`}>
+                        {hasPrep && prep?.status === 'completed' ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <CircleAlert className="h-3.5 w-3.5" aria-hidden="true" />}
+                        {preparationsError ? 'Briefing-Status nicht verfügbar' : !preparationsLoaded ? 'Briefing wird geprüft' : !hasPrep ? 'Briefing fehlt' : prep?.status === 'completed' ? 'Briefing fertig' : 'Briefing in Bearbeitung'}
+                      </span>
+                    </div>
+                    <div className="relative z-10 col-start-2 @min-[32rem]:col-start-3 @min-[32rem]:row-start-1 @min-[32rem]:self-start flex flex-wrap items-center gap-2">
+                      {meetingUrl && (
+                        <a href={meetingUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded px-2 py-2 text-xs text-primary hover:underline focus-visible:outline-primary">
+                          <Video className="h-4 w-4" aria-hidden="true" />Meeting beitreten
+                        </a>
+                      )}
+                      {hasPrep && (
+                        <>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            aria-expanded={isBriefingExpanded}
+                            aria-controls={`dashboard-briefing-${apt.id}`}
+                            onClick={() => setExpandedBriefingId(prev => prev === apt.id ? null : apt.id)}
+                          >
+                            {isBriefingExpanded ? 'Briefing schließen' : 'Briefing öffnen'}
+                          </Button>
+                          <TooltipProvider delayDuration={200}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-9 w-9"
+                                  aria-label="Briefing als PDF herunterladen"
+                                  onClick={() => {
+                                    if (prep) generateBriefingPdf({
+                                      preparation: prep,
+                                      appointmentTitle: apt.title,
+                                      appointmentStartTime: apt.start_time,
+                                      appointmentEndTime: apt.end_time || apt.start_time,
+                                      appointmentLocation: apt.location || undefined,
+                                    }).catch(console.error);
+                                  }}
+                                >
+                                  <Download className="h-4 w-4" aria-hidden="true" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Briefing als PDF herunterladen</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </>
+                      )}
+                    </div>
                   </div>
                   {isBriefingExpanded && prep && (
                     <div id={`dashboard-briefing-${apt.id}`} className="mt-1 ml-4">
