@@ -43,6 +43,8 @@ export interface DashboardData {
   userRole: string;
   appointments: AppointmentData[];
   isShowingTomorrow: boolean;
+  /** Filled when only one appointment remains today, so the next day can be previewed. */
+  tomorrowAppointments: AppointmentData[];
   openTasksCount: number;
   completedTasksToday: number;
   openTaskTitles: { id: string; title: string }[];
@@ -59,6 +61,8 @@ interface DashboardRpcData {
   userRole: string;
   appointments: AppointmentData[];
   isShowingTomorrow: boolean;
+  /** Filled when only one appointment remains today, so the next day can be previewed. */
+  tomorrowAppointments: AppointmentData[];
   openTasksCount: number;
   completedTasksToday: number;
   openTaskTitles: { id: string; title: string }[];
@@ -160,19 +164,22 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
 
     let appointments: AppointmentData[];
     let isShowingTomorrow: boolean;
+    let tomorrowAppointments: AppointmentData[] = [];
+    const tomorrowAll = all.filter(e => {
+      const localDate = new Date(new Date(e.start_time).toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
+      return localDate.toDateString() === tomorrowDate.toDateString();
+    }).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
 
     if (todayUpcoming.length === 0) {
-      appointments = all.filter(e => {
-        const localDate = new Date(new Date(e.start_time).toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
-        return localDate.toDateString() === tomorrowDate.toDateString();
-      }).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+      appointments = tomorrowAll;
       isShowingTomorrow = true;
     } else {
       appointments = todayUpcoming.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
       isShowingTomorrow = false;
+      if (appointments.length === 1) tomorrowAppointments = tomorrowAll;
     }
 
-    return { userName, userRole, appointments, isShowingTomorrow, openTasksCount, completedTasksToday, openTaskTitles };
+    return { userName, userRole, appointments, isShowingTomorrow, tomorrowAppointments, openTasksCount, completedTasksToday, openTaskTitles };
   } catch {
     try {
       const [profileRes, roleRes] = await Promise.all([
@@ -184,12 +191,13 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
         userRole: roleRes.data?.role || '',
         appointments: [],
         isShowingTomorrow: false,
+        tomorrowAppointments: [],
         openTasksCount: 0,
         completedTasksToday: 0,
         openTaskTitles: [],
       };
     } catch {
-      return { userName: 'Nutzer', userRole: '', appointments: [], isShowingTomorrow: false, openTasksCount: 0, completedTasksToday: 0, openTaskTitles: [] };
+      return { userName: 'Nutzer', userRole: '', appointments: [], isShowingTomorrow: false, tomorrowAppointments: [], openTasksCount: 0, completedTasksToday: 0, openTaskTitles: [] };
     }
   }
 };
@@ -228,6 +236,7 @@ export const useDashboardAppointmentsData = (): DashboardData & { isError: boole
     userRole: rpcData?.userRole ?? '',
     appointments: rpcData?.appointments ?? [],
     isShowingTomorrow: rpcData?.isShowingTomorrow ?? false,
+    tomorrowAppointments: rpcData?.tomorrowAppointments ?? [],
     openTasksCount: rpcData?.openTasksCount ?? 0,
     completedTasksToday: rpcData?.completedTasksToday ?? 0,
     openTaskTitles: rpcData?.openTaskTitles ?? [],
