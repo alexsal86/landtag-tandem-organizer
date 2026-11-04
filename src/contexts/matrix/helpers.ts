@@ -74,9 +74,9 @@ export const mapMatrixEventToMessage = (room: sdk.Room, event: sdk.MatrixEvent):
   if (!isMessageEvent) return null;
 
   const content = toMatrixEventPayload(event);
-  if (!('msgtype' in content)) return null;
-  const canReadMessageContent = Boolean(content?.msgtype);
-  const isStillEncrypted = Boolean(event.isEncrypted?.()) && !canReadMessageContent;
+  const canReadMessageContent = Boolean((content as MatrixMessageContentPayload).msgtype);
+  const isStillEncrypted = event.isEncrypted() && (event.isDecryptionFailure() || !canReadMessageContent);
+  if (!isStillEncrypted && !canReadMessageContent) return null;
   const relatesTo = (content as MatrixMessageContentPayload)['m.relates_to'];
 
   if (relatesTo?.rel_type === 'm.annotation' || relatesTo?.rel_type === 'm.replace') return null;

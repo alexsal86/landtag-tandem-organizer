@@ -434,29 +434,15 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
       const onDecrypted = (event: sdk.MatrixEvent) => {
         const roomId = event.getRoomId();
         if (!roomId) return;
-        const content = toMatrixEventPayload(event);
-        if (!('msgtype' in content)) return;
-        const msgContent = content as MatrixMessageContentPayload;
-        if (!msgContent?.msgtype) return;
+        if (event.isDecryptionFailure()) return;
         const r = matrixClient.getRoom(roomId);
         if (!r) return;
-        const isMedia = ['m.image', 'm.video', 'm.audio', 'm.file'].includes(msgContent.msgtype);
-        const decryptedMessage: MatrixMessage = {
-          eventId: event.getId() || '',
-          roomId,
-          sender: event.getSender() || '',
-          senderDisplayName: r.getMember(event.getSender() || '')?.name || event.getSender() || '',
-          content: msgContent.body || '[Entschlüsselung fehlgeschlagen]',
-          timestamp: event.getTs(),
-          type: msgContent.msgtype || 'm.text',
-          status: 'sent',
-          reactions: new Map(),
-          mediaContent: isMedia ? { msgtype: msgContent.msgtype, body: msgContent.body || '', url: msgContent.url, info: msgContent.info as import('@/types/matrix').MatrixMessageMediaInfo | undefined } as import('@/types/matrix').MatrixMediaContent : undefined,
-        };
+        const decryptedMessage = mapMatrixEventToMessage(r, event);
+        if (!decryptedMessage) return;
         setMessages(prev => {
           const roomMessages = prev.get(roomId) || [];
           const existingIndex = roomMessages.findIndex(m => m.eventId === decryptedMessage.eventId);
-          if (existingIndex >= 0) { const next = [...roomMessages]; next[existingIndex] = decryptedMessage; return upsertRoomMessages(prev, roomId, () => next); }
+          if (existingIndex >= 0) { const next = [...roomMessages]; next[existingIndex] = { ...decryptedMessage, reactions: roomMessages[existingIndex].reactions }; return upsertRoomMessages(prev, roomId, () => next); }
           return upsertRoomMessages(prev, roomId, (existing) => [...existing, decryptedMessage]);
         });
       };
@@ -663,30 +649,13 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
     }
 
     const cached = messagesRef.current.get(roomId) || [];
-    const cachedEventIds = new Set(cached.map((message) => message.eventId));
-    const visibleOrNewEvents = timelineWindow.filter((event) => { const id = event.getId(); return !id || !cachedEventIds.has(id); });
-
-    visibleOrNewEvents.forEach(event => {
-      if (event.isEncrypted()) {
-        try {
-          // @ts-expect-error matrix-js-sdk CryptoApi vs CryptoBackend mismatch
-          event.attemptDecryption(mc.getCrypto()).catch(() => {});
-        } catch {}
-      }
-    });
-
-    const cachedFailedIds = new Set(cached.filter(m => m.type === 'm.bad.encrypted').map(m => m.eventId));
-    if (cachedFailedIds.size > 0) {
-      timelineWindow.forEach(event => {
-        const id = event.getId();
-        if (id && cachedFailedIds.has(id) && event.isEncrypted()) {
-          try {
-            // @ts-expect-error matrix-js-sdk CryptoApi vs CryptoBackend mismatch
-            event.attemptDecryption(mc.getCrypto()).catch(() => {});
-          } catch {}
-        }
+    // Let the client supply its internal crypto backend and skip events which
+    // are already decrypted or have a decryption attempt in progress.
+    timelineWindow.forEach(event => {
+      void mc.decryptEventIfNeeded(event).catch(error => {
+        matrixLogger.warn('Matrix event decryption failed:', error);
       });
-    }
+    });
 
     const timelineMessages: MatrixMessage[] = timelineWindow
       .map(event => mapMatrixEventToMessage(room, event))
@@ -722,7 +691,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
       roomId, durationMs: Number((performance.now() - refreshStartedAt).toFixed(2)),
       timelineEvents: timeline.length, windowEvents: timelineWindow.length,
       cachedEvents: cached.length, deltaEvents: deltaMessages.length,
-      decryptAttempts: visibleOrNewEvents.length, scrollbackLoops, cacheRooms: messagesRef.current.size,
+      checkedEvents: timelineWindow.length, scrollbackLoops, cacheRooms: messagesRef.current.size,
     });
   }, [touchRoomInLru, upsertRoomMessages]);
 
