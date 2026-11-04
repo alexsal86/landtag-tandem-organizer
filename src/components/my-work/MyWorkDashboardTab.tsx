@@ -80,7 +80,7 @@ function AppointmentsWidget() {
       title={
         <span className="inline-flex items-center gap-space-xs">
           <CalendarDays className="h-4 w-4 text-muted-foreground" />
-          {dashboardData.isShowingTomorrow ? 'Deine Termine morgen' : 'Deine Termine heute'}
+          Deine nächsten Termine
         </span>
       }
       isLoading={dashboardData.isLoading || dashboardData.tenantLoading}
