@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useTenantUsers } from "@/hooks/useTenantUsers";
@@ -8,7 +9,7 @@ import { sourcePath, normalizeStore } from "./daySlipState";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   Check, ClipboardPen, Clock3, Folder, FolderArchive, ListTodo, NotebookPen,
-  Pencil, Plus, Scale, Settings, Trash2, X, ExternalLink, RotateCcw,
+  Pencil, Plus, Scale, Settings, Trash2, X, ExternalLink, RotateCcw, PanelRightClose, PanelRightOpen,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -17,12 +18,18 @@ import { WeekPlanningBanner } from "@/components/dayslip/WeekPlanningBanner";
 import { DaySlipLexicalEditor } from "@/components/dayslip/DaySlipLexicalEditor";
 import { DaySlipCommandHelp } from "@/components/dayslip/DaySlipCommandHelp";
 import { DaySlipPages } from "@/components/dayslip/DaySlipPages";
+import { useDaySlipLayout } from "@/components/dayslip/DaySlipLayout";
 import { useDaySlipStore } from "@/components/dayslip/hooks/useDaySlipStore";
 import {
   type DayTemplate, type TaskOptions,
   WEEK_DAYS, WEEK_DAY_LABELS, DEFAULT_DAY_TEMPLATES,
   STORAGE_KEY, RECURRING_STORAGE_KEY, DAY_TEMPLATE_STORAGE_KEY, formatDate, stripHtml, isRuleLine, formatTimeStamp, toDayKey, normalizeDayTemplates,
 } from "@/components/dayslip/dayslipTypes";
+
+function DaySlipSurface({ children }: { children: ReactNode }) {
+  const layout = useDaySlipLayout();
+  return layout?.docked && layout.host ? createPortal(children, layout.host) : children;
+}
 
 export function GlobalDaySlipPanel() {
   const { user } = useAuth();
@@ -33,6 +40,9 @@ export function GlobalDaySlipPanel() {
 }
 
 function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }) {
+  const layout = useDaySlipLayout();
+  const docked = !!(layout?.docked && layout.host);
+  const setDockVisible = layout?.setVisible;
   const navigate = useNavigate();
   const { users: tenantUsers } = useTenantUsers();
   const [taskDraft, setTaskDraft] = useState<{ lineId: string; text: string; options: TaskOptions } | null>(null);
@@ -42,6 +52,10 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
     try { const saved = localStorage.getItem('day-slip-panel-open'); return saved !== null ? JSON.parse(saved) : false; } catch { return false; }
   });
   useEffect(() => { try { localStorage.setItem('day-slip-panel-open', JSON.stringify(open)); } catch { /* Panel visibility is optional. */ } }, [open]);
+  useEffect(() => {
+    setDockVisible?.(open);
+    return () => setDockVisible?.(false);
+  }, [open, setDockVisible]);
 
   const [showArchive, setShowArchive] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -293,11 +307,36 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
   return (
     <>
       {open && (
+        <DaySlipSurface>
         <aside
-          className={`fixed bottom-24 right-6 z-50 flex h-[min(84vh,920px)] w-[calc(100vw-1rem)] sm:w-[min(24rem,calc(100vw-2rem))] lg:w-[min(35rem,calc(100vw-3rem))] max-w-[calc(100vw-1rem)] flex-col rounded-2xl border border-border/60 bg-background/95 shadow-2xl backdrop-blur transition-all duration-300 ease-out ${closing ? "translate-y-3 opacity-0" : "translate-y-0 opacity-100"}`}
+          aria-label="Tageszettel"
+          className={cn(
+            "flex flex-col border border-border/60 bg-background/95 backdrop-blur transition-[opacity,transform] duration-300 ease-out",
+            docked ? "relative h-full w-full border-y-0 border-r-0" : "fixed bottom-24 right-6 z-50 h-[min(84vh,920px)] w-[calc(100vw-1rem)] sm:w-[min(24rem,calc(100vw-2rem))] lg:w-[min(35rem,calc(100vw-3rem))] max-w-[calc(100vw-1rem)] rounded-2xl shadow-2xl",
+            closing ? "translate-y-3 opacity-0" : "translate-y-0 opacity-100",
+          )}
           onDragOver={(event) => event.preventDefault()}
           onDrop={handleDropToDaySlip}
         >
+          {docked && layout && <div
+            role="separator"
+            aria-label="Breite des Tageszettels"
+            aria-orientation="vertical"
+            aria-valuemin={320}
+            aria-valuemax={Math.floor(Math.min(640, window.innerWidth * 0.45))}
+            aria-valuenow={Math.round(layout.width)}
+            tabIndex={0}
+            className="absolute inset-y-0 -left-1 z-10 w-2 touch-none cursor-col-resize rounded hover:bg-primary/30 focus-visible:bg-primary/30 focus-visible:outline-none"
+            onPointerDown={event => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); }}
+            onPointerMove={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) layout.setWidth(window.innerWidth - event.clientX); }}
+            onPointerUp={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); }}
+            onKeyDown={event => {
+              if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+                event.preventDefault();
+                layout.setWidth(layout.width + (event.key === "ArrowLeft" ? 24 : -24));
+              }
+            }}
+          />}
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
             <div>
@@ -306,6 +345,9 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
             </div>
             <div className="flex items-center gap-2">
               <DaySlipCommandHelp />
+              {layout?.desktop && <button type="button" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => layout.setDocked(!docked)} aria-label={docked ? "Tageszettel schwebend anzeigen" : "Tageszettel rechts andocken"} title={docked ? "Schwebend anzeigen" : "Rechts andocken"}>
+                {docked ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+              </button>}
               <button type="button" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => switchView(showSettings ? "default" : "settings")} aria-label="Einstellungen anzeigen"><Settings className="h-4 w-4" /></button>
               <button type="button" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => switchView(showArchive ? "default" : "archive")} aria-label="Archiv anzeigen"><Folder className="h-4 w-4" /></button>
               <button type="button" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" onClick={animateClosePanel} aria-label="Panel schließen"><X className="h-4 w-4" /></button>
@@ -549,6 +591,7 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
             </div>
           )}
         </aside>
+        </DaySlipSurface>
       )}
 
       {lineContextMenu && (
@@ -590,7 +633,7 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
         <div className="fixed bottom-24 right-6 z-50 rounded-lg border border-palette-green/40 bg-palette-green/10 px-3 py-1.5 text-xs text-palette-green shadow-lg backdrop-blur">{completionMessage}</div>
       )}
 
-      <button type="button" className={cn(
+      {!(docked && open) && <button type="button" className={cn(
         "fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full border shadow-lg backdrop-blur transition-[transform,background-color,box-shadow] duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         isDraggingToDaySlip && canDropToDaySlip
           ? "border-palette-green bg-palette-green text-white ring-4 ring-palette-green/30 scale-110"
@@ -604,7 +647,7 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
           <span className="pointer-events-none absolute bottom-full right-0 mb-4 whitespace-nowrap rounded-lg bg-popover px-3 py-2 text-xs font-medium text-popover-foreground shadow-lg border border-palette-green/40">{isOverDaySlipButton ? "Loslassen zum Hinzufügen" : "Hier zum Tageszettel hinzufügen"}</span>
         </> : showCompletePulse ? <Check className="h-5 w-5 text-palette-green" /> : <ClipboardPen className="h-5 w-5" />}
         {ds.unresolvedCount > 0 && !(isDraggingToDaySlip && canDropToDaySlip) && <span className="pointer-events-none absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-palette-green px-1 text-[10px] font-semibold text-white">{ds.unresolvedCount}</span>}
-      </button>
+      </button>}
     </>
   );
 }

@@ -7,6 +7,7 @@ import { GlobalOverlays } from "@/components/layout/GlobalOverlays";
 import { SkipToContent } from "@/components/shared/SkipToContent";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { AppRoutes } from "./routes";
+import { DaySlipLayout } from "@/components/dayslip/DaySlipLayout";
 
 export const AppRouter = () => {
   // Guard: COI Service Worker nur in iframes deaktivieren
@@ -24,16 +25,18 @@ export const AppRouter = () => {
       <Sonner />
       <BrowserRouter>
         <MatrixUnreadProvider>
-          <GlobalOverlays />
-          <ErrorBoundary fallbackMessage="Ein unerwarteter Fehler ist aufgetreten. Bitte laden Sie die Seite neu.">
-            <Suspense
-              fallback={<div className="min-h-screen bg-gradient-subtle flex items-center justify-center" />}
-            >
-              <Routes>
-                {AppRoutes()}
-              </Routes>
-            </Suspense>
-          </ErrorBoundary>
+          <DaySlipLayout>
+            <GlobalOverlays />
+            <ErrorBoundary fallbackMessage="Ein unerwarteter Fehler ist aufgetreten. Bitte laden Sie die Seite neu.">
+              <Suspense
+                fallback={<div className="min-h-screen bg-gradient-subtle flex items-center justify-center" />}
+              >
+                <Routes>
+                  {AppRoutes()}
+                </Routes>
+              </Suspense>
+            </ErrorBoundary>
+          </DaySlipLayout>
         </MatrixUnreadProvider>
       </BrowserRouter>
     </>
