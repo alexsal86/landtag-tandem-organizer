@@ -161,15 +161,16 @@ export default {
 				'2xl': 'var(--radius-2xl)',
 				pill: 'var(--radius-pill)'
 			},
+			// Namespace spacing tokens so Tailwind 4 keeps its container width scale.
 			spacing: {
-				'2xs': 'var(--space-2xs)',
-				xs: 'var(--space-xs)',
-				sm: 'var(--space-sm)',
-				md: 'var(--space-md)',
-				lg: 'var(--space-lg)',
-				xl: 'var(--space-xl)',
-				'2xl': 'var(--space-2xl)',
-				'3xl': 'var(--space-3xl)'
+				'space-2xs': 'var(--space-2xs)',
+				'space-xs': 'var(--space-xs)',
+				'space-sm': 'var(--space-sm)',
+				'space-md': 'var(--space-md)',
+				'space-lg': 'var(--space-lg)',
+				'space-xl': 'var(--space-xl)',
+				'space-2xl': 'var(--space-2xl)',
+				'space-3xl': 'var(--space-3xl)'
 			},
 			transitionTimingFunction: {
 				standard: 'var(--ease-standard)',

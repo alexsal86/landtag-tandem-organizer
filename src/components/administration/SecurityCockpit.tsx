@@ -265,7 +265,7 @@ export function SecurityCockpit(): JSX.Element {
                   ))}
                   {(snapshotsQuery.data ?? []).length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} className="py-md">
+                      <TableCell colSpan={5} className="py-space-md">
                         <EmptyState size="sm" title="Noch keine Snapshots" />
                       </TableCell>
                     </TableRow>

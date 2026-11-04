@@ -19,8 +19,8 @@ export function SectionHeader({
   as: Heading = "h3",
 }: SectionHeaderProps) {
   return (
-    <div className={cn("flex items-center justify-between gap-sm py-2xs", className)}>
-      <div className="flex items-baseline gap-xs min-w-0">
+    <div className={cn("flex items-center justify-between gap-space-sm py-space-2xs", className)}>
+      <div className="flex items-baseline gap-space-xs min-w-0">
         <Heading className="section-label text-foreground truncate">{title}</Heading>
         {typeof count === "number" && (
           <span className="text-caption tabular-nums text-muted-foreground">{count}</span>
@@ -31,7 +31,7 @@ export function SectionHeader({
           </span>
         )}
       </div>
-      {actions && <div className="flex items-center gap-2xs shrink-0">{actions}</div>}
+      {actions && <div className="flex items-center gap-space-2xs shrink-0">{actions}</div>}
     </div>
   );
 }

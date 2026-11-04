@@ -59,7 +59,7 @@ export function StatusPill({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-2xs rounded-pill px-xs py-[2px] text-caption font-medium leading-none",
+        "inline-flex items-center gap-space-2xs rounded-pill px-space-xs py-[2px] text-caption font-medium leading-none",
         map[tone],
         className,
       )}

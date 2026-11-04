@@ -21,7 +21,7 @@ export function LoadingState({
       <div
         role="status"
         aria-label={label}
-        className={cn("flex items-center gap-xs text-caption text-muted-foreground animate-fade-in", className)}
+        className={cn("flex items-center gap-space-xs text-caption text-muted-foreground animate-fade-in", className)}
       >
         <span className="inline-block h-2 w-2 rounded-pill bg-muted-foreground/60 animate-pulse" />
         {label}
@@ -31,9 +31,9 @@ export function LoadingState({
 
   if (variant === "card") {
     return (
-      <div role="status" aria-label={label} className={cn("grid gap-sm animate-fade-in", className)}>
+      <div role="status" aria-label={label} className={cn("grid gap-space-sm animate-fade-in", className)}>
         {items.map((_, i) => (
-          <div key={i} className="rounded-lg border border-border p-md space-y-xs">
+          <div key={i} className="rounded-lg border border-border p-space-md space-y-space-xs">
             <Skeleton className="h-4 w-1/3" />
             <Skeleton className="h-3 w-2/3" />
             <Skeleton className="h-3 w-1/2" />
@@ -45,10 +45,10 @@ export function LoadingState({
 
   if (variant === "detail") {
     return (
-      <div role="status" aria-label={label} className={cn("space-y-md animate-fade-in", className)}>
+      <div role="status" aria-label={label} className={cn("space-y-space-md animate-fade-in", className)}>
         <Skeleton className="h-6 w-1/2" />
         <Skeleton className="h-4 w-3/4" />
-        <div className="space-y-xs pt-sm">
+        <div className="space-y-space-xs pt-space-sm">
           <Skeleton className="h-3 w-full" />
           <Skeleton className="h-3 w-5/6" />
           <Skeleton className="h-3 w-4/6" />
@@ -59,9 +59,9 @@ export function LoadingState({
 
   if (variant === "table") {
     return (
-      <div role="status" aria-label={label} className={cn("space-y-2xs animate-fade-in", className)}>
+      <div role="status" aria-label={label} className={cn("space-y-space-2xs animate-fade-in", className)}>
         {items.map((_, i) => (
-          <div key={i} className="flex items-center gap-sm py-2xs">
+          <div key={i} className="flex items-center gap-space-sm py-space-2xs">
             <Skeleton className="h-4 w-4 rounded-pill" />
             <Skeleton className="h-3 flex-1" />
             <Skeleton className="h-3 w-16" />
@@ -73,7 +73,7 @@ export function LoadingState({
   }
 
   return (
-    <div role="status" aria-label={label} className={cn("space-y-2xs animate-fade-in", className)}>
+    <div role="status" aria-label={label} className={cn("space-y-space-2xs animate-fade-in", className)}>
       {items.map((_, i) => (
         <Skeleton key={i} className="h-10 w-full rounded-md" />
       ))}

@@ -246,7 +246,7 @@ export function LetterOccasionManager() {
   const selectedIconOption = ICON_OPTIONS.find((option) => option.value === form.icon);
   const SelectedFormIcon = getIconComponent(form.icon);
 
-  if (loading) return <LoadingState variant="list" rows={4} className="p-md" />;
+  if (loading) return <LoadingState variant="list" rows={4} className="p-space-md" />;
 
   return (
     <div className="space-y-4">

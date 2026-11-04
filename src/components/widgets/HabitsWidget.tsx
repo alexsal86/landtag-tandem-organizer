@@ -280,7 +280,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
   if (loading) {
     return (
       <Card className={`h-full flex flex-col ${className}`}>
-        <CardContent className="flex-1 p-md">
+        <CardContent className="flex-1 p-space-md">
           <LoadingState variant="list" rows={3} />
         </CardContent>
       </Card>

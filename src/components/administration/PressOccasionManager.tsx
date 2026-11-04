@@ -267,7 +267,7 @@ export function PressOccasionManager() {
   const SelectedFormIcon = getIconComponent(form.icon);
   const isEditing = editingId || showCreate;
 
-  if (loading) return <LoadingState variant="list" rows={4} className="p-md" />;
+  if (loading) return <LoadingState variant="list" rows={4} className="p-space-md" />;
 
   return (
     <div className="space-y-4">
