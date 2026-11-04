@@ -8,7 +8,7 @@ import { sourcePath, normalizeStore } from "./daySlipState";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   Check, ClipboardPen, Clock3, Folder, FolderArchive, ListTodo, NotebookPen,
-  Pencil, Scale, Settings, Trash2, X, ExternalLink, RotateCcw,
+  Pencil, Plus, Scale, Settings, Trash2, X, ExternalLink, RotateCcw,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -49,6 +49,8 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
   const [contentTransitioning, setContentTransitioning] = useState(false);
   const [completionMessage, setCompletionMessage] = useState<string | null>(null);
   const [showCompletePulse, setShowCompletePulse] = useState(false);
+  const [isDraggingToDaySlip, setIsDraggingToDaySlip] = useState(false);
+  const [isOverDaySlipButton, setIsOverDaySlipButton] = useState(false);
 
   // Recurring UI state
   const [recurringDraft, setRecurringDraft] = useState("");
@@ -66,6 +68,37 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
 
   // Store hook
   const ds = useDaySlipStore(userId, tenantId);
+  const canDropToDaySlip = ds.ready && !ds.todayData.completedAt && !ds.isProcessing;
+
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const reset = () => {
+      clearTimeout(timeout);
+      setIsDraggingToDaySlip(false);
+      setIsOverDaySlipButton(false);
+    };
+    const track = (event: globalThis.DragEvent) => {
+      const types = event.dataTransfer?.types ?? [];
+      if (!canDropToDaySlip || (!types.includes("application/x-mywork-task-title") && !types.includes("text/plain"))) return;
+      setIsDraggingToDaySlip(true);
+      clearTimeout(timeout);
+      // Also clear the highlight when a drag leaves the browser or is cancelled externally.
+      timeout = setTimeout(reset, 600);
+    };
+    document.addEventListener("dragstart", track);
+    document.addEventListener("dragover", track);
+    document.addEventListener("drop", reset);
+    document.addEventListener("dragend", reset);
+    window.addEventListener("blur", reset);
+    return () => {
+      clearTimeout(timeout);
+      document.removeEventListener("dragstart", track);
+      document.removeEventListener("dragover", track);
+      document.removeEventListener("drop", reset);
+      document.removeEventListener("dragend", reset);
+      window.removeEventListener("blur", reset);
+    };
+  }, [canDropToDaySlip]);
   const legacyData = useMemo(() => {
     try { return normalizeStore(JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}")); } catch { return {}; }
   }, []);
@@ -151,6 +184,8 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
 
   const handleDropToDaySlip = useCallback((event: DragEvent<HTMLElement>) => {
     event.preventDefault();
+    setIsDraggingToDaySlip(false);
+    setIsOverDaySlipButton(false);
     const droppedTaskTitle = event.dataTransfer.getData("application/x-mywork-task-title").trim();
     const droppedTaskId = event.dataTransfer.getData("application/x-mywork-task-id").trim();
     const droppedItemType = event.dataTransfer.getData("application/x-mywork-item-type").trim();
@@ -168,10 +203,12 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
 
   const handleDaySlipButtonDragOver = useCallback((event: DragEvent<HTMLButtonElement>) => {
     const hasDaySlipData = event.dataTransfer.types.includes("application/x-mywork-task-title") || event.dataTransfer.types.includes("text/plain");
-    if (!hasDaySlipData) return;
+    if (!hasDaySlipData || !canDropToDaySlip) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = "copy";
-  }, []);
+    setIsDraggingToDaySlip(true);
+    setIsOverDaySlipButton(true);
+  }, [canDropToDaySlip]);
 
   const handleDaySlipButtonDrop = useCallback((event: DragEvent<HTMLButtonElement>) => {
     handleDropToDaySlip(event as unknown as DragEvent<HTMLElement>);
@@ -553,9 +590,20 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
         <div className="fixed bottom-24 right-6 z-50 rounded-lg border border-palette-green/40 bg-palette-green/10 px-3 py-1.5 text-xs text-palette-green shadow-lg backdrop-blur">{completionMessage}</div>
       )}
 
-      <button type="button" className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full border border-border/70 bg-background/90 shadow-lg backdrop-blur hover:bg-muted" aria-label="Tageszettel öffnen (Strg+Alt+J)" onClick={() => setOpen((prev: boolean) => !prev)} onDragOver={handleDaySlipButtonDragOver} onDrop={handleDaySlipButtonDrop}>
-        {showCompletePulse ? <Check className="h-5 w-5 text-palette-green" /> : <ClipboardPen className="h-5 w-5" />}
-        {ds.unresolvedCount > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-palette-green px-1 text-[10px] font-semibold text-white">{ds.unresolvedCount}</span>}
+      <button type="button" className={cn(
+        "fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full border shadow-lg backdrop-blur transition-[transform,background-color,box-shadow] duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        isDraggingToDaySlip && canDropToDaySlip
+          ? "border-palette-green bg-palette-green text-white ring-4 ring-palette-green/30 scale-110"
+          : "border-border/70 bg-background/90 hover:bg-muted",
+        isDraggingToDaySlip && canDropToDaySlip && isOverDaySlipButton && "scale-125 ring-8 ring-palette-green/40 shadow-xl",
+      )} aria-label={isDraggingToDaySlip && canDropToDaySlip ? "Zum Tageszettel hinzufügen" : "Tageszettel öffnen (Strg+Alt+J)"} onClick={() => setOpen((prev: boolean) => !prev)} onDragOver={handleDaySlipButtonDragOver} onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setIsOverDaySlipButton(false);
+      }} onDrop={handleDaySlipButtonDrop}>
+        {isDraggingToDaySlip && canDropToDaySlip ? <>
+          <Plus className="pointer-events-none h-9 w-9" strokeWidth={3} aria-hidden="true" />
+          <span className="pointer-events-none absolute bottom-full right-0 mb-4 whitespace-nowrap rounded-lg bg-popover px-3 py-2 text-xs font-medium text-popover-foreground shadow-lg border border-palette-green/40">{isOverDaySlipButton ? "Loslassen zum Hinzufügen" : "Hier zum Tageszettel hinzufügen"}</span>
+        </> : showCompletePulse ? <Check className="h-5 w-5 text-palette-green" /> : <ClipboardPen className="h-5 w-5" />}
+        {ds.unresolvedCount > 0 && !(isDraggingToDaySlip && canDropToDaySlip) && <span className="pointer-events-none absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-palette-green px-1 text-[10px] font-semibold text-white">{ds.unresolvedCount}</span>}
       </button>
     </>
   );
