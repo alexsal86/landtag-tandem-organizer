@@ -14,7 +14,7 @@ import {
   Pin, Trash2, MoreHorizontal, CheckSquare, Vote,
   Calendar as CalendarIcon, Archive, ChevronDown, ChevronUp, Clock,
   Star, Share2, Users, Hourglass, Pencil, GripVertical, ListTree,
-  History, ArrowRight, Palette, X, FileText, Lightbulb
+  History, ArrowRight, Palette, X, FileText, Lightbulb, Wand2, NotebookPen
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -26,6 +26,7 @@ import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { sanitizeRichHtml } from "@/utils/htmlSanitizer";
 import { noteColors, getCardBackground, stripHtml } from "@/hooks/useQuickNotes";
 import type { QuickNote } from "@/components/shared/QuickNotesList";
+import { renderChecklistHtml, countChecklist } from "@/components/shared/quickNoteBoard";
 
 interface NoteCardProps {
   note: QuickNote;
@@ -66,6 +67,11 @@ interface NoteCardProps {
   onMoveToThemenspeicher?: (note: QuickNote) => void;
   isInThemenspeicher?: boolean;
   isTransferringToThemenspeicher?: boolean;
+  onSendToDaySlip?: (note: QuickNote) => void;
+  onToggleChecklist?: (note: QuickNote, index: number) => void;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (noteId: string) => void;
 }
 
 export function NoteCard({
@@ -82,7 +88,9 @@ export function NoteCard({
   onMoveToThemenspeicher,
   isInThemenspeicher = false,
   isTransferringToThemenspeicher = false,
+  onSendToDaySlip, onToggleChecklist, selectable = false, selected = false, onToggleSelect,
 }: NoteCardProps) {
+  const checklist = countChecklist(note.content);
   const [transferPopoverOpen, setTransferPopoverOpen] = useState(false);
   const fullText = note.content.replace(/<[^>]*>/g, '');
   const needsTruncation = fullText.length > 150;
@@ -93,15 +101,29 @@ export function NoteCard({
     <div
       key={note.id}
       ref={highlightRef}
-      className={cn("p-3 pb-12 rounded-lg border transition-all hover:shadow-sm border-l-4 group relative", className)}
+      className={cn("p-3 pb-10 rounded-lg border bg-card transition-all hover:shadow-md border-l-4 group relative", selected && "ring-2 ring-primary", className)}
       style={{
         borderLeftColor: note.color || "#3b82f6",
         backgroundColor: note.color && note.color_full_card === true
           ? getCardBackground(note.color)
           : undefined
       }}
-      onClick={() => onNoteClick?.(note)}
+      onClick={(e) => {
+        const check = (e.target as HTMLElement).closest<HTMLElement>("[data-check-index]");
+        if (check) {
+          e.stopPropagation();
+          if (onToggleChecklist && (note.user_id === userId || note.can_edit)) onToggleChecklist(note, Number(check.dataset.checkIndex));
+          return;
+        }
+        if (selectable) { onToggleSelect?.(note.id); return; }
+        onNoteClick?.(note);
+      }}
     >
+      {selectable && (
+        <div className="absolute -left-2 -top-2 z-sticky rounded-full bg-background p-0.5 shadow-sm" onClick={(e) => e.stopPropagation()}>
+          <Checkbox checked={selected} onCheckedChange={() => onToggleSelect?.(note.id)} aria-label="Notiz auswählen" />
+        </div>
+      )}
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-start gap-2">
@@ -131,7 +153,7 @@ export function NoteCard({
             <div>
               <div
                 className="text-sm text-muted-foreground/70 prose prose-sm max-w-none [&>p]:mb-1 [&>ul]:mb-1 [&>ol]:mb-1"
-                dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(note.content) }}
+                dangerouslySetInnerHTML={{ __html: renderChecklistHtml(sanitizeRichHtml(note.content)) }}
               />
               {needsTruncation && (
                 <button className="inline-flex items-center mt-1 text-primary hover:underline" onClick={(e) => onToggleExpand(note.id, e)}>
@@ -142,7 +164,7 @@ export function NoteCard({
             </div>
           ) : (
             <div className="text-sm text-muted-foreground/70">
-              <div className="line-clamp-2 prose prose-sm max-w-none [&>p]:mb-0 [&>ul]:mb-0 [&>ol]:mb-0" dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(note.content) }} />
+              <div className="line-clamp-2 prose prose-sm max-w-none [&>p]:mb-0 [&>ul]:mb-0 [&>ol]:mb-0" dangerouslySetInnerHTML={{ __html: renderChecklistHtml(sanitizeRichHtml(note.content)) }} />
               {needsTruncation && (
                 <button className="inline-flex items-center text-primary hover:underline align-baseline mt-0.5" onClick={(e) => onToggleExpand(note.id, e)}>
                   <ArrowRight className="h-3.5 w-3.5 inline ml-0.5" strokeWidth={2.5} />
@@ -194,7 +216,49 @@ export function NoteCard({
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
               {hasLinkedItems && <span className="text-sm text-muted-foreground hidden group-hover:inline group-hover:opacity-0">→</span>}
-              <div className={cn("flex items-center gap-1", "opacity-0 group-hover:opacity-100 transition-opacity duration-200")}>
+              {note.user_id === userId && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-6 px-2 gap-1 rounded-full text-xs text-muted-foreground hover:text-foreground" onClick={(e) => e.stopPropagation()} aria-label="Umwandeln in">
+                      <Wand2 className="h-3 w-3" />
+                      <span className="hidden sm:inline">Umwandeln</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-60" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenuItem onClick={() => (note.task_id ? onRemoveTask(note) : onCreateTask(note))} className={cn(note.task_id && "text-palette-blue")}>
+                      <CheckSquare className="h-3 w-3 mr-2" />{note.task_id ? "Aufgabe entfernen" : "Aufgabe"}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => (note.decision_id ? onRemoveDecision(note) : onCreateDecision(note))} className={cn(note.decision_id && "text-palette-purple")}>
+                      <Vote className="h-3 w-3 mr-2" />{note.decision_id ? "Entscheidung zurücknehmen" : "Entscheidung"}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => (note.case_item_id ? onRemoveCaseItem(note) : onCreateCaseItem(note))} className={cn(note.case_item_id && "text-palette-teal")}>
+                      <FileText className="h-3 w-3 mr-2" />{note.case_item_id ? "Vorgang entfernen" : "Vorgang"}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => (note.meeting_id ? onRemoveFromMeeting(note.id) : onOpenMeetingSelector(note))} className={cn(note.meeting_id && "text-palette-green")}>
+                      <CalendarIcon className="h-3 w-3 mr-2" />{note.meeting_id ? "Von Jour Fixe entfernen" : "Jour Fixe"}
+                    </DropdownMenuItem>
+                    {onTransferToThemenspeicher && (
+                      <DropdownMenuItem disabled={isTransferringToThemenspeicher} onClick={() => onTransferToThemenspeicher(note)} className={cn(isInThemenspeicher && "text-palette-amber")}>
+                        <Lightbulb className="h-3 w-3 mr-2" />{isInThemenspeicher ? "Im Themenspeicher" : "In Themenspeicher kopieren"}
+                      </DropdownMenuItem>
+                    )}
+                    {onMoveToThemenspeicher && (
+                      <DropdownMenuItem disabled={isTransferringToThemenspeicher} onClick={() => onMoveToThemenspeicher(note)}>
+                        <Lightbulb className="h-3 w-3 mr-2" />In Themenspeicher verschieben
+                      </DropdownMenuItem>
+                    )}
+                    {onSendToDaySlip && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => onSendToDaySlip(note)}>
+                          <NotebookPen className="h-3 w-3 mr-2" />Auf heutigen Tageszettel
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              <div className={cn("flex items-center gap-1", "opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200")}>
                 {hasLinkedItems && (
                   <>
                     <button className="text-xs text-muted-foreground hover:text-foreground flex items-center" onClick={(e) => onToggleDetailsExpand(note.id, e)}>
@@ -212,82 +276,15 @@ export function NoteCard({
                       </Button>
                     </TooltipTrigger><TooltipContent side="top">Bearbeiten</TooltipContent></Tooltip>
                     <Tooltip><TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.task_id && "text-palette-blue")} onClick={(e) => { e.stopPropagation(); note.task_id ? onRemoveTask(note) : onCreateTask(note); }}>
-                        <CheckSquare className="h-3 w-3" />
-                      </Button>
-                    </TooltipTrigger><TooltipContent side="top">{note.task_id ? "Aufgabe entfernen" : "Als Aufgabe"}</TooltipContent></Tooltip>
-                    <Tooltip><TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.decision_id && "text-palette-purple")} onClick={(e) => { e.stopPropagation(); note.decision_id ? onRemoveDecision(note) : onCreateDecision(note); }}>
-                        <Vote className="h-3 w-3" />
-                      </Button>
-                    </TooltipTrigger><TooltipContent side="top">{note.decision_id ? "Entscheidung zurücknehmen" : "Als Entscheidung"}</TooltipContent></Tooltip>
-                    <Tooltip><TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.case_item_id && "text-palette-teal")} onClick={(e) => { e.stopPropagation(); note.case_item_id ? onRemoveCaseItem(note) : onCreateCaseItem(note); }}>
-                        <FileText className="h-3 w-3" />
-                      </Button>
-                    </TooltipTrigger><TooltipContent side="top">{note.case_item_id ? "Vorgang entfernen" : "Als Vorgang"}</TooltipContent></Tooltip>
-                    <Tooltip><TooltipTrigger asChild>
                       <Button variant="ghost" size="icon" className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.follow_up_date && "text-palette-amber")} onClick={(e) => { e.stopPropagation(); onOpenDatePicker(note); }}>
                         <Clock className="h-3 w-3" />
                       </Button>
                     </TooltipTrigger><TooltipContent side="top">Wiedervorlage</TooltipContent></Tooltip>
                     <Tooltip><TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.meeting_id && "text-palette-green")} onClick={(e) => { e.stopPropagation(); note.meeting_id ? onRemoveFromMeeting(note.id) : onOpenMeetingSelector(note); }}>
-                        <CalendarIcon className="h-3 w-3" />
-                      </Button>
-                    </TooltipTrigger><TooltipContent side="top">{note.meeting_id ? "Von Jour Fixe entfernen" : "Auf Jour Fixe"}</TooltipContent></Tooltip>
-                    <Tooltip><TooltipTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-muted/80 rounded-full" onClick={(e) => { e.stopPropagation(); onArchive(note.id); }}>
                         <Archive className="h-3 w-3" />
                       </Button>
                     </TooltipTrigger><TooltipContent side="top">Archivieren</TooltipContent></Tooltip>
-                    {onTransferToThemenspeicher && (
-                      <Popover open={transferPopoverOpen} onOpenChange={setTransferPopoverOpen}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className={cn(
-                                  "h-6 w-6 hover:bg-muted/80 rounded-full",
-                                  isInThemenspeicher && "text-palette-amber",
-                                )}
-                                disabled={isTransferringToThemenspeicher}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onTransferToThemenspeicher(note);
-                                  setTransferPopoverOpen(true);
-                                }}
-                              >
-                                <Lightbulb className="h-3 w-3" />
-                              </Button>
-                            </PopoverTrigger>
-                          </TooltipTrigger>
-                          <TooltipContent side="top">In Themenspeicher verschieben</TooltipContent>
-                        </Tooltip>
-                        <PopoverContent
-                          side="top"
-                          align="end"
-                          className="w-64 p-2"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            type="button"
-                            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted text-left"
-                            disabled={isTransferringToThemenspeicher}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onMoveToThemenspeicher?.(note);
-                              setTransferPopoverOpen(false);
-                            }}
-                          >
-                            <Lightbulb className="h-4 w-4 text-palette-amber" />
-                            <span>In Themenspeicher verschieben</span>
-                          </button>
-                        </PopoverContent>
-                      </Popover>
-                    )}
                     {dragHandleProps && (
                       <div {...dragHandleProps} className="cursor-grab p-1 hover:bg-muted/80 rounded-full">
                         <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
