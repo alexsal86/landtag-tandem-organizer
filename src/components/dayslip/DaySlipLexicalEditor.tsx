@@ -10,7 +10,6 @@ import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { HorizontalRulePlugin } from "@lexical/react/LexicalHorizontalRulePlugin";
 import {
-  $createTextNode,
   $getRoot,
   $getSelection,
   $isRangeSelection,
@@ -95,10 +94,8 @@ function DaySlipEnterBehaviorPlugin() {
           newParagraph.select();
           return;
         }
-        const newParagraph = $createDaySlipLineNode();
-        newParagraph.append($createTextNode(""));
-        topLevel.insertAfter(newParagraph);
-        newParagraph.select();
+        // Keep Lexical's normal split/selection behavior when Enter is pressed in the middle of text.
+        selection.insertParagraph();
       });
       return true;
     }, COMMAND_PRIORITY_CRITICAL);
@@ -151,10 +148,11 @@ export interface DaySlipEditorProps {
   onEditorContextMenu: (e: MouseEvent<HTMLDivElement>) => void;
   onDrop: (e: DragEvent<HTMLElement>) => void;
   hidden?: boolean;
+  readOnly?: boolean;
 }
 
 export const DaySlipLexicalEditor = memo(function DaySlipLexicalEditor(props: DaySlipEditorProps) {
-  const { initialHtml, initialNodes, dayKey, forceReloadToken, resolveMode, editorConfig, onEditorChange, onEditorReady, onEditorClick, onEditorContextMenu, onDrop, hidden } = props;
+  const { initialHtml, initialNodes, dayKey, forceReloadToken, resolveMode, editorConfig, onEditorChange, onEditorReady, onEditorClick, onEditorContextMenu, onDrop, hidden, readOnly } = props;
   const [isFocused, setIsFocused] = useState(false);
   const handleFocusChange = useCallback((focused: boolean) => setIsFocused(focused), []);
 
@@ -167,7 +165,7 @@ export const DaySlipLexicalEditor = memo(function DaySlipLexicalEditor(props: Da
       onDrop={onDrop}
     >
       <LexicalComposer initialConfig={editorConfig}>
-        <EditorEditablePlugin editable={!resolveMode} />
+        <EditorEditablePlugin editable={!resolveMode && !readOnly} />
         <div className="relative h-full">
           <RichTextPlugin
             contentEditable={<ContentEditable className="editor-input h-full min-h-[340px] p-4 text-sm focus:outline-none" />}
@@ -178,9 +176,9 @@ export const DaySlipLexicalEditor = memo(function DaySlipLexicalEditor(props: Da
             }
             ErrorBoundary={LexicalErrorBoundary}
           />
-          <FloatingTextFormatToolbar />
+          {!resolveMode && !readOnly && <FloatingTextFormatToolbar />}
         </div>
-        <OnChangePlugin onChange={onEditorChange} />
+        <OnChangePlugin onChange={onEditorChange} ignoreSelectionChange />
         <EditorReadyPlugin onEditorReady={onEditorReady} />
         <HistoryPlugin />
         <HorizontalRulePlugin />

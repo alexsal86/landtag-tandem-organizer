@@ -43,6 +43,8 @@ export class DaySlipLineNode extends ParagraphNode {
     return this.__linkedTaskId;
   }
 
+  getLineId(): string { return this.__lineId; }
+
   setLinkedTaskId(taskId: string | undefined): this {
     const self = this.getWritable();
     self.__linkedTaskId = taskId;
@@ -52,6 +54,7 @@ export class DaySlipLineNode extends ParagraphNode {
   createDOM(config: EditorConfig): HTMLElement {
     const dom = super.createDOM(config);
     dom.dataset.lineId = this.__lineId;
+    if (this.__linkedTaskId) dom.dataset.linkedTaskId = this.__linkedTaskId;
     return dom;
   }
 
@@ -60,6 +63,8 @@ export class DaySlipLineNode extends ParagraphNode {
     if (dom.dataset.lineId !== this.__lineId) {
       dom.dataset.lineId = this.__lineId;
     }
+    if (this.__linkedTaskId) dom.dataset.linkedTaskId = this.__linkedTaskId;
+    else delete dom.dataset.linkedTaskId;
     return updated;
   }
 
@@ -75,16 +80,14 @@ export class DaySlipLineNode extends ParagraphNode {
 
   static importJSON(serializedNode: SerializedDaySlipLineNode): DaySlipLineNode {
     const node = new DaySlipLineNode(serializedNode.lineId, undefined, serializedNode.linkedTaskId);
-    node.setFormat(serializedNode.format);
-    node.setIndent(serializedNode.indent);
-    node.setDirection(serializedNode.direction);
-    return node;
+    return node.updateFromJSON(serializedNode);
   }
 
   exportDOM(editor: Parameters<ParagraphNode["exportDOM"]>[0]): DOMExportOutput {
     const output = super.exportDOM(editor);
     if (output.element instanceof HTMLElement) {
       output.element.dataset.lineId = this.__lineId;
+      if (this.__linkedTaskId) output.element.dataset.linkedTaskId = this.__linkedTaskId;
     }
     return output;
   }
@@ -98,7 +101,7 @@ export class DaySlipLineNode extends ParagraphNode {
       p: () => ({
         conversion: (domNode: Node): DOMConversionOutput | null => {
           if (!(domNode instanceof HTMLParagraphElement)) return null;
-          return { node: new DaySlipLineNode(domNode.dataset.lineId) };
+          return { node: new DaySlipLineNode(domNode.dataset.lineId, undefined, domNode.dataset.linkedTaskId) };
         },
         priority: 1,
       }),

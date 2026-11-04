@@ -8,7 +8,9 @@ export interface DaySlipDayData {
   nodes?: string;
   struckLines?: string[];
   struckLineIds?: string[];
-  resolved?: Array<{ lineId: string; text: string; target: ResolveTarget; snoozeUntil?: string }>;
+  resolved?: ResolvedItem[];
+  sources?: Record<string, DaySlipSource>;
+  carriedTo?: Record<string, string>;
   completedAt?: string;
   recurringInjected?: boolean;
   weekPlanInjected?: boolean;
@@ -18,9 +20,25 @@ export interface DaySlipDayData {
   dayMood?: 1 | 2 | 3 | 4 | 5;
 }
 
-export type ResolvedItem = { lineId: string; text: string; target: ResolveTarget; persisted?: boolean; snoozeUntil?: string };
+export type DaySlipSource = { type: "task" | "note" | "case" | "decision"; id: string };
+export type TaskOptions = { assignedTo?: string; dueDate?: string };
+export type ResolvedItem = { lineId: string; text: string; target: ResolveTarget; persisted?: boolean; entityId?: string; snoozeUntil?: string; taskOptions?: TaskOptions; error?: string };
 export type DaySlipStore = Record<string, DaySlipDayData>;
 export type DaySlipLineEntry = { id: string; text: string };
+export type CarryLine = DaySlipLineEntry & { sourceDayKey: string; source?: DaySlipSource };
+
+export interface WeekPlan {
+  weekStartKey: string;
+  applied: boolean;
+  dismissed: boolean;
+  days: Record<string, string[]>;
+}
+
+export interface DaySlipSettings {
+  recurringItems: RecurringTemplate[];
+  dayTemplates: DayTemplate[];
+  weekPlan: WeekPlan | null;
+}
 
 export type RecurringTemplate = {
   id: string;
@@ -145,14 +163,17 @@ export const formatDate = (dayKey: string) => {
   }).format(date);
 };
 
-export const stripHtml = (html: string) => html.replace(/<[^>]*>/g, "").trim();
+export const stripHtml = (html: string) => {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  return Array.from(doc.body.children).map(node => node.textContent ?? "").join("\n").trim();
+};
 
 export const normalizeRuleMarker = (text: string) =>
   text.replace(/[‐‑‒–—―−]/g, "-").replace(/[\u200B-\u200D\uFEFF]/g, "").replace(/\u00A0/g, " ").replace(/\s+/g, "").trim();
 
 export const normalizeLineText = (text: string) => text.replace(/\s+/g, " ").trim();
 
-export const isRuleLine = (text: string) => /^[-_]{3,}$/.test(normalizeRuleMarker(text));
+export const isRuleLine = (text: string) => /^[-_]{3,}$/.test(normalizeRuleMarker(text)) || parseRuleLine(text).isRule;
 
 export const parseRuleLine = (text: string): { isRule: boolean; label?: string } => {
   const trimmed = text.trim();
@@ -166,7 +187,7 @@ export const escapeHtml = (value: string) =>
   value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 
 export const toParagraphHtml = (entry: DaySlipLineEntry) =>
-  `<p data-line-id="${entry.id}">${escapeHtml(entry.text)}</p>`;
+  `<p data-line-id="${escapeHtml(entry.id)}">${escapeHtml(entry.text)}</p>`;
 
 export const toRuleHtml = (label?: string) => {
   const safeLabel = label ? escapeHtml(label) : "";

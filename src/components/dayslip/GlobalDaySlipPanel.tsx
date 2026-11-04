@@ -1,32 +1,45 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
-import { $createTextNode, $getRoot } from "lexical";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import { useTenantUsers } from "@/hooks/useTenantUsers";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { sourcePath, normalizeStore } from "./daySlipState";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
-  Check, ChevronDown, ClipboardPen, Clock3, Folder, FolderArchive, ListTodo, NotebookPen,
-  Pencil, Scale, Settings, Trash2, X,
+  Check, ClipboardPen, Clock3, Folder, FolderArchive, ListTodo, NotebookPen,
+  Pencil, Scale, Settings, Trash2, X, ExternalLink, RotateCcw,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { WeeklyRoutineGrid } from "@/components/dayslip/WeeklyRoutineGrid";
 import { WeekPlanningBanner } from "@/components/dayslip/WeekPlanningBanner";
 import { DaySlipLexicalEditor } from "@/components/dayslip/DaySlipLexicalEditor";
-import { $createDaySlipLineNode, DaySlipLineNode } from "@/components/lexical/DaySlipLineNode";
 import { useDaySlipStore } from "@/components/dayslip/hooks/useDaySlipStore";
 import {
-  type DayTemplate, type RecurringTemplate, type ResolveTarget,
+  type DayTemplate, type TaskOptions,
   WEEK_DAYS, WEEK_DAY_LABELS, DEFAULT_DAY_TEMPLATES,
-  STORAGE_KEY, formatDate, stripHtml, isRuleLine, formatTimeStamp, normalizeLineText, toDayKey,
+  STORAGE_KEY, RECURRING_STORAGE_KEY, DAY_TEMPLATE_STORAGE_KEY, formatDate, stripHtml, isRuleLine, formatTimeStamp, toDayKey, normalizeDayTemplates,
 } from "@/components/dayslip/dayslipTypes";
 
 export function GlobalDaySlipPanel() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
 
+  if (!user || !currentTenant) return null;
+  return <DaySlipPanel key={`${user.id}:${currentTenant.id}`} userId={user.id} tenantId={currentTenant.id} />;
+}
+
+function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }) {
+  const navigate = useNavigate();
+  const { users: tenantUsers } = useTenantUsers();
+  const [taskDraft, setTaskDraft] = useState<{ lineId: string; text: string; options: TaskOptions } | null>(null);
+  const [showLegacy, setShowLegacy] = useState(false);
+  const closingRef = useRef(false);
   const [open, setOpen] = useState(() => {
     try { const saved = localStorage.getItem('day-slip-panel-open'); return saved !== null ? JSON.parse(saved) : false; } catch { return false; }
   });
-  useEffect(() => { try { localStorage.setItem('day-slip-panel-open', JSON.stringify(open)); } catch {} }, [open]);
+  useEffect(() => { try { localStorage.setItem('day-slip-panel-open', JSON.stringify(open)); } catch { /* Panel visibility is optional. */ } }, [open]);
 
   const [showArchive, setShowArchive] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -34,7 +47,6 @@ export function GlobalDaySlipPanel() {
   const [contentTransitioning, setContentTransitioning] = useState(false);
   const [completionMessage, setCompletionMessage] = useState<string | null>(null);
   const [showCompletePulse, setShowCompletePulse] = useState(false);
-  const [carriedOver, setCarriedOver] = useState(false);
 
   // Recurring UI state
   const [recurringDraft, setRecurringDraft] = useState("");
@@ -51,7 +63,24 @@ export function GlobalDaySlipPanel() {
   const [lineContextMenu, setLineContextMenu] = useState<{ x: number; y: number; lineId: string; text: string } | null>(null);
 
   // Store hook
-  const ds = useDaySlipStore(user?.id, currentTenant?.id);
+  const ds = useDaySlipStore(userId, tenantId);
+  const legacyData = useMemo(() => {
+    try { return normalizeStore(JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}")); } catch { return {}; }
+  }, []);
+  const [legacyImported, setLegacyImported] = useState(false);
+  const taskFields = (options: TaskOptions, onChange: (value: TaskOptions) => void, disabled = false) => (
+    <div className="mt-2 flex flex-wrap gap-2">
+      <label className="flex flex-col gap-1 text-xs">Zuständig
+        <select aria-label="Zuständig" className="h-8 rounded border bg-background px-2" disabled={disabled} value={options.assignedTo || userId} onChange={event => onChange({ ...options, assignedTo: event.target.value })}>
+          <option value={userId}>Ich</option>
+          {tenantUsers.filter(person => person.id !== userId).map(person => <option key={person.id} value={person.id}>{person.display_name}</option>)}
+        </select>
+      </label>
+      <label className="flex flex-col gap-1 text-xs">Fällig am
+        <input aria-label="Fällig am" type="date" className="h-8 rounded border bg-background px-2" disabled={disabled} value={options.dueDate || ""} onChange={event => onChange({ ...options, dueDate: event.target.value })} />
+      </label>
+    </div>
+  );
 
   // Keyboard shortcut
   useEffect(() => {
@@ -90,43 +119,32 @@ export function GlobalDaySlipPanel() {
         node.title = stamp ? `Erfasst: ${formatTimeStamp(stamp.addedAt)} · Abgehakt: ${formatTimeStamp(stamp.checkedAt)}` : "";
       });
     });
-  }, [ds.struckLineIds, ds.todayData.html, ds.todayData.lineTimestamps, open, ds.editorReadyVersion]);
+  }, [ds.editorRef, ds.struckLineIds, ds.todayData.html, ds.todayData.lineTimestamps, open, ds.editorReadyVersion]);
 
-  // Panel close flow
+  // Changes are cached synchronously; closing also asks the queue to flush.
   const animateClosePanel = () => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(ds.store)); } catch {}
-    clearTimeout(ds.saveTimeoutRef.current as unknown as number | undefined);
+    if (ds.isProcessing) return;
+    void ds.flush();
     setClosing(true);
-    setTimeout(() => { ds.setResolveMode(false); setOpen(false); setClosing(false); setShowCompletePulse(true); setTimeout(() => setShowCompletePulse(false), 500); }, 220);
+    setTimeout(() => { ds.setResolveMode(false); setOpen(false); setClosing(false); }, 220);
   };
 
-  const markDayCompleted = async () => {
-    if (ds.store[ds.todayKey]?.completedAt) { animateClosePanel(); return; }
-    await ds.persistResolvedItems();
-    const completedAt = new Date().toISOString();
-    ds.setStore((prev) => ({ ...prev, [ds.todayKey]: { ...(prev[ds.todayKey] ?? { html: "", plainText: "", struckLineIds: [] }), completedAt } }));
-    setCompletionMessage(`✅ Tag abgeschlossen (${new Date(completedAt).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })})`);
-    animateClosePanel();
-  };
-
-  const completeDay = () => {
+  const completeDay = async () => {
+    if (closingRef.current || ds.isProcessing) return;
     if (ds.resolveMode && ds.unresolvedCount > 0) { ds.setResolveMode(false); return; }
     if (ds.unresolvedCount > 0) { ds.setResolveMode(true); return; }
-    markDayCompleted();
-  };
-
-  const carryOverFromYesterday = () => {
-    if (ds.yesterdayCarryLines.length === 0) return;
-    ds.appendLinesToToday(ds.yesterdayCarryLines.map((l) => l.text));
-    const carriedLineIds = new Set(ds.yesterdayCarryLines.map((l) => l.id));
-    ds.setStore((prev) => {
-      const yd = prev[ds.yesterdayKey];
-      if (!yd) return prev;
-      const struck = new Set(yd.struckLineIds ?? yd.struckLines ?? []);
-      carriedLineIds.forEach((id) => struck.add(id));
-      return { ...prev, [ds.yesterdayKey]: { ...yd, struckLineIds: Array.from(struck), resolved: (yd.resolved ?? []).filter((item) => !(item.target === "snoozed" && carriedLineIds.has(item.lineId))) } };
-    });
-    setCarriedOver(true);
+    closingRef.current = true;
+    try {
+      if (!await ds.completeDay()) {
+        ds.setResolveMode(true);
+        toast.error("Der Tag bleibt offen. Bitte prüfe die markierten Einträge und den Speicherstatus.");
+        return;
+      }
+      setCompletionMessage("✅ Tag erfolgreich abgeschlossen");
+      setShowCompletePulse(true);
+      setTimeout(() => setShowCompletePulse(false), 800);
+      animateClosePanel();
+    } finally { closingRef.current = false; }
   };
 
   const handleDropToDaySlip = useCallback((event: DragEvent<HTMLElement>) => {
@@ -140,21 +158,11 @@ export function GlobalDaySlipPanel() {
     const typeIcons: Record<string, string> = { task: "✅", note: "📝", case: "💼", decision: "🗳️" };
     const icon = (droppedItemType && typeIcons[droppedItemType]) || (droppedTaskTitle ? "✅" : "");
     const withIcon = icon && !rawValue.startsWith(icon) ? `${icon} ${rawValue}` : rawValue;
-    if (droppedTaskId && ds.editorRef.current) {
-      ds.editorRef.current.update(() => {
-        const root = $getRoot();
-        const existing = new Set(root.getChildren().map((n) => normalizeLineText(n.getTextContent())).filter((l) => l.length > 0));
-        const normalized = normalizeLineText(withIcon);
-        if (!normalized || existing.has(normalized)) return;
-        const paragraph = $createDaySlipLineNode(undefined, droppedTaskId);
-        paragraph.append($createTextNode(withIcon));
-        root.append(paragraph);
-      });
-    } else {
-      ds.appendLinesToToday([withIcon]);
-    }
+    if (ds.todayData.completedAt || !ds.ready || ds.isProcessing) { toast.info("Bitte den Tageszettel zuerst öffnen und den Tag gegebenenfalls wieder öffnen."); return; }
+    const sourceType = ["task", "note", "case", "decision"].includes(droppedItemType) ? droppedItemType as "task" | "note" | "case" | "decision" : "task";
+    ds.appendLinesToToday([withIcon], droppedTaskId ? { type: sourceType, id: droppedTaskId } : undefined);
     setOpen(true); ds.setResolveMode(false); setShowArchive(false); setShowSettings(false);
-  }, [ds.appendLinesToToday]);
+  }, [ds]);
 
   const handleDaySlipButtonDragOver = useCallback((event: DragEvent<HTMLButtonElement>) => {
     const hasDaySlipData = event.dataTransfer.types.includes("application/x-mywork-task-title") || event.dataTransfer.types.includes("text/plain");
@@ -168,6 +176,7 @@ export function GlobalDaySlipPanel() {
   }, [handleDropToDaySlip]);
 
   const handleEditorClick = useCallback((e: MouseEvent<HTMLDivElement>) => {
+    if (ds.todayData.completedAt || ds.isProcessing) return;
     const target = e.target as HTMLElement;
     const item = target.closest(".day-slip-item") as HTMLElement | null;
     if (!item) return;
@@ -178,9 +187,10 @@ export function GlobalDaySlipPanel() {
     const lineId = item.dataset.lineId;
     if (!lineId) return;
     ds.toggleStrike(lineId);
-  }, [ds.toggleStrike]);
+  }, [ds]);
 
   const handleEditorContextMenu = useCallback((e: MouseEvent<HTMLDivElement>) => {
+    if (ds.todayData.completedAt || ds.isProcessing) return;
     const target = e.target as HTMLElement;
     const item = target.closest(".day-slip-item") as HTMLElement | null;
     if (!item) return;
@@ -189,7 +199,7 @@ export function GlobalDaySlipPanel() {
     if (!lineId || !text || isRuleLine(text)) return;
     e.preventDefault();
     setLineContextMenu({ x: e.clientX, y: e.clientY, lineId, text });
-  }, []);
+  }, [ds.todayData.completedAt, ds.isProcessing]);
 
   const switchView = (view: "settings" | "archive" | "default") => {
     setContentTransitioning(true);
@@ -217,7 +227,7 @@ export function GlobalDaySlipPanel() {
   };
   const handleChangeRecurringWeekday = useCallback((id: string, newWeekday: string) => {
     ds.setRecurringItems((prev) => prev.map((item) => item.id === id ? { ...item, weekday: newWeekday as (typeof WEEK_DAYS)[number] } : item));
-  }, []);
+  }, [ds]);
 
   // Day template CRUD
   const applyDayTemplate = (template: DayTemplate) => { ds.insertStructuredLines(template.lines); setShowSettings(false); };
@@ -262,9 +272,15 @@ export function GlobalDaySlipPanel() {
             </div>
           </div>
 
-          {showSettings ? (
+          <div className="border-b px-4 py-2 text-xs" role="status" aria-live="polite">
+            {ds.saveStatus === "loading" ? "Tageszettel wird geladen …" : ds.saveStatus === "saving" ? "Speichert …" : ds.saveStatus === "saved" ? "Gespeichert" : "Speichern fehlgeschlagen"}
+            {ds.saveStatus === "error" && <><p className="mt-1 text-destructive">{ds.saveError}</p><button className="mt-1 underline" onClick={() => void ds.retrySave()}>Erneut versuchen</button></>}
+            {ds.deadlineError && <p className="mt-1 text-destructive">Fristen konnten nicht aktualisiert werden. Die Aktualisierung wird erneut versucht.</p>}
+          </div>
+          {!ds.ready ? <div className="flex-1 p-4 text-sm text-muted-foreground">{ds.saveStatus === "error" ? "Deine lokalen Einträge bleiben erhalten. Bitte versuche das Laden erneut." : "Deine Einträge werden geladen …"}</div> : showSettings ? (
             <div className={`flex-1 space-y-4 overflow-y-auto p-4 transition-all duration-300 ease-out ${contentTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
               <div><p className="text-sm font-medium">Einstellungen</p><p className="text-xs text-muted-foreground">Wiederkehrende Punkte verwalten</p></div>
+              {Object.keys(legacyData).length > 0 && !legacyImported && <button className="rounded border px-3 py-2 text-xs" onClick={() => setShowLegacy(true)}>Ältere lokale Daten prüfen und übernehmen</button>}
               <div className="space-y-2 rounded-lg border border-border/60 p-3">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Wiederkehrende Punkte</p>
                 <div className="mb-2 flex flex-wrap gap-1">
@@ -341,25 +357,26 @@ export function GlobalDaySlipPanel() {
             </div>
           ) : (
             <div className={`flex min-h-0 flex-1 flex-col transition-all duration-300 ease-out ${contentTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
-              <WeekPlanningBanner recurringItems={ds.recurringItems} onApplyPlan={ds.handleApplyWeekPlan} />
-              {ds.yesterdayCarryLines.length > 0 && !carriedOver && (
+              {!ds.todayData.completedAt && <WeekPlanningBanner key={`week-${ds.todayKey}`} recurringItems={ds.recurringItems} weekPlan={ds.weekPlan} onChangePlan={ds.setWeekPlan} />}
+              {ds.carryEntries.length > 0 && !ds.todayData.completedAt && (
                 <div className="border-b border-palette-amber/40 bg-palette-amber/10 px-4 py-2 text-sm text-palette-amber   ">
-                  <span className="font-semibold">Gestern noch offen:</span>{" "}&ldquo;{ds.yesterdayCarryLines[0].text}&rdquo;{ds.yesterdayCarryLines.length > 1 ? ` +${ds.yesterdayCarryLines.length - 1}` : ""}
+                  <span className="font-semibold">Noch offen oder wieder fällig:</span>{" "}&ldquo;{ds.carryEntries[0].text}&rdquo;{ds.carryEntries.length > 1 ? ` +${ds.carryEntries.length - 1}` : ""}
                   <div className="mt-1 flex items-center justify-between gap-2 text-xs text-palette-amber ">
-                    <span>Es werden offene und gesnoozte Punkte von gestern angeboten.</span>
-                    <button type="button" className="rounded border border-palette-amber/50 px-2 py-0.5 hover:bg-palette-amber/20  " onClick={carryOverFromYesterday}>In heute übernehmen</button>
+                    <span>Auch offene Punkte und fällige Wiedervorlagen aus älteren Tagen.</span>
+                    <button type="button" className="rounded border border-palette-amber/50 px-2 py-0.5 hover:bg-palette-amber/20  " onClick={ds.carryOver}>In heute übernehmen</button>
                   </div>
                 </div>
               )}
 
               <DaySlipLexicalEditor
-                key={ds.todayKey}
+                key={`editor-${ds.todayKey}`}
+                forceReloadToken={ds.editorReloadToken}
+                readOnly={!!ds.todayData.completedAt || ds.isProcessing}
                 hidden={ds.resolveMode && ds.triageEntries.length > 0}
                 initialHtml={ds.todayData.html}
                 initialNodes={ds.todayData.nodes}
                 dayKey={ds.todayKey}
                 resolveMode={ds.resolveMode}
-                /* @ts-expect-error editorConfig.nodes uses unknown[] internally; Lexical expects KlassConstructor[] */
                 editorConfig={ds.editorConfig}
                 onEditorChange={ds.onEditorChange}
                 onEditorReady={ds.handleEditorReady}
@@ -389,7 +406,7 @@ export function GlobalDaySlipPanel() {
                       if (decisionCount > 0) parts.push(`${decisionCount} Entscheidung${decisionCount > 1 ? "en" : ""}`);
                       if (snoozedCount > 0) parts.push(`${snoozedCount} gesnoozed`);
                       if (archivedCount > 0) parts.push(`${archivedCount} archiviert`);
-                      const summary = parts.length > 0 ? `Es werden erstellt: ${parts.join(", ")}.` : "";
+                      const summary = parts.length > 0 ? `Zuordnung: ${parts.join(", ")}. Vorgemerkte Einträge werden beim Abschluss verarbeitet.` : "";
                       return (
                         <div className="rounded border border-palette-green/40 bg-palette-green/10 px-3 py-2 text-xs text-palette-green">
                           <p>✓ Alle offenen Punkte wurden zugewiesen.</p>
@@ -403,17 +420,23 @@ export function GlobalDaySlipPanel() {
                       const stamp = ds.todayData.lineTimestamps?.[id];
                       const isHighPriority = /^!!\s*/.test(text);
                       const isPriority = !isHighPriority && /^!\s*/.test(text);
-                      const snoozeItem = ds.resolvedItems.find(r => r.lineId === id && r.target === "snoozed");
+                      const resolution = ds.resolvedItems.find(r => r.lineId === id);
+                      const snoozeItem = resolution?.target === "snoozed" ? resolution : undefined;
+                      const source = ds.todayData.sources?.[id];
                       return (
                         <div key={id} className={cn("flex items-center justify-between gap-2 rounded-md border border-border/60 px-2 py-1.5 text-sm", isHighPriority && "bg-priority-high/10 border-priority-high/40", isPriority && "bg-palette-amber/10 border-palette-amber/40")}>
                           <div className="flex flex-1 flex-col">
                             <span className="line-clamp-1">{text}</span>
+                            <span className="text-[10px] text-muted-foreground">{resolution?.persisted ? "Erfolgreich erstellt / verknüpft" : activeTarget && source?.type === activeTarget ? "Verknüpfung vorgemerkt" : activeTarget && ["task", "note", "decision"].includes(activeTarget) ? "Zur Erstellung vorgemerkt" : activeTarget === "snoozed" ? "Wiedervorlage" : activeTarget === "archived" ? "Archiviert" : "Gesammelt"}</span>
+                            {source && <button className="flex items-center gap-1 text-left text-xs text-primary underline" onClick={() => navigate(sourcePath(source))}><ExternalLink className="h-3 w-3" />Original öffnen</button>}
+                            {resolution?.error && <span role="alert" className="text-xs text-destructive">Erstellen fehlgeschlagen: {resolution.error}</span>}
+                            {activeTarget === "task" && source?.type !== "task" && taskFields(resolution?.taskOptions ?? {}, value => ds.updateTaskOptions(id, value), !!resolution?.persisted || ds.isProcessing)}
                             <span className="text-[10px] text-muted-foreground">
                               Erfasst {formatTimeStamp(stamp?.addedAt)} · Abgehakt {formatTimeStamp(stamp?.checkedAt)}
                               {snoozeItem?.snoozeUntil && <> · Snooze bis {snoozeItem.snoozeUntil}</>}
                             </span>
                           </div>
-                          <div className="flex items-center gap-1 flex-shrink-0">
+                          <fieldset disabled={ds.isProcessing || !!resolution?.persisted} className="flex items-center gap-1 flex-shrink-0 disabled:opacity-60">
                             <button type="button" title="Als Notiz" className={buttonClass("note")} onClick={() => ds.toggleResolveLine(id, text, "note")}><NotebookPen className="h-4 w-4" /></button>
                             <button type="button" title="Als Aufgabe" className={buttonClass("task")} onClick={() => ds.toggleResolveLine(id, text, "task")}><ListTodo className="h-4 w-4" /></button>
                             <button type="button" title="Als Entscheidung" className={buttonClass("decision")} onClick={() => ds.toggleResolveLine(id, text, "decision")}><Scale className="h-4 w-4" /></button>
@@ -445,7 +468,7 @@ export function GlobalDaySlipPanel() {
                               </PopoverContent>
                             </Popover>
                             <button type="button" title="Archivieren" className={buttonClass("archived")} onClick={() => ds.toggleResolveLine(id, text, "archived")}><FolderArchive className="h-4 w-4" /></button>
-                          </div>
+                          </fieldset>
                         </div>
                       );
                     })}
@@ -453,6 +476,14 @@ export function GlobalDaySlipPanel() {
                 </div>
               )}
 
+              {Object.entries(ds.todayData.sources ?? {}).length > 0 && <div className="max-h-24 overflow-y-auto border-b px-4 py-2 text-xs">
+                {Object.entries(ds.todayData.sources ?? {}).map(([lineId, source]) => <button key={lineId} className="mb-1 flex items-center gap-1 text-primary underline" onClick={() => navigate(sourcePath(source))}><ExternalLink className="h-3 w-3" />{ds.allLineEntries.find(line => line.id === lineId)?.text || "Original öffnen"}</button>)}
+              </div>}
+              {!ds.resolveMode && ds.resolvedItems.length > 0 && <div className="border-b px-4 py-2 text-xs">
+                <p>{ds.resolvedItems.filter(item => item.persisted).length} erfolgreich erstellt / verknüpft · {ds.resolvedItems.filter(item => !item.persisted && ["task", "note", "decision"].includes(item.target)).length} zur Erstellung vorgemerkt</p>
+                {ds.resolvedItems.filter(item => item.error).map(item => <p key={item.lineId} role="alert" className="mt-1 text-destructive">{item.text}: {item.error}</p>)}
+                {!ds.todayData.completedAt && <button className="mt-1 underline" onClick={() => ds.setResolveMode(true)}>Zuordnung prüfen</button>}
+              </div>}
               {/* Footer */}
               <div className="space-y-2 p-3">
                 {ds.resolveMode && (
@@ -461,15 +492,17 @@ export function GlobalDaySlipPanel() {
                     <div className="flex items-center justify-between">
                       {["😞", "🙁", "😐", "🙂", "😄"].map((mood, index) => (
                         <button key={mood} type="button" className={cn("rounded px-1.5 py-1 text-lg transition hover:bg-muted", ds.todayData.dayMood === (index + 1) ? "bg-palette-green/20 ring-1 ring-palette-green/50" : "opacity-70")}
-                          onClick={() => ds.setStore((prev) => ({ ...prev, [ds.todayKey]: { ...(prev[ds.todayKey] ?? { html: "", plainText: "", struckLineIds: [] }), dayMood: (index + 1) as 1 | 2 | 3 | 4 | 5 } }))}>{mood}</button>
+                          disabled={ds.isProcessing || !!ds.todayData.completedAt} onClick={() => ds.setMood((index + 1) as 1 | 2 | 3 | 4 | 5)}>{mood}</button>
                       ))}
                     </div>
                   </div>
                 )}
-                <button type="button" onClick={completeDay} className="flex h-10 w-full items-center justify-between rounded-lg border border-palette-green/40 bg-palette-green/10 px-3 text-sm font-medium text-palette-green">
-                  <span>{completeButtonLabel}</span>
+                {ds.todayData.completedAt ? <div className="space-y-2 rounded border border-palette-green/40 p-3 text-sm">
+                  <p>✓ Tag abgeschlossen</p><button className="flex items-center gap-1 underline" onClick={() => void ds.reopenDay()}><RotateCcw className="h-4 w-4" />Tag wieder öffnen</button>
+                </div> : <button type="button" disabled={ds.isProcessing} onClick={() => void completeDay()} className="flex h-10 w-full items-center justify-between rounded-lg border border-palette-green/40 bg-palette-green/10 px-3 text-sm font-medium text-palette-green">
+                  <span>{ds.isProcessing ? "Einträge werden verarbeitet …" : completeButtonLabel}</span>
                   <span className="text-xs opacity-70">{completeButtonHint}</span>
-                </button>
+                </button>}
               </div>
             </div>
           )}
@@ -478,12 +511,38 @@ export function GlobalDaySlipPanel() {
 
       {lineContextMenu && (
         <div className="fixed z-[70] min-w-44 rounded-md border border-border bg-popover p-1 shadow-xl" style={{ left: lineContextMenu.x, top: lineContextMenu.y }}>
-          <button className="flex w-full rounded px-2 py-1 text-left text-sm hover:bg-accent" onClick={async () => { await ds.createFromLine(lineContextMenu.text, "task"); setLineContextMenu(null); }}>Als Aufgabe erstellen</button>
-          <button className="flex w-full rounded px-2 py-1 text-left text-sm hover:bg-accent" onClick={async () => { await ds.createFromLine(lineContextMenu.text, "note"); setLineContextMenu(null); }}>Als Notiz speichern</button>
+          <button className="flex w-full rounded px-2 py-1 text-left text-sm hover:bg-accent" onClick={async () => { setTaskDraft({ lineId: lineContextMenu.lineId, text: lineContextMenu.text, options: { assignedTo: userId } }); setLineContextMenu(null); }}>Als Aufgabe erstellen</button>
+          <button className="flex w-full rounded px-2 py-1 text-left text-sm hover:bg-accent" onClick={async () => { if (await ds.createFromLine(lineContextMenu.lineId, lineContextMenu.text, "note")) { toast.success("Notiz erstellt / verknüpft"); setLineContextMenu(null); } else toast.error("Notiz konnte nicht gespeichert werden. Bitte erneut versuchen."); }}>Als Notiz speichern</button>
           <button className="flex w-full rounded px-2 py-1 text-left text-sm hover:bg-accent" onClick={() => { ds.toggleResolveLine(lineContextMenu.lineId, lineContextMenu.text, "snoozed"); setLineContextMenu(null); }}>Snoozen</button>
           <button className="flex w-full rounded px-2 py-1 text-left text-sm text-destructive hover:bg-destructive/10" onClick={() => { ds.deleteLine(lineContextMenu.lineId); setLineContextMenu(null); }}>Löschen</button>
         </div>
       )}
+
+      <Dialog open={!!taskDraft} onOpenChange={value => { if (!value && !ds.isProcessing) setTaskDraft(null); }}>
+        <DialogContent><DialogHeader><DialogTitle>Als Aufgabe erstellen</DialogTitle><DialogDescription>{taskDraft?.text}</DialogDescription></DialogHeader>
+          {taskDraft && (ds.todayData.sources?.[taskDraft.lineId]?.type === "task" ? <p className="text-sm">Diese Aufgabe ist bereits verknüpft. Es wird keine neue Aufgabe erstellt.</p> : taskFields(taskDraft.options, options => setTaskDraft({ ...taskDraft, options }), ds.isProcessing))}
+          <button disabled={ds.isProcessing} className="rounded border bg-primary px-3 py-2 text-primary-foreground disabled:opacity-50" onClick={async () => {
+            if (!taskDraft) return;
+            if (await ds.createFromLine(taskDraft.lineId, taskDraft.text, "task", taskDraft.options)) { toast.success("Aufgabe erstellt / verknüpft"); setTaskDraft(null); }
+            else toast.error("Aufgabe konnte nicht gespeichert werden. Bitte erneut versuchen.");
+          }}>{ds.isProcessing ? "Wird erstellt …" : "Aufgabe erstellen"}</button>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={showLegacy} onOpenChange={setShowLegacy}>
+        <DialogContent className="max-h-[80vh] overflow-y-auto"><DialogHeader><DialogTitle>Ältere lokale Tageszettel</DialogTitle><DialogDescription>Diese Daten haben keine sichere Kontozuordnung. Übernimm sie nur, wenn sie dir gehören. Bereits vorhandene Tage werden beibehalten.</DialogDescription></DialogHeader>
+          {Object.entries(legacyData).map(([day, data]) => <div key={day} className="rounded border p-2 text-xs"><strong>{formatDate(day)}</strong><p className="whitespace-pre-wrap">{stripHtml(data.html)}</p></div>)}
+          <button className="rounded border px-3 py-2" onClick={() => {
+            ds.setStore(prev => ({ ...legacyData, ...prev }));
+            try {
+              const recurring = JSON.parse(localStorage.getItem(RECURRING_STORAGE_KEY) || "[]");
+              if (!ds.recurringItems.length && Array.isArray(recurring)) ds.setRecurringItems(recurring.map(item => typeof item === "string" ? { id: crypto.randomUUID(), text: item, weekday: "all" as const } : item));
+              const templates = localStorage.getItem(DAY_TEMPLATE_STORAGE_KEY);
+              if (templates && ds.dayTemplates === DEFAULT_DAY_TEMPLATES) ds.setDayTemplates(normalizeDayTemplates(JSON.parse(templates)));
+            } catch { toast.error("Die älteren Einstellungen konnten nicht übernommen werden."); }
+            setLegacyImported(true); setShowLegacy(false); toast.success("Fehlende Tage übernommen. Die ursprünglichen lokalen Daten bleiben erhalten.");
+          }}>Diese Daten gehören mir – fehlende Tage übernehmen</button>
+        </DialogContent>
+      </Dialog>
 
       {completionMessage && (
         <div className="fixed bottom-24 right-6 z-50 rounded-lg border border-palette-green/40 bg-palette-green/10 px-3 py-1.5 text-xs text-palette-green shadow-lg backdrop-blur">{completionMessage}</div>

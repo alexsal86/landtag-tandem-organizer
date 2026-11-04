@@ -1,712 +1,318 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
-import { $createTextNode, $getRoot, type EditorState, type LexicalEditor } from "lexical";
+import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from "react";
+import { $getRoot, ParagraphNode, type EditorState, type LexicalEditor } from "lexical";
 import { $generateHtmlFromNodes } from "@lexical/html";
-import { $createHorizontalRuleNode, HorizontalRuleNode } from "@lexical/react/LexicalHorizontalRuleNode";
-import { ParagraphNode } from "lexical";
+import { HorizontalRuleNode } from "@lexical/react/LexicalHorizontalRuleNode";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
 import { DaySlipLineNode, $createDaySlipLineNode } from "@/components/lexical/DaySlipLineNode";
-import { LabeledHorizontalRuleNode, $createLabeledHorizontalRuleNode } from "@/components/lexical/LabeledHorizontalRuleNode";
-import { getWeekPlanForDay } from "@/components/dayslip/WeekPlanningBanner";
+import { LabeledHorizontalRuleNode } from "@/components/lexical/LabeledHorizontalRuleNode";
+import { useDaySlipPersistence } from "./useDaySlipPersistence";
 import {
-  type DaySlipStore, type DaySlipDayData, type DaySlipLineEntry, type RecurringTemplate,
-  type ResolvedItem, type ResolveTarget, type DayTemplate, type ResolveExportItem,
-  STORAGE_KEY, RECURRING_STORAGE_KEY, DAY_TEMPLATE_STORAGE_KEY, RESOLVE_EXPORT_KEY,
-  SAVE_DEBOUNCE_MS, WEEK_DAYS, DEFAULT_DAY_TEMPLATES,
-  toDayKey, extractLinesFromHtml, normalizeLineText, isRuleLine, parseRuleLine,
-  toParagraphHtml, toRuleHtml, weekdayKey, normalizeDayTemplates,
+  type DaySlipDayData, type DaySlipLineEntry, type DaySlipSource,
+  type ResolvedItem, type ResolveTarget, type TaskOptions, type DaySlipSettings,
+  toDayKey, extractLinesFromHtml, parseRuleLine, toParagraphHtml, toRuleHtml, weekdayKey,
 } from "../dayslipTypes";
+import { appendEntries, carryLines, collectCarryLines, emptyDay, exportId } from "../daySlipState";
 
-const DB_SAVE_DEBOUNCE_MS = 1000;
+const errorMessage = (error: unknown) => error && typeof error === "object" && "message" in error ? String(error.message) : String(error);
 
-export type DaySlipStoreEvent =
-  | { type: "local-storage-migration-failed"; error: unknown }
-  | { type: "db-load-error"; error: unknown }
-  | { type: "resolve-export-sync-failed"; error: unknown }
-  | { type: "resolved-item-persist-failed"; target: ResolveTarget; error: unknown }
-  | { type: "preference-migration-failed"; dbKey: string; localKey: string; error: unknown };
-
-export interface UseDaySlipStoreReturn {
-  store: DaySlipStore;
-  setStore: Dispatch<SetStateAction<DaySlipStore>>;
-  resolveMode: boolean;
-  setResolveMode: Dispatch<SetStateAction<boolean>>;
-  recurringItems: RecurringTemplate[];
-  setRecurringItems: Dispatch<SetStateAction<RecurringTemplate[]>>;
-  dayTemplates: DayTemplate[];
-  setDayTemplates: Dispatch<SetStateAction<DayTemplate[]>>;
-  editorRef: MutableRefObject<LexicalEditor | null>;
-  editorReadyVersion: number;
-  saveTimeoutRef: MutableRefObject<ReturnType<typeof setTimeout>>;
-  todayKey: string;
-  todayData: DaySlipDayData;
-  yesterdayKey: string;
-  yesterdayCarryLines: DaySlipLineEntry[];
-  allLineEntries: DaySlipLineEntry[];
-  struckLineIds: string[];
-  resolvedItems: ResolvedItem[];
-  resolvedByLineId: Map<string, ResolveTarget>;
-  openLines: DaySlipLineEntry[];
-  unresolvedCount: number;
-  triageEntries: DaySlipLineEntry[];
-  archiveDays: string[];
-  toggleStrike: (lineId: string) => void;
-  appendLinesToToday: (lines: string[]) => void;
-  insertStructuredLines: (lines: string[]) => void;
-  deleteLine: (lineId: string) => void;
-  toggleResolveLine: (lineId: string, line: string, target: ResolveTarget, snoozeUntil?: string) => void;
-  createFromLine: (lineText: string, target: "note" | "task") => Promise<void>;
-  persistResolvedItems: () => Promise<void>;
-  onEditorChange: (editorState: EditorState, editor: LexicalEditor) => void;
-  handleEditorReady: (editor: LexicalEditor) => void;
-  handleApplyWeekPlan: (days: Record<string, string[]>) => void;
-  editorConfig: {
-    namespace: string;
-    theme: {
-      paragraph: string;
-      text: { bold: string; italic: string; underline: string; strikethrough: string };
-      horizontalRule: string;
-    };
-    nodes: unknown[];
-    onError: (error: Error) => void;
-  };
-}
-
-function logStoreEvent(event: DaySlipStoreEvent): void {
-  switch (event.type) {
-    case "local-storage-migration-failed":
-      debugConsole.warn("useDaySlipStore: localStorage migration to DB failed", event.error);
-      break;
-    case "db-load-error":
-      debugConsole.error("useDaySlipStore: DB load error", event.error);
-      break;
-    case "resolve-export-sync-failed":
-      debugConsole.warn("useDaySlipStore: syncResolveExport failed", event.error);
-      break;
-    case "resolved-item-persist-failed":
-      debugConsole.error(`Failed to persist resolved item (${event.target}):`, event.error);
-      break;
-    case "preference-migration-failed":
-      debugConsole.warn("useDaySlipStore: preference migration failed", { dbKey: event.dbKey, localKey: event.localKey, error: event.error });
-      break;
-  }
-}
-
-export function useDaySlipStore(userId?: string, tenantId?: string): UseDaySlipStoreReturn {
-  const [store, setStore] = useState<DaySlipStore>(() => {
-    try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : {}; } catch { return {}; }
-  });
+export function useDaySlipStore(userId: string, tenantId: string) {
+  const persistence = useDaySlipPersistence(userId, tenantId);
+  const { store, storeRef, setStore, settings, setSettings, ready, flush } = persistence;
   const [resolveMode, setResolveMode] = useState(false);
-  const [recurringItems, setRecurringItems] = useState<RecurringTemplate[]>(() => {
-    try {
-      const raw = localStorage.getItem(RECURRING_STORAGE_KEY);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw) as RecurringTemplate[] | string[];
-      if (!Array.isArray(parsed) || parsed.length === 0) return [];
-      if (typeof parsed[0] === "string") return (parsed as string[]).map((text) => ({ id: crypto.randomUUID(), text, weekday: "all" as const }));
-      return (parsed as RecurringTemplate[]).map((item) => ({ id: item.id ?? crypto.randomUUID(), text: item.text, weekday: WEEK_DAYS.includes(item.weekday) ? item.weekday : "all" as const }));
-    } catch { return []; }
-  });
-  const [dayTemplates, setDayTemplates] = useState<DayTemplate[]>(() => {
-    try { const raw = localStorage.getItem(DAY_TEMPLATE_STORAGE_KEY); if (!raw) return DEFAULT_DAY_TEMPLATES; return normalizeDayTemplates(JSON.parse(raw)); } catch { return DEFAULT_DAY_TEMPLATES; }
-  });
-
+  const [isProcessing, setIsProcessing] = useState(false);
+  const processing = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const editorRef = useRef<LexicalEditor | null>(null);
   const [editorReadyVersion, setEditorReadyVersion] = useState(0);
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
-  const dbSaveTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
-  const dirtyDaysRef = useRef<Set<string>>(new Set());
-  const storeRef = useRef<DaySlipStore>(store);
-  const dbLoadedRef = useRef(false);
-
-  const todayKey = toDayKey(new Date());
-  const todayData = store[todayKey] ?? { html: "", plainText: "", nodes: "", struckLineIds: [], lineTimestamps: {} };
-  const todayLineEntries = useMemo(() => extractLinesFromHtml(todayData.html), [todayData.html]);
-
-  // ─── DB Load & Migration ──────────────────────────────────────────────
+  const [editorReloadToken, setEditorReloadToken] = useState(0);
+  const [todayKey, setTodayKey] = useState(() => toDayKey(new Date()));
   useEffect(() => {
-    if (!userId || dbLoadedRef.current) return;
-    let cancelled = false;
-
-    const loadFromDb = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("day_slips")
-          .select("day_key, data")
-          .eq("user_id", userId);
-
-        if (cancelled || error) return;
-
-        if (data && data.length > 0) {
-          // DB has data → merge into state (DB wins for existing keys)
-          const dbStore: DaySlipStore = {};
-          data.forEach((row: { day_key: string; data: DaySlipDayData }) => { dbStore[row.day_key] = row.data; });
-          setStore(prev => {
-            const merged = { ...prev, ...dbStore };
-            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch {}
-            return merged;
-          });
-        } else {
-          // No DB data → migrate localStorage to DB
-          const localRaw = localStorage.getItem(STORAGE_KEY);
-          if (localRaw) {
-            try {
-              const localStore: DaySlipStore = JSON.parse(localRaw);
-              const entries = Object.entries(localStore);
-              if (entries.length > 0) {
-                // Batch insert (max 100 at a time)
-                for (let i = 0; i < entries.length; i += 100) {
-                  const batch = entries.slice(i, i + 100).map(([dayKey, dayData]) => ({
-                    user_id: userId,
-                    tenant_id: tenantId || null,
-                    day_key: dayKey,
-                    data: dayData,
-                    updated_at: new Date().toISOString(),
-                  }));
-                  await supabase.from("day_slips").upsert(batch, { onConflict: "user_id,day_key" });
-                }
-              }
-            } catch (error: unknown) { logStoreEvent({ type: "local-storage-migration-failed", error }); }
-          }
-        }
-
-        // Also migrate recurring items and templates
-        await migratePreference(userId, tenantId, "dayslip_recurring", RECURRING_STORAGE_KEY);
-        await migratePreference(userId, tenantId, "dayslip_day_templates", DAY_TEMPLATE_STORAGE_KEY);
-        await migratePreference(userId, tenantId, "dayslip_resolve_export", RESOLVE_EXPORT_KEY);
-
-        // Load recurring/templates from DB if available
-        const prefResult = await supabase
-          .from("user_preferences")
-          .select("key, value")
-          .eq("user_id", userId)
-          .in("key", ["dayslip_recurring", "dayslip_day_templates"]);
-
-        if (!cancelled && prefResult.data) {
-          prefResult.data.forEach((row: { key: string; value: unknown }) => {
-            if (row.key === "dayslip_recurring" && Array.isArray(row.value)) {
-              setRecurringItems(row.value as RecurringTemplate[]);
-              try { localStorage.setItem(RECURRING_STORAGE_KEY, JSON.stringify(row.value)); } catch {}
-            }
-            if (row.key === "dayslip_day_templates") {
-              const normalized = normalizeDayTemplates(row.value);
-              setDayTemplates(normalized);
-              try { localStorage.setItem(DAY_TEMPLATE_STORAGE_KEY, JSON.stringify(normalized)); } catch {}
-            }
-          });
-        }
-
-        dbLoadedRef.current = true;
-      } catch (error: unknown) {
-        logStoreEvent({ type: "db-load-error", error });
-      }
-    };
-
-    loadFromDb();
-    return () => { cancelled = true; };
-  }, [userId, tenantId]);
-
-  // ─── Persist store (localStorage + DB) ─────────────────────────────────
-  useEffect(() => {
-    storeRef.current = store;
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); } catch {}
-    }, SAVE_DEBOUNCE_MS);
-    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
-  }, [store]);
-
-  // Debounced DB save for dirty days
-  const flushDirtyDays = useCallback(() => {
-    if (!userId || dirtyDaysRef.current.size === 0) return;
-    const dirtyKeys = Array.from(dirtyDaysRef.current);
-    dirtyDaysRef.current.clear();
-
-    const currentStore = storeRef.current;
-    const rows = dirtyKeys
-      .filter(dk => currentStore[dk])
-      .map(dk => ({
-        user_id: userId,
-        tenant_id: tenantId || null,
-        day_key: dk,
-        data: currentStore[dk],
-        updated_at: new Date().toISOString(),
-      }));
-
-    if (rows.length > 0) {
-      supabase.from("day_slips").upsert(rows, { onConflict: "user_id,day_key" }).then();
-    }
-  }, [userId, tenantId]);
-
-  useEffect(() => {
-    if (!userId || dirtyDaysRef.current.size === 0) return;
-    if (dbSaveTimeoutRef.current) clearTimeout(dbSaveTimeoutRef.current);
-    dbSaveTimeoutRef.current = setTimeout(flushDirtyDays, DB_SAVE_DEBOUNCE_MS);
-    return () => { if (dbSaveTimeoutRef.current) clearTimeout(dbSaveTimeoutRef.current); };
-  }, [store, flushDirtyDays, userId]);
-
-  // Mark day as dirty when store changes
-  const setStoreAndTrack = useCallback((updater: (prev: DaySlipStore) => DaySlipStore, ...dirtyKeys: string[]) => {
-    setStore(prev => {
-      const next = updater(prev);
-      storeRef.current = next;
-      dirtyKeys.forEach(k => dirtyDaysRef.current.add(k));
-      return next;
-    });
+    const update = () => setTodayKey(toDayKey(new Date()));
+    const timer = setInterval(update, 15000);
+    window.addEventListener("focus", update);
+    return () => { clearInterval(timer); window.removeEventListener("focus", update); };
   }, []);
+  useEffect(() => { setResolveMode(false); }, [todayKey]);
 
-  // Persist recurring/templates to DB
-  useEffect(() => {
-    try { localStorage.setItem(RECURRING_STORAGE_KEY, JSON.stringify(recurringItems)); } catch {}
-    if (userId) {
-      supabase.from("user_preferences").upsert(
-        { user_id: userId, tenant_id: tenantId || null, key: "dayslip_recurring", value: recurringItems, updated_at: new Date().toISOString() },
-        { onConflict: "user_id,tenant_id,key" }
-      ).then();
-    }
-  }, [recurringItems, userId, tenantId]);
+  const todayData = store[todayKey] ?? emptyDay();
+  const allLineEntries = useMemo(() => extractLinesFromHtml(todayData.html), [todayData.html]);
+  const struckLineIds = todayData.struckLineIds ?? todayData.struckLines ?? [];
+  const resolvedItems = todayData.resolved ?? [];
+  const resolvedByLineId = new Map(resolvedItems.map(item => [item.lineId, item.target]));
+  const openLines = allLineEntries.filter(entry => !struckLineIds.includes(entry.id) && !resolvedByLineId.has(entry.id));
+  const triageEntries = allLineEntries.filter(entry => openLines.includes(entry) || resolvedByLineId.has(entry.id));
+  const carryEntries = useMemo(() => collectCarryLines(store, todayKey), [store, todayKey]);
+  const archiveDays = Object.keys(store).filter(key => key < todayKey).sort((a, b) => b.localeCompare(a));
 
-  useEffect(() => {
-    try { localStorage.setItem(DAY_TEMPLATE_STORAGE_KEY, JSON.stringify(dayTemplates)); } catch {}
-    if (userId) {
-      supabase.from("user_preferences").upsert(
-        { user_id: userId, tenant_id: tenantId || null, key: "dayslip_day_templates", value: dayTemplates, updated_at: new Date().toISOString() },
-        { onConflict: "user_id,tenant_id,key" }
-      ).then();
-    }
-  }, [dayTemplates, userId, tenantId]);
+  const changeDay = useCallback((update: (day: DaySlipDayData) => DaySlipDayData, content = false, key = todayKey) => {
+    if (!ready || processing.current || storeRef.current[key]?.completedAt) return;
+    const prev = storeRef.current;
+    const nextDay = update(prev[key] ?? emptyDay());
+    if (nextDay === prev[key]) return;
+    setStore({ ...prev, [key]: nextDay });
+    if (content) setEditorReloadToken(token => token + 1);
+  }, [ready, setStore, storeRef, todayKey]);
 
-  // Flush on unmount
-  useEffect(() => () => { flushDirtyDays(); }, [flushDirtyDays]);
+  const setSetting = useCallback(<K extends keyof DaySlipSettings>(key: K, action: SetStateAction<DaySlipSettings[K]>) => {
+    if (!ready) return;
+    setSettings(prev => ({ ...prev, [key]: typeof action === "function" ? (action as (value: DaySlipSettings[K]) => DaySlipSettings[K])(prev[key]) : action }));
+  }, [ready, setSettings]);
+  const setRecurringItems = useCallback((action: SetStateAction<DaySlipSettings["recurringItems"]>) => setSetting("recurringItems", action), [setSetting]);
+  const setDayTemplates = useCallback((action: SetStateAction<DaySlipSettings["dayTemplates"]>) => setSetting("dayTemplates", action), [setSetting]);
+  const setWeekPlan = useCallback((action: SetStateAction<DaySlipSettings["weekPlan"]>) => setSetting("weekPlan", action), [setSetting]);
 
-  const yesterdayKey = useMemo(() => { const d = new Date(); d.setDate(d.getDate() - 1); return toDayKey(d); }, []);
-
-  const yesterdayCarryLines = useMemo(() => {
-    const yesterdayData = store[yesterdayKey];
-    const allLines = extractLinesFromHtml(yesterdayData?.html ?? "");
-    const struck = new Set(yesterdayData?.struckLineIds ?? yesterdayData?.struckLines ?? []);
-    const openUnstruck = allLines.filter((line) => !struck.has(line.id));
-    const todayStr = toDayKey(new Date());
-    const snoozed = (yesterdayData?.resolved ?? [])
-      .filter((item) => item.target === "snoozed")
-      .filter((item) => !item.snoozeUntil || item.snoozeUntil <= todayStr)
-      .map((item) => ({ lineId: item.lineId, text: item.text }));
-    const merged = new Map<string, DaySlipLineEntry>();
-    openUnstruck.forEach((line) => merged.set(line.id, line));
-    snoozed.forEach((line) => { if (!line.text.trim()) return; merged.set(line.lineId, { id: line.lineId, text: line.text.trim() }); });
-    return Array.from(merged.values());
-  }, [store, yesterdayKey]);
-
-  const allLineEntries = todayLineEntries;
-  const struckLineIds = useMemo(() => todayData.struckLineIds ?? todayData.struckLines ?? [], [todayData.struckLineIds, todayData.struckLines]);
-  const resolvedItems = useMemo<ResolvedItem[]>(() => (todayData.resolved ?? []).map((item) => ({ lineId: item.lineId ?? crypto.randomUUID(), text: item.text, target: item.target })), [todayData.resolved]);
-  const resolvedByLineId = useMemo(() => new Map(resolvedItems.map((item) => [item.lineId, item.target])), [resolvedItems]);
-  const openLines = useMemo(() => allLineEntries.filter((entry) => !struckLineIds.includes(entry.id)), [allLineEntries, struckLineIds]);
-  const unresolvedCount = openLines.length;
-
-  const triageEntries = useMemo(() => {
-    const resolved = allLineEntries.filter((entry) => resolvedByLineId.has(entry.id));
-    return [...openLines, ...resolved];
-  }, [allLineEntries, openLines, resolvedByLineId]);
-
-  const archiveDays = useMemo(() => Object.keys(store).filter((key) => key !== todayKey).sort((a, b) => b.localeCompare(a)), [store, todayKey]);
-
+  const setLineDone = useCallback((lineId: string, done: boolean, key = todayKey) => {
+    changeDay(day => {
+      const struck = new Set(day.struckLineIds ?? day.struckLines ?? []);
+      if (struck.has(lineId) === done) return day;
+      if (done) struck.add(lineId); else struck.delete(lineId);
+      const stamp = { ...(day.lineTimestamps?.[lineId] ?? { addedAt: new Date().toISOString() }) };
+      if (done) stamp.checkedAt ??= new Date().toISOString(); else delete stamp.checkedAt;
+      return { ...day, struckLineIds: [...struck], lineTimestamps: { ...day.lineTimestamps, [lineId]: stamp }, resolved: done ? day.resolved : day.resolved?.filter(item => item.lineId !== lineId || item.persisted) };
+    }, false, key);
+  }, [changeDay, todayKey]);
   const toggleStrike = useCallback((lineId: string) => {
-    setStoreAndTrack((prev) => {
-      const day = prev[todayKey] ?? { html: "", plainText: "", struckLineIds: [] };
-      const struck = day.struckLineIds ?? day.struckLines ?? [];
-      const isStruck = struck.includes(lineId);
-      const now = new Date().toISOString();
-      const lineTimestamps = { ...(day.lineTimestamps ?? {}) };
-      if (!lineTimestamps[lineId]) lineTimestamps[lineId] = { addedAt: now };
-      if (isStruck) delete lineTimestamps[lineId].checkedAt;
-      else lineTimestamps[lineId].checkedAt = now;
-      return { ...prev, [todayKey]: { ...day, struckLineIds: isStruck ? struck.filter((l) => l !== lineId) : [...struck, lineId], lineTimestamps } };
-    }, todayKey);
-  }, [todayKey, setStoreAndTrack]);
+    const day = storeRef.current[todayKey];
+    setLineDone(lineId, !(day?.struckLineIds ?? day?.struckLines ?? []).includes(lineId));
+  }, [setLineDone, storeRef, todayKey]);
 
-  const appendLinesToToday = useCallback((lines: string[]) => {
-    const normalizedLines = lines.map((l) => l.trim()).filter((l) => l.length > 0);
-    if (normalizedLines.length === 0) return;
-    if (editorRef.current) {
-      editorRef.current.update(() => {
-        const root = $getRoot();
-        const existing = new Set(root.getChildren().map((node) => normalizeLineText(node.getTextContent())).filter((l) => l.length > 0));
-        normalizedLines.forEach((line) => {
-          const normalized = normalizeLineText(line);
-          if (!normalized || existing.has(normalized)) return;
-          const paragraph = $createDaySlipLineNode();
-          paragraph.append($createTextNode(line));
-          root.append(paragraph);
-          existing.add(normalized);
-        });
-      });
-      return;
-    }
-    setStoreAndTrack((prev) => {
-      const day = prev[todayKey] ?? { html: "", plainText: "", nodes: "", struckLineIds: [] };
-      const existingLines = day.html === todayData.html ? todayLineEntries : extractLinesFromHtml(day.html);
-      const existingTexts = new Set(existingLines.map((l) => normalizeLineText(l.text)));
-      const toAppend = normalizedLines.filter((l) => !existingTexts.has(normalizeLineText(l))).map((text) => ({ id: crypto.randomUUID(), text }));
-      if (toAppend.length === 0) return prev;
-      const merged = [...existingLines, ...toAppend];
-      return { ...prev, [todayKey]: { ...day, html: merged.map(toParagraphHtml).join(""), plainText: merged.map((e) => e.text).join("\n"), nodes: undefined } };
-    }, todayKey);
-  }, [todayData.html, todayKey, todayLineEntries, setStoreAndTrack]);
-
+  const appendLinesToToday = useCallback((lines: string[], source?: DaySlipSource) => {
+    changeDay(day => appendEntries(day, lines.map(text => ({ id: crypto.randomUUID(), text: text.trim(), source }))), true);
+  }, [changeDay]);
   const insertStructuredLines = useCallback((lines: string[]) => {
-    const editor = editorRef.current;
-    const editorMounted = Boolean(editor?.getRootElement());
-    if (!editorMounted) {
-      setStoreAndTrack((prev) => {
-        const day = prev[todayKey] ?? { html: "", plainText: "", struckLineIds: [] };
-        const structuredHtml = lines.map((line) => {
-          const parsed = parseRuleLine(line);
-          if (!parsed.isRule) return toParagraphHtml({ id: crypto.randomUUID(), text: line });
-          return toRuleHtml(parsed.label);
-        }).join("");
-        const existingLines = day.html === todayData.html ? todayLineEntries : extractLinesFromHtml(day.html);
-        const extra = lines.map((text) => ({ id: crypto.randomUUID(), text }));
-        const merged = [...existingLines, ...extra];
-        return { ...prev, [todayKey]: { ...day, html: `${day.html ?? ""}${structuredHtml}`, plainText: merged.map((l) => l.text).join("\n"), nodes: undefined } };
-      }, todayKey);
-      return;
-    }
-    editor!.update(() => {
-      const root = $getRoot();
-      lines.forEach((line) => {
-        const parsed = parseRuleLine(line);
-        if (parsed.isRule) {
-          const hrNode = parsed.label ? $createLabeledHorizontalRuleNode(parsed.label) : $createHorizontalRuleNode();
-          root.append(hrNode);
-          return;
-        }
-        const paragraph = $createDaySlipLineNode();
-        paragraph.append($createTextNode(line));
-        root.append(paragraph);
-      });
-    });
-  }, [todayData.html, todayKey, todayLineEntries, setStoreAndTrack]);
-
+    changeDay(day => {
+      const html = lines.map(text => {
+        const rule = parseRuleLine(text);
+        return rule.isRule ? toRuleHtml(rule.label) : toParagraphHtml({ id: crypto.randomUUID(), text });
+      }).join("");
+      const nextHtml = day.html + html;
+      return { ...day, html: nextHtml, plainText: extractLinesFromHtml(nextHtml).map(line => line.text).join("\n"), nodes: undefined };
+    }, true);
+  }, [changeDay]);
   const deleteLine = useCallback((lineId: string) => {
-    if (editorRef.current) {
-      editorRef.current.update(() => {
-        const root = $getRoot();
-        root.getChildren().forEach((node) => {
-          if ((node as { __lineId?: string }).__lineId === lineId) node.remove();
-        });
-      });
+    changeDay(day => {
+      if (day.resolved?.some(item => item.lineId === lineId && item.persisted)) return day;
+      const doc = new DOMParser().parseFromString(day.html, "text/html");
+      doc.querySelectorAll("p").forEach(p => { if (p.dataset.lineId === lineId) p.remove(); });
+      const sources = { ...day.sources }; delete sources[lineId];
+      const timestamps = { ...day.lineTimestamps }; delete timestamps[lineId];
+      return { ...day, html: doc.body.innerHTML, plainText: extractLinesFromHtml(doc.body.innerHTML).map(line => line.text).join("\n"), nodes: undefined, sources, lineTimestamps: timestamps, struckLineIds: (day.struckLineIds ?? day.struckLines ?? []).filter(id => id !== lineId), resolved: day.resolved?.filter(item => item.lineId !== lineId) };
+    }, true);
+  }, [changeDay]);
+
+  const toggleResolveLine = useCallback((lineId: string, text: string, target: ResolveTarget, snoozeUntil?: string, taskOptions?: TaskOptions) => {
+    changeDay(day => {
+      const existing = day.resolved?.find(item => item.lineId === lineId);
+      if (existing?.persisted) return day;
+      const undo = target !== "snoozed" && existing?.target === target && !snoozeUntil && !taskOptions;
+      const tomorrow = new Date(`${todayKey}T12:00:00`); tomorrow.setDate(tomorrow.getDate() + 1);
+      const struck = new Set(day.struckLineIds ?? day.struckLines ?? []);
+      if (undo) struck.delete(lineId); else struck.add(lineId);
+      const resolved = (day.resolved ?? []).filter(item => item.lineId !== lineId);
+      if (!undo) resolved.push({ lineId, text, target, snoozeUntil: target === "snoozed" ? snoozeUntil ?? toDayKey(tomorrow) : undefined, taskOptions });
+      return { ...day, struckLineIds: [...struck], resolved };
+    });
+  }, [changeDay, todayKey]);
+
+  const updateTaskOptions = useCallback((lineId: string, taskOptions: TaskOptions) => {
+    changeDay(day => ({ ...day, resolved: day.resolved?.map(item => item.lineId === lineId && !item.persisted ? { ...item, taskOptions } : item) }));
+  }, [changeDay]);
+
+  const carryOver = useCallback(() => {
+    if (!ready || processing.current || storeRef.current[todayKey]?.completedAt) return;
+    setStore(prev => carryLines(prev, todayKey, collectCarryLines(prev, todayKey)));
+    setEditorReloadToken(token => token + 1);
+  }, [ready, setStore, storeRef, todayKey]);
+
+  const createResolvedItem = useCallback(async (item: ResolvedItem, key: string) => {
+    if (item.target !== "note" && item.target !== "task" && item.target !== "decision") return;
+    const day = storeRef.current[key];
+    const existingSource = day?.sources?.[item.lineId];
+    // An existing linked task/note/decision is already the destination, not a new record to duplicate.
+    if (existingSource?.type === item.target) return existingSource.id;
+    const id = item.entityId ?? await exportId(userId, key, item.lineId, item.target);
+    const find = () => item.target === "task"
+      ? supabase.from("tasks").select("id").eq("id", id).eq("user_id", userId).maybeSingle()
+      : item.target === "note"
+        ? supabase.from("quick_notes").select("id").eq("id", id).eq("user_id", userId).maybeSingle()
+        : supabase.from("task_decisions").select("id").eq("id", id).eq("created_by", userId).maybeSingle();
+    const found = await find();
+    if (found.error) throw found.error;
+    if (found.data) return id;
+    const title = item.text.replace(/^!{1,2}\s*/, "").trim();
+    if (!title) throw new Error("Der Eintrag benötigt einen Titel.");
+    const description = `Aus Tageszettel (${key})`;
+    const response = item.target === "note"
+      ? await supabase.from("quick_notes").insert({ id, user_id: userId, title, content: description })
+      : item.target === "task"
+        ? await supabase.from("tasks").insert({ id, user_id: userId, tenant_id: tenantId, title, description, status: "open", priority: item.text.startsWith("!!") ? "high" : "medium", category: "allgemein", assigned_to: item.taskOptions?.assignedTo || userId, due_date: item.taskOptions?.dueDate ? new Date(`${item.taskOptions.dueDate}T12:00:00`).toISOString() : null })
+        : await supabase.from("task_decisions").insert({ id, created_by: userId, tenant_id: tenantId, title, description, status: "open" });
+    if (response.error) {
+      // Concurrent creation or a response lost on a previous attempt: verify the exact destination.
+      if (response.error.code !== "23505") throw response.error;
+      const concurrent = await find();
+      if (concurrent.error || !concurrent.data) throw response.error;
     }
-    setStoreAndTrack((prev) => {
-      const day = prev[todayKey];
-      if (!day) return prev;
-      const lines = (day.html === todayData.html ? todayLineEntries : extractLinesFromHtml(day.html)).filter((l) => l.id !== lineId);
-      const lineTimestamps = { ...(day.lineTimestamps ?? {}) };
-      delete lineTimestamps[lineId];
-      return { ...prev, [todayKey]: { ...day, html: lines.map(toParagraphHtml).join(""), plainText: lines.map((l) => l.text).join("\n"), struckLineIds: (day.struckLineIds ?? day.struckLines ?? []).filter((id) => id !== lineId), resolved: (day.resolved ?? []).filter((item) => item.lineId !== lineId), lineTimestamps } };
-    }, todayKey);
-  }, [todayData.html, todayKey, todayLineEntries, setStoreAndTrack]);
+    return id;
+  }, [storeRef, userId, tenantId]);
 
-  const syncResolveExport = useCallback((lineId: string, text: string, target: ResolveTarget, isUndo: boolean) => {
-    if (target === "archived" || target === "snoozed") return;
-    try {
-      const raw = localStorage.getItem(RESOLVE_EXPORT_KEY);
-      const existing = raw ? JSON.parse(raw) : [];
-      const filtered = (existing as ResolveExportItem[]).filter((item) => !(item.sourceDayKey === todayKey && item.lineId === lineId));
-      const next = isUndo ? filtered : [...filtered, { sourceDayKey: todayKey, lineId, text, target, createdAt: new Date().toISOString() }];
-      localStorage.setItem(RESOLVE_EXPORT_KEY, JSON.stringify(next));
-      // Also sync to DB
-      if (userId) {
-        supabase.from("user_preferences").upsert(
-          { user_id: userId, tenant_id: tenantId || null, key: "dayslip_resolve_export", value: next, updated_at: new Date().toISOString() },
-          { onConflict: "user_id,tenant_id,key" }
-        ).then();
-      }
-    } catch (error: unknown) { logStoreEvent({ type: "resolve-export-sync-failed", error }); }
-  }, [todayKey, userId, tenantId]);
-
-  const toggleResolveLine = useCallback((lineId: string, line: string, target: ResolveTarget, snoozeUntil?: string) => {
-    setStoreAndTrack((prev) => {
-      const day = prev[todayKey] ?? { html: "", plainText: "", struckLineIds: [] };
-      const struck = day.struckLineIds ?? day.struckLines ?? [];
-      const resolved = (day.resolved ?? []) as ResolvedItem[];
-      const existing = resolved.find((item) => item.lineId === lineId);
-      const isUndo = existing?.target === target && !snoozeUntil;
-      const newItem: ResolvedItem = { lineId, text: line, target, ...(snoozeUntil ? { snoozeUntil } : {}) };
-      const nextResolved = isUndo ? resolved.filter((item) => item.lineId !== lineId) : [...resolved.filter((item) => item.lineId !== lineId), newItem];
-      const nextStruck = isUndo ? struck.filter((id) => id !== lineId) : struck.includes(lineId) ? struck : [...struck, lineId];
-      const now = new Date().toISOString();
-      const lineTimestamps = { ...(day.lineTimestamps ?? {}) };
-      if (!lineTimestamps[lineId]) lineTimestamps[lineId] = { addedAt: now };
-      if (isUndo) delete lineTimestamps[lineId].checkedAt;
-      else lineTimestamps[lineId].checkedAt = now;
-      syncResolveExport(lineId, line, target, isUndo);
-      return { ...prev, [todayKey]: { ...day, struckLineIds: nextStruck, resolved: nextResolved, lineTimestamps } };
-    }, todayKey);
-  }, [todayKey, syncResolveExport, setStoreAndTrack]);
-
-  const createFromLine = useCallback(async (lineText: string, target: "note" | "task") => {
-    if (!userId || !lineText.trim()) return;
-    if (target === "note") { await supabase.from("quick_notes").insert([{ user_id: userId, title: lineText, content: `Aus Tageszettel (${todayKey})` }]); return; }
-    if (!tenantId) return;
-    await supabase.from("tasks").insert([{ user_id: userId, tenant_id: tenantId, title: lineText, description: `Aus Tageszettel (${todayKey})`, status: "open", priority: "medium", category: "allgemein" }]);
-  }, [userId, tenantId, todayKey]);
-
-  const persistResolvedItems = useCallback(async () => {
-    if (!userId) return;
-    const resolved = (store[todayKey]?.resolved ?? []) as ResolvedItem[];
-    const exportable = resolved.filter((item) => (item.target === "note" || item.target === "task" || item.target === "decision") && !item.persisted);
-    if (exportable.length === 0) return;
-
-    const counts = { note: 0, task: 0, decision: 0 };
-    const errors: string[] = [];
-    const persistedLineIds: string[] = [];
-
-    for (const item of exportable) {
+  const persistResolvedItems = useCallback(async (key = todayKey, onlyLineId?: string): Promise<boolean> => {
+    const items = storeRef.current[key]?.resolved ?? [];
+    let success = true;
+    for (const item of items) {
+      if (item.persisted || (onlyLineId && item.lineId !== onlyLineId) || !["note", "task", "decision"].includes(item.target)) continue;
+      if (!mounted.current) return false;
       try {
-        const trimmedText = item.text.replace(/^!{1,2}\s*/, "");
-        const priority = item.text.startsWith("!!") ? "high" : item.text.startsWith("!") ? "medium" : "medium";
-
-        if (item.target === "note") {
-          const { error } = await supabase.from("quick_notes").insert([{ user_id: userId, title: trimmedText, content: `Aus Tageszettel (${todayKey})` }]);
-          if (error) throw error;
-          counts.note++;
-        } else if (item.target === "task") {
-          if (!tenantId) { errors.push("Aufgabe: Kein Tenant zugewiesen"); continue; }
-          const { error } = await supabase.from("tasks").insert([{ user_id: userId, tenant_id: tenantId, title: trimmedText, description: `Aus Tageszettel (${todayKey})`, status: "open", priority, category: "allgemein" }]);
-          if (error) throw error;
-          counts.task++;
-        } else if (item.target === "decision") {
-          const { error } = await supabase.from("task_decisions").insert([{ created_by: userId, tenant_id: tenantId || null, title: trimmedText, description: `Aus Tageszettel (${todayKey})`, status: "open" }]);
-          if (error) throw error;
-          counts.decision++;
-        }
-        persistedLineIds.push(item.lineId);
-      } catch (error: unknown) {
-        logStoreEvent({ type: "resolved-item-persist-failed", target: item.target, error });
-        const msg = error instanceof Error ? error.message : String(error);
-        errors.push(`${item.target}: ${msg}`);
+        const entityId = await createResolvedItem(item, key);
+        if (!mounted.current) return false;
+        setStore(prev => {
+          const day = prev[key];
+          return { ...prev, [key]: { ...day, resolved: day.resolved?.map(row => row.lineId === item.lineId ? { ...row, entityId, persisted: true, error: undefined } : row), sources: { ...day.sources, [item.lineId]: { type: item.target as DaySlipSource["type"], id: entityId! } } } };
+        });
+      } catch (error) {
+        success = false;
+        setStore(prev => ({ ...prev, [key]: { ...prev[key], resolved: prev[key]?.resolved?.map(row => row.lineId === item.lineId ? { ...row, error: errorMessage(error) } : row) } }));
       }
     }
+    if (!mounted.current) return false;
+    const saved = await flush();
+    return success && saved;
+  }, [todayKey, storeRef, createResolvedItem, setStore, flush]);
 
-    // Mark persisted items
-    if (persistedLineIds.length > 0) {
-      const idSet = new Set(persistedLineIds);
-      setStoreAndTrack((prev) => {
-        const day = prev[todayKey];
-        if (!day?.resolved) return prev;
-        return {
-          ...prev,
-          [todayKey]: {
-            ...day,
-            resolved: day.resolved.map((r) => idSet.has(r.lineId) ? { ...r, persisted: true } : r),
-          },
-        };
-      }, todayKey);
-    }
+  const completeDay = useCallback(async (): Promise<boolean> => {
+    if (!ready || processing.current) return false;
+    const key = todayKey;
+    if (storeRef.current[key]?.completedAt) return true;
+    const day = storeRef.current[key] ?? emptyDay();
+    const struck = new Set(day.struckLineIds ?? day.struckLines ?? []);
+    if (extractLinesFromHtml(day.html).some(line => !struck.has(line.id) && !day.resolved?.some(item => item.lineId === line.id))) { setResolveMode(true); return false; }
+    processing.current = true; setIsProcessing(true);
+    try {
+      if (!await persistResolvedItems(key) || !mounted.current) return false;
+      setStore(prev => ({ ...prev, [key]: { ...(prev[key] ?? emptyDay()), completedAt: new Date().toISOString() } }));
+      if (await flush()) return true;
+      // A failed completion write stays visibly open and retryable.
+      setStore(prev => ({ ...prev, [key]: { ...prev[key], completedAt: undefined } }));
+      return false;
+    } finally { processing.current = false; if (mounted.current) setIsProcessing(false); }
+  }, [ready, todayKey, storeRef, persistResolvedItems, setStore, flush]);
 
-    // Toast feedback
-    const { toast } = await import("sonner");
-    const parts: string[] = [];
-    if (counts.note > 0) parts.push(`${counts.note} Notiz${counts.note > 1 ? "en" : ""}`);
-    if (counts.task > 0) parts.push(`${counts.task} Aufgabe${counts.task > 1 ? "n" : ""}`);
-    if (counts.decision > 0) parts.push(`${counts.decision} Entscheidung${counts.decision > 1 ? "en" : ""}`);
+  const reopenDay = useCallback(async () => {
+    if (processing.current) return;
+    setStore(prev => ({ ...prev, [todayKey]: { ...prev[todayKey], completedAt: undefined } }));
+    setResolveMode(false);
+    await flush();
+  }, [todayKey, setStore, flush]);
 
-    if (parts.length > 0) {
-      toast.success(`${parts.join(", ")} erstellt`);
-    }
-    if (errors.length > 0) {
-      toast.error(`Fehler beim Erstellen: ${errors.join("; ")}`);
-    }
-  }, [userId, tenantId, store, todayKey, setStoreAndTrack]);
+  const createFromLine = useCallback(async (lineId: string, text: string, target: "note" | "task", taskOptions?: TaskOptions): Promise<boolean> => {
+    if (!ready || processing.current || storeRef.current[todayKey]?.completedAt) return false;
+    processing.current = true; setIsProcessing(true);
+    try {
+      const old = storeRef.current[todayKey]?.resolved?.find(item => item.lineId === lineId);
+      if (old?.persisted) return true;
+      setStore(prev => {
+        const day = prev[todayKey] ?? emptyDay();
+        return { ...prev, [todayKey]: { ...day, resolved: [...(day.resolved ?? []).filter(item => item.lineId !== lineId), { lineId, text, target, taskOptions }], struckLineIds: [...new Set([...(day.struckLineIds ?? day.struckLines ?? []), lineId])] } };
+      });
+      return await persistResolvedItems(todayKey, lineId);
+    } finally { processing.current = false; if (mounted.current) setIsProcessing(false); }
+  }, [ready, storeRef, todayKey, setStore, persistResolvedItems]);
 
   const onEditorChange = useCallback((editorState: EditorState, editor: LexicalEditor) => {
+    if (!ready || processing.current || storeRef.current[todayKey]?.completedAt) return;
     editorState.read(() => {
-      const plainText = $getRoot().getTextContent();
       const html = $generateHtmlFromNodes(editor, null);
-      let nodes: string | undefined;
-      try { nodes = JSON.stringify(editorState.toJSON()); } catch { nodes = undefined; }
-      setStoreAndTrack((prev) => {
-        const day: DaySlipDayData = prev[todayKey] ?? { html: '', plainText: '', resolved: [], struckLines: [] };
-        const currentEntries = extractLinesFromHtml(html);
-        const now = new Date().toISOString();
-        const lineTimestamps = { ...(day.lineTimestamps ?? {}) };
-        currentEntries.forEach((entry) => { if (!lineTimestamps[entry.id]) lineTimestamps[entry.id] = { addedAt: now }; });
-        const validLineIds = new Set(currentEntries.map((e) => e.id));
-        Object.keys(lineTimestamps).forEach((id) => { if (!validLineIds.has(id)) delete lineTimestamps[id]; });
-        return { ...prev, [todayKey]: { ...day, plainText, html, nodes, lineTimestamps } };
-      }, todayKey);
+      const plainText = $getRoot().getTextContent();
+      const nodes = JSON.stringify(editorState.toJSON());
+      const linked: Record<string, DaySlipSource> = {};
+      $getRoot().getChildren().forEach(node => {
+        if (node instanceof DaySlipLineNode && node.getLinkedTaskId()) linked[node.getLineId()] = { type: "task", id: node.getLinkedTaskId()! };
+      });
+      setStore(prev => {
+        const day = prev[todayKey] ?? emptyDay();
+        if (day.nodes === nodes && day.html === html) return prev;
+        const ids = new Set(extractLinesFromHtml(html).map(line => line.id));
+        const lineTimestamps = { ...day.lineTimestamps };
+        ids.forEach(id => { lineTimestamps[id] ??= { addedAt: new Date().toISOString() }; });
+        const sources = Object.fromEntries(Object.entries({ ...day.sources, ...linked }).filter(([id]) => ids.has(id)));
+        return { ...prev, [todayKey]: { ...day, html, plainText, nodes, sources, lineTimestamps, resolved: day.resolved?.filter(item => ids.has(item.lineId)), struckLineIds: (day.struckLineIds ?? day.struckLines ?? []).filter(id => ids.has(id)) } };
+      });
     });
-  }, [todayKey, setStoreAndTrack]);
+  }, [ready, storeRef, todayKey, setStore]);
+  const handleEditorReady = useCallback((editor: LexicalEditor) => { editorRef.current = editor; setEditorReadyVersion(version => version + 1); }, []);
 
-  const handleEditorReady = useCallback((editor: LexicalEditor) => {
-    if (editorRef.current !== editor) { editorRef.current = editor; setEditorReadyVersion((prev) => prev + 1); }
+  // Initialize routines and the scoped week plan only after hydration; never race a remote load.
+  useEffect(() => {
+    if (!ready || todayData.completedAt) return;
+    const recurring = settings.recurringItems.filter(item => item.weekday === "all" || item.weekday === weekdayKey(new Date())).map(item => item.text);
+    const planned = settings.weekPlan?.applied ? settings.weekPlan.days[todayKey] ?? [] : [];
+    if (todayData.recurringInjected && (todayData.weekPlanInjected || !planned.length)) return;
+    changeDay(day => {
+      const texts = [...(!day.recurringInjected ? recurring : []), ...(!day.weekPlanInjected ? planned : [])];
+      return { ...appendEntries(day, texts.map(text => ({ id: crypto.randomUUID(), text }))), recurringInjected: true, weekPlanInjected: day.weekPlanInjected || planned.length > 0 };
+    }, true);
+  }, [ready, todayData.completedAt, todayData.recurringInjected, todayData.weekPlanInjected, settings.recurringItems, settings.weekPlan, todayKey, changeDay]);
+
+  // Refresh deadlines after reconnect/focus and periodically, including deadlines added later in the day.
+  const [deadlineRefresh, setDeadlineRefresh] = useState(0);
+  useEffect(() => {
+    const refresh = () => setDeadlineRefresh(value => value + 1);
+    window.addEventListener("focus", refresh); window.addEventListener("online", refresh);
+    const timer = setInterval(refresh, 60000);
+    return () => { clearInterval(timer); window.removeEventListener("focus", refresh); window.removeEventListener("online", refresh); };
   }, []);
-
-  // Recurring items injection
+  const [deadlineError, setDeadlineError] = useState<string | null>(null);
   useEffect(() => {
-    const todayWeekday = weekdayKey(new Date());
-    const recurringForToday = recurringItems.filter((item) => item.weekday === "all" || item.weekday === todayWeekday).map((item) => item.text);
-    if (todayData.html.trim() || recurringForToday.length === 0 || todayData.recurringInjected) return;
-    setStoreAndTrack((prev) => {
-      const day = prev[todayKey] ?? { html: "", plainText: "" };
-      if (day.html.trim() || day.recurringInjected) return prev;
-      const entries = recurringForToday.map((text) => ({ id: crypto.randomUUID(), text }));
-      const html = entries.map(toParagraphHtml).join("");
-      return { ...prev, [todayKey]: { ...day, html, plainText: recurringForToday.join("\n"), nodes: undefined, recurringInjected: true } };
-    }, todayKey);
-  }, [todayData.html, todayData.recurringInjected, recurringItems, todayKey, setStoreAndTrack]);
-
-  // Deadline injection – inject today's deadlines from Supabase
-  useEffect(() => {
-    if (!userId || todayData.deadlinesInjected) return;
+    if (!ready || todayData.completedAt || isProcessing) return;
     let cancelled = false;
-
-    const injectDeadlines = async () => {
-      const todayStr = todayKey;
-      const tomorrowDate = new Date();
-      tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-      const tomorrowStr = toDayKey(tomorrowDate);
-
-      const [tasksRes, notesRes, casesRes, decisionsRes] = await Promise.all([
-        supabase.from("tasks").select("id, title, due_date")
-          .or(`assigned_to.eq.${userId},assigned_to.ilike.%${userId}%,user_id.eq.${userId}`)
-          .neq("status", "completed")
-          .gte("due_date", todayStr)
-          .lt("due_date", tomorrowStr),
-        supabase.from("quick_notes").select("id, title, content, follow_up_date")
-          .eq("user_id", userId)
-          .is("deleted_at", null)
-          .or("is_archived.is.null,is_archived.eq.false")
-          .gte("follow_up_date", todayStr)
-          .lt("follow_up_date", tomorrowStr),
-        tenantId
-          ? supabase.from("case_items").select("id, subject, due_at")
-              .eq("tenant_id", tenantId)
-              .neq("status", "erledigt")
-              .gte("due_at", `${todayStr}T00:00:00`)
-              .lt("due_at", `${tomorrowStr}T00:00:00`)
-          : Promise.resolve({ data: [] as { id: string; subject: string | null; due_at: string | null }[] }),
-        supabase.from("task_decisions").select("id, title, response_deadline")
-          .neq("status", "resolved")
-          .is("archived_at", null)
-          .gte("response_deadline", `${todayStr}T00:00:00`)
-          .lt("response_deadline", `${tomorrowStr}T00:00:00`),
-      ]);
-
-      if (cancelled) return;
-
-      type DeadlineEntry = { id: string; text: string; sourceKey: string };
-      const entries: DeadlineEntry[] = [];
-
-      (tasksRes.data || []).forEach(t => {
-        if (t.title?.trim()) entries.push({ id: t.id, text: `📋 ${t.title.trim()}`, sourceKey: `task:${t.id}` });
-      });
-      (notesRes.data || []).forEach(n => {
-        const title = (n.title || n.content || "").trim().substring(0, 80);
-        if (title) entries.push({ id: n.id, text: `📝 ${title}`, sourceKey: `note:${n.id}` });
-      });
-      (casesRes.data || []).forEach(c => {
-        const subject = (c.subject || "Vorgang").trim();
-        entries.push({ id: c.id, text: `📁 ${subject}`, sourceKey: `case:${c.id}` });
-      });
-      (decisionsRes.data || []).forEach(d => {
-        if (d.title?.trim()) entries.push({ id: d.id, text: `⚖️ ${d.title.trim()}`, sourceKey: `decision:${d.id}` });
-      });
-
-      if (entries.length === 0) {
-        // Mark as injected even with no entries
-        setStoreAndTrack(prev => {
-          const day = prev[todayKey] ?? { html: "", plainText: "" };
-          if (day.deadlinesInjected) return prev;
-          return { ...prev, [todayKey]: { ...day, deadlinesInjected: true } };
-        }, todayKey);
-        return;
-      }
-
-      // Build line map: sourceKey → lineId
-      const lineMap: Record<string, string> = {};
-      const lines = entries.map(entry => {
-        const lineId = crypto.randomUUID();
-        lineMap[entry.sourceKey] = lineId;
-        return entry.text;
-      });
-
-      // Set flag + map first, then append lines
-      setStoreAndTrack(prev => {
-        const day = prev[todayKey] ?? { html: "", plainText: "" };
-        if (day.deadlinesInjected) return prev;
-        return { ...prev, [todayKey]: { ...day, deadlinesInjected: true, deadlineLineMap: lineMap } };
-      }, todayKey);
-
-      appendLinesToToday(["--- 📅 Heutige Fristen ---", ...lines]);
+    const run = async () => {
+      try {
+        const tomorrow = new Date(`${todayKey}T12:00:00`); tomorrow.setDate(tomorrow.getDate() + 1);
+        const next = toDayKey(tomorrow);
+        const start = new Date(`${todayKey}T00:00:00`).toISOString();
+        const end = new Date(`${next}T00:00:00`).toISOString();
+        const responses = await Promise.all([
+          supabase.from("tasks").select("id,title,status").eq("tenant_id", tenantId).or(`assigned_to.eq.${userId},assigned_to.ilike.%${userId}%,user_id.eq.${userId}`).neq("status", "completed").gte("due_date", start).lt("due_date", end),
+          supabase.from("quick_notes").select("id,title,content").eq("user_id", userId).is("deleted_at", null).or("is_archived.is.null,is_archived.eq.false").gte("follow_up_date", todayKey).lt("follow_up_date", next),
+          supabase.from("case_items").select("id,subject").eq("tenant_id", tenantId).neq("status", "erledigt").gte("due_at", start).lt("due_at", end),
+          supabase.from("task_decisions").select("id,title").eq("tenant_id", tenantId).neq("status", "resolved").is("archived_at", null).gte("response_deadline", start).lt("response_deadline", end),
+        ]);
+        if (cancelled) return;
+        const error = responses.find(result => result.error)?.error;
+        if (error) throw error;
+        const entries: Array<DaySlipLineEntry & { source: DaySlipSource }> = [];
+        const add = (type: DaySlipSource["type"], id: string, text: string) => { if (text.trim()) entries.push({ id: crypto.randomUUID(), text: text.trim(), source: { type, id } }); };
+        responses[0].data?.forEach(row => add("task", row.id, `📋 ${row.title}`));
+        responses[1].data?.forEach(row => add("note", row.id, `📝 ${(row.title || row.content || "").slice(0, 80)}`));
+        responses[2].data?.forEach(row => add("case", row.id, `📁 ${row.subject || "Vorgang"}`));
+        responses[3].data?.forEach(row => add("decision", row.id, `⚖️ ${row.title}`));
+        changeDay(day => appendEntries(day, entries), true);
+        setDeadlineError(null);
+      } catch (error) { if (!cancelled) setDeadlineError(errorMessage(error)); }
     };
-
-    injectDeadlines();
+    void run();
     return () => { cancelled = true; };
-  }, [userId, tenantId, todayData.deadlinesInjected, todayKey, appendLinesToToday, setStoreAndTrack]);
+  }, [ready, userId, tenantId, todayKey, todayData.completedAt, deadlineRefresh, changeDay, isProcessing]);
 
-  // Realtime: auto-strike deadlines when completed
   useEffect(() => {
-    if (!userId || !tenantId) return;
-
-    const channel = supabase.channel(`dayslip-deadline-sync-${userId}`)
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "tasks", filter: `tenant_id=eq.${tenantId}` }, (payload) => {
-        const newRow = payload.new as { id?: string; status?: string };
-        if (newRow.status === "completed" && newRow.id) {
-          const sourceKey = `task:${newRow.id}`;
-          const map = storeRef.current[todayKey]?.deadlineLineMap;
-          const lineId = map?.[sourceKey];
-          if (lineId) toggleStrike(lineId);
-        }
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "case_items", filter: `tenant_id=eq.${tenantId}` }, (payload) => {
-        const newRow = payload.new as { id?: string; status?: string };
-        if (newRow.status === "erledigt" && newRow.id) {
-          const sourceKey = `case:${newRow.id}`;
-          const map = storeRef.current[todayKey]?.deadlineLineMap;
-          const lineId = map?.[sourceKey];
-          if (lineId) toggleStrike(lineId);
-        }
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "task_decisions", filter: `tenant_id=eq.${tenantId}` }, (payload) => {
-        const newRow = payload.new as { id?: string; status?: string };
-        if (newRow.status === "resolved" && newRow.id) {
-          const sourceKey = `decision:${newRow.id}`;
-          const map = storeRef.current[todayKey]?.deadlineLineMap;
-          const lineId = map?.[sourceKey];
-          if (lineId) toggleStrike(lineId);
-        }
-      })
+    if (!ready) return;
+    const sync = (type: DaySlipSource["type"], row: { id?: string; status?: string; is_archived?: boolean }) => {
+      const done = type === "task" ? row.status === "completed" : type === "case" ? row.status === "erledigt" : type === "decision" ? row.status === "resolved" : row.is_archived === true;
+      if (!done) return;
+      Object.entries(storeRef.current[todayKey]?.sources ?? {}).forEach(([lineId, source]) => { if (source.type === type && source.id === row.id) setLineDone(lineId, true); });
+    };
+    const channel = supabase.channel(`dayslip-sync-${userId}-${tenantId}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "tasks", filter: `tenant_id=eq.${tenantId}` }, payload => sync("task", payload.new))
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "case_items", filter: `tenant_id=eq.${tenantId}` }, payload => sync("case", payload.new))
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "task_decisions", filter: `tenant_id=eq.${tenantId}` }, payload => sync("decision", payload.new))
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "quick_notes", filter: `user_id=eq.${userId}` }, payload => sync("note", payload.new))
       .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [ready, userId, tenantId, todayKey, storeRef, setLineDone]);
 
-    return () => { supabase.removeChannel(channel); };
-  }, [userId, tenantId, todayKey, toggleStrike]);
-
-  // Week plan injection
-  useEffect(() => {
-    if (todayData.weekPlanInjected) return;
-    const planned = getWeekPlanForDay(todayKey);
-    if (!planned || planned.length === 0) return;
-    setStoreAndTrack((prev) => {
-      const day = prev[todayKey] ?? { html: "", plainText: "" };
-      if (day.weekPlanInjected) return prev;
-      return { ...prev, [todayKey]: { ...day, weekPlanInjected: true } };
-    }, todayKey);
-    appendLinesToToday(planned);
-  }, [todayData.weekPlanInjected, todayKey, appendLinesToToday, setStoreAndTrack]);
-
-  const handleApplyWeekPlan = useCallback((days: Record<string, string[]>) => {
-    setStoreAndTrack((prev) => {
-      const day = prev[todayKey] ?? { html: "", plainText: "" };
-      if (day.weekPlanInjected) return prev;
-      return { ...prev, [todayKey]: { ...day, weekPlanInjected: true } };
-    }, todayKey);
-
-    const todayItems = days[todayKey];
-    if (todayItems && todayItems.length > 0) appendLinesToToday(todayItems);
-  }, [todayKey, appendLinesToToday, setStoreAndTrack]);
-
+  const setMood = useCallback((dayMood: 1 | 2 | 3 | 4 | 5) => changeDay(day => ({ ...day, dayMood })), [changeDay]);
   const editorConfig = useMemo(() => ({
     namespace: "DaySlipEditor",
     theme: {
@@ -714,59 +320,18 @@ export function useDaySlipStore(userId?: string, tenantId?: string): UseDaySlipS
       text: { bold: "font-bold", italic: "italic", underline: "underline", strikethrough: "line-through" },
       horizontalRule: "my-4 border-border/80",
     },
-    nodes: [HorizontalRuleNode, LabeledHorizontalRuleNode, DaySlipLineNode, { replace: ParagraphNode, with: () => $createDaySlipLineNode() }],
+    nodes: [HorizontalRuleNode, LabeledHorizontalRuleNode, DaySlipLineNode, { replace: ParagraphNode, with: () => $createDaySlipLineNode(), withKlass: DaySlipLineNode }],
     onError: (error: Error) => debugConsole.error("DaySlip Lexical error", error),
   }), []);
 
   return {
-    store, setStore, resolveMode, setResolveMode,
-    recurringItems, setRecurringItems, dayTemplates, setDayTemplates,
-    // @ts-expect-error consumer treats this as MutableRefObject; the nullable initial value is intentional
-    editorRef, editorReadyVersion, saveTimeoutRef,
-    todayKey, todayData, yesterdayKey, yesterdayCarryLines,
-    allLineEntries, struckLineIds, resolvedItems, resolvedByLineId,
-    openLines, unresolvedCount, triageEntries, archiveDays,
-    toggleStrike, appendLinesToToday, insertStructuredLines, deleteLine,
-    toggleResolveLine, createFromLine, persistResolvedItems,
-    onEditorChange, handleEditorReady, handleApplyWeekPlan,
-    editorConfig,
+    ...persistence, todayKey, todayData, resolveMode, setResolveMode, isProcessing,
+    recurringItems: settings.recurringItems, setRecurringItems, dayTemplates: settings.dayTemplates, setDayTemplates,
+    weekPlan: settings.weekPlan, setWeekPlan, setMood,
+    editorRef, editorReadyVersion, editorReloadToken, editorConfig,
+    allLineEntries, struckLineIds, resolvedItems, resolvedByLineId, openLines, unresolvedCount: openLines.length, triageEntries, archiveDays,
+    carryEntries, carryOver, toggleStrike, appendLinesToToday, insertStructuredLines, deleteLine, toggleResolveLine, updateTaskOptions,
+    createFromLine, completeDay, reopenDay, onEditorChange, handleEditorReady,
+    deadlineError,
   };
-}
-
-// Helper: migrate a localStorage key to user_preferences if not yet in DB
-async function migratePreference(userId: string, tenantId: string | undefined, dbKey: string, localKey: string): Promise<boolean> {
-  try {
-    const { data, error: selectError } = await supabase
-      .from("user_preferences")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("key", dbKey)
-      .maybeSingle();
-
-    if (selectError) {
-      debugConsole.error("useDaySlipStore: preference migration lookup failed", { dbKey, localKey, selectError });
-      return false;
-    }
-
-    if (data) return true; // already in DB
-
-    const raw = localStorage.getItem(localKey);
-    if (!raw) return true;
-
-    const parsed = JSON.parse(raw);
-    const { error: upsertError } = await supabase.from("user_preferences").upsert(
-      { user_id: userId, tenant_id: tenantId || null, key: dbKey, value: parsed, updated_at: new Date().toISOString() },
-      { onConflict: "user_id,tenant_id,key" }
-    );
-
-    if (upsertError) {
-      debugConsole.error("useDaySlipStore: preference migration upsert failed", { dbKey, localKey, upsertError });
-      return false;
-    }
-
-    return true;
-  } catch (error: unknown) {
-    logStoreEvent({ type: "preference-migration-failed", dbKey, localKey, error });
-    return false;
-  }
 }
