@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useCallback } from "react";
+import { useUserPreference } from "@/hooks/useUserPreference";
 import { QUICK_NOTE_COLORS } from "@/components/my-work/quickNoteColors";
 
 export interface NoteColorDef {
@@ -8,40 +8,13 @@ export interface NoteColorDef {
   meaning?: string;
 }
 
-const EVENT = "quick-note-palette-changed";
-const storageKey = (userId?: string) => `quick-note-palette:${userId ?? "anon"}`;
+const DEFAULT_PALETTE: NoteColorDef[] = QUICK_NOTE_COLORS.map((c) => ({ ...c }));
 
-function read(userId?: string): NoteColorDef[] {
-  try {
-    const raw = window.localStorage.getItem(storageKey(userId));
-    if (raw) {
-      const parsed: unknown = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed as NoteColorDef[];
-    }
-  } catch {
-    /* blocked storage → defaults */
-  }
-  return QUICK_NOTE_COLORS.map((c) => ({ ...c }));
-}
-
-/** Personal note color palette with meanings, stored per user in the browser. */
+/** Personal note color palette with meanings, synced to the user account (all devices). */
 export function useNoteColorPalette() {
-  const { user } = useAuth();
-  const [palette, setPalette] = useState<NoteColorDef[]>(() => read(user?.id));
-
-  useEffect(() => {
-    setPalette(read(user?.id));
-    const sync = () => setPalette(read(user?.id));
-    window.addEventListener(EVENT, sync);
-    return () => window.removeEventListener(EVENT, sync);
-  }, [user?.id]);
-
-  const save = useCallback((next: NoteColorDef[]) => {
-    try { window.localStorage.setItem(storageKey(user?.id), JSON.stringify(next)); } catch { /* ignore */ }
-    setPalette(next);
-    window.dispatchEvent(new Event(EVENT));
-  }, [user?.id]);
-
+  const [stored, setStored] = useUserPreference<NoteColorDef[]>("quick_note_palette_v1", DEFAULT_PALETTE);
+  const palette = Array.isArray(stored) && stored.length > 0 ? stored : DEFAULT_PALETTE;
+  const save = useCallback((next: NoteColorDef[]) => setStored(next), [setStored]);
   return { palette, save };
 }
 
