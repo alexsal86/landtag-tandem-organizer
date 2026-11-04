@@ -15,7 +15,7 @@ export function InlineActions({ children, hoverOnly = true, className }: InlineA
   return (
     <div
       className={cn(
-        "flex items-center gap-2xs shrink-0 transition-opacity duration-fast ease-standard",
+        "flex items-center gap-space-2xs shrink-0 transition-opacity duration-fast ease-standard",
         hoverOnly && "opacity-0 group-hover:opacity-100 focus-within:opacity-100",
         className,
       )}

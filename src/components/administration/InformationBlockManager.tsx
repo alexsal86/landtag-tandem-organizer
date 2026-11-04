@@ -465,7 +465,7 @@ export const InformationBlockManager: React.FC = () => {
 
       {blocks.length === 0 && (
         <Card>
-          <CardContent className="py-md">
+          <CardContent className="py-space-md">
             <EmptyState title="Noch keine Informationsblöcke" description="Lege einen Informationsblock für die rechte Seitenleiste deiner Briefe an." />
           </CardContent>
         </Card>

@@ -172,7 +172,7 @@ export function AuditLogViewer() {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={4} className="py-md">
+                      <TableCell colSpan={4} className="py-space-md">
                         <EmptyState size="sm" title="Keine Logs gefunden" description="Passe Filter oder Zeitraum an." />
                       </TableCell>
                     </TableRow>

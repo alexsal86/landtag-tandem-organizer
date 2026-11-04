@@ -242,13 +242,13 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
       
       <CardContent className="flex-1 p-0">
         {error && (
-          <div className="p-md">
+          <div className="p-space-md">
             <ErrorState description={error} onRetry={fetchNews} />
           </div>
         )}
 
         {loading && (
-          <div className="p-md">
+          <div className="p-space-md">
             <LoadingState variant="card" rows={3} />
           </div>
         )}

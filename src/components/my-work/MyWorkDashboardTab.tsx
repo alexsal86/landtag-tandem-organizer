@@ -44,10 +44,10 @@ function DashboardWidgetContainer({
 
   return (
     <Card className={cn('shadow-sm border-border/60 animate-fade-in', className)}>
-      <CardHeader className="py-sm px-md">
+      <CardHeader className="py-space-sm px-space-md">
         <CardTitle className="text-body-lg font-medium">{title}</CardTitle>
       </CardHeader>
-      <CardContent className="px-md pb-md pt-0">{content}</CardContent>
+      <CardContent className="px-space-md pb-space-md pt-0">{content}</CardContent>
     </Card>
   );
 }
@@ -58,7 +58,7 @@ function DeadlinesWidget() {
   return (
     <DashboardWidgetContainer
       title={
-        <span className="inline-flex items-center gap-xs">
+        <span className="inline-flex items-center gap-space-xs">
           <ClipboardList className="h-4 w-4 text-muted-foreground" />
           Fristen
         </span>
@@ -78,7 +78,7 @@ function AppointmentsWidget() {
   return (
     <DashboardWidgetContainer
       title={
-        <span className="inline-flex items-center gap-xs">
+        <span className="inline-flex items-center gap-space-xs">
           <CalendarDays className="h-4 w-4 text-muted-foreground" />
           {dashboardData.isShowingTomorrow ? 'Deine Termine morgen' : 'Deine Termine heute'}
         </span>
@@ -97,7 +97,7 @@ function NewsWidgetCard() {
   return (
     <DashboardWidgetContainer
       title={
-        <span className="inline-flex items-center gap-xs">
+        <span className="inline-flex items-center gap-space-xs">
           <Newspaper className="h-4 w-4 text-muted-foreground" />
           News
         </span>
@@ -116,18 +116,18 @@ export function MyWorkDashboardTab() {
   const { isAbgeordneter, isEmployee } = useResolvedUserRole();
 
   return (
-    <div className="space-y-md animate-fade-in">
+    <div className="space-y-space-md animate-fade-in">
       <DashboardHeader />
       {isAbgeordneter && <TodayBriefingPanel />}
       {isEmployee && !isAbgeordneter && <BriefingComposerCard />}
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,40fr)_minmax(0,35fr)_minmax(0,25fr)] gap-md items-start">
-        <div className="flex flex-col gap-md min-w-0">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,40fr)_minmax(0,35fr)_minmax(0,25fr)] gap-space-md items-start">
+        <div className="flex flex-col gap-space-md min-w-0">
           <AppointmentsWidget />
         </div>
-        <div className="flex flex-col gap-md min-w-0">
+        <div className="flex flex-col gap-space-md min-w-0">
           <DeadlinesWidget />
           <DashboardWidgetContainer
-            title={<span className="inline-flex items-center gap-xs"><Vote className="h-4 w-4 text-muted-foreground" />Entscheidungen</span>}
+            title={<span className="inline-flex items-center gap-space-xs"><Vote className="h-4 w-4 text-muted-foreground" />Entscheidungen</span>}
             errorMessage="Entscheidungen konnten nicht geladen werden."
           >
             <ErrorBoundary fallback={<ErrorState description="Entscheidungen konnten nicht geladen werden." />}>
@@ -135,9 +135,9 @@ export function MyWorkDashboardTab() {
             </ErrorBoundary>
           </DashboardWidgetContainer>
         </div>
-        <div className="flex flex-col gap-md min-w-0">
+        <div className="flex flex-col gap-space-md min-w-0">
           <DashboardWidgetContainer
-            title={<span className="inline-flex items-center gap-xs"><Users className="h-4 w-4 text-muted-foreground" />Jour fixe</span>}
+            title={<span className="inline-flex items-center gap-space-xs"><Users className="h-4 w-4 text-muted-foreground" />Jour fixe</span>}
             errorMessage="Jour fixe konnte nicht geladen werden."
           >
             <ErrorBoundary fallback={<ErrorState description="Jour fixe konnte nicht geladen werden." />}>

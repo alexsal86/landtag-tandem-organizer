@@ -232,7 +232,7 @@ export function PressTemplateManager() {
     { value: 'general', label: 'Allgemein' },
   ], []);
 
-  if (loading) return <LoadingState variant="card" rows={3} className="p-md" />;
+  if (loading) return <LoadingState variant="card" rows={3} className="p-space-md" />;
 
   return (
     <div className="space-y-4">

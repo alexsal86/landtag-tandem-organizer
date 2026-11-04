@@ -268,7 +268,7 @@ export function ProtocolsList({ protocols, onProtocolSelect, onProtocolsRefresh 
               <TableBody>
                 {filteredProtocols.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-md">
+                    <TableCell colSpan={8} className="py-space-md">
                       <EmptyState size="sm" title={searchTerm || statusFilter !== 'all' ? 'Keine Protokolle gefunden' : 'Noch keine Protokolle hochgeladen'} description={searchTerm || statusFilter !== 'all' ? 'Passe Suche oder Filter an.' : undefined} />
                     </TableCell>
                   </TableRow>

@@ -17,9 +17,9 @@ export interface EmptyStateProps {
 }
 
 const sizeMap = {
-  sm: { wrap: "py-xs gap-2xs", icon: "h-6 w-6", title: "text-body" },
-  md: { wrap: "py-lg gap-xs",  icon: "h-8 w-8", title: "text-body-lg" },
-  lg: { wrap: "py-2xl gap-sm", icon: "h-10 w-10", title: "text-title" },
+  sm: { wrap: "py-space-xs gap-space-2xs", icon: "h-6 w-6", title: "text-body" },
+  md: { wrap: "py-space-lg gap-space-xs",  icon: "h-8 w-8", title: "text-body-lg" },
+  lg: { wrap: "py-space-2xl gap-space-sm", icon: "h-10 w-10", title: "text-title" },
 };
 
 export function EmptyState({
@@ -40,10 +40,10 @@ export function EmptyState({
         className,
       )}
     >
-      <div className="flex items-center justify-center rounded-pill bg-muted/60 p-sm text-muted-foreground">
+      <div className="flex items-center justify-center rounded-pill bg-muted/60 p-space-sm text-muted-foreground">
         <Icon className={s.icon} aria-hidden="true" />
       </div>
-      <div className="space-y-2xs">
+      <div className="space-y-space-2xs">
         <p className={cn("font-medium text-foreground", s.title)}>{title}</p>
         {description && (
           <p className="text-caption text-muted-foreground max-w-sm">{description}</p>
@@ -54,9 +54,9 @@ export function EmptyState({
           size="sm"
           variant="outline"
           onClick={action.onClick}
-          className="mt-2xs"
+          className="mt-space-2xs"
         >
-          {action.icon && <action.icon className="h-4 w-4 mr-2xs" aria-hidden="true" />}
+          {action.icon && <action.icon className="h-4 w-4 mr-space-2xs" aria-hidden="true" />}
           {action.label}
         </Button>
       )}
