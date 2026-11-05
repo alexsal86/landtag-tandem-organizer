@@ -17,6 +17,7 @@ import { MultiUserAssignSelect } from "@/components/meetings/MultiUserAssignSele
 import { UpcomingAppointmentsSection } from "@/components/meetings/UpcomingAppointmentsSection";
 import { PendingJourFixeNotes } from "@/components/meetings/PendingJourFixeNotes";
 import { PendingJourFixeCaseItems } from "@/components/meetings/PendingJourFixeCaseItems";
+import { JourFixeRequestsCard } from "@/features/appointment-requests/JourFixeRequestsCard";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -590,6 +591,7 @@ export function AgendaEditorPanel({
       {/* Pending Jour Fixe Notes Preview */}
       <PendingJourFixeNotes className="mt-4" />
       <PendingJourFixeCaseItems className="mt-4" />
+      <JourFixeRequestsCard className="mt-4" />
 
       {/* Upcoming Appointments Preview */}
       {!agendaItems.some(item => item.system_type === 'upcoming_appointments') && (

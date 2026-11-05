@@ -8,7 +8,10 @@ import { useDashboardAppointmentsData } from '@/hooks/useDashboardAppointmentsDa
 import { useDashboardDeadlines } from '@/hooks/useDashboardDeadlines';
 import { NewsWidget } from '@/components/widgets/NewsWidget';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
-import { CalendarDays, ClipboardList, Newspaper, Vote, Users } from 'lucide-react';
+import { CalendarClock, CalendarDays, ClipboardList, Newspaper, Vote, Users } from 'lucide-react';
+import { AppointmentRequestList } from '@/features/appointment-requests/AppointmentRequestList';
+import { useNextJourFixeDate, useOpenAppointmentRequests } from '@/features/appointment-requests/useAppointmentRequests';
+import { isUrgent } from '@/features/appointment-requests/logic';
 import { useResolvedUserRole } from '@/hooks/useResolvedUserRole';
 import { BriefingComposerCard, TodayBriefingPanel } from '@/features/briefings';
 import { DashboardDecisionsWidget } from '@/components/dashboard/DashboardDecisionsWidget';
@@ -101,6 +104,28 @@ function AppointmentsWidget() {
   );
 }
 
+/** Only appears when a request cannot wait for the next Jour fixe. */
+function UrgentRequestsWidget() {
+  const { data = [] } = useOpenAppointmentRequests();
+  const { data: nextJf = null } = useNextJourFixeDate();
+  if (!data.some((r) => isUrgent(r, nextJf))) return null;
+  return (
+    <DashboardWidgetContainer
+      title={
+        <span className="inline-flex items-center gap-space-xs">
+          <CalendarClock className="h-4 w-4 text-destructive" />
+          Eilige Terminanfragen
+        </span>
+      }
+      compactTitle
+      errorMessage="Anfragen konnten nicht geladen werden."
+    >
+      <p className="mb-1 text-xs text-muted-foreground">Vor dem nächsten Jour fixe zu entscheiden.</p>
+      <AppointmentRequestList mode="urgent" hideWhenEmpty />
+    </DashboardWidgetContainer>
+  );
+}
+
 function NewsWidgetCard() {
   return (
     <DashboardWidgetContainer
@@ -130,6 +155,7 @@ export function MyWorkDashboardTab() {
       {isEmployee && !isAbgeordneter && <BriefingComposerCard />}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,40fr)_minmax(0,35fr)_minmax(0,25fr)] gap-space-md items-start">
         <div className="flex flex-col gap-space-md min-w-0">
+          <UrgentRequestsWidget />
           <AppointmentsWidget />
         </div>
         <div className="flex flex-col gap-space-md min-w-0">
