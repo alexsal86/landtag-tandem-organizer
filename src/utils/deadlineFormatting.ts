@@ -22,7 +22,9 @@ export function getDeadlineStatus(dueDate: string): DeadlineStatus {
 
 export function formatDeadlineDateLabel(dueDate: string): string {
   const d = new Date(dueDate);
-  const hasTime = /\d{2}:\d{2}/.test(dueDate);
+  // Date-only deadlines are also stored as timestamps at local midnight.
+  const hasTime = /\d{2}:\d{2}/.test(dueDate) &&
+    (d.getHours() !== 0 || d.getMinutes() !== 0 || d.getSeconds() !== 0);
   const time = hasTime ? format(d, 'HH:mm', { locale: de }) : null;
 
   if (isToday(d)) return time ? `Heute ${time}` : 'Heute';

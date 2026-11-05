@@ -66,9 +66,10 @@ function DeadlinesWidget() {
 
   return (
     <DashboardWidgetContainer
+      compactTitle
       title={
         <span className="inline-flex items-center gap-space-xs">
-          <ClipboardList className="h-4 w-4 text-muted-foreground" />
+          <ClipboardList className="h-5 w-5 text-muted-foreground" />
           Fristen
         </span>
       }

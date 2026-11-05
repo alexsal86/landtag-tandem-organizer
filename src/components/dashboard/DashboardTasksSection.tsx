@@ -92,7 +92,7 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
 
         <button type="button" className="flex-1 min-w-0 text-left rounded focus-visible:outline-primary" onClick={() => navigate(item.type === 'eventPlanning' && item.planningId ? `${cfg.tabBase}/${item.planningId}` : `${cfg.tabBase}&highlight=${item.id}`)} title={`${cfg.label} öffnen`}>
           <div className="text-sm font-medium text-foreground truncate leading-tight">{item.title}</div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground/80 tabular-nums leading-tight mt-1">
+          <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 tabular-nums leading-tight mt-1">
             <cfg.Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> {contextLabel} · {dateLabel}
           </div>
         </button>
@@ -112,9 +112,8 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
     const remaining = list.length - slice.length;
     return (
       <div className="mt-3 first:mt-0">
-        <div className={`section-label flex items-center gap-2 px-3 pb-1 ${labelClass}`}>
+        <div className={`section-label flex items-center gap-2 pb-1 ${labelClass}`}>
           <span>{label}</span>
-          <span className="tabular-nums opacity-70">{list.length}</span>
           <span className="flex-1 h-px bg-border/60" aria-hidden />
         </div>
         <div>{slice.map(renderItem)}</div>
@@ -142,16 +141,16 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
   return (
     <div>
       <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="Fristen nach Dringlichkeit filtern">
-        {(Object.keys(GROUP_CONFIG) as GroupKey[]).map(key => <button key={key} type="button" aria-pressed={filter === key} onClick={() => setFilter(current => current === key ? null : key)} className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm focus-visible:outline-primary ${filter === key ? 'border-primary bg-primary/10' : 'border-border hover:bg-muted/50'}`}>
+        {(Object.keys(GROUP_CONFIG) as GroupKey[]).map(key => <button key={key} type="button" aria-pressed={filter === key} onClick={() => setFilter(current => current === key ? null : key)} className={`inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[13px] leading-5 focus-visible:outline-primary ${filter === key ? 'border-primary bg-primary/10' : 'border-border hover:bg-muted/50'}`}>
           <span className={`h-2 w-2 rounded-full ${GROUP_CONFIG[key].color}`} aria-hidden="true" />
           {GROUP_CONFIG[key].label} <span className="tabular-nums font-medium">{grouped[key].length}</span>
         </button>)}
       </div>
 
       {filter && grouped[filter].length === 0 && <p className="py-3 text-sm text-muted-foreground">Keine Fristen in diesem Bereich.</p>}
-      {renderGroup('today', 'Heute', grouped.today, 'text-palette-amber')}
-      {renderGroup('thisWeek', 'Restliche Woche', grouped.thisWeek, 'text-palette-blue')}
-      {renderGroup('overdue', 'Überfällig · nach Priorität', showOldOverdue ? grouped.overdue : recentOverdue, 'text-destructive')}
+      {renderGroup('today', 'Heute', grouped.today, 'text-amber-700 dark:text-amber-400')}
+      {renderGroup('thisWeek', 'Restliche Woche', grouped.thisWeek, 'text-blue-700 dark:text-blue-400')}
+      {renderGroup('overdue', 'Überfällig · nach Priorität', showOldOverdue ? grouped.overdue : recentOverdue, 'text-red-700 dark:text-red-400')}
       {oldItems.length > 0 && (!filter || filter === 'overdue') && <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-3 text-xs text-muted-foreground">
         <button type="button" className="hover:text-foreground transition-colors focus-visible:outline-primary" onClick={() => setShowOldOverdue(v => !v)} aria-expanded={showOldOverdue}>
           {showOldOverdue ? `${oldItems.length} ältere ausblenden` : `+ ${oldItems.length} älter als 30 Tage · anzeigen`}
@@ -165,7 +164,7 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
           <button
             type="button"
             onClick={() => { if (filter === 'later') { setFilter(null); setShowLater(false); } else setShowLater(v => !v); }}
-            className="section-label flex w-full items-center gap-2 px-3 pb-1 text-muted-foreground hover:text-foreground transition-colors"
+            className="section-label flex w-full items-center gap-2 pb-1 text-gray-500 dark:text-gray-400 hover:text-foreground transition-colors"
             aria-expanded={showLater || filter === 'later'}
           >
             <ChevronRight
@@ -173,7 +172,6 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
               aria-hidden
             />
             <span>Später</span>
-            <span className="tabular-nums opacity-70">{grouped.later.length}</span>
             <span className="flex-1 h-px bg-border/60" aria-hidden />
           </button>
           {(showLater || filter === 'later') && (
