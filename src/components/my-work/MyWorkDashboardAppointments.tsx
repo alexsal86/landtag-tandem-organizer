@@ -299,7 +299,7 @@ export const DashboardAppointments = ({ data }: Props) => {
     return (
       <div key={apt.id} className="border-b border-border/60 last:border-b-0">
         <div
-          className={`relative grid grid-cols-[4rem_minmax(0,1fr)] @min-[32rem]:grid-cols-[4rem_minmax(0,1fr)_auto] gap-x-3 gap-y-3 rounded-lg px-3 py-4 transition-colors hover:bg-muted/40 focus-within:bg-muted/40 ${active ? "bg-primary/10 ring-1 ring-primary/30" : ""}`}
+          className={`relative grid grid-cols-[3.25rem_minmax(0,1fr)] @min-[32rem]:grid-cols-[3.25rem_minmax(0,1fr)_auto] gap-x-3 gap-y-2 rounded-lg px-3 py-3 transition-colors hover:bg-muted/40 focus-within:bg-muted/40 ${active ? "bg-primary/10 ring-1 ring-primary/30" : ""}`}
         >
           <button
             type="button"
@@ -312,25 +312,25 @@ export const DashboardAppointments = ({ data }: Props) => {
               className={
                 apt.is_all_day
                   ? "text-sm font-semibold"
-                  : "text-2xl font-semibold leading-8 tracking-tight text-foreground"
+                  : "text-base font-semibold leading-6 text-foreground"
               }
             >
               {apt.is_all_day ? "Ganztägig" : format(start, "HH:mm")}
             </p>
             {!apt.is_all_day && end && end > start && (
-              <p className="text-sm text-muted-foreground/80">
+              <p className="text-xs text-muted-foreground/80">
                 {isSameDay(start, end) ? "" : format(end, "d. MMM. ", { locale: de })}
                 {format(end, "HH:mm")}
               </p>
             )}
           </div>
           <div className="pointer-events-none relative min-w-0">
-            <p className="break-words text-lg font-semibold leading-7 text-foreground">{apt.title}</p>
+            <p className="break-words text-sm font-medium leading-6 text-foreground">{apt.title}</p>
             {((apt.location && !meetingUrl) || participantList.length > 0) && (
-              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-base text-muted-foreground">
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 {apt.location && !meetingUrl && (
                   <span className="flex items-start gap-1.5">
-                    <MapPin className="mt-1 h-3 w-3 shrink-0" aria-hidden="true" />
+                    <MapPin className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
                     <span className="break-words">{apt.location}</span>
                   </span>
                 )}
@@ -345,8 +345,8 @@ export const DashboardAppointments = ({ data }: Props) => {
                 )}
               </div>
             )}
-            <div className="mt-2.5">
-              <span className={cn("inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm", badgeClass)}>
+            <div className="mt-2">
+              <span className={cn("inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs", badgeClass)}>
                 <BadgeIcon className="h-3 w-3" aria-hidden="true" />
                 {badgeLabel}
               </span>
@@ -370,7 +370,7 @@ export const DashboardAppointments = ({ data }: Props) => {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-9 rounded-lg border border-border bg-transparent px-4 text-base font-normal hover:bg-transparent hover:border-foreground/30"
+                  className="h-8 rounded-lg border border-border bg-transparent px-3 text-sm font-normal hover:bg-transparent hover:border-foreground/30"
                   aria-expanded={isBriefingExpanded}
                   aria-controls={`dashboard-briefing-${apt.id}`}
                   onClick={() => setExpandedBriefingId((prev) => (prev === apt.id ? null : apt.id))}
@@ -384,7 +384,7 @@ export const DashboardAppointments = ({ data }: Props) => {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-10 w-10 rounded-lg border border-border bg-transparent hover:bg-transparent hover:border-foreground/30"
+                        className="h-8 w-8 rounded-lg border border-border bg-transparent hover:bg-transparent hover:border-foreground/30"
                         aria-label="Briefing als PDF herunterladen"
                         onClick={() => {
                           if (prep)
@@ -438,18 +438,13 @@ export const DashboardAppointments = ({ data }: Props) => {
           isShowingTomorrow && <p className="text-sm text-muted-foreground">Auch morgen stehen keine Termine an.</p>
         ) : (
           <div className="space-y-1.5">
-            <h3 className="mb-2 text-sm font-medium text-muted-foreground">
-              {isShowingTomorrow ? "Morgen" : "Heute"},{" "}
-              {format(isShowingTomorrow ? addDays(new Date(), 1) : new Date(), "d. MMMM", { locale: de })}
-            </h3>
+            <DayDivider label={isShowingTomorrow ? "Morgen" : "Heute"} date={isShowingTomorrow ? addDays(new Date(), 1) : new Date()} first />
             {appointments.map((apt) => renderAppointment(apt, !isShowingTomorrow))}
           </div>
         )}
         {tomorrowAppointments.length > 0 && (
-          <div className="mt-4 space-y-1.5">
-            <h3 className="mb-2 text-sm font-medium text-muted-foreground">
-              Morgen, {format(addDays(new Date(), 1), "d. MMMM", { locale: de })}
-            </h3>
+          <div className="mt-5 space-y-1.5">
+            <DayDivider label="Morgen" date={addDays(new Date(), 1)} />
             {tomorrowAppointments.map((apt) => renderAppointment(apt, false))}
           </div>
         )}
@@ -484,3 +479,18 @@ export const DashboardAppointments = ({ data }: Props) => {
     </div>
   );
 };
+
+/** Day separator: label chip between hairlines so today and tomorrow read as separate blocks. */
+function DayDivider({ label, date, first = false }: { label: string; date: Date; first?: boolean }) {
+  return (
+    <div className="mb-1 flex items-center gap-2" role="heading" aria-level={3}>
+      {!first && <span className="h-px w-3 bg-border" aria-hidden="true" />}
+      <span className="section-label inline-flex items-center gap-1.5 text-muted-foreground">
+        <span className={cn("h-1.5 w-1.5 rounded-full", first ? "bg-primary" : "bg-muted-foreground/50")} aria-hidden="true" />
+        {label}
+        <span className="font-normal normal-case tracking-normal opacity-70">{format(date, "EEEE, d. MMMM", { locale: de })}</span>
+      </span>
+      <span className="h-px flex-1 bg-border" aria-hidden="true" />
+    </div>
+  );
+}
