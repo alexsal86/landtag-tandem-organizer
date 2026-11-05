@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { supabase } from "@/integrations/supabase/client";
 import { GlobalDaySlipPanel } from "../GlobalDaySlipPanel";
@@ -23,7 +24,8 @@ beforeEach(() => {
   db.reset(); localStorage.clear(); account.userId = "user-a";
   localStorage.setItem("day-slip-panel-open", "true");
 });
-const view = () => <BrowserRouter><GlobalDaySlipPanel /></BrowserRouter>;
+const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+const view = () => <QueryClientProvider client={queryClient}><BrowserRouter><GlobalDaySlipPanel /></BrowserRouter></QueryClientProvider>;
 
 describe("Tageszettel panel", () => {
   it("loads DB content into the actual editor and resets the editor on account switch", async () => {
