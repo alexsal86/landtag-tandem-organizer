@@ -1,6 +1,15 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { format } from "date-fns";
 import { Calendar, Plus, Trash2, X } from "lucide-react";
 import { type WeekPlan } from "./dayslipTypes";
+import { useCalendarData } from "@/components/calendar/hooks/useCalendarData";
+import { useOpenAppointmentRequests } from "@/features/appointment-requests/useAppointmentRequests";
+import { requestStart } from "@/features/appointment-requests/logic";
+import { openAppointmentRequestDetail } from "@/features/appointment-requests/events";
+import { cn } from "@/lib/utils";
+
+type KnownItem = { id: string; sort: number; time: string; title: string; request: boolean; onClick: () => void };
 
 type RecurringTemplate = {
   id: string;
@@ -65,6 +74,38 @@ export function WeekPlanningBanner({ recurringItems, weekPlan, onChangePlan }: W
   });
   const [newItemDrafts, setNewItemDrafts] = useState<Record<string, string>>({});
 
+  // Known appointments and pending requests of this week (read-only, never copied into the plan)
+  const navigate = useNavigate();
+  const mondayDate = useMemo(() => new Date(`${mondayKey}T12:00:00`), [mondayKey]);
+  const { appointments } = useCalendarData(mondayDate, "week");
+  const { data: openRequests = [] } = useOpenAppointmentRequests();
+  const knownByDay = useMemo(() => {
+    const map: Record<string, KnownItem[]> = {};
+    const push = (key: string, item: KnownItem) => { (map[key] ??= []).push(item); };
+    for (const e of appointments) {
+      if (e.type === "vacation" || e.type === "vacation_request" || e.type === "birthday" || e.id.startsWith("blocked-")) continue;
+      const key = toDayKey(e.date);
+      push(key, {
+        id: e.id, sort: e.is_all_day ? 0 : e.date.getTime(),
+        time: e.is_all_day ? "" : format(e.date, "HH:mm"),
+        title: e.title.replace(/^📅\s*/, ""),
+        request: false,
+        onClick: () => navigate(`/calendar?highlight=${encodeURIComponent(e.id)}&date=${key}`),
+      });
+    }
+    for (const r of openRequests) {
+      const start = requestStart(r);
+      push(r.requested_date, {
+        id: `req-${r.id}`, sort: r.requested_time ? start.getTime() : 0,
+        time: r.requested_time ? format(start, "HH:mm") : "",
+        title: r.title, request: true,
+        onClick: () => openAppointmentRequestDetail(r.id),
+      });
+    }
+    Object.values(map).forEach((list) => list.sort((a, b) => a.sort - b.sort));
+    return map;
+  }, [appointments, openRequests, navigate]);
+
   const dismiss = useCallback(() => {
     setShowBanner(false);
     setPlanningMode(false);
@@ -115,11 +156,31 @@ export function WeekPlanningBanner({ recurringItems, weekPlan, onChangePlan }: W
             const items = planDays[dayKey] ?? [];
             const draft = newItemDrafts[dayKey] ?? "";
 
+            const known = knownByDay[dayKey] ?? [];
             return (
               <div key={dayKey} className="min-h-[80px]">
                 <p className="mb-1 text-center text-[10px] font-semibold text-muted-foreground uppercase">
                   {label}
                 </p>
+                {known.length > 0 && (
+                  <div className="mb-1 space-y-0.5">
+                    {known.map((k) => (
+                      <button
+                        key={k.id}
+                        type="button"
+                        title={k.title}
+                        onClick={k.onClick}
+                        className={cn(
+                          "block w-full truncate rounded px-1 py-0.5 text-left text-[10px] leading-tight",
+                          k.request ? "border border-dashed border-muted-foreground/50 text-muted-foreground" : "bg-primary/10 text-foreground",
+                        )}
+                      >
+                        {k.time && <span className="tabular-nums text-muted-foreground">{k.time} </span>}
+                        {k.request && "⏳ "}{k.title}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div className="space-y-0.5">
                   {items.map((item, idx) => (
                     <div key={idx} className="group flex items-center gap-0.5 rounded border border-border/40 bg-background/60 px-1 py-0.5 text-[10px] leading-tight">
