@@ -185,7 +185,7 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
                         </Button>
                       </div>
                     </div>
-                    <p className="text-[15px] leading-snug text-foreground line-clamp-2">
+                    <p className="text-body leading-snug text-foreground line-clamp-2">
                       {decodeHtmlEntities(article.title)}
                     </p>
                   </div>

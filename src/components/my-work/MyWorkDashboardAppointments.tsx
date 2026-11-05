@@ -325,7 +325,7 @@ export const DashboardAppointments = ({ data }: Props) => {
             )}
           </div>
           <div className="pointer-events-none relative min-w-0">
-            <p className="break-words text-sm font-medium leading-6 text-foreground">{apt.title}</p>
+            <p className="break-words text-base font-medium leading-6 text-foreground">{apt.title}</p>
             {((apt.location && !meetingUrl) || participantList.length > 0) && (
               <div className="mt-0.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 {apt.location && !meetingUrl && (
