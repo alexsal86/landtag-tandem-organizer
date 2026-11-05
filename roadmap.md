@@ -14,24 +14,24 @@ Erfassen (überall) → Platzhalter im Kalender (gestrichelt)
 ```
 
 ## 1. Erfassen – ohne Seitenwechsel
-- [ ] Knopf „+ Terminanfrage" oben in der Seitenleiste (Kürzel Strg/Cmd+Shift+.)
-- [ ] Schlankes Fenster: Wer fragt an, Anlass, Datum (+ optional Uhrzeit), Ort, Kanal (E-Mail/Post/Telefon), Rückmeldefrist
-- [ ] Im Kalender: Klick auf freie Zeit → Auswahl „Fester Termin" oder „Als Anfrage vormerken"
-- [ ] Aus Kontakt und Tageszettel-Zeile vorbefüllt starten
+- [x] Knopf „+ Terminanfrage" oben in der Seitenleiste (Kürzel Strg/Cmd+Shift+.)
+- [x] Schlankes Fenster: Wer fragt an, Anlass, Datum (+ optional Uhrzeit), Ort, Kanal (E-Mail/Post/Telefon), Rückmeldefrist
+- [x] Im Kalender: Klick auf freie Zeit → Auswahl „Fester Termin" oder „Als Anfrage vormerken"
+- [ ] Aus Kontakt und Tageszettel-Zeile vorbefüllt starten (nächster Schritt)
 
 ## 2. Platzhalter im Kalender – sichtbar, aber nicht störend
-- [ ] Gestrichelter, blasser Eintrag mit Uhr-Symbol
-- [ ] Umschalter „Anfragen anzeigen" (standardmäßig an, ausblendbar)
-- [ ] Klick zeigt Anfrage-Details mit Zusagen/Absagen
+- [x] Gestrichelter, blasser Eintrag mit Uhr-Symbol
+- [x] Umschalter „Anfragen anzeigen" (standardmäßig an, ausblendbar)
+- [x] Klick zeigt Anfrage-Details mit Zusagen/Absagen
 
 ## 3. Team-Triage
-- [ ] Empfehlungsfeld: Zusage empfohlen / Absage empfohlen / Vertretung / Rückfrage + kurze Notiz
-- [ ] Hinweis bei Überschneidung mit festen Terminen
+- [x] Empfehlungsfeld: Zusage empfohlen / Absage empfohlen / Vertretung / Rückfrage + kurze Notiz
+- [x] Hinweis bei Überschneidung mit festen Terminen
 
 ## 4. Entscheiden – zwei Geschwindigkeiten
-- [ ] Normal: Liste aller offenen Anfragen automatisch als Punkt im nächsten Jour fixe
-- [ ] Eilig (Termin oder Frist vor dem nächsten Jour fixe): Hinweis auf dem Dashboard mit Zusagen/Absagen
-- [ ] Zusage legt den festen Termin an, Absage räumt den Platzhalter weg
+- [x] Normal: Liste aller offenen Anfragen automatisch als Punkt im nächsten Jour fixe
+- [x] Eilig (Termin oder Frist vor dem nächsten Jour fixe): Hinweis auf dem Dashboard mit Zusagen/Absagen
+- [x] Zusage legt den festen Termin an, Absage räumt den Platzhalter weg
 
 ## Offene Fragen
-- Wer darf entscheiden: nur Abgeordnete/r oder auch Büroleitung?
+- Entschieden: Abgeordnete und Büroleitung dürfen zu- und absagen.
