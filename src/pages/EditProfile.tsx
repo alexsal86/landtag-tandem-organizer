@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { SidebarPreferencesCard } from "@/components/settings/SidebarPreferencesCard";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Save, User, Upload } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -400,6 +401,7 @@ export function EditProfile() {
               </CardContent>
             </Card>
 
+              <SidebarPreferencesCard />
           </div>
 
             {/* Sidebar */}
