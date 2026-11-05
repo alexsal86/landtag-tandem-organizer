@@ -2,7 +2,11 @@ import { CollisionRadar } from "@/components/calendar/CollisionRadar";
 import { overlaps } from "@/components/calendar/collisions";
 import { useState, useEffect, useRef, startTransition, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, CalendarClock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useOpenAppointmentRequests } from "@/features/appointment-requests/useAppointmentRequests";
+import { REQUEST_EVENT_PREFIX, requestEnd, requestStart } from "@/features/appointment-requests/logic";
+import { openAppointmentRequestCreate, openAppointmentRequestDetail } from "@/features/appointment-requests/events";
 import { getISOWeek } from "date-fns";
 import { de } from "date-fns/locale";
 import { format } from "date-fns";
@@ -53,7 +57,34 @@ export function CalendarView() {
     [appointments, hiddenSourceKeys],
   );
 
-  const radarAppointments = useMemo(() => visibleAppointments.map(event => ({ ...event, hasCollision: appointments.some(other => overlaps(event, other)) })), [visibleAppointments, appointments]);
+  const [showRequests, setShowRequests] = usePersistentState<boolean>("calendar.show-requests", true);
+  const [slotChoice, setSlotChoice] = useState<{ start: Date; end: Date } | null>(null);
+  const { data: openRequests = [] } = useOpenAppointmentRequests();
+  const requestEvents = useMemo<CalendarEvent[]>(() => {
+    if (!showRequests) return [];
+    return openRequests.map((r) => {
+      const start = requestStart(r);
+      return {
+        id: `${REQUEST_EVENT_PREFIX}${r.id}`,
+        title: `⏳ ${r.title}`,
+        description: r.requester ? `Anfrage von ${r.requester}` : undefined,
+        time: r.requested_time ? format(start, "HH:mm") : "Ganztägig",
+        duration: `${(r.duration_minutes / 60).toFixed(1)}h`,
+        date: start,
+        endTime: requestEnd(r),
+        location: r.location ?? undefined,
+        type: "blocked",
+        priority: "low",
+        participants: [],
+        attendees: 0,
+        is_all_day: !r.requested_time,
+        sourceScope: "system",
+        sourceId: "appointment-requests",
+      };
+    });
+  }, [openRequests, showRequests]);
+
+  const radarAppointments = useMemo(() => [...visibleAppointments, ...requestEvents].map(event => ({ ...event, hasCollision: appointments.some(other => overlaps(event, other)) })), [visibleAppointments, appointments]);
   const currentAppointment = appointments.find(event => event.id === selectedAppointment?.id) ?? selectedAppointment;
 
   const handleToggleSourceVisibility = (source: CalendarSource) => {
@@ -201,6 +232,18 @@ export function CalendarView() {
               </span>
             </div>
 
+            <div className="flex items-center gap-2">
+            <Button
+              variant={showRequests ? "secondary" : "ghost"}
+              size="sm"
+              className="h-9"
+              onClick={() => setShowRequests(!showRequests)}
+              aria-pressed={showRequests}
+              title="Vorgemerkte Terminanfragen im Kalender ein- oder ausblenden"
+            >
+              <CalendarClock className="mr-1.5 h-4 w-4" />
+              Anfragen{openRequests.length > 0 ? ` (${openRequests.length})` : ""}
+            </Button>
             <Select
               value={view === "polls" ? "polls" : view}
               onValueChange={(v) => setView(v as CalendarViewType)}
@@ -215,6 +258,7 @@ export function CalendarView() {
                 <SelectItem value="agenda">Agenda</SelectItem>
               </SelectContent>
             </Select>
+            </div>
           </div>
 
           {/* Calendar card */}
@@ -239,12 +283,13 @@ export function CalendarView() {
                   date={currentDate}
                   onNavigate={setCurrentDate}
                   onView={(v) => setView(v as CalendarViewType)}
-                  onEventSelect={(a) => { setSelectedAppointment(a); setSidebarOpen(true); }}
+                  onEventSelect={(a) => {
+                    if (a.id.startsWith(REQUEST_EVENT_PREFIX)) { openAppointmentRequestDetail(a.id.slice(REQUEST_EVENT_PREFIX.length)); return; }
+                    setSelectedAppointment(a); setSidebarOpen(true);
+                  }}
                   onEventDrop={handleEventDrop}
                   onEventResize={handleEventResize}
-                  onSelectSlot={(slot) => {
-                    navigate(`/calendar?action=create-appointment&start=${slot.start.toISOString()}&end=${slot.end.toISOString()}`);
-                  }}
+                  onSelectSlot={(slot) => setSlotChoice({ start: slot.start, end: slot.end })}
                 />
               ) : null}
             </CardContent>
@@ -265,6 +310,44 @@ export function CalendarView() {
           </div>
         )}
       </div>
+
+      <Dialog open={!!slotChoice} onOpenChange={(o) => !o && setSlotChoice(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Was möchtest du eintragen?</DialogTitle>
+            {slotChoice && (
+              <DialogDescription>
+                {format(slotChoice.start, "EEEE, d. MMMM, HH:mm 'Uhr'", { locale: de })}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+          <div className="grid gap-2">
+            <Button
+              onClick={() => {
+                if (!slotChoice) return;
+                navigate(`/calendar?action=create-appointment&start=${slotChoice.start.toISOString()}&end=${slotChoice.end.toISOString()}`);
+                setSlotChoice(null);
+              }}
+            >
+              <Calendar className="mr-2 h-4 w-4" /> Fester Termin
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!slotChoice) return;
+                const isMidnight = slotChoice.start.getHours() === 0 && slotChoice.start.getMinutes() === 0;
+                openAppointmentRequestCreate({
+                  date: format(slotChoice.start, "yyyy-MM-dd"),
+                  time: isMidnight ? undefined : format(slotChoice.start, "HH:mm"),
+                });
+                setSlotChoice(null);
+              }}
+            >
+              <CalendarClock className="mr-2 h-4 w-4" /> Als Anfrage vormerken
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <AppointmentPreparationSidebar
         appointmentId={selectedAppointmentForPreparation?.id || null}
