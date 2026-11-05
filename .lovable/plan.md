@@ -13,9 +13,11 @@
 - Ein Klick auf einen Termin öffnet ihn im Kalender.
 - Termine werden nicht in den Wochenplan kopiert. So bleiben sie immer aktuell, auch wenn sich im Kalender etwas ändert.
 
-## 3. Weitere Ideen (zum Mitbestellen)
+## 3. Wird mit umgesetzt
 - **Nachbereitung anstoßen:** Ist ein Termin vorbei, fragt der Tageszettel einmal „Nachbereitung notieren?“. Ein Klick legt eine Zeile wie „Nachbereitung: Jahresempfang“ an.
 - **Termin als Zeile übernehmen:** Ein kleines Plus am Termin übernimmt ihn als Notizzeile, z. B. für Vorbereitungsaufgaben.
+
+## 4. Weitere Ideen (zum Mitbestellen)
 - **Freie Zeitfenster:** In der Wochenplanung steht pro Tag ein dezenter Hinweis wie „noch ca. 3 Std. frei“. Das hilft beim Verteilen der Aufgaben.
 - **Briefing-Status am Termin:** Im Tageszettel zeigt ein Punkt in Grün, Gelb oder Rot, ob das Briefing fertig ist, gerade bearbeitet wird oder fehlt. Das entspricht der Anzeige auf dem Dashboard.
 
@@ -23,4 +25,5 @@
 - `DaySlipAppointments.tsx`: Filter `(endTime ?? date) > now` für Termine mit Uhrzeit. Ganztägige Termine werden bis Tagesende behalten. Dazu kommen die Ableitung von „jetzt“ und „als Nächstes“ und ein Umschalter für die vergangenen Termine.
 - Die Logik kommt als reine Funktion in eine kleine Hilfsdatei mit Tests: vorbei, laufend, als Nächstes, ganztägig.
 - `WeekPlanningBanner.tsx`: `useCalendarData(monday, "week")` und `useOpenAppointmentRequests()`. Beides wird nach Tag gruppiert (Mo–Fr) und oberhalb der Plan-Einträge jeder Spalte angezeigt. Am gespeicherten `WeekPlan` ändert sich nichts.
-- Abschnitt 3 setze ich nur um, wenn du ihn freigibst. Ohne Freigabe baue ich nur 1 und 2.
+- Nachbereitung und „Als Zeile übernehmen“ nutzen die vorhandene Tageszettel-Brücke (`sendToDaySlip`). Die Nachbereitungsfrage erscheint pro Termin nur einmal. Bereits gefragte Termine werden pro Nutzer gemerkt.
+- Abschnitt 4 setze ich nur um, wenn du ihn freigibst.
