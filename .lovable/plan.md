@@ -1,25 +1,26 @@
-## Beobachtung
+# Tageszettel: Termine aktuell halten und in der Wochenplanung zeigen
 
-- In der DB existieren 14 aktive/offene `task_decisions`, davon 9 sichtbar für `56188e2c…` (RPC-Test serverseitig).
-- `get_my_work_decisions` ist `SECURITY INVOKER` (kein DEFINER) und verlässt sich vollständig auf die RLS von `task_decisions`. RLS verlangt `tenant_id = ANY(get_user_tenant_ids(auth.uid()))`.
-- Es gibt aktuell keine Konsolen-/Netzwerk-Logs (User ist auf `/auth`), also kein Direktbefund. Ohne Login-Identität des betroffenen Users lässt sich nicht entscheiden, ob:
-  1. der RPC clientseitig nie ausgelöst wird (z. B. `user?.id` undefined),
-  2. der RPC eine PostgREST-Fehlerantwort liefert (RLS / `get_user_tenant_ids`-Permission-Denied → leere Liste),
-  3. die Antwort zurückkommt, aber `filterDecisionsByTab` alles wegfiltert (z. B. weil die aktive Tab-Auswahl in `localStorage` einen Zustand hat, in dem alle Tabs ausgeblendet sind).
+## 1. Vorbei = ausgeblendet
+- Unter „Heutige Termine“ stehen nur noch Termine, die noch nicht zu Ende sind. Die Liste aktualisiert sich jede Minute, wie bisher.
+- Ganztägige Termine bleiben den ganzen Tag stehen.
+- Die Überschrift zeigt die verbleibenden Termine, z. B. „Heutige Termine (2 von 5)“. Wenn alle vorbei sind: „Für heute keine Termine mehr“.
+- Optional gibt es den kleinen Link „3 vorbei anzeigen“, um die erledigten Termine einmal gedämpft aufzuklappen.
+- Der laufende Termin wird als „Jetzt“ hervorgehoben, der nächste als „Als Nächstes in 25 Min.“.
 
-## Plan
+## 2. Bekannte Termine in der Wochenplanung
+- Im Raster „Woche vorplanen“ (Mo–Fr) stehen oben in jeder Tagesspalte die Termine der Woche aus dem Kalender: Uhrzeit und Titel, nur zum Lesen, farblich von den eigenen Punkten abgesetzt.
+- Vorgemerkte Terminanfragen erscheinen dort gestrichelt mit ⏳, wie im Kalender.
+- Ein Klick auf einen Termin öffnet ihn im Kalender.
+- Termine werden nicht in den Wochenplan kopiert. So bleiben sie immer aktuell, auch wenn sich im Kalender etwas ändert.
 
-1. **Diagnose-Hilfsausgabe ergänzen** in `useMyWorkDecisionsData.ts` und `useDecisionOverviewData.ts`:
-   - Bei jedem Load `debugConsole.log` mit `userId`, Anzahl Roh-Entscheidungen aus RPC, Anzahl nach Dedupe.
-   - Bei RPC-Fehler `notify.error` mit Code statt nur `setError`, damit der User den Hinweis sieht.
-2. **Sichtbarer Empty-State** in `MyWorkDecisionsTab.tsx`: zusätzlich zur tabbezogenen Empty-Message einen Hinweis „0 Entscheidungen geladen" anzeigen, wenn `decisions.length === 0` (statt nur tab-spezifischer Text).
-3. **Tab-Reset-Schutz**: in `useMyWorkSettings.tsx` sicherstellen, dass `hiddenDecisionTabs` niemals alle 4 Tabs ausblendet (Sanitizer ergänzen). Falls Storage einen kaputten Zustand enthält → auf Default zurückfallen.
-4. **`get_my_work_decisions` zu `SECURITY DEFINER` umstellen** (Migration), damit ein Permission-Issue auf `get_user_tenant_ids` (anon-Aufrufe) RPC-Antworten nicht beeinflussen kann; intern weiterhin `tenant_id`-Check via `get_user_tenant_ids(p_user_id)`. Nur ausführen, wenn Schritt 1–3 das Problem nicht beseitigen.
-5. **Verifikation**:
-   - User bittet sich neu einzuloggen, Konsole zeigt jetzt RPC-Resultatlänge.
-   - Falls `length > 0` → Filter-/Tab-Logik ist Ursache (Schritt 3 deckt's ab).
-   - Falls `length === 0` mit Fehler → Schritt 4 ausführen und ggf. RLS prüfen.
+## 3. Weitere Ideen (zum Mitbestellen)
+- **Nachbereitung anstoßen:** Ist ein Termin vorbei, fragt der Tageszettel einmal „Nachbereitung notieren?“. Ein Klick legt eine Zeile wie „Nachbereitung: Jahresempfang“ an.
+- **Termin als Zeile übernehmen:** Ein kleines Plus am Termin übernimmt ihn als Notizzeile, z. B. für Vorbereitungsaufgaben.
+- **Freie Zeitfenster:** In der Wochenplanung steht pro Tag ein dezenter Hinweis wie „noch ca. 3 Std. frei“. Das hilft beim Verteilen der Aufgaben.
+- **Briefing-Status am Termin:** Im Tageszettel zeigt ein Punkt in Grün, Gelb oder Rot, ob das Briefing fertig ist, gerade bearbeitet wird oder fehlt. Das entspricht der Anzeige auf dem Dashboard.
 
-## Rückfrage
-
-Bevor ich Code ändere: bitte die Anzeige-Mail oder User-ID des betroffenen Accounts nennen, damit ich gezielt prüfen kann, ob `user_tenant_memberships` für diesen User aktiv sind und ob die RPC-Antwort > 0 ist. Andernfalls fahre ich mit den Diagnose-Schritten 1–3 fort.
+## Technische Details
+- `DaySlipAppointments.tsx`: Filter `(endTime ?? date) > now` für Termine mit Uhrzeit. Ganztägige Termine werden bis Tagesende behalten. Dazu kommen die Ableitung von „jetzt“ und „als Nächstes“ und ein Umschalter für die vergangenen Termine.
+- Die Logik kommt als reine Funktion in eine kleine Hilfsdatei mit Tests: vorbei, laufend, als Nächstes, ganztägig.
+- `WeekPlanningBanner.tsx`: `useCalendarData(monday, "week")` und `useOpenAppointmentRequests()`. Beides wird nach Tag gruppiert (Mo–Fr) und oberhalb der Plan-Einträge jeder Spalte angezeigt. Am gespeicherten `WeekPlan` ändert sich nichts.
+- Abschnitt 3 setze ich nur um, wenn du ihn freigibst. Ohne Freigabe baue ich nur 1 und 2.
