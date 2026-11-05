@@ -21,9 +21,9 @@ const TYPE_CONFIG = {
   eventPlanning: { label: 'Veranstaltung', tabBase: '/eventplanning', Icon: CalendarDays },
 };
 const GROUP_CONFIG = {
-  overdue: { label: 'Überfällig', color: 'bg-destructive' },
   today: { label: 'Heute', color: 'bg-palette-amber' },
   thisWeek: { label: 'Restliche Woche', color: 'bg-palette-blue' },
+  overdue: { label: 'Überfällig', color: 'bg-destructive' },
   later: { label: 'Später', color: 'bg-muted-foreground/50' },
 };
 
@@ -41,6 +41,8 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
   const [reviewOpen, setReviewOpen] = useState(false);
   const actions = useDeadlineActions();
   const oldItems = grouped.overdue.filter(item => differenceInCalendarDays(new Date(), new Date(item.dueDate)) > 30);
+  const recentOverdue = grouped.overdue.filter(item => differenceInCalendarDays(new Date(), new Date(item.dueDate)) <= 30);
+  const [showOldOverdue, setShowOldOverdue] = useState(false);
   const [showLater, setShowLater] = useState(false);
   const [visibleCounts, setVisibleCounts] = useState<Record<GroupKey, number>>({
     overdue: PAGE_SIZE,
@@ -149,10 +151,12 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
       {filter && grouped[filter].length === 0 && <p className="py-3 text-sm text-muted-foreground">Keine Fristen in diesem Bereich.</p>}
       {renderGroup('today', 'Heute', grouped.today, 'text-palette-amber')}
       {renderGroup('thisWeek', 'Restliche Woche', grouped.thisWeek, 'text-palette-blue')}
-      {renderGroup('overdue', 'Überfällig · nach Priorität', grouped.overdue, 'text-destructive')}
-      {oldItems.length > 0 && (!filter || filter === 'overdue') && <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-palette-amber/15 p-3 text-sm">
-        <span>{oldItems.length} {oldItems.length === 1 ? 'Frist ist' : 'Fristen sind'} seit mehr als 30 Tagen überfällig.</span>
-        <button type="button" className="rounded border border-border px-3 py-2 font-medium hover:bg-background/60 focus-visible:outline-primary" onClick={() => setReviewOpen(true)}>Alte Fristen prüfen</button>
+      {renderGroup('overdue', 'Überfällig · nach Priorität', showOldOverdue ? grouped.overdue : recentOverdue, 'text-destructive')}
+      {oldItems.length > 0 && (!filter || filter === 'overdue') && <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-3 text-xs text-muted-foreground">
+        <button type="button" className="hover:text-foreground transition-colors focus-visible:outline-primary" onClick={() => setShowOldOverdue(v => !v)} aria-expanded={showOldOverdue}>
+          {showOldOverdue ? `${oldItems.length} ältere ausblenden` : `+ ${oldItems.length} älter als 30 Tage · anzeigen`}
+        </button>
+        <button type="button" className="font-medium hover:text-foreground transition-colors focus-visible:outline-primary" onClick={() => setReviewOpen(true)}>Alte Fristen prüfen</button>
       </div>}
       <DeadlineReviewDialog items={oldItems} open={reviewOpen} onOpenChange={setReviewOpen} />
 
