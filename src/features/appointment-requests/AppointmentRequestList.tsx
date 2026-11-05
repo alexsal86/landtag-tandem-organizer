@@ -34,7 +34,8 @@ export function AppointmentRequestList({ mode, hideWhenEmpty }: Props) {
         icon={CalendarClock}
         title="Keine offenen Terminanfragen"
         description="Neue Anfragen aus E-Mail oder Post hier vormerken."
-        action={<Button size="sm" variant="outline" onClick={() => openAppointmentRequestCreate()}><Plus className="mr-1 h-4 w-4" />Anfrage vormerken</Button>}
+        size="sm"
+        action={{ label: "Anfrage vormerken", icon: Plus, onClick: () => openAppointmentRequestCreate() }}
       />
     );
   }
