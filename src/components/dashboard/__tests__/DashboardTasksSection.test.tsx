@@ -32,9 +32,9 @@ describe('deadline dashboard interactions', () => {
     const todayFilter = screen.getByRole('button', { name: 'Heute 1' });
     fireEvent.click(todayFilter);
     expect(todayFilter).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.queryByText('Alte Entscheidung')).not.toBeInTheDocument();
+    expect(screen.queryByText('Am Freitag')).not.toBeInTheDocument();
     fireEvent.click(todayFilter);
-    expect(screen.getByText('Alte Entscheidung')).toBeInTheDocument();
+    expect(screen.getByText('Am Freitag')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Später 1', pressed: false }));
     expect(screen.getByText('Im Dezember')).toBeInTheDocument();
     expect(screen.queryByText('Heute bearbeiten')).not.toBeInTheDocument();
