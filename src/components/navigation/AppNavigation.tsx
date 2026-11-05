@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, type ElementType } from "react";
+import { useUserPreference } from "@/hooks/useUserPreference";
+import { SHOW_RECENT_PREF_KEY } from "@/components/settings/SidebarPreferencesCard";
 import { useNavPanelData } from "./appNavigation/useNavPanelData";
 import { NavDossierCapture } from "@/components/search/NavDossierCapture";
 import { useNavigate } from "react-router-dom";
@@ -117,6 +119,7 @@ export function AppNavigation({
   useFavicon(appSettings.app_logo_url);
   const { pages: quickAccessPages, addPage, removePage, isInQuickAccess } = useQuickAccessPages();
   const { recentPages, trackVisit } = useRecentlyVisited();
+  const [showRecent] = useUserPreference<boolean>(SHOW_RECENT_PREF_KEY, false);
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
   const { user, signOut } = useAuth();
   const { currentStatus, getStatusDisplay } = useUserStatus();
@@ -433,7 +436,7 @@ export function AppNavigation({
       </div>
 
       {/* Recently Visited */}
-      {recentPages.length > 0 && (
+      {showRecent && recentPages.length > 0 && (
         <div className="px-2 py-2 border-t border-border">
           <div className="flex items-center px-2 mb-1">
             <span className="text-[11px] font-medium text-[hsl(var(--nav-muted))] uppercase tracking-wider">
