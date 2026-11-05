@@ -68,7 +68,8 @@ import { navigationGroups, getNavigationGroups, NavGroup } from "@/components/na
 import { HelpDialog } from "@/components/navigation/HelpDialog";
 import { formatDistanceToNow, format, isToday, isYesterday, isTomorrow } from "date-fns";
 import { de } from "date-fns/locale";
-import { Clock } from "lucide-react";
+import { CalendarClock, Clock } from "lucide-react";
+import { openAppointmentRequestCreate } from "@/features/appointment-requests/events";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1167,6 +1168,20 @@ export function AppNavigation({
             {activePanel !== 'casefiles' && <TooltipContent side="bottom" className="text-xs">Fallakten</TooltipContent>}
           </Tooltip>
 
+          {/* Quick appointment request (dialog trigger, not a panel) */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => openAppointmentRequestCreate()}
+                aria-label="Terminanfrage vormerken"
+                className="h-7 rounded-md flex items-center gap-1.5 px-2 hover:bg-[hsl(var(--nav-hover))] transition-colors ml-auto"
+              >
+                <CalendarClock className="h-4 w-4 shrink-0" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">Terminanfrage vormerken (⌘⇧.)</TooltipContent>
+          </Tooltip>
+
           {/* Search (dialog trigger, not a panel) */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -1174,7 +1189,7 @@ export function AppNavigation({
                 onClick={() => {
                   window.dispatchEvent(new CustomEvent('openGlobalSearch', { detail: { query: '' } }));
                 }}
-                className="h-7 rounded-md flex items-center gap-1.5 px-2 hover:bg-[hsl(var(--nav-hover))] transition-colors ml-auto"
+                className="h-7 rounded-md flex items-center gap-1.5 px-2 hover:bg-[hsl(var(--nav-hover))] transition-colors"
               >
                 <Search className="h-4 w-4 shrink-0" />
               </button>

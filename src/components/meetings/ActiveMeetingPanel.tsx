@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import type { Meeting, AgendaItem, Profile, LinkedQuickNote, LinkedTask, LinkedCaseItem, RelevantDecision, MeetingUpcomingAppointment } from './types';
 import { notify } from "@/lib/notify";
+import { JourFixeRequestsCard } from "@/features/appointment-requests/JourFixeRequestsCard";
 
 interface ActiveMeetingPanelProps {
   meeting: Meeting;
@@ -561,6 +562,7 @@ export function ActiveMeetingPanel({
           </div>
         </CardContent>
       </Card>
+      <JourFixeRequestsCard className="mt-4" />
     </div>
   );
 }

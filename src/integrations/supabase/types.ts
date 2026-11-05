@@ -781,6 +781,93 @@ export type Database = {
           },
         ]
       }
+      appointment_requests: {
+        Row: {
+          appointment_id: string | null
+          channel: string
+          created_at: string
+          created_by: string
+          decided_at: string | null
+          decided_by: string | null
+          duration_minutes: number
+          id: string
+          location: string | null
+          notes: string | null
+          recommendation: string | null
+          recommendation_note: string | null
+          recommended_by: string | null
+          requested_date: string
+          requested_time: string | null
+          requester: string | null
+          response_deadline: string | null
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          duration_minutes?: number
+          id?: string
+          location?: string | null
+          notes?: string | null
+          recommendation?: string | null
+          recommendation_note?: string | null
+          recommended_by?: string | null
+          requested_date: string
+          requested_time?: string | null
+          requester?: string | null
+          response_deadline?: string | null
+          status?: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          duration_minutes?: number
+          id?: string
+          location?: string | null
+          notes?: string | null
+          recommendation?: string | null
+          recommendation_note?: string | null
+          recommended_by?: string | null
+          requested_date?: string
+          requested_time?: string | null
+          requester?: string | null
+          response_deadline?: string | null
+          status?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_requests_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_requests_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointment_statuses: {
         Row: {
           color: string | null
@@ -13354,6 +13441,10 @@ export type Database = {
           _participant_id: string
           _poll_id: string
         }
+        Returns: string
+      }
+      decide_appointment_request: {
+        Args: { _decision: string; _request_id: string }
         Returns: string
       }
       delete_employee_meeting: {

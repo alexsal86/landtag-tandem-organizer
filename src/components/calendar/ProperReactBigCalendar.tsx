@@ -238,6 +238,17 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
       className = `event-${originalEvent.type}`;
     }
 
+    // Pending appointment requests: pale, dashed placeholder
+    if (String(event.id).startsWith('blocked-request-')) {
+      style.background = 'hsl(var(--muted))';
+      style.backgroundColor = 'hsl(var(--muted))';
+      style.color = 'hsl(var(--muted-foreground))';
+      style.border = '1.5px dashed hsl(var(--muted-foreground) / 0.6)';
+      style.opacity = 0.85;
+      className = `${className} event-request`.trim();
+      return { className, style };
+    }
+
     if (originalEvent?.priority === 'high') {
       style.fontWeight = 'bold';
       style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
