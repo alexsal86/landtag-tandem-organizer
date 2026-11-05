@@ -20,6 +20,8 @@ describe('deadline dashboard interactions', () => {
   afterEach(() => vi.useRealTimers());
   it('places current deadlines first and keeps later deadlines collapsed', () => {
     setup();
+    expect(screen.queryByText('Alte Entscheidung')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /älter als 30 Tage/ }));
     const today = screen.getByText('Heute bearbeiten');
     const overdue = screen.getByText('Alte Entscheidung');
     expect(today.compareDocumentPosition(overdue) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -30,16 +32,16 @@ describe('deadline dashboard interactions', () => {
     const todayFilter = screen.getByRole('button', { name: 'Heute 1' });
     fireEvent.click(todayFilter);
     expect(todayFilter).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.queryByText('Alte Entscheidung')).not.toBeInTheDocument();
+    expect(screen.queryByText('Am Freitag')).not.toBeInTheDocument();
     fireEvent.click(todayFilter);
-    expect(screen.getByText('Alte Entscheidung')).toBeInTheDocument();
+    expect(screen.getByText('Am Freitag')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Später 1', pressed: false }));
     expect(screen.getByText('Im Dezember')).toBeInTheDocument();
     expect(screen.queryByText('Heute bearbeiten')).not.toBeInTheDocument();
   });
   it('reviews real old deadlines and selects only editable records', () => {
     setup();
-    expect(screen.getByText('2 Fristen sind seit mehr als 30 Tagen überfällig.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '+ 2 älter als 30 Tage · anzeigen' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Alte Fristen prüfen' }));
     fireEvent.click(screen.getByLabelText('Alle bearbeitbaren Fristen auswählen (1)'));
     expect(screen.getByText('1 ausgewählt')).toBeInTheDocument();

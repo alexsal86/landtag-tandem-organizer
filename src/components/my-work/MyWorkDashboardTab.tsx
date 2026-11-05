@@ -8,7 +8,8 @@ import { useDashboardAppointmentsData } from '@/hooks/useDashboardAppointmentsDa
 import { useDashboardDeadlines } from '@/hooks/useDashboardDeadlines';
 import { NewsWidget } from '@/components/widgets/NewsWidget';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
-import { CalendarClock, CalendarDays, ClipboardList, Newspaper, Vote, Users } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { ArrowRight, CalendarClock, CalendarDays, ClipboardList, Newspaper, Vote, Users } from 'lucide-react';
 import { AppointmentRequestList } from '@/features/appointment-requests/AppointmentRequestList';
 import { useNextJourFixeDate, useOpenAppointmentRequests } from '@/features/appointment-requests/useAppointmentRequests';
 import { isUrgent } from '@/features/appointment-requests/logic';
@@ -18,9 +19,39 @@ import { DashboardDecisionsWidget } from '@/components/dashboard/DashboardDecisi
 import { DashboardJourFixeWidget } from '@/components/dashboard/DashboardJourFixeWidget';
 import { ErrorState, LoadingState } from '@/components/ui-patterns';
 import { cn } from '@/lib/utils';
+import { useEffect, useState } from 'react';
+
+/** Shows "Kalender öffnen" briefly, then shrinks to icon + arrow; expands again on hover/focus. */
+function CollapsingCalendarLink() {
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setCollapsed(true), 3000);
+    return () => window.clearTimeout(t);
+  }, []);
+  return (
+    <Link
+      to="/calendar"
+      aria-label="Kalender öffnen"
+      className="group/cal inline-flex h-7 items-center gap-1 rounded-md px-2 text-sm text-primary transition-colors duration-base ease-standard hover:bg-primary/10 focus-visible:outline-primary"
+    >
+      <CalendarDays className="h-4 w-4 shrink-0" aria-hidden="true" />
+      <span
+        className={cn(
+          'overflow-hidden whitespace-nowrap transition-all duration-slow ease-emphasized',
+          collapsed ? 'max-w-0 opacity-0 group-hover/cal:max-w-32 group-hover/cal:opacity-100 group-focus-visible/cal:max-w-32 group-focus-visible/cal:opacity-100' : 'max-w-32 opacity-100',
+        )}
+      >
+        Kalender öffnen
+      </span>
+      <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+    </Link>
+  );
+}
 
 interface DashboardWidgetContainerProps {
   title: ReactNode;
+  icon?: LucideIcon;
+  iconClassName?: string;
   className?: string;
   headerAction?: ReactNode;
   compactTitle?: boolean;
@@ -33,9 +64,10 @@ interface DashboardWidgetContainerProps {
 
 function DashboardWidgetContainer({
   title,
+  icon: Icon,
+  iconClassName,
   className,
   headerAction,
-  compactTitle = false,
   isLoading = false,
   hasError = false,
   loadingVariant = 'list',
@@ -53,7 +85,10 @@ function DashboardWidgetContainer({
   return (
     <Card className={cn('shadow-sm border-border/60 animate-fade-in', className)}>
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 py-space-sm px-space-md">
-        <CardTitle className={cn("font-medium", compactTitle ? "text-base" : "text-body-lg")}>{title}</CardTitle>
+        <CardTitle className="inline-flex items-center gap-2 text-base font-medium leading-6">
+          {Icon && <Icon className={cn("h-5 w-5 shrink-0 text-muted-foreground", iconClassName)} aria-hidden="true" />}
+          {title}
+        </CardTitle>
         {headerAction}
       </CardHeader>
       <CardContent className="px-space-md pb-space-md pt-0">{content}</CardContent>
@@ -66,13 +101,7 @@ function DeadlinesWidget() {
 
   return (
     <DashboardWidgetContainer
-      compactTitle
-      title={
-        <span className="inline-flex items-center gap-space-xs">
-          <ClipboardList className="h-5 w-5 text-muted-foreground" />
-          Fristen
-        </span>
-      }
+      icon={ClipboardList} title="Fristen"
       isLoading={isLoading}
       hasError={isError}
       errorMessage="Fristen konnten nicht geladen werden."
@@ -87,14 +116,8 @@ function AppointmentsWidget() {
 
   return (
     <DashboardWidgetContainer
-      title={
-        <span className="inline-flex items-center gap-space-xs">
-          <CalendarDays className="h-4 w-4 text-muted-foreground" />
-          Nächste Termine
-        </span>
-      }
-      compactTitle
-      headerAction={<Link to="/calendar" className="text-sm text-primary hover:underline focus-visible:outline-primary">Kalender öffnen</Link>}
+      icon={CalendarDays} title="Nächste Termine"
+      headerAction={<CollapsingCalendarLink />}
       isLoading={dashboardData.isLoading || dashboardData.tenantLoading}
       hasError={dashboardData.isError}
       loadingVariant="card"
@@ -112,13 +135,7 @@ function UrgentRequestsWidget() {
   if (!data.some((r) => isUrgent(r, nextJf))) return null;
   return (
     <DashboardWidgetContainer
-      title={
-        <span className="inline-flex items-center gap-space-xs">
-          <CalendarClock className="h-4 w-4 text-destructive" />
-          Eilige Terminanfragen
-        </span>
-      }
-      compactTitle
+      icon={CalendarClock} iconClassName="text-destructive" title="Eilige Terminanfragen"
       errorMessage="Anfragen konnten nicht geladen werden."
     >
       <p className="mb-1 text-xs text-muted-foreground">Vor dem nächsten Jour fixe zu entscheiden.</p>
@@ -130,12 +147,7 @@ function UrgentRequestsWidget() {
 function NewsWidgetCard() {
   return (
     <DashboardWidgetContainer
-      title={
-        <span className="inline-flex items-center gap-space-xs">
-          <Newspaper className="h-4 w-4 text-muted-foreground" />
-          News
-        </span>
-      }
+      icon={Newspaper} title="News"
       className="min-w-0"
       errorMessage="News konnten nicht geladen werden."
     >
@@ -162,7 +174,7 @@ export function MyWorkDashboardTab() {
         <div className="flex flex-col gap-space-md min-w-0">
           <DeadlinesWidget />
           <DashboardWidgetContainer
-            title={<span className="inline-flex items-center gap-space-xs"><Vote className="h-4 w-4 text-muted-foreground" />Entscheidungen</span>}
+            icon={Vote} title="Entscheidungen"
             errorMessage="Entscheidungen konnten nicht geladen werden."
           >
             <ErrorBoundary fallback={<ErrorState description="Entscheidungen konnten nicht geladen werden." />}>
@@ -172,7 +184,7 @@ export function MyWorkDashboardTab() {
         </div>
         <div className="flex flex-col gap-space-md min-w-0">
           <DashboardWidgetContainer
-            title={<span className="inline-flex items-center gap-space-xs"><Users className="h-4 w-4 text-muted-foreground" />Jour fixe</span>}
+            icon={Users} title="Jour fixe"
             errorMessage="Jour fixe konnte nicht geladen werden."
           >
             <ErrorBoundary fallback={<ErrorState description="Jour fixe konnte nicht geladen werden." />}>
