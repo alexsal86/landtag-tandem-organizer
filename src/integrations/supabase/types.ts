@@ -9736,6 +9736,48 @@ export type Database = {
           },
         ]
       }
+      quick_note_write_receipts: {
+        Row: {
+          created_at: string
+          note_id: string
+          operation_id: string
+          result: Json
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          note_id: string
+          operation_id: string
+          result: Json
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          note_id?: string
+          operation_id?: string
+          result?: Json
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_note_write_receipts_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "quick_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quick_note_write_receipts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quick_notes: {
         Row: {
           added_to_meeting_at: string | null
@@ -13703,6 +13745,10 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      list_quick_notes: {
+        Args: { p_note_id?: string; p_tenant_id: string }
+        Returns: Json
+      }
       log_collaboration_event: {
         Args: {
           details?: Json
@@ -13753,6 +13799,21 @@ export type Database = {
           finding_count: number
           scope: string
         }[]
+      }
+      save_quick_note: {
+        Args: {
+          p_actor_id: string
+          p_base_revision?: number
+          p_color?: string
+          p_content: string
+          p_create?: boolean
+          p_is_pinned?: boolean
+          p_note_id: string
+          p_operation_id: string
+          p_tenant_id: string
+          p_title: string
+        }
+        Returns: Json
       }
       send_message: {
         Args: {
