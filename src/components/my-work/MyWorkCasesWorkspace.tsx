@@ -22,7 +22,7 @@ import { useCaseItemEdit, type CaseItemInteractionDocument, type TimelineEvent, 
 
 import { toEditorHtml } from "@/components/my-work/utils/editorContent";
 import { CaseItemBallPanel, type BallPatch } from "@/components/my-work/cases/workspace/CaseItemBallPanel";
-import { countTriage, matchesTriage, ballMeta, type TriageFilter } from "@/features/cases/items/ball";
+import { countTriage, matchesTriage, ballMeta, withAutoDeadline, type TriageFilter } from "@/features/cases/items/ball";
 import { CaseItemList, type CaseItemSortKey, type SortDirection } from "@/components/my-work/cases/workspace/CaseItemList";
 import { CaseFileList } from "@/components/my-work/cases/workspace/CaseFileList";
 import { CasesWorkspaceShell } from "@/components/my-work/cases/workspace/CasesWorkspaceShell";
@@ -447,14 +447,15 @@ export function MyWorkCasesWorkspace() {
   };
 
 
-  const handleBallChange = async (item: CaseItem, patch: BallPatch) => {
+  const handleBallChange = async (item: CaseItem, rawPatch: BallPatch) => {
+    const patch = withAutoDeadline(item, rawPatch);
     const ok = await applyItemOptimisticUpdate(
       item.id,
       (row) => ({ ...row, ...patch }),
       () => supabase.from("case_items").update(patch).eq("id", item.id),
       "Änderung konnte nicht gespeichert werden.",
     );
-    if (ok && patch.ball_owner) notify.success(`Am Zug: ${ballMeta(patch.ball_owner).label}`);
+    if (ok && patch.ball_owner) notify.success(`Am Zug: ${ballMeta(patch.ball_owner).label}${patch.next_action_due_at && !rawPatch.next_action_due_at ? " · Frist in 3 Wochen gesetzt" : ""}`);
   };
 
   const handleQuickVisibilityChange = async (item: CaseItem, nextPublic: boolean) => {

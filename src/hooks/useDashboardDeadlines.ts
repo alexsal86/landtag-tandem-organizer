@@ -53,7 +53,7 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
         event_planning_id,
         event_plannings (id, title, user_id, is_archived, is_completed),
         event_planning_checklist_items (id, title, is_completed)
-      `),,
+      `),
     tenantId
       ? supabase.from('case_items').select('id, subject, next_action_label, next_action_due_at, next_action_assignee_id, owner_user_id, user_id')
           .eq('tenant_id', tenantId)
@@ -63,7 +63,7 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
       : Promise.resolve({ data: [] })
   ]);
 
-  for (const result of [tasksRes, notesRes, casesRes, decisionsRes, planningDeadlinesRes]) {
+  for (const result of [tasksRes, notesRes, casesRes, decisionsRes, planningDeadlinesRes, caseActionsRes]) {
     if ('error' in result && result.error) throw result.error;
   }
 
