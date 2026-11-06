@@ -6,6 +6,7 @@ const TYPE_CONTEXT_LABEL: Record<DeadlineKind, string> = {
   task: 'Aufgabe',
   note: 'Notiz',
   case: 'Vorgang',
+  caseAction: 'Nächster Schritt',
   decision: 'Entscheidung',
   eventPlanning: 'Veranstaltung',
 };

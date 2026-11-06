@@ -24,6 +24,24 @@ export function ballMeta(owner: string | null | undefined) {
   return BALL_OWNERS.find((b) => b.value === owner) ?? BALL_OWNERS[0];
 }
 
+/** Parlamentarische Antwortfrist bei Ministerien (Kalendertage). */
+export const MINISTRY_RESPONSE_DAYS = 21;
+
+/** Ergänzt beim Wechsel zum Ministerium automatisch eine 3-Wochen-Frist, wenn noch keine gesetzt ist. */
+export function withAutoDeadline<T extends { ball_owner?: string | null; next_action_due_at?: string | null; next_action_label?: string | null }>(
+  current: TriageItem,
+  patch: T,
+  now: Date = new Date(),
+): T {
+  if (patch.ball_owner !== "ministry" || current.next_action_due_at || patch.next_action_due_at) return patch;
+  const due = new Date(now.getFullYear(), now.getMonth(), now.getDate() + MINISTRY_RESPONSE_DAYS, 12);
+  return {
+    ...patch,
+    next_action_due_at: due.toISOString(),
+    next_action_label: patch.next_action_label ?? current.next_action_label ?? "Antwort des Ministeriums nachhalten",
+  };
+}
+
 export type TriageFilter = "all" | "mine" | "office" | "waiting" | "due_soon" | "no_next_action";
 
 export type TriageItem = {

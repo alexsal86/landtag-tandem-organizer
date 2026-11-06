@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countTriage, daysUntilNextAction, matchesTriage } from "./ball";
+import { countTriage, daysUntilNextAction, matchesTriage, withAutoDeadline } from "./ball";
 
 const now = new Date(2026, 10, 6, 11, 0);
 
@@ -29,6 +29,18 @@ describe("Vorgänge: Wer ist am Zug", () => {
   it("Ohne nächsten Schritt nur, wenn das Büro am Zug ist", () => {
     expect(matchesTriage({ ball_owner: "office", next_action_label: "  " }, "no_next_action", null, now)).toBe(true);
     expect(matchesTriage({ ball_owner: "citizen" }, "no_next_action", null, now)).toBe(false);
+  });
+
+  it("setzt beim Wechsel zum Ministerium automatisch 21 Tage Frist", () => {
+    const p = withAutoDeadline({}, { ball_owner: "ministry" }, now);
+    expect(daysUntilNextAction(p, now)).toBe(21);
+    expect(p.next_action_label).toBe("Antwort des Ministeriums nachhalten");
+  });
+
+  it("überschreibt keine bestehende Frist", () => {
+    const existing = new Date(2026, 10, 10).toISOString();
+    expect(withAutoDeadline({ next_action_due_at: existing }, { ball_owner: "ministry" }, now).next_action_due_at).toBeUndefined();
+    expect(withAutoDeadline({}, { ball_owner: "citizen" }, now).next_action_due_at).toBeUndefined();
   });
 
   it("berechnet Kalendertage bis zur Frist", () => {
