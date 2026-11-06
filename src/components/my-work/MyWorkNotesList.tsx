@@ -204,7 +204,7 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
           </div>
         )}
 
-        <QuickNotesSyncStatus />
+        <QuickNotesSyncStatus hideLabel />
         <QuickNotesList
           refreshTrigger={(refreshTrigger || 0) + localRefreshTrigger}
           showHeader={false}
