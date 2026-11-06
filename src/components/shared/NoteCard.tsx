@@ -91,7 +91,6 @@ export function NoteCard({
 }: NoteCardProps) {
   const checklist = countChecklist(note.content);
   const [transferPopoverOpen, setTransferPopoverOpen] = useState(false);
-  const hasLinkedItems = note.task_id || note.decision_id || note.meeting_id || note.case_item_id;
   const hasShared = (note.share_count || 0) > 0 || note.is_shared === true;
 
   const canEdit = note.user_id === userId || note.can_edit === true;
@@ -475,6 +474,7 @@ export function NoteCard({
                   </div></TooltipProvider>
                 )}
               </div>
+            </div>
         </div>
       </TooltipProvider>
     </div>
