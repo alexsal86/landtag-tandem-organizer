@@ -8,6 +8,7 @@ import { useTenantUsers } from "@/hooks/useTenantUsers";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { sourcePath, normalizeStore } from "./daySlipState";
+import type { DaySlipSource } from "./dayslipTypes";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   Check, ClipboardPen, Clock3, Folder, FolderArchive, ListTodo, NotebookPen,
