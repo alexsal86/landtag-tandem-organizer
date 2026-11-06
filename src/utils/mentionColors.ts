@@ -20,7 +20,7 @@ export function mentionColors(badgeColor: string | null) {
 /** Shared by the editor, HTML export and already saved mentions. */
 export function mentionStyle(badgeColor: string | null | undefined): string {
   const colors = mentionColors(badgeColor ?? null);
-  return `background-color: ${colors.background}; color: ${colors.text}; font-weight: 600; padding: 2px 8px; margin: 0 1px; border-radius: 9999px;`;
+  return `background-color: ${colors.background}; color: ${colors.text}; font-weight: 600; padding: 3px 9px; margin: 0 1px; border-radius: 9999px;`;
 }
 
 export function styleMention(element: HTMLElement, badgeColor: string | null) {

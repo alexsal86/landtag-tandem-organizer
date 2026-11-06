@@ -260,7 +260,7 @@
 /* Mention styling for RichTextDisplay and rendered HTML */
 span[data-lexical-mention="true"] {
   font-weight: 600;
-  padding: 2px 8px;
+  padding: 3px 9px;
   margin: 0 1px;
   border-radius: 9999px;
   box-decoration-break: clone;
