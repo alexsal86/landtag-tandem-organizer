@@ -1,3 +1,4 @@
+import { mentionStyle } from "@/utils/mentionColors";
 /**
  * MentionNode - based on the official Lexical Playground MentionNode
  * Extended with userId and badgeColor for notification and styling support.
@@ -98,7 +99,7 @@ export class MentionNode extends TextNode {
   createDOM(config: EditorConfig): HTMLElement {
     const dom = super.createDOM(config);
     // Keep mention chips light with dark, readable text.
-    dom.style.cssText = `background-color: #fcdda3; color: #805000; font-weight: 600; padding: 1px 8px; border-radius: 9999px;`;
+    dom.style.cssText = mentionStyle(this.__badgeColor);
     dom.className = 'mention';
     dom.spellcheck = false;
     dom.setAttribute('data-lexical-mention', 'true');
@@ -114,7 +115,7 @@ export class MentionNode extends TextNode {
     element.setAttribute('data-lexical-mention-name', this.__mention);
     element.setAttribute('data-lexical-mention-user-id', this.__userId);
     element.setAttribute('data-lexical-mention-color', this.__badgeColor);
-    element.style.cssText = `background-color: #fcdda3; color: #805000; font-weight: 600; padding: 1px 8px; border-radius: 9999px;`;
+    element.style.cssText = mentionStyle(this.__badgeColor);
     element.textContent = this.__text;
     return { element };
   }

@@ -9,22 +9,22 @@ import {
   DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger,
   DropdownMenuSubContent, DropdownMenuPortal
 } from "@/components/ui/dropdown-menu";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Pin, Trash2, MoreHorizontal, CheckSquare, Vote,
   Calendar as CalendarIcon, Archive, ChevronDown, ChevronUp, Clock,
-  Star, Share2, Users, Hourglass, Pencil, GripVertical, ListTree,
+  Star, Share2, Users, Hourglass, Pencil, ListTree,
   History, ArrowRight, Palette, X, FileText, Lightbulb, Wand2, NotebookPen, ClockAlert
 } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { differenceInCalendarDays, format, formatDistanceToNow, isPast, isToday, isYesterday } from "date-fns";
 import { de } from "date-fns/locale";
-import { NoteStatusChips } from "@/components/shared/NoteStatusChips";
+import { NoteStatusChips, noteChipBase } from "@/components/shared/NoteStatusChips";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { sanitizeRichHtml } from "@/utils/htmlSanitizer";
 import { noteColors, getCardBackground, stripHtml } from "@/hooks/useQuickNotes";
 import type { QuickNote } from "@/components/shared/QuickNotesList";
+import { applyMentionColors } from "@/utils/mentionColors";
 import { renderChecklistHtml, countChecklist, isNoteStale } from "@/components/shared/quickNoteBoard";
 
 interface NoteCardProps {
@@ -108,6 +108,9 @@ export function NoteCard({
     return () => { ro?.disconnect(); window.removeEventListener("resize", measure); };
   }, [isExpanded, note.content]);
 
+  const cardRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => { applyMentionColors(cardRef.current); }, [note.content, note.title, isExpanded]);
+
   const stale = isNoteStale(note);
   const changedAt = new Date(note.updated_at || note.created_at);
   const staleWeeks = Math.max(4, Math.floor(differenceInCalendarDays(new Date(), changedAt) / 7));
@@ -118,9 +121,10 @@ export function NoteCard({
   return (
     <div
       key={note.id}
-      ref={highlightRef}
+      ref={(el) => { cardRef.current = el; highlightRef?.(el); }}
+      {...dragHandleProps}
       tabIndex={-1}
-      className={cn("group relative flex flex-col rounded-lg border border-border bg-card p-3 transition-colors duration-fast ease-standard hover:border-foreground/25 focus-within:border-foreground/25", selected && "ring-2 ring-primary", className)}
+      className={cn("group relative flex flex-col", dragHandleProps && "cursor-grab active:cursor-grabbing", " rounded-lg border border-border bg-card p-3 transition-colors duration-fast ease-standard hover:border-foreground/25 focus-within:border-foreground/25", selected && "ring-2 ring-primary", className)}
       style={{
         backgroundColor: note.color && note.color_full_card === true ? getCardBackground(note.color) : undefined,
       }}
@@ -151,17 +155,6 @@ export function NoteCard({
             <Badge variant="outline" className="h-5 flex-shrink-0 px-1.5 py-0 text-xs tabular-nums" title="Erledigte Punkte">
               {checklist.done}/{checklist.total}
             </Badge>
-          )}
-          {showFollowUpBadge && note.follow_up_date && (
-            <div className="flex flex-shrink-0 items-center gap-1">
-              <Badge variant="outline" className="h-5 px-1.5 py-0 text-xs text-palette-amber border-palette-amber/40 bg-palette-amber/10">
-                <Clock className="mr-1 h-3 w-3" />
-                {format(new Date(note.follow_up_date), "dd.MM.yy", { locale: de })}
-              </Badge>
-              <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); onSetFollowUp(note.id, null); }} title="Wiedervorlage entfernen">
-                <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
-              </Button>
-            </div>
           )}
         </div>
         {/* Right column: menu */}
@@ -325,21 +318,6 @@ export function NoteCard({
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          <div className="flex items-center gap-1.5 flex-wrap justify-end">
-            {note.pending_for_jour_fixe && !note.meeting_id && (
-              <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                <Badge variant="outline" className="text-xs px-1 py-0 h-4 text-palette-amber cursor-help">
-                  <Hourglass className="h-3 w-3 mr-0.5" />Jour fixe
-                </Badge>
-              </TooltipTrigger><TooltipContent>Wartet auf nächsten Jour Fixe</TooltipContent></Tooltip></TooltipProvider>
-            )}
-            {showFollowUpBadge && note.follow_up_date && (
-              <Badge variant={isPast(new Date(note.follow_up_date)) && !isToday(new Date(note.follow_up_date)) ? "destructive" : "secondary"} className="text-xs px-1 py-0 h-4">
-                <Clock className="h-3 w-3 mr-1" />
-                {isToday(new Date(note.follow_up_date)) ? "Heute" : format(new Date(note.follow_up_date), "dd.MM.", { locale: de })}
-              </Badge>
-            )}
-          </div>
         </div>
       </div>
 
@@ -360,11 +338,11 @@ export function NoteCard({
         <button
           type="button"
           aria-expanded={isExpanded}
-          className="mt-1 inline-flex h-8 items-center gap-2 self-start rounded-lg border-0 bg-transparent px-3 text-sm text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className={cn(noteChipBase, "mt-2 self-start")}
           onClick={(e) => { e.stopPropagation(); onToggleExpand(note.id, e); }}
         >
-          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-fast", isExpanded && "rotate-180")} />
           {isExpanded ? "Weniger anzeigen" : "Mehr anzeigen"}
+          <ChevronDown className={cn("h-3 w-3 transition-transform duration-fast", isExpanded && "rotate-180")} />
         </button>
       )}
 
@@ -377,6 +355,29 @@ export function NoteCard({
         canEdit={note.user_id === userId}
         onRemoveDecision={() => onRemoveDecision(note)}
         onRemoveFromMeeting={() => onRemoveFromMeeting(note.id)}
+        extra={(note.pending_for_jour_fixe && !note.meeting_id) || (showFollowUpBadge && note.follow_up_date) ? (
+          <>
+            {note.pending_for_jour_fixe && !note.meeting_id && (
+              <span className={cn(noteChipBase, "cursor-default text-warning")} title="Wartet auf nächsten Jour fixe">
+                <Hourglass className="h-3.5 w-3.5" />Wartet auf Jour fixe
+              </span>
+            )}
+            {showFollowUpBadge && note.follow_up_date && (() => {
+              const d = new Date(note.follow_up_date);
+              const overdue = isPast(d) && !isToday(d);
+              return (
+                <span className={cn(noteChipBase, "pr-1.5", overdue ? "text-destructive" : "text-warning")}>
+                  <button type="button" className="inline-flex items-center gap-2" onClick={(e) => { e.stopPropagation(); onOpenDatePicker(note); }} title="Wiedervorlage ändern">
+                    <Clock className="h-3.5 w-3.5" />Wiedervorlage {isToday(d) ? "heute" : format(d, "dd.MM.", { locale: de })}
+                  </button>
+                  <button type="button" className="rounded-full p-0.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={(e) => { e.stopPropagation(); onSetFollowUp(note.id, null); }} aria-label="Wiedervorlage entfernen">
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              );
+            })()}
+          </>
+        ) : undefined}
       />
 
       <TooltipProvider>
@@ -388,15 +389,6 @@ export function NoteCard({
             {showPriority && (prio > 0
               ? <span className="text-warning">★ Prio {prio}</span>
               : <span>Ohne Prio</span>)}
-            {stale ? (
-              <Tooltip><TooltipTrigger asChild>
-                <span className="inline-flex items-center gap-1 rounded bg-warning/15 px-1.5 py-0.5 text-warning">
-                  <ClockAlert className="h-3 w-3" />{format(changedAt, "dd.MM.", { locale: de })} · {staleWeeks} Wochen
-                </span>
-              </TooltipTrigger><TooltipContent>Seit über 30 Tagen unverändert</TooltipContent></Tooltip>
-            ) : (
-              <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{relTime}</span>
-            )}
             {hasShared && (
               <Tooltip><TooltipTrigger asChild>
                 <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" />{note.is_shared ? (note.owner?.display_name?.split(" ")[0] || "Geteilt") : note.share_count}</span>
@@ -467,15 +459,21 @@ export function NoteCard({
                         <Archive className="h-3 w-3" />
                       </Button>
                     </TooltipTrigger><TooltipContent side="top">Archivieren</TooltipContent></Tooltip>
-                    {dragHandleProps && (
-                      <div {...dragHandleProps} className="cursor-grab p-1 hover:bg-muted/80 rounded-full">
-                        <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
-                      </div>
-                    )}
                   </div></TooltipProvider>
                 )}
               </div>
             </div>
+          <div className="flex flex-shrink-0 items-center">
+              {stale ? (
+                <Tooltip><TooltipTrigger asChild>
+                  <span className="inline-flex items-center gap-1 rounded bg-warning/15 px-1.5 py-0.5 text-warning">
+                    <ClockAlert className="h-3 w-3" />{format(changedAt, "dd.MM.", { locale: de })} · {staleWeeks} Wochen
+                  </span>
+                </TooltipTrigger><TooltipContent>Seit über 30 Tagen unverändert</TooltipContent></Tooltip>
+              ) : (
+                <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{relTime}</span>
+              )}
+          </div>
         </div>
       </TooltipProvider>
     </div>
