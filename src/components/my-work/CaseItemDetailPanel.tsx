@@ -133,7 +133,6 @@ export function CaseItemDetailPanel({
   const contactSearchRef = useRef(0);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const { currentTenant } = useTenant();
-  const showInteractionComposer = activeSection !== "sachlage" && activeSection !== "entscheidung";
 
   useEffect(() => {
     setActiveSection("sachlage");
