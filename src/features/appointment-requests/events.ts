@@ -1,5 +1,6 @@
 export interface RequestPrefill {
   title?: string;
+  caseItemId?: string;
   requester?: string;
   date?: string; // YYYY-MM-DD
   time?: string; // HH:MM

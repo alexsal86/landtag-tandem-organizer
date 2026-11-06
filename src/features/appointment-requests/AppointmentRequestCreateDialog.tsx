@@ -19,6 +19,7 @@ interface Props {
 
 const empty = (p: RequestPrefill): NewRequestInput => ({
   title: p.title ?? "",
+  caseItemId: p.caseItemId,
   requester: p.requester ?? "",
   channel: p.channel ?? "email",
   requested_date: p.date ?? "",

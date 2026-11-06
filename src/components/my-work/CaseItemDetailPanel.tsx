@@ -515,14 +515,6 @@ export function CaseItemDetailPanel({
     </div>
   );
 
-  if (activeTab === "timeline") {
-    return (
-      <div className="mx-2 mb-3 space-y-4">
-        {timelineContent}
-      </div>
-    );
-  }
-
   if (activeTab === "documents") {
     return (
       <div className="mx-2 mb-3 space-y-4">
@@ -533,7 +525,7 @@ export function CaseItemDetailPanel({
 
   return (
     <div className="mx-2 mb-3 space-y-4">
-      <div className="grid gap-4 lg:grid-cols-[minmax(230px,1fr)_minmax(0,2.8fr)]">
+      <div className="grid min-w-0 grid-cols-1 gap-4">
         <div className="space-y-3">
           {editableCaseItem.status === "erledigt" && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -551,7 +543,7 @@ export function CaseItemDetailPanel({
         </div>
 
         <div className="space-y-3">
-          <div className="space-y-2 rounded-md border bg-background p-3">
+          {activeTab === "overview" && <div className="space-y-2 rounded-md border bg-background p-3">
             <Label className="font-bold" htmlFor="detail-contact-name">Von / Gesprächspartner</Label>
             <div className="grid gap-2 lg:grid-cols-3">
               <div className="rounded-2xl border bg-muted/40 px-4 py-3">
@@ -632,7 +624,7 @@ export function CaseItemDetailPanel({
                 </div>
               </div>
             </div>
-          </div>
+          </div>}
 
           <div className="overflow-hidden rounded-xl border bg-background shadow-xs" aria-label="Interaktion erfassen">
             <div className="space-y-2 p-3">

@@ -58,7 +58,17 @@ describe("Vorgänge: Wer ist am Zug", () => {
   it("überschreibt keine bestehende Frist", () => {
     const existing = new Date(2026, 10, 10).toISOString();
     expect(withAutoDeadline({ next_action_due_at: existing }, { ball_owner: "ministry" }, now).next_action_due_at).toBeUndefined();
-    expect(withAutoDeadline({}, { ball_owner: "citizen" }, now).next_action_due_at).toBeUndefined();
+    expect(daysUntilNextAction(withAutoDeadline({}, { ball_owner: "citizen" }, now), now)).toBe(14);
+  });
+
+  it("schlägt für jede Zuständigkeit eine Frist vor ohne explizite Fristen zu ersetzen", () => {
+    for (const [owner, days] of [["office", 3], ["citizen", 14], ["authority", 21], ["fraction", 7], ["snoozed", 14]] as const) {
+      expect(daysUntilNextAction(withAutoDeadline({}, { ball_owner: owner }, now), now)).toBe(days);
+      expect(withAutoDeadline({}, { ball_owner: owner, next_action_due_at: null }, now).next_action_due_at).toBeNull();
+      const explicit = new Date(2026, 11, 1).toISOString();
+      expect(withAutoDeadline({}, { ball_owner: owner, next_action_due_at: explicit }, now).next_action_due_at).toBe(explicit);
+    }
+    expect(withAutoDeadline({}, { next_action_label: "Nur Text ändern" }, now).next_action_due_at).toBeUndefined();
   });
 
   it("berechnet Kalendertage bis zur Frist", () => {

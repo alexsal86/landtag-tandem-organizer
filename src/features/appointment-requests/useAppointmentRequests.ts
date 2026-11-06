@@ -1,3 +1,4 @@
+import { appendCaseSource } from "@/features/cases/items/appointmentLink";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,6 +52,7 @@ export function useNextJourFixeDate() {
 }
 
 export interface NewRequestInput {
+  caseItemId?: string;
   title: string;
   requester: string;
   channel: RequestChannel;
@@ -86,7 +88,7 @@ export function useAppointmentRequestMutations() {
         duration_minutes: input.duration_minutes,
         location: input.location.trim() || null,
         response_deadline: input.response_deadline || null,
-        notes: input.notes.trim() || null,
+        notes: appendCaseSource(input.notes, input.caseItemId, window.location.origin) || null,
       });
       if (error) throw error;
     },

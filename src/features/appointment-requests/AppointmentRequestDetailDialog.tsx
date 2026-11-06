@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+import { caseSourceHref } from "@/features/cases/items/appointmentLink";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -124,6 +126,7 @@ export function AppointmentRequestDetailDialog({ requestId, onOpenChange }: Prop
               {request.response_deadline && (
                 <><dt className="text-muted-foreground">Rückmeldung bis</dt><dd>{format(new Date(request.response_deadline + "T00:00:00"), "d. MMMM yyyy", { locale: de })}</dd></>
               )}
+              {caseSourceHref(request.notes) && (<><dt className="text-muted-foreground">Vorgang</dt><dd><Link to={caseSourceHref(request.notes)!} onClick={() => onOpenChange(false)} className="text-primary hover:underline">Zum verknüpften Vorgang →</Link></dd></>)}
               {request.notes && (<><dt className="text-muted-foreground">Notiz</dt><dd className="whitespace-pre-wrap">{request.notes}</dd></>)}
             </dl>
 

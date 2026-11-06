@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { sendToDaySlip } from "@/lib/daySlipBridge";
 import { openAppointmentRequestCreate } from "@/features/appointment-requests/events";
-import { BALL_OWNERS, PARLIAMENTARY_TOOLS, ballMeta, daysUntilNextAction, resubmissionHint, stepState, type BallOwner, type ParliamentaryTool } from "@/features/cases/items/ball";
+import { BALL_OWNERS, PARLIAMENTARY_TOOLS, ballMeta, daysUntilNextAction, withAutoDeadline, resubmissionHint, stepState, type BallOwner, type ParliamentaryTool } from "@/features/cases/items/ball";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { useCaseHandoverLog } from "@/components/my-work/hooks/useCaseHandoverLog";
@@ -56,7 +56,7 @@ export function CaseItemQuickActions({ item, subject, onOpenMeetingSelector, onC
         <ClipboardList className="h-4 w-4 text-muted-foreground" />Auf Jour fixe
       </Button>
       <Button type="button" variant="ghost" size="sm" className={cls}
-        onClick={() => openAppointmentRequestCreate({ title: `Ortstermin: ${subject}`, notes: label || undefined, channel: "case" })}>
+        onClick={() => openAppointmentRequestCreate({ caseItemId: item.id, title: `Ortstermin: ${subject}`, notes: label || undefined, channel: "case" })}>
         <CalendarDays className="h-4 w-4 text-muted-foreground" />Ortstermin anfragen
       </Button>
     </div>
@@ -112,7 +112,13 @@ export function CaseItemBallPanel({ item, tenantId, teamUsers, onChange, onCompl
           <button
             key={b.value}
             type="button"
-            onClick={() => setDraftOwner(b.value)}
+            onClick={() => {
+              setDraftOwner(b.value);
+              if (!draftDue) {
+                const suggestion = withAutoDeadline<BallPatch>({}, { ball_owner: b.value });
+                setDraftDue(suggestion.next_action_due_at ?? null);
+              }
+            }}
             className={cn(
               "inline-flex items-center gap-2 rounded-pill border px-3 py-1.5 text-sm transition-colors duration-fast",
               draftOwner === b.value ? "border-success bg-success/5 font-semibold text-foreground shadow-xs" : "border-border text-foreground hover:bg-muted/30",

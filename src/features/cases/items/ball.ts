@@ -26,18 +26,31 @@ export function ballMeta(owner: string | null | undefined) {
 /** Parlamentarische Antwortfrist bei Ministerien (Kalendertage). */
 export const MINISTRY_RESPONSE_DAYS = 21;
 
-/** Ergänzt beim Wechsel zur Verwaltung automatisch eine 3-Wochen-Frist, wenn noch keine gesetzt ist. */
+/** Vorschläge in Kalendertagen; vorhandene oder ausdrücklich gesetzte Fristen bleiben erhalten. */
+export const DEFAULT_RESPONSE_DAYS: Record<BallOwner, number> = {
+  office: 3,
+  citizen: 14,
+  ministry: MINISTRY_RESPONSE_DAYS,
+  authority: MINISTRY_RESPONSE_DAYS,
+  fraction: 7,
+  snoozed: 14,
+};
+
+/** Ergänzt beim Wechsel der Zuständigkeit eine bearbeitbare Frist. */
 export function withAutoDeadline<T extends { ball_owner?: string | null; next_action_due_at?: string | null; next_action_label?: string | null }>(
   current: TriageItem,
   patch: T,
   now: Date = new Date(),
 ): T {
-  if ((patch.ball_owner !== "ministry" && patch.ball_owner !== "authority") || current.next_action_due_at || patch.next_action_due_at) return patch;
-  const due = new Date(now.getFullYear(), now.getMonth(), now.getDate() + MINISTRY_RESPONSE_DAYS, 12);
+  const days = patch.ball_owner ? DEFAULT_RESPONSE_DAYS[patch.ball_owner as BallOwner] : undefined;
+  if (days === undefined || current.next_action_due_at || Object.prototype.hasOwnProperty.call(patch, "next_action_due_at")) return patch;
+  const due = new Date(now.getFullYear(), now.getMonth(), now.getDate() + days, 12);
   return {
     ...patch,
     next_action_due_at: due.toISOString(),
-    next_action_label: patch.next_action_label ?? current.next_action_label ?? (patch.ball_owner === "ministry" ? "Antwort des Ministeriums nachhalten" : "Antwort der Verwaltung nachhalten"),
+    ...((patch.ball_owner === "ministry" || patch.ball_owner === "authority") ? {
+      next_action_label: patch.next_action_label ?? current.next_action_label ?? (patch.ball_owner === "ministry" ? "Antwort des Ministeriums nachhalten" : "Antwort der Verwaltung nachhalten"),
+    } : {}),
   };
 }
 

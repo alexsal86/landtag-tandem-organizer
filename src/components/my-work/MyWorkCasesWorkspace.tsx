@@ -505,7 +505,7 @@ export function MyWorkCasesWorkspace() {
       "Änderung konnte nicht gespeichert werden.",
     );
     if (ok && systemEvents.length && detailItemId === item.id) setEditableCaseItem((prev) => prev ? { ...prev, timelineEvents: [...prev.timelineEvents, ...systemEvents] } : prev);
-    if (ok && patch.ball_owner) notify.success(`Am Zug: ${ballMeta(patch.ball_owner).label}${patch.next_action_due_at && !rawPatch.next_action_due_at ? " · Frist in 3 Wochen gesetzt" : ""}`);
+    if (ok && patch.ball_owner) notify.success(`Am Zug: ${ballMeta(patch.ball_owner).label}${patch.next_action_due_at && !rawPatch.next_action_due_at ? " · Fristvorschlag gesetzt" : ""}`);
   };
 
   const handleHandover = async (ids: string[], toUserId: string) => {

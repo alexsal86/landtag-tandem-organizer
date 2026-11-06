@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+import { caseSourceHref } from "@/features/cases/items/appointmentLink";
 import { AppointmentContactCards } from "./AppointmentContactCards";
 import React, { useState, useEffect } from "react";
 import { debugConsole } from '@/utils/debugConsole';
@@ -684,6 +686,12 @@ export function AppointmentDetailsSidebar({
               )}
             </div>
           </div>
+
+          {caseSourceHref(appointment.description) && (
+            <Link to={caseSourceHref(appointment.description)!} className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
+              Zum verknüpften Vorgang →
+            </Link>
+          )}
 
           {/* Description */}
           <div className="flex items-start gap-3">
