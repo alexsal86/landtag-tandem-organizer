@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { writeNoteDragData } from "@/features/quick-notes/noteDrag";
+import { useEffect, useMemo, useState, type ReactNode, type DragEvent } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -72,6 +73,14 @@ export function QuickNotesList({
   const visibleNotes = hook.filteredNotes.filter(matches);
   const staleCount = hook.filteredNotes.filter((n) => matchesNoteFilter(n, "stale", colorFilter)).length;
   const [isDragging, setIsDragging] = useState(false);
+  const [draggedNoteId, setDraggedNoteId] = useState<string | null>(null);
+  const [hoveredPriority, setHoveredPriority] = useState<number | null>(null);
+  useEffect(() => {
+    const reset = () => { setIsDragging(false); setDraggedNoteId(null); setHoveredPriority(null); };
+    window.addEventListener("dragend", reset);
+    window.addEventListener("drop", reset);
+    return () => { window.removeEventListener("dragend", reset); window.removeEventListener("drop", reset); };
+  }, []);
   const visibleIdsKey = visibleNotes.map((n) => n.id).join(",");
 
   useEffect(() => {
@@ -187,7 +196,38 @@ export function QuickNotesList({
     catch { notify.error("Punkt konnte nicht lokal gespeichert werden"); }
   };
 
+  const startNoteDrag = (event: DragEvent<HTMLButtonElement>, note: QuickNote) => {
+    writeNoteDragData(event.dataTransfer, note);
+    const card = event.currentTarget.parentElement;
+    if (card) event.dataTransfer.setDragImage(card, 20, 20);
+    setDraggedNoteId(note.id);
+    setIsDragging(true);
+  };
+  const dropAtPriority = async (event: DragEvent<HTMLElement>, level: number) => {
+    const id = event.dataTransfer.getData("application/x-quick-note-id");
+    if (!id || id !== draggedNoteId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(false); setDraggedNoteId(null); setHoveredPriority(null);
+    try {
+      await hook.patchNote({ id, patch: { priority_level: level, is_pinned: false } });
+      notify.success(level ? `Notiz zu Priorität ${level} verschoben` : "Notiz ohne Priorität einsortiert");
+    } catch { notify.error("Notiz konnte nicht verschoben werden"); }
+  };
+  const priorityDropProps = (level: number) => ({
+    onDragOver: (event: DragEvent<HTMLElement>) => {
+      if (!draggedNoteId || !event.dataTransfer.types.includes("application/x-quick-note-id")) return;
+      event.preventDefault(); event.dataTransfer.dropEffect = "move"; setHoveredPriority(level);
+    },
+    onDragLeave: (event: DragEvent<HTMLElement>) => {
+      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHoveredPriority(null);
+    },
+    onDrop: (event: DragEvent<HTMLElement>) => { void dropAtPriority(event, level); },
+  });
   const noteCardProps = (note: QuickNote) => ({
+    onNativeDragStart: layout === "grid" && note.user_id === hook.user?.id && !selectable
+      ? (event: DragEvent<HTMLButtonElement>) => startNoteDrag(event, note) : undefined,
+    onNativeDragEnd: () => { setIsDragging(false); setDraggedNoteId(null); setHoveredPriority(null); },
     onSendToDaySlip: handleSendToDaySlip,
     onToggleChecklist: handleToggleChecklist,
     selectable,
@@ -310,71 +350,31 @@ export function QuickNotesList({
     const stars = (level: number) =>
       level > 0 ? <span className="text-warning" aria-hidden="true">{"★".repeat(level)}</span> : null;
     const columns = (
-      <DragDropContext
-        onDragStart={() => setIsDragging(true)}
-        onDragEnd={(result) => { setIsDragging(false); void hook.handleNoteDragEnd(result); }}
-      >
-        <section className="space-y-2" aria-label="Nach Priorität">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="section-label mr-auto">Nach Priorität</div>
-            {emptyLevels.map((level) => (
-              <Droppable key={level} droppableId={`level-${level}`}>
-                {(provided, snapshot) => (
-                  <div
-                    ref={provided.innerRef}
-                    {...provided.droppableProps}
-                    aria-label={`${levelLabel(level)}, leer – Notiz hierher ziehen`}
-                    className={cn(
-                      "inline-flex items-center gap-1 rounded-pill border border-dashed border-border px-2.5 text-xs text-muted-foreground transition-all duration-base ease-standard hover:bg-muted",
-                      isDragging ? "h-16 min-w-40 justify-center border-primary/60 bg-muted/60" : "h-[26px]",
-                      snapshot.isDraggingOver && "border-primary bg-primary/10 text-foreground",
-                    )}
-                  >
-                    {stars(level)}
-                    <span>{levelLabel(level)}</span>
-                    <span className="tabular-nums">· 0</span>
-                    <span className="hidden">{provided.placeholder}</span>
-                  </div>
-                )}
-              </Droppable>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-start gap-4">
-            {filledLevels.map((level) => {
-              const colNotes = notesAt(level);
-              return (
-                <div key={level} className="min-w-[240px] flex-1 basis-0 space-y-2">
-                  <div className="section-label flex items-center gap-1.5">
-                    {stars(level)}
-                    {levelLabel(level)}
-                    <span className="tabular-nums">· {colNotes.length}</span>
-                  </div>
-                  <Droppable droppableId={`level-${level}`}>
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className={cn("min-h-24 space-y-3 rounded-lg p-1 transition-colors", snapshot.isDraggingOver ? "bg-muted/60" : "bg-muted/20")}
-                      >
-                        {colNotes.map((note, index) => (
-                          <Draggable key={note.id} draggableId={note.id} index={index} isDragDisabled={note.user_id !== hook.user?.id}>
-                            {(dragProvided) => (
-                              <div ref={dragProvided.innerRef} {...dragProvided.draggableProps}>
-                                <NoteCard {...noteCardProps(note)} showPriority={false} dragHandleProps={dragProvided.dragHandleProps} />
-                              </div>
-                            )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
-                      </div>
-                    )}
-                  </Droppable>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      </DragDropContext>
+      <section className="space-y-3" aria-label="Nach Priorität">
+        <div className={cn("flex flex-wrap items-center gap-2 transition-all duration-200", isDragging && "sticky top-2 z-20 rounded-xl border bg-background/95 p-3 shadow-md")}>
+          <div className="section-label mr-auto">Nach Priorität</div>
+          {(isDragging ? levels : emptyLevels).map(level => (
+            <div key={level} {...priorityDropProps(level)}
+              aria-label={`${levelLabel(level)} – Notiz hierher ziehen`}
+              className={cn("inline-flex flex-col items-center justify-center gap-1 rounded-xl border border-dashed px-3 text-xs text-muted-foreground transition-all duration-200",
+                isDragging ? "min-h-24 min-w-36 bg-muted/40" : "h-[26px] rounded-pill",
+                hoveredPriority === level && "border-primary bg-primary/10 text-foreground ring-2 ring-primary/30")}>
+              <span className="flex items-center gap-1">{stars(level)}{levelLabel(level)} · {notesAt(level).length}</span>
+              {isDragging && <span>Hierhin verschieben</span>}
+            </div>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-start gap-4">
+          {filledLevels.map(level => (
+            <div key={level} {...priorityDropProps(level)} className={cn("min-w-[240px] flex-1 basis-0 space-y-2 rounded-lg transition-colors", hoveredPriority === level && "bg-primary/5 ring-2 ring-primary/30")}>
+              <div className="section-label flex items-center gap-1.5">{stars(level)}{levelLabel(level)} · {notesAt(level).length}</div>
+              <div className="min-h-24 space-y-3 rounded-lg bg-muted/20 p-1">
+                {notesAt(level).map(note => <NoteCard key={note.id} {...noteCardProps(note)} showPriority={false} />)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
     );
     const board = (notes: QuickNote[], followUp = false) => (
       <div className="columns-1 sm:columns-2 lg:columns-3 2xl:columns-4 gap-4">
@@ -410,7 +410,7 @@ export function QuickNotesList({
               </div>
             </section>
           )}
-          {others.length > 0 && columns}
+          {(others.length > 0 || isDragging) && columns}
           {scheduled.length > 0 && (
             <Collapsible open={hook.scheduledFollowUpsExpanded} onOpenChange={hook.setScheduledFollowUpsExpanded}>
               <CollapsibleTrigger className="section-label flex items-center gap-1.5 rounded px-1 py-1 hover:bg-muted/50">

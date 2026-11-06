@@ -13,7 +13,7 @@ import {
 import {
   Pin, Trash2, MoreHorizontal, CheckSquare, Vote,
   Calendar as CalendarIcon, Archive, ChevronDown, ChevronUp, Clock,
-  Star, Share2, Users, Hourglass, Pencil, ListTree,
+  Star, Share2, Users, Hourglass, Pencil, ListTree, GripVertical,
   History, ArrowRight, Palette, X, FileText, Lightbulb, Wand2, NotebookPen, ClockAlert
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -36,6 +36,8 @@ interface NoteCardProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dragHandleProps?: any;
+  onNativeDragStart?: React.DragEventHandler<HTMLButtonElement>;
+  onNativeDragEnd?: React.DragEventHandler<HTMLButtonElement>;
   isExpanded: boolean;
   isDetailsExpanded: boolean;
   colorModeUpdating: string | null;
@@ -76,7 +78,7 @@ interface NoteCardProps {
 }
 
 export function NoteCard({
-  note, userId, showFollowUpBadge = false, showPriority = true, dragHandleProps,
+  note, userId, showFollowUpBadge = false, showPriority = true, dragHandleProps, onNativeDragStart, onNativeDragEnd,
   isExpanded, isDetailsExpanded, colorModeUpdating,
   className, highlightRef,
   onNoteClick, onToggleExpand, onToggleDetailsExpand,
@@ -131,9 +133,8 @@ export function NoteCard({
     <div
       key={note.id}
       ref={(el) => { cardRef.current = el; highlightRef?.(el); }}
-      {...dragHandleProps}
       tabIndex={-1}
-      className={cn("group relative flex flex-col", dragHandleProps && "cursor-grab active:cursor-grabbing", " rounded-lg border border-border bg-card p-3 transition-colors duration-fast ease-standard hover:border-foreground/25 focus-within:border-foreground/25", selected && "ring-2 ring-primary", className)}
+      className={cn("group relative flex flex-col",  " rounded-lg border border-border bg-card p-3 transition-colors duration-fast ease-standard hover:border-foreground/25 focus-within:border-foreground/25", selected && "ring-2 ring-primary", className)}
       style={{
         backgroundColor: note.color && note.color_full_card === true ? getCardBackground(note.color) : undefined,
       }}
@@ -148,6 +149,16 @@ export function NoteCard({
         onNoteClick?.(note);
       }}
     >
+      {(dragHandleProps || onNativeDragStart) && !selectable && (
+        <button type="button" {...dragHandleProps} draggable={onNativeDragStart ? true : undefined}
+          onDragStart={onNativeDragStart} onDragEnd={onNativeDragEnd}
+          onClick={event => event.stopPropagation()}
+          aria-label="Notiz ziehen: Priorität zuweisen oder auf den Tageszettel legen"
+          title="Notiz ziehen · Priorität oder Tageszettel"
+          className="absolute -left-2 top-3 z-10 flex h-9 w-5 items-center justify-center rounded-md border bg-card text-muted-foreground shadow-sm cursor-grab active:cursor-grabbing opacity-100 transition-all duration-150 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:-translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 focus-visible:opacity-100 focus-visible:translate-x-0 focus-visible:ring-2 focus-visible:ring-ring">
+          <GripVertical className="h-4 w-4" />
+        </button>
+      )}
       {selectable && (
         <div className="absolute -left-2 -top-2 z-sticky rounded-full bg-background p-0.5 shadow-sm" onClick={(e) => e.stopPropagation()}>
           <Checkbox checked={selected} onCheckedChange={() => onToggleSelect?.(note.id)} aria-label="Notiz auswählen" />
