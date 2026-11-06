@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CalendarDays, ClipboardList, Zap } from "lucide-react";
+import { CalendarDays, ClipboardList, Mail, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,11 +21,13 @@ type Props = {
   teamUsers: TeamUser[];
   onChange: (patch: BallPatch) => void;
   onOpenMeetingSelector: () => void;
+  onCreateLetter: () => Promise<void>;
 };
 
 const NONE = "__none__";
 
-export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange, onOpenMeetingSelector }: Props) {
+export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange, onOpenMeetingSelector, onCreateLetter }: Props) {
+  const [creatingLetter, setCreatingLetter] = useState(false);
   const [label, setLabel] = useState(item.next_action_label ?? "");
   useEffect(() => setLabel(item.next_action_label ?? ""), [item.id, item.next_action_label]);
 
@@ -113,6 +115,12 @@ export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange
           </span>
         )}
         <div className="ml-auto flex items-center gap-1">
+          <Button
+            type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs text-muted-foreground" disabled={creatingLetter}
+            onClick={async () => { setCreatingLetter(true); try { await onCreateLetter(); } finally { setCreatingLetter(false); } }}
+          >
+            <Mail className="h-3.5 w-3.5" />{creatingLetter ? "Lege an…" : "Brief aufsetzen"}
+          </Button>
           <Button
             type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs text-muted-foreground"
             disabled={!label.trim()}

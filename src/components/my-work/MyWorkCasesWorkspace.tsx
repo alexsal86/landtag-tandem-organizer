@@ -13,6 +13,7 @@ import { useCaseFileTypes } from "@/features/cases/files/hooks/useCaseFileTypes"
 import type { CaseItemIntakePayload } from "@/features/cases/items/types";
 import { useCaseItems } from "@/features/cases/items/hooks";
 import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +23,8 @@ import { useCaseWorkspaceData, type CaseFile, type CaseItem } from "@/components
 import { useCaseItemEdit, type CaseItemInteractionDocument, type TimelineEvent, type TimelineInteractionType, type TimelineDocumentAttachment } from "@/components/my-work/hooks/useCaseItemEdit";
 
 import { toEditorHtml } from "@/components/my-work/utils/editorContent";
+import { createLetterFromCase } from "@/features/cases/items/caseLetter";
+import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { CaseHandoverDialog } from "@/components/my-work/cases/workspace/CaseHandoverDialog";
 import { CaseItemBallPanel, type BallPatch } from "@/components/my-work/cases/workspace/CaseItemBallPanel";
 import { countTriage, matchesTriage, ballMeta, withAutoDeadline, type TriageFilter } from "@/features/cases/items/ball";
@@ -48,6 +51,7 @@ import { notify } from "@/lib/notify";
 
 export function MyWorkCasesWorkspace() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { currentTenant } = useTenant();
   
@@ -266,6 +270,7 @@ export function MyWorkCasesWorkspace() {
 
   const [triageFilter, setTriageFilter] = useState<TriageFilter>("all");
   const [handoverOpen, setHandoverOpen] = useState(false);
+  const { isAdmin: canHandover } = useResolvedUserRole();
   const triageCounts = useMemo(() => countTriage(filteredCaseItems, user?.id ?? null), [filteredCaseItems, user?.id]);
 
   const sortedCaseItems = useMemo(() => {
@@ -1070,7 +1075,7 @@ export function MyWorkCasesWorkspace() {
                 onTriageFilterChange={setTriageFilter}
                 triageCounts={triageCounts}
                 handleBallChange={handleBallChange}
-                onOpenHandover={() => setHandoverOpen(true)}
+                onOpenHandover={canHandover ? () => setHandoverOpen(true) : undefined}
                 caseFilesById={caseFilesById}
                 allCaseFiles={allCaseFiles}
                 detailItemId={detailItemId}
@@ -1152,6 +1157,16 @@ export function MyWorkCasesWorkspace() {
                       subject={editableCaseItem.subject}
                       teamUsers={teamUsers}
                       onChange={(patch) => runAsync(() => handleBallChange(detailItem, patch))}
+                      onCreateLetter={async () => {
+                        if (!tenantId || !user?.id) return;
+                        try {
+                          const letterId = await createLetterFromCase({ caseItemId: detailItem.id, subject: editableCaseItem.subject, tenantId, userId: user.id });
+                          notify.success("Briefentwurf angelegt");
+                          navigate(`/letters/${letterId}`);
+                        } catch {
+                          notify.error("Brief konnte nicht angelegt werden.");
+                        }
+                      }}
                       onOpenMeetingSelector={() => { setMeetingSelectorItemId(detailItem.id); setIsMeetingSelectorOpen(true); }}
                     />
                   }
