@@ -21,6 +21,7 @@ import { useCaseWorkspaceData, type CaseFile, type CaseItem } from "@/components
 import { useCaseItemEdit, type CaseItemInteractionDocument, type TimelineEvent, type TimelineInteractionType, type TimelineDocumentAttachment } from "@/components/my-work/hooks/useCaseItemEdit";
 
 import { toEditorHtml } from "@/components/my-work/utils/editorContent";
+import { CaseHandoverDialog } from "@/components/my-work/cases/workspace/CaseHandoverDialog";
 import { CaseItemBallPanel, type BallPatch } from "@/components/my-work/cases/workspace/CaseItemBallPanel";
 import { countTriage, matchesTriage, ballMeta, withAutoDeadline, type TriageFilter } from "@/features/cases/items/ball";
 import { CaseItemList, type CaseItemSortKey, type SortDirection } from "@/components/my-work/cases/workspace/CaseItemList";
@@ -262,6 +263,7 @@ export function MyWorkCasesWorkspace() {
   }, [activeCaseItems, caseFilesById, filters.itemQuery, getCategory]);
 
   const [triageFilter, setTriageFilter] = useState<TriageFilter>("all");
+  const [handoverOpen, setHandoverOpen] = useState(false);
   const triageCounts = useMemo(() => countTriage(filteredCaseItems, user?.id ?? null), [filteredCaseItems, user?.id]);
 
   const sortedCaseItems = useMemo(() => {
@@ -456,6 +458,18 @@ export function MyWorkCasesWorkspace() {
       "Änderung konnte nicht gespeichert werden.",
     );
     if (ok && patch.ball_owner) notify.success(`Am Zug: ${ballMeta(patch.ball_owner).label}${patch.next_action_due_at && !rawPatch.next_action_due_at ? " · Frist in 3 Wochen gesetzt" : ""}`);
+  };
+
+  const handleHandover = async (ids: string[], toUserId: string) => {
+    const snapshot = caseItems;
+    setCaseItems((current) => current.map((row) => (ids.includes(row.id) ? { ...row, next_action_assignee_id: toUserId } : row)));
+    const { error } = await supabase.from("case_items").update({ next_action_assignee_id: toUserId }).in("id", ids);
+    if (error) {
+      setCaseItems(snapshot);
+      notify.error("Übergabe fehlgeschlagen.");
+      return;
+    }
+    notify.success(`${ids.length} Vorgänge an ${teamUsers.find((u) => u.id === toUserId)?.name ?? "Vertretung"} übergeben.`);
   };
 
   const handleQuickVisibilityChange = async (item: CaseItem, nextPublic: boolean) => {
@@ -1038,6 +1052,7 @@ export function MyWorkCasesWorkspace() {
         </div>
       ) : (
         <>
+          <CaseHandoverDialog open={handoverOpen} onOpenChange={setHandoverOpen} items={caseItems} teamUsers={teamUsers} onConfirm={handleHandover} />
           <CasesWorkspaceShell
             onDragEnd={handleDragEnd}
             left={
@@ -1052,6 +1067,7 @@ export function MyWorkCasesWorkspace() {
                 onTriageFilterChange={setTriageFilter}
                 triageCounts={triageCounts}
                 handleBallChange={handleBallChange}
+                onOpenHandover={() => setHandoverOpen(true)}
                 caseFilesById={caseFilesById}
                 allCaseFiles={allCaseFiles}
                 detailItemId={detailItemId}
