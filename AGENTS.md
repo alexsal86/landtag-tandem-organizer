@@ -3,3 +3,4 @@
 - Case-item triage (ball_owner, next action) logic lives in src/features/cases/items/ball.ts as pure functions; UI and filters import it so rules stay testable in one place.
 
 - Every new business rule or workflow needs a matching step in a selftest scenario (src/features/selftest); pure rules run as kind:"logic" steps so the Selbsttest-Center verifies logic, not just persistence.
+- Selftest runs are persisted per tenant in selftest_runs (steps + error details as JSON) so the agent can read failures directly via SQL instead of relying on screenshots.
