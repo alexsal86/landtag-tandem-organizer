@@ -301,8 +301,7 @@ export function CaseItemDetailPanel({
   };
 
   const timelineContent = (
-    <div className="rounded-md border bg-background p-3">
-      <p className="mb-3 font-bold">Zeitstrahl</p>
+    <div className="px-1 pt-2">
       <div className="relative space-y-4 pl-8">
         {timelineEntries.length === 0 ? (
           <p className="text-xs text-muted-foreground">Noch keine Einträge im Zeitstrahl.</p>
@@ -706,6 +705,8 @@ export function CaseItemDetailPanel({
           </div>
         </div>
       </div>
+
+      {timelineContent}
 
       <TaskDecisionDetails
         decisionId={selectedDecisionId}

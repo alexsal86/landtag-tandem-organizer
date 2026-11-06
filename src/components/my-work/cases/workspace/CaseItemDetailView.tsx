@@ -27,6 +27,7 @@ type CaseItemDetailViewProps = {
   onPriorityChange: (value: string) => void;
   detailPanel: ReactNode;
   ballPanel?: ReactNode;
+  quickActions?: ReactNode;
   onComplete: () => void;
   onArchive: () => void;
   archiveLabel: string;
@@ -61,6 +62,7 @@ export function CaseItemDetailView({
   onPriorityChange,
   detailPanel,
   ballPanel,
+  quickActions,
   onComplete,
   onArchive,
   archiveLabel,
@@ -110,12 +112,11 @@ export function CaseItemDetailView({
         <div className="shrink-0 border-b px-6 py-3">
           <div className="flex flex-wrap items-center gap-2">
             {[
-              { key: "overview", label: "Übersicht" },
-              { key: "timeline", label: "Timeline" },
+              { key: "overview", label: "Verlauf" },
               { key: "documents", label: "Dokumente" },
             ].map((tab) => (
               <button key={tab.key} type="button" onClick={() => onTabChange(tab.key as DetailTab)}
-                className={cn("rounded-full border px-5 py-2 text-sm font-semibold transition-colors", activeTab === tab.key ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:bg-muted")}>
+                className={cn("rounded-full border px-5 py-2 text-sm font-semibold transition-colors", (activeTab === tab.key || (tab.key === "overview" && activeTab === "timeline")) ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:bg-muted")}>
                 {tab.label}
               </button>
             ))}
@@ -127,6 +128,7 @@ export function CaseItemDetailView({
       </div>
       <aside aria-label="Eigenschaften" className="flex min-h-0 flex-col overflow-y-auto border-t bg-muted/10 px-6 py-7 min-[1440px]:border-l min-[1440px]:border-t-0">
         <div className="flex-1">
+        {quickActions ? <div className="mb-6 border-b border-border/70 pb-5">{quickActions}</div> : null}
         <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Eigenschaften</h2>
         {propertySelect("Bearbeiter", assigneeId || "__none__", (value) => onAssigneeChange(value === "__none__" ? "" : value), [{ value: "__none__", label: "Nicht zugewiesen" }, ...assigneeOptions.map((member) => ({ value: member.id, label: member.name }))])}
         {propertySelect("Kategorie", category, onCategoryChange, categoryOptions.map((value) => ({ value, label: value })), "Wählen…")}

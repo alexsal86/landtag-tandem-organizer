@@ -1,4 +1,4 @@
-export type RequestChannel = "email" | "post" | "phone" | "in_person" | "other";
+export type RequestChannel = "email" | "post" | "phone" | "in_person" | "case" | "other";
 export type RequestRecommendation = "accept" | "decline" | "delegate" | "question";
 export type RequestStatus = "open" | "accepted" | "declined";
 
@@ -27,6 +27,7 @@ export const CHANNEL_LABELS: Record<RequestChannel, string> = {
   post: "Post",
   phone: "Telefon",
   in_person: "Persönlich",
+  case: "Vorgang",
   other: "Sonstiges",
 };
 
