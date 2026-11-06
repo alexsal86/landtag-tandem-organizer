@@ -502,6 +502,8 @@ export function MyWorkCasesWorkspace() {
       notify.error("Übergabe fehlgeschlagen.");
       return;
     }
+    const toName = teamUsers.find((u) => u.id === toUserId)?.name ?? "Vertretung";
+    for (const id of ids) { const row = snapshot.find((r) => r.id === id); if (row) await logSystemEvent({ ...row, next_action_assignee_id: toUserId }, "An Vertretung übergeben", toName); }
     notify.success(`${ids.length} Vorgänge an ${teamUsers.find((u) => u.id === toUserId)?.name ?? "Vertretung"} übergeben.`);
   };
 
@@ -1120,12 +1122,18 @@ export function MyWorkCasesWorkspace() {
                         try {
                           const letterId = await createLetterFromCase({ caseItemId: detailItem.id, subject: editableCaseItem.subject, tenantId, userId: user.id });
                           notify.success("Briefentwurf angelegt");
+                          await logSystemEvent(detailItem, "Brief angelegt");
                           navigate(`/letters/${letterId}`);
                         } catch {
                           notify.error("Brief konnte nicht angelegt werden.");
                         }
                       }}
                       onOpenMeetingSelector={() => { setMeetingSelectorItemId(detailItem.id); setIsMeetingSelectorOpen(true); }}
+                      onRequestDecision={() => {
+                        handleRequestDecision();
+                        if (!detailItem.next_action_label?.trim()) runAsync(() => handleBallChange(detailItem, { ball_owner: "office", next_action_label: "Entscheidung abwarten" }));
+                        else void logSystemEvent(detailItem, "Entscheidung angefordert");
+                      }}
                     />
                   
   ) : null;
@@ -1338,6 +1346,8 @@ export function MyWorkCasesWorkspace() {
               if (error) { notify.error("Fehler beim Zuordnen."); return; }
               setCaseItems((prev) => prev.map((i) => i.id === meetingSelectorItemId ? { ...i, meeting_id: meetingId, pending_for_jour_fixe: false } as CaseItem : i));
               notify.success(`Vorgang dem Meeting "${meetingTitle}" zugeordnet.`);
+              const jfItem = caseItems.find((i) => i.id === meetingSelectorItemId);
+              if (jfItem) await logSystemEvent(jfItem, "Auf Jour fixe gesetzt", meetingTitle);
             }}
             onMarkForNextJourFixe={async () => {
               if (!meetingSelectorItemId) return;
@@ -1345,6 +1355,8 @@ export function MyWorkCasesWorkspace() {
               if (error) { notify.error("Fehler beim Vormerken."); return; }
               setCaseItems((prev) => prev.map((i) => i.id === meetingSelectorItemId ? { ...i, pending_for_jour_fixe: true } as CaseItem : i));
               notify.success("Vorgang für Jour Fixe vorgemerkt.");
+              const jfItem = caseItems.find((i) => i.id === meetingSelectorItemId);
+              if (jfItem) await logSystemEvent(jfItem, "Für nächsten Jour fixe vorgemerkt");
             }}
             archivedCaseItems={archivedCaseItems.map((item) => ({ id: item.id, title: getItemSubject(item), subtitle: formatDateSafe(item.updated_at, "dd.MM.yyyy HH:mm", "–", { locale: de }), onRestore: () => runAsync(() => handleArchiveCaseItem(item)) }))}
             isItemArchiveOpen={isItemArchiveOpen}
