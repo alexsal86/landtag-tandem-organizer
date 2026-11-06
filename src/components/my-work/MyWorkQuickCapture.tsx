@@ -1,3 +1,4 @@
+import { NoteColorChoices } from "@/components/my-work/NoteColorChoices";
 import { PencilSparkles } from "@/components/icons/PencilSparkles";
 import { useQuickNoteDraft } from "@/hooks/useQuickNoteDraft";
 import { useRef, useState } from "react";
@@ -11,7 +12,7 @@ import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { MentionSharePromptDialog } from "@/components/shared/MentionSharePromptDialog";
 import { useQuickCaptureActions } from "@/components/my-work/hooks/useQuickCaptureActions";
 import { stripHtml, toEditorHtml } from "@/components/my-work/utils/editorContent";
-import { useNoteColorPalette, colorLabel } from "@/components/my-work/useNoteColorPalette";
+import { useNoteColorPalette } from "@/components/my-work/useNoteColorPalette";
 
 interface MyWorkQuickCaptureProps {
   onNoteSaved?: () => void;
@@ -24,12 +25,14 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
   const [editorResetKey, setEditorResetKey] = useState(0);
   const [expanded, setExpanded] = useState(false);
   const { palette } = useNoteColorPalette();
+  const activeColor = palette.some(color => color.value.toLowerCase() === selectedColor.toLowerCase())
+    ? selectedColor : palette[0]?.value || "#3b82f6";
 
   const canSaveNote = Boolean(stripHtml(title) || stripHtml(content));
 
   const resetQuickCaptureForm = () => {
     clearDraft();
-    setSelectedColor("#3b82f6");
+    setSelectedColor(palette[0]?.value || "#3b82f6");
     setIsPinned(false);
     setEditorResetKey((prev) => prev + 1);
   };
@@ -44,7 +47,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
     setMentionPromptOpen,
     mentionedUsers,
   } = useQuickCaptureActions({
-    values: { title, content, selectedColor, isPinned },
+    values: { title, content, selectedColor: activeColor, isPinned },
     canSaveNote,
     onResetForm: resetQuickCaptureForm,
     onNoteSaved,
@@ -109,19 +112,17 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
       </Tooltip></TooltipProvider>
       <span className="mx-1 h-4 w-px bg-border" aria-hidden="true" />
       <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Notizfarbe wählen">
-            <span className="h-3.5 w-3.5 rounded-full border border-border" style={{ backgroundColor: selectedColor }} />
-          </Button>
-        </PopoverTrigger>
+        <span className="inline-flex">
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-7 max-w-40 truncate rounded-full px-3 text-xs font-semibold" aria-label="Notizfarbe wählen"
+              style={{ backgroundColor: activeColor, color: `color-mix(in srgb, ${activeColor} 25%, black)` }}>
+              {palette.find(color => color.value.toLowerCase() === activeColor.toLowerCase())?.meaning?.trim()
+                || palette.find(color => color.value.toLowerCase() === activeColor.toLowerCase())?.name || "Farbe"}
+            </Button>
+          </PopoverTrigger>
+        </span>
         <PopoverContent className="w-auto p-2" align="start">
-          <div className="flex max-w-xs flex-wrap gap-2">
-            {palette.map(color => (
-              <button type="button" key={color.value} aria-label={colorLabel(color)} aria-pressed={selectedColor === color.value}
-                className={cn("flex h-16 w-16 items-center justify-center rounded-full border-2 p-1 text-center text-[10px] font-semibold leading-tight break-words", selectedColor === color.value ? "border-foreground" : "border-transparent")}
-                style={{ backgroundColor: color.value, color: `color-mix(in srgb, ${color.value} 25%, black)` }} onClick={() => setSelectedColor(color.value)} title={color.meaning || "Keine Bedeutung hinterlegt"}>{color.meaning}</button>
-            ))}
-          </div>
+          <NoteColorChoices palette={palette} selected={activeColor} onSelect={setSelectedColor} />
         </PopoverContent>
       </Popover>
       <Button variant="ghost" size="icon" className={cn("h-7 w-7", isPinned && "bg-muted text-foreground")}

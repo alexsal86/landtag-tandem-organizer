@@ -28,6 +28,16 @@ export function useUserPreference<T>(key: string, defaultValue: T) {
     return defaultValue;
   });
 
+  // Keep multiple pickers using the same preference in sync in this tab.
+  useEffect(() => {
+    const receive = (event: Event) => {
+      const detail = (event as CustomEvent<{ key: string; userId?: string; tenantId?: string; value: T }>).detail;
+      if (detail?.key === key && detail.userId === user?.id && detail.tenantId === tenantId) setValue(detail.value);
+    };
+    window.addEventListener("user-preference:changed", receive);
+    return () => window.removeEventListener("user-preference:changed", receive);
+  }, [key, user?.id, tenantId]);
+
   const dbSynced = useRef(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -144,13 +154,18 @@ export function useUserPreference<T>(key: string, defaultValue: T) {
           // ignore
         }
 
+        // Notify sibling consumers after React has finished this state update.
+        queueMicrotask(() => window.dispatchEvent(new CustomEvent("user-preference:changed", {
+          detail: { key, userId: user?.id, tenantId, value: resolved },
+        })));
+
         // Debounced DB persist
         persistToDb(resolved);
 
         return resolved;
       });
     },
-    [localStorageKey, persistToDb]
+    [localStorageKey, persistToDb, key, user?.id, tenantId]
   );
 
   return [value, setPreference] as const;

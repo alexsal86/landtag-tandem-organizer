@@ -1,3 +1,4 @@
+import { NoteColorChoices } from "@/components/my-work/NoteColorChoices";
 import { useNoteColorPalette } from "@/components/my-work/useNoteColorPalette";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,7 @@ import { de } from "date-fns/locale";
 import { NoteStatusChips, noteChipBase } from "@/components/shared/NoteStatusChips";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { sanitizeRichHtml } from "@/utils/htmlSanitizer";
-import { noteColors, getCardBackground, stripHtml } from "@/hooks/useQuickNotes";
+import { getCardBackground, stripHtml } from "@/hooks/useQuickNotes";
 import type { QuickNote } from "@/components/shared/QuickNotesList";
 import { applyMentionColors } from "@/utils/mentionColors";
 import { renderChecklistHtml, countChecklist, isNoteStale } from "@/components/shared/quickNoteBoard";
@@ -282,16 +283,8 @@ export function NoteCard({
                       {note.color && <span className="ml-auto w-3 h-3 rounded-full border" style={{ backgroundColor: note.color }} />}
                     </DropdownMenuSubTrigger>
                     <DropdownMenuPortal><DropdownMenuSubContent>
-                      <div className="flex flex-wrap gap-1.5 p-2 max-w-[140px]">
-                        {noteColors.map((color) => (
-                          <button
-                            key={color.value || 'default'}
-                            onClick={() => onSetColor(note.id, color.value)}
-                            className={cn("w-6 h-6 rounded-full border-2 transition-all hover:scale-110", note.color === color.value ? "border-primary ring-2 ring-primary/30" : "border-transparent", !color.value && "bg-background border-border")}
-                            style={color.value ? { backgroundColor: color.value } : undefined}
-                            title={color.label}
-                          />
-                        ))}
+                      <div className="p-2">
+                        <NoteColorChoices palette={palette} selected={note.color ?? null} onSelect={value => onSetColor(note.id, value)} />
                       </div>
                       {note.color && (<><DropdownMenuSeparator />
                         <div className="px-2 py-1.5" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} onPointerDown={(e) => e.stopPropagation()}>

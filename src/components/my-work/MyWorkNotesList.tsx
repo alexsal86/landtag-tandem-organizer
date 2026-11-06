@@ -1,3 +1,4 @@
+import { NoteColorChoices } from "@/components/my-work/NoteColorChoices";
 import { useQuickNotesData } from "@/features/quick-notes/useQuickNotesData";
 import { QuickNotesSyncStatus, QuickNotesSyncIndicator } from "@/features/quick-notes/QuickNotesSyncStatus";
 import { useTenant } from "@/hooks/useTenant";
@@ -7,7 +8,7 @@ import { Archive, Search, X, CheckSquare, Trash2, Settings2, Pin, ClockAlert, Sl
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useNoteColorPalette, colorLabel } from "@/components/my-work/useNoteColorPalette";
+import { useNoteColorPalette } from "@/components/my-work/useNoteColorPalette";
 import { NoteColorPaletteDialog } from "@/components/my-work/NoteColorPaletteDialog";
 import { QuickNotesList } from "@/components/shared/QuickNotesList";
 import { GlobalNoteShareDialog } from "@/components/shared/GlobalNoteShareDialog";
@@ -126,21 +127,7 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
                 </div>
                 <div className="section-label">Farbe</div>
                 <div className="flex flex-wrap items-center gap-2">
-                  {palette.map((c) => (
-                    <Tooltip key={c.value}>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          aria-label={`Nach Farbe ${colorLabel(c)} filtern`}
-                          aria-pressed={colorFilter === c.value}
-                          onClick={() => setColorFilter((prev) => (prev === c.value ? null : c.value))}
-                          className={cn("flex h-16 w-16 items-center justify-center rounded-full border-2 p-1 text-center text-[10px] font-semibold leading-tight break-words transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", colorFilter === c.value ? "border-foreground scale-110" : "border-transparent")}
-                          style={{ backgroundColor: c.value, color: `color-mix(in srgb, ${c.value} 25%, black)` }}
-                        >{c.meaning}</button>
-                      </TooltipTrigger>
-                      <TooltipContent>{colorLabel(c)}</TooltipContent>
-                    </Tooltip>
-                  ))}
+                  <NoteColorChoices palette={palette} selected={colorFilter} onSelect={value => setColorFilter(previous => previous === value ? null : value)} />
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button type="button" onClick={() => setPaletteOpen(true)} className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Farben anpassen">
