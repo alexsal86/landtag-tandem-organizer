@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { KeyboardEventHandler } from "react";
+import type { KeyboardEventHandler, ReactNode } from "react";
 import { MyWorkQuickCapture } from "./MyWorkQuickCapture";
 
 const save = vi.hoisted(() => vi.fn());
@@ -10,10 +10,10 @@ vi.mock("@/components/my-work/hooks/useQuickCaptureActions", () => ({ useQuickCa
 vi.mock("@/components/my-work/useNoteColorPalette", () => ({ useNoteColorPalette: () => ({ palette: [] }), colorLabel: () => "" }));
 vi.mock("@/components/shared/MentionSharePromptDialog", () => ({ MentionSharePromptDialog: () => null }));
 vi.mock("@/components/ui/SimpleRichTextEditor", () => ({
-  default: ({ placeholder, initialContent, onChange, onKeyDown, autoFocus }: {
-    autoFocus?: boolean; placeholder: string; initialContent: string; onChange: (value: string) => void;
+  default: ({ placeholder, initialContent, onChange, onKeyDown, autoFocus, toolbarExtras }: {
+    toolbarExtras?: ReactNode; autoFocus?: boolean; placeholder: string; initialContent: string; onChange: (value: string) => void;
     onKeyDown: KeyboardEventHandler<HTMLDivElement>;
-  }) => <div onKeyDown={onKeyDown}><textarea autoFocus={autoFocus} aria-label={placeholder} defaultValue={initialContent} onChange={e => onChange(e.target.value)} /></div>,
+  }) => <div onKeyDown={onKeyDown}><textarea autoFocus={autoFocus} aria-label={placeholder} defaultValue={initialContent} onChange={e => onChange(e.target.value)} />{toolbarExtras}</div>,
 }));
 
 beforeEach(() => { localStorage.clear(); save.mockClear(); });
@@ -36,5 +36,11 @@ describe("quick capture keyboard", () => {
     expect(save).toHaveBeenCalledTimes(4);
     fireEvent.keyDown(editors[1], { key: "Enter", ctrlKey: true, isComposing: true });
     expect(save).toHaveBeenCalledTimes(4);
+    expect(screen.getByRole("button", { name: "Notiz speichern" })).toBeEnabled();
+    expect(screen.queryByText("Quick Notes")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
+    fireEvent.click(screen.getByRole("button", { name: "Entwurf fortsetzen…" }));
+    expect(screen.getByRole("textbox", { name: "Titel" })).toHaveValue("<p>Mein Titel</p>");
+    expect(screen.getByRole("textbox", { name: "Gedanke, Notiz oder Anliegen…" })).toHaveFocus();
   });
 });

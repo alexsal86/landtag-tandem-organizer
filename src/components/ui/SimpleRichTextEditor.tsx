@@ -61,6 +61,9 @@ interface SimpleRichTextEditorProps {
   onKeyDown?: React.KeyboardEventHandler<HTMLDivElement>;
   showToolbar?: boolean;
   toolbarPosition?: "top" | "bottom";
+  seamless?: boolean;
+  toolbarExtras?: React.ReactNode;
+  compactToolbar?: boolean;
   autoFocus?: boolean;
   enableChecklists?: boolean;
 }
@@ -90,7 +93,7 @@ const EditablePlugin = ({ disabled }: { disabled: boolean }) => {
 };
 
 // Toolbar Component
-const Toolbar = ({ enableChecklists = false }: { enableChecklists?: boolean }) => {
+const Toolbar = ({ enableChecklists = false, compact = false, extras }: { enableChecklists?: boolean; compact?: boolean; extras?: React.ReactNode }) => {
   const [editor] = useLexicalComposerContext();
   const [isBold, setIsBold] = React.useState(false);
   const [isItalic, setIsItalic] = React.useState(false);
@@ -239,7 +242,7 @@ const Toolbar = ({ enableChecklists = false }: { enableChecklists?: boolean }) =
   };
 
   return (
-    <div className="flex items-center gap-1 p-2 border-b border-border bg-muted/30">
+    <div className={cn("flex flex-wrap items-center gap-1", compact ? "border-t border-border bg-transparent py-2 text-muted-foreground [&>button]:h-7 [&>button]:w-7" : "p-2 border-b border-border bg-muted/30")}>
       <Button
         type="button"
         variant="ghost"
@@ -260,7 +263,7 @@ const Toolbar = ({ enableChecklists = false }: { enableChecklists?: boolean }) =
       >
         <Italic className="h-4 w-4" />
       </Button>
-      <Button
+      {!compact && (<Button
         type="button"
         variant="ghost"
         size="sm"
@@ -269,9 +272,9 @@ const Toolbar = ({ enableChecklists = false }: { enableChecklists?: boolean }) =
         title="Unterstrichen"
       >
         <Underline className="h-4 w-4" />
-      </Button>
+      </Button>)}
       <div className="w-px h-5 bg-border mx-1" />
-      <Button
+      {!compact && (<Button
         type="button"
         variant="ghost"
         size="sm"
@@ -280,8 +283,8 @@ const Toolbar = ({ enableChecklists = false }: { enableChecklists?: boolean }) =
         title="Aufzählungsliste"
       >
         <List className="h-4 w-4" />
-      </Button>
-      <Button
+      </Button>)}
+      {!compact && (<Button
         type="button"
         variant="ghost"
         size="sm"
@@ -290,7 +293,7 @@ const Toolbar = ({ enableChecklists = false }: { enableChecklists?: boolean }) =
         title="Nummerierte Liste"
       >
         <ListOrdered className="h-4 w-4" />
-      </Button>
+      </Button>)}
       {enableChecklists && <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" title="Checkliste" aria-label="Checkliste einfügen" onClick={() => editor.dispatchCommand(INSERT_CHECK_LIST_COMMAND, undefined)}><CheckSquare className="h-4 w-4" /></Button>}
       <div className="w-px h-5 bg-border mx-1" />
       <Button
@@ -319,7 +322,8 @@ const Toolbar = ({ enableChecklists = false }: { enableChecklists?: boolean }) =
           <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-destructive border-2 border-background animate-pulse" />
         )}
       </Button>
-      <SpeechCommandsDialog />
+      {!compact && <SpeechCommandsDialog />}
+      {extras}
       {lastRecognizedCommand && (
         <span className="text-xs font-medium text-primary bg-primary/10 rounded px-1.5 py-0.5 animate-in fade-in-0 zoom-in-95">
           ✓ {lastRecognizedCommand}
@@ -399,6 +403,9 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
   onKeyDown,
   showToolbar = true,
   toolbarPosition = "top",
+  seamless = false,
+  toolbarExtras,
+  compactToolbar = false,
   autoFocus = false,
   enableChecklists = false,
 }) => {
@@ -447,11 +454,12 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
 
   return (
     <div className={cn(
-      "block w-full border border-border rounded-lg bg-background",
+      "block w-full",
+      seamless ? "border-0 rounded-none bg-transparent" : "border border-border rounded-lg bg-background",
       disabled && "opacity-50 pointer-events-none"
     )}>
       <LexicalComposer initialConfig={initialConfig}>
-        {showToolbar && toolbarPosition === "top" && <Toolbar enableChecklists={enableChecklists} />}
+        {showToolbar && toolbarPosition === "top" && <Toolbar enableChecklists={enableChecklists} compact={compactToolbar} extras={toolbarExtras} />}
         <div className="relative w-full">
           <RichTextPlugin
             contentEditable={
@@ -475,7 +483,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
             ErrorBoundary={LexicalErrorBoundary}
           />
         </div>
-        {showToolbar && toolbarPosition === "bottom" && <Toolbar enableChecklists={enableChecklists} />}
+        {showToolbar && toolbarPosition === "bottom" && <Toolbar enableChecklists={enableChecklists} compact={compactToolbar} extras={toolbarExtras} />}
         <EditablePlugin disabled={disabled} />
         <HistoryPlugin />
         <OnChangePlugin onChange={handleChange} />

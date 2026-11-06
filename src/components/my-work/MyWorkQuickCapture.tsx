@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Pin, Palette, Save, ListTodo, Loader2, Info, ChevronUp, SquarePen } from "lucide-react";
+import { Pin, Loader2, Info, SquarePen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { MentionSharePromptDialog } from "@/components/shared/MentionSharePromptDialog";
@@ -35,7 +35,6 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
 
   const {
     handleSaveNote,
-    handleSaveAsTask,
     handleShareMentionedUsers,
     saving,
     savingAsTask,
@@ -97,129 +96,64 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
     );
   }
 
+  const footer = (
+    <>
+      <span className="mx-1 h-4 w-px bg-border" aria-hidden="true" />
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Notizfarbe wählen">
+            <span className="h-3.5 w-3.5 rounded-full border border-border" style={{ backgroundColor: selectedColor }} />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-2" align="start">
+          <div className="flex flex-wrap gap-1">
+            {palette.map(color => (
+              <button type="button" key={color.value} aria-label={colorLabel(color)} aria-pressed={selectedColor === color.value}
+                className={cn("h-6 w-6 rounded-full border-2", selectedColor === color.value ? "border-foreground" : "border-transparent")}
+                style={{ backgroundColor: color.value }} onClick={() => setSelectedColor(color.value)} />
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+      <Button variant="ghost" size="icon" className={cn("h-7 w-7", isPinned && "bg-muted text-foreground")}
+        aria-label="Notiz anpinnen" aria-pressed={isPinned} onClick={() => setIsPinned(!isPinned)}>
+        <Pin className="h-4 w-4" />
+      </Button>
+      <TooltipProvider><Tooltip>
+        <TooltipTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Hinweise zur Notizerfassung"><Info className="h-4 w-4" /></Button>
+        </TooltipTrigger>
+        <TooltipContent>Strg/Cmd + Enter speichert. @ erwähnt Personen. [ ] erstellt eine Checkbox. Abbrechen behält deinen lokalen Entwurf.</TooltipContent>
+      </Tooltip></TooltipProvider>
+      <div className="ml-auto flex items-center gap-2">
+        <span role="status" title={draftStatus} className="hidden text-xs text-muted-foreground sm:inline">
+          {draftStatus === "Entwurf lokal gesichert" ? "Lokal gesichert" : draftStatus || "@ erwähnen"}
+        </span>
+        <Button variant="ghost" size="sm" disabled={saving || savingAsTask} onClick={() => setExpanded(false)}>Abbrechen</Button>
+        <Button variant="secondary" size="sm" onClick={handleSaveNote} disabled={!canSaveNote || saving || savingAsTask} title="Strg/Cmd + Enter">
+          {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}Notiz speichern
+        </Button>
+      </div>
+    </>
+  );
+
   return (
     <>
-      <Card
-        className="w-full rounded-xl border-border bg-card shadow-sm animate-in fade-in-0 slide-in-from-top-1 duration-200 motion-reduce:animate-none"
-        onKeyDown={(e) => { if (e.key === "Escape" && !canSaveNote) setExpanded(false); }}
-        >
-
-      <CardContent className="space-y-1 p-3 [&>div>div]:border-0">
-        <div className="[&_[contenteditable]]:font-medium">
-        <SimpleRichTextEditor
-          key={`title-${editorResetKey}`}
-          initialContent={toEditorHtml(title)}
-          disabled={saving || savingAsTask}
-          onChange={setTitle}
-          onKeyDown={handleTitleKeyDown}
-          placeholder="Titel"
-          minHeight="36px"
-          showToolbar={false}
-        />
-        </div>
-        <div ref={contentEditorRef}>
-          <SimpleRichTextEditor
-            key={editorResetKey}
-            initialContent={toEditorHtml(content)}
-            disabled={saving || savingAsTask}
-            onChange={setContent}
-            autoFocus
-            toolbarPosition="bottom"
-            enableChecklists
-            onKeyDown={handleEditorKeyDown}
-            placeholder="Was möchtest du festhalten? „[ ] “ am Zeilenanfang = Checkbox, Mikrofon = Diktat"
-            minHeight="88px"
-          />
-        </div>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-2 text-muted-foreground">
-        <div className="flex w-full items-center justify-between gap-2">
-          <div className="text-xs flex items-center gap-1.5">
-            Quick Notes
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Hinweise zur Notizerfassung">
-                    <Info className="h-4 w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Enter erzeugt einen Absatz. Strg/Cmd + Enter speichert.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+      <Card className="w-full rounded-xl border-border bg-card shadow-sm animate-in fade-in-0 slide-in-from-top-1 duration-200 motion-reduce:animate-none"
+        onKeyDown={e => { if (e.key === "Escape" && !saving && !savingAsTask) setExpanded(false); }}>
+        <CardContent className="p-3 pb-0">
+          <div className="[&_[contenteditable]]:text-base [&_[contenteditable]]:font-semibold">
+            <SimpleRichTextEditor key={`title-${editorResetKey}`} initialContent={toEditorHtml(title)}
+              disabled={saving || savingAsTask} onChange={setTitle} onKeyDown={handleTitleKeyDown}
+              placeholder="Titel" minHeight="36px" showToolbar={false} seamless />
           </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Notiz anpinnen"
-              aria-pressed={isPinned}
-              className={cn("h-8 w-8 text-muted-foreground", isPinned && "bg-muted text-foreground")}
-              onClick={() => setIsPinned(!isPinned)}
-            >
-              <Pin className={cn("h-4 w-4", isPinned && "fill-current")} />
-            </Button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Notizfarbe wählen">
-                  <Palette className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-2" align="end">
-                <div className="flex gap-1">
-                  {palette.map((color) => (
-                    <button
-                      key={color.value}
-                      className={cn(
-                        "h-6 w-6 rounded-full border-2",
-                        selectedColor === color.value
-                          ? "border-foreground"
-                          : "border-transparent"
-                      )}
-                      style={{ backgroundColor: color.value }}
-                      onClick={() => setSelectedColor(color.value)}
-                      title={colorLabel(color)}
-                    />
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
+          <div ref={contentEditorRef}>
+            <SimpleRichTextEditor key={editorResetKey} initialContent={toEditorHtml(content)}
+              disabled={saving || savingAsTask} onChange={setContent} autoFocus enableChecklists seamless
+              toolbarPosition="bottom" compactToolbar toolbarExtras={footer} onKeyDown={handleEditorKeyDown}
+              placeholder="Gedanke, Notiz oder Anliegen…" minHeight="72px" />
           </div>
-        </div>
-      </div>
-        <p role="status" className="text-xs text-muted-foreground">{draftStatus}</p>
-        <div className="flex gap-2 flex-wrap">
-          <Button
-            onClick={handleSaveNote}
-            disabled={!canSaveNote || saving || savingAsTask}
-            size="sm"
-          >
-            {saving ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="mr-2 h-4 w-4" />
-            )}
-            Speichern
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handleSaveAsTask}
-            disabled={!stripHtml(content) || saving || savingAsTask}
-            size="sm"
-          >
-            {savingAsTask ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <ListTodo className="mr-2 h-4 w-4" />
-            )}
-            Als Aufgabe
-          </Button>
-          <Button variant="ghost" size="sm" className="ml-auto" disabled={saving || savingAsTask} onClick={() => setExpanded(false)}>
-            <ChevronUp className="mr-1.5 h-4 w-4" />
-            Schließen
-          </Button>
-        </div>
-      </CardContent>
+        </CardContent>
       </Card>
       <MentionSharePromptDialog
         open={mentionPromptOpen}
