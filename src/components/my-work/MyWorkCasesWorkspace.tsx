@@ -271,13 +271,6 @@ export function MyWorkCasesWorkspace() {
   const [triageFilter, setTriageFilter] = useState<TriageFilter>("all");
   const [handoverOpen, setHandoverOpen] = useState(false);
   const { isAdmin: canHandover } = useResolvedUserRole();
-  const [wideLayout, setWideLayout] = useState(() => typeof window !== "undefined" && window.matchMedia("(min-width: 1440px)").matches);
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1440px)");
-    const onChange = () => setWideLayout(mq.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
   const triageCounts = useMemo(() => countTriage(filteredCaseItems, user?.id ?? null), [filteredCaseItems, user?.id]);
 
   const sortedCaseItems = useMemo(() => {
@@ -1055,10 +1048,10 @@ export function MyWorkCasesWorkspace() {
     return <div className="p-4 text-sm text-muted-foreground">Lade Fallbearbeitung…</div>;
   }
 
-  // detailPanelForItem removed — detail is now rendered in the right column
+  // Keep the ball controls in the central detail area; properties live in its sidebar.
   const ballPanelNode = detailItem && editableCaseItem ? (
                     <CaseItemBallPanel
-                      variant={wideLayout ? "dock" : "bar"}
+                      variant="bar"
                       item={detailItem}
                       tenantId={tenantId}
                       subject={editableCaseItem.subject}
@@ -1093,7 +1086,6 @@ export function MyWorkCasesWorkspace() {
           <CaseHandoverDialog tenantId={tenantId} open={handoverOpen} onOpenChange={setHandoverOpen} items={caseItems} teamUsers={teamUsers} onConfirm={handleHandover} />
           <CasesWorkspaceShell
             onDragEnd={handleDragEnd}
-            inspector={wideLayout && ballPanelNode ? ballPanelNode : undefined}
             left={
               <CaseItemList
                 onCreateCaseItem={handleCreateCaseItem}
@@ -1181,7 +1173,7 @@ export function MyWorkCasesWorkspace() {
                     }
                     setCaseFileSheetOpen(true);
                   }}
-                  ballPanel={wideLayout ? undefined : ballPanelNode}
+                  ballPanel={ballPanelNode}
                   summary={getItemDescription(detailItem)}
                   detailPanel={
                     <CaseItemDetailPanel

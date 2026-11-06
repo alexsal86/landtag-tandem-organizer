@@ -1,9 +1,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { FolderOpen, Globe } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
 type DetailTab = "overview" | "timeline" | "documents";
@@ -66,152 +64,76 @@ export function CaseItemDetailView({
   isPublic,
   onPublicChange,
 }: CaseItemDetailViewProps) {
+  const propertySelect = (label: string, value: string, onChange: (value: string) => void, options: Array<{ value: string; label: string }>, placeholder?: string) => (
+    <div className="flex items-center gap-4 border-b border-border/50 py-3">
+      <span className="shrink-0 text-sm text-muted-foreground">{label}</span>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger aria-label={label} className="ml-auto h-auto min-h-8 min-w-0 flex-1 justify-end gap-2 border-0 bg-transparent px-0 text-right text-sm shadow-none [&>span]:truncate">
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+  const propertyDate = (label: string, value: string, onChange: (value: string) => void) => (
+    <label className="flex items-center gap-4 border-b border-border/50 py-3 text-sm">
+      <span className="shrink-0 text-muted-foreground">{label}</span>
+      <input aria-label={label} type="date" value={value} onChange={(event) => onChange(event.target.value)} className="ml-auto min-w-0 flex-1 rounded-md border-0 bg-transparent py-1 text-right text-foreground focus-visible:outline-primary" />
+    </label>
+  );
+
   return (
-    <div className="flex h-full min-h-0 flex-col bg-card">
-      <div className="shrink-0 border-b">
-        <div className="space-y-4 px-6 pb-4 pt-5">
-          <div className="flex flex-wrap items-center gap-3">
-            <Select value={priority} onValueChange={onPriorityChange}>
-              <SelectTrigger className="h-9 w-[130px] rounded-full font-semibold">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Niedrig</SelectItem>
-                <SelectItem value="medium">Mittel</SelectItem>
-                <SelectItem value="high">Hoch</SelectItem>
-                <SelectItem value="urgent">Dringend</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <input
-              value={title}
-              onChange={(event) => onTitleChange(event.target.value)}
-              className="min-w-[240px] flex-1 border-0 bg-transparent p-0 text-2xl font-bold leading-tight text-foreground outline-none ring-0 focus-visible:outline-none focus-visible:ring-0 lg:text-2xl"
-              placeholder="Titel"
-            />
-
-            <div className="flex min-w-[220px] items-center gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Eingang</span>
-              <input
-                type="date"
-                value={sourceReceivedAt}
-                onChange={(event) => onSourceReceivedAtChange(event.target.value)}
-                className="h-8 w-full rounded-md border bg-background px-2 text-sm font-medium text-foreground"
-              />
-            </div>
-
-            <div className="flex min-w-[220px] items-center gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Bearbeiter</span>
-              <Select value={assigneeId || "__none__"} onValueChange={(value) => onAssigneeChange(value === "__none__" ? "" : value)}>
-                <SelectTrigger className="h-8 w-full">
-                  <SelectValue placeholder="Nicht zugewiesen" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">Nicht zugewiesen</SelectItem>
-                  {assigneeOptions.map((member) => (
-                    <SelectItem key={member.id} value={member.id}>{member.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-            <div className="rounded-2xl border bg-muted/30 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fälligkeit</p>
-              <div className="pt-1">
-                <input
-                  type="date"
-                  value={dueDateValue}
-                  onChange={(event) => onDueDateChange(event.target.value)}
-                  className="h-8 w-full rounded-md border bg-background px-2 text-sm font-bold text-foreground"
-                />
-              </div>
-            </div>
-            <div className="rounded-2xl border bg-muted/30 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</p>
-              <Select value={status} onValueChange={onStatusChange}>
-                <SelectTrigger className="mt-1 h-8 w-full bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {statusOptions.map((statusOption) => (
-                    <SelectItem key={statusOption.value} value={statusOption.value}>{statusOption.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="rounded-2xl border bg-muted/30 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Kategorie</p>
-              <Select value={category} onValueChange={onCategoryChange}>
-                <SelectTrigger className="mt-1 h-8 w-full bg-background">
-                  <SelectValue placeholder="Kategorie wählen" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categoryOptions.map((categoryOption) => (
-                    <SelectItem key={categoryOption} value={categoryOption}>{categoryOption}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2.5 pt-1">
-            <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold">
-              <Globe className={cn("h-3.5 w-3.5", isPublic ? "text-palette-blue" : "text-muted-foreground")} />
-              <span>{isPublic ? "Öffentlich" : "Nicht öffentlich"}</span>
-              <Switch checked={isPublic} onCheckedChange={onPublicChange} />
-            </div>
-            {linkedFileName ? (
-              <button
-                type="button"
-                className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
-                onClick={onOpenCaseFiles}
-              >
-                <FolderOpen className="h-3.5 w-3.5" />
-                {linkedFileName}
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="inline-flex items-center gap-1.5 rounded-full border border-dashed px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted"
-                onClick={onOpenCaseFiles}
-              >
-                <FolderOpen className="h-3.5 w-3.5" />
-                Mit Akte verknüpfen
-              </button>
-            )}
-          </div>
+    <div className="grid h-full min-h-0 min-w-0 grid-cols-1 overflow-y-auto bg-card min-[1440px]:grid-cols-[minmax(0,1fr)_300px] min-[1440px]:overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-col">
+        <div className="shrink-0 border-b px-6 pb-4 pt-5">
+          <input
+            aria-label="Titel"
+            value={title}
+            onChange={(event) => onTitleChange(event.target.value)}
+            className="w-full min-w-0 border-0 bg-transparent p-0 text-2xl font-bold leading-tight text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            placeholder="Titel"
+          />
         </div>
-
-        <div className="border-t px-6 py-3">
+        {ballPanel}
+        <div className="shrink-0 border-b px-6 py-3">
           <div className="flex flex-wrap items-center gap-2">
             {[
               { key: "overview", label: "Übersicht" },
               { key: "timeline", label: "Timeline" },
               { key: "documents", label: "Dokumente" },
             ].map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => onTabChange(tab.key as DetailTab)}
-                className={cn(
-                  "rounded-full border px-5 py-2 text-sm font-semibold transition-colors",
-                  activeTab === tab.key ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:bg-muted",
-                )}
-              >
+              <button key={tab.key} type="button" onClick={() => onTabChange(tab.key as DetailTab)}
+                className={cn("rounded-full border px-5 py-2 text-sm font-semibold transition-colors", activeTab === tab.key ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:bg-muted")}>
                 {tab.label}
               </button>
             ))}
           </div>
         </div>
+        {summary?.trim() ? <PinnedSummary text={summary.trim()} /> : null}
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="p-4">{detailPanel}</div>
+        </ScrollArea>
       </div>
-
-      {ballPanel}
-      {summary?.trim() ? <PinnedSummary text={summary.trim()} /> : null}
-      <ScrollArea className="min-h-0 flex-1">
-        <div className="p-4">{detailPanel}</div>
-      </ScrollArea>
+      <aside aria-label="Eigenschaften" className="min-h-0 overflow-y-auto border-t bg-muted/10 px-6 py-7 min-[1440px]:border-l min-[1440px]:border-t-0">
+        <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Eigenschaften</h2>
+        {propertySelect("Bearbeiter", assigneeId || "__none__", (value) => onAssigneeChange(value === "__none__" ? "" : value), [{ value: "__none__", label: "Nicht zugewiesen" }, ...assigneeOptions.map((member) => ({ value: member.id, label: member.name }))])}
+        {propertySelect("Kategorie", category, onCategoryChange, categoryOptions.map((value) => ({ value, label: value })), "Wählen…")}
+        {propertySelect("Sichtbarkeit", isPublic ? "public" : "private", (value) => onPublicChange(value === "public"), [{ value: "private", label: "Nicht öffentlich" }, { value: "public", label: "Öffentlich" }])}
+        <div className="flex items-center gap-4 py-3 text-sm">
+          <span className="text-muted-foreground">Akte</span>
+          <button type="button" onClick={onOpenCaseFiles} className="ml-auto min-w-0 break-words text-right font-semibold text-success hover:underline">
+            {linkedFileName || "Verknüpfen"}
+          </button>
+        </div>
+        <div className="mt-6">
+          {propertySelect("Status", status, onStatusChange, statusOptions)}
+          {propertySelect("Priorität", priority, onPriorityChange, [{ value: "low", label: "Niedrig" }, { value: "medium", label: "Mittel" }, { value: "high", label: "Hoch" }, { value: "urgent", label: "Dringend" }])}
+          {propertyDate("Eingang", sourceReceivedAt, onSourceReceivedAtChange)}
+          {propertyDate("Fälligkeit", dueDateValue, onDueDateChange)}
+        </div>
+      </aside>
     </div>
   );
 }
