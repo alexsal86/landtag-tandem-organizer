@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { CalendarDays, ClipboardList, Mail, Zap } from "lucide-react";
+import { CalendarDays, ClipboardList, Gavel, Mail, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { sendToDaySlip } from "@/lib/daySlipBridge";
 import { openAppointmentRequestCreate } from "@/features/appointment-requests/events";
-import { BALL_OWNERS, PARLIAMENTARY_TOOLS, ballMeta, daysUntilNextAction, type BallOwner, type ParliamentaryTool } from "@/features/cases/items/ball";
+import { BALL_OWNERS, PARLIAMENTARY_TOOLS, ballMeta, daysUntilNextAction, resubmissionHint, stepState, type BallOwner, type ParliamentaryTool } from "@/features/cases/items/ball";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { useCaseHandoverLog } from "@/components/my-work/hooks/useCaseHandoverLog";
@@ -23,28 +23,42 @@ type Props = {
   onCompleteStep: (label: string) => Promise<boolean>;
   onOpenMeetingSelector: () => void;
   onCreateLetter: () => Promise<void>;
+  onRequestDecision?: () => void;
   /** "dock" = vertical layout for the right-hand third zone. */
   variant?: "bar" | "dock";
 };
 
 const NONE = "__none__";
 
-export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange, onCompleteStep, onOpenMeetingSelector, onCreateLetter, variant = "bar" }: Props) {
+export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange, onCompleteStep, onOpenMeetingSelector, onCreateLetter, onRequestDecision, variant = "bar" }: Props) {
   const [completingStep, setCompletingStep] = useState(false);
   const [creatingLetter, setCreatingLetter] = useState(false);
   const [label, setLabel] = useState(item.next_action_label ?? "");
   useEffect(() => setLabel(item.next_action_label ?? ""), [item.id, item.next_action_label]);
+  const hasStep = stepState(item) === "set";
+  // Ohne festgelegten Schritt werden Frist und Zuständigkeit erst mit „Schritt festlegen“ gespeichert.
+  const [draftDue, setDraftDue] = useState<string | null>(null);
+  const [draftAssignee, setDraftAssignee] = useState<string | null>(null);
+  useEffect(() => { setDraftDue(item.next_action_due_at ?? null); setDraftAssignee(item.next_action_assignee_id ?? null); }, [item.id, item.next_action_due_at, item.next_action_assignee_id]);
+  const hint = resubmissionHint(item);
 
   const lastHandover = useCaseHandoverLog(tenantId, item.id).data?.[0];
   const userName = (id: string | null) => teamUsers.find((u) => u.id === id)?.name ?? "Unbekannt";
   const meta = ballMeta(item.ball_owner);
   const days = daysUntilNextAction(item);
   const dueText = days === null ? null : days < 0 ? `${-days} T überfällig` : days === 0 ? "heute" : days === 1 ? "morgen" : `in ${days} T`;
-  const dueValue = item.next_action_due_at ? item.next_action_due_at.slice(0, 10) : "";
+  const dueSource = hasStep ? item.next_action_due_at : draftDue;
+  const dueValue = dueSource ? format(new Date(dueSource), "yyyy-MM-dd") : "";
+  const assigneeValue = hasStep ? item.next_action_assignee_id : draftAssignee;
 
   const commitLabel = () => {
+    if (!hasStep) return;
     const next = label.trim() || null;
-    if (next !== (item.next_action_label ?? null)) onChange({ next_action_label: next });
+    if (next && next !== (item.next_action_label ?? null)) onChange({ next_action_label: next });
+  };
+  const setStep = () => {
+    if (!label.trim()) return;
+    onChange({ next_action_label: label.trim(), next_action_due_at: draftDue, next_action_assignee_id: draftAssignee });
   };
 
   return (
@@ -71,12 +85,14 @@ export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange
         ))}
       </div>
 
+      {hint && <p className="rounded-md bg-success/10 px-4 py-2 text-sm text-success">{hint}</p>}
+
       <div className={cn("grid grid-cols-1 gap-2", variant === "bar" && "md:grid-cols-[1fr_150px_170px]")}>
         <Input
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           onBlur={commitLabel}
-          onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+          onKeyDown={(e) => { if (e.key === "Enter") { if (hasStep) (e.target as HTMLInputElement).blur(); else setStep(); } }}
           placeholder={item.ball_owner === "office" || !item.ball_owner ? "Nächster Schritt, z. B. Erinnerung an RP senden" : "Worauf warten wir? z. B. Stellungnahme Ministerium"}
           className="h-8 text-sm"
           aria-label="Nächster Schritt"
@@ -85,14 +101,17 @@ export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange
           <Input
             type="date"
             value={dueValue}
-            onChange={(e) => onChange({ next_action_due_at: e.target.value ? new Date(`${e.target.value}T12:00:00`).toISOString() : null })}
+            onChange={(e) => {
+              const iso = e.target.value ? new Date(`${e.target.value}T12:00:00`).toISOString() : null;
+              if (hasStep) onChange({ next_action_due_at: iso }); else setDraftDue(iso);
+            }}
             className={cn("h-8 text-sm", days !== null && days < 0 && "border-destructive text-destructive")}
             aria-label="Frist nächster Schritt"
           />
         </div>
         <Select
-          value={item.next_action_assignee_id ?? NONE}
-          onValueChange={(v) => onChange({ next_action_assignee_id: v === NONE ? null : v })}
+          value={assigneeValue ?? NONE}
+          onValueChange={(v) => { const id = v === NONE ? null : v; if (hasStep) onChange({ next_action_assignee_id: id }); else setDraftAssignee(id); }}
         >
           <SelectTrigger className="h-8 text-sm" aria-label="Zuständig für nächsten Schritt"><SelectValue placeholder="Zuständig" /></SelectTrigger>
           <SelectContent>
@@ -130,6 +149,11 @@ export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange
           >
             <Zap className="h-3.5 w-3.5" />Auf Tageszettel
           </Button>
+          {onRequestDecision && (
+            <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs text-muted-foreground" onClick={onRequestDecision}>
+              <Gavel className="h-3.5 w-3.5" />Entscheidung anfordern
+            </Button>
+          )}
           <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs text-muted-foreground" onClick={onOpenMeetingSelector}>
             <ClipboardList className="h-3.5 w-3.5" />Auf Jour fixe
           </Button>
@@ -142,14 +166,22 @@ export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange
         </div>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-        <p className="text-sm text-muted-foreground">Schritt abgehakt? Dann Ball weitergeben oder neuen Schritt eintragen.</p>
-        <Button type="button" disabled={!label.trim() || completingStep} className="ml-auto h-11 rounded-lg bg-success px-5 font-semibold text-white hover:bg-success/90"
-          onClick={async () => {
-            setCompletingStep(true);
-            try { if (await onCompleteStep(label.trim())) setLabel(""); } finally { setCompletingStep(false); }
-          }}>
-          {completingStep ? "Wird erledigt…" : "Schritt erledigt"}
-        </Button>
+        <p className="text-sm text-muted-foreground">
+          {hasStep ? "Schritt abgehakt? Dann Ball weitergeben oder neuen Schritt eintragen." : "Noch kein Schritt festgelegt. Was passiert als Nächstes?"}
+        </p>
+        {hasStep ? (
+          <Button type="button" disabled={completingStep} className="ml-auto h-11 rounded-lg bg-success px-5 font-semibold text-success-foreground hover:bg-success/90"
+            onClick={async () => {
+              setCompletingStep(true);
+              try { if (await onCompleteStep(item.next_action_label!.trim())) setLabel(""); } finally { setCompletingStep(false); }
+            }}>
+            {completingStep ? "Wird erledigt…" : "Schritt erledigt"}
+          </Button>
+        ) : (
+          <Button type="button" disabled={!label.trim()} className="ml-auto h-11 rounded-lg bg-success px-5 font-semibold text-success-foreground hover:bg-success/90" onClick={setStep}>
+            Schritt festlegen
+          </Button>
+        )}
       </div>
     </div>
   );
