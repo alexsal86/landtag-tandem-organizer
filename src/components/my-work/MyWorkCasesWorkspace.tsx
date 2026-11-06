@@ -600,6 +600,26 @@ export function MyWorkCasesWorkspace() {
     });
   }, [getAssigneeIds, getCategory, setEditableCaseItem]);
 
+  const openedCaseLinkRef = useRef<string | null>(null);
+  const pendingCaseLinkRef = useRef<string | null>(null);
+  useEffect(() => {
+    const requestedId = searchParams.get("caseItemId");
+    if (!requestedId) { openedCaseLinkRef.current = null; pendingCaseLinkRef.current = null; return; }
+    if (searchParams.get("highlight") === requestedId) pendingCaseLinkRef.current = requestedId;
+    if (pendingCaseLinkRef.current !== requestedId || openedCaseLinkRef.current === requestedId) return;
+    const requestedItem = caseItems.find((item) => item.id === requestedId);
+    if (!requestedItem) {
+      if (!loading && hasMoreItems && !loadingMoreItems) runAsync(loadMoreItems);
+      return;
+    }
+    openedCaseLinkRef.current = requestedId;
+    setTriageFilter("all");
+    setFilters((prev) => prev.itemQuery ? { ...prev, itemQuery: "" } : prev);
+    openCaseItemDetail(requestedItem);
+    if (searchParams.get("highlight") !== requestedId) setSearchParams((prev) => { const next = new URLSearchParams(prev); next.set("highlight", requestedId); return next; }, { replace: true });
+    setHasHydratedDetailFromUrl(true);
+  }, [searchParams, caseItems, loading, hasMoreItems, loadingMoreItems, loadMoreItems, runAsync, openCaseItemDetail, setSearchParams]);
+
   const handleSelectCaseItem = (item: CaseItem) => {
     if (detailItemId === item.id) {
       setDetailItemId(null);
@@ -618,8 +638,10 @@ export function MyWorkCasesWorkspace() {
       const matchedItem = caseItems.find((item) => item.id === caseItemIdFromUrl);
       if (matchedItem) {
         openCaseItemDetail(matchedItem);
+      } else if (!loading && hasMoreItems && !loadingMoreItems && pendingCaseLinkRef.current !== caseItemIdFromUrl) {
+        runAsync(loadMoreItems);
       }
-      if (matchedItem || !loading) {
+      if (matchedItem || (!loading && !hasMoreItems)) {
         setHasHydratedDetailFromUrl(true);
       }
       return;
@@ -647,7 +669,7 @@ export function MyWorkCasesWorkspace() {
       if (latestItem) openCaseItemDetail(latestItem);
     }
     setHasHydratedDetailFromUrl(true);
-  }, [allCaseFiles, caseItems, hasHydratedDetailFromUrl, loading, openCaseItemDetail, searchParams]);
+  }, [allCaseFiles, caseItems, hasHydratedDetailFromUrl, loading, hasMoreItems, loadingMoreItems, loadMoreItems, runAsync, openCaseItemDetail, searchParams]);
 
   useEffect(() => {
     if (!hasHydratedDetailFromUrl) return;

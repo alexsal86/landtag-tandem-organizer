@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { sendToDaySlip } from "@/lib/daySlipBridge";
+import { sendToDaySlip, formatCaseDaySlipText } from "@/lib/daySlipBridge";
 import { openAppointmentRequestCreate, openAppointmentRequestDetail } from "@/features/appointment-requests/events";
 import { BALL_OWNERS, ballMeta, daysUntilNextAction, withAutoDeadline, resubmissionHint, stepState, type BallOwner } from "@/features/cases/items/ball";
 import { format } from "date-fns";
@@ -60,7 +60,7 @@ export function CaseItemQuickActions({ item, subject, onOpenMeetingSelector, onC
         <Mail className="h-4 w-4 text-muted-foreground" />{creatingLetter ? "Lege an…" : "Brief aufsetzen"}
       </Button>
       <Button type="button" variant="ghost" size="sm" className={cls}
-        onClick={() => sendToDaySlip({ text: `${label || "Vorgang bearbeiten"} [${subject}]`, source: { type: "case", id: item.id, nextActionLabel: label || undefined } })}>
+        onClick={() => sendToDaySlip({ text: formatCaseDaySlipText(subject, label), source: { type: "case", id: item.id, nextActionLabel: label || undefined } })}>
         <Zap className="h-4 w-4 text-muted-foreground" />Auf Tageszettel
       </Button>
       {workflow.isError && <p className="px-2 text-xs text-destructive">Verknüpfungen konnten nicht geladen werden. <button type="button" className="underline" onClick={() => void workflow.refetch()}>Erneut laden</button></p>}

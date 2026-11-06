@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { webcrypto } from "node:crypto";
-import { appendEntries, carryLines, collectCarryLines, emptyDay, exportId, normalizeStore, sourcePath } from "../daySlipState";
+import { appendEntries, carryLines, collectCarryLines, completedArchiveDays, emptyDay, exportId, normalizeStore, sourcePath } from "../daySlipState";
 import { extractLinesFromHtml, isRuleLine, stripHtml, toParagraphHtml, type DaySlipStore } from "../dayslipTypes";
 
 const day = (id: string, text = id) => ({ html: toParagraphHtml({ id, text }), plainText: text });
@@ -60,6 +60,20 @@ describe("Tageszettel state", () => {
     expect(isRuleLine("--- Focus ---")).toBe(true);
     expect(stripHtml("<p>A &amp; B</p><p>C</p>")).toBe("A & B\nC");
   });
+  it("archives only explicitly completed days, including today, without losing open work", () => {
+    const store: DaySlipStore = {
+      "2026-11-01": day("still-open"),
+      "2026-11-02": { ...day("done"), completedAt: "2026-11-02T17:00:00Z" },
+      "2026-11-03": { ...day("invalid"), completedAt: "invalid" },
+      "2026-11-04": { ...day("today-done"), completedAt: "2026-11-04T17:00:00Z" },
+      "2026-11-05": { ...day("future"), completedAt: "2026-11-05T17:00:00Z" },
+    };
+    expect(completedArchiveDays(store, "2026-11-04")).toEqual(["2026-11-04", "2026-11-02"]);
+    expect(collectCarryLines(store, "2026-11-04").some((line) => line.id === "still-open")).toBe(true);
+    expect(store["2026-11-01"].plainText).toBe("still-open");
+    expect(completedArchiveDays({ ...store, "2026-11-04": { ...store["2026-11-04"], completedAt: undefined } }, "2026-11-04")).toEqual(["2026-11-02"]);
+  });
+
   it("uses stable export primary keys scoped to account, day, line and destination", async () => {
     Object.defineProperty(crypto, "subtle", { configurable: true, value: webcrypto.subtle });
     const id = await exportId("user-1", "2026-11-04", "line", "task");
@@ -69,6 +83,6 @@ describe("Tageszettel state", () => {
     expect(id).toMatch(/^[a-f0-9]{8}-[a-f0-9]{4}-5[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/);
     expect(sourcePath({ type: "task", id: "task-1" })).toBe("/tasks?highlight=task-1");
     expect(sourcePath({ type: "note", id: "note-1" })).toBe("/mywork?tab=capture&highlight=note-1");
-    expect(sourcePath({ type: "case", id: "case-1" })).toBe("/vorgaenge/case-1");
+    expect(sourcePath({ type: "case", id: "case-1" })).toBe("/mywork?tab=cases&caseItemId=case-1&highlight=case-1");
   });
 });

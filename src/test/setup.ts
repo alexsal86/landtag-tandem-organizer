@@ -30,6 +30,13 @@ Object.defineProperty(window, "matchMedia", {
   }),
 });
 
+// jsdom has no layout observer; components can still exercise their real editor lifecycle.
+vi.stubGlobal("ResizeObserver", class {
+  observe = vi.fn();
+  unobserve = vi.fn();
+  disconnect = vi.fn();
+});
+
 beforeEach(() => {
   mockSupabaseClient.reset();
   mockSupabaseClient.setSession(null);

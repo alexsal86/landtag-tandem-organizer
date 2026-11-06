@@ -1,7 +1,7 @@
 import { DaySlipAppointments } from "./DaySlipAppointments";
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { DAY_SLIP_APPEND_EVENT, type DaySlipAppendDetail } from "@/lib/daySlipBridge";
+import { DAY_SLIP_APPEND_EVENT, withDaySlipSourceIcon, type DaySlipAppendDetail } from "@/lib/daySlipBridge";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useTenantUsers } from "@/hooks/useTenantUsers";
@@ -224,7 +224,7 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
       const text = detail?.text?.trim();
       if (!text) return;
       if (ds.todayData.completedAt || !ds.ready || ds.isProcessing) { toast.info("Bitte den Tageszettel zuerst öffnen und den Tag gegebenenfalls wieder öffnen."); return; }
-      ds.appendLinesToToday([text], detail.source);
+      ds.appendLinesToToday([withDaySlipSourceIcon(text, detail.source)], detail.source);
       toast.success("Auf den Tageszettel gesetzt");
     };
     window.addEventListener(DAY_SLIP_APPEND_EVENT, onAppend);
@@ -445,7 +445,7 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
           ) : showArchive ? (
             <div className={`flex-1 space-y-3 overflow-y-auto p-4 transition-all duration-300 ease-out ${contentTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
               <p className="text-sm font-medium">Archiv (nur lesen)</p>
-              {ds.archiveDays.length === 0 && <p className="text-sm text-muted-foreground">Noch keine vergangenen Tage.</p>}
+              {ds.archiveDays.length === 0 && <p className="text-sm text-muted-foreground">Noch keine abgeschlossenen Tage.</p>}
               {ds.archiveDays.map((day) => {
                 const dayData = ds.store[day];
                 const moodMap = ["😞", "🙁", "😐", "🙂", "😄"] as const;

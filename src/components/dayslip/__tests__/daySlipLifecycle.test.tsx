@@ -121,6 +121,19 @@ describe("Tageszettel lifecycle", () => {
     await act(async () => { expect(await result.current.completeDay()).toBe(true); });
     expect(db.tables.get("tasks")).toHaveLength(1);
   });
+  it("keeps unfinished past days out of the archive after loading and autosaving", async () => {
+    db.tables.set("day_slips", [
+      { user_id: "user-a", day_key: "2026-01-01", data: day("Unfinished past work") },
+      { user_id: "user-a", day_key: "2026-01-02", data: { ...day("Explicitly completed"), completedAt: "2026-01-02T18:00:00Z" } },
+    ]);
+    const { result } = await openStore();
+    expect(result.current.archiveDays).toEqual(["2026-01-02"]);
+    expect(result.current.carryEntries.some((entry) => entry.text === "Unfinished past work")).toBe(true);
+    await act(async () => { expect(await result.current.flush()).toBe(true); });
+    expect(result.current.archiveDays).toEqual(["2026-01-02"]);
+    expect(result.current.store["2026-01-01"].completedAt).toBeUndefined();
+  });
+
   it("keeps a failed export open and retries without duplicating a committed but unacknowledged creation", async () => {
     db.tables.set("day_slips", [{ user_id: "user-a", day_key: today(), data: day() }]);
     const { result } = await openStore();

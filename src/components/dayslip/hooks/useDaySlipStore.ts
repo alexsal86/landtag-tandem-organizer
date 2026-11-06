@@ -12,7 +12,7 @@ import {
   type ResolvedItem, type ResolveTarget, type TaskOptions, type DaySlipSettings,
   toDayKey, extractLinesFromHtml, parseRuleLine, toParagraphHtml, toRuleHtml, weekdayKey,
 } from "../dayslipTypes";
-import { appendEntries, carryLines, collectCarryLines, emptyDay, exportId } from "../daySlipState";
+import { appendEntries, carryLines, collectCarryLines, completedArchiveDays, emptyDay, exportId } from "../daySlipState";
 
 const errorMessage = (error: unknown) => error && typeof error === "object" && "message" in error ? String(error.message) : String(error);
 
@@ -44,7 +44,7 @@ export function useDaySlipStore(userId: string, tenantId: string) {
   const openLines = allLineEntries.filter(entry => !struckLineIds.includes(entry.id) && !resolvedByLineId.has(entry.id));
   const triageEntries = allLineEntries.filter(entry => openLines.includes(entry) || resolvedByLineId.has(entry.id));
   const carryEntries = useMemo(() => collectCarryLines(store, todayKey), [store, todayKey]);
-  const archiveDays = Object.keys(store).filter(key => key < todayKey).sort((a, b) => b.localeCompare(a));
+  const archiveDays = completedArchiveDays(store, todayKey);
 
   const changeDay = useCallback((update: (day: DaySlipDayData) => DaySlipDayData, content = false, key = todayKey) => {
     if (!ready || processing.current || storeRef.current[key]?.completedAt) return;

@@ -9,3 +9,13 @@ export type DaySlipAppendDetail = {
 export function sendToDaySlip(detail: DaySlipAppendDetail): void {
   window.dispatchEvent(new CustomEvent<DaySlipAppendDetail>(DAY_SLIP_APPEND_EVENT, { detail }));
 }
+
+export function formatCaseDaySlipText(title: string, step?: string | null): string {
+  return `Vorgang: ${title.trim() || "Ohne Titel"} | Schritt: ${step?.trim() || "Noch kein Schritt festgelegt"}`;
+}
+
+export function withDaySlipSourceIcon(text: string, source?: DaySlipAppendDetail["source"]): string {
+  const trimmed = text.trim();
+  const icon = source ? { task: "✅", note: "📝", case: "💼", decision: "🗳️" }[source.type] : undefined;
+  return icon && !trimmed.startsWith(icon) ? `${icon} ${trimmed}` : trimmed;
+}

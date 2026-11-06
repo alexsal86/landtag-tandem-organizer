@@ -84,7 +84,7 @@ export function carryLines(store: DaySlipStore, today: string, lines: CarryLine[
 }
 
 export function sourcePath(source: DaySlipSource): string {
-  if (source.type === "case") return `/vorgaenge/${encodeURIComponent(source.id)}`;
+  if (source.type === "case") return `/mywork?tab=cases&caseItemId=${encodeURIComponent(source.id)}&highlight=${encodeURIComponent(source.id)}`;
   const base = { task: "/tasks", note: "/mywork?tab=capture", decision: "/decisions" }[source.type];
   return `${base}${base.includes("?") ? "&" : "?"}highlight=${encodeURIComponent(source.id)}`;
 }
@@ -96,4 +96,10 @@ export async function exportId(userId: string, dayKey: string, lineId: string, t
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
   const hex = Array.from(bytes.slice(0, 16), b => b.toString(16).padStart(2, "0")).join("");
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+/** Saving a working day is not the same as explicitly completing it. */
+export function completedArchiveDays(store: DaySlipStore, today: string): string[] {
+  return Object.keys(store).filter((key) => key <= today && typeof store[key].completedAt === "string"
+    && Number.isFinite(Date.parse(store[key].completedAt!))).sort((a, b) => b.localeCompare(a));
 }

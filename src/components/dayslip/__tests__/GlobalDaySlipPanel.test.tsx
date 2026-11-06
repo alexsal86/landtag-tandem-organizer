@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { supabase } from "@/integrations/supabase/client";
 import { GlobalDaySlipPanel } from "../GlobalDaySlipPanel";
+import { DAY_SLIP_APPEND_EVENT } from "@/lib/daySlipBridge";
 import { toDayKey, toParagraphHtml } from "../dayslipTypes";
 import type { createBackend } from "./backend";
 
@@ -22,6 +23,7 @@ const today = toDayKey(new Date());
 
 beforeEach(() => {
   db.reset(); localStorage.clear(); account.userId = "user-a";
+  window.history.replaceState(null, "", "/");
   localStorage.setItem("day-slip-panel-open", "true");
 });
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -39,6 +41,36 @@ describe("Tageszettel panel", () => {
     page.rerender(view());
     await waitFor(() => expect(screen.getByRole("textbox")).toHaveTextContent("Account B content"));
     expect(screen.getByRole("textbox")).not.toHaveTextContent("Account A content");
+  });
+  it("shows the icon on an appended case and links to the highlighted My Work case", async () => {
+    db.tables.set("day_slips", [{ user_id: "user-a", day_key: today, data: { html: toParagraphHtml({ id: "a", text: "Initial" }), plainText: "Initial", recurringInjected: true } }]);
+    render(view());
+    await waitFor(() => expect(screen.getByRole("textbox")).toHaveTextContent("Initial"));
+    fireEvent(window, new CustomEvent(DAY_SLIP_APPEND_EVENT, { detail: {
+      text: "Vorgang: Bürgeranfrage | Schritt: Antwort nachhalten", source: { type: "case", id: "case-1", nextActionLabel: "Antwort nachhalten" },
+    } }));
+    await waitFor(() => expect(screen.getByRole("textbox")).toHaveTextContent("💼 Vorgang: Bürgeranfrage | Schritt: Antwort nachhalten"));
+    const line = screen.getByRole("textbox").querySelector('[data-source-type="case"]');
+    expect(line).toHaveAttribute("data-source-id", "case-1");
+    fireEvent.click(screen.getByRole("button", { name: "💼 Vorgang: Bürgeranfrage | Schritt: Antwort nachhalten" }));
+    expect(window.location.pathname).toBe("/mywork");
+    const params = new URLSearchParams(window.location.search);
+    expect(params.get("tab")).toBe("cases");
+    expect(params.get("caseItemId")).toBe("case-1");
+    expect(params.get("highlight")).toBe("case-1");
+  });
+  it("shows only explicitly completed days in the archive", async () => {
+    db.tables.set("day_slips", [
+      { user_id: "user-a", day_key: "2026-01-01", data: { html: toParagraphHtml({ id: "open", text: "Open draft" }), plainText: "Open draft" } },
+      { user_id: "user-a", day_key: "2026-01-02", data: { html: toParagraphHtml({ id: "closed", text: "Explicit report" }), plainText: "Explicit report", completedAt: "2026-01-02T18:00:00Z" } },
+    ]);
+    render(view());
+    await waitFor(() => expect(screen.getByRole("textbox")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Archiv anzeigen" }));
+    await waitFor(() => expect(screen.getByText("Archiv (nur lesen)")).toBeInTheDocument());
+    expect(screen.getByText("Explicit report")).toBeInTheDocument();
+    expect(screen.queryByText("Open draft")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Nicht explizit abgeschlossen/)).not.toBeInTheDocument();
   });
   it("offers responsibility and due date when a collected line is assigned to a task", async () => {
     db.tables.set("day_slips", [{ user_id: "user-a", day_key: today, data: { html: toParagraphHtml({ id: "a", text: "Prepare briefing" }), plainText: "Prepare briefing", recurringInjected: true } }]);

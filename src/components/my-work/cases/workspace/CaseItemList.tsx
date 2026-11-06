@@ -1,4 +1,4 @@
-import { Fragment, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { Draggable, Droppable } from "@hello-pangea/dnd";
 import { Archive, CalendarDays, Circle, FolderOpen, Globe, Link2, Trash2, Vote, ArchiveRestore, Phone } from "lucide-react";
@@ -88,6 +88,9 @@ export function CaseItemList(props: CaseItemListProps) {
   const [resubOpen, setResubOpen] = useState(() => {
     try { return localStorage.getItem(RESUB_KEY) !== "0"; } catch { return true; }
   });
+  const highlightedResubmission = resubItems.some((item) => props.isHighlighted(item.id));
+  const resubExpanded = resubOpen || highlightedResubmission;
+  useEffect(() => { if (highlightedResubmission) setResubOpen(true); }, [highlightedResubmission]);
   const toggleResub = () => setResubOpen((open) => {
     try { localStorage.setItem(RESUB_KEY, open ? "0" : "1"); } catch { /* ignore */ }
     return !open;
@@ -156,17 +159,17 @@ export function CaseItemList(props: CaseItemListProps) {
                       key="resub-header"
                       type="button"
                       onClick={toggleResub}
-                      aria-expanded={resubOpen}
+                      aria-expanded={resubExpanded}
                       className="flex w-full items-center justify-between px-1 pb-1 pt-4 text-left"
                     >
                       <span className="section-label inline-flex items-center gap-1">
-                        <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-fast", !resubOpen && "-rotate-90")} />
+                        <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-fast", !resubExpanded && "-rotate-90")} />
                         Wiedervorlage · {resubCount}
                       </span>
                       <span className="text-xs font-semibold text-muted-foreground">kommt zurück</span>
                     </button>
                   ) : null;
-                  if (showResubSection && resub && !resubOpen) return header;
+                  if (showResubSection && resub && !resubExpanded) return header;
                   const isActive = props.detailItemId === item.id;
                   const ball = ballMeta(item.ball_owner);
                   const nextDays = daysUntilNextAction(item);
