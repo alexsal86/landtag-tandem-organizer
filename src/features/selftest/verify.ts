@@ -33,8 +33,16 @@ export async function expectFields(
   return { ok: true, message: `${label}: ${Object.keys(expected).length} Felder verifiziert.` };
 }
 
-function deepEqual(a: unknown, b: unknown): boolean {
+const TS_RE = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/;
+const TIME_RE = /^\d{2}:\d{2}(:\d{2})?$/;
+
+/** Postgres liefert Zeitstempel als „…+00:00“ und Uhrzeiten als „HH:MM:SS“ — semantisch vergleichen. */
+export function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
+  if (typeof a === "string" && typeof b === "string") {
+    if (TS_RE.test(a) && TS_RE.test(b)) return new Date(a).getTime() === new Date(b).getTime();
+    if (TIME_RE.test(a) && TIME_RE.test(b)) return a.padEnd(8, ":00").slice(0, 8) === b.padEnd(8, ":00").slice(0, 8);
+  }
   if (a == null || b == null) return a == null && b == null;
   if (typeof a !== typeof b) return false;
   if (Array.isArray(a) && Array.isArray(b)) {

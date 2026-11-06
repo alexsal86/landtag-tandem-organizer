@@ -8,7 +8,7 @@ const title = (run: string, label: string) => `${SELFTEST_PREFIX} ${label} (${ru
 const isoDate = (offsetDays: number): string => {
   const d = new Date();
   d.setDate(d.getDate() + offsetDays);
-  return d.toISOString().slice(0, 10);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
 export const dailyBriefingLifecycleScenario: TestScenario = {
@@ -28,6 +28,22 @@ export const dailyBriefingLifecycleScenario: TestScenario = {
     { label: "Dashboard öffnen (Briefing-Widget)", href: "/" },
   ],
   steps: [
+    {
+      id: "reject-today",
+      label: "Vortag-Regel: Briefing für heute wird abgelehnt",
+      run: async (ctx) => {
+        const { error } = await supabase.from("daily_briefings").insert({
+          tenant_id: ctx.tenantId, author_id: ctx.userId, briefing_date: isoDate(0),
+          title: title(ctx.runId, "Briefing heute (muss scheitern)"), content: SELFTEST_MARKER,
+        });
+        if (!error) {
+          const { data } = await supabase.from("daily_briefings").select("id").eq("tenant_id", ctx.tenantId).ilike("title", `%heute (muss scheitern) (${ctx.runId})%`);
+          data?.forEach((r) => ctx.created.push({ table: "daily_briefings", id: r.id }));
+          return { ok: false, message: "Briefing für heute wurde gespeichert — Vortag-Regel greift nicht." };
+        }
+        return { ok: true, message: "Abgelehnt wie erwartet." };
+      },
+    },
     {
       id: "create-yesterday",
       label: "Briefing für morgen anlegen",
