@@ -21,8 +21,7 @@ async function load(id: string): Promise<Row> {
 }
 
 function events(row: Row) {
-  const p = (row.intake_payload ?? {}) as { timeline_events?: unknown };
-  return parseTimelineEvents(p.timeline_events);
+  return parseTimelineEvents((row.intake_payload ?? null) as Parameters<typeof parseTimelineEvents>[0]);
 }
 
 /** Schreibt Feld-Patch + daraus abgeleitete Verlaufseinträge — derselbe Pfad wie „Schritt festlegen“ in der UI. */

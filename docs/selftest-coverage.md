@@ -7,13 +7,15 @@ _Auto-generiert von `scripts/check-selftest-coverage.mjs`. Nicht von Hand bearbe
 | ID | Titel | Features | Tabellen |
 |---|---|---|---|
 | `appointment-lifecycle` | Termin-Lifecycle (Kalender + Briefing + Feedback) | appointments, briefings | appointments, appointment_preparations, appointment_feedback |
-| `case-item-lifecycle` | Vorgangs-Lifecycle (neu → in Klärung → Antwort ausstehend → erledigt) | case-items, decisions | case_items, case_item_interactions, task_decisions |
+| `appointment-request-lifecycle` | Terminanfragen-Lifecycle (Eingang → Sperre → Entscheidung → Termin) | appointment-requests, appointments | appointment_requests, appointments |
+| `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | case-items, decisions, dayslip, appointment-requests | case_items, case_item_interactions, case_item_handover_log, task_decisions, task_decision_participants, task_decision_responses, appointment_requests, day_slips |
 | `daily-briefing-lifecycle` | Tages-Briefings (heute + gestern) | briefings | daily_briefings |
+| `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | dayslip | day_slips |
 | `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | decisions | task_decisions, task_decision_participants |
 | `event-planning-lifecycle` | Event-Planung (komplett: Termine, Speaker, Checkliste, Timeline) | event-planning | event_plannings, event_planning_dates, event_planning_speakers, event_planning_contacts, event_planning_checklist_items, event_planning_timeline_assignments |
 | `letter-lifecycle` | Brief-Lifecycle (Entwurf → Prüfung → Genehmigt → Versendet) | letters, decisions | letters, letter_attachments, task_decisions |
 | `meeting-lifecycle` | Meeting-Lifecycle (vollständig + Field-Verifikation) | meetings, appointments, tasks | meetings, meeting_agenda_items, meeting_agenda_documents, meeting_participants, appointments, tasks |
-| `task-lifecycle` | Aufgaben-Lifecycle | tasks | tasks |
+| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | tasks, decisions | tasks, task_decisions |
 
 ## Tabellen-Coverage
 
@@ -36,7 +38,7 @@ _Auto-generiert von `scripts/check-selftest-coverage.mjs`. Nicht von Hand bearbe
 | `appointment_preparations` | ✅ getestet | appointment-lifecycle |
 | `appointment_statuses` | ⚪ ignoriert | — |
 | `appointment_topics` | ⚪ ignoriert | — |
-| `appointments` | ✅ getestet | appointment-lifecycle, meeting-lifecycle |
+| `appointments` | ✅ getestet | appointment-lifecycle, appointment-request-lifecycle, meeting-lifecycle |
 | `archived_tasks` | ⚪ ignoriert | — |
 | `audit_log_entries` | ⚪ ignoriert | — |
 | `automation_rate_limits` | ⚪ ignoriert | — |
@@ -76,7 +78,7 @@ _Auto-generiert von `scripts/check-selftest-coverage.mjs`. Nicht von Hand bearbe
 | `daily_briefing_reads` | ⚪ ignoriert | — |
 | `daily_briefings` | ✅ getestet | daily-briefing-lifecycle |
 | `dashboard_layouts` | ⚪ ignoriert | — |
-| `day_slips` | ⚪ ignoriert | — |
+| `day_slips` | ✅ getestet | case-item-lifecycle, day-slip-lifecycle |
 | `decision_archive_settings` | ⚪ ignoriert | — |
 | `decision_email_templates` | ⚪ ignoriert | — |
 | `decision_matrix_messages` | ⚪ ignoriert | — |
@@ -223,11 +225,11 @@ _Auto-generiert von `scripts/check-selftest-coverage.mjs`. Nicht von Hand bearbe
 | `task_decision_attachments` | ⚪ ignoriert | — |
 | `task_decision_comment_reactions` | ⚪ ignoriert | — |
 | `task_decision_comments` | ⚪ ignoriert | — |
-| `task_decision_participants` | ✅ getestet | decision-lifecycle |
+| `task_decision_participants` | ✅ getestet | case-item-lifecycle, decision-lifecycle |
 | `task_decision_response_history` | ⚪ ignoriert | — |
-| `task_decision_responses` | ⚪ ignoriert | — |
+| `task_decision_responses` | ✅ getestet | case-item-lifecycle |
 | `task_decision_topics` | ⚪ ignoriert | — |
-| `task_decisions` | ✅ getestet | case-item-lifecycle, decision-lifecycle, letter-lifecycle |
+| `task_decisions` | ✅ getestet | case-item-lifecycle, decision-lifecycle, letter-lifecycle, task-lifecycle |
 | `task_documents` | ⚪ ignoriert | — |
 | `task_snoozes` | ⚪ ignoriert | — |
 | `task_statuses` | ⚪ ignoriert | — |
@@ -269,7 +271,12 @@ _Keine — alle relevanten Tabellen sind abgedeckt._
 
 | Tabelle | Getestete Spalten |
 |---|---|
+| `appointment_requests` | `channel`, `duration_minutes`, `location`, `notes`, `requested_date`, `requested_time`, `requester`, `tenant_id`, `title` |
 | `appointments` | `category`, `description`, `end_time`, `meeting_id`, `start_time`, `status`, `tenant_id`, `title`, `user_id` |
+| `case_item_handover_log` | `case_item_id`, `from_user_id`, `handed_over_by`, `tenant_id`, `to_user_id` |
+| `case_item_interactions` | `case_item_id`, `created_by`, `direction`, `interaction_at`, `interaction_type`, `summary`, `tenant_id`, `visibility` |
+| `case_items` | `ball_owner`, `completed_at`, `completion_note`, `intake_payload`, `next_action_assignee_id`, `next_action_due_at`, `next_action_label`, `pending_for_jour_fixe`, `resolution_summary`, `status`, `subject`, `summary`, `tenant_id`, `user_id` |
+| `day_slips` | `data`, `day_key`, `tenant_id`, `user_id` |
 | `event_planning_checklist_items` | `event_planning_id`, `is_completed`, `order_index`, `title`, `type` |
 | `event_planning_contacts` | `email`, `event_planning_id`, `name`, `phone`, `role` |
 | `event_planning_dates` | `date_time`, `event_planning_id`, `is_confirmed` |
@@ -282,5 +289,5 @@ _Keine — alle relevanten Tabellen sind abgedeckt._
 | `meeting_participants` | `meeting_id`, `role`, `status`, `user_id` |
 | `meetings` | `description`, `is_public`, `is_recurring_instance`, `meeting_date`, `meeting_time`, `parent_meeting_id`, `status`, `tenant_id`, `title`, `user_id` |
 | `task_decision_participants` | `decision_id`, `user_id` |
-| `task_decisions` | `archived_at`, `archived_by`, `created_by`, `description`, `priority`, `response_deadline`, `status`, `tenant_id`, `title`, `visible_to_all` |
-| `tasks` | `description`, `priority`, `status`, `tenant_id`, `title`, `user_id` |
+| `task_decisions` | `archived_at`, `archived_by`, `case_item_id`, `created_by`, `description`, `priority`, `response_deadline`, `status`, `task_id`, `tenant_id`, `title`, `visible_to_all` |
+| `tasks` | `assigned_to`, `description`, `due_date`, `pending_for_jour_fixe`, `priority`, `progress`, `status`, `tenant_id`, `title`, `user_id` |

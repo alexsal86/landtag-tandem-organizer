@@ -1,4 +1,8 @@
 import { useState } from "react";
+
+const LAST_RUNS_KEY = "selftest:last-runs";
+type LastRun = { status: string; at: number };
+const readLastRuns = (): Record<string, LastRun> => { try { return JSON.parse(localStorage.getItem(LAST_RUNS_KEY) ?? "{}"); } catch { return {}; } };
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,6 +38,7 @@ export function SelftestView() {
   const [runs, setRuns] = useState<Record<string, ScenarioRunState>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [purging, setPurging] = useState(false);
+  const [lastRuns, setLastRuns] = useState<Record<string, LastRun>>(readLastRuns);
 
   const canRun = !!user && !!currentTenant;
 
@@ -59,6 +64,9 @@ export function SelftestView() {
         keepData,
         onUpdate: (state) => setRuns((prev) => ({ ...prev, [scenarioId]: state })),
       });
+      const nextRuns = { ...readLastRuns(), [scenarioId]: { status: result.status, at: Date.now() } };
+      localStorage.setItem(LAST_RUNS_KEY, JSON.stringify(nextRuns));
+      setLastRuns(nextRuns);
       notify.success(result.status === "ok" ? (keepData ? "Demo-Daten erzeugt" : "Selbsttest erfolgreich") : "Selbsttest mit Fehlern", {
         description: scenario.title
 });
@@ -98,6 +106,34 @@ export function SelftestView() {
           Diese Tests erstellen reale Datensätze im aktuellen Tenant ({currentTenant?.name ?? "—"}) und löschen sie wieder. Sollte ein Cleanup fehlschlagen, nutze unten den Notfall-Aufräumknopf.
         </AlertDescription>
       </Alert>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Abdeckung</CardTitle>
+          <CardDescription>Welche Bereiche einen Selbsttest haben und wann er zuletzt lief.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ul className="divide-y text-sm">
+            {SELFTEST_SCENARIOS.map((s) => {
+              const last = lastRuns[s.id];
+              const logic = s.steps.filter((st) => st.kind === "logic").length;
+              return (
+                <li key={s.id} className="flex items-center justify-between gap-3 py-1.5">
+                  <span className="truncate">{s.title.split(" (")[0]}</span>
+                  <span className="flex items-center gap-2 shrink-0 text-xs text-muted-foreground tabular-nums">
+                    {s.steps.length} Schritte{logic ? ` · ${logic} Regel` : ""}
+                    {last ? (
+                      <Badge variant={last.status === "ok" ? "outline" : "destructive"}>
+                        {last.status === "ok" ? "OK" : "Fehler"} · {new Date(last.at).toLocaleDateString("de-DE")}
+                      </Badge>
+                    ) : <Badge variant="secondary">nie gelaufen</Badge>}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </CardContent>
+      </Card>
 
       <div className="space-y-4">
         {SELFTEST_SCENARIOS.map((scenario) => {
@@ -139,7 +175,7 @@ export function SelftestView() {
                       <li key={s.step.id} className="flex items-start gap-3 text-sm border-l-2 pl-3 py-1" style={{ borderColor: s.status === "failed" ? "hsl(var(--destructive))" : s.status === "ok" ? "hsl(142 71% 45%)" : "hsl(var(--border))" }}>
                         <StatusIcon status={s.status} />
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium">{s.step.label}</div>
+                          <div className="font-medium">{s.step.label}{s.step.kind === "logic" && <Badge variant="outline" className="ml-2 text-xs">Regel</Badge>}</div>
                           {s.message && (
                             <div className={`text-xs ${s.status === "failed" ? "text-destructive" : "text-muted-foreground"} break-words`}>{s.message}</div>
                           )}
