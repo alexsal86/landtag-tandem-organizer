@@ -1,4 +1,4 @@
-export type DeadlineKind = 'task' | 'note' | 'case' | 'decision' | 'eventPlanning';
+export type DeadlineKind = 'task' | 'note' | 'case' | 'caseAction' | 'decision' | 'eventPlanning';
 
 export interface DeadlineItem {
   id: string;

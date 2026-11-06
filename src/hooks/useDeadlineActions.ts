@@ -32,6 +32,10 @@ export async function changeDeadline(item: DeadlineItem, action: DeadlineAction)
     case 'case':
       await checked(await supabase.from('case_items').update(discard ? { due_at: null } : { status: 'erledigt', completed_at: new Date().toISOString() }).eq('id', item.id).eq('due_at', item.dueDate).select('id').single());
       return discard ? async () => { await checked(await supabase.from('case_items').update({ due_at: item.dueDate }).eq('id', item.id).is('due_at', null).select('id').single()); } : undefined;
+    case 'caseAction':
+      // Completing a next step clears it; the case itself stays open.
+      await checked(await supabase.from('case_items').update(discard ? { next_action_due_at: null } : { next_action_label: null, next_action_due_at: null }).eq('id', item.id).eq('next_action_due_at', item.dueDate).select('id').single());
+      return discard ? async () => { await checked(await supabase.from('case_items').update({ next_action_due_at: item.dueDate }).eq('id', item.id).is('next_action_due_at', null).select('id').single()); } : undefined;
     case 'decision': {
       let completion: { status: string; archived_at: string; archived_by: string } | undefined;
       if (!discard) {

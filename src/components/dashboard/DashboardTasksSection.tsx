@@ -17,6 +17,7 @@ const TYPE_CONFIG = {
   task: { label: 'Aufgabe', tabBase: '/mywork?tab=tasks', Icon: ListTodo },
   note: { label: 'Notiz', tabBase: '/mywork?tab=capture', Icon: StickyNote },
   case: { label: 'Vorgang', tabBase: '/mywork?tab=cases', Icon: BriefcaseBusiness },
+  caseAction: { label: 'Nächster Schritt', tabBase: '/mywork?tab=cases', Icon: BriefcaseBusiness },
   decision: { label: 'Entscheidung', tabBase: '/mywork?tab=decisions', Icon: ClipboardCheck },
   eventPlanning: { label: 'Veranstaltung', tabBase: '/eventplanning', Icon: CalendarDays },
 };

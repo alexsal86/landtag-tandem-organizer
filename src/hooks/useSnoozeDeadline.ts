@@ -50,6 +50,11 @@ export const performSnooze = async ({ item, newDate }: SnoozePayload): Promise<v
       if (error || !data) throw error ?? new Error('Frist wurde zwischenzeitlich geändert.');
       return;
     }
+    case 'caseAction': {
+      const { error, data } = await supabase.from('case_items').update({ next_action_due_at: safeDate.toISOString() }).eq('id', item.id).eq('next_action_due_at', item.dueDate).select('id').single();
+      if (error || !data) throw error ?? new Error('Frist wurde zwischenzeitlich geändert.');
+      return;
+    }
     case 'eventPlanning': {
       const { error, data } = await supabase.from('event_planning_timeline_assignments').update({ due_date: format(safeDate, 'yyyy-MM-dd') }).eq('id', item.id).eq('due_date', item.dueDate).select('id').single();
       if (error || !data) throw error ?? new Error('Frist wurde zwischenzeitlich geändert.');

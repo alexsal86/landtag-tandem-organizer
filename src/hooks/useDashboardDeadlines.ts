@@ -25,7 +25,7 @@ const isAssignedToUser = (assignedTo: string | null | undefined, userId: string)
 };
 
 const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<DeadlineItem[]> => {
-  const [tasksRes, notesRes, casesRes, decisionsRes, planningDeadlinesRes] = await Promise.all([
+  const [tasksRes, notesRes, casesRes, decisionsRes, planningDeadlinesRes, caseActionsRes] = await Promise.all([
     supabase.from('tasks').select('id, title, due_date, assigned_to, user_id, priority')
       .or(`assigned_to.eq.${userId},assigned_to.ilike.%${userId}%,user_id.eq.${userId}`)
       .neq('status', 'completed')
@@ -53,7 +53,14 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
         event_planning_id,
         event_plannings (id, title, user_id, is_archived, is_completed),
         event_planning_checklist_items (id, title, is_completed)
-      `),
+      `),,
+    tenantId
+      ? supabase.from('case_items').select('id, subject, next_action_label, next_action_due_at, next_action_assignee_id, owner_user_id, user_id')
+          .eq('tenant_id', tenantId)
+          .not('next_action_due_at', 'is', null)
+          .not('status', 'in', '(erledigt,archiviert)')
+          .or(`next_action_assignee_id.eq.${userId},and(next_action_assignee_id.is.null,owner_user_id.eq.${userId})`)
+      : Promise.resolve({ data: [] })
   ]);
 
   for (const result of [tasksRes, notesRes, casesRes, decisionsRes, planningDeadlinesRes]) {
@@ -83,6 +90,13 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
       type: 'case' as const,
       canSnooze: c.owner_user_id === userId || c.user_id === userId,
       priority: ({ urgent: 3, high: 2, medium: 1 } as Record<string, number>)[c.priority] ?? 0,
+    })),
+    ...(caseActionsRes.data || []).filter((c) => c.next_action_due_at).map((c) => ({
+      id: c.id,
+      title: `${(c.next_action_label || 'Nächster Schritt').trim()} · ${(c.subject || 'Vorgang').trim()}`,
+      dueDate: c.next_action_due_at!,
+      type: 'caseAction' as const,
+      canSnooze: true,
     })),
     ...(decisionsRes.data || []).filter((d) => d.response_deadline && d.title?.trim()).map((d) => ({
       id: d.id,
