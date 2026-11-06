@@ -116,7 +116,7 @@ export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange
           <Button
             type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs text-muted-foreground"
             disabled={!label.trim()}
-            onClick={() => sendToDaySlip({ text: `${label.trim()} [${subject}]`, source: { type: "case", id: item.id } })}
+            onClick={() => sendToDaySlip({ text: `${label.trim()} [${subject}]`, source: { type: "case", id: item.id, nextActionLabel: label.trim() } })}
           >
             <Zap className="h-3.5 w-3.5" />Auf Tageszettel
           </Button>

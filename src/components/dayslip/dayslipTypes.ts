@@ -20,7 +20,8 @@ export interface DaySlipDayData {
   dayMood?: 1 | 2 | 3 | 4 | 5;
 }
 
-export type DaySlipSource = { type: "task" | "note" | "case" | "decision"; id: string };
+/** nextActionLabel: line mirrors a case's "next step"; striking it clears that step if still unchanged. */
+export type DaySlipSource = { type: "task" | "note" | "case" | "decision"; id: string; nextActionLabel?: string };
 export type TaskOptions = { assignedTo?: string; dueDate?: string };
 export type ResolvedItem = { lineId: string; text: string; target: ResolveTarget; persisted?: boolean; entityId?: string; snoozeUntil?: string; taskOptions?: TaskOptions; error?: string };
 export type DaySlipStore = Record<string, DaySlipDayData>;
