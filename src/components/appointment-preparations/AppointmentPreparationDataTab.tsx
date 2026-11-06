@@ -436,7 +436,7 @@ export function AppointmentPreparationDataTab({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className={`grid grid-cols-1 gap-4 ${sectionSet?.size === 1 && sectionSet.has('anlass') ? '' : 'lg:grid-cols-2'}`}>
         {/* Linke Spalte */}
         <div className="space-y-4">
           {showSection('anlass') && (
