@@ -32,7 +32,7 @@ function CollapsingCalendarLink() {
     <Link
       to="/calendar"
       aria-label="Kalender öffnen"
-      className="group/cal inline-flex h-7 items-center gap-1 rounded-md px-2 text-sm text-primary transition-colors duration-base ease-standard hover:bg-primary/10 focus-visible:outline-primary"
+      className="group/cal inline-flex h-7 items-center gap-1 rounded-md px-2 text-sm text-foreground transition-colors duration-base ease-standard hover:bg-muted focus-visible:outline-foreground"
     >
       <CalendarDays className="h-4 w-4 shrink-0" aria-hidden="true" />
       <span
