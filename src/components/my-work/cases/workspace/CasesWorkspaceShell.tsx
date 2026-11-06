@@ -12,15 +12,15 @@ type CasesWorkspaceShellProps = {
 export function CasesWorkspaceShell({ onDragEnd, left, right, inspector }: CasesWorkspaceShellProps) {
   return (
     <DragDropContext onDragEnd={onDragEnd}>
-      <div className={inspector ? "grid h-full grid-cols-[320px_1fr_300px] gap-4" : "grid grid-cols-1 gap-4 lg:grid-cols-[340px_minmax(0,1fr)] h-full"}>
-        <div className="rounded-2xl border bg-card shadow-sm overflow-hidden h-full min-h-0 min-w-0">
+      <div className={inspector ? "grid h-full grid-cols-[320px_minmax(0,1fr)_300px] gap-0 overflow-hidden rounded-2xl border bg-card shadow-sm" : "grid h-full grid-cols-1 gap-0 overflow-hidden rounded-2xl border bg-card shadow-sm lg:grid-cols-[340px_minmax(0,1fr)]"}>
+        <div className="h-full min-h-0 min-w-0 overflow-hidden bg-card">
           {left}
         </div>
-        <div className="rounded-2xl border bg-card shadow-sm overflow-hidden h-full min-h-0 min-w-0">
+        <div className="h-full min-h-0 min-w-0 overflow-hidden bg-card">
           {right}
         </div>
         {inspector && (
-          <aside className="h-full min-h-0 overflow-y-auto rounded-2xl border bg-card shadow-sm" aria-label="Aktionen und Zuständigkeit">
+          <aside className="h-full min-h-0 overflow-y-auto border-l bg-card" aria-label="Aktionen und Zuständigkeit">
             {inspector}
           </aside>
         )}
