@@ -133,6 +133,7 @@ export function NoteCard({
   return (
     <div
       key={note.id}
+      data-note-card
       ref={(el) => { cardRef.current = el; highlightRef?.(el); }}
       tabIndex={-1}
       className={cn("group relative flex flex-col",  " rounded-lg border border-border bg-card p-3 transition-colors duration-fast ease-standard hover:border-foreground/25 focus-within:border-foreground/25", selected && "ring-2 ring-primary", className)}
@@ -150,22 +151,23 @@ export function NoteCard({
         onNoteClick?.(note);
       }}
     >
-      {(dragHandleProps || onNativeDragStart) && !selectable && (
-        <button type="button" {...dragHandleProps} draggable={onNativeDragStart ? true : undefined}
-          onDragStart={onNativeDragStart} onDragEnd={onNativeDragEnd}
-          onClick={event => event.stopPropagation()}
-          aria-label="Notiz ziehen: Priorität zuweisen oder auf den Tageszettel legen"
-          title="Notiz ziehen · Priorität oder Tageszettel"
-          className="absolute -left-2 top-3 z-10 flex h-9 w-5 items-center justify-center rounded-md border bg-card text-muted-foreground shadow-sm cursor-grab active:cursor-grabbing opacity-100 transition-all duration-150 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:-translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 focus-visible:opacity-100 focus-visible:translate-x-0 focus-visible:ring-2 focus-visible:ring-ring">
-          <GripVertical className="h-4 w-4" />
-        </button>
-      )}
       {selectable && (
         <div className="absolute -left-2 -top-2 z-sticky rounded-full bg-background p-0.5 shadow-sm" onClick={(e) => e.stopPropagation()}>
           <Checkbox checked={selected} onCheckedChange={() => onToggleSelect?.(note.id)} aria-label="Notiz auswählen" />
         </div>
       )}
       <div className="flex items-start justify-between gap-2">
+      {(dragHandleProps || onNativeDragStart) && !selectable && (
+        <button type="button" {...dragHandleProps} draggable={onNativeDragStart ? true : undefined}
+          onDragStart={onNativeDragStart} onDragEnd={onNativeDragEnd}
+          onClick={event => event.stopPropagation()}
+          aria-label="Notiz ziehen: Priorität zuweisen oder auf den Tageszettel legen"
+          title="Notiz ziehen · Priorität oder Tageszettel"
+          className="inline-flex h-6 max-w-0 -mr-2 shrink-0 items-center overflow-hidden rounded text-muted-foreground opacity-0 cursor-grab hover:text-foreground active:cursor-grabbing transition-all duration-200 ease-out motion-reduce:transition-none group-hover:max-w-4 group-hover:mr-0 group-hover:opacity-100 group-focus-within:max-w-4 group-focus-within:mr-0 group-focus-within:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [@media(hover:none)]:max-w-4 [@media(hover:none)]:mr-0 [@media(hover:none)]:opacity-100">
+          <GripVertical className="h-4 w-4 shrink-0" />
+        </button>
+      )}
+
         <div className="flex min-w-0 flex-1 items-start gap-2 pr-1">
           {note.title && (
             <div className="flex-1 break-words text-sm font-medium leading-snug line-clamp-2 [&_p]:inline [&_p]:m-0">

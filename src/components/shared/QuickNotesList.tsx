@@ -198,7 +198,7 @@ export function QuickNotesList({
 
   const startNoteDrag = (event: DragEvent<HTMLButtonElement>, note: QuickNote) => {
     writeNoteDragData(event.dataTransfer, note);
-    const card = event.currentTarget.parentElement;
+    const card = event.currentTarget.closest<HTMLElement>("[data-note-card]");
     if (card) event.dataTransfer.setDragImage(card, 20, 20);
     setDraggedNoteId(note.id);
     setIsDragging(true);
