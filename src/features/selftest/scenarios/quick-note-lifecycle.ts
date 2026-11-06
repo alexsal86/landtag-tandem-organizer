@@ -11,7 +11,7 @@ export const quickNoteLifecycleScenario: TestScenario = {
   features: ["quick-notes", "tasks"],
   writes: [
     { table: "quick_notes", columns: ["title", "content", "user_id", "tenant_id", "priority_level", "color", "category", "tags", "is_pinned", "task_id", "is_archived", "archived_at"] },
-    { table: "tasks", columns: ["title", "description", "user_id", "tenant_id", "status", "priority", "category"] },
+    { table: "tasks", columns: ["title", "description", "user_id", "tenant_id", "status", "priority"] },
   ],
   links: () => [{ label: "Notizen öffnen", href: "/mywork?tab=capture" }],
   steps: [
@@ -40,7 +40,7 @@ export const quickNoteLifecycleScenario: TestScenario = {
       id: "to-task", label: "Aus Notiz eine Aufgabe machen (verknüpft)",
       run: async (ctx) => {
         const id = ctx.data.noteId as string;
-        const task = { title: `${SELFTEST_PREFIX} Aufgabe aus Notiz (${ctx.runId})`, description: SELFTEST_MARKER, user_id: ctx.userId, tenant_id: ctx.tenantId, status: "todo", priority: "high", category: "personal" };
+        const task = { title: `${SELFTEST_PREFIX} Aufgabe aus Notiz (${ctx.runId})`, description: SELFTEST_MARKER, user_id: ctx.userId, tenant_id: ctx.tenantId, status: "todo", priority: "high" };
         const { data, error } = await supabase.from("tasks").insert(task).select("id").single();
         if (error || !data) return { ok: false, message: describeError(error) };
         ctx.created.splice(0, 0, { table: "tasks", id: data.id }); // Aufgabe zuletzt löschen

@@ -9,12 +9,14 @@ _Auto-generiert von `scripts/check-selftest-coverage.mjs`. Nicht von Hand bearbe
 | `appointment-lifecycle` | Termin-Lifecycle (Kalender + Briefing + Feedback) | appointments, briefings | appointments, appointment_preparations, appointment_feedback |
 | `appointment-request-lifecycle` | Terminanfragen-Lifecycle (Eingang → Sperre → Entscheidung → Termin) | appointment-requests, appointments | appointment_requests, appointments |
 | `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | case-items, decisions, dayslip, appointment-requests | case_items, case_item_interactions, case_item_handover_log, task_decisions, task_decision_participants, task_decision_responses, appointment_requests, day_slips |
-| `daily-briefing-lifecycle` | Tages-Briefings (heute + gestern) | briefings | daily_briefings |
+| `contact-lifecycle` | Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche) | contacts | contacts, contact_activities |
+| `daily-briefing-lifecycle` | Tages-Briefings (Vortag-Regel) | briefings | daily_briefings |
 | `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | dayslip | day_slips |
 | `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | decisions | task_decisions, task_decision_participants |
 | `event-planning-lifecycle` | Event-Planung (komplett: Termine, Speaker, Checkliste, Timeline) | event-planning | event_plannings, event_planning_dates, event_planning_speakers, event_planning_contacts, event_planning_checklist_items, event_planning_timeline_assignments |
 | `letter-lifecycle` | Brief-Lifecycle (Entwurf → Prüfung → Genehmigt → Versendet) | letters, decisions | letters, letter_attachments, task_decisions |
 | `meeting-lifecycle` | Meeting-Lifecycle (vollständig + Field-Verifikation) | meetings, appointments, tasks | meetings, meeting_agenda_items, meeting_agenda_documents, meeting_participants, appointments, tasks |
+| `quick-note-lifecycle` | Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv) | quick-notes, tasks | quick_notes, tasks |
 | `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | tasks, decisions | tasks, task_decisions |
 
 ## Tabellen-Coverage
@@ -71,10 +73,10 @@ _Auto-generiert von `scripts/check-selftest-coverage.mjs`. Nicht von Hand bearbe
 | `case_items` | ✅ getestet | case-item-lifecycle |
 | `celebration_animations` | ⚪ ignoriert | — |
 | `celebration_settings` | ⚪ ignoriert | — |
-| `contact_activities` | ⚪ ignoriert | — |
+| `contact_activities` | ✅ getestet | contact-lifecycle |
 | `contact_topics` | ⚪ ignoriert | — |
 | `contact_usage_stats` | ⚪ ignoriert | — |
-| `contacts` | ⚪ ignoriert | — |
+| `contacts` | ✅ getestet | contact-lifecycle |
 | `daily_briefing_reads` | ⚪ ignoriert | — |
 | `daily_briefings` | ✅ getestet | daily-briefing-lifecycle |
 | `dashboard_layouts` | ⚪ ignoriert | — |
@@ -198,7 +200,7 @@ _Auto-generiert von `scripts/check-selftest-coverage.mjs`. Nicht von Hand bearbe
 | `quick_note_global_shares` | ⚪ ignoriert | — |
 | `quick_note_shares` | ⚪ ignoriert | — |
 | `quick_note_versions` | ⚪ ignoriert | — |
-| `quick_notes` | ⚪ ignoriert | — |
+| `quick_notes` | ✅ getestet | quick-note-lifecycle |
 | `rss_cache` | ⚪ ignoriert | — |
 | `rss_settings` | ⚪ ignoriert | — |
 | `rss_sources` | ⚪ ignoriert | — |
@@ -234,7 +236,7 @@ _Auto-generiert von `scripts/check-selftest-coverage.mjs`. Nicht von Hand bearbe
 | `task_snoozes` | ⚪ ignoriert | — |
 | `task_statuses` | ⚪ ignoriert | — |
 | `task_topics` | ⚪ ignoriert | — |
-| `tasks` | ✅ getestet | meeting-lifecycle, task-lifecycle |
+| `tasks` | ✅ getestet | meeting-lifecycle, quick-note-lifecycle, task-lifecycle |
 | `team_announcement_dismissals` | ⚪ ignoriert | — |
 | `team_announcements` | ⚪ ignoriert | — |
 | `team_dashboard_members` | ⚪ ignoriert | — |
@@ -276,6 +278,8 @@ _Keine — alle relevanten Tabellen sind abgedeckt._
 | `case_item_handover_log` | `case_item_id`, `from_user_id`, `handed_over_by`, `tenant_id`, `to_user_id` |
 | `case_item_interactions` | `case_item_id`, `created_by`, `direction`, `interaction_at`, `interaction_type`, `summary`, `tenant_id`, `visibility` |
 | `case_items` | `ball_owner`, `completed_at`, `completion_note`, `intake_payload`, `next_action_assignee_id`, `next_action_due_at`, `next_action_label`, `pending_for_jour_fixe`, `resolution_summary`, `status`, `subject`, `summary`, `tenant_id`, `user_id` |
+| `contact_activities` | `activity_type`, `contact_id`, `created_by`, `description`, `tenant_id`, `title` |
+| `contacts` | `category`, `email`, `name`, `notes`, `organization`, `phone`, `tags`, `tenant_id`, `title`, `user_id` |
 | `day_slips` | `data`, `day_key`, `tenant_id`, `user_id` |
 | `event_planning_checklist_items` | `event_planning_id`, `is_completed`, `order_index`, `title`, `type` |
 | `event_planning_contacts` | `email`, `event_planning_id`, `name`, `phone`, `role` |
@@ -288,6 +292,7 @@ _Keine — alle relevanten Tabellen sind abgedeckt._
 | `meeting_agenda_items` | `carried_over_from`, `carry_over_to_next`, `carryover_notes`, `description`, `is_completed`, `is_optional`, `is_recurring`, `is_visible`, `meeting_id`, `notes`, `order_index`, `original_meeting_date`, `original_meeting_title`, `parent_id`, `result_text`, `system_type`, `task_id`, `title` |
 | `meeting_participants` | `meeting_id`, `role`, `status`, `user_id` |
 | `meetings` | `description`, `is_public`, `is_recurring_instance`, `meeting_date`, `meeting_time`, `parent_meeting_id`, `status`, `tenant_id`, `title`, `user_id` |
+| `quick_notes` | `archived_at`, `category`, `color`, `content`, `is_archived`, `is_pinned`, `priority_level`, `tags`, `task_id`, `tenant_id`, `title`, `user_id` |
 | `task_decision_participants` | `decision_id`, `user_id` |
 | `task_decisions` | `archived_at`, `archived_by`, `case_item_id`, `created_by`, `description`, `priority`, `response_deadline`, `status`, `task_id`, `tenant_id`, `title`, `visible_to_all` |
 | `tasks` | `assigned_to`, `description`, `due_date`, `pending_for_jour_fixe`, `priority`, `progress`, `status`, `tenant_id`, `title`, `user_id` |

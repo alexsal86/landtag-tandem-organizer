@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { compareRuns, loadHistory, saveRun, type HistoryRun } from "../history";
 
 const LAST_RUNS_KEY = "selftest:last-runs";
 type LastRun = { status: string; at: number };
@@ -41,6 +42,14 @@ export function SelftestView() {
   const [lastRuns, setLastRuns] = useState<Record<string, LastRun>>(readLastRuns);
 
   const canRun = !!user && !!currentTenant;
+  const [history, setHistory] = useState<HistoryRun[]>([]);
+  const [openRun, setOpenRun] = useState<string | null>(null);
+  const tenantId = currentTenant?.id;
+  const refreshHistory = useCallback(async () => {
+    if (!tenantId) return;
+    try { setHistory(await loadHistory(tenantId)); } catch { /* Verlauf optional */ }
+  }, [tenantId]);
+  useEffect(() => { void refreshHistory(); }, [refreshHistory]);
 
   const [runningAll, setRunningAll] = useState(false);
 
@@ -88,6 +97,8 @@ export function SelftestView() {
       const nextRuns = { ...readLastRuns(), [scenarioId]: { status: result.status, at: Date.now() } };
       localStorage.setItem(LAST_RUNS_KEY, JSON.stringify(nextRuns));
       setLastRuns(nextRuns);
+      await saveRun(result, { tenantId: currentTenant.id, userId: user.id, title: scenario.title, keepData });
+      void refreshHistory();
       if (silent) return result.status;
       notify.success(result.status === "ok" ? (keepData ? "Demo-Daten erzeugt" : "Selbsttest erfolgreich") : "Selbsttest mit Fehlern", {
         description: scenario.title
@@ -164,6 +175,50 @@ export function SelftestView() {
               );
             })}
           </ul>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Verlauf</CardTitle>
+          <CardDescription>Alle gespeicherten Läufe mit Fehlern und Vergleich zum vorherigen Lauf desselben Ablaufs.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {history.length === 0 ? <p className="text-sm text-muted-foreground">Noch keine Läufe gespeichert.</p> : (
+            <ul className="divide-y text-sm">
+              {history.slice(0, 60).map((r) => {
+                const prev = history.find((h) => h.scenario_id === r.scenario_id && h.created_at < r.created_at);
+                const diff = prev ? compareRuns(prev.steps, r.steps) : null;
+                const open = openRun === r.id;
+                return (
+                  <li key={r.id} className="py-1.5">
+                    <button type="button" className="w-full flex items-center justify-between gap-3 text-left" onClick={() => setOpenRun(open ? null : r.id)}>
+                      <span className="truncate">{r.scenario_title.split(" (")[0]}{r.keep_data ? " · Demo" : ""}</span>
+                      <span className="flex items-center gap-2 shrink-0 text-xs text-muted-foreground tabular-nums">
+                        {diff && diff.fixed.length > 0 && <span className="text-palette-green">+{diff.fixed.length} behoben</span>}
+                        {diff && diff.broken.length > 0 && <span className="text-destructive">{diff.broken.length} neu kaputt</span>}
+                        {r.total_steps - r.failed_steps}/{r.total_steps}
+                        <Badge variant={r.status === "ok" ? "outline" : "destructive"}>{r.status === "ok" ? "OK" : "Fehler"}</Badge>
+                        {new Date(r.created_at).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}
+                      </span>
+                    </button>
+                    {open && (
+                      <ul className="mt-2 ml-2 space-y-1 text-xs">
+                        {r.steps.map((s) => (
+                          <li key={s.id} className="flex gap-2">
+                            <StatusIcon status={s.status as StepStatus} />
+                            <span className="flex-1 min-w-0"><span className="font-medium">{s.label}</span>{s.message && <span className={`block break-words ${s.status === "failed" ? "text-destructive" : "text-muted-foreground"}`}>{s.message}</span>}
+                              {s.status === "failed" && s.details !== undefined && <pre className="mt-1 whitespace-pre-wrap break-all text-muted-foreground">{JSON.stringify(s.details, null, 1)}</pre>}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </CardContent>
       </Card>
 
