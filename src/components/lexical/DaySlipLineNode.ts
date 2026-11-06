@@ -14,20 +14,39 @@ export type SerializedDaySlipLineNode = Spread<
   {
     lineId: string;
     linkedTaskId?: string;
+    linkedSource?: DaySlipLineSource;
     type: "dayslip-line";
     version: 1;
   },
   SerializedParagraphNode
 >;
 
+export type DaySlipLineSource = { type: "task" | "note" | "case" | "decision"; id: string; nextActionLabel?: string };
+const SOURCE_TYPES = ["task", "note", "case", "decision"];
+
+/** Reads a line's object link from DOM attributes (legacy data-linked-task-id counts as task). */
+export function readSourceFromDataset(ds: DOMStringMap): DaySlipLineSource | undefined {
+  if (ds.sourceId && ds.sourceType && SOURCE_TYPES.includes(ds.sourceType)) {
+    return { type: ds.sourceType as DaySlipLineSource["type"], id: ds.sourceId, ...(ds.sourceLabel ? { nextActionLabel: ds.sourceLabel } : {}) };
+  }
+  return ds.linkedTaskId ? { type: "task", id: ds.linkedTaskId } : undefined;
+}
+
+export function writeSourceToDataset(ds: DOMStringMap, source: DaySlipLineSource | undefined): void {
+  delete ds.linkedTaskId; delete ds.sourceType; delete ds.sourceId; delete ds.sourceLabel;
+  if (!source) return;
+  ds.sourceType = source.type; ds.sourceId = source.id;
+  if (source.nextActionLabel) ds.sourceLabel = source.nextActionLabel;
+}
+
 export class DaySlipLineNode extends ParagraphNode {
   __lineId: string;
-  __linkedTaskId: string | undefined;
+  __source: DaySlipLineSource | undefined;
 
-  constructor(lineId?: string, key?: NodeKey, linkedTaskId?: string) {
+  constructor(lineId?: string, key?: NodeKey, source?: DaySlipLineSource | string) {
     super(key);
     this.__lineId = lineId ?? crypto.randomUUID();
-    this.__linkedTaskId = linkedTaskId;
+    this.__source = typeof source === "string" ? { type: "task", id: source } : source;
   }
 
   static getType(): string {
@@ -35,26 +54,28 @@ export class DaySlipLineNode extends ParagraphNode {
   }
 
   static clone(node: DaySlipLineNode): DaySlipLineNode {
-    const clone = new DaySlipLineNode(node.__lineId, node.__key, node.__linkedTaskId);
+    const clone = new DaySlipLineNode(node.__lineId, node.__key, node.__source);
     return clone;
   }
 
   getLinkedTaskId(): string | undefined {
-    return this.__linkedTaskId;
+    return this.__source?.type === "task" ? this.__source.id : undefined;
   }
+
+  getSource(): DaySlipLineSource | undefined { return this.__source; }
 
   getLineId(): string { return this.__lineId; }
 
   setLinkedTaskId(taskId: string | undefined): this {
     const self = this.getWritable();
-    self.__linkedTaskId = taskId;
+    self.__source = taskId ? { type: "task", id: taskId } : undefined;
     return self;
   }
 
   createDOM(config: EditorConfig): HTMLElement {
     const dom = super.createDOM(config);
     dom.dataset.lineId = this.__lineId;
-    if (this.__linkedTaskId) dom.dataset.linkedTaskId = this.__linkedTaskId;
+    writeSourceToDataset(dom.dataset, this.__source);
     return dom;
   }
 
@@ -63,8 +84,7 @@ export class DaySlipLineNode extends ParagraphNode {
     if (dom.dataset.lineId !== this.__lineId) {
       dom.dataset.lineId = this.__lineId;
     }
-    if (this.__linkedTaskId) dom.dataset.linkedTaskId = this.__linkedTaskId;
-    else delete dom.dataset.linkedTaskId;
+    writeSourceToDataset(dom.dataset, this.__source);
     return updated;
   }
 
@@ -72,14 +92,14 @@ export class DaySlipLineNode extends ParagraphNode {
     return {
       ...super.exportJSON(),
       lineId: this.__lineId,
-      linkedTaskId: this.__linkedTaskId,
+      ...(this.__source ? { linkedSource: this.__source } : {}),
       type: "dayslip-line",
       version: 1,
     };
   }
 
   static importJSON(serializedNode: SerializedDaySlipLineNode): DaySlipLineNode {
-    const node = new DaySlipLineNode(serializedNode.lineId, undefined, serializedNode.linkedTaskId);
+    const node = new DaySlipLineNode(serializedNode.lineId, undefined, serializedNode.linkedSource ?? serializedNode.linkedTaskId);
     return node.updateFromJSON(serializedNode);
   }
 
@@ -87,7 +107,7 @@ export class DaySlipLineNode extends ParagraphNode {
     const output = super.exportDOM(editor);
     if (output.element instanceof HTMLElement) {
       output.element.dataset.lineId = this.__lineId;
-      if (this.__linkedTaskId) output.element.dataset.linkedTaskId = this.__linkedTaskId;
+      writeSourceToDataset(output.element.dataset, this.__source);
     }
     return output;
   }
@@ -101,7 +121,7 @@ export class DaySlipLineNode extends ParagraphNode {
       p: () => ({
         conversion: (domNode: Node): DOMConversionOutput | null => {
           if (!(domNode instanceof HTMLParagraphElement)) return null;
-          return { node: new DaySlipLineNode(domNode.dataset.lineId, undefined, domNode.dataset.linkedTaskId) };
+          return { node: new DaySlipLineNode(domNode.dataset.lineId, undefined, readSourceFromDataset(domNode.dataset)) };
         },
         priority: 1,
       }),
@@ -109,8 +129,8 @@ export class DaySlipLineNode extends ParagraphNode {
   }
 }
 
-export function $createDaySlipLineNode(lineId?: string, linkedTaskId?: string): DaySlipLineNode {
-  return new DaySlipLineNode(lineId, undefined, linkedTaskId);
+export function $createDaySlipLineNode(lineId?: string, source?: DaySlipLineSource | string): DaySlipLineNode {
+  return new DaySlipLineNode(lineId, undefined, source);
 }
 
 export function $isDaySlipLineNode(
