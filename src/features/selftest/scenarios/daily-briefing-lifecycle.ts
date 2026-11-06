@@ -8,14 +8,14 @@ const title = (run: string, label: string) => `${SELFTEST_PREFIX} ${label} (${ru
 const isoDate = (offsetDays: number): string => {
   const d = new Date();
   d.setDate(d.getDate() + offsetDays);
-  return d.toISOString().slice(0, 10);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
 export const dailyBriefingLifecycleScenario: TestScenario = {
   id: "daily-briefing-lifecycle",
-  title: "Tages-Briefings (heute + gestern)",
+  title: "Tages-Briefings (Vortag-Regel)",
   description:
-    "Legt zwei daily_briefings an (heute und gestern), damit das Briefing-Widget inkl. Vortag-Regel sichtbar wird. Verifiziert alle Felder zurück.",
+    "Prüft, dass Briefings für heute abgelehnt werden, und legt zwei Briefings für morgen und übermorgen an, damit das Briefing-Widget inkl. Vortag-Regel sichtbar wird. Verifiziert alle Felder zurück.",
   touches: ["daily_briefings"],
   features: ["briefings"],
   writes: [
@@ -29,37 +29,53 @@ export const dailyBriefingLifecycleScenario: TestScenario = {
   ],
   steps: [
     {
+      id: "reject-today",
+      label: "Vortag-Regel: Briefing für heute wird abgelehnt",
+      run: async (ctx) => {
+        const { error } = await supabase.from("daily_briefings").insert({
+          tenant_id: ctx.tenantId, author_id: ctx.userId, briefing_date: isoDate(0),
+          title: title(ctx.runId, "Briefing heute (muss scheitern)"), content: SELFTEST_MARKER,
+        });
+        if (!error) {
+          const { data } = await supabase.from("daily_briefings").select("id").eq("tenant_id", ctx.tenantId).ilike("title", `%heute (muss scheitern) (${ctx.runId})%`);
+          data?.forEach((r) => ctx.created.push({ table: "daily_briefings", id: r.id }));
+          return { ok: false, message: "Briefing für heute wurde gespeichert — Vortag-Regel greift nicht." };
+        }
+        return { ok: true, message: "Abgelehnt wie erwartet." };
+      },
+    },
+    {
       id: "create-yesterday",
-      label: "Briefing für gestern anlegen",
+      label: "Briefing für morgen anlegen",
       run: async (ctx) => {
         const payload = {
           tenant_id: ctx.tenantId,
           author_id: ctx.userId,
-          briefing_date: isoDate(-1),
-          title: title(ctx.runId, "Briefing gestern"),
+          briefing_date: isoDate(1),
+          title: title(ctx.runId, "Briefing morgen"),
           content: `${SELFTEST_MARKER}\n\nGestern-Highlights: Ortsbesuch, Pressetermin, Bürgergespräche.`,
         };
         const { data, error } = await supabase.from("daily_briefings").insert(payload).select("id").single();
         if (error || !data) return { ok: false, message: describeError(error) };
         ctx.created.push({ table: "daily_briefings", id: data.id });
-        return expectFields("daily_briefings", data.id, payload, "Briefing gestern");
+        return expectFields("daily_briefings", data.id, payload, "Briefing morgen");
       },
     },
     {
       id: "create-today",
-      label: "Briefing für heute anlegen",
+      label: "Briefing für übermorgen anlegen",
       run: async (ctx) => {
         const payload = {
           tenant_id: ctx.tenantId,
           author_id: ctx.userId,
-          briefing_date: isoDate(0),
-          title: title(ctx.runId, "Briefing heute"),
+          briefing_date: isoDate(2),
+          title: title(ctx.runId, "Briefing übermorgen"),
           content: `${SELFTEST_MARKER}\n\nHeute: Ausschuss-Sitzung 10 Uhr, Mittagstermin mit Verband, Abendveranstaltung.`,
         };
         const { data, error } = await supabase.from("daily_briefings").insert(payload).select("id").single();
         if (error || !data) return { ok: false, message: describeError(error) };
         ctx.created.push({ table: "daily_briefings", id: data.id });
-        return expectFields("daily_briefings", data.id, payload, "Briefing heute");
+        return expectFields("daily_briefings", data.id, payload, "Briefing übermorgen");
       },
     },
     {

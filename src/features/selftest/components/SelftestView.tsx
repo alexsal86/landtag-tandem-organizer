@@ -42,7 +42,28 @@ export function SelftestView() {
 
   const canRun = !!user && !!currentTenant;
 
-  const handleRun = async (scenarioId: string, keepData: boolean) => {
+  const [runningAll, setRunningAll] = useState(false);
+
+  const handleRunAll = async (keepData: boolean) => {
+    const msg = keepData
+      ? `Alle ${SELFTEST_SCENARIOS.length} Abläufe nacheinander als Demo-Lauf ausführen? Die Daten bleiben mit [SELFTEST] erhalten.`
+      : `Alle ${SELFTEST_SCENARIOS.length} Abläufe nacheinander ausführen? Temporäre Daten werden danach wieder entfernt.`;
+    if (!window.confirm(msg)) return;
+    setRunningAll(true);
+    let failed = 0;
+    try {
+      for (const s of SELFTEST_SCENARIOS) {
+        const status = await handleRun(s.id, keepData, true);
+        if (status !== "ok") failed++;
+      }
+    } finally {
+      setRunningAll(false);
+    }
+    if (failed) notify.error(`${failed} von ${SELFTEST_SCENARIOS.length} Abläufen mit Fehlern`);
+    else notify.success(`Alle ${SELFTEST_SCENARIOS.length} Abläufe erfolgreich`);
+  };
+
+  const handleRun = async (scenarioId: string, keepData: boolean, silent = false): Promise<string | undefined> => {
     if (!user || !currentTenant) {
       notify.error("Nicht bereit", { description: "Login und Tenant erforderlich."
 });
@@ -54,7 +75,7 @@ export function SelftestView() {
     const confirmMsg = keepData
       ? `„${scenario.title}" als Demo-Lauf ausführen?\n\nDie erzeugten Datensätze bleiben mit dem Prefix [SELFTEST] im System erhalten und sind in den jeweiligen Bereichen (Kalender, Briefing-Widget, Planungen …) sichtbar. Über den Notfall-Aufräumknopf unten lassen sie sich wieder entfernen.`
       : `„${scenario.title}" jetzt gegen die echte Datenbank ausführen?\n\nEs werden temporäre Datensätze angelegt und am Ende wieder entfernt.`;
-    if (!window.confirm(confirmMsg)) return;
+    if (!silent && !window.confirm(confirmMsg)) return;
 
     setBusy(scenarioId);
     try {
@@ -67,6 +88,7 @@ export function SelftestView() {
       const nextRuns = { ...readLastRuns(), [scenarioId]: { status: result.status, at: Date.now() } };
       localStorage.setItem(LAST_RUNS_KEY, JSON.stringify(nextRuns));
       setLastRuns(nextRuns);
+      if (silent) return result.status;
       notify.success(result.status === "ok" ? (keepData ? "Demo-Daten erzeugt" : "Selbsttest erfolgreich") : "Selbsttest mit Fehlern", {
         description: scenario.title
 });
@@ -111,6 +133,16 @@ export function SelftestView() {
         <CardHeader>
           <CardTitle className="text-base">Abdeckung</CardTitle>
           <CardDescription>Welche Bereiche einen Selbsttest haben und wann er zuletzt lief.</CardDescription>
+          <div className="flex flex-wrap gap-2 pt-2">
+            <Button onClick={() => handleRunAll(false)} disabled={!canRun || runningAll || !!busy}>
+              {runningAll ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+              Alle Tests nacheinander ausführen
+            </Button>
+            <Button variant="secondary" onClick={() => handleRunAll(true)} disabled={!canRun || runningAll || !!busy}>
+              <Sparkles className="h-4 w-4 mr-2" />
+              Alle Demo-Daten erzeugen
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <ul className="divide-y text-sm">
