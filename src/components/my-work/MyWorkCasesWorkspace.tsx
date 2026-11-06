@@ -273,7 +273,7 @@ export function MyWorkCasesWorkspace() {
   const { isAdmin: canHandover } = useResolvedUserRole();
   const triageCounts = useMemo(() => countTriage(filteredCaseItems, user?.id ?? null), [filteredCaseItems, user?.id]);
 
-  const sortedCaseItems = useMemo(() => {
+  const sortedCaseItemsBase = useMemo(() => {
     const priorityRank: Record<string, number> = { low: 1, medium: 2, high: 3, urgent: 4 };
     const primaryDirectionFactor = itemSort.primary.direction === "asc" ? 1 : -1;
     const secondaryDirectionFactor = itemSort.secondary.direction === "asc" ? 1 : -1;
@@ -322,6 +322,8 @@ export function MyWorkCasesWorkspace() {
       return primaryResult;
     });
   }, [caseFilesById, filteredCaseItems, getAssigneeIds, getCategory, getItemDescription, getItemSubject, itemSort, teamUsers, triageFilter, user?.id]);
+  // Wiedervorlagen stehen in der Liste unten in einem eigenen Abschnitt.
+  const sortedCaseItems = useMemo(() => [...sortedCaseItemsBase.filter((i) => !isOnResubmission(i)), ...sortedCaseItemsBase.filter((i) => isOnResubmission(i))], [sortedCaseItemsBase]);
 
   const toggleSort = useCallback((key: CaseItemSortKey, direction: SortDirection) => {
     setItemSort((prev) => 
