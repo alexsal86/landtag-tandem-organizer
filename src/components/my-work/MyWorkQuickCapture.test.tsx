@@ -10,10 +10,10 @@ vi.mock("@/components/my-work/hooks/useQuickCaptureActions", () => ({ useQuickCa
 vi.mock("@/components/my-work/useNoteColorPalette", () => ({ useNoteColorPalette: () => ({ palette: [] }), colorLabel: () => "" }));
 vi.mock("@/components/shared/MentionSharePromptDialog", () => ({ MentionSharePromptDialog: () => null }));
 vi.mock("@/components/ui/SimpleRichTextEditor", () => ({
-  default: ({ placeholder, initialContent, onChange, onKeyDown }: {
-    placeholder: string; initialContent: string; onChange: (value: string) => void;
+  default: ({ placeholder, initialContent, onChange, onKeyDown, autoFocus }: {
+    autoFocus?: boolean; placeholder: string; initialContent: string; onChange: (value: string) => void;
     onKeyDown: KeyboardEventHandler<HTMLDivElement>;
-  }) => <div onKeyDown={onKeyDown}><textarea aria-label={placeholder} defaultValue={initialContent} onChange={e => onChange(e.target.value)} /></div>,
+  }) => <div onKeyDown={onKeyDown}><textarea autoFocus={autoFocus} aria-label={placeholder} defaultValue={initialContent} onChange={e => onChange(e.target.value)} /></div>,
 }));
 
 beforeEach(() => { localStorage.clear(); save.mockClear(); });
@@ -22,6 +22,8 @@ describe("quick capture keyboard", () => {
     render(<MyWorkQuickCapture />);
     fireEvent.click(screen.getByRole("button", { name: "Notiz erfassen…" }));
     const editors = screen.getAllByRole("textbox");
+    expect(editors[1]).toHaveFocus();
+    expect(editors[0]).toHaveAccessibleName("Titel");
     fireEvent.change(editors[0], { target: { value: "Mein Titel" } });
     for (const editor of editors) {
       expect(fireEvent.keyDown(editor, { key: "Enter" })).toBe(true);

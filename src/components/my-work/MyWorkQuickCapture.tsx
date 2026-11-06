@@ -1,6 +1,6 @@
 import { useQuickNoteDraft } from "@/hooks/useQuickNoteDraft";
 import { useRef, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -100,17 +100,45 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
   return (
     <>
       <Card
-        className="transition-colors border-l-4 w-full shadow-md"
+        className="w-full rounded-xl border-border bg-card shadow-sm animate-in fade-in-0 slide-in-from-top-1 duration-200 motion-reduce:animate-none"
         onKeyDown={(e) => { if (e.key === "Escape" && !canSaveNote) setExpanded(false); }}
-        style={{ borderLeftColor: selectedColor }}>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-1.5">
+        >
+
+      <CardContent className="space-y-1 p-3 [&>div>div]:border-0">
+        <div className="[&_[contenteditable]]:font-medium">
+        <SimpleRichTextEditor
+          key={`title-${editorResetKey}`}
+          initialContent={toEditorHtml(title)}
+          disabled={saving || savingAsTask}
+          onChange={setTitle}
+          onKeyDown={handleTitleKeyDown}
+          placeholder="Titel"
+          minHeight="36px"
+          showToolbar={false}
+        />
+        </div>
+        <div ref={contentEditorRef}>
+          <SimpleRichTextEditor
+            key={editorResetKey}
+            initialContent={toEditorHtml(content)}
+            disabled={saving || savingAsTask}
+            onChange={setContent}
+            autoFocus
+            toolbarPosition="bottom"
+            enableChecklists
+            onKeyDown={handleEditorKeyDown}
+            placeholder="Was möchtest du festhalten? „[ ] “ am Zeilenanfang = Checkbox, Mikrofon = Diktat"
+            minHeight="88px"
+          />
+        </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-2 text-muted-foreground">
+        <div className="flex w-full items-center justify-between gap-2">
+          <div className="text-xs flex items-center gap-1.5">
             Quick Notes
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button type="button" className="text-muted-foreground hover:text-foreground">
+                  <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Hinweise zur Notizerfassung">
                     <Info className="h-4 w-4" />
                   </button>
                 </TooltipTrigger>
@@ -119,19 +147,21 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-          </CardTitle>
+          </div>
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
-              className={cn("h-8 w-8", isPinned && "text-primary")}
+              aria-label="Notiz anpinnen"
+              aria-pressed={isPinned}
+              className={cn("h-8 w-8 text-muted-foreground", isPinned && "bg-muted text-foreground")}
               onClick={() => setIsPinned(!isPinned)}
             >
               <Pin className={cn("h-4 w-4", isPinned && "fill-current")} />
             </Button>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Notizfarbe wählen">
                   <Palette className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
@@ -156,31 +186,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
             </Popover>
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <SimpleRichTextEditor
-          key={`title-${editorResetKey}`}
-          initialContent={toEditorHtml(title)}
-          disabled={saving || savingAsTask}
-          onChange={setTitle}
-          onKeyDown={handleTitleKeyDown}
-          placeholder="Titel (@ für Mentions)"
-          minHeight="44px"
-          showToolbar={false}
-          autoFocus
-        />
-        <div className="min-h-[120px]" ref={contentEditorRef}>
-          <SimpleRichTextEditor
-            key={editorResetKey}
-            initialContent={toEditorHtml(content)}
-            disabled={saving || savingAsTask}
-            onChange={setContent}
-            enableChecklists
-            onKeyDown={handleEditorKeyDown}
-            placeholder="Was möchtest du festhalten? „[ ] “ am Zeilenanfang = Checkbox, Mikrofon = Diktat"
-            minHeight="100px"
-          />
-        </div>
+      </div>
         <p role="status" className="text-xs text-muted-foreground">{draftStatus}</p>
         <div className="flex gap-2 flex-wrap">
           <Button

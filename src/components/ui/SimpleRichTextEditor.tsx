@@ -60,6 +60,7 @@ interface SimpleRichTextEditorProps {
   onMentionInsert?: (userId: string, displayName: string) => void;
   onKeyDown?: React.KeyboardEventHandler<HTMLDivElement>;
   showToolbar?: boolean;
+  toolbarPosition?: "top" | "bottom";
   autoFocus?: boolean;
   enableChecklists?: boolean;
 }
@@ -397,6 +398,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
   onMentionInsert,
   onKeyDown,
   showToolbar = true,
+  toolbarPosition = "top",
   autoFocus = false,
   enableChecklists = false,
 }) => {
@@ -449,7 +451,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
       disabled && "opacity-50 pointer-events-none"
     )}>
       <LexicalComposer initialConfig={initialConfig}>
-        {showToolbar && <Toolbar enableChecklists={enableChecklists} />}
+        {showToolbar && toolbarPosition === "top" && <Toolbar enableChecklists={enableChecklists} />}
         <div className="relative w-full">
           <RichTextPlugin
             contentEditable={
@@ -473,6 +475,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
             ErrorBoundary={LexicalErrorBoundary}
           />
         </div>
+        {showToolbar && toolbarPosition === "bottom" && <Toolbar enableChecklists={enableChecklists} />}
         <EditablePlugin disabled={disabled} />
         <HistoryPlugin />
         <OnChangePlugin onChange={handleChange} />
