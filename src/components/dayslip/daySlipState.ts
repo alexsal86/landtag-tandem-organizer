@@ -1,3 +1,4 @@
+import { readSourceFromDataset, writeSourceToDataset } from "@/components/lexical/DaySlipLineNode";
 import {
   type CarryLine, type DaySlipStore, type DaySlipDayData, type DaySlipSource,
   type DaySlipLineEntry, extractLinesFromHtml, toParagraphHtml, normalizeLineText,
@@ -14,10 +15,16 @@ export function normalizeStore(value: unknown): DaySlipStore {
     if (typeof day.html !== "string") continue;
     const doc = new DOMParser().parseFromString(day.html, "text/html");
     let changed = false;
+    const sources = { ...(day.sources ?? {}) };
     doc.querySelectorAll("p").forEach(p => {
       if (!p.dataset.lineId) { p.dataset.lineId = crypto.randomUUID(); changed = true; }
+      const own = readSourceFromDataset(p.dataset);
+      const listed = sources[p.dataset.lineId];
+      // The line itself carries its link; older days only had the separate list.
+      if (listed && !own) { writeSourceToDataset(p.dataset, listed); changed = true; }
+      else if (own && (!listed || listed.id !== own.id || listed.type !== own.type)) sources[p.dataset.lineId] = own;
     });
-    store[key] = { ...day, html: doc.body.innerHTML, plainText: typeof day.plainText === "string" ? day.plainText : "", ...(changed ? { nodes: undefined } : {}) };
+    store[key] = { ...day, sources, html: doc.body.innerHTML, plainText: typeof day.plainText === "string" ? day.plainText : "", ...(changed ? { nodes: undefined } : {}) };
   }
   return store;
 }

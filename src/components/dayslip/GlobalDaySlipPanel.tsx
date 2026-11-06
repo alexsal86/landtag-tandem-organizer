@@ -8,6 +8,7 @@ import { useTenantUsers } from "@/hooks/useTenantUsers";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { sourcePath, normalizeStore } from "./daySlipState";
+import type { DaySlipSource } from "./dayslipTypes";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   Check, ClipboardPen, Clock3, Folder, FolderArchive, ListTodo, NotebookPen,
@@ -249,13 +250,19 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
     const item = target.closest(".day-slip-item") as HTMLElement | null;
     if (!item) return;
     const rect = item.getBoundingClientRect();
+    const linkType = item.dataset.sourceType; const linkId = item.dataset.sourceId;
+    if (linkType && linkId && rect.right - e.clientX <= 24) {
+      e.preventDefault();
+      navigate(sourcePath({ type: linkType as DaySlipSource["type"], id: linkId }));
+      return;
+    }
     if (e.clientX - rect.left > 24) return;
     const lineText = (item.textContent ?? "").trim();
     if (!lineText || isRuleLine(lineText)) return;
     const lineId = item.dataset.lineId;
     if (!lineId) return;
     ds.toggleStrike(lineId);
-  }, [ds]);
+  }, [ds, navigate]);
 
   const handleEditorContextMenu = useCallback((e: MouseEvent<HTMLDivElement>) => {
     if (ds.todayData.completedAt || ds.isProcessing) return;
@@ -612,6 +619,7 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
 
       {lineContextMenu && (
         <div className="fixed z-[70] min-w-44 rounded-md border border-border bg-popover p-1 shadow-xl" style={{ left: lineContextMenu.x, top: lineContextMenu.y }}>
+          {ds.todayData.sources?.[lineContextMenu.lineId] && <button className="flex w-full items-center gap-1 rounded px-2 py-1 text-left text-sm hover:bg-accent" onClick={() => { const src = ds.todayData.sources![lineContextMenu.lineId]; setLineContextMenu(null); navigate(sourcePath(src)); }}><ExternalLink className="h-3 w-3" />Original öffnen</button>}
           <button className="flex w-full rounded px-2 py-1 text-left text-sm hover:bg-accent" onClick={async () => { setTaskDraft({ lineId: lineContextMenu.lineId, text: lineContextMenu.text, options: { assignedTo: userId } }); setLineContextMenu(null); }}>Als Aufgabe erstellen</button>
           <button className="flex w-full rounded px-2 py-1 text-left text-sm hover:bg-accent" onClick={async () => { if (await ds.createFromLine(lineContextMenu.lineId, lineContextMenu.text, "note")) { toast.success("Notiz erstellt / verknüpft"); setLineContextMenu(null); } else toast.error("Notiz konnte nicht gespeichert werden. Bitte erneut versuchen."); }}>Als Notiz speichern</button>
           <button className="flex w-full rounded px-2 py-1 text-left text-sm hover:bg-accent" onClick={() => { ds.toggleResolveLine(lineContextMenu.lineId, lineContextMenu.text, "snoozed"); setLineContextMenu(null); }}>Snoozen</button>
