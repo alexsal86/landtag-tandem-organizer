@@ -2394,6 +2394,44 @@ export type Database = {
           },
         ]
       }
+      case_item_handover_log: {
+        Row: {
+          case_item_id: string
+          from_user_id: string | null
+          handed_over_at: string
+          handed_over_by: string
+          id: string
+          tenant_id: string
+          to_user_id: string | null
+        }
+        Insert: {
+          case_item_id: string
+          from_user_id?: string | null
+          handed_over_at?: string
+          handed_over_by: string
+          id?: string
+          tenant_id: string
+          to_user_id?: string | null
+        }
+        Update: {
+          case_item_id?: string
+          from_user_id?: string | null
+          handed_over_at?: string
+          handed_over_by?: string
+          id?: string
+          tenant_id?: string
+          to_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_item_handover_log_case_item_id_fkey"
+            columns: ["case_item_id"]
+            isOneToOne: false
+            referencedRelation: "case_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       case_item_interactions: {
         Row: {
           case_file_id: string | null
@@ -13703,6 +13741,10 @@ export type Database = {
       }
       get_user_role_level: { Args: { _user_id: string }; Returns: number }
       get_user_tenant_ids: { Args: { _user_id: string }; Returns: string[] }
+      handover_case_items: {
+        Args: { p_item_ids: string[]; p_to_user_id: string }
+        Returns: number
+      }
       has_active_tenant_role: {
         Args: { _roles: string[]; _tenant_id: string; _user_id: string }
         Returns: boolean
