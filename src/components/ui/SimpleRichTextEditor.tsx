@@ -6,6 +6,7 @@ import '@/styles/lexical-editor.css';
 import React, { useCallback, useEffect, useRef } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
+import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
@@ -75,16 +76,6 @@ const hashContent = (content: string): string => {
   }
   return `h${hash >>> 0}`;
 };
-
-// AutoFocus Plugin
-const AutoFocusPlugin = () => {
-  const [editor] = useLexicalComposerContext();
-  useEffect(() => {
-    editor.focus();
-  }, [editor]);
-  return null;
-};
-
 
 const EditablePlugin = ({ disabled }: { disabled: boolean }) => {
   const [editor] = useLexicalComposerContext();
