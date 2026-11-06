@@ -1,4 +1,5 @@
-import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
+import { useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
 import { Draggable, Droppable } from "@hello-pangea/dnd";
 import { Archive, CalendarDays, Circle, FolderOpen, Globe, Link2, Trash2, Vote, ArchiveRestore, Phone } from "lucide-react";
 import { de } from "date-fns/locale";
@@ -10,7 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type { CaseFile, CaseItem, TeamUser } from "@/components/my-work/hooks/useCaseWorkspaceData";
 import { formatDateSafe } from "./utils/dateFormatting";
-import { BALL_OWNERS, TRIAGE_FILTERS, ballMeta, daysUntilNextAction, type TriageFilter } from "@/features/cases/items/ball";
+import { BALL_OWNERS, TRIAGE_FILTERS, ballMeta, daysUntilNextAction, isOnResubmission, type TriageFilter } from "@/features/cases/items/ball";
 import type { BallPatch } from "./CaseItemBallPanel";
 
 export type CaseItemSortKey = "channel" | "subject" | "description" | "status" | "received" | "due" | "category" | "priority" | "assignee";
@@ -124,7 +125,7 @@ export function CaseItemList(props: CaseItemListProps) {
             <div
               ref={provided.innerRef}
               {...provided.droppableProps}
-              className="space-y-3 p-4"
+              className="space-y-1 p-3"
               tabIndex={0}
               onKeyDown={props.onListKeyDown}
             >
@@ -134,12 +135,31 @@ export function CaseItemList(props: CaseItemListProps) {
                   <Button size="sm" onClick={props.onCreateCaseItem}>Vorgang erstellen</Button>
                 </div>
               ) : (
-                props.sortedCaseItems.map((item, index) => {
+                orderedItems.map((item, index) => {
+                  const resub = index >= activeCount;
+                  const header = index === activeCount ? (
+                    <button
+                      key="resub-header"
+                      type="button"
+                      onClick={toggleResub}
+                      aria-expanded={resubOpen}
+                      className="flex w-full items-center justify-between px-1 pb-1 pt-4 text-left"
+                    >
+                      <span className="section-label inline-flex items-center gap-1">
+                        <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-fast", !resubOpen && "-rotate-90")} />
+                        Wiedervorlage · {resubCount}
+                      </span>
+                      <span className="text-xs font-semibold text-muted-foreground">kommt zurück</span>
+                    </button>
+                  ) : null;
+                  if (resub && !resubOpen) return header;
                   const isActive = props.detailItemId === item.id;
                   const ball = ballMeta(item.ball_owner);
                   const nextDays = daysUntilNextAction(item);
                   return (
-                    <Draggable key={item.id} draggableId={item.id} index={index}>
+                    <Fragment key={item.id}>
+                    {header}
+                    <Draggable draggableId={item.id} index={index}>
                       {(dragProvided, dragSnapshot) => (
                         <div
                           ref={(el) => {
@@ -158,9 +178,10 @@ export function CaseItemList(props: CaseItemListProps) {
                               <button
                                 type="button"
                                 className={cn(
-                                  "group w-full rounded-xl border bg-transparent px-3 py-3 text-left transition-colors hover:bg-muted/30",
+                                  "group w-full rounded-xl border bg-transparent px-3 py-2 text-left transition-colors hover:bg-muted/30",
                                   isActive && "border-primary/60 bg-primary/5 shadow-sm",
-                                  !isActive && "border-transparent",
+                                  !isActive && resub && "border-success/60 bg-success/5",
+                                  !isActive && !resub && "border-transparent",
                                   props.focusedItemIndex >= 0 && props.focusedItemIndex === index && "ring-1 ring-primary/40",
                                 )}
                                 onClick={() => props.handleSelectCaseItem(item)}
@@ -168,7 +189,6 @@ export function CaseItemList(props: CaseItemListProps) {
                                 <div {...dragProvided.dragHandleProps}>
                                   {/* Row 1: Marker + title */}
                                   <div className="flex items-center gap-2">
-                                    <Circle className={cn("h-[10px] w-[10px] shrink-0 fill-current", props.priorityMeta(item.priority).color)} />
                                     <p className="min-w-0 flex-1 text-sm font-bold leading-snug line-clamp-1">
                                       {props.getItemSubject(item)}
                                     </p>
@@ -180,7 +200,7 @@ export function CaseItemList(props: CaseItemListProps) {
                                   </div>
 
                                   {/* Row 2b: Ball + next action */}
-                                  <div className="mt-2 flex items-center gap-1.5 text-xs">
+                                  <div className="mt-0.5 flex items-center gap-1.5 text-xs">
                                     <span className={cn("h-2 w-2 shrink-0 rounded-full", ball.dotClass)} />
                                     <span className="shrink-0 text-muted-foreground">{ball.short}</span>
                                     {item.next_action_label ? (
@@ -289,6 +309,7 @@ export function CaseItemList(props: CaseItemListProps) {
                         </div>
                       )}
                     </Draggable>
+                    </Fragment>
                   );
                 })
               )}
