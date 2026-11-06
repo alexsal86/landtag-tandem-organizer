@@ -24,9 +24,12 @@ const isAssignedToUser = (assignedTo: string | null | undefined, userId: string)
   return assignedTo.toLowerCase().includes(userId.toLowerCase());
 };
 
+const formatCaseStepTitle = (subject: string | null | undefined, step: string | null | undefined) =>
+  `${subject?.trim() || 'Vorgang'} - ${step?.trim() || 'Nächster Schritt'}`;
+
 const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<DeadlineItem[]> => {
   const [tasksRes, notesRes, casesRes, decisionsRes, planningDeadlinesRes, caseActionsRes] = await Promise.all([
-    supabase.from('tasks').select('id, title, due_date, assigned_to, user_id, priority')
+    supabase.from('tasks').select('id, title, due_date, assigned_to, user_id, priority, source_type, source_id')
       .or(`assigned_to.eq.${userId},assigned_to.ilike.%${userId}%,user_id.eq.${userId}`)
       .neq('status', 'completed')
       .not('due_date', 'is', null),
@@ -67,10 +70,23 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
     if ('error' in result && result.error) throw result.error;
   }
 
+  const caseStepIds = [...new Set((tasksRes.data ?? [])
+    .filter(task => task.source_type === 'case_step' && task.source_id)
+    .map(task => task.source_id!))];
+  const caseSubjects = new Map<string, string | null>();
+  if (caseStepIds.length > 0) {
+    const { data, error } = await supabase.from('case_items')
+      .select('id, subject').in('id', caseStepIds);
+    if (error) throw error;
+    for (const item of data ?? []) caseSubjects.set(item.id, item.subject);
+  }
+
   const all: DeadlineItem[] = [
     ...(tasksRes.data || []).filter((t) => t.due_date && t.title?.trim()).map((t) => ({
       id: t.id,
-      title: t.title.trim(),
+      title: t.source_type === 'case_step'
+        ? formatCaseStepTitle(caseSubjects.get(t.source_id ?? ''), t.title)
+        : t.title.trim(),
       dueDate: t.due_date!,
       type: 'task' as const,
       priority: ({ urgent: 3, high: 2, medium: 1 } as Record<string, number>)[t.priority] ?? 0,
@@ -93,7 +109,7 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
     })),
     ...(caseActionsRes.data || []).filter((c) => c.next_action_due_at).map((c) => ({
       id: c.id,
-      title: `${(c.next_action_label || 'Nächster Schritt').trim()} · ${(c.subject || 'Vorgang').trim()}`,
+      title: formatCaseStepTitle(c.subject, c.next_action_label),
       dueDate: c.next_action_due_at!,
       type: 'caseAction' as const,
       canSnooze: true,
