@@ -99,7 +99,7 @@ export const caseItemLifecycleScenario: TestScenario = {
     {
       id: "interactions", label: "Interaktionen erfassen (Anruf, Mail, Treffen)",
       run: wrap(async (ctx) => {
-        for (const t of ["call", "email", "meeting"] as const) {
+        for (const t of ["phone", "email", "in_person"] as const) {
           const payload = { case_item_id: ctx.data.caseItemId as string, tenant_id: ctx.tenantId, interaction_type: t, direction: "in" as const, interaction_at: new Date().toISOString(), summary: `${SELFTEST_MARKER} ${t}`, visibility: "internal" as const, created_by: ctx.userId };
           const { data, error } = await supabase.from("case_item_interactions").insert(payload).select("id").single();
           if (error || !data) return { ok: false, message: `${t}: ${describeError(error)}` };

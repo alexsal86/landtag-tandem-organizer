@@ -40,7 +40,7 @@ const TIME_RE = /^\d{2}:\d{2}(:\d{2})?$/;
 export function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (typeof a === "string" && typeof b === "string") {
-    if (TS_RE.test(a) && TS_RE.test(b)) return new Date(a).getTime() === new Date(b).getTime();
+    if (TS_RE.test(a) && TS_RE.test(b)) return Math.abs(new Date(a).getTime() - new Date(b).getTime()) <= 60_000; // Trigger setzen teils now()
     if (TIME_RE.test(a) && TIME_RE.test(b)) return a.padEnd(8, ":00").slice(0, 8) === b.padEnd(8, ":00").slice(0, 8);
   }
   if (a == null || b == null) return a == null && b == null;
