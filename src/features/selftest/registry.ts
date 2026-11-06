@@ -6,6 +6,8 @@ import { caseItemLifecycleScenario } from "./scenarios/case-item-lifecycle";
 import { decisionLifecycleScenario } from "./scenarios/decision-lifecycle";
 import { appointmentLifecycleScenario } from "./scenarios/appointment-lifecycle";
 import { dailyBriefingLifecycleScenario } from "./scenarios/daily-briefing-lifecycle";
+import { appointmentRequestLifecycleScenario } from "./scenarios/appointment-request-lifecycle";
+import { daySlipLifecycleScenario } from "./scenarios/day-slip-lifecycle";
 import { eventPlanningLifecycleScenario } from "./scenarios/event-planning-lifecycle";
 
 export const SELFTEST_SCENARIOS: TestScenario[] = [
@@ -15,6 +17,8 @@ export const SELFTEST_SCENARIOS: TestScenario[] = [
   eventPlanningLifecycleScenario,
   letterLifecycleScenario,
   caseItemLifecycleScenario,
+  appointmentRequestLifecycleScenario,
+  daySlipLifecycleScenario,
   decisionLifecycleScenario,
   taskLifecycleScenario,
 ];

@@ -26,6 +26,8 @@ export interface TestStep {
   label: string;
   /** Wenn true: Step muss erfolgreich sein, sonst werden weitere Steps übersprungen. */
   critical?: boolean;
+  /** "logic" = prüft reine Regeln ohne Datenbank; Standard "db". */
+  kind?: "db" | "logic";
   run: (ctx: TestContext) => Promise<StepResult>;
 }
 
