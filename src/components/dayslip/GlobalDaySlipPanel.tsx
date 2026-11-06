@@ -619,6 +619,7 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
 
       {lineContextMenu && (
         <div className="fixed z-[70] min-w-44 rounded-md border border-border bg-popover p-1 shadow-xl" style={{ left: lineContextMenu.x, top: lineContextMenu.y }}>
+          {ds.todayData.sources?.[lineContextMenu.lineId] && <button className="flex w-full items-center gap-1 rounded px-2 py-1 text-left text-sm hover:bg-accent" onClick={() => { const src = ds.todayData.sources![lineContextMenu.lineId]; setLineContextMenu(null); navigate(sourcePath(src)); }}><ExternalLink className="h-3 w-3" />Original öffnen</button>}
           <button className="flex w-full rounded px-2 py-1 text-left text-sm hover:bg-accent" onClick={async () => { setTaskDraft({ lineId: lineContextMenu.lineId, text: lineContextMenu.text, options: { assignedTo: userId } }); setLineContextMenu(null); }}>Als Aufgabe erstellen</button>
           <button className="flex w-full rounded px-2 py-1 text-left text-sm hover:bg-accent" onClick={async () => { if (await ds.createFromLine(lineContextMenu.lineId, lineContextMenu.text, "note")) { toast.success("Notiz erstellt / verknüpft"); setLineContextMenu(null); } else toast.error("Notiz konnte nicht gespeichert werden. Bitte erneut versuchen."); }}>Als Notiz speichern</button>
           <button className="flex w-full rounded px-2 py-1 text-left text-sm hover:bg-accent" onClick={() => { ds.toggleResolveLine(lineContextMenu.lineId, lineContextMenu.text, "snoozed"); setLineContextMenu(null); }}>Snoozen</button>
