@@ -1,12 +1,20 @@
-/** Keep each employee's hue and derive a darker text color for light chips. */
+import { AVAILABLE_COLORS } from './userColors';
+
+/** Resolve current and legacy employee colors to the shared 200/950 palette. */
 export function mentionColors(badgeColor: string | null) {
-  const input = badgeColor?.trim() ?? '';
-  const hex = /^#[\da-f]{6}$/i.test(input) ? input
-    : /^#[\da-f]{3}$/i.test(input) ? `#${[...input.slice(1)].map(c => c + c).join('')}`
-    : '#3b82f6';
-  const channels = [1, 3, 5].map(offset => parseInt(hex.slice(offset, offset + 2), 16));
-  const text = `#${channels.map(channel => Math.round(channel * 0.45).toString(16).padStart(2, '0')).join('')}`;
-  return { background: `${hex}33`, text };
+  const input = badgeColor?.trim().toLowerCase() ?? '';
+  const hex = /^#[\da-f]{3}$/i.test(input)
+    ? `#${[...input.slice(1)].map(c => c + c).join('')}` : input;
+  let palette = AVAILABLE_COLORS.find(color =>
+    [color.hex, color.baseHex, color.value, color.classes.split(' ')[0]].includes(hex));
+  if (!palette && /^#[\da-f]{6}$/i.test(hex)) {
+    // Custom employee colors use the closest family in the agreed palette.
+    const distance = (base: string) => [1, 3, 5].reduce((sum, offset) =>
+      sum + (parseInt(base.slice(offset, offset + 2), 16) - parseInt(hex.slice(offset, offset + 2), 16)) ** 2, 0);
+    palette = AVAILABLE_COLORS.reduce((best, color) => distance(color.baseHex) < distance(best.baseHex) ? color : best);
+  }
+  palette ??= AVAILABLE_COLORS[0];
+  return { background: palette.hex, text: palette.text };
 }
 
 /** Shared by the editor, HTML export and already saved mentions. */

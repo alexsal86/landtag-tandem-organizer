@@ -1,3 +1,4 @@
+import { mentionColors } from '@/utils/mentionColors';
 /**
  * MentionsPlugin - based on the official Lexical Playground MentionsPlugin
  * Uses LexicalTypeaheadMenuPlugin for proper trigger matching and menu rendering.
@@ -123,8 +124,8 @@ function MentionsTypeaheadMenuItem({
       <Avatar className="h-6 w-6 flex-shrink-0">
         <AvatarImage src={option.avatarUrl || undefined} />
         <AvatarFallback
-          className="text-xs text-white"
-          style={{ backgroundColor: option.badgeColor }}
+          className="text-xs"
+          style={{ backgroundColor: option.badgeColor, color: mentionColors(option.badgeColor).text }}
         >
           {option.displayName.charAt(0).toUpperCase()}
         </AvatarFallback>

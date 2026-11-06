@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { mentionColors } from "@/utils/mentionColors";
 import { getHashedColor } from "@/utils/userColors";
 
 interface UserBadgeProps {
@@ -17,7 +18,7 @@ export const UserBadge = ({
   className = ''
 }: UserBadgeProps) => {
   const name = displayName || 'Unbekannt';
-  const color = badgeColor || getHashedColor(userId);
+  const color = mentionColors(badgeColor || getHashedColor(userId));
   
   const sizeClasses = {
     sm: 'text-xs px-2 py-0.5',
@@ -27,7 +28,8 @@ export const UserBadge = ({
   
   return (
     <Badge 
-      className={`${color} text-white border-0 ${sizeClasses[size]} ${className}`}
+      style={{ backgroundColor: color.background, color: color.text }}
+      className={`border-0 ${sizeClasses[size]} ${className}`}
     >
       {name}
     </Badge>

@@ -229,7 +229,8 @@ export const UserColorManager = () => {
                       <SelectItem key={color.value} value={color.value}>
                         <div className="flex items-center gap-2">
                           <div 
-                            className={`w-4 h-4 rounded ${color.value}`}
+                            className="w-4 h-4 rounded"
+                            style={{ backgroundColor: color.hex }}
                           />
                           {color.label}
                         </div>
