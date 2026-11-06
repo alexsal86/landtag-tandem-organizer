@@ -95,8 +95,8 @@ export function CaseItemDetailView({
 
   return (
     <div className="grid h-full min-h-0 min-w-0 grid-cols-1 overflow-y-auto bg-card min-[1440px]:grid-cols-[minmax(0,1fr)_300px] min-[1440px]:overflow-hidden">
-      <div className="flex min-h-0 min-w-0 flex-col">
-        <div className="shrink-0 border-b px-6 pb-4 pt-5">
+      <div className="flex min-h-0 min-w-0 flex-col bg-[#f4f6f4] dark:bg-muted/30">
+        <div className="shrink-0 px-6 pb-4 pt-5">
           <input
             aria-label="Titel"
             value={title}

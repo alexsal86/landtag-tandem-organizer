@@ -78,34 +78,22 @@ type CaseItemListProps = {
 
 export function CaseItemList(props: CaseItemListProps) {
   return (
-    <div className="flex h-full min-h-0 flex-col border-r bg-muted/30">
+    <div className="flex h-full min-h-0 flex-col border-r bg-card">
       {/* Header */}
-      <div className="shrink-0 space-y-2 border-b p-4">
-        <div className="flex items-center gap-2">
-          <div>
-            <h3 className="text-lg font-semibold tracking-tight text-primary">Vorgangsliste</h3>
-            <p className="text-sm text-muted-foreground">Übersicht und schneller Zugriff</p>
-          </div>
-          {props.onOpenHandover && (
-            <Button variant="ghost" size="sm" className="ml-auto text-muted-foreground" onClick={props.onOpenHandover} title="Offene Vorgänge an eine Vertretung übergeben">
-              Vertretung
-            </Button>
-          )}
-          <Button variant="outline" size="sm" className={props.onOpenHandover ? "" : "ml-auto"} onClick={props.onOpenArchive}>
-            Archiv
+      <div className="shrink-0 space-y-3 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-xl font-bold tracking-tight text-black dark:text-foreground">Vorgänge</h3>
+          <Button type="button" onClick={props.onCreateCaseItem} className="h-10 rounded-lg bg-success px-4 font-semibold text-white hover:bg-success/90">
+            + Neuer Vorgang
           </Button>
         </div>
-        <div className="flex items-center gap-2">
-          <Input
-            value={props.itemQuery}
-            onChange={(event) => props.onItemQueryChange(event.target.value)}
-            placeholder="Suchen..."
-            className="h-9"
-          />
-          <Button type="button" size="sm" onClick={props.onCreateCaseItem}>
-            + Neu
-          </Button>
-        </div>
+        <Input
+          aria-label="Vorgänge suchen"
+          value={props.itemQuery}
+          onChange={(event) => props.onItemQueryChange(event.target.value)}
+          placeholder="Suchen…"
+          className="h-11 w-full rounded-lg bg-background"
+        />
         <div className="flex flex-wrap gap-1" role="group" aria-label="Wer ist am Zug">
           {TRIAGE_FILTERS.map((f) => {
             const active = props.triageFilter === f.value;
@@ -172,9 +160,9 @@ export function CaseItemList(props: CaseItemListProps) {
                               <button
                                 type="button"
                                 className={cn(
-                                  "group w-full rounded-2xl border bg-card px-4 py-4 text-left transition-colors hover:bg-muted/30",
+                                  "group w-full rounded-xl border bg-transparent px-3 py-3 text-left transition-colors hover:bg-muted/30",
                                   isActive && "border-primary/60 bg-primary/5 shadow-sm",
-                                  !isActive && "border-border",
+                                  !isActive && "border-transparent",
                                   props.focusedItemIndex >= 0 && props.focusedItemIndex === index && "ring-1 ring-primary/40",
                                 )}
                                 onClick={() => props.handleSelectCaseItem(item)}
@@ -339,6 +327,16 @@ export function CaseItemList(props: CaseItemListProps) {
           )}
         </Droppable>
       </ScrollArea>
+      <footer className="mt-auto flex shrink-0 flex-wrap items-center justify-between gap-2 border-t px-4 py-3">
+        <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" onClick={props.onOpenArchive}>
+          Archiv
+        </Button>
+        {props.onOpenHandover && (
+          <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" onClick={props.onOpenHandover} title="Offene Vorgänge an eine Vertretung übergeben">
+            Vertretung übergeben
+          </Button>
+        )}
+      </footer>
     </div>
   );
 }

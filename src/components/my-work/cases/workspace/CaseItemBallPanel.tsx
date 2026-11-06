@@ -46,7 +46,7 @@ export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange
   };
 
   return (
-    <div className={cn("shrink-0 space-y-3", variant === "bar" ? "border-b bg-muted/20 px-4 py-3" : "p-4 [&_.case-actions]:ml-0 [&_.case-actions]:w-full [&_.case-actions]:flex-col [&_.case-actions]:items-stretch [&_.case-actions_button]:justify-start")}>
+    <div className={cn("shrink-0 space-y-3", variant === "bar" ? "mx-6 mb-4 rounded-2xl border bg-card p-5 shadow-sm" : "p-4 [&_.case-actions]:ml-0 [&_.case-actions]:w-full [&_.case-actions]:flex-col [&_.case-actions]:items-stretch [&_.case-actions_button]:justify-start")}>
       <div className="flex flex-wrap items-center gap-2">
         <span className="section-label">Am Zug</span>
         {BALL_OWNERS.map((b) => (
