@@ -28,7 +28,8 @@ import { ContactFundingsList } from "@/components/contacts/ContactFundingsList";
 import { useContactFundings } from "@/hooks/useContactFundings";
 import { ContactInfoTab } from "@/components/contacts/ContactInfoTab";
 import { Facebook, Instagram, Linkedin, Twitter } from "@/components/icons/SocialIcons";
-import { User, Calendar, Tag } from "lucide-react";
+import { User, Calendar, Tag, Briefcase } from "lucide-react";
+import { ContactCasesTab, useContactCases } from "./ContactCasesTab";
 import { notify } from "@/lib/notify";
 
 interface CallLog {
@@ -141,6 +142,7 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
 
   const { directDocuments, taggedDocuments, loading: documentsLoading, removeDocumentLink } = useContactDocuments(contactId || undefined, [...(allTags.direct || []), ...(allTags.inherited || [])]);
   const { data: fundings = [], isLoading: fundingsLoading } = useContactFundings(contactId || undefined);
+  const { data: contactCases } = useContactCases(contactId);
 
   useEffect(() => { if (contactId) { fetchContact(); fetchCallLogs(); fetchActivities(); setIsEditing(false); } }, [contactId]);
 
@@ -312,6 +314,7 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
               <TabsTrigger value="activities" className="flex-1 py-2.5 px-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:text-primary transition-all text-xs"><Calendar className="h-3.5 w-3.5 mr-1" /><Badge variant="secondary" className="text-[10px] h-4 px-1">{activities.length}</Badge></TabsTrigger>
               <TabsTrigger value="calls" className="flex-1 py-2.5 px-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:text-primary transition-all text-xs"><PhoneCall className="h-3.5 w-3.5 mr-1" /><Badge variant="secondary" className="text-[10px] h-4 px-1">{callLogs.length}</Badge></TabsTrigger>
               <TabsTrigger value="documents" className="flex-1 py-2.5 px-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:text-primary transition-all text-xs"><FileText className="h-3.5 w-3.5 mr-1" /><Badge variant="secondary" className="text-[10px] h-4 px-1">{directDocuments.length + taggedDocuments.length}</Badge></TabsTrigger>
+              <TabsTrigger value="cases" title="Vorgänge & Briefe" className="flex-1 py-2.5 px-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:text-primary transition-all text-xs"><Briefcase className="h-3.5 w-3.5 mr-1" /><Badge variant="secondary" className="text-[10px] h-4 px-1">{(contactCases?.cases.length ?? 0) + (contactCases?.letters.length ?? 0)}</Badge></TabsTrigger>
               <TabsTrigger value="fundings" className="flex-1 py-2.5 px-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:text-primary transition-all text-xs"><Euro className="h-3.5 w-3.5 mr-1" /><Badge variant="secondary" className="text-[10px] h-4 px-1">{fundings.length}</Badge></TabsTrigger>
             </TabsList>
           </div>
@@ -361,6 +364,8 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
               </>
             )}
           </TabsContent>
+
+          <TabsContent value="cases" className="mt-4"><ContactCasesTab contactId={contactId} /></TabsContent>
 
           <TabsContent value="fundings" className="space-y-4 mt-4">
             <Card>

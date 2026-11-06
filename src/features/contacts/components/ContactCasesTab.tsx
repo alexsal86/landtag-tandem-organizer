@@ -4,7 +4,7 @@ import { Briefcase, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { EmptyState, LoadingState } from "@/components/ui-patterns";
-import { BALL_LABELS, type BallOwner } from "@/features/cases/items/ball";
+import { BALL_OWNERS } from "@/features/cases/items/ball";
 
 type CaseRow = { id: string; subject: string | null; status: string; ball_owner: string; next_action_label: string | null; updated_at: string };
 type LetterRow = { id: string; title: string; subject: string | null; status: string; letter_date: string | null; created_at: string };
@@ -54,7 +54,7 @@ export function ContactCasesTab({ contactId }: { contactId: string | null }) {
               <span className="text-xs text-muted-foreground tabular-nums">{fmt(c.updated_at)}</span>
             </div>
             <div className="mt-1 text-xs text-muted-foreground">
-              Am Zug: {BALL_LABELS[c.ball_owner as BallOwner] ?? c.ball_owner}
+              Am Zug: {BALL_OWNERS.find((b) => b.value === c.ball_owner)?.label ?? c.ball_owner}
               {c.next_action_label ? ` · Nächster Schritt: ${c.next_action_label}` : ""}
             </div>
           </button>
