@@ -83,7 +83,7 @@ export function CaseItemList(props: CaseItemListProps) {
   const resubItems = props.sortedCaseItems.filter((i) => isOnResubmission(i));
   const orderedItems = [...activeItems, ...resubItems];
   const activeCount = activeItems.length;
-  const showResubSection = props.triageFilter === "all";
+  const showResubSection = props.triageFilter === "all" || props.triageFilter === "mine";
   const resubCount = resubItems.length;
   const [resubOpen, setResubOpen] = useState(() => {
     try { return localStorage.getItem(RESUB_KEY) !== "0"; } catch { return true; }
