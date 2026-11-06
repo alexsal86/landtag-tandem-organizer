@@ -95,7 +95,7 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
                   )}
                 >
                   {f.value === "pinned" && <Pin className="h-3.5 w-3.5" aria-hidden="true" />}
-                  {f.value === "stale" && <ClockAlert className={cn("h-3.5 w-3.5", !active && "text-warning")} aria-hidden="true" />}
+                  {f.value === "stale" && <ClockAlert className="h-3.5 w-3.5" aria-hidden="true" />}
                   {f.label}
                   {f.value === "stale" && <span className="tabular-nums">{counts.staleCount}</span>}
                 </button>
@@ -134,9 +134,9 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
                           aria-label={`Nach Farbe ${colorLabel(c)} filtern`}
                           aria-pressed={colorFilter === c.value}
                           onClick={() => setColorFilter((prev) => (prev === c.value ? null : c.value))}
-                          className={cn("h-6 w-6 rounded-full border-2 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", colorFilter === c.value ? "border-foreground scale-110" : "border-transparent")}
-                          style={{ backgroundColor: c.value }}
-                        />
+                          className={cn("flex h-16 w-16 items-center justify-center rounded-full border-2 p-1 text-center text-[10px] font-semibold leading-tight break-words transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", colorFilter === c.value ? "border-foreground scale-110" : "border-transparent")}
+                          style={{ backgroundColor: c.value, color: `color-mix(in srgb, ${c.value} 25%, black)` }}
+                        >{c.meaning}</button>
                       </TooltipTrigger>
                       <TooltipContent>{colorLabel(c)}</TooltipContent>
                     </Tooltip>

@@ -1,10 +1,11 @@
+import { PencilSparkles } from "@/components/icons/PencilSparkles";
 import { useQuickNoteDraft } from "@/hooks/useQuickNoteDraft";
 import { useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Pin, Loader2, Info, SquarePen } from "lucide-react";
+import { Pin, Loader2, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { MentionSharePromptDialog } from "@/components/shared/MentionSharePromptDialog";
@@ -89,7 +90,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
           onClick={() => setExpanded(true)}
           className="flex flex-1 items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
         >
-          <SquarePen className="h-4 w-4" aria-hidden="true" />
+          <PencilSparkles className="h-4 w-4" aria-hidden="true" />
           <span className="flex-1 text-body">{canSaveNote ? "Entwurf fortsetzen…" : "Notiz erfassen…"}</span>
         </button>
         <span className="hidden sm:inline text-caption text-muted-foreground select-none" aria-hidden="true">@ erwähnen · # Thema</span>
@@ -114,11 +115,11 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-2" align="start">
-          <div className="flex flex-wrap gap-1">
+          <div className="flex max-w-xs flex-wrap gap-2">
             {palette.map(color => (
               <button type="button" key={color.value} aria-label={colorLabel(color)} aria-pressed={selectedColor === color.value}
-                className={cn("h-6 w-6 rounded-full border-2", selectedColor === color.value ? "border-foreground" : "border-transparent")}
-                style={{ backgroundColor: color.value }} onClick={() => setSelectedColor(color.value)} />
+                className={cn("flex h-16 w-16 items-center justify-center rounded-full border-2 p-1 text-center text-[10px] font-semibold leading-tight break-words", selectedColor === color.value ? "border-foreground" : "border-transparent")}
+                style={{ backgroundColor: color.value, color: `color-mix(in srgb, ${color.value} 25%, black)` }} onClick={() => setSelectedColor(color.value)} title={color.meaning || "Keine Bedeutung hinterlegt"}>{color.meaning}</button>
             ))}
           </div>
         </PopoverContent>

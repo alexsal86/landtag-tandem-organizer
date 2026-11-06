@@ -1,4 +1,5 @@
-import { Briefcase, Calendar, CheckSquare, Clock, Home, Lightbulb, MessageSquare, StickyNote, Users, Vote } from "lucide-react";
+import { PencilSparkles } from "@/components/icons/PencilSparkles";
+import { Briefcase, Calendar, CheckSquare, Clock, Home, Lightbulb, MessageSquare, Users, Vote } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { UserRole } from "@/components/my-work/tabVisibility";
 import { canViewTab } from "@/components/my-work/tabVisibility";
@@ -42,7 +43,7 @@ export interface MyWorkTabConfig {
 
 export const MY_WORK_TABS: MyWorkTabConfig[] = [
   { value: "dashboard", label: "", icon: Home, isLogo: true },
-  { value: "capture", label: "Quick Notes", icon: StickyNote },
+  { value: "capture", label: "Quick Notes", icon: PencilSparkles },
   { value: "cases", label: "Vorgänge", icon: Briefcase, countKey: "cases" },
   { value: "tasks", label: "Aufgaben", icon: CheckSquare, countKey: "tasks" },
   { value: "decisions", label: "Entscheidungen", icon: Vote, countKey: "decisions" },

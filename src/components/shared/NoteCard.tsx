@@ -1,4 +1,4 @@
-import { useNoteColorPalette, colorLabel as describeColor } from "@/components/my-work/useNoteColorPalette";
+import { useNoteColorPalette } from "@/components/my-work/useNoteColorPalette";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -124,7 +124,7 @@ export function NoteCard({
   const staleWeeks = Math.max(4, Math.floor(differenceInCalendarDays(new Date(), changedAt) / 7));
   const relTime = isToday(changedAt) ? "heute" : isYesterday(changedAt) ? "gestern" : formatDistanceToNow(changedAt, { addSuffix: true, locale: de });
   const colorDefinition = palette.find(c => c.value.toLowerCase() === note.color?.toLowerCase());
-  const colorLabel = colorDefinition ? describeColor(colorDefinition) : noteColors.find(c => c.value === note.color)?.label ?? "Standard";
+  const colorLabel = colorDefinition?.meaning || "Keine Bedeutung hinterlegt";
   const prio = note.priority_level || 0;
 
   return (
@@ -393,14 +393,14 @@ export function NoteCard({
         <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
             <Tooltip><TooltipTrigger asChild>
-              <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full border border-border" style={{ backgroundColor: note.color || undefined }} role="img" tabIndex={0} aria-label={`Farbe: ${colorLabel}`} />
-            </TooltipTrigger><TooltipContent>Farbe: {colorLabel}</TooltipContent></Tooltip>
+              <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full border border-border" style={{ backgroundColor: note.color || undefined }} role="img" tabIndex={0} aria-label={colorLabel} />
+            </TooltipTrigger><TooltipContent>{colorLabel}</TooltipContent></Tooltip>
             {showPriority && (prio > 0
               ? <span><span className="text-warning">★</span> Prio {prio}</span>
               : <span>Ohne Prio</span>)}
             {hasShared && (
               <Tooltip><TooltipTrigger asChild>
-                <span tabIndex={0} className="inline-flex items-center gap-1" aria-label={note.is_shared ? `Geteilt von ${note.owner?.display_name || "Unbekannt"}` : "Geteilte Notiz"}><Users className="h-3 w-3" />{note.is_shared ? (showSharedLabel && <span>Geteilt von {note.owner?.display_name || "Unbekannt"}</span>) : note.share_count}</span>
+                <span tabIndex={0} className="inline-flex items-center gap-1" aria-label={note.is_shared ? `Geteilt von ${note.owner?.display_name || "Unbekannt"}` : "Geteilte Notiz"}><Users className="h-3 w-3" />{note.is_shared ? (<span className={cn("grid transition-[grid-template-columns,opacity] duration-500 ease-in-out motion-reduce:transition-none", showSharedLabel ? "grid-cols-[1fr] opacity-100" : "grid-cols-[0fr] opacity-0")}><span className="min-w-0 overflow-hidden whitespace-nowrap">Geteilt von {note.owner?.display_name || "Unbekannt"}</span></span>) : note.share_count}</span>
               </TooltipTrigger><TooltipContent>
                 {note.is_shared ? `Geteilt von ${note.owner?.display_name || "Unbekannt"}` : (note.shared_with_users?.length ? `Geteilt mit ${note.shared_with_users.map(u => u.display_name || "Unbekannt").join(", ")}` : `Mit ${note.share_count} geteilt`)}
               </TooltipContent></Tooltip>
