@@ -13,6 +13,7 @@ import { useCaseFileTypes } from "@/features/cases/files/hooks/useCaseFileTypes"
 import type { CaseItemIntakePayload } from "@/features/cases/items/types";
 import { useCaseItems } from "@/features/cases/items/hooks";
 import { useAuth } from "@/hooks/useAuth";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -47,6 +48,7 @@ import { notify } from "@/lib/notify";
 
 export function MyWorkCasesWorkspace() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { currentTenant } = useTenant();
   
   const tenantId = currentTenant?.id;
@@ -463,7 +465,8 @@ export function MyWorkCasesWorkspace() {
   const handleHandover = async (ids: string[], toUserId: string) => {
     const snapshot = caseItems;
     setCaseItems((current) => current.map((row) => (ids.includes(row.id) ? { ...row, next_action_assignee_id: toUserId } : row)));
-    const { error } = await supabase.from("case_items").update({ next_action_assignee_id: toUserId }).in("id", ids);
+    const { error } = await supabase.rpc("handover_case_items", { p_item_ids: ids, p_to_user_id: toUserId });
+    void queryClient.invalidateQueries({ queryKey: ["case-handover-log"] });
     if (error) {
       setCaseItems(snapshot);
       notify.error("Übergabe fehlgeschlagen.");
@@ -1052,7 +1055,7 @@ export function MyWorkCasesWorkspace() {
         </div>
       ) : (
         <>
-          <CaseHandoverDialog open={handoverOpen} onOpenChange={setHandoverOpen} items={caseItems} teamUsers={teamUsers} onConfirm={handleHandover} />
+          <CaseHandoverDialog tenantId={tenantId} open={handoverOpen} onOpenChange={setHandoverOpen} items={caseItems} teamUsers={teamUsers} onConfirm={handleHandover} />
           <CasesWorkspaceShell
             onDragEnd={handleDragEnd}
             left={
@@ -1145,6 +1148,7 @@ export function MyWorkCasesWorkspace() {
                   ballPanel={
                     <CaseItemBallPanel
                       item={detailItem}
+                      tenantId={tenantId}
                       subject={editableCaseItem.subject}
                       teamUsers={teamUsers}
                       onChange={(patch) => runAsync(() => handleBallChange(detailItem, patch))}
