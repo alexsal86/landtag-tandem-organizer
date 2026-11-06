@@ -29,7 +29,7 @@ interface QuickNotesListProps {
   searchPlacement?: "top" | "hidden";
   searchQuery?: string;
   onSearchQueryChange?: (value: string) => void;
-  onCountsChange?: (counts: { filteredCount: number; totalCount: number }) => void;
+  onCountsChange?: (counts: { filteredCount: number; totalCount: number; staleCount: number }) => void;
   /** "list" = classic priority groups with drag & drop, "grid" = Keep-style board */
   layout?: "list" | "grid";
   filter?: QuickNoteFilter;
@@ -70,14 +70,17 @@ export function QuickNotesList({
 
   const matches = (note: QuickNote) => matchesNoteFilter(note, filter, colorFilter);
   const visibleNotes = hook.filteredNotes.filter(matches);
+  const staleCount = hook.filteredNotes.filter((n) => matchesNoteFilter(n, "stale", colorFilter)).length;
+  const [isDragging, setIsDragging] = useState(false);
   const visibleIdsKey = visibleNotes.map((n) => n.id).join(",");
 
   useEffect(() => {
     onCountsChange?.({
       filteredCount: visibleNotes.length,
       totalCount: hook.notes.length,
+      staleCount,
     });
-  }, [visibleNotes.length, hook.notes.length, onCountsChange]);
+  }, [visibleNotes.length, hook.notes.length, staleCount, onCountsChange]);
 
   useEffect(() => {
     onVisibleIdsChange?.(visibleIdsKey ? visibleIdsKey.split(",") : []);
