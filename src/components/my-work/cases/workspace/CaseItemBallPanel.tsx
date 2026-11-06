@@ -20,6 +20,7 @@ type Props = {
   subject: string;
   teamUsers: TeamUser[];
   onChange: (patch: BallPatch) => void;
+  onCompleteStep: (label: string) => Promise<boolean>;
   onOpenMeetingSelector: () => void;
   onCreateLetter: () => Promise<void>;
   /** "dock" = vertical layout for the right-hand third zone. */
@@ -28,7 +29,8 @@ type Props = {
 
 const NONE = "__none__";
 
-export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange, onOpenMeetingSelector, onCreateLetter, variant = "bar" }: Props) {
+export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange, onCompleteStep, onOpenMeetingSelector, onCreateLetter, variant = "bar" }: Props) {
+  const [completingStep, setCompletingStep] = useState(false);
   const [creatingLetter, setCreatingLetter] = useState(false);
   const [label, setLabel] = useState(item.next_action_label ?? "");
   useEffect(() => setLabel(item.next_action_label ?? ""), [item.id, item.next_action_label]);
@@ -48,15 +50,18 @@ export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange
   return (
     <div className={cn("shrink-0 space-y-3", variant === "bar" ? "mx-6 mb-4 rounded-2xl border bg-card p-5 shadow-sm" : "p-4 [&_.case-actions]:ml-0 [&_.case-actions]:w-full [&_.case-actions]:flex-col [&_.case-actions]:items-stretch [&_.case-actions_button]:justify-start")}>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="section-label">Am Zug</span>
+        <div className="flex w-full flex-wrap items-center justify-between gap-2 pb-1">
+          <span className="section-label">Wer ist am Zug?</span>
+          {dueText && <span className={cn("text-sm", days !== null && days < 0 ? "text-destructive" : "text-muted-foreground")}>Frist <strong className="text-foreground">{format(new Date(item.next_action_due_at!), "dd.MM.yyyy", { locale: de })}</strong> · {dueText}</span>}
+        </div>
         {BALL_OWNERS.map((b) => (
           <button
             key={b.value}
             type="button"
             onClick={() => onChange({ ball_owner: b.value })}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-pill border px-2.5 py-0.5 text-xs transition-colors duration-fast",
-              meta.value === b.value ? "border-foreground/30 bg-background font-medium text-foreground shadow-xs" : "border-transparent text-muted-foreground hover:bg-background",
+              "inline-flex items-center gap-2 rounded-pill border px-3 py-1.5 text-sm transition-colors duration-fast",
+              meta.value === b.value ? "border-success bg-success/5 font-semibold text-foreground shadow-xs" : "border-border text-foreground hover:bg-muted/30",
             )}
             aria-pressed={meta.value === b.value}
           >
@@ -98,11 +103,6 @@ export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        {dueText && (
-          <span className={cn("text-xs", days !== null && days < 0 ? "text-destructive" : days !== null && days <= 3 ? "text-warning" : "text-muted-foreground")}>
-            Frist {dueText}
-          </span>
-        )}
         <Select value={item.parliamentary_tool ?? "none"} onValueChange={(v) => onChange({ parliamentary_tool: v as ParliamentaryTool })}>
           <SelectTrigger className="h-7 w-auto gap-1 border-none bg-transparent px-2 text-xs text-muted-foreground shadow-none" aria-label="Parlamentarisches Instrument">
             <SelectValue />
@@ -140,6 +140,16 @@ export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange
             <CalendarDays className="h-3.5 w-3.5" />Ortstermin anfragen
           </Button>
         </div>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+        <p className="text-sm text-muted-foreground">Schritt abgehakt? Dann Ball weitergeben oder neuen Schritt eintragen.</p>
+        <Button type="button" disabled={!label.trim() || completingStep} className="ml-auto h-11 rounded-lg bg-success px-5 font-semibold text-white hover:bg-success/90"
+          onClick={async () => {
+            setCompletingStep(true);
+            try { if (await onCompleteStep(label.trim())) setLabel(""); } finally { setCompletingStep(false); }
+          }}>
+          {completingStep ? "Wird erledigt…" : "Schritt erledigt"}
+        </Button>
       </div>
     </div>
   );

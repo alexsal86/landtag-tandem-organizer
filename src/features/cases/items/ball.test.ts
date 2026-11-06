@@ -1,9 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { countTriage, daysUntilNextAction, matchesTriage, withAutoDeadline } from "./ball";
+import { BALL_OWNERS, ballMeta, countTriage, daysUntilNextAction, matchesTriage, withAutoDeadline } from "./ball";
 
 const now = new Date(2026, 10, 6, 11, 0);
 
 describe("Vorgänge: Wer ist am Zug", () => {
+  it("fasst Behörde und Ministerium in einer Verwaltungsauswahl zusammen", () => {
+    expect(ballMeta("ministry").value).toBe("authority");
+    expect(ballMeta("authority").short).toBe("Verwaltung");
+    expect(BALL_OWNERS.filter((owner) => owner.short === "Verwaltung")).toHaveLength(1);
+    expect(BALL_OWNERS.some((owner) => owner.value === "ministry")).toBe(false);
+    expect(matchesTriage({ ball_owner: "ministry" }, "waiting", null, now)).toBe(true);
+    expect(matchesTriage({ ball_owner: "authority" }, "waiting", null, now)).toBe(true);
+  });
+
+  it("setzt für Verwaltung 21 Tage Frist und erhält bestehende Schritte", () => {
+    const patch = withAutoDeadline({}, { ball_owner: "authority" }, now);
+    expect(daysUntilNextAction(patch, now)).toBe(21);
+    expect(patch.next_action_label).toBe("Antwort der Verwaltung nachhalten");
+    const existing = new Date(2026, 10, 10).toISOString();
+    expect(withAutoDeadline({ next_action_due_at: existing }, { ball_owner: "authority" }, now).next_action_due_at).toBeUndefined();
+    expect(withAutoDeadline({ next_action_label: "Bestehender Schritt" }, { ball_owner: "authority" }, now).next_action_label).toBe("Bestehender Schritt");
+  });
+
   it("Frist nah umfasst überfällige und bis zu 3 Tage entfernte nächste Schritte", () => {
     expect(matchesTriage({ next_action_due_at: new Date(2026, 10, 9).toISOString() }, "due_soon", null, now)).toBe(true);
     expect(matchesTriage({ next_action_due_at: new Date(2026, 10, 10).toISOString() }, "due_soon", null, now)).toBe(false);

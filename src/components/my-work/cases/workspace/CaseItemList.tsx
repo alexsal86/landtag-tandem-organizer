@@ -3,7 +3,6 @@ import { Draggable, Droppable } from "@hello-pangea/dnd";
 import { Archive, CalendarDays, Circle, FolderOpen, Globe, Link2, Trash2, Vote, ArchiveRestore, Phone } from "lucide-react";
 import { de } from "date-fns/locale";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Input } from "@/components/ui/input";
@@ -137,7 +136,6 @@ export function CaseItemList(props: CaseItemListProps) {
               ) : (
                 props.sortedCaseItems.map((item, index) => {
                   const isActive = props.detailItemId === item.id;
-                  const statusMeta = props.getStatusMeta(item.status);
                   const ball = ballMeta(item.ball_owner);
                   const nextDays = daysUntilNextAction(item);
                   return (
@@ -174,14 +172,12 @@ export function CaseItemList(props: CaseItemListProps) {
                                     <p className="min-w-0 flex-1 text-sm font-bold leading-snug line-clamp-1">
                                       {props.getItemSubject(item)}
                                     </p>
+                                    {(item.next_action_due_at || item.due_at) && (
+                                      <span className={cn("ml-auto shrink-0 text-right text-xs tabular-nums", (nextDays ?? 99) < 0 ? "text-destructive" : (nextDays ?? 99) <= 3 ? "text-warning" : "text-muted-foreground")}>
+                                        {formatDateSafe(item.next_action_due_at || item.due_at, "dd.MM.", "", { locale: de })}
+                                      </span>
+                                    )}
                                   </div>
-
-                                  {/* Row 2: Description */}
-                                  {props.getItemDescription(item) && (
-                                    <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">
-                                      {props.getItemDescription(item)}
-                                    </p>
-                                  )}
 
                                   {/* Row 2b: Ball + next action */}
                                   <div className="mt-2 flex items-center gap-1.5 text-xs">
@@ -192,28 +188,9 @@ export function CaseItemList(props: CaseItemListProps) {
                                     ) : (item.ball_owner ?? "office") === "office" ? (
                                       <span className="min-w-0 truncate italic text-muted-foreground">· kein nächster Schritt</span>
                                     ) : null}
-                                    {nextDays !== null && (
-                                      <span className={cn("ml-auto shrink-0 tabular-nums", nextDays < 0 ? "text-destructive" : nextDays <= 3 ? "text-warning" : "text-muted-foreground")}>
-                                        {formatDateSafe(item.next_action_due_at, "dd.MM.", "", { locale: de })}
-                                      </span>
-                                    )}
+
                                   </div>
 
-                                  {/* Row 3: Date + status */}
-                                  <div className="mt-3 flex items-center justify-between gap-2">
-                                    <span className="text-xs text-muted-foreground">
-                                      Fällig: {formatDateSafe(item.due_at, "dd.MM.yy", "–", { locale: de })}
-                                    </span>
-                                    <Badge
-                                      variant="outline"
-                                      className={cn(
-                                        "h-auto rounded-full border px-2 py-0.5 text-xs font-bold",
-                                        statusMeta.badgeClass,
-                                      )}
-                                    >
-                                      {statusMeta.label}
-                                    </Badge>
-                                  </div>
 
                                 </div>
                               </button>

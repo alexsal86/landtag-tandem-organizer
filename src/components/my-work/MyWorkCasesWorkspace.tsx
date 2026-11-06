@@ -1057,6 +1057,37 @@ export function MyWorkCasesWorkspace() {
                       subject={editableCaseItem.subject}
                       teamUsers={teamUsers}
                       onChange={(patch) => runAsync(() => handleBallChange(detailItem, patch))}
+                      onCompleteStep={async (label) => {
+                        const event: TimelineEvent = {
+                          id: crypto.randomUUID(),
+                          type: "interaktion",
+                          interactionType: "notiz",
+                          title: "Schritt erledigt",
+                          note: [label, detailItem.next_action_assignee_id ? `Zuständig: ${teamUsers.find((member) => member.id === detailItem.next_action_assignee_id)?.name || detailItem.next_action_assignee_id}` : null, `Am Zug: ${ballMeta(detailItem.ball_owner).short}`, detailItem.next_action_due_at ? `Frist: ${formatDateSafe(detailItem.next_action_due_at, "dd.MM.yyyy")}` : null].filter(Boolean).join(" · "),
+                          timestamp: new Date().toISOString(),
+                        };
+                        const intakePayload = {
+                          ...detailItem.intake_payload,
+                          timeline_events: [...parseTimelineEvents(detailItem.intake_payload), event],
+                        };
+                        const patch = {
+                          next_action_label: null,
+                          next_action_due_at: null,
+                          next_action_assignee_id: null,
+                          intake_payload: intakePayload,
+                        };
+                        const ok = await applyItemOptimisticUpdate(
+                          detailItem.id,
+                          (row) => ({ ...row, ...patch }),
+                          () => supabase.from("case_items").update({ ...patch, intake_payload: intakePayload as unknown as TablesUpdate<"case_items">["intake_payload"] }).eq("id", detailItem.id),
+                          "Schritt konnte nicht als erledigt gespeichert werden.",
+                        );
+                        if (ok) {
+                          setEditableCaseItem((prev) => prev ? { ...prev, timelineEvents: [...prev.timelineEvents, event] } : prev);
+                          notify.success("Schritt erledigt. Bitte Ball weitergeben oder nächsten Schritt eintragen.");
+                        }
+                        return ok;
+                      }}
                       onCreateLetter={async () => {
                         if (!tenantId || !user?.id) return;
                         try {

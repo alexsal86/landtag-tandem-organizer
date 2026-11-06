@@ -6,8 +6,7 @@ export type ParliamentaryTool = "none" | "inquiry" | "onsite_visit" | "speech" |
 export const BALL_OWNERS: { value: BallOwner; label: string; short: string; dotClass: string }[] = [
   { value: "office", label: "Büro am Zug", short: "Büro", dotClass: "bg-success" },
   { value: "citizen", label: "Wartet auf Bürger", short: "Bürger", dotClass: "bg-warning" },
-  { value: "ministry", label: "Beim Ministerium", short: "Ministerium", dotClass: "bg-primary" },
-  { value: "authority", label: "Bei Behörde", short: "Behörde", dotClass: "bg-primary/60" },
+  { value: "authority", label: "Bei der Verwaltung", short: "Verwaltung", dotClass: "bg-success" },
   { value: "fraction", label: "In der Fraktion", short: "Fraktion", dotClass: "bg-accent-foreground/60" },
   { value: "snoozed", label: "Ruhend / Wiedervorlage", short: "Ruhend", dotClass: "bg-muted-foreground/50" },
 ];
@@ -21,24 +20,24 @@ export const PARLIAMENTARY_TOOLS: { value: ParliamentaryTool; label: string }[] 
 ];
 
 export function ballMeta(owner: string | null | undefined) {
-  return BALL_OWNERS.find((b) => b.value === owner) ?? BALL_OWNERS[0];
+  return BALL_OWNERS.find((b) => b.value === (owner === "ministry" ? "authority" : owner)) ?? BALL_OWNERS[0];
 }
 
 /** Parlamentarische Antwortfrist bei Ministerien (Kalendertage). */
 export const MINISTRY_RESPONSE_DAYS = 21;
 
-/** Ergänzt beim Wechsel zum Ministerium automatisch eine 3-Wochen-Frist, wenn noch keine gesetzt ist. */
+/** Ergänzt beim Wechsel zur Verwaltung automatisch eine 3-Wochen-Frist, wenn noch keine gesetzt ist. */
 export function withAutoDeadline<T extends { ball_owner?: string | null; next_action_due_at?: string | null; next_action_label?: string | null }>(
   current: TriageItem,
   patch: T,
   now: Date = new Date(),
 ): T {
-  if (patch.ball_owner !== "ministry" || current.next_action_due_at || patch.next_action_due_at) return patch;
+  if ((patch.ball_owner !== "ministry" && patch.ball_owner !== "authority") || current.next_action_due_at || patch.next_action_due_at) return patch;
   const due = new Date(now.getFullYear(), now.getMonth(), now.getDate() + MINISTRY_RESPONSE_DAYS, 12);
   return {
     ...patch,
     next_action_due_at: due.toISOString(),
-    next_action_label: patch.next_action_label ?? current.next_action_label ?? "Antwort des Ministeriums nachhalten",
+    next_action_label: patch.next_action_label ?? current.next_action_label ?? (patch.ball_owner === "ministry" ? "Antwort des Ministeriums nachhalten" : "Antwort der Verwaltung nachhalten"),
   };
 }
 

@@ -74,7 +74,7 @@ export function CaseItemDetailView({
   onPublicChange,
 }: CaseItemDetailViewProps) {
   const propertySelect = (label: string, value: string, onChange: (value: string) => void, options: Array<{ value: string; label: string }>, placeholder?: string) => (
-    <div className="flex items-center gap-4 border-b border-border/50 py-3">
+    <div className="flex items-center gap-4 border-b border-border/50 py-1.5">
       <span className="shrink-0 text-sm text-muted-foreground">{label}</span>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger aria-label={label} className="ml-auto h-auto min-h-8 min-w-0 flex-1 justify-end gap-2 border-0 bg-transparent px-0 text-right text-sm shadow-none [&>span]:truncate">
@@ -105,6 +105,7 @@ export function CaseItemDetailView({
             placeholder="Titel"
           />
         </div>
+        {summary?.trim() ? <PinnedSummary text={summary.trim()} /> : null}
         {ballPanel}
         <div className="shrink-0 border-b px-6 py-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -120,18 +121,17 @@ export function CaseItemDetailView({
             ))}
           </div>
         </div>
-        {summary?.trim() ? <PinnedSummary text={summary.trim()} /> : null}
         <ScrollArea className="min-h-0 flex-1">
           <div className="p-4">{detailPanel}</div>
         </ScrollArea>
       </div>
       <aside aria-label="Eigenschaften" className="flex min-h-0 flex-col overflow-y-auto border-t bg-muted/10 px-6 py-7 min-[1440px]:border-l min-[1440px]:border-t-0">
         <div className="flex-1">
-        <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Eigenschaften</h2>
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Eigenschaften</h2>
         {propertySelect("Bearbeiter", assigneeId || "__none__", (value) => onAssigneeChange(value === "__none__" ? "" : value), [{ value: "__none__", label: "Nicht zugewiesen" }, ...assigneeOptions.map((member) => ({ value: member.id, label: member.name }))])}
         {propertySelect("Kategorie", category, onCategoryChange, categoryOptions.map((value) => ({ value, label: value })), "Wählen…")}
         {propertySelect("Sichtbarkeit", isPublic ? "public" : "private", (value) => onPublicChange(value === "public"), [{ value: "private", label: "Nicht öffentlich" }, { value: "public", label: "Öffentlich" }])}
-        <div className="flex items-center gap-4 py-3 text-sm">
+        <div className="flex items-center gap-4 py-1.5 text-sm">
           <span className="text-muted-foreground">Akte</span>
           <button type="button" onClick={onOpenCaseFiles} className="ml-auto min-w-0 break-words text-right font-semibold text-success hover:underline">
             {linkedFileName || "Verknüpfen"}
@@ -160,9 +160,8 @@ function PinnedSummary({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false);
   const long = text.length > 180;
   return (
-    <div className="shrink-0 border-b bg-muted/40 px-6 py-2.5" aria-label="Sachlage">
+    <div className="shrink-0 px-6 pb-5" aria-label="Sachlage">
       <div className="flex items-start gap-3">
-        <span className="section-label mt-0.5 shrink-0">Sachlage</span>
         <p className={cn("flex-1 text-sm text-foreground whitespace-pre-line", !expanded && "line-clamp-2")}>{text}</p>
         {long ? (
           <button type="button" onClick={() => setExpanded((v) => !v)} className="shrink-0 text-xs font-medium text-primary hover:underline">
