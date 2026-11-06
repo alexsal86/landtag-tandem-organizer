@@ -45,6 +45,6 @@ describe("Tageszettel editor", () => {
     let editor!: LexicalEditor;
     const initial = props(value => { editor = value; });
     render(<DaySlipLexicalEditor {...initial} initialHtml='<p data-line-id="line" data-linked-task-id="task-1">Linked task</p>' />);
-    await waitFor(() => expect(editor?.getEditorState().toJSON().root.children[0]).toMatchObject({ type: "dayslip-line", lineId: "line", linkedTaskId: "task-1" }));
+    await waitFor(() => expect(editor?.getEditorState().toJSON().root.children[0]).toMatchObject({ type: "dayslip-line", lineId: "line", linkedSource: { type: "task", id: "task-1" } }));
   });
 });

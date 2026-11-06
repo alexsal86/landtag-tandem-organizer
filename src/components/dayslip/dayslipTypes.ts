@@ -187,8 +187,12 @@ export const parseRuleLine = (text: string): { isRule: boolean; label?: string }
 export const escapeHtml = (value: string) =>
   value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 
-export const toParagraphHtml = (entry: DaySlipLineEntry) =>
-  `<p data-line-id="${escapeHtml(entry.id)}">${escapeHtml(entry.text)}</p>`;
+export const sourceAttrs = (source?: DaySlipSource) => source
+  ? ` data-source-type="${escapeHtml(source.type)}" data-source-id="${escapeHtml(source.id)}"${source.nextActionLabel ? ` data-source-label="${escapeHtml(source.nextActionLabel)}"` : ""}`
+  : "";
+
+export const toParagraphHtml = (entry: DaySlipLineEntry & { source?: DaySlipSource }) =>
+  `<p data-line-id="${escapeHtml(entry.id)}"${sourceAttrs(entry.source)}>${escapeHtml(entry.text)}</p>`;
 
 export const toRuleHtml = (label?: string) => {
   const safeLabel = label ? escapeHtml(label) : "";

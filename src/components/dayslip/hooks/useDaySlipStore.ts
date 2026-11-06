@@ -234,7 +234,7 @@ export function useDaySlipStore(userId: string, tenantId: string) {
       const nodes = JSON.stringify(editorState.toJSON());
       const linked: Record<string, DaySlipSource> = {};
       $getRoot().getChildren().forEach(node => {
-        if (node instanceof DaySlipLineNode && node.getLinkedTaskId()) linked[node.getLineId()] = { type: "task", id: node.getLinkedTaskId()! };
+        if (node instanceof DaySlipLineNode) { const source = node.getSource(); if (source) linked[node.getLineId()] = source; }
       });
       setStore(prev => {
         const day = prev[todayKey] ?? emptyDay();
