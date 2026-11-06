@@ -14,14 +14,13 @@ import {
   Pin, Trash2, MoreHorizontal, CheckSquare, Vote,
   Calendar as CalendarIcon, Archive, ChevronDown, ChevronUp, Clock,
   Star, Share2, Users, Hourglass, Pencil, GripVertical, ListTree,
-  History, ArrowRight, Palette, X, FileText, Lightbulb, Wand2, NotebookPen
+  History, ArrowRight, Palette, X, FileText, Lightbulb, Wand2, NotebookPen, ClockAlert
 } from "lucide-react";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { format, isPast, isToday } from "date-fns";
+import { differenceInCalendarDays, format, formatDistanceToNow, isPast, isToday, isYesterday } from "date-fns";
 import { de } from "date-fns/locale";
-import { NoteLinkedBadge } from "@/components/shared/NoteLinkedBadge";
-import { NoteLinkedDetails } from "@/components/shared/NoteLinkedDetails";
+import { NoteStatusChips } from "@/components/shared/NoteStatusChips";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { sanitizeRichHtml } from "@/utils/htmlSanitizer";
 import { noteColors, getCardBackground, stripHtml } from "@/hooks/useQuickNotes";
@@ -92,27 +91,44 @@ export function NoteCard({
 }: NoteCardProps) {
   const checklist = countChecklist(note.content);
   const [transferPopoverOpen, setTransferPopoverOpen] = useState(false);
-  const fullText = note.content.replace(/<[^>]*>/g, '');
-  const needsTruncation = fullText.length > 150;
   const hasLinkedItems = note.task_id || note.decision_id || note.meeting_id || note.case_item_id;
   const hasShared = (note.share_count || 0) > 0 || note.is_shared === true;
+
+  const canEdit = note.user_id === userId || note.can_edit === true;
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [truncated, setTruncated] = useState(false);
+  useLayoutEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    const measure = () => { if (!isExpanded) setTruncated(el.scrollHeight > el.clientHeight + 1); };
+    measure();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    ro?.observe(el);
+    window.addEventListener("resize", measure);
+    return () => { ro?.disconnect(); window.removeEventListener("resize", measure); };
+  }, [isExpanded, note.content]);
+
+  const stale = isNoteStale(note);
+  const changedAt = new Date(note.updated_at || note.created_at);
+  const staleWeeks = Math.max(4, Math.floor(differenceInCalendarDays(new Date(), changedAt) / 7));
+  const relTime = isToday(changedAt) ? "heute" : isYesterday(changedAt) ? "gestern" : formatDistanceToNow(changedAt, { addSuffix: true, locale: de });
+  const colorLabel = noteColors.find((c) => c.value === note.color)?.label ?? "Standard";
+  const prio = note.priority_level || 0;
 
   return (
     <div
       key={note.id}
       ref={highlightRef}
-      className={cn("p-3 pb-10 rounded-lg border bg-card transition-all hover:shadow-md border-l-4 group relative", selected && "ring-2 ring-primary", className)}
+      tabIndex={-1}
+      className={cn("group relative flex flex-col rounded-lg border border-border bg-card p-3 transition-colors duration-fast ease-standard hover:border-foreground/25 focus-within:border-foreground/25", selected && "ring-2 ring-primary", className)}
       style={{
-        borderLeftColor: note.color || "#3b82f6",
-        backgroundColor: note.color && note.color_full_card === true
-          ? getCardBackground(note.color)
-          : undefined
+        backgroundColor: note.color && note.color_full_card === true ? getCardBackground(note.color) : undefined,
       }}
       onClick={(e) => {
         const check = (e.target as HTMLElement).closest<HTMLElement>("[data-check-index]");
         if (check) {
           e.stopPropagation();
-          if (onToggleChecklist && (note.user_id === userId || note.can_edit)) onToggleChecklist(note, Number(check.dataset.checkIndex));
+          if (onToggleChecklist && canEdit) onToggleChecklist(note, Number(check.dataset.checkIndex));
           return;
         }
         if (selectable) { onToggleSelect?.(note.id); return; }
@@ -125,190 +141,29 @@ export function NoteCard({
         </div>
       )}
       <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start gap-2">
-            {note.title && (
-              <div className="font-semibold text-base break-words line-clamp-2 mb-1 flex-1 [&_p]:inline [&_p]:m-0">
-                <RichTextDisplay content={note.title} />
-              </div>
-            )}
-            {checklist.total > 0 && (
-              <Badge variant="outline" className="text-xs px-1.5 py-0 h-5 flex-shrink-0 tabular-nums" title="Erledigte Punkte">
-                {checklist.done}/{checklist.total}
-              </Badge>
-            )}
-            {showFollowUpBadge && note.follow_up_date && (
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <Badge variant="outline" className="text-xs px-1.5 py-0 h-5 text-palette-amber border-palette-amber/40 bg-palette-amber/10">
-                  <Clock className="h-3 w-3 mr-1" />
-                  {format(new Date(note.follow_up_date), "dd.MM.yy", { locale: de })}
-                </Badge>
-                <Button
-                  variant="ghost" size="icon"
-                  className="h-5 w-5 hover:bg-destructive/10 rounded-full"
-                  onClick={(e) => { e.stopPropagation(); onSetFollowUp(note.id, null); }}
-                  title="Wiedervorlage entfernen"
-                >
-                  <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
-                </Button>
-              </div>
-            )}
-          </div>
-          {note.sync_status && <p role="status" className={cn("text-xs mb-2", note.sync_status === "pending" ? "text-muted-foreground" : "text-destructive")}>
-            {note.sync_status === "pending" ? "Auf diesem Gerät gespeichert · Synchronisierung ausstehend" : note.sync_status === "conflict" ? "Synchronisierungskonflikt · lokaler Text bleibt erhalten" : "Synchronisierung fehlgeschlagen · lokaler Text bleibt erhalten"}
-          </p>}
-          {isNoteStale(note) && <div className="mb-2 flex flex-wrap items-center gap-2 rounded-md bg-palette-amber/10 px-2 py-1">
-            <span className="text-xs text-muted-foreground">Seit über 30 Tagen unverändert</span>
-            {note.user_id === userId && <Button variant="ghost" size="sm" className="h-8 ml-auto" onClick={e => { e.stopPropagation(); onArchive(note.id); }}><Archive className="h-3.5 w-3.5 mr-1" />Archivieren</Button>}
-          </div>}
-          {isExpanded ? (
-            <div>
-              <div
-                className="text-sm text-muted-foreground/70 prose prose-sm max-w-none [&>p]:mb-1 [&>ul]:mb-1 [&>ol]:mb-1"
-                dangerouslySetInnerHTML={{ __html: renderChecklistHtml(sanitizeRichHtml(note.content), note.user_id === userId || note.can_edit === true) }}
-              />
-              {needsTruncation && (
-                <button className="inline-flex items-center mt-1 text-primary hover:underline" onClick={(e) => onToggleExpand(note.id, e)}>
-                  <ChevronUp className="h-3.5 w-3.5" strokeWidth={2.5} />
-                  <span className="text-xs ml-0.5">Weniger</span>
-                </button>
-              )}
+        <div className="flex min-w-0 flex-1 items-start gap-2 pr-1">
+          {note.title && (
+            <div className="flex-1 break-words text-sm font-medium leading-snug line-clamp-2 [&_p]:inline [&_p]:m-0">
+              <RichTextDisplay content={note.title} />
             </div>
-          ) : (
-            <div className="text-sm text-muted-foreground/70">
-              <div className="line-clamp-2 prose prose-sm max-w-none [&>p]:mb-0 [&>ul]:mb-0 [&>ol]:mb-0" dangerouslySetInnerHTML={{ __html: renderChecklistHtml(sanitizeRichHtml(note.content), note.user_id === userId || note.can_edit === true) }} />
-              {needsTruncation && (
-                <button className="inline-flex items-center text-primary hover:underline align-baseline mt-0.5" onClick={(e) => onToggleExpand(note.id, e)}>
-                  <ArrowRight className="h-3.5 w-3.5 inline ml-0.5" strokeWidth={2.5} />
-                </button>
-              )}
+          )}
+          {checklist.total > 0 && (
+            <Badge variant="outline" className="h-5 flex-shrink-0 px-1.5 py-0 text-xs tabular-nums" title="Erledigte Punkte">
+              {checklist.done}/{checklist.total}
+            </Badge>
+          )}
+          {showFollowUpBadge && note.follow_up_date && (
+            <div className="flex flex-shrink-0 items-center gap-1">
+              <Badge variant="outline" className="h-5 px-1.5 py-0 text-xs text-palette-amber border-palette-amber/40 bg-palette-amber/10">
+                <Clock className="mr-1 h-3 w-3" />
+                {format(new Date(note.follow_up_date), "dd.MM.yy", { locale: de })}
+              </Badge>
+              <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); onSetFollowUp(note.id, null); }} title="Wiedervorlage entfernen">
+                <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+              </Button>
             </div>
           )}
         </div>
-
-        {/* Bottom bar */}
-        {(hasLinkedItems || hasShared || note.user_id === userId) && (
-          <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 group-hover:hidden">
-                {note.task_id && <div className="w-1.5 h-1.5 bg-palette-blue" title="Aufgabe" />}
-                {note.decision_id && <div className="w-1.5 h-1.5 bg-palette-purple" title="Entscheidung" />}
-                {note.case_item_id && <div className="w-1.5 h-1.5 bg-palette-teal" title="Vorgang" />}
-                {note.meeting_id && <div className="w-1.5 h-1.5 bg-palette-green" title="Jour Fixe" />}
-                {hasShared && <div className="w-1.5 h-1.5 bg-palette-violet" title={note.is_shared ? `Geteilt von ${note.owner?.display_name || 'Unbekannt'}` : "Geteilt"} />}
-              </div>
-              <div className="hidden group-hover:flex items-center gap-1.5 flex-wrap">
-                {note.task_id && <NoteLinkedBadge type="task" id={note.task_id} label="Aufgabe" />}
-                {note.decision_id && <NoteLinkedBadge type="decision" id={note.decision_id} label="Entscheidung" />}
-                {note.case_item_id && <NoteLinkedBadge type="case_item" id={note.case_item_id} label="Vorgang" />}
-                {note.meeting_id && (
-                  <NoteLinkedBadge type="meeting" id={note.meeting_id} label={note.meetings?.meeting_date ? `JF: ${format(new Date(note.meetings.meeting_date), "dd.MM.", { locale: de })}` : "Jour Fixe"} />
-                )}
-                {(note.share_count || 0) > 0 && (
-                  <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                    <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 text-palette-violet border-palette-violet/40 bg-palette-violet/10 cursor-help">
-                      <Users className="h-3 w-3 mr-0.5" />{note.share_count}
-                    </Badge>
-                  </TooltipTrigger><TooltipContent>
-                    <div className="space-y-1"><p className="font-medium">Geteilt mit:</p>
-                      {note.shared_with_users && note.shared_with_users.length > 0
-                        ? note.shared_with_users.map(u => <p key={u.id} className="text-sm">{u.display_name || 'Unbekannt'}</p>)
-                        : <p className="text-sm">Mit {note.share_count} {note.share_count === 1 ? 'Person' : 'Personen'} geteilt</p>}
-                    </div>
-                  </TooltipContent></Tooltip></TooltipProvider>
-                )}
-                {note.is_shared && note.owner && (
-                  <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                    <Badge variant="secondary" className="text-xs px-1.5 py-0 h-4 cursor-help">
-                      <Share2 className="h-3 w-3 mr-0.5" />{note.owner.display_name?.split(' ')[0] || 'Geteilt'}
-                    </Badge>
-                  </TooltipTrigger><TooltipContent>Geteilt von {note.owner.display_name || 'Unbekannt'}</TooltipContent></Tooltip></TooltipProvider>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-1 flex-shrink-0 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
-              {note.user_id === userId && (
-                <DropdownMenu>
-                  <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80" onClick={(e) => e.stopPropagation()} aria-label="Umwandeln">
-                      <Wand2 className="h-3 w-3" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  </TooltipTrigger><TooltipContent side="top">Umwandeln</TooltipContent></Tooltip></TooltipProvider>
-                  <DropdownMenuContent align="end" className="w-60" onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenuItem onClick={() => (note.task_id ? onRemoveTask(note) : onCreateTask(note))} className={cn(note.task_id && "text-palette-blue")}>
-                      <CheckSquare className="h-3 w-3 mr-2" />{note.task_id ? "Aufgabe entfernen" : "Aufgabe"}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => (note.decision_id ? onRemoveDecision(note) : onCreateDecision(note))} className={cn(note.decision_id && "text-palette-purple")}>
-                      <Vote className="h-3 w-3 mr-2" />{note.decision_id ? "Entscheidung zurücknehmen" : "Entscheidung"}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => (note.case_item_id ? onRemoveCaseItem(note) : onCreateCaseItem(note))} className={cn(note.case_item_id && "text-palette-teal")}>
-                      <FileText className="h-3 w-3 mr-2" />{note.case_item_id ? "Vorgang entfernen" : "Vorgang"}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => (note.meeting_id ? onRemoveFromMeeting(note.id) : onOpenMeetingSelector(note))} className={cn(note.meeting_id && "text-palette-green")}>
-                      <CalendarIcon className="h-3 w-3 mr-2" />{note.meeting_id ? "Von Jour Fixe entfernen" : "Jour Fixe"}
-                    </DropdownMenuItem>
-                    {onTransferToThemenspeicher && (
-                      <DropdownMenuItem disabled={isTransferringToThemenspeicher} onClick={() => onTransferToThemenspeicher(note)} className={cn(isInThemenspeicher && "text-palette-amber")}>
-                        <Lightbulb className="h-3 w-3 mr-2" />{isInThemenspeicher ? "Im Themenspeicher" : "In Themenspeicher kopieren"}
-                      </DropdownMenuItem>
-                    )}
-                    {onMoveToThemenspeicher && (
-                      <DropdownMenuItem disabled={isTransferringToThemenspeicher} onClick={() => onMoveToThemenspeicher(note)}>
-                        <Lightbulb className="h-3 w-3 mr-2" />In Themenspeicher verschieben
-                      </DropdownMenuItem>
-                    )}
-                    {onSendToDaySlip && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => onSendToDaySlip(note)}>
-                          <NotebookPen className="h-3 w-3 mr-2" />Auf heutigen Tageszettel
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-              <div className="flex items-center gap-1 text-muted-foreground">
-                {hasLinkedItems && (
-                  <>
-                    <button className="text-xs text-muted-foreground hover:text-foreground flex items-center" onClick={(e) => onToggleDetailsExpand(note.id, e)}>
-                      {isDetailsExpanded ? <ChevronUp className="h-3 w-3" strokeWidth={2.5} /> : <ChevronDown className="h-3 w-3" strokeWidth={2.5} />}
-                      <span className="ml-0.5">Details</span>
-                    </button>
-                    {note.user_id === userId && <div className="h-4 w-px bg-border mx-1" />}
-                  </>
-                )}
-                {note.user_id === userId && (
-                  <TooltipProvider><div className="flex items-center gap-1">
-                    <Tooltip><TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-full" onClick={(e) => { e.stopPropagation(); onOpenEdit(note); }}>
-                        <Pencil className="h-3 w-3" />
-                      </Button>
-                    </TooltipTrigger><TooltipContent side="top">Bearbeiten</TooltipContent></Tooltip>
-                    <Tooltip><TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-full" onClick={(e) => { e.stopPropagation(); onOpenDatePicker(note); }}>
-                        <Clock className="h-3 w-3" />
-                      </Button>
-                    </TooltipTrigger><TooltipContent side="top">Wiedervorlage</TooltipContent></Tooltip>
-                    <Tooltip><TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-full" onClick={(e) => { e.stopPropagation(); onArchive(note.id); }}>
-                        <Archive className="h-3 w-3" />
-                      </Button>
-                    </TooltipTrigger><TooltipContent side="top">Archivieren</TooltipContent></Tooltip>
-                    {dragHandleProps && (
-                      <div {...dragHandleProps} className="cursor-grab p-1 hover:bg-muted/80 rounded-full">
-                        <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
-                      </div>
-                    )}
-                  </div></TooltipProvider>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Right column: menu */}
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
           <div className="flex items-center gap-0.5">
@@ -488,16 +343,140 @@ export function NoteCard({
         </div>
       </div>
 
+      {note.sync_status && <p role="status" className={cn("mt-1 text-xs", note.sync_status === "pending" ? "text-muted-foreground" : "text-destructive")}>
+        {note.sync_status === "pending" ? "Auf diesem Gerät gespeichert · Synchronisierung ausstehend" : note.sync_status === "conflict" ? "Synchronisierungskonflikt · lokaler Text bleibt erhalten" : "Synchronisierung fehlgeschlagen · lokaler Text bleibt erhalten"}
+      </p>}
 
-      {hasLinkedItems && (
-        <NoteLinkedDetails
-          taskId={note.task_id}
-          decisionId={note.decision_id}
-          caseItemId={note.case_item_id}
-          meetingId={note.meeting_id}
-          isExpanded={isDetailsExpanded}
-        />
+      <div
+        ref={contentRef}
+        className={cn(
+          "mt-1 overflow-hidden text-[13px] leading-[1.45] text-foreground prose prose-sm max-w-none [&_*]:text-[13px] [&_*]:leading-[1.45] [&>p]:mb-1 [&>ul]:mb-1 [&>ol]:mb-1",
+          !isExpanded && "max-h-[calc(13px*1.45*3)]",
+        )}
+        style={!isExpanded && truncated ? { WebkitMaskImage: "linear-gradient(to bottom, black 55%, transparent)", maskImage: "linear-gradient(to bottom, black 55%, transparent)" } : undefined}
+        dangerouslySetInnerHTML={{ __html: renderChecklistHtml(sanitizeRichHtml(note.content), canEdit) }}
+      />
+      {truncated && (
+        <button
+          type="button"
+          aria-expanded={isExpanded}
+          className="mt-1 inline-flex items-center gap-1 self-start rounded text-xs text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={(e) => { e.stopPropagation(); onToggleExpand(note.id, e); }}
+        >
+          {isExpanded ? "Weniger anzeigen" : "Mehr anzeigen"}
+          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-fast", isExpanded && "rotate-180")} />
+        </button>
       )}
+
+      <NoteStatusChips
+        taskId={note.task_id}
+        decisionId={note.decision_id}
+        caseItemId={note.case_item_id}
+        meetingId={note.meeting_id}
+        meetingDate={note.meetings?.meeting_date}
+        canEdit={note.user_id === userId}
+        onRemoveDecision={() => onRemoveDecision(note)}
+        onRemoveFromMeeting={() => onRemoveFromMeeting(note.id)}
+      />
+
+      <TooltipProvider>
+        <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            <Tooltip><TooltipTrigger asChild>
+              <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full border border-border" style={{ backgroundColor: note.color || undefined }} role="img" aria-label={`Farbe: ${colorLabel}`} />
+            </TooltipTrigger><TooltipContent>Farbe: {colorLabel}</TooltipContent></Tooltip>
+            {prio > 0
+              ? <span className="text-warning">★ Prio {prio}</span>
+              : <span>Ohne Prio</span>}
+            {stale ? (
+              <Tooltip><TooltipTrigger asChild>
+                <span className="inline-flex items-center gap-1 rounded bg-warning/15 px-1.5 py-0.5 text-warning">
+                  <ClockAlert className="h-3 w-3" />{format(changedAt, "dd.MM.", { locale: de })} · {staleWeeks} Wochen
+                </span>
+              </TooltipTrigger><TooltipContent>Seit über 30 Tagen unverändert</TooltipContent></Tooltip>
+            ) : (
+              <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{relTime}</span>
+            )}
+            {hasShared && (
+              <Tooltip><TooltipTrigger asChild>
+                <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" />{note.is_shared ? (note.owner?.display_name?.split(" ")[0] || "Geteilt") : note.share_count}</span>
+              </TooltipTrigger><TooltipContent>
+                {note.is_shared ? `Geteilt von ${note.owner?.display_name || "Unbekannt"}` : (note.shared_with_users?.length ? `Geteilt mit ${note.shared_with_users.map(u => u.display_name || "Unbekannt").join(", ")}` : `Mit ${note.share_count} geteilt`)}
+              </TooltipContent></Tooltip>
+            )}
+          </div>
+            <div className="flex items-center gap-1 flex-shrink-0 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
+              {note.user_id === userId && (
+                <DropdownMenu>
+                  <TooltipProvider><Tooltip><TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80" onClick={(e) => e.stopPropagation()} aria-label="Umwandeln">
+                      <Wand2 className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  </TooltipTrigger><TooltipContent side="top">Umwandeln</TooltipContent></Tooltip></TooltipProvider>
+                  <DropdownMenuContent align="end" className="w-60" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenuItem onClick={() => (note.task_id ? onRemoveTask(note) : onCreateTask(note))} className={cn(note.task_id && "text-palette-blue")}>
+                      <CheckSquare className="h-3 w-3 mr-2" />{note.task_id ? "Aufgabe entfernen" : "Aufgabe"}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => (note.decision_id ? onRemoveDecision(note) : onCreateDecision(note))} className={cn(note.decision_id && "text-palette-purple")}>
+                      <Vote className="h-3 w-3 mr-2" />{note.decision_id ? "Entscheidung zurücknehmen" : "Entscheidung"}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => (note.case_item_id ? onRemoveCaseItem(note) : onCreateCaseItem(note))} className={cn(note.case_item_id && "text-palette-teal")}>
+                      <FileText className="h-3 w-3 mr-2" />{note.case_item_id ? "Vorgang entfernen" : "Vorgang"}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => (note.meeting_id ? onRemoveFromMeeting(note.id) : onOpenMeetingSelector(note))} className={cn(note.meeting_id && "text-palette-green")}>
+                      <CalendarIcon className="h-3 w-3 mr-2" />{note.meeting_id ? "Von Jour Fixe entfernen" : "Jour Fixe"}
+                    </DropdownMenuItem>
+                    {onTransferToThemenspeicher && (
+                      <DropdownMenuItem disabled={isTransferringToThemenspeicher} onClick={() => onTransferToThemenspeicher(note)} className={cn(isInThemenspeicher && "text-palette-amber")}>
+                        <Lightbulb className="h-3 w-3 mr-2" />{isInThemenspeicher ? "Im Themenspeicher" : "In Themenspeicher kopieren"}
+                      </DropdownMenuItem>
+                    )}
+                    {onMoveToThemenspeicher && (
+                      <DropdownMenuItem disabled={isTransferringToThemenspeicher} onClick={() => onMoveToThemenspeicher(note)}>
+                        <Lightbulb className="h-3 w-3 mr-2" />In Themenspeicher verschieben
+                      </DropdownMenuItem>
+                    )}
+                    {onSendToDaySlip && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => onSendToDaySlip(note)}>
+                          <NotebookPen className="h-3 w-3 mr-2" />Auf heutigen Tageszettel
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              <div className="flex items-center gap-1 text-muted-foreground">
+                {note.user_id === userId && (
+                  <TooltipProvider><div className="flex items-center gap-1">
+                    <Tooltip><TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-full" onClick={(e) => { e.stopPropagation(); onOpenEdit(note); }}>
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                    </TooltipTrigger><TooltipContent side="top">Bearbeiten</TooltipContent></Tooltip>
+                    <Tooltip><TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-full" onClick={(e) => { e.stopPropagation(); onOpenDatePicker(note); }}>
+                        <Clock className="h-3 w-3" />
+                      </Button>
+                    </TooltipTrigger><TooltipContent side="top">Wiedervorlage</TooltipContent></Tooltip>
+                    <Tooltip><TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-full" onClick={(e) => { e.stopPropagation(); onArchive(note.id); }}>
+                        <Archive className="h-3 w-3" />
+                      </Button>
+                    </TooltipTrigger><TooltipContent side="top">Archivieren</TooltipContent></Tooltip>
+                    {dragHandleProps && (
+                      <div {...dragHandleProps} className="cursor-grab p-1 hover:bg-muted/80 rounded-full">
+                        <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div></TooltipProvider>
+                )}
+              </div>
+        </div>
+      </TooltipProvider>
     </div>
   );
 }
