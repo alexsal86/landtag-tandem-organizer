@@ -1173,6 +1173,14 @@ export function MyWorkCasesWorkspace() {
                     }
                     setCaseFileSheetOpen(true);
                   }}
+                  onComplete={() => {
+                    updateEdit({ status: "erledigt", completedAt: editableCaseItem.completedAt || formatDateSafe(new Date(), "yyyy-MM-dd", "") });
+                    setDetailTab("overview");
+                    notify.info("Bitte Abschlussnotiz ergänzen und den Vorgang speichern.");
+                  }}
+                  onArchive={() => runAsync(() => handleArchiveCaseItem(detailItem))}
+                  archiveLabel={detailItem.status === "archiviert" ? "Wiederherstellen" : "Archivieren"}
+                  onDelete={() => setDeleteConfirmItemId(detailItem.id)}
                   ballPanel={ballPanelNode}
                   summary={getItemDescription(detailItem)}
                   detailPanel={
@@ -1203,9 +1211,6 @@ export function MyWorkCasesWorkspace() {
                       onContactEmailChange={(value) => updateEdit({ contactEmail: value })}
                       onContactPhoneChange={(value) => updateEdit({ contactPhone: value })}
                       onContactSelected={(contact) => updateEdit({ selectedContactId: contact?.id || null })}
-                      onArchive={() => runAsync(() => handleArchiveCaseItem(detailItem))}
-                      archiveLabel={detailItem.status === "archiviert" ? "Wiederherstellen" : "Archivieren"}
-                       onDelete={() => setDeleteConfirmItemId(detailItem.id)}
                        teamUsers={teamUsers}
                      />
                   }

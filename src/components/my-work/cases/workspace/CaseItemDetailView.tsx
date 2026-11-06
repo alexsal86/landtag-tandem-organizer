@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,10 @@ type CaseItemDetailViewProps = {
   onPriorityChange: (value: string) => void;
   detailPanel: ReactNode;
   ballPanel?: ReactNode;
+  onComplete: () => void;
+  onArchive: () => void;
+  archiveLabel: string;
+  onDelete: () => void;
   /** Plain-text core concern, pinned above the scrolling detail area. */
   summary?: string;
   activeTab: DetailTab;
@@ -56,6 +61,10 @@ export function CaseItemDetailView({
   onPriorityChange,
   detailPanel,
   ballPanel,
+  onComplete,
+  onArchive,
+  archiveLabel,
+  onDelete,
   summary,
   activeTab,
   onTabChange,
@@ -116,7 +125,8 @@ export function CaseItemDetailView({
           <div className="p-4">{detailPanel}</div>
         </ScrollArea>
       </div>
-      <aside aria-label="Eigenschaften" className="min-h-0 overflow-y-auto border-t bg-muted/10 px-6 py-7 min-[1440px]:border-l min-[1440px]:border-t-0">
+      <aside aria-label="Eigenschaften" className="flex min-h-0 flex-col overflow-y-auto border-t bg-muted/10 px-6 py-7 min-[1440px]:border-l min-[1440px]:border-t-0">
+        <div className="flex-1">
         <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Eigenschaften</h2>
         {propertySelect("Bearbeiter", assigneeId || "__none__", (value) => onAssigneeChange(value === "__none__" ? "" : value), [{ value: "__none__", label: "Nicht zugewiesen" }, ...assigneeOptions.map((member) => ({ value: member.id, label: member.name }))])}
         {propertySelect("Kategorie", category, onCategoryChange, categoryOptions.map((value) => ({ value, label: value })), "Wählen…")}
@@ -132,6 +142,14 @@ export function CaseItemDetailView({
           {propertySelect("Priorität", priority, onPriorityChange, [{ value: "low", label: "Niedrig" }, { value: "medium", label: "Mittel" }, { value: "high", label: "Hoch" }, { value: "urgent", label: "Dringend" }])}
           {propertyDate("Eingang", sourceReceivedAt, onSourceReceivedAtChange)}
           {propertyDate("Fälligkeit", dueDateValue, onDueDateChange)}
+        </div>
+        </div>
+        <div className="mt-8 shrink-0 space-y-3 border-t border-border/70 pt-6">
+          <Button type="button" variant="outline" onClick={onComplete} disabled={status === "erledigt"} className="h-11 w-full rounded-xl border-2 border-success bg-background font-semibold text-success hover:bg-success/5 hover:text-success">
+            Vorgang erledigt
+          </Button>
+          <Button type="button" variant="ghost" onClick={onArchive} className="w-full justify-start px-3 font-normal">{archiveLabel}</Button>
+          <Button type="button" variant="ghost" onClick={onDelete} className="w-full justify-start px-3 font-normal text-destructive hover:bg-destructive/10 hover:text-destructive">Vorgang löschen</Button>
         </div>
       </aside>
     </div>
