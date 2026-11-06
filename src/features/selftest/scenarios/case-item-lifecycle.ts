@@ -72,7 +72,7 @@ export const caseItemLifecycleScenario: TestScenario = {
         if (!isOnResubmission({ next_action_label: "X", next_action_due_at: tomorrow }, now)) fails.push("Frist morgen ≠ Wiedervorlage");
         if (isOnResubmission({ next_action_label: "X", next_action_due_at: new Date(2026, 10, 6, 18).toISOString() }, now)) fails.push("Frist heute bleibt auf Wiedervorlage");
         if (isOnResubmission({ next_action_label: "", next_action_due_at: tomorrow }, now)) fails.push("ohne Schritt auf Wiedervorlage");
-        if (!resubmissionHint({ next_action_label: "X", next_action_due_at: tomorrow, ball_owner: "ministry" }, now)?.includes("Ministerium")) fails.push("Hinweistext fehlt");
+        if (!resubmissionHint({ next_action_label: "X", next_action_due_at: tomorrow, ball_owner: "authority" }, now)?.includes("Verwaltung")) fails.push("Hinweistext fehlt");
         const auto = withAutoDeadline<Partial<TriageItem>>({ ball_owner: "office" }, { ball_owner: "ministry" }, now);
         const days = Math.round((new Date(auto.next_action_due_at!).getTime() - new Date(2026, 10, 6, 12).getTime()) / 86400000);
         if (days !== MINISTRY_RESPONSE_DAYS) fails.push(`Ministeriumsfrist ${days} statt ${MINISTRY_RESPONSE_DAYS} Tage`);
@@ -85,8 +85,10 @@ export const caseItemLifecycleScenario: TestScenario = {
       id: "create", label: "Vorgang anlegen + Standardwerte (Büro am Zug, kein Schritt)", critical: true,
       run: wrap(async (ctx) => {
         const insert = { subject: tag(ctx.runId, "Vorgang"), summary: `${SELFTEST_MARKER} Selbsttest`, user_id: ctx.userId, tenant_id: ctx.tenantId };
-        const { data, error } = await supabase.from("case_items").insert(insert).select("id").single();
-        if (error || !data) return { ok: false, message: describeError(error) };
+        // ID clientseitig: RETURNING würde die SELECT-Policy prüfen, bevor die Zeile sichtbar ist.
+        const data = { id: crypto.randomUUID() };
+        const { error } = await supabase.from("case_items").insert({ ...insert, id: data.id });
+        if (error) return { ok: false, message: describeError(error) };
         ctx.created.push({ table: "case_items", id: data.id });
         ctx.data.caseItemId = data.id;
         const row = await load(data.id);

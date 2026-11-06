@@ -21,7 +21,7 @@ export const appointmentRequestLifecycleScenario: TestScenario = {
         if (error || !data) return { ok: false, message: describeError(error) };
         ctx.created.push({ table: "appointment_requests", id: data.id });
         ctx.data.requestId = data.id;
-        return expectFields("appointment_requests", data.id, { ...payload, status: "pending" }, "Anfrage");
+        return expectFields("appointment_requests", data.id, { ...payload, status: "open" }, "Anfrage");
       },
     },
     {
@@ -30,7 +30,7 @@ export const appointmentRequestLifecycleScenario: TestScenario = {
         const id = ctx.data.requestId as string;
         const { error } = await supabase.from("appointment_requests").update({ status: "accepted" }).eq("id", id);
         const { data } = await supabase.from("appointment_requests").select("status").eq("id", id).single();
-        if (data?.status === "pending") return { ok: true, message: `Gesperrt${error ? ` (${error.message})` : ""}.` };
+        if (data?.status === "open") return { ok: true, message: `Gesperrt${error ? ` (${error.message})` : ""}.` };
         return { ok: false, message: `Status wurde direkt auf „${data?.status}“ gesetzt — Sperre umgangen!` };
       },
     },
