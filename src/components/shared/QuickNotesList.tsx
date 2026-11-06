@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
-  StickyNote, ChevronDown, Clock, Search, Hourglass, X
+  StickyNote, ChevronDown, Clock, Search, Hourglass, X, Pin
 } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { cn } from "@/lib/utils";
@@ -29,7 +29,7 @@ interface QuickNotesListProps {
   searchPlacement?: "top" | "hidden";
   searchQuery?: string;
   onSearchQueryChange?: (value: string) => void;
-  onCountsChange?: (counts: { filteredCount: number; totalCount: number }) => void;
+  onCountsChange?: (counts: { filteredCount: number; totalCount: number; staleCount: number }) => void;
   /** "list" = classic priority groups with drag & drop, "grid" = Keep-style board */
   layout?: "list" | "grid";
   filter?: QuickNoteFilter;
@@ -70,14 +70,17 @@ export function QuickNotesList({
 
   const matches = (note: QuickNote) => matchesNoteFilter(note, filter, colorFilter);
   const visibleNotes = hook.filteredNotes.filter(matches);
+  const staleCount = hook.filteredNotes.filter((n) => matchesNoteFilter(n, "stale", colorFilter)).length;
+  const [isDragging, setIsDragging] = useState(false);
   const visibleIdsKey = visibleNotes.map((n) => n.id).join(",");
 
   useEffect(() => {
     onCountsChange?.({
       filteredCount: visibleNotes.length,
       totalCount: hook.notes.length,
+      staleCount,
     });
-  }, [visibleNotes.length, hook.notes.length, onCountsChange]);
+  }, [visibleNotes.length, hook.notes.length, staleCount, onCountsChange]);
 
   useEffect(() => {
     onVisibleIdsChange?.(visibleIdsKey ? visibleIdsKey.split(",") : []);
@@ -300,42 +303,77 @@ export function QuickNotesList({
     const others = rest.filter((n) => !n.is_pinned);
     const topLevel = Math.max(3, ...others.map((n) => n.priority_level || 0));
     const levels = Array.from({ length: topLevel + 1 }, (_, i) => topLevel - i);
+    const notesAt = (level: number) => others.filter((n) => (n.priority_level || 0) === level);
+    const filledLevels = levels.filter((level) => notesAt(level).length > 0);
+    const emptyLevels = levels.filter((level) => level > 0 && notesAt(level).length === 0);
+    const levelLabel = (level: number) => (level > 0 ? `Priorität ${level}` : "Ohne Priorität");
+    const stars = (level: number) =>
+      level > 0 ? <span className="text-warning" aria-hidden="true">{"★".repeat(level)}</span> : null;
     const columns = (
-      <DragDropContext onDragEnd={hook.handleNoteDragEnd}>
-        <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${levels.length}, minmax(240px, 1fr))` }}>
-          {levels.map((level) => {
-            const colNotes = others.filter((n) => (n.priority_level || 0) === level);
-            return (
-              <div key={level} className="min-w-0 space-y-2">
-                <div className="section-label flex items-center gap-1.5">
-                  {level > 0 ? <span className="text-palette-amber">{"★".repeat(level)}</span> : null}
-                  {level > 0 ? `Priorität ${level}` : "Ohne Priorität"}
-                  <span className="tabular-nums">· {colNotes.length}</span>
+      <DragDropContext
+        onDragStart={() => setIsDragging(true)}
+        onDragEnd={(result) => { setIsDragging(false); void hook.handleNoteDragEnd(result); }}
+      >
+        <section className="space-y-2" aria-label="Nach Priorität">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="section-label mr-auto">Nach Priorität</div>
+            {emptyLevels.map((level) => (
+              <Droppable key={level} droppableId={`level-${level}`}>
+                {(provided, snapshot) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    aria-label={`${levelLabel(level)}, leer – Notiz hierher ziehen`}
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-pill border border-dashed border-border px-2.5 text-xs text-muted-foreground transition-all duration-base ease-standard hover:bg-muted",
+                      isDragging ? "h-16 min-w-40 justify-center border-primary/60 bg-muted/60" : "h-[26px]",
+                      snapshot.isDraggingOver && "border-primary bg-primary/10 text-foreground",
+                    )}
+                  >
+                    {stars(level)}
+                    <span>{levelLabel(level)}</span>
+                    <span className="tabular-nums">· 0</span>
+                    <span className="hidden">{provided.placeholder}</span>
+                  </div>
+                )}
+              </Droppable>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-start gap-4">
+            {filledLevels.map((level) => {
+              const colNotes = notesAt(level);
+              return (
+                <div key={level} className="min-w-[240px] flex-1 basis-0 space-y-2">
+                  <div className="section-label flex items-center gap-1.5">
+                    {stars(level)}
+                    {levelLabel(level)}
+                    <span className="tabular-nums">· {colNotes.length}</span>
+                  </div>
+                  <Droppable droppableId={`level-${level}`}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className={cn("min-h-24 space-y-3 rounded-lg p-1 transition-colors", snapshot.isDraggingOver ? "bg-muted/60" : "bg-muted/20")}
+                      >
+                        {colNotes.map((note, index) => (
+                          <Draggable key={note.id} draggableId={note.id} index={index} isDragDisabled={note.user_id !== hook.user?.id}>
+                            {(dragProvided) => (
+                              <div ref={dragProvided.innerRef} {...dragProvided.draggableProps}>
+                                <NoteCard {...noteCardProps(note)} dragHandleProps={dragProvided.dragHandleProps} />
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
                 </div>
-                <Droppable droppableId={`level-${level}`}>
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      className={cn("min-h-24 space-y-3 rounded-lg p-1 transition-colors", snapshot.isDraggingOver ? "bg-muted/60" : "bg-muted/20")}
-                    >
-                      {colNotes.map((note, index) => (
-                        <Draggable key={note.id} draggableId={note.id} index={index} isDragDisabled={note.user_id !== hook.user?.id}>
-                          {(dragProvided) => (
-                            <div ref={dragProvided.innerRef} {...dragProvided.draggableProps}>
-                              <NoteCard {...noteCardProps(note)} dragHandleProps={dragProvided.dragHandleProps} />
-                            </div>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </section>
       </DragDropContext>
     );
     const board = (notes: QuickNote[], followUp = false) => (
@@ -360,13 +398,19 @@ export function QuickNotesList({
         <div className="space-y-6">
           {visibleNotes.length === 0 && (
             <div className="p-6 text-center text-muted-foreground">
-              <StickyNote className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Keine Notizen für diesen Filter</p>
+              <p className="text-sm">Keine Notizen für diesen Filter.</p>
             </div>
           )}
           {section("Fällige Wiedervorlagen", due, <Clock className="h-3.5 w-3.5 text-palette-amber" />, true)}
-          {section("Angeheftet", pinned)}
-          <div className="overflow-x-auto pb-2">{columns}</div>
+          {pinned.length > 0 && (
+            <section className="space-y-2" aria-label="Angeheftet">
+              <div className="section-label flex items-center gap-1.5"><Pin className="h-3.5 w-3.5" aria-hidden="true" />Angeheftet<span className="tabular-nums">· {pinned.length}</span></div>
+              <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
+                {pinned.map((note) => <NoteCard key={note.id} {...noteCardProps(note)} />)}
+              </div>
+            </section>
+          )}
+          {others.length > 0 && columns}
           {scheduled.length > 0 && (
             <Collapsible open={hook.scheduledFollowUpsExpanded} onOpenChange={hook.setScheduledFollowUpsExpanded}>
               <CollapsibleTrigger className="section-label flex items-center gap-1.5 rounded px-1 py-1 hover:bg-muted/50">

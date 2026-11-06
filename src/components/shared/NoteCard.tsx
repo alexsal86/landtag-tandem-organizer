@@ -312,6 +312,13 @@ export function NoteCard({
         {/* Right column: menu */}
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
           <div className="flex items-center gap-0.5">
+            {note.is_pinned && (
+              <TooltipProvider><Tooltip><TooltipTrigger asChild>
+                <span className="inline-flex h-6 w-6 items-center justify-center text-warning" role="img" aria-label="Angeheftet">
+                  <Pin className="h-3.5 w-3.5 fill-current" />
+                </span>
+              </TooltipTrigger><TooltipContent>Angeheftet</TooltipContent></Tooltip></TooltipProvider>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => e.stopPropagation()}>
@@ -481,9 +488,6 @@ export function NoteCard({
         </div>
       </div>
 
-      {note.is_pinned && (
-        <div className="absolute top-0 right-0 w-0 h-0 border-t-[16px] border-l-[16px] border-t-palette-amber/60 border-l-transparent rounded-tr-lg" title="Angepinnt" />
-      )}
 
       {hasLinkedItems && (
         <NoteLinkedDetails

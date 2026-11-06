@@ -92,20 +92,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
           <StickyNote className="h-4 w-4" />
           <span className="flex-1 text-body">{canSaveNote ? "Entwurf fortsetzen…" : "Notiz erfassen…"}</span>
         </button>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button type="button" className="hover:text-foreground" aria-label="Tipps">
-                <Info className="h-4 w-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="max-w-xs space-y-1">
-              <p>„[ ] Punkt" am Zeilenanfang wird zur abhakbaren Checkbox.</p>
-              <p>Über „Umwandeln" landet eine Notiz als Aufgabe, Entscheidung, Vorgang, im Jour fixe oder auf dem Tageszettel.</p>
-              <p>Enter erzeugt einen Absatz. Strg/Cmd + Enter speichert.</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <span className="hidden sm:inline text-caption text-muted-foreground select-none" aria-hidden="true">@ erwähnen · # Thema</span>
       </div>
     );
   }
