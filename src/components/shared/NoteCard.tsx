@@ -328,7 +328,7 @@ export function NoteCard({
             {note.pending_for_jour_fixe && !note.meeting_id && (
               <TooltipProvider><Tooltip><TooltipTrigger asChild>
                 <Badge variant="outline" className="text-xs px-1 py-0 h-4 text-palette-amber cursor-help">
-                  <Hourglass className="h-3 w-3 mr-0.5" />JF
+                  <Hourglass className="h-3 w-3 mr-0.5" />Jour fixe
                 </Badge>
               </TooltipTrigger><TooltipContent>Wartet auf nächsten Jour Fixe</TooltipContent></Tooltip></TooltipProvider>
             )}
