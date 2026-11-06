@@ -97,8 +97,8 @@ export class MentionNode extends TextNode {
 
   createDOM(config: EditorConfig): HTMLElement {
     const dom = super.createDOM(config);
-    // Apply badge color with 20% opacity as background
-    dom.style.cssText = `background-color: ${this.__badgeColor}33; color: ${this.__badgeColor}; font-weight: 600; padding: 1px 4px; border-radius: 4px;`;
+    // Keep mention chips light with dark, readable text.
+    dom.style.cssText = `background-color: #fcdda3; color: #805000; font-weight: 600; padding: 1px 8px; border-radius: 9999px;`;
     dom.className = 'mention';
     dom.spellcheck = false;
     dom.setAttribute('data-lexical-mention', 'true');
@@ -114,7 +114,7 @@ export class MentionNode extends TextNode {
     element.setAttribute('data-lexical-mention-name', this.__mention);
     element.setAttribute('data-lexical-mention-user-id', this.__userId);
     element.setAttribute('data-lexical-mention-color', this.__badgeColor);
-    element.style.cssText = `background-color: ${this.__badgeColor}33; color: ${this.__badgeColor}; font-weight: 600; padding: 1px 4px; border-radius: 4px;`;
+    element.style.cssText = `background-color: #fcdda3; color: #805000; font-weight: 600; padding: 1px 8px; border-radius: 9999px;`;
     element.textContent = this.__text;
     return { element };
   }

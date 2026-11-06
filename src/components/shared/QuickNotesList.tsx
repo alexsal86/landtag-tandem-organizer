@@ -360,7 +360,7 @@ export function QuickNotesList({
                           <Draggable key={note.id} draggableId={note.id} index={index} isDragDisabled={note.user_id !== hook.user?.id}>
                             {(dragProvided) => (
                               <div ref={dragProvided.innerRef} {...dragProvided.draggableProps}>
-                                <NoteCard {...noteCardProps(note)} dragHandleProps={dragProvided.dragHandleProps} />
+                                <NoteCard {...noteCardProps(note)} showPriority={false} dragHandleProps={dragProvided.dragHandleProps} />
                               </div>
                             )}
                           </Draggable>

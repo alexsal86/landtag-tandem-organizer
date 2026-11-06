@@ -18,7 +18,7 @@ const decisionStatusLabel: Record<string, string> = {
 function stop(e: React.SyntheticEvent) { e.stopPropagation(); }
 
 const chipBase =
-  "inline-flex h-[26px] items-center gap-1.5 rounded-md border border-border/60 bg-muted/60 px-2 text-xs text-foreground transition-colors duration-fast ease-standard hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "inline-flex h-8 items-center gap-2 rounded-lg border-0 bg-transparent px-3 text-sm text-foreground transition-colors duration-fast ease-standard hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 function DecisionDetails({ id, canEdit, onOpen, onRemove }: { id: string; canEdit: boolean; onOpen: () => void; onRemove: () => void }) {
   const { data, isLoading } = useQuery({
@@ -104,12 +104,12 @@ export function NoteStatusChips({ taskId, decisionId, caseItemId, meetingId, mee
     <div className="mt-2" onClick={stop} onKeyDown={stop}>
       <div className="flex flex-wrap gap-1.5">
         {decisionId && (
-          <button type="button" aria-expanded={open === "decision"} className={cn(chipBase, open === "decision" && "border-primary/50 bg-primary/10 text-primary")} onClick={toggle("decision")}>
+          <button type="button" aria-expanded={open === "decision"} className={cn(chipBase, open === "decision" && "bg-muted text-foreground")} onClick={toggle("decision")}>
             <Vote className="h-3.5 w-3.5" />Entscheidung{chev("decision")}
           </button>
         )}
         {meetingId && (
-          <button type="button" aria-expanded={open === "meeting"} className={cn(chipBase, open === "meeting" && "border-primary/50 bg-primary/10 text-primary")} onClick={toggle("meeting")}>
+          <button type="button" aria-expanded={open === "meeting"} className={cn(chipBase, open === "meeting" && "bg-muted text-foreground")} onClick={toggle("meeting")}>
             <CalendarIcon className="h-3.5 w-3.5" />Jour fixe{meetingDate ? ` ${format(new Date(meetingDate), "dd.MM.", { locale: de })}` : ""}{chev("meeting")}
           </button>
         )}

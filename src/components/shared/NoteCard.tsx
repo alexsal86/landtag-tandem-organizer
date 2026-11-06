@@ -31,6 +31,7 @@ interface NoteCardProps {
   note: QuickNote;
   userId?: string;
   showFollowUpBadge?: boolean;
+  showPriority?: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dragHandleProps?: any;
@@ -74,7 +75,7 @@ interface NoteCardProps {
 }
 
 export function NoteCard({
-  note, userId, showFollowUpBadge = false, dragHandleProps,
+  note, userId, showFollowUpBadge = false, showPriority = true, dragHandleProps,
   isExpanded, isDetailsExpanded, colorModeUpdating,
   className, highlightRef,
   onNoteClick, onToggleExpand, onToggleDetailsExpand,
@@ -90,7 +91,7 @@ export function NoteCard({
   onSendToDaySlip, onToggleChecklist, selectable = false, selected = false, onToggleSelect,
 }: NoteCardProps) {
   const checklist = countChecklist(note.content);
-  const [transferPopoverOpen, setTransferPopoverOpen] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
   const hasShared = (note.share_count || 0) > 0 || note.is_shared === true;
 
   const canEdit = note.user_id === userId || note.can_edit === true;
@@ -143,7 +144,7 @@ export function NoteCard({
         <div className="flex min-w-0 flex-1 items-start gap-2 pr-1">
           {note.title && (
             <div className="flex-1 break-words text-sm font-medium leading-snug line-clamp-2 [&_p]:inline [&_p]:m-0">
-              <RichTextDisplay content={note.title} />
+              <RichTextDisplay content={note.title} className="text-foreground prose-headings:text-foreground [&_*:not([data-lexical-mention])]:!text-foreground" />
             </div>
           )}
           {checklist.total > 0 && (
@@ -173,7 +174,7 @@ export function NoteCard({
                 </span>
               </TooltipTrigger><TooltipContent>Angeheftet</TooltipContent></Tooltip></TooltipProvider>
             )}
-            <DropdownMenu>
+            <DropdownMenu onOpenChange={setActionsOpen}>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => e.stopPropagation()}>
                   <MoreHorizontal className="h-3.5 w-3.5" />
@@ -359,11 +360,11 @@ export function NoteCard({
         <button
           type="button"
           aria-expanded={isExpanded}
-          className="mt-1 inline-flex items-center gap-1 self-start rounded text-xs text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="mt-1 inline-flex h-8 items-center gap-2 self-start rounded-lg border-0 bg-transparent px-3 text-sm text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={(e) => { e.stopPropagation(); onToggleExpand(note.id, e); }}
         >
-          {isExpanded ? "Weniger anzeigen" : "Mehr anzeigen"}
           <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-fast", isExpanded && "rotate-180")} />
+          {isExpanded ? "Weniger anzeigen" : "Mehr anzeigen"}
         </button>
       )}
 
@@ -384,9 +385,9 @@ export function NoteCard({
             <Tooltip><TooltipTrigger asChild>
               <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full border border-border" style={{ backgroundColor: note.color || undefined }} role="img" aria-label={`Farbe: ${colorLabel}`} />
             </TooltipTrigger><TooltipContent>Farbe: {colorLabel}</TooltipContent></Tooltip>
-            {prio > 0
+            {showPriority && (prio > 0
               ? <span className="text-warning">★ Prio {prio}</span>
-              : <span>Ohne Prio</span>}
+              : <span>Ohne Prio</span>)}
             {stale ? (
               <Tooltip><TooltipTrigger asChild>
                 <span className="inline-flex items-center gap-1 rounded bg-warning/15 px-1.5 py-0.5 text-warning">
@@ -404,9 +405,9 @@ export function NoteCard({
               </TooltipContent></Tooltip>
             )}
           </div>
-            <div className="flex items-center gap-1 flex-shrink-0 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
+            <div onClickCapture={() => setActionsOpen(true)} className={cn("flex items-center gap-1 flex-shrink-0 opacity-100 [@media(hover:hover)]:group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200", !actionsOpen && "[@media(hover:hover)]:opacity-0")}>
               {note.user_id === userId && (
-                <DropdownMenu>
+                <DropdownMenu onOpenChange={setActionsOpen}>
                   <TooltipProvider><Tooltip><TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80" onClick={(e) => e.stopPropagation()} aria-label="Umwandeln">

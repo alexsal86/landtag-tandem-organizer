@@ -79,7 +79,7 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
         <TooltipProvider>
         <div className="flex flex-wrap items-center gap-2" role="toolbar" aria-label="Notizen filtern">
           <div className="flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label="Filter">
-            {QUICK_NOTE_FILTERS.map((f) => {
+            {QUICK_NOTE_FILTERS.filter(f => ["all", "pinned", "stale"].includes(f.value)).map((f) => {
               const active = filter === f.value;
               return (
                 <button
@@ -105,10 +105,25 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="sm" className={cn("h-7 px-2.5 text-[13px] font-normal", colorFilter && "text-foreground")}>
                   <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span className="ml-1.5">Weitere Filter{colorFilter ? " · 1" : ""}</span>
+                  <span className="ml-1.5">Weitere Filter{colorFilter || !["all", "pinned", "stale"].includes(filter) ? " aktiv" : ""}</span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="start" className="w-64 space-y-2">
+                <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Weitere Filter">
+                  {QUICK_NOTE_FILTERS.filter(f => !["all", "pinned", "stale"].includes(f.value)).map(f => (
+                    <Button
+                      key={f.value}
+                      role="radio"
+                      aria-checked={filter === f.value}
+                      variant={filter === f.value ? "secondary" : "outline"}
+                      size="sm"
+                      title={f.hint}
+                      onClick={() => setFilter(f.value)}
+                    >
+                      {f.label}
+                    </Button>
+                  ))}
+                </div>
                 <div className="section-label">Farbe</div>
                 <div className="flex flex-wrap items-center gap-2">
                   {palette.map((c) => (
