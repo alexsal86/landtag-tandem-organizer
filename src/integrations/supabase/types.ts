@@ -10231,6 +10231,57 @@ export type Database = {
         }
         Relationships: []
       }
+      selftest_runs: {
+        Row: {
+          app_version: string | null
+          cleanup: Json | null
+          created_at: string
+          duration_ms: number | null
+          failed_steps: number
+          id: string
+          keep_data: boolean
+          scenario_id: string
+          scenario_title: string
+          status: string
+          steps: Json
+          tenant_id: string
+          total_steps: number
+          user_id: string
+        }
+        Insert: {
+          app_version?: string | null
+          cleanup?: Json | null
+          created_at?: string
+          duration_ms?: number | null
+          failed_steps?: number
+          id?: string
+          keep_data?: boolean
+          scenario_id: string
+          scenario_title: string
+          status: string
+          steps?: Json
+          tenant_id: string
+          total_steps?: number
+          user_id: string
+        }
+        Update: {
+          app_version?: string | null
+          cleanup?: Json | null
+          created_at?: string
+          duration_ms?: number | null
+          failed_steps?: number
+          id?: string
+          keep_data?: boolean
+          scenario_id?: string
+          scenario_title?: string
+          status?: string
+          steps?: Json
+          tenant_id?: string
+          total_steps?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       sender_information: {
         Row: {
           created_at: string

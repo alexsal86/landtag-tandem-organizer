@@ -242,6 +242,9 @@ export async function purgeAllSelftestData(tenantId: string): Promise<{
     { name: "event_planning_contacts", column: "name", hasTenant: false },
     { name: "event_plannings", column: "title", hasTenant: true },
     { name: "daily_briefings", column: "title", hasTenant: true },
+    { name: "contact_activities", column: "title", hasTenant: true },
+    { name: "contacts", column: "name", hasTenant: true },
+    { name: "quick_notes", column: "title", hasTenant: true },
   ];
 
   for (const t of tables) {
