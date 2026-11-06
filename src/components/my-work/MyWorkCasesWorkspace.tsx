@@ -1182,6 +1182,7 @@ export function MyWorkCasesWorkspace() {
                     setCaseFileSheetOpen(true);
                   }}
                   ballPanel={wideLayout ? undefined : ballPanelNode}
+                  summary={getItemDescription(detailItem)}
                   detailPanel={
                     <CaseItemDetailPanel
                       itemId={detailItem.id}
