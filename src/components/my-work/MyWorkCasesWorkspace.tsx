@@ -26,7 +26,7 @@ import { toEditorHtml } from "@/components/my-work/utils/editorContent";
 import { createLetterFromCase } from "@/features/cases/items/caseLetter";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { CaseHandoverDialog } from "@/components/my-work/cases/workspace/CaseHandoverDialog";
-import { CaseItemBallPanel, type BallPatch } from "@/components/my-work/cases/workspace/CaseItemBallPanel";
+import { CaseItemBallPanel, CaseItemQuickActions, type BallPatch } from "@/components/my-work/cases/workspace/CaseItemBallPanel";
 import { countTriage, matchesTriage, ballMeta, withAutoDeadline, ballChangeEvents, isOnResubmission, type TriageFilter } from "@/features/cases/items/ball";
 import { CaseItemList, type CaseItemSortKey, type SortDirection } from "@/components/my-work/cases/workspace/CaseItemList";
 import { CaseFileList } from "@/components/my-work/cases/workspace/CaseFileList";
@@ -1263,6 +1263,7 @@ export function MyWorkCasesWorkspace() {
                   archiveLabel={detailItem.status === "archiviert" ? "Wiederherstellen" : "Archivieren"}
                   onDelete={() => setDeleteConfirmItemId(detailItem.id)}
                   ballPanel={ballPanelNode}
+                  quickActions={detailItem ? <CaseItemQuickActions item={detailItem} subject={editableCaseItem.subject} onCreateLetter={ballPanelNode.props.onCreateLetter} onOpenMeetingSelector={ballPanelNode.props.onOpenMeetingSelector} onRequestDecision={ballPanelNode.props.onRequestDecision} /> : null}
                   summary={getItemDescription(detailItem)}
                   detailPanel={
                     <CaseItemDetailPanel
