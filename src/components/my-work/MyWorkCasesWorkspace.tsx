@@ -27,7 +27,7 @@ import { createLetterFromCase } from "@/features/cases/items/caseLetter";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { CaseHandoverDialog } from "@/components/my-work/cases/workspace/CaseHandoverDialog";
 import { CaseItemBallPanel, type BallPatch } from "@/components/my-work/cases/workspace/CaseItemBallPanel";
-import { countTriage, matchesTriage, ballMeta, withAutoDeadline, type TriageFilter } from "@/features/cases/items/ball";
+import { countTriage, matchesTriage, ballMeta, withAutoDeadline, ballChangeEvents, isOnResubmission, type TriageFilter } from "@/features/cases/items/ball";
 import { CaseItemList, type CaseItemSortKey, type SortDirection } from "@/components/my-work/cases/workspace/CaseItemList";
 import { CaseFileList } from "@/components/my-work/cases/workspace/CaseFileList";
 import { CasesWorkspaceShell } from "@/components/my-work/cases/workspace/CasesWorkspaceShell";
@@ -456,14 +456,39 @@ export function MyWorkCasesWorkspace() {
   };
 
 
+  const actorName = () => teamUsers.find((u) => u.id === user?.id)?.name ?? undefined;
+  const makeSystemEvent = (title: string, note?: string): TimelineEvent => ({
+    id: crypto.randomUUID(), type: "system", title, note, timestamp: new Date().toISOString(), actorName: actorName(),
+  });
+  const buildSystemEvents = (item: CaseItem, patch: BallPatch): TimelineEvent[] =>
+    ballChangeEvents(item, patch, (id) => (id ? teamUsers.find((u) => u.id === id)?.name ?? null : null)).map((e) => makeSystemEvent(e.title, e.note));
+  /** Hängt einen einzelnen Systemeintrag (Brief, Jour fixe, Entscheidung …) an den Verlauf an. */
+  const logSystemEvent = async (item: CaseItem, title: string, note?: string) => {
+    const event = makeSystemEvent(title, note);
+    const intakePayload = { ...item.intake_payload, timeline_events: [...parseTimelineEvents(item.intake_payload), event] };
+    const ok = await applyItemOptimisticUpdate(
+      item.id,
+      (row) => ({ ...row, intake_payload: intakePayload }),
+      () => supabase.from("case_items").update({ intake_payload: intakePayload as unknown as TablesUpdate<"case_items">["intake_payload"] }).eq("id", item.id),
+      "Verlaufseintrag konnte nicht gespeichert werden.",
+    );
+    if (ok && detailItemId === item.id) setEditableCaseItem((prev) => prev ? { ...prev, timelineEvents: [...prev.timelineEvents, event] } : prev);
+  };
+
   const handleBallChange = async (item: CaseItem, rawPatch: BallPatch) => {
-    const patch = withAutoDeadline(item, rawPatch);
+    const autoPatch = withAutoDeadline(item, rawPatch);
+    const systemEvents = buildSystemEvents(item, autoPatch);
+    const intakePayload = systemEvents.length
+      ? { ...item.intake_payload, timeline_events: [...parseTimelineEvents(item.intake_payload), ...systemEvents] }
+      : null;
+    const patch = intakePayload ? { ...autoPatch, intake_payload: intakePayload } : autoPatch;
     const ok = await applyItemOptimisticUpdate(
       item.id,
       (row) => ({ ...row, ...patch }),
-      () => supabase.from("case_items").update(patch).eq("id", item.id),
+      () => supabase.from("case_items").update({ ...autoPatch, ...(intakePayload ? { intake_payload: intakePayload as unknown as TablesUpdate<"case_items">["intake_payload"] } : {}) }).eq("id", item.id),
       "Änderung konnte nicht gespeichert werden.",
     );
+    if (ok && systemEvents.length && detailItemId === item.id) setEditableCaseItem((prev) => prev ? { ...prev, timelineEvents: [...prev.timelineEvents, ...systemEvents] } : prev);
     if (ok && patch.ball_owner) notify.success(`Am Zug: ${ballMeta(patch.ball_owner).label}${patch.next_action_due_at && !rawPatch.next_action_due_at ? " · Frist in 3 Wochen gesetzt" : ""}`);
   };
 
@@ -895,9 +920,11 @@ export function MyWorkCasesWorkspace() {
       note: event.note,
       safeNoteHtml: sanitizeTimelineNote(event.note),
       documents: event.documents,
-      accentClass: "bg-primary",
-      icon: event.type === "entscheidung" ? Gavel : interactionTypeOptions.find((option) => option.value === event.interactionType)?.icon,
-      canDelete: true,
+      accentClass: event.type === "system" ? "bg-muted-foreground/60" : "bg-primary",
+      icon: event.type === "entscheidung" ? Gavel : event.type === "system" ? History : interactionTypeOptions.find((option) => option.value === event.interactionType)?.icon,
+      actorName: event.actorName,
+      isSystem: event.type === "system",
+      canDelete: event.type !== "system",
       onDelete: () => deleteTimelineEvent(event.id),
     })));
 
@@ -1060,8 +1087,8 @@ export function MyWorkCasesWorkspace() {
                       onCompleteStep={async (label) => {
                         const event: TimelineEvent = {
                           id: crypto.randomUUID(),
-                          type: "interaktion",
-                          interactionType: "notiz",
+                          type: "system",
+                          actorName: actorName(),
                           title: "Schritt erledigt",
                           note: [label, detailItem.next_action_assignee_id ? `Zuständig: ${teamUsers.find((member) => member.id === detailItem.next_action_assignee_id)?.name || detailItem.next_action_assignee_id}` : null, `Am Zug: ${ballMeta(detailItem.ball_owner).short}`, detailItem.next_action_due_at ? `Frist: ${formatDateSafe(detailItem.next_action_due_at, "dd.MM.yyyy")}` : null].filter(Boolean).join(" · "),
                           timestamp: new Date().toISOString(),
