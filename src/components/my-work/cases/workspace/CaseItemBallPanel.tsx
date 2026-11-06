@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { sendToDaySlip } from "@/lib/daySlipBridge";
 import { openAppointmentRequestCreate, openAppointmentRequestDetail } from "@/features/appointment-requests/events";
-import { BALL_OWNERS, PARLIAMENTARY_TOOLS, ballMeta, daysUntilNextAction, withAutoDeadline, resubmissionHint, stepState, type BallOwner, type ParliamentaryTool } from "@/features/cases/items/ball";
+import { BALL_OWNERS, ballMeta, daysUntilNextAction, withAutoDeadline, resubmissionHint, stepState, type BallOwner } from "@/features/cases/items/ball";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { useCaseHandoverLog } from "@/components/my-work/hooks/useCaseHandoverLog";
@@ -201,21 +201,13 @@ export function CaseItemBallPanel({ item, tenantId, teamUsers, onChange, onCompl
         </Select>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Select value={item.parliamentary_tool ?? "none"} onValueChange={(v) => onChange({ parliamentary_tool: v as ParliamentaryTool })}>
-          <SelectTrigger className="h-7 w-auto gap-1 border-none bg-transparent px-2 text-xs text-muted-foreground shadow-none" aria-label="Parlamentarisches Instrument">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {PARLIAMENTARY_TOOLS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        {lastHandover && (
+      {lastHandover && (
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-muted-foreground" title="Letzte Übergabe an Vertretung">
             Übergeben von {userName(lastHandover.handed_over_by)} an {userName(lastHandover.to_user_id)} · {format(new Date(lastHandover.handed_over_at), "dd.MM. HH:mm", { locale: de })}
           </span>
-        )}
-      </div>
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
         <p className="text-sm text-muted-foreground">
           {hasStep && !dirty ? "Schritt abgehakt? Dann Ball weitergeben oder neuen Schritt eintragen." : hasStep ? "Änderungen werden erst mit „Schritt festlegen“ übernommen." : "Noch kein Schritt festgelegt. Was passiert als Nächstes?"}
