@@ -35,6 +35,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
 
   const {
     handleSaveNote,
+    handleSaveAsTask,
     handleShareMentionedUsers,
     saving,
     savingAsTask,
@@ -132,7 +133,10 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
           {draftStatus === "Entwurf lokal gesichert" ? "Lokal gesichert" : draftStatus || "@ erwähnen"}
         </span>
         <Button variant="ghost" size="sm" disabled={saving || savingAsTask} onClick={() => setExpanded(false)}>Abbrechen</Button>
-        <Button variant="secondary" size="sm" onClick={handleSaveNote} disabled={!canSaveNote || saving || savingAsTask} title="Strg/Cmd + Enter">
+        <Button variant="outline" size="sm" onClick={handleSaveAsTask} disabled={!stripHtml(content) || saving || savingAsTask}>
+          {savingAsTask && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}Als Aufgabe
+        </Button>
+        <Button variant="default" size="sm" onClick={handleSaveNote} disabled={!canSaveNote || saving || savingAsTask} title="Strg/Cmd + Enter">
           {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}Notiz speichern
         </Button>
       </div>
