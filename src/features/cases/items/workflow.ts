@@ -53,7 +53,7 @@ export function workflowEvents(itemId: string, requests: WorkflowRequest[], deci
         note: [decision.title, response.response_type === "yes" ? "Zustimmung" : response.response_type === "no" ? "Ablehnung" : "Rückmeldung", response.comment].filter(Boolean).join(" · "), timestamp: response.updated_at ?? response.created_at,
       });
     }
-    if (decisionOutcome(decision).completed) events.push({ id: `decision-${decision.id}-completed`, title: "Entscheidungsanfrage abgeschlossen", note: decision.title, timestamp: [decision.updated_at, ...decision.task_decision_participants.flatMap((participant) => participant.task_decision_responses.map((response) => response.updated_at ?? response.created_at))].sort().at(-1)! });
+    if (decisionOutcome(decision).completed) events.push({ id: `decision-${decision.id}-completed`, title: "Entscheidungsanfrage abgeschlossen", note: decision.title, timestamp: [decision.updated_at, ...decision.task_decision_participants.flatMap((participant) => participant.task_decision_responses.map((response) => response.updated_at ?? response.created_at))].sort().slice(-1)[0]! });
   }
   for (const meeting of meetings) {
     const rows = agenda.filter((row) => row.meeting_id === meeting.id);
