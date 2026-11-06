@@ -29,8 +29,6 @@ type CaseItemDetailViewProps = {
   ballPanel?: ReactNode;
   quickActions?: ReactNode;
   onComplete: () => void;
-  onArchive: () => void;
-  archiveLabel: string;
   onDelete: () => void;
   /** Plain-text core concern, pinned above the scrolling detail area. */
   summary?: string;
@@ -64,8 +62,6 @@ export function CaseItemDetailView({
   ballPanel,
   quickActions,
   onComplete,
-  onArchive,
-  archiveLabel,
   onDelete,
   summary,
   activeTab,
@@ -147,10 +143,9 @@ export function CaseItemDetailView({
         </div>
         </div>
         <div className="mt-8 shrink-0 space-y-3 border-t border-border/70 pt-6">
-          <Button type="button" variant="outline" onClick={onComplete} disabled={status === "erledigt"} className="h-11 w-full rounded-xl border-2 border-success bg-background font-semibold text-success hover:bg-success/5 hover:text-success">
+          <Button type="button" variant="outline" onClick={onComplete} disabled={status === "archiviert"} className="h-11 w-full rounded-xl border-2 border-success bg-background font-semibold text-success hover:bg-success/5 hover:text-success">
             Vorgang erledigt
           </Button>
-          <Button type="button" variant="ghost" onClick={onArchive} className="w-full justify-start px-3 font-normal">{archiveLabel}</Button>
           <Button type="button" variant="ghost" onClick={onDelete} className="w-full justify-start px-3 font-normal text-destructive hover:bg-destructive/10 hover:text-destructive">Vorgang löschen</Button>
         </div>
       </aside>

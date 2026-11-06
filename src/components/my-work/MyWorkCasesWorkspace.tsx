@@ -1255,13 +1255,7 @@ export function MyWorkCasesWorkspace() {
                     }
                     setCaseFileSheetOpen(true);
                   }}
-                  onComplete={() => {
-                    updateEdit({ status: "erledigt", completedAt: editableCaseItem.completedAt || formatDateSafe(new Date(), "yyyy-MM-dd", "") });
-                    setDetailTab("overview");
-                    notify.info("Bitte Abschlussnotiz ergänzen und den Vorgang speichern.");
-                  }}
-                  onArchive={() => runAsync(() => handleArchiveCaseItem(detailItem))}
-                  archiveLabel={detailItem.status === "archiviert" ? "Wiederherstellen" : "Archivieren"}
+                  onComplete={() => runAsync(() => handleArchiveCaseItem(detailItem))}
                   onDelete={() => setDeleteConfirmItemId(detailItem.id)}
                   ballPanel={ballPanelNode}
                   quickActions={ballPanelNode ? <CaseItemQuickActions {...(ballPanelNode.props as ComponentProps<typeof CaseItemQuickActions>)} /> : null}
