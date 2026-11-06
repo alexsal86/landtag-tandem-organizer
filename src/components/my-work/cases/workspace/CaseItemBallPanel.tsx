@@ -176,24 +176,33 @@ export function CaseItemBallPanel({ item, tenantId, teamUsers, onChange, onCompl
 
       {hint && <p className="rounded-md bg-success/10 px-4 py-2 text-sm text-success">{hint}</p>}
 
-      <div className={cn("grid grid-cols-1 gap-2", variant === "bar" && "md:grid-cols-[1fr_150px_170px]")}>
-        <Input
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") setStep(); }}
-          placeholder={draftOwner === "office" ? "Nächster Schritt, z. B. Erinnerung an RP senden" : "Worauf warten wir? z. B. Stellungnahme Ministerium"}
-          className="h-8 text-sm"
-          aria-label="Nächster Schritt"
-        />
-        <Input
-          type="date"
-          value={dueValue}
-          onChange={(e) => setDraftDue(e.target.value ? new Date(`${e.target.value}T12:00:00`).toISOString() : null)}
-          className={cn("h-8 text-sm", days !== null && days < 0 && "border-destructive text-destructive")}
-          aria-label="Frist nächster Schritt"
-        />
+      <div className={cn("grid grid-cols-1 gap-4", variant === "bar" && "md:grid-cols-[minmax(0,1fr)_minmax(160px,208px)]")}>
+        <label className="min-w-0 space-y-1 text-sm text-muted-foreground">
+          <span>Nächster Schritt</span>
+          <Input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") setStep(); }}
+            placeholder="z. B. Antwort an den Absender schicken"
+            className="h-14 min-w-0 rounded-xl bg-background px-4 text-base text-foreground md:text-base"
+          />
+        </label>
+        <label className="min-w-0 space-y-1 text-sm text-muted-foreground">
+          <span>Frist</span>
+          <Input
+            type="date"
+            lang="de"
+            value={dueValue}
+            onChange={(e) => setDraftDue(e.target.value ? new Date(`${e.target.value}T12:00:00`).toISOString() : null)}
+            className={cn("h-14 min-w-0 rounded-xl bg-background px-4 text-base text-foreground md:text-base", days !== null && days < 0 && "border-destructive text-destructive")}
+            aria-label="Frist nächster Schritt"
+          />
+        </label>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <span>Zuständig:</span>
         <Select value={draftAssignee ?? NONE} onValueChange={(v) => setDraftAssignee(v === NONE ? null : v)}>
-          <SelectTrigger className="h-8 text-sm" aria-label="Zuständig für nächsten Schritt"><SelectValue placeholder="Zuständig" /></SelectTrigger>
+          <SelectTrigger className="h-8 w-auto max-w-full gap-2 text-sm text-foreground" aria-label="Zuständig für nächsten Schritt"><SelectValue placeholder="Zuständig" /></SelectTrigger>
           <SelectContent>
             <SelectItem value={NONE}>Wie Bearbeitung</SelectItem>
             {teamUsers.map((u) => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
