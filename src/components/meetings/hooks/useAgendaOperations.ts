@@ -1,3 +1,7 @@
+import type { TablesUpdate } from "@/integrations/supabase/types";
+import { useQueryClient } from "@tanstack/react-query";
+import { useTenant } from "@/hooks/useTenant";
+import { newlyCompletedMeetingCases } from "@/features/cases/items/workflow";
 import { supabase } from "@/integrations/supabase/client";
 import type { AgendaItem } from "@/components/meetings/types";
 import type { MeetingsDataReturn } from "./useMeetingsData";
@@ -12,6 +16,8 @@ type AgendaOpsDeps = Pick<MeetingsDataReturn,
 >;
 
 export function useAgendaOperations(deps: AgendaOpsDeps) {
+  const queryClient = useQueryClient();
+  const { currentTenant } = useTenant();
   const {
     selectedMeeting, activeMeeting, agendaItems, setAgendaItems, setActiveMeeting,
     user, toast, taskDocuments, agendaDocuments, setAgendaDocuments,
@@ -19,13 +25,45 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
   } = deps;
 
   const updateAgendaItemResult = async (itemId: string, field: 'carry_over_to_next' | 'result_text' | string, value: unknown) => {
+    const previousItem = agendaItems.find((item) => item.id === itemId);
+    const persist = async () => {
+      // Compare with saved results: the local state may already include a later, debounced edit.
+      let savedResults = previousItem?.result_text ?? null;
+      if (field === 'result_text' && previousItem?.system_type === 'case_items') {
+        const { data, error: readError } = await supabase.from('meeting_agenda_items').select('result_text').eq('id', itemId).single();
+        if (readError) throw readError;
+        savedResults = data.result_text;
+      }
+      let patch: TablesUpdate<'meeting_agenda_items'>;
+      if ((field === 'result_text' || field === 'notes' || field === 'description') && (typeof value === 'string' || value === null)) {
+        patch = { [field]: value };
+      } else if (field === 'carry_over_to_next' && typeof value === 'boolean') {
+        patch = { carry_over_to_next: value };
+      } else {
+        throw new Error('Ungültiges Ergebnisfeld');
+      }
+      const { error } = await supabase.from('meeting_agenda_items').update(patch).eq('id', itemId);
+      if (error) throw error;
+      if (field === 'result_text' && previousItem?.system_type === 'case_items' && typeof value === 'string' && currentTenant?.id) {
+        const completedIds = newlyCompletedMeetingCases(savedResults, value);
+        const meetingId = previousItem.meeting_id || activeMeeting?.id || selectedMeeting?.id;
+        if (completedIds.length && meetingId) {
+          const { error: caseError } = await supabase.from('case_items')
+            .update({ pending_for_jour_fixe: false, meeting_id: meetingId })
+            .eq('tenant_id', currentTenant.id).eq('pending_for_jour_fixe', true)
+            .or(`meeting_id.is.null,meeting_id.eq.${meetingId}`).in('id', completedIds);
+          if (caseError) throw caseError;
+        }
+      }
+      void queryClient.invalidateQueries({ queryKey: ['case-workflow', currentTenant?.id] });
+    };
     setAgendaItems(prev => prev.map(item => item.id === itemId ? { ...item, [field]: value } : item));
     if (['result_text', 'notes', 'description'].includes(field)) {
       const timeoutKey = `${itemId}-${field}`;
       if (updateTimeouts.current[timeoutKey]) clearTimeout(updateTimeouts.current[timeoutKey]);
       updateTimeouts.current[timeoutKey] = setTimeout(async () => {
         try {
-          await supabase.from('meeting_agenda_items').update({ [field]: value }).eq('id', itemId);
+          await persist();
         } catch (error) {
           debugConsole.error('Error updating agenda item:', error);
           toast({ title: "Fehler", description: "Die Änderung konnte nicht gespeichert werden.", variant: "destructive" });
@@ -33,7 +71,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       }, 500);
     } else {
       try {
-        await supabase.from('meeting_agenda_items').update({ [field]: value }).eq('id', itemId);
+        await persist();
       } catch (error) {
         debugConsole.error('Error updating agenda item:', error);
         toast({ title: "Fehler", description: "Die Änderung konnte nicht gespeichert werden.", variant: "destructive" });

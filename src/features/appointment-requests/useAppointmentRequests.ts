@@ -69,6 +69,7 @@ export function useAppointmentRequestMutations() {
   const qc = useQueryClient();
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: [KEY] });
+    qc.invalidateQueries({ queryKey: ["case-workflow"] });
     qc.invalidateQueries({ queryKey: ["calendar-data"] });
   };
 

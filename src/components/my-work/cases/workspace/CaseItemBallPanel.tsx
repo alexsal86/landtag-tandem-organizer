@@ -1,3 +1,8 @@
+import { Link } from "react-router-dom";
+import { TaskDecisionDetails } from "@/components/task-decisions/TaskDecisionDetails";
+import type { useCaseWorkflow } from "@/components/my-work/hooks/useCaseWorkflow";
+import { decisionOutcome, meetingOutcome } from "@/features/cases/items/workflow";
+import { formatDateSafe } from "./utils/dateFormatting";
 import { useEffect, useState } from "react";
 import { CalendarDays, ClipboardList, Gavel, Mail, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -5,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { sendToDaySlip } from "@/lib/daySlipBridge";
-import { openAppointmentRequestCreate } from "@/features/appointment-requests/events";
+import { openAppointmentRequestCreate, openAppointmentRequestDetail } from "@/features/appointment-requests/events";
 import { BALL_OWNERS, PARLIAMENTARY_TOOLS, ballMeta, daysUntilNextAction, withAutoDeadline, resubmissionHint, stepState, type BallOwner, type ParliamentaryTool } from "@/features/cases/items/ball";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -30,12 +35,23 @@ type Props = {
 
 const NONE = "__none__";
 
-type QuickProps = Pick<Props, "item" | "subject" | "onOpenMeetingSelector" | "onCreateLetter" | "onRequestDecision">;
+type QuickProps = Pick<Props, "item" | "subject" | "onOpenMeetingSelector" | "onCreateLetter" | "onRequestDecision"> & { workflow: ReturnType<typeof useCaseWorkflow> };
 
-export function CaseItemQuickActions({ item, subject, onOpenMeetingSelector, onCreateLetter, onRequestDecision }: QuickProps) {
+export function CaseItemQuickActions({ item, subject, onOpenMeetingSelector, onCreateLetter, onRequestDecision, workflow }: QuickProps) {
   const [creatingLetter, setCreatingLetter] = useState(false);
+  const [decisionId, setDecisionId] = useState<string | null>(null);
+  const data = workflow.data;
+  const pendingRequests = data?.requests.filter((request) => request.status === "open") ?? [];
+  const lastRequest = data?.requests[0];
+  const pendingDecisions = data?.decisions.filter((decision) => !decisionOutcome(decision).completed) ?? [];
+  const lastDecision = data?.decisions[0];
+  const meeting = data?.meetings.find((meeting) => meeting.id === data.meetingId)
+    ?? data?.meetings.find((meeting) => ["archived", "completed"].includes(meeting.status) || data.agenda.some((row) => row.meeting_id === meeting.id && meetingOutcome(row.result_text, item.id).completed));
+  const discussed = !!meeting && !!data?.agenda.some((row) => row.meeting_id === meeting.id && meetingOutcome(row.result_text, item.id).completed);
+  const meetingFinished = discussed || !!meeting && ["archived", "completed"].includes(meeting.status);
+  const unavailable = workflow.isPending || workflow.isError;
   const label = item.next_action_label?.trim() ?? "";
-  const cls = "h-8 w-full justify-start gap-2 px-2 text-sm font-normal text-foreground";
+  const cls = "h-auto min-h-8 w-full justify-start gap-2 whitespace-normal px-2 py-1.5 text-left text-sm font-normal text-foreground";
   return (
     <div className="space-y-0.5">
       <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Quick Actions</h2>
@@ -47,18 +63,45 @@ export function CaseItemQuickActions({ item, subject, onOpenMeetingSelector, onC
         onClick={() => sendToDaySlip({ text: `${label || "Vorgang bearbeiten"} [${subject}]`, source: { type: "case", id: item.id, nextActionLabel: label || undefined } })}>
         <Zap className="h-4 w-4 text-muted-foreground" />Auf Tageszettel
       </Button>
-      {onRequestDecision && (
-        <Button type="button" variant="ghost" size="sm" className={cls} onClick={onRequestDecision}>
-          <Gavel className="h-4 w-4 text-muted-foreground" />Entscheidung anfordern
+      {workflow.isError && <p className="px-2 text-xs text-destructive">Verknüpfungen konnten nicht geladen werden. <button type="button" className="underline" onClick={() => void workflow.refetch()}>Erneut laden</button></p>}
+      {pendingDecisions.map((decision) => (
+        <Button key={decision.id} type="button" variant="ghost" size="sm" className={cls} onClick={() => setDecisionId(decision.id)}>
+          <Gavel className="h-4 w-4 shrink-0 text-muted-foreground" />Entscheidung angefordert – {formatDateSafe(decision.created_at, "dd.MM.yyyy")} · {decisionOutcome(decision).answered}/{decisionOutcome(decision).total} Rückmeldungen
+        </Button>
+      ))}
+      {!pendingDecisions.length && lastDecision && <Button type="button" variant="ghost" size="sm" className={cls} onClick={() => setDecisionId(lastDecision.id)}>
+        <Gavel className="h-4 w-4 shrink-0 text-success" />Entscheidung abgeschlossen – {formatDateSafe(lastDecision.updated_at, "dd.MM.yyyy")}
+      </Button>}
+      {onRequestDecision && !pendingDecisions.length && (
+        <Button type="button" variant="ghost" size="sm" className={cls} disabled={unavailable} onClick={onRequestDecision}>
+          <Gavel className="h-4 w-4 shrink-0 text-muted-foreground" />Entscheidung anfordern
         </Button>
       )}
-      <Button type="button" variant="ghost" size="sm" className={cls} onClick={onOpenMeetingSelector}>
-        <ClipboardList className="h-4 w-4 text-muted-foreground" />Auf Jour fixe
-      </Button>
-      <Button type="button" variant="ghost" size="sm" className={cls}
+      {meeting && <Link className="flex items-start gap-2 px-2 py-1.5 text-sm text-primary hover:underline" to={`/meetings?id=${meeting.id}`}>
+        <ClipboardList className="mt-0.5 h-4 w-4 shrink-0" />
+        <span>{discussed ? "Im Jour fixe besprochen" : meetingFinished ? "Jour fixe abgeschlossen" : "Auf Jour fixe"} – {formatDateSafe(meeting.meeting_date, "dd.MM.yyyy")} · {meeting.title}</span>
+      </Link>}
+      {data?.pendingMeeting && <Button type="button" variant="ghost" size="sm" className={cls} onClick={onOpenMeetingSelector}>
+        <ClipboardList className="h-4 w-4 shrink-0 text-muted-foreground" />Für nächsten Jour fixe vorgemerkt
+      </Button>}
+      {!data?.pendingMeeting && (!meeting || meetingFinished) && <Button type="button" variant="ghost" size="sm" className={cls} disabled={unavailable} onClick={onOpenMeetingSelector}>
+        <ClipboardList className="h-4 w-4 shrink-0 text-muted-foreground" />Auf Jour fixe
+      </Button>}
+      {meeting && !meetingFinished && !data?.pendingMeeting && <button type="button" className="ml-8 text-xs text-muted-foreground hover:underline" onClick={onOpenMeetingSelector}>Zuordnung ändern</button>}
+      {(pendingRequests.length ? pendingRequests : lastRequest ? [lastRequest] : []).map((request) => (
+        <div key={request.id}>
+          {request.status === "open" ? <Button type="button" variant="ghost" size="sm" className={cls} onClick={() => openAppointmentRequestDetail(request.id)}>
+            <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />Ortstermin angefragt – {formatDateSafe(request.requested_date, "dd.MM.yyyy")}
+          </Button> : <p className="px-2 pt-1.5 text-sm">Ortstermin {request.status === "accepted" ? "bestätigt" : "abgelehnt"} – {formatDateSafe(request.requested_date, "dd.MM.yyyy")}</p>}
+          <Link className="ml-8 text-xs text-primary hover:underline" to={`/calendar?date=${request.requested_date}${request.appointment_id ? `&highlight=${request.appointment_id}` : ""}`}>Im Kalender öffnen →</Link>
+        </div>
+      ))}
+      {!pendingRequests.length && <Button type="button" variant="ghost" size="sm" className={cls} disabled={unavailable}
         onClick={() => openAppointmentRequestCreate({ caseItemId: item.id, title: `Ortstermin: ${subject}`, notes: label || undefined, channel: "case" })}>
-        <CalendarDays className="h-4 w-4 text-muted-foreground" />Ortstermin anfragen
-      </Button>
+        <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />Ortstermin anfragen
+      </Button>}
+      <TaskDecisionDetails decisionId={decisionId} isOpen={!!decisionId} onClose={() => { setDecisionId(null); void workflow.refetch(); }} />
+
     </div>
   );
 }

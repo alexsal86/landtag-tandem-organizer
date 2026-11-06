@@ -1,3 +1,4 @@
+import { useCaseWorkflow } from "@/components/my-work/hooks/useCaseWorkflow";
 import type { ComponentProps } from "react";
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { de } from "date-fns/locale";
@@ -93,6 +94,7 @@ export function MyWorkCasesWorkspace() {
   const [hasHydratedDetailFromUrl, setHasHydratedDetailFromUrl] = useState(false);
 
   const [detailItemId, setDetailItemId] = useState<string | null>(null);
+  const workflow = useCaseWorkflow(detailItemId);
   const [detailFileId, setDetailFileId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<"overview" | "timeline" | "documents">("overview");
   const { editableCaseItem, setEditableCaseItem, updateEdit, appendTimelineEvent, deleteTimelineEvent } = useCaseItemEdit();
@@ -885,7 +887,8 @@ export function MyWorkCasesWorkspace() {
     setCaseItems((prev) => prev.map((row) => row.id === detailItemId ? { ...row, status: "entscheidung_abwartend" as CaseItem['status'] } : row));
     // Reload decisions for this item
     await loadLinkedDecisions(detailItemId);
-  }, [detailItemId, editableCaseItem, getStatusMeta, loadLinkedDecisions, setCaseItems]);
+    void queryClient.invalidateQueries({ queryKey: ["case-workflow"] });
+  }, [detailItemId, editableCaseItem, getStatusMeta, loadLinkedDecisions, setCaseItems, queryClient]);
 
   const handleDecisionReceived = useCallback(() => {
     if (!editableCaseItem || editableCaseItem.status !== "entscheidung_abwartend") return;
@@ -946,33 +949,12 @@ export function MyWorkCasesWorkspace() {
       onDelete: () => deleteTimelineEvent(event.id),
     })));
 
-    if (detailItemId) {
-      const currentUserId = user?.id || null;
-      entries.push(
-        ...(linkedDecisions[detailItemId] || []).map((decision) => {
-          const participants = decision.task_decision_participants || [];
-          const userParticipant = currentUserId ? participants.find((p) => p.user_id === currentUserId) ?? null : null;
-          const userHasResponded = !currentUserId
-            ? true
-            : decision.created_by === currentUserId
-              ? true
-              : !userParticipant
-                ? true
-                : (userParticipant.task_decision_responses?.length ?? 0) > 0;
-
-          return {
-            id: `dec-${decision.id}`,
-            timestamp: decision.created_at,
-            title: `Entscheidung: ${decision.title}`,
-            accentClass: "bg-muted",
-            icon: userHasResponded ? CheckCircle2 : Clock,
-          };
-        }),
-      );
-    }
+    entries.push(...(workflow.data?.events ?? []).map((event) => ({
+      ...event, safeNoteHtml: sanitizeTimelineNote(event.note), accentClass: "bg-muted-foreground/60", icon: History, isSystem: true,
+    })));
 
     return entries.sort((a, b) => toTimeSafe(a.timestamp) - toTimeSafe(b.timestamp));
-  }, [deleteTimelineEvent, detailItemId, editableCaseItem, linkedDecisions, user?.id]);
+  }, [deleteTimelineEvent, detailItemId, editableCaseItem, workflow.data]);
 
 
   const handleDownloadInteractionDocument = useCallback(async (document: CaseItemInteractionDocument) => {
@@ -1145,11 +1127,7 @@ export function MyWorkCasesWorkspace() {
                         }
                       }}
                       onOpenMeetingSelector={() => { setMeetingSelectorItemId(detailItem.id); setIsMeetingSelectorOpen(true); }}
-                      onRequestDecision={() => {
-                        handleRequestDecision();
-                        if (!detailItem.next_action_label?.trim()) runAsync(() => handleBallChange(detailItem, { ball_owner: "office", next_action_label: "Entscheidung abwarten" }));
-                        else void logSystemEvent(detailItem, "Entscheidung angefordert");
-                      }}
+                      onRequestDecision={handleRequestDecision}
                     />
                   
   ) : null;
@@ -1258,7 +1236,7 @@ export function MyWorkCasesWorkspace() {
                   onComplete={() => runAsync(() => handleArchiveCaseItem(detailItem))}
                   onDelete={() => setDeleteConfirmItemId(detailItem.id)}
                   ballPanel={ballPanelNode}
-                  quickActions={ballPanelNode ? <CaseItemQuickActions {...(ballPanelNode.props as ComponentProps<typeof CaseItemQuickActions>)} /> : null}
+                  quickActions={ballPanelNode ? <CaseItemQuickActions {...(ballPanelNode.props as ComponentProps<typeof CaseItemQuickActions>)} workflow={workflow} /> : null}
                   summary={getItemDescription(detailItem)}
                   detailPanel={
                     <CaseItemDetailPanel
@@ -1361,6 +1339,7 @@ export function MyWorkCasesWorkspace() {
               const { error } = await supabase.from("case_items").update({ meeting_id: meetingId, pending_for_jour_fixe: false }).eq("id", meetingSelectorItemId);
               if (error) { notify.error("Fehler beim Zuordnen."); return; }
               setCaseItems((prev) => prev.map((i) => i.id === meetingSelectorItemId ? { ...i, meeting_id: meetingId, pending_for_jour_fixe: false } as CaseItem : i));
+              void queryClient.invalidateQueries({ queryKey: ["case-workflow"] });
               notify.success(`Vorgang dem Meeting "${meetingTitle}" zugeordnet.`);
               const jfItem = caseItems.find((i) => i.id === meetingSelectorItemId);
               if (jfItem) await logSystemEvent(jfItem, "Auf Jour fixe gesetzt", meetingTitle);
@@ -1370,6 +1349,7 @@ export function MyWorkCasesWorkspace() {
               const { error } = await supabase.from("case_items").update({ pending_for_jour_fixe: true }).eq("id", meetingSelectorItemId);
               if (error) { notify.error("Fehler beim Vormerken."); return; }
               setCaseItems((prev) => prev.map((i) => i.id === meetingSelectorItemId ? { ...i, pending_for_jour_fixe: true } as CaseItem : i));
+              void queryClient.invalidateQueries({ queryKey: ["case-workflow"] });
               notify.success("Vorgang für Jour Fixe vorgemerkt.");
               const jfItem = caseItems.find((i) => i.id === meetingSelectorItemId);
               if (jfItem) await logSystemEvent(jfItem, "Für nächsten Jour fixe vorgemerkt");
