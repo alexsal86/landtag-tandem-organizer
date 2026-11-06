@@ -72,7 +72,13 @@ export function useDaySlipStore(userId: string, tenantId: string) {
       if (done) stamp.checkedAt ??= new Date().toISOString(); else delete stamp.checkedAt;
       return { ...day, struckLineIds: [...struck], lineTimestamps: { ...day.lineTimestamps, [lineId]: stamp }, resolved: done ? day.resolved : day.resolved?.filter(item => item.lineId !== lineId || item.persisted) };
     }, false, key);
-  }, [changeDay, todayKey]);
+    const source = storeRef.current[key]?.sources?.[lineId];
+    if (done && source?.type === "case" && source.nextActionLabel) {
+      void supabase.from("case_items").update({ next_action_label: null, next_action_due_at: null })
+        .eq("id", source.id).eq("next_action_label", source.nextActionLabel)
+        .then(({ error }) => { if (error) debugConsole.error("Nächster Schritt konnte nicht erledigt werden", error); });
+    }
+  }, [changeDay, todayKey, storeRef]);
   const toggleStrike = useCallback((lineId: string) => {
     const day = storeRef.current[todayKey];
     setLineDone(lineId, !(day?.struckLineIds ?? day?.struckLines ?? []).includes(lineId));

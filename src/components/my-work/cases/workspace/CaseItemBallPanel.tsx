@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CalendarDays, ClipboardList, Zap } from "lucide-react";
+import { CalendarDays, ClipboardList, Mail, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,11 +21,15 @@ type Props = {
   teamUsers: TeamUser[];
   onChange: (patch: BallPatch) => void;
   onOpenMeetingSelector: () => void;
+  onCreateLetter: () => Promise<void>;
+  /** "dock" = vertical layout for the right-hand third zone. */
+  variant?: "bar" | "dock";
 };
 
 const NONE = "__none__";
 
-export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange, onOpenMeetingSelector }: Props) {
+export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange, onOpenMeetingSelector, onCreateLetter, variant = "bar" }: Props) {
+  const [creatingLetter, setCreatingLetter] = useState(false);
   const [label, setLabel] = useState(item.next_action_label ?? "");
   useEffect(() => setLabel(item.next_action_label ?? ""), [item.id, item.next_action_label]);
 
@@ -42,7 +46,7 @@ export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange
   };
 
   return (
-    <div className="shrink-0 space-y-3 border-b bg-muted/20 px-4 py-3">
+    <div className={cn("shrink-0 space-y-3", variant === "bar" ? "border-b bg-muted/20 px-4 py-3" : "p-4 [&_.case-actions]:ml-0 [&_.case-actions]:w-full [&_.case-actions]:flex-col [&_.case-actions]:items-stretch [&_.case-actions_button]:justify-start")}>
       <div className="flex flex-wrap items-center gap-2">
         <span className="section-label">Am Zug</span>
         {BALL_OWNERS.map((b) => (
@@ -62,7 +66,7 @@ export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_150px_170px]">
+      <div className={cn("grid grid-cols-1 gap-2", variant === "bar" && "md:grid-cols-[1fr_150px_170px]")}>
         <Input
           value={label}
           onChange={(e) => setLabel(e.target.value)}
@@ -112,11 +116,17 @@ export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange
             Übergeben von {userName(lastHandover.handed_over_by)} an {userName(lastHandover.to_user_id)} · {format(new Date(lastHandover.handed_over_at), "dd.MM. HH:mm", { locale: de })}
           </span>
         )}
-        <div className="ml-auto flex items-center gap-1">
+        <div className="case-actions ml-auto flex items-center gap-1">
+          <Button
+            type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs text-muted-foreground" disabled={creatingLetter}
+            onClick={async () => { setCreatingLetter(true); try { await onCreateLetter(); } finally { setCreatingLetter(false); } }}
+          >
+            <Mail className="h-3.5 w-3.5" />{creatingLetter ? "Lege an…" : "Brief aufsetzen"}
+          </Button>
           <Button
             type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs text-muted-foreground"
             disabled={!label.trim()}
-            onClick={() => sendToDaySlip({ text: `${label.trim()} [${subject}]`, source: { type: "case", id: item.id } })}
+            onClick={() => sendToDaySlip({ text: `${label.trim()} [${subject}]`, source: { type: "case", id: item.id, nextActionLabel: label.trim() } })}
           >
             <Zap className="h-3.5 w-3.5" />Auf Tageszettel
           </Button>

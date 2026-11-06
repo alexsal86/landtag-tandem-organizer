@@ -32,7 +32,7 @@ type CaseItemListProps = {
   onTriageFilterChange: (value: TriageFilter) => void;
   triageCounts: Record<TriageFilter, number>;
   handleBallChange: (item: CaseItem, patch: BallPatch) => Promise<void>;
-  onOpenHandover: () => void;
+  onOpenHandover?: () => void;
   caseFilesById: Record<string, CaseFile>;
   allCaseFiles: CaseFile[];
   detailItemId: string | null;
@@ -86,10 +86,12 @@ export function CaseItemList(props: CaseItemListProps) {
             <h3 className="text-lg font-semibold tracking-tight text-primary">Vorgangsliste</h3>
             <p className="text-sm text-muted-foreground">Übersicht und schneller Zugriff</p>
           </div>
-          <Button variant="ghost" size="sm" className="ml-auto text-muted-foreground" onClick={props.onOpenHandover} title="Offene Vorgänge an eine Vertretung übergeben">
-            Vertretung
-          </Button>
-          <Button variant="outline" size="sm" onClick={props.onOpenArchive}>
+          {props.onOpenHandover && (
+            <Button variant="ghost" size="sm" className="ml-auto text-muted-foreground" onClick={props.onOpenHandover} title="Offene Vorgänge an eine Vertretung übergeben">
+              Vertretung
+            </Button>
+          )}
+          <Button variant="outline" size="sm" className={props.onOpenHandover ? "" : "ml-auto"} onClick={props.onOpenArchive}>
             Archiv
           </Button>
         </div>
