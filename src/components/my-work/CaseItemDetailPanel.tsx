@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -22,6 +23,7 @@ type TimelineEntry = {
   id: string;
   timestamp: string;
   title: string;
+  href?: string;
   safeNoteHtml?: string;
   documents?: TimelineDocumentAttachment[];
   accentClass: string;
@@ -401,7 +403,7 @@ export function CaseItemDetailPanel({
                             </HoverCardContent>
                           </HoverCard>
                         ) : (
-                          <span className={cn("font-bold leading-4 text-foreground", isFrist && "text-palette-amber")}>{entry.title}</span>
+                          entry.href ? <Link to={entry.href} className="font-bold leading-4 text-foreground hover:underline">{entry.title}</Link> : <span className={cn("font-bold leading-4 text-foreground", isFrist && "text-palette-amber")}>{entry.title}</span>
                         )}
 
                         <span aria-hidden="true" className="text-muted-foreground">·</span>

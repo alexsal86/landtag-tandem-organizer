@@ -11,7 +11,7 @@ export type WorkflowMeeting = {
   id: string; title: string; meeting_date: string; status: string; updated_at: string;
 };
 export type WorkflowAgenda = { id: string; meeting_id: string; result_text: string | null; updated_at: string };
-export type WorkflowEvent = { id: string; title: string; note?: string; timestamp: string };
+export type WorkflowEvent = { id: string; title: string; note?: string; timestamp: string; actorName?: string; href?: string };
 
 export function meetingOutcome(resultText: string | null, itemId: string): { completed: boolean; result: string } {
   try {

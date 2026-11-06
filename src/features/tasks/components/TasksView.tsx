@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { debugConsole } from '@/utils/debugConsole';
 import { normalizeTaskAssigneeIds, serializeLegacyTaskAssignees, syncTaskAssignees } from "@/lib/taskAssignees";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { Plus, Filter, Archive, AlarmClock, Calendar, User, ChevronDown, ChevronRight, ListTodo, Paperclip, StickyNote, MessageCircle, Edit2, Trash2, Check, X, Send, Download } from "lucide-react";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
@@ -219,6 +219,7 @@ export function TasksView() {
                             <h3 className="font-medium text-foreground text-lg">{cleanTaskTitle || task.title}</h3>
                             {cleanTaskDescription && <RichTextDisplay content={cleanTaskDescription} className="mt-1 leading-relaxed" />}
                             {taskSourceLetterId && <div className="mt-2"><LetterSourceLink letterId={taskSourceLetterId} /></div>}
+                            {task.source_type === 'case_step' && task.source_id && <div className="mt-2"><Link to={`/mywork?tab=cases&caseItemId=${task.source_id}`} onClick={(event) => event.stopPropagation()} className="text-xs text-primary hover:underline">Zum verknüpften Vorgang →</Link></div>}
                             {task.source_type === 'appointment_feedback' && task.source_id && (
                               <div className="mt-2"><Button variant="link" className="h-auto px-0 text-xs" onClick={(e) => { e.stopPropagation(); window.location.href = buildFeedbackBackLink(task.source_id!); }}>aus Rückmeldung erstellt</Button></div>
                             )}

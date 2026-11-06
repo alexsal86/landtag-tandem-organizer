@@ -507,6 +507,7 @@ export function MyWorkCasesWorkspace() {
       () => supabase.from("case_items").update({ ...autoPatch, ...(intakePayload ? { intake_payload: intakePayload as unknown as TablesUpdate<"case_items">["intake_payload"] } : {}) }).eq("id", item.id),
       "Änderung konnte nicht gespeichert werden.",
     );
+    if (ok) void queryClient.invalidateQueries({ queryKey: ["case-workflow"] });
     if (ok && systemEvents.length && detailItemId === item.id) setEditableCaseItem((prev) => prev ? { ...prev, timelineEvents: [...prev.timelineEvents, ...systemEvents] } : prev);
     if (ok && patch.ball_owner) notify.success(`Am Zug: ${ballMeta(patch.ball_owner).label}${patch.next_action_due_at && !rawPatch.next_action_due_at ? " · Fristvorschlag gesetzt" : ""}`);
   };
@@ -954,7 +955,7 @@ export function MyWorkCasesWorkspace() {
     })));
 
     entries.push(...(workflow.data?.events ?? []).map((event) => ({
-      ...event, actorName: responsibleName, safeNoteHtml: sanitizeTimelineNote(event.note), accentClass: "bg-muted-foreground/60", icon: History, isSystem: true,
+      ...event, actorName: event.actorName ?? responsibleName, safeNoteHtml: sanitizeTimelineNote(event.note), accentClass: "bg-muted-foreground/60", icon: History, isSystem: true,
     })));
 
     return entries.sort((a, b) => toTimeSafe(a.timestamp) - toTimeSafe(b.timestamp));

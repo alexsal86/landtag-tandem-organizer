@@ -100,6 +100,9 @@ export function CaseItemQuickActions({ item, subject, onOpenMeetingSelector, onC
         onClick={() => openAppointmentRequestCreate({ caseItemId: item.id, title: `Ortstermin: ${subject}`, notes: label || undefined, channel: "case" })}>
         <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />Ortstermin anfragen
       </Button>}
+      {data?.tasks.filter((task) => !["completed", "cancelled"].includes(task.status)).map((task) => <Link key={task.id} to={`/tasks?highlight=${task.id}`} className="flex items-center gap-2 px-2 py-1.5 text-sm text-primary hover:underline">
+        <ClipboardList className="h-4 w-4 shrink-0" /><span>Aufgabe: {task.title}</span>
+      </Link>)}
       <TaskDecisionDetails decisionId={decisionId} isOpen={!!decisionId} onClose={() => { setDecisionId(null); void workflow.refetch(); }} />
 
     </div>

@@ -5,6 +5,7 @@ export type TimelineEntry = {
   id: string;
   timestamp: string;
   title: string;
+  href?: string;
   actorName?: string;
   isSystem?: boolean;
   note?: string;
