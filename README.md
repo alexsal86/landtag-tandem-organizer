@@ -184,8 +184,15 @@ npm run coverage:thresholds:block
 # Security-Hygiene-Checks
 npm run check:security-hygiene
 
-# Optionaler E2E-Smoke-Check
-npm run test:e2e-smoke
+# Selbsttest-Center: Runner, Oberfläche und gemeinsame Fachfunktionen
+npm run test:selftest
+npm run check:selftest-coverage
+
+# Speichersimulationen (keine Browser- oder Backendprüfung)
+npm run test:model-smoke
+
+# Echte Browsertests (Installation und Live-Konfiguration siehe Dokumentation)
+npm run test:e2e -- --project=public
 ```
 
 - Framework: **Vitest** + **@testing-library/react**
@@ -193,6 +200,8 @@ npm run test:e2e-smoke
 - Supabase-Client wird per `vi.mock('@/integrations/supabase/client')` gemockt
 - Coverage-Schwellenwerte sind stufenweise: in Pull Requests zunächst **warnend**, auf `main`/`master` **blockierend**.
 - Kritische Module (z. B. Sanitizer und Error-Handling) haben höhere Mindest-Coverage als globale Basiswerte.
+
+Das [Selbsttest-Center](docs/selftest-center.md) dokumentiert Prüfumfang, Testdaten-Cleanup, Browser-Läufe und die noch offenen Fachbereiche.
 
 ---
 

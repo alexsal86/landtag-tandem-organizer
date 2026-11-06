@@ -1,298 +1,337 @@
-# Selbsttest-Coverage
+# Selbsttest-Abdeckung
 
-_Auto-generiert von `scripts/check-selftest-coverage.mjs`. Nicht von Hand bearbeiten._
+_Auto-generiert mit `npm run update:selftest-coverage`._
+
+Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
+
+Von 267 Tabellen haben 29 ein registriertes Szenario. 82 sind als Ausbau offen, 156 ausgenommen und 0 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
-| ID | Titel | Features | Tabellen |
-|---|---|---|---|
-| `appointment-lifecycle` | Termin-Lifecycle (Kalender + Briefing + Feedback) | appointments, briefings | appointments, appointment_preparations, appointment_feedback |
-| `appointment-request-lifecycle` | Terminanfragen-Lifecycle (Eingang → Sperre → Entscheidung → Termin) | appointment-requests, appointments | appointment_requests, appointments |
-| `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | case-items, decisions, dayslip, appointment-requests | case_items, case_item_interactions, case_item_handover_log, task_decisions, task_decision_participants, task_decision_responses, appointment_requests, day_slips |
-| `contact-lifecycle` | Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche) | contacts | contacts, contact_activities |
-| `daily-briefing-lifecycle` | Tages-Briefings (Vortag-Regel) | briefings | daily_briefings |
-| `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | dayslip | day_slips |
-| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | decisions | task_decisions, task_decision_participants |
-| `event-planning-lifecycle` | Event-Planung (komplett: Termine, Speaker, Checkliste, Timeline) | event-planning | event_plannings, event_planning_dates, event_planning_speakers, event_planning_contacts, event_planning_checklist_items, event_planning_timeline_assignments |
-| `letter-lifecycle` | Brief-Lifecycle (Entwurf → Prüfung → Genehmigt → Versendet) | letters, decisions | letters, letter_attachments, task_decisions |
-| `meeting-lifecycle` | Meeting-Lifecycle (vollständig + Field-Verifikation) | meetings, appointments, tasks | meetings, meeting_agenda_items, meeting_agenda_documents, meeting_participants, appointments, tasks |
-| `quick-note-lifecycle` | Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv) | quick-notes, tasks | quick_notes, tasks |
-| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | tasks, decisions | tasks, task_decisions |
-
-## Tabellen-Coverage
-
-| Tabelle | Status | Szenario(en) |
+| ID | Titel | Tabellen |
 |---|---|---|
-| `admin_status_options` | ⚪ ignoriert | — |
-| `annual_task_completions` | ⚪ ignoriert | — |
-| `annual_tasks` | ⚪ ignoriert | — |
-| `app_settings` | ⚪ ignoriert | — |
-| `appointment_categories` | ⚪ ignoriert | — |
-| `appointment_contacts` | ⚪ ignoriert | — |
-| `appointment_documents` | ⚪ ignoriert | — |
-| `appointment_feedback` | ✅ getestet | appointment-lifecycle |
-| `appointment_feedback_settings` | ⚪ ignoriert | — |
-| `appointment_guests` | ⚪ ignoriert | — |
-| `appointment_locations` | ⚪ ignoriert | — |
-| `appointment_polls` | ⚪ ignoriert | — |
-| `appointment_preparation_documents` | ⚪ ignoriert | — |
-| `appointment_preparation_templates` | ⚪ ignoriert | — |
-| `appointment_preparations` | ✅ getestet | appointment-lifecycle |
-| `appointment_statuses` | ⚪ ignoriert | — |
-| `appointment_topics` | ⚪ ignoriert | — |
-| `appointments` | ✅ getestet | appointment-lifecycle, appointment-request-lifecycle, meeting-lifecycle |
-| `archived_tasks` | ⚪ ignoriert | — |
-| `audit_log_entries` | ⚪ ignoriert | — |
-| `automation_rate_limits` | ⚪ ignoriert | — |
-| `automation_rule_run_steps` | ⚪ ignoriert | — |
-| `automation_rule_runs` | ⚪ ignoriert | — |
-| `automation_rule_versions` | ⚪ ignoriert | — |
-| `automation_rules` | ⚪ ignoriert | — |
-| `calendar_sync_settings` | ⚪ ignoriert | — |
-| `call_logs` | ⚪ ignoriert | — |
-| `carryover_items` | ⚪ ignoriert | — |
-| `case_file_appointments` | ⚪ ignoriert | — |
-| `case_file_contacts` | ⚪ ignoriert | — |
-| `case_file_documents` | ⚪ ignoriert | — |
-| `case_file_letters` | ⚪ ignoriert | — |
-| `case_file_notes` | ⚪ ignoriert | — |
-| `case_file_participants` | ⚪ ignoriert | — |
-| `case_file_processing_statuses` | ⚪ ignoriert | — |
-| `case_file_status_history` | ⚪ ignoriert | — |
-| `case_file_tasks` | ⚪ ignoriert | — |
-| `case_file_timeline` | ⚪ ignoriert | — |
-| `case_file_topics` | ⚪ ignoriert | — |
-| `case_file_types` | ⚪ ignoriert | — |
-| `case_files` | ⚪ ignoriert | — |
-| `case_item_attachments` | ⚪ ignoriert | — |
-| `case_item_categories` | ⚪ ignoriert | — |
-| `case_item_escalation_suggestions` | ⚪ ignoriert | — |
-| `case_item_interactions` | ✅ getestet | case-item-lifecycle |
-| `case_item_participants` | ⚪ ignoriert | — |
-| `case_item_timeline` | ⚪ ignoriert | — |
-| `case_items` | ✅ getestet | case-item-lifecycle |
-| `celebration_animations` | ⚪ ignoriert | — |
-| `celebration_settings` | ⚪ ignoriert | — |
-| `contact_activities` | ✅ getestet | contact-lifecycle |
-| `contact_topics` | ⚪ ignoriert | — |
-| `contact_usage_stats` | ⚪ ignoriert | — |
-| `contacts` | ✅ getestet | contact-lifecycle |
-| `daily_briefing_reads` | ⚪ ignoriert | — |
-| `daily_briefings` | ✅ getestet | daily-briefing-lifecycle |
-| `dashboard_layouts` | ⚪ ignoriert | — |
-| `day_slips` | ✅ getestet | case-item-lifecycle, day-slip-lifecycle |
-| `decision_archive_settings` | ⚪ ignoriert | — |
-| `decision_email_templates` | ⚪ ignoriert | — |
-| `decision_matrix_messages` | ⚪ ignoriert | — |
-| `default_appointment_guests` | ⚪ ignoriert | — |
-| `distribution_list_members` | ⚪ ignoriert | — |
-| `distribution_lists` | ⚪ ignoriert | — |
-| `district_notes` | ⚪ ignoriert | — |
-| `district_support_assignments` | ⚪ ignoriert | — |
-| `document_categories` | ⚪ ignoriert | — |
-| `document_contacts` | ⚪ ignoriert | — |
-| `document_folders` | ⚪ ignoriert | — |
-| `document_topics` | ⚪ ignoriert | — |
-| `documents` | ⚪ ignoriert | — |
-| `dossier_entries` | ⚪ ignoriert | — |
-| `dossier_links` | ⚪ ignoriert | — |
-| `dossier_position_versions` | ⚪ ignoriert | — |
-| `dossier_source_watchers` | ⚪ ignoriert | — |
-| `dossier_stakeholders` | ⚪ ignoriert | — |
-| `dossier_talking_points` | ⚪ ignoriert | — |
-| `dossiers` | ⚪ ignoriert | — |
-| `election_district_municipalities` | ⚪ ignoriert | — |
-| `election_district_notes` | ⚪ ignoriert | — |
-| `election_districts` | ⚪ ignoriert | — |
-| `election_representatives` | ⚪ ignoriert | — |
-| `email_logs` | ⚪ ignoriert | — |
-| `email_templates` | ⚪ ignoriert | — |
-| `employee_meeting_action_items` | ⚪ ignoriert | — |
-| `employee_meeting_requests` | ⚪ ignoriert | — |
-| `employee_meetings` | ⚪ ignoriert | — |
-| `employee_settings` | ⚪ ignoriert | — |
-| `employee_settings_history` | ⚪ ignoriert | — |
-| `employee_yearly_stats` | ⚪ ignoriert | — |
-| `event_email_templates` | ⚪ ignoriert | — |
-| `event_planning_action_logs` | ⚪ ignoriert | — |
-| `event_planning_checklist_items` | ✅ getestet | event-planning-lifecycle |
-| `event_planning_collaborators` | ⚪ ignoriert | — |
-| `event_planning_contacts` | ✅ getestet | event-planning-lifecycle |
-| `event_planning_dates` | ✅ getestet | event-planning-lifecycle |
-| `event_planning_documents` | ⚪ ignoriert | — |
-| `event_planning_item_actions` | ⚪ ignoriert | — |
-| `event_planning_speakers` | ✅ getestet | event-planning-lifecycle |
-| `event_planning_timeline_assignments` | ✅ getestet | event-planning-lifecycle |
-| `event_plannings` | ✅ getestet | event-planning-lifecycle |
-| `event_rsvp_public_links` | ⚪ ignoriert | — |
-| `event_rsvps` | ⚪ ignoriert | — |
-| `expense_budgets` | ⚪ ignoriert | — |
-| `expense_categories` | ⚪ ignoriert | — |
-| `expenses` | ⚪ ignoriert | — |
-| `external_calendars` | ⚪ ignoriert | — |
-| `external_events` | ⚪ ignoriert | — |
-| `funding_participants` | ⚪ ignoriert | — |
-| `fundings` | ⚪ ignoriert | — |
-| `habit_completions` | ⚪ ignoriert | — |
-| `habits` | ⚪ ignoriert | — |
-| `information_blocks` | ⚪ ignoriert | — |
-| `karlsruhe_districts` | ⚪ ignoriert | — |
-| `knowledge_document_collaborators` | ⚪ ignoriert | — |
-| `knowledge_document_permissions` | ⚪ ignoriert | — |
-| `knowledge_document_snapshots` | ⚪ ignoriert | — |
-| `knowledge_document_topics` | ⚪ ignoriert | — |
-| `knowledge_document_versions` | ⚪ ignoriert | — |
-| `knowledge_documents` | ⚪ ignoriert | — |
-| `leave_requests` | ⚪ ignoriert | — |
-| `letter_archive_settings` | ⚪ ignoriert | — |
-| `letter_attachments` | ✅ getestet | letter-lifecycle |
-| `letter_collaborators` | ⚪ ignoriert | — |
-| `letter_comments` | ⚪ ignoriert | — |
-| `letter_occasions` | ⚪ ignoriert | — |
-| `letter_template_assets` | ⚪ ignoriert | — |
-| `letter_template_settings` | ⚪ ignoriert | — |
-| `letter_templates` | ⚪ ignoriert | — |
-| `letter_workflow_history` | ⚪ ignoriert | — |
-| `letters` | ✅ getestet | letter-lifecycle |
-| `login_customization` | ⚪ ignoriert | — |
-| `map_flag_topics` | ⚪ ignoriert | — |
-| `map_flag_types` | ⚪ ignoriert | — |
-| `map_flags` | ⚪ ignoriert | — |
-| `map_layers` | ⚪ ignoriert | — |
-| `map_routes` | ⚪ ignoriert | — |
-| `matrix_bot_logs` | ⚪ ignoriert | — |
-| `matrix_morning_settings` | ⚪ ignoriert | — |
-| `matrix_subscriptions` | ⚪ ignoriert | — |
-| `matrix_widget_callback_requests` | ⚪ ignoriert | — |
-| `matrix_widget_improvement_triggers` | ⚪ ignoriert | — |
-| `matrix_widget_message_feedback` | ⚪ ignoriert | — |
-| `meeting_agenda_documents` | ✅ getestet | meeting-lifecycle |
-| `meeting_agenda_items` | ✅ getestet | meeting-lifecycle |
-| `meeting_participants` | ✅ getestet | meeting-lifecycle |
-| `meeting_templates` | ⚪ ignoriert | — |
-| `meetings` | ✅ getestet | meeting-lifecycle |
-| `message_confirmations` | ⚪ ignoriert | — |
-| `message_recipients` | ⚪ ignoriert | — |
-| `messages` | ⚪ ignoriert | — |
-| `news_email_templates` | ⚪ ignoriert | — |
-| `notification_navigation_mapping` | ⚪ ignoriert | — |
-| `notification_types` | ⚪ ignoriert | — |
-| `notifications` | ⚪ ignoriert | — |
-| `parliament_protocols` | ⚪ ignoriert | — |
-| `party_associations` | ⚪ ignoriert | — |
-| `planning_item_comments` | ⚪ ignoriert | — |
-| `planning_item_documents` | ⚪ ignoriert | — |
-| `planning_item_subtasks` | ⚪ ignoriert | — |
-| `planning_templates` | ⚪ ignoriert | — |
-| `poll_notifications` | ⚪ ignoriert | — |
-| `poll_participants` | ⚪ ignoriert | — |
-| `poll_responses` | ⚪ ignoriert | — |
-| `poll_time_slots` | ⚪ ignoriert | — |
-| `poll_versions` | ⚪ ignoriert | — |
-| `pomodoro_sessions` | ⚪ ignoriert | — |
-| `press_releases` | ⚪ ignoriert | — |
-| `profiles` | ⚪ ignoriert | — |
-| `protocol_agenda_items` | ⚪ ignoriert | — |
-| `protocol_sessions` | ⚪ ignoriert | — |
-| `protocol_speeches` | ⚪ ignoriert | — |
-| `public_holidays` | ⚪ ignoriert | — |
-| `push_subscriptions` | ⚪ ignoriert | — |
-| `quick_note_global_shares` | ⚪ ignoriert | — |
-| `quick_note_shares` | ⚪ ignoriert | — |
-| `quick_note_versions` | ⚪ ignoriert | — |
-| `quick_notes` | ✅ getestet | quick-note-lifecycle |
-| `rss_cache` | ⚪ ignoriert | — |
-| `rss_settings` | ⚪ ignoriert | — |
-| `rss_sources` | ⚪ ignoriert | — |
-| `scheduled_emails` | ⚪ ignoriert | — |
-| `search_analytics` | ⚪ ignoriert | — |
-| `sender_information` | ⚪ ignoriert | — |
-| `sick_days` | ⚪ ignoriert | — |
-| `social_approval_comments` | ⚪ ignoriert | — |
-| `social_assets` | ⚪ ignoriert | — |
-| `social_campaigns` | ⚪ ignoriert | — |
-| `social_content_channels` | ⚪ ignoriert | — |
-| `social_content_item_channels` | ⚪ ignoriert | — |
-| `social_content_items` | ⚪ ignoriert | — |
-| `social_content_variants` | ⚪ ignoriert | — |
-| `social_hashtag_sets` | ⚪ ignoriert | — |
-| `social_planner_notes` | ⚪ ignoriert | — |
-| `starred_appointments` | ⚪ ignoriert | — |
-| `subtasks` | ⚪ ignoriert | — |
-| `tags` | ⚪ ignoriert | — |
-| `task_archive_settings` | ⚪ ignoriert | — |
-| `task_assignees` | ⚪ ignoriert | — |
-| `task_categories` | ⚪ ignoriert | — |
-| `task_comments` | ⚪ ignoriert | — |
-| `task_decision_attachments` | ⚪ ignoriert | — |
-| `task_decision_comment_reactions` | ⚪ ignoriert | — |
-| `task_decision_comments` | ⚪ ignoriert | — |
-| `task_decision_participants` | ✅ getestet | case-item-lifecycle, decision-lifecycle |
-| `task_decision_response_history` | ⚪ ignoriert | — |
-| `task_decision_responses` | ✅ getestet | case-item-lifecycle |
-| `task_decision_topics` | ⚪ ignoriert | — |
-| `task_decisions` | ✅ getestet | case-item-lifecycle, decision-lifecycle, letter-lifecycle, task-lifecycle |
-| `task_documents` | ⚪ ignoriert | — |
-| `task_snoozes` | ⚪ ignoriert | — |
-| `task_statuses` | ⚪ ignoriert | — |
-| `task_topics` | ⚪ ignoriert | — |
-| `tasks` | ✅ getestet | meeting-lifecycle, quick-note-lifecycle, task-lifecycle |
-| `team_announcement_dismissals` | ⚪ ignoriert | — |
-| `team_announcements` | ⚪ ignoriert | — |
-| `team_dashboard_members` | ⚪ ignoriert | — |
-| `team_dashboards` | ⚪ ignoriert | — |
-| `tenant_collaborations` | ⚪ ignoriert | — |
-| `tenants` | ⚪ ignoriert | — |
-| `time_entries` | ⚪ ignoriert | — |
-| `time_entry_corrections` | ⚪ ignoriert | — |
-| `time_entry_history` | ⚪ ignoriert | — |
-| `todo_categories` | ⚪ ignoriert | — |
-| `todos` | ⚪ ignoriert | — |
-| `topic_backlog` | ⚪ ignoriert | — |
-| `topics` | ⚪ ignoriert | — |
-| `user_mywork_settings` | ⚪ ignoriert | — |
-| `user_navigation_visits` | ⚪ ignoriert | — |
-| `user_notification_settings` | ⚪ ignoriert | — |
-| `user_planning_preferences` | ⚪ ignoriert | — |
-| `user_preferences` | ⚪ ignoriert | — |
-| `user_roles` | ⚪ ignoriert | — |
-| `user_sessions` | ⚪ ignoriert | — |
-| `user_status` | ⚪ ignoriert | — |
-| `user_tenant_memberships` | ⚪ ignoriert | — |
-| `vacation_checklist_responses` | ⚪ ignoriert | — |
-| `vacation_checklist_templates` | ⚪ ignoriert | — |
-| `vacation_history` | ⚪ ignoriert | — |
-| `widget_configurations` | ⚪ ignoriert | — |
-| `widget_rate_limits` | ⚪ ignoriert | — |
+| `access-boundaries` | Zugriffsschutz (Bürogrenzen und Entscheiderrolle) | appointment_requests |
+| `appointment-lifecycle` | Termin-Lifecycle (Kalender + Briefing + Feedback) | appointments, appointment_preparations, appointment_feedback |
+| `appointment-request-lifecycle` | Terminanfragen-Lifecycle (Eingang → Sperre → Entscheidung → Termin) | appointment_requests, appointments |
+| `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | case_items, case_item_interactions, case_item_handover_log, task_decisions, task_decision_participants, task_decision_responses, appointment_requests, day_slips, tasks |
+| `contact-lifecycle` | Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche) | contacts, contact_activities |
+| `daily-briefing-lifecycle` | Tages-Briefings (Vortag-Regel) | daily_briefings |
+| `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | day_slips |
+| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | task_decisions, task_decision_participants |
+| `event-planning-lifecycle` | Event-Planung (komplett: Termine, Speaker, Checkliste, Timeline) | event_plannings, event_planning_dates, event_planning_speakers, event_planning_contacts, event_planning_checklist_items, event_planning_timeline_assignments |
+| `letter-lifecycle` | Brief-Lifecycle (Entwurf → Prüfung → Freigabe → Archiv und Folgeaufgabe) | letters, letter_attachments, documents, tasks |
+| `meeting-lifecycle` | Meeting-Lifecycle (vollständig + Field-Verifikation) | meetings, meeting_agenda_items, meeting_agenda_documents, meeting_participants, appointments, tasks |
+| `quick-note-lifecycle` | Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv) | quick_notes, tasks |
+| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | tasks, task_decisions |
+| `workflow-rules` | Geschäftsregeln (Freigabe, Rollen, Fristen) | Keine (reine Regeln) |
 
-## Lücken
+## Tabellen
 
-_Keine — alle relevanten Tabellen sind abgedeckt._
+| Tabelle | Einordnung | Szenarien |
+|---|---|---|
+| `action_permissions` | Ausstehend | — |
+| `admin_status_options` | Ausgenommen (nicht geprüft) | — |
+| `annual_task_completions` | Ausstehend | — |
+| `annual_tasks` | Ausstehend | — |
+| `app_settings` | Ausgenommen (nicht geprüft) | — |
+| `appointment_categories` | Ausgenommen (nicht geprüft) | — |
+| `appointment_contacts` | Ausgenommen (nicht geprüft) | — |
+| `appointment_documents` | Ausgenommen (nicht geprüft) | — |
+| `appointment_feedback` | Szenario vorhanden | appointment-lifecycle |
+| `appointment_feedback_settings` | Ausgenommen (nicht geprüft) | — |
+| `appointment_guests` | Ausgenommen (nicht geprüft) | — |
+| `appointment_locations` | Ausgenommen (nicht geprüft) | — |
+| `appointment_polls` | Ausgenommen (nicht geprüft) | — |
+| `appointment_preparation_documents` | Ausgenommen (nicht geprüft) | — |
+| `appointment_preparation_templates` | Ausgenommen (nicht geprüft) | — |
+| `appointment_preparations` | Szenario vorhanden | appointment-lifecycle |
+| `appointment_requests` | Szenario vorhanden | access-boundaries, appointment-request-lifecycle, case-item-lifecycle |
+| `appointment_statuses` | Ausgenommen (nicht geprüft) | — |
+| `appointment_topics` | Ausgenommen (nicht geprüft) | — |
+| `appointments` | Szenario vorhanden | appointment-lifecycle, appointment-request-lifecycle, meeting-lifecycle |
+| `archived_tasks` | Ausstehend | — |
+| `audit_log_entries` | Ausgenommen (nicht geprüft) | — |
+| `automation_rate_limits` | Ausgenommen (nicht geprüft) | — |
+| `automation_rule_run_steps` | Ausgenommen (nicht geprüft) | — |
+| `automation_rule_runs` | Ausgenommen (nicht geprüft) | — |
+| `automation_rule_versions` | Ausgenommen (nicht geprüft) | — |
+| `automation_rules` | Ausstehend | — |
+| `bulk_action_audit` | Ausgenommen (nicht geprüft) | — |
+| `calendar_sync_settings` | Ausgenommen (nicht geprüft) | — |
+| `call_logs` | Ausstehend | — |
+| `carryover_items` | Ausstehend | — |
+| `case_file_appointments` | Ausgenommen (nicht geprüft) | — |
+| `case_file_contacts` | Ausgenommen (nicht geprüft) | — |
+| `case_file_documents` | Ausgenommen (nicht geprüft) | — |
+| `case_file_letters` | Ausgenommen (nicht geprüft) | — |
+| `case_file_notes` | Ausgenommen (nicht geprüft) | — |
+| `case_file_participants` | Ausgenommen (nicht geprüft) | — |
+| `case_file_processing_statuses` | Ausgenommen (nicht geprüft) | — |
+| `case_file_status_history` | Ausgenommen (nicht geprüft) | — |
+| `case_file_tasks` | Ausgenommen (nicht geprüft) | — |
+| `case_file_timeline` | Ausgenommen (nicht geprüft) | — |
+| `case_file_topics` | Ausgenommen (nicht geprüft) | — |
+| `case_file_types` | Ausgenommen (nicht geprüft) | — |
+| `case_files` | Ausstehend | — |
+| `case_item_attachments` | Ausstehend | — |
+| `case_item_categories` | Ausgenommen (nicht geprüft) | — |
+| `case_item_escalation_suggestions` | Ausgenommen (nicht geprüft) | — |
+| `case_item_handover_log` | Szenario vorhanden | case-item-lifecycle |
+| `case_item_interactions` | Szenario vorhanden | case-item-lifecycle |
+| `case_item_participants` | Ausgenommen (nicht geprüft) | — |
+| `case_item_timeline` | Ausgenommen (nicht geprüft) | — |
+| `case_items` | Szenario vorhanden | case-item-lifecycle |
+| `celebration_animations` | Ausgenommen (nicht geprüft) | — |
+| `celebration_settings` | Ausgenommen (nicht geprüft) | — |
+| `contact_activities` | Szenario vorhanden | contact-lifecycle |
+| `contact_briefing_memory` | Ausstehend | — |
+| `contact_topics` | Ausgenommen (nicht geprüft) | — |
+| `contact_usage_stats` | Ausgenommen (nicht geprüft) | — |
+| `contacts` | Szenario vorhanden | contact-lifecycle |
+| `daily_briefing_reads` | Ausstehend | — |
+| `daily_briefings` | Szenario vorhanden | daily-briefing-lifecycle |
+| `dashboard_layouts` | Ausgenommen (nicht geprüft) | — |
+| `data_lint_findings` | Ausgenommen (nicht geprüft) | — |
+| `day_slips` | Szenario vorhanden | case-item-lifecycle, day-slip-lifecycle |
+| `decision_archive_settings` | Ausgenommen (nicht geprüft) | — |
+| `decision_email_templates` | Ausgenommen (nicht geprüft) | — |
+| `decision_matrix_messages` | Ausgenommen (nicht geprüft) | — |
+| `default_appointment_guests` | Ausgenommen (nicht geprüft) | — |
+| `distribution_list_members` | Ausgenommen (nicht geprüft) | — |
+| `distribution_lists` | Ausstehend | — |
+| `district_notes` | Ausstehend | — |
+| `district_support_assignments` | Ausstehend | — |
+| `document_categories` | Ausgenommen (nicht geprüft) | — |
+| `document_contacts` | Ausgenommen (nicht geprüft) | — |
+| `document_folders` | Ausstehend | — |
+| `document_topics` | Ausgenommen (nicht geprüft) | — |
+| `documents` | Szenario vorhanden | letter-lifecycle |
+| `dossier_entries` | Ausstehend | — |
+| `dossier_links` | Ausgenommen (nicht geprüft) | — |
+| `dossier_position_versions` | Ausgenommen (nicht geprüft) | — |
+| `dossier_source_watchers` | Ausgenommen (nicht geprüft) | — |
+| `dossier_stakeholders` | Ausgenommen (nicht geprüft) | — |
+| `dossier_talking_points` | Ausgenommen (nicht geprüft) | — |
+| `dossiers` | Ausstehend | — |
+| `edge_function_cache` | Ausgenommen (nicht geprüft) | — |
+| `egress_anomalies` | Ausgenommen (nicht geprüft) | — |
+| `egress_metrics` | Ausgenommen (nicht geprüft) | — |
+| `election_district_municipalities` | Ausgenommen (nicht geprüft) | — |
+| `election_district_notes` | Ausgenommen (nicht geprüft) | — |
+| `election_districts` | Ausstehend | — |
+| `election_representatives` | Ausstehend | — |
+| `email_logs` | Ausgenommen (nicht geprüft) | — |
+| `email_templates` | Ausgenommen (nicht geprüft) | — |
+| `employee_meeting_action_items` | Ausstehend | — |
+| `employee_meeting_requests` | Ausstehend | — |
+| `employee_meetings` | Ausstehend | — |
+| `employee_settings` | Ausgenommen (nicht geprüft) | — |
+| `employee_settings_history` | Ausgenommen (nicht geprüft) | — |
+| `employee_yearly_stats` | Ausgenommen (nicht geprüft) | — |
+| `event_email_templates` | Ausgenommen (nicht geprüft) | — |
+| `event_planning_action_logs` | Ausgenommen (nicht geprüft) | — |
+| `event_planning_checklist_items` | Szenario vorhanden | event-planning-lifecycle |
+| `event_planning_collaborators` | Ausgenommen (nicht geprüft) | — |
+| `event_planning_contacts` | Szenario vorhanden | event-planning-lifecycle |
+| `event_planning_dates` | Szenario vorhanden | event-planning-lifecycle |
+| `event_planning_documents` | Ausgenommen (nicht geprüft) | — |
+| `event_planning_item_actions` | Ausgenommen (nicht geprüft) | — |
+| `event_planning_speakers` | Szenario vorhanden | event-planning-lifecycle |
+| `event_planning_timeline_assignments` | Szenario vorhanden | event-planning-lifecycle |
+| `event_plannings` | Szenario vorhanden | event-planning-lifecycle |
+| `event_rsvp_public_links` | Ausgenommen (nicht geprüft) | — |
+| `event_rsvps` | Ausgenommen (nicht geprüft) | — |
+| `expense_budgets` | Ausgenommen (nicht geprüft) | — |
+| `expense_categories` | Ausgenommen (nicht geprüft) | — |
+| `expenses` | Ausstehend | — |
+| `external_calendars` | Ausstehend | — |
+| `external_events` | Ausstehend | — |
+| `facts` | Ausstehend | — |
+| `field_permissions` | Ausstehend | — |
+| `funding_participants` | Ausgenommen (nicht geprüft) | — |
+| `fundings` | Ausstehend | — |
+| `gdpr_requests` | Ausstehend | — |
+| `habit_completions` | Ausstehend | — |
+| `habits` | Ausstehend | — |
+| `information_blocks` | Ausstehend | — |
+| `karlsruhe_districts` | Ausstehend | — |
+| `knowledge_document_collaborators` | Ausgenommen (nicht geprüft) | — |
+| `knowledge_document_permissions` | Ausgenommen (nicht geprüft) | — |
+| `knowledge_document_snapshots` | Ausgenommen (nicht geprüft) | — |
+| `knowledge_document_topics` | Ausgenommen (nicht geprüft) | — |
+| `knowledge_document_versions` | Ausgenommen (nicht geprüft) | — |
+| `knowledge_documents` | Ausstehend | — |
+| `leave_requests` | Ausstehend | — |
+| `letter_archive_settings` | Ausgenommen (nicht geprüft) | — |
+| `letter_attachments` | Szenario vorhanden | letter-lifecycle |
+| `letter_collaborators` | Ausgenommen (nicht geprüft) | — |
+| `letter_comments` | Ausgenommen (nicht geprüft) | — |
+| `letter_occasions` | Ausgenommen (nicht geprüft) | — |
+| `letter_template_assets` | Ausgenommen (nicht geprüft) | — |
+| `letter_template_settings` | Ausgenommen (nicht geprüft) | — |
+| `letter_templates` | Ausgenommen (nicht geprüft) | — |
+| `letter_workflow_history` | Ausgenommen (nicht geprüft) | — |
+| `letters` | Szenario vorhanden | letter-lifecycle |
+| `login_customization` | Ausgenommen (nicht geprüft) | — |
+| `map_flag_topics` | Ausgenommen (nicht geprüft) | — |
+| `map_flag_types` | Ausgenommen (nicht geprüft) | — |
+| `map_flags` | Ausstehend | — |
+| `map_layers` | Ausgenommen (nicht geprüft) | — |
+| `map_routes` | Ausstehend | — |
+| `matrix_bot_logs` | Ausgenommen (nicht geprüft) | — |
+| `matrix_morning_settings` | Ausgenommen (nicht geprüft) | — |
+| `matrix_subscriptions` | Ausgenommen (nicht geprüft) | — |
+| `matrix_widget_callback_requests` | Ausgenommen (nicht geprüft) | — |
+| `matrix_widget_improvement_triggers` | Ausgenommen (nicht geprüft) | — |
+| `matrix_widget_message_feedback` | Ausgenommen (nicht geprüft) | — |
+| `meeting_agenda_documents` | Szenario vorhanden | meeting-lifecycle |
+| `meeting_agenda_items` | Szenario vorhanden | meeting-lifecycle |
+| `meeting_participants` | Szenario vorhanden | meeting-lifecycle |
+| `meeting_templates` | Ausgenommen (nicht geprüft) | — |
+| `meetings` | Szenario vorhanden | meeting-lifecycle |
+| `message_confirmations` | Ausgenommen (nicht geprüft) | — |
+| `message_recipients` | Ausgenommen (nicht geprüft) | — |
+| `messages` | Ausstehend | — |
+| `mobile_push_tokens` | Ausgenommen (nicht geprüft) | — |
+| `news_email_templates` | Ausgenommen (nicht geprüft) | — |
+| `notification_navigation_mapping` | Ausgenommen (nicht geprüft) | — |
+| `notification_types` | Ausgenommen (nicht geprüft) | — |
+| `notifications` | Ausstehend | — |
+| `parliament_protocols` | Ausstehend | — |
+| `party_associations` | Ausstehend | — |
+| `planning_item_comments` | Ausgenommen (nicht geprüft) | — |
+| `planning_item_documents` | Ausgenommen (nicht geprüft) | — |
+| `planning_item_subtasks` | Ausgenommen (nicht geprüft) | — |
+| `planning_templates` | Ausgenommen (nicht geprüft) | — |
+| `poll_notifications` | Ausstehend | — |
+| `poll_participants` | Ausstehend | — |
+| `poll_responses` | Ausstehend | — |
+| `poll_time_slots` | Ausstehend | — |
+| `poll_versions` | Ausgenommen (nicht geprüft) | — |
+| `pomodoro_sessions` | Ausstehend | — |
+| `preparation_templates` | Ausgenommen (nicht geprüft) | — |
+| `press_releases` | Ausstehend | — |
+| `profiles` | Ausstehend | — |
+| `protocol_agenda_items` | Ausstehend | — |
+| `protocol_sessions` | Ausstehend | — |
+| `protocol_speeches` | Ausstehend | — |
+| `public_holidays` | Ausstehend | — |
+| `push_subscriptions` | Ausgenommen (nicht geprüft) | — |
+| `quick_note_global_shares` | Ausstehend | — |
+| `quick_note_shares` | Ausstehend | — |
+| `quick_note_versions` | Ausgenommen (nicht geprüft) | — |
+| `quick_note_write_receipts` | Ausgenommen (nicht geprüft) | — |
+| `quick_notes` | Szenario vorhanden | quick-note-lifecycle |
+| `rss_cache` | Ausgenommen (nicht geprüft) | — |
+| `rss_settings` | Ausgenommen (nicht geprüft) | — |
+| `rss_sources` | Ausgenommen (nicht geprüft) | — |
+| `scheduled_emails` | Ausstehend | — |
+| `search_analytics` | Ausgenommen (nicht geprüft) | — |
+| `security_audit_snapshots` | Ausgenommen (nicht geprüft) | — |
+| `selftest_runs` | Ausgenommen (nicht geprüft) | — |
+| `sender_information` | Ausstehend | — |
+| `sick_days` | Ausstehend | — |
+| `social_approval_comments` | Ausstehend | — |
+| `social_assets` | Ausstehend | — |
+| `social_campaigns` | Ausstehend | — |
+| `social_content_channels` | Ausstehend | — |
+| `social_content_item_channels` | Ausstehend | — |
+| `social_content_items` | Ausstehend | — |
+| `social_content_variants` | Ausstehend | — |
+| `social_hashtag_sets` | Ausstehend | — |
+| `social_planner_notes` | Ausstehend | — |
+| `starred_appointments` | Ausgenommen (nicht geprüft) | — |
+| `subtasks` | Ausstehend | — |
+| `superadmin_users` | Ausstehend | — |
+| `system_health` | Ausgenommen (nicht geprüft) | — |
+| `tags` | Ausgenommen (nicht geprüft) | — |
+| `task_archive_settings` | Ausgenommen (nicht geprüft) | — |
+| `task_assignees` | Ausgenommen (nicht geprüft) | — |
+| `task_categories` | Ausgenommen (nicht geprüft) | — |
+| `task_comments` | Ausgenommen (nicht geprüft) | — |
+| `task_decision_attachments` | Ausgenommen (nicht geprüft) | — |
+| `task_decision_comment_reactions` | Ausgenommen (nicht geprüft) | — |
+| `task_decision_comments` | Ausgenommen (nicht geprüft) | — |
+| `task_decision_participants` | Szenario vorhanden | case-item-lifecycle, decision-lifecycle |
+| `task_decision_response_history` | Ausgenommen (nicht geprüft) | — |
+| `task_decision_responses` | Szenario vorhanden | case-item-lifecycle |
+| `task_decision_topics` | Ausgenommen (nicht geprüft) | — |
+| `task_decisions` | Szenario vorhanden | case-item-lifecycle, decision-lifecycle, task-lifecycle |
+| `task_documents` | Ausgenommen (nicht geprüft) | — |
+| `task_snoozes` | Ausgenommen (nicht geprüft) | — |
+| `task_statuses` | Ausgenommen (nicht geprüft) | — |
+| `task_topics` | Ausgenommen (nicht geprüft) | — |
+| `tasks` | Szenario vorhanden | case-item-lifecycle, letter-lifecycle, meeting-lifecycle, quick-note-lifecycle, task-lifecycle |
+| `team_announcement_dismissals` | Ausgenommen (nicht geprüft) | — |
+| `team_announcements` | Ausstehend | — |
+| `team_dashboard_members` | Ausgenommen (nicht geprüft) | — |
+| `team_dashboards` | Ausstehend | — |
+| `tenant_collaborations` | Ausstehend | — |
+| `tenant_feature_flags` | Ausgenommen (nicht geprüft) | — |
+| `tenant_onboarding_checklist_items` | Ausstehend | — |
+| `tenant_onboarding_slides` | Ausstehend | — |
+| `tenants` | Ausgenommen (nicht geprüft) | — |
+| `time_entries` | Ausstehend | — |
+| `time_entry_corrections` | Ausgenommen (nicht geprüft) | — |
+| `time_entry_history` | Ausgenommen (nicht geprüft) | — |
+| `todo_categories` | Ausgenommen (nicht geprüft) | — |
+| `todos` | Ausstehend | — |
+| `topic_backlog` | Ausstehend | — |
+| `topics` | Ausstehend | — |
+| `user_mywork_settings` | Ausgenommen (nicht geprüft) | — |
+| `user_navigation_visits` | Ausgenommen (nicht geprüft) | — |
+| `user_notification_settings` | Ausgenommen (nicht geprüft) | — |
+| `user_onboarding_state` | Ausstehend | — |
+| `user_planning_preferences` | Ausgenommen (nicht geprüft) | — |
+| `user_preferences` | Ausgenommen (nicht geprüft) | — |
+| `user_roles` | Ausgenommen (nicht geprüft) | — |
+| `user_sessions` | Ausgenommen (nicht geprüft) | — |
+| `user_status` | Ausgenommen (nicht geprüft) | — |
+| `user_tenant_memberships` | Ausgenommen (nicht geprüft) | — |
+| `vacation_checklist_responses` | Ausstehend | — |
+| `vacation_checklist_templates` | Ausgenommen (nicht geprüft) | — |
+| `vacation_history` | Ausgenommen (nicht geprüft) | — |
+| `widget_configurations` | Ausgenommen (nicht geprüft) | — |
+| `widget_rate_limits` | Ausgenommen (nicht geprüft) | — |
+| `workflow_action_log` | Ausstehend | — |
+| `workflow_definitions` | Ausstehend | — |
+| `workflow_runs` | Ausstehend | — |
 
-## Spalten-Coverage (writes)
+## Deklarierte Schreibfelder
 
-| Tabelle | Getestete Spalten |
-|---|---|
-| `appointment_requests` | `channel`, `duration_minutes`, `location`, `notes`, `requested_date`, `requested_time`, `requester`, `tenant_id`, `title` |
-| `appointments` | `category`, `description`, `end_time`, `meeting_id`, `start_time`, `status`, `tenant_id`, `title`, `user_id` |
-| `case_item_handover_log` | `case_item_id`, `from_user_id`, `handed_over_by`, `tenant_id`, `to_user_id` |
-| `case_item_interactions` | `case_item_id`, `created_by`, `direction`, `interaction_at`, `interaction_type`, `summary`, `tenant_id`, `visibility` |
-| `case_items` | `ball_owner`, `completed_at`, `completion_note`, `intake_payload`, `next_action_assignee_id`, `next_action_due_at`, `next_action_label`, `pending_for_jour_fixe`, `resolution_summary`, `status`, `subject`, `summary`, `tenant_id`, `user_id` |
-| `contact_activities` | `activity_type`, `contact_id`, `created_by`, `description`, `tenant_id`, `title` |
-| `contacts` | `category`, `email`, `name`, `notes`, `organization`, `phone`, `tags`, `tenant_id`, `title`, `user_id` |
-| `day_slips` | `data`, `day_key`, `tenant_id`, `user_id` |
-| `event_planning_checklist_items` | `event_planning_id`, `is_completed`, `order_index`, `title`, `type` |
-| `event_planning_contacts` | `email`, `event_planning_id`, `name`, `phone`, `role` |
-| `event_planning_dates` | `date_time`, `event_planning_id`, `is_confirmed` |
-| `event_planning_speakers` | `bio`, `event_planning_id`, `name`, `order_index`, `topic` |
-| `event_planning_timeline_assignments` | `checklist_item_id`, `due_date`, `event_planning_id` |
-| `letter_attachments` | `file_name`, `file_path`, `file_size`, `file_type`, `letter_id`, `uploaded_by` |
-| `letters` | `approved_at`, `approved_by`, `content`, `content_html`, `created_by`, `letter_date`, `recipient_address`, `recipient_name`, `sent_at`, `sent_by`, `sent_date`, `sent_method`, `status`, `subject`, `submitted_for_review_at`, `submitted_for_review_by`, `submitted_to_user`, `tenant_id`, `title` |
-| `meeting_agenda_documents` | `file_name`, `file_path`, `file_size`, `file_type`, `meeting_agenda_item_id`, `user_id` |
-| `meeting_agenda_items` | `carried_over_from`, `carry_over_to_next`, `carryover_notes`, `description`, `is_completed`, `is_optional`, `is_recurring`, `is_visible`, `meeting_id`, `notes`, `order_index`, `original_meeting_date`, `original_meeting_title`, `parent_id`, `result_text`, `system_type`, `task_id`, `title` |
-| `meeting_participants` | `meeting_id`, `role`, `status`, `user_id` |
-| `meetings` | `description`, `is_public`, `is_recurring_instance`, `meeting_date`, `meeting_time`, `parent_meeting_id`, `status`, `tenant_id`, `title`, `user_id` |
-| `quick_notes` | `archived_at`, `category`, `color`, `content`, `is_archived`, `is_pinned`, `priority_level`, `tags`, `task_id`, `tenant_id`, `title`, `user_id` |
-| `task_decision_participants` | `decision_id`, `user_id` |
-| `task_decisions` | `archived_at`, `archived_by`, `case_item_id`, `created_by`, `description`, `priority`, `response_deadline`, `status`, `task_id`, `tenant_id`, `title`, `visible_to_all` |
-| `tasks` | `assigned_to`, `description`, `due_date`, `pending_for_jour_fixe`, `priority`, `progress`, `status`, `tenant_id`, `title`, `user_id` |
+Diese Manifeste sind keine Messung ausgeführter Assertions.
+
+- appointment-lifecycle: `appointments`: title, description, start_time, end_time, location, category, priority, status, is_all_day, user_id, tenant_id, reminder_minutes
+- appointment-lifecycle: `appointment_preparations`: appointment_id, tenant_id, created_by, title, status, preparation_data, checklist_items, notes
+- appointment-lifecycle: `appointment_feedback`: appointment_id, user_id, tenant_id, feedback_status, notes, event_type, completed_at
+- appointment-request-lifecycle: `appointment_requests`: title, tenant_id, requested_date, requested_time, duration_minutes, channel, requester, location, notes
+- case-item-lifecycle: `case_items`: subject, summary, user_id, tenant_id, status, ball_owner, next_action_label, next_action_due_at, next_action_assignee_id, intake_payload, pending_for_jour_fixe, completion_note, completed_at, resolution_summary
+- case-item-lifecycle: `case_item_interactions`: case_item_id, tenant_id, interaction_type, direction, interaction_at, summary, visibility, created_by
+- case-item-lifecycle: `case_item_handover_log`: case_item_id, tenant_id, from_user_id, to_user_id, handed_over_by
+- case-item-lifecycle: `task_decisions`: title, description, status, created_by, tenant_id, case_item_id
+- case-item-lifecycle: `appointment_requests`: title, tenant_id, requested_date, channel, notes
+- case-item-lifecycle: `day_slips`: user_id, tenant_id, day_key, data
+- contact-lifecycle: `contacts`: name, user_id, tenant_id, email, phone, organization, title, category, tags, notes
+- contact-lifecycle: `contact_activities`: contact_id, tenant_id, created_by, activity_type, title, description
+- daily-briefing-lifecycle: `daily_briefings`: tenant_id, author_id, briefing_date, title, content
+- day-slip-lifecycle: `day_slips`: user_id, tenant_id, day_key, data
+- decision-lifecycle: `task_decisions`: title, description, status, created_by, tenant_id, visible_to_all, priority, response_deadline, archived_at, archived_by
+- decision-lifecycle: `task_decision_participants`: decision_id, user_id
+- event-planning-lifecycle: `event_plannings`: title, description, location, background_info, is_private, is_digital, user_id, tenant_id
+- event-planning-lifecycle: `event_planning_dates`: event_planning_id, date_time, is_confirmed
+- event-planning-lifecycle: `event_planning_speakers`: event_planning_id, name, bio, topic, order_index
+- event-planning-lifecycle: `event_planning_contacts`: event_planning_id, name, email, phone, role
+- event-planning-lifecycle: `event_planning_checklist_items`: event_planning_id, title, is_completed, order_index, type
+- event-planning-lifecycle: `event_planning_timeline_assignments`: event_planning_id, checklist_item_id, due_date
+- letter-lifecycle: `letters`: title, subject, content, content_html, status, created_by, tenant_id, recipient_name, recipient_address, letter_date, submitted_for_review_at, submitted_for_review_by, approved_at, approved_by, sent_at, sent_by, sent_date, workflow_locked, archived_document_id
+- letter-lifecycle: `letter_attachments`: letter_id, file_name, file_path, file_type, file_size, uploaded_by
+- meeting-lifecycle: `meetings`: title, description, meeting_date, meeting_time, status, user_id, tenant_id, is_public, parent_meeting_id, is_recurring_instance
+- meeting-lifecycle: `meeting_agenda_items`: meeting_id, title, description, order_index, is_completed, is_recurring, system_type, is_visible, is_optional, parent_id, task_id, notes, result_text, carry_over_to_next, carryover_notes, carried_over_from, original_meeting_date, original_meeting_title
+- meeting-lifecycle: `meeting_agenda_documents`: meeting_agenda_item_id, user_id, file_name, file_path, file_type, file_size
+- meeting-lifecycle: `meeting_participants`: meeting_id, user_id, role, status
+- meeting-lifecycle: `appointments`: title, description, start_time, end_time, category, status, user_id, tenant_id, meeting_id
+- meeting-lifecycle: `tasks`: title, description, status, priority, user_id, tenant_id
+- quick-note-lifecycle: `quick_notes`: title, content, user_id, tenant_id, priority_level, color, category, tags, is_pinned, task_id, is_archived, archived_at
+- quick-note-lifecycle: `tasks`: title, description, user_id, tenant_id, status, priority
+- task-lifecycle: `tasks`: title, description, status, priority, user_id, tenant_id, assigned_to, due_date, progress, pending_for_jour_fixe
+- task-lifecycle: `task_decisions`: title, description, status, created_by, tenant_id, task_id

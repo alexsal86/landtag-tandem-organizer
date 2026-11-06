@@ -1,164 +1,113 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { TestScenario } from "../types";
+import { canTransitionStatus } from "@/components/letters/types";
+import { persistLetterTransition, uploadLetterAttachment } from "@/services/letterWorkflow";
+import type { TestScenario, TestStep } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
 import { describeError, expectFields } from "../verify";
 
 const tag = (run: string, label: string) => `${SELFTEST_PREFIX} ${label} (${run})`;
+const transition = (from: string, to: string, label: string): TestStep => ({
+  id: to, label, kind: "workflow",
+  run: async ctx => {
+    await persistLetterTransition(ctx.data.letterId as string, from, to, ctx.userId);
+    return expectFields("letters", ctx.data.letterId as string, { status: to }, label);
+  },
+});
 
 export const letterLifecycleScenario: TestScenario = {
   id: "letter-lifecycle",
-  title: "Brief-Lifecycle (Entwurf → Prüfung → Genehmigt → Versendet)",
-  description:
-    "Erstellt einen Brief, hängt eine Anlage an, durchläuft den Workflow draft → review → approved → sent inkl. verknüpfter Entscheidung. Jeder Schritt liest seine geschriebenen Felder zurück.",
-  touches: ["letters", "letter_attachments", "task_decisions"],
-  features: ["letters", "decisions"],
+  title: "Brief-Lifecycle (Entwurf → Prüfung → Freigabe → Archiv und Folgeaufgabe)",
+  description: "Lädt eine echte Testdatei hoch und nutzt die Funktionen des Briefeditors für Statuswechsel und Archivierung. Prüft danach Dokument, PDF und Folgeaufgabe.",
+  touches: ["letters", "letter_attachments", "documents", "tasks"], features: ["letters", "documents", "tasks"],
+  checks: ["Datei hochladen und wieder herunterladen", "Prüfung und Freigabe über Anwendungsfunktionen", "Archivfunktion erzeugt PDF, Dokument und Folgeaufgabe"],
+  limitations: ["Kein E-Mail-Versand an einen Empfänger", "Prüfung und Freigabe erfolgen mit dem aktuellen Konto", "Die Bedienung des Briefeditors wird separat getestet"],
   writes: [
-    { table: "letters", columns: ["title", "subject", "content", "content_html", "status", "created_by", "tenant_id", "letter_date", "recipient_name", "recipient_address", "submitted_for_review_at", "submitted_for_review_by", "submitted_to_user", "approved_at", "approved_by", "sent_at", "sent_by", "sent_method", "sent_date"] },
+    { table: "letters", columns: ["title", "subject", "content", "content_html", "status", "created_by", "tenant_id", "recipient_name", "recipient_address", "letter_date", "submitted_for_review_at", "submitted_for_review_by", "approved_at", "approved_by", "sent_at", "sent_by", "sent_date", "workflow_locked", "archived_document_id"] },
     { table: "letter_attachments", columns: ["letter_id", "file_name", "file_path", "file_type", "file_size", "uploaded_by"] },
-    { table: "task_decisions", columns: ["title", "description", "status", "created_by", "tenant_id", "visible_to_all"] },
   ],
+  collectArtifacts: async ctx => {
+    const id = ctx.data.letterId as string | undefined;
+    if (!id || !ctx.data.archiveAttempted) return;
+    const docs = await supabase.from("documents").select("id, file_path").eq("tenant_id", ctx.tenantId).eq("source_letter_id", id);
+    if (docs.error) throw new Error(docs.error.message);
+    for (const doc of docs.data ?? []) {
+      ctx.trackRecord({ table: "documents", id: doc.id });
+      if (doc.file_path) ctx.trackStorage({ bucket: "documents", path: doc.file_path });
+    }
+    const tasks = await supabase.from("tasks").select("id").eq("tenant_id", ctx.tenantId).eq("user_id", ctx.userId).ilike("title", `%${ctx.runId}%`);
+    if (tasks.error) throw new Error(tasks.error.message);
+    for (const task of tasks.data ?? []) ctx.trackRecord({ table: "tasks", id: task.id });
+    // Auch Uploads vor einem fehlgeschlagenen Dokument-INSERT finden.
+    const prefix = `letter_${tag(ctx.runId, "Brief").replace(/[^a-zA-Z0-9]/g, "_")}_`;
+    const files = await supabase.storage.from("documents").list("archived_letters", { search: prefix, limit: 100 });
+    if (files.error) throw new Error(files.error.message);
+    for (const file of files.data ?? []) {
+      if (file.name.startsWith(prefix)) ctx.trackStorage({ bucket: "documents", path: `archived_letters/${file.name}` });
+    }
+  },
   steps: [
     {
-      id: "create-letter",
-      label: "Brief anlegen (draft)",
-      run: async (ctx) => {
-        const payload = {
-          title: tag(ctx.runId, "Brief"),
-          subject: tag(ctx.runId, "Betreff"),
-          content: `${SELFTEST_MARKER} Inhalt`,
-          content_html: `<p>${SELFTEST_MARKER} Inhalt</p>`,
-          status: "draft",
-          created_by: ctx.userId,
-          tenant_id: ctx.tenantId,
-          letter_date: new Date().toISOString().slice(0, 10),
-        };
+      id: "create-letter", label: "Briefentwurf mit Empfänger anlegen",
+      run: async ctx => {
+        const payload = { title: tag(ctx.runId, "Brief"), subject: tag(ctx.runId, "Betreff"),
+          content: `${SELFTEST_MARKER} Testinhalt`, content_html: `<p>${SELFTEST_MARKER} Testinhalt</p>`,
+          status: "draft", created_by: ctx.userId, tenant_id: ctx.tenantId,
+          recipient_name: "Selbsttest Empfaenger", recipient_address: "Teststrasse 1\n76133 Karlsruhe", letter_date: new Date().toISOString().slice(0, 10) };
         const { data, error } = await supabase.from("letters").insert(payload).select("id").single();
         if (error || !data) return { ok: false, message: describeError(error) };
-        ctx.created.push({ table: "letters", id: data.id });
         ctx.data.letterId = data.id;
-        return expectFields("letters", data.id, payload, "Brief");
+        ctx.trackRecord({ table: "letters", id: data.id });
+        return expectFields("letters", data.id, payload, "Entwurf");
       },
     },
     {
-      id: "add-attachment",
-      label: "Anlage anhängen",
-      critical: false,
-      run: async (ctx) => {
-        const payload = {
-          letter_id: ctx.data.letterId as string,
-          file_name: tag(ctx.runId, "Anlage") + ".pdf",
-          file_path: `${ctx.userId}/selftest/letter-${ctx.runId}.pdf`,
-          file_type: "application/pdf",
-          file_size: 2048,
-          uploaded_by: ctx.userId,
-        };
-        const { data, error } = await supabase.from("letter_attachments").insert(payload).select("id").single();
-        if (error || !data) return { ok: false, message: describeError(error) };
-        ctx.created.push({ table: "letter_attachments", id: data.id });
-        return expectFields("letter_attachments", data.id, payload, "Anlage");
+      id: "invalid-transition", label: "Direkter Sprung vom Entwurf zu versendet ist verboten", kind: "logic",
+      run: async () => ({ ok: !canTransitionStatus("draft", "sent"), message: "Freigaberegel aus dem Briefeditor geprüft." }),
+    },
+    {
+      id: "attachment", label: "Echte Anlage hochladen und Inhalt zurücklesen", kind: "workflow",
+      run: async ctx => {
+        const content = `${SELFTEST_MARKER} Anlage ${ctx.runId}`;
+        const file = new File([content], "selbsttest.txt", { type: "text/plain" });
+        const attachment = await uploadLetterAttachment(file, ctx.data.letterId as string, ctx.userId,
+          path => ctx.trackStorage({ bucket: "documents", path }));
+        ctx.trackRecord({ table: "letter_attachments", id: attachment.id });
+        if (!attachment.file_path) return { ok: false, message: "Gespeicherter Dateipfad fehlt." };
+        const download = await supabase.storage.from("documents").download(attachment.file_path);
+        if (download.error || !download.data) return { ok: false, message: download.error?.message ?? "Anlage nicht lesbar." };
+        const actual = await download.data.text();
+        return { ok: actual === content, message: actual === content ? "Anlageninhalt unverändert." : "Anlageninhalt weicht ab.", details: { expected: content, actual } };
+      },
+    },
+    transition("draft", "review", "Zur Kollegenprüfung einreichen"),
+    transition("review", "pending_approval", "Nach Prüfung zur Freigabe einreichen"),
+    transition("pending_approval", "approved", "Brief freigeben"),
+    {
+      id: "archive", label: "Versandstatus, Archiv-PDF und Folgeaufgabe über Anwendungsfunktion", kind: "workflow",
+      run: async ctx => {
+        ctx.data.archiveAttempted = true;
+        const result = await persistLetterTransition(ctx.data.letterId as string, "approved", "sent", ctx.userId);
+        if (result.archive?.documentId) ctx.trackRecord({ table: "documents", id: result.archive.documentId });
+        if (result.archive?.followUpTaskId) ctx.trackRecord({ table: "tasks", id: result.archive.followUpTaskId });
+        ctx.data.documentId = result.archive?.documentId;
+        ctx.data.followUpTaskId = result.archive?.followUpTaskId;
+        if (!result.archive?.documentId || !result.archive.followUpTaskId) return { ok: false, message: "Archivdokument oder Folgeaufgabe fehlt.", details: result.archive };
+        return expectFields("letters", ctx.data.letterId as string, { status: "sent", workflow_locked: true, archived_document_id: result.archive.documentId, sent_by: ctx.userId }, "Archivierung");
       },
     },
     {
-      id: "set-recipient",
-      label: "Empfänger setzen",
-      run: async (ctx) => {
-        const id = ctx.data.letterId as string;
-        const update = {
-          recipient_name: `${SELFTEST_MARKER} Max Mustermann`,
-          recipient_address: `${SELFTEST_MARKER}\nMusterstraße 1\n12345 Musterstadt`,
-        };
-        const { error } = await supabase.from("letters").update(update).eq("id", id);
-        if (error) return { ok: false, message: describeError(error) };
-        return expectFields("letters", id, update, "Empfänger");
-      },
-    },
-    {
-      id: "submit-review",
-      label: "Zur Prüfung einreichen (review)",
-      run: async (ctx) => {
-        const id = ctx.data.letterId as string;
-        const update = {
-          status: "review",
-          submitted_for_review_at: new Date().toISOString(),
-          submitted_for_review_by: ctx.userId,
-          submitted_to_user: ctx.userId,
-        };
-        const { error } = await supabase.from("letters").update(update).eq("id", id);
-        if (error) return { ok: false, message: describeError(error) };
-        return expectFields("letters", id, update, "Review");
-      },
-    },
-    {
-      id: "approve",
-      label: "Genehmigen (approved)",
-      run: async (ctx) => {
-        const id = ctx.data.letterId as string;
-        const update = {
-          status: "approved",
-          approved_at: new Date().toISOString(),
-          approved_by: ctx.userId,
-        };
-        const { error } = await supabase.from("letters").update(update).eq("id", id);
-        if (error) return { ok: false, message: describeError(error) };
-        return expectFields("letters", id, update, "Approval");
-      },
-    },
-    {
-      id: "link-decision",
-      label: "Verknüpfte Entscheidung anlegen",
-      critical: false,
-      run: async (ctx) => {
-        const payload = {
-          title: tag(ctx.runId, "Brief-Entscheidung"),
-          description: `${SELFTEST_MARKER} Bitte freigeben`,
-          status: "active",
-          created_by: ctx.userId,
-          tenant_id: ctx.tenantId,
-          visible_to_all: false,
-        };
-        const { data, error } = await supabase.from("task_decisions").insert(payload).select("id").single();
-        if (error || !data) return { ok: false, message: describeError(error) };
-        ctx.created.push({ table: "task_decisions", id: data.id });
-        return expectFields("task_decisions", data.id, payload, "Brief-Entscheidung");
-      },
-    },
-    {
-      id: "send",
-      label: "Versenden (sent)",
-      run: async (ctx) => {
-        const id = ctx.data.letterId as string;
-        const update = {
-          status: "sent",
-          sent_at: new Date().toISOString(),
-          sent_by: ctx.userId,
-          sent_method: "email",
-          sent_date: new Date().toISOString().slice(0, 10),
-        };
-        const { error } = await supabase.from("letters").update(update).eq("id", id);
-        if (error) return { ok: false, message: describeError(error) };
-        return expectFields("letters", id, update, "Versand");
-      },
-    },
-    {
-      id: "verify",
-      label: "Verifikation",
-      run: async (ctx) => {
-        const letterId = ctx.data.letterId as string;
-        const [letter, atts] = await Promise.all([
-          supabase.from("letters").select("status, recipient_name, sent_at").eq("id", letterId).single(),
-          supabase.from("letter_attachments").select("id").eq("letter_id", letterId),
-        ]);
-        if (letter.error) return { ok: false, message: letter.error.message };
-        const ok =
-          letter.data?.status === "sent" &&
-          !!letter.data?.recipient_name &&
-          !!letter.data?.sent_at &&
-          (atts.data?.length ?? 0) >= 1;
-        return {
-          ok,
-          message: ok ? "Brief vollständig." : "Verifikation fehlgeschlagen.",
-          details: { status: letter.data?.status, attachments: atts.data?.length ?? 0 },
-        };
+      id: "verify-archive", label: "Archivdatei und Folgeaufgabe sind tatsächlich vorhanden",
+      run: async ctx => {
+        const doc = await supabase.from("documents").select("file_path, source_letter_id, tenant_id").eq("id", ctx.data.documentId as string).single();
+        if (doc.error || !doc.data?.file_path) return { ok: false, message: describeError(doc.error) };
+        ctx.trackStorage({ bucket: "documents", path: doc.data.file_path });
+        const download = await supabase.storage.from("documents").download(doc.data.file_path);
+        if (download.error || !download.data) return { ok: false, message: download.error?.message ?? "Archiv-PDF fehlt." };
+        const signature = new TextDecoder().decode((await download.data.arrayBuffer()).slice(0, 5));
+        if (signature !== "%PDF-") return { ok: false, message: "Archivdatei ist kein PDF." };
+        const task = await expectFields("tasks", ctx.data.followUpTaskId as string, { tenant_id: ctx.tenantId, user_id: ctx.userId, status: "todo" }, "Folgeaufgabe");
+        if (!task.ok) return task;
+        return expectFields("documents", ctx.data.documentId as string, { tenant_id: ctx.tenantId, source_letter_id: ctx.data.letterId }, "Archivdokument");
       },
     },
   ],

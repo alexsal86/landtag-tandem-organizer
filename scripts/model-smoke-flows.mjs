@@ -1,0 +1,334 @@
+import assert from 'node:assert/strict';
+
+const DEFAULT_RETRY_COUNT = Number.parseInt(process.env.E2E_SMOKE_RETRIES ?? '2', 10);
+const requestedSuite = process.env.MODEL_SMOKE_SUITE ?? process.env.E2E_SMOKE_SUITE ?? 'extended';
+console.log('Modell-Smoke: simulierte Abläufe im Arbeitsspeicher; keine Browser- oder Backendprüfung.');
+
+const FIXTURES = Object.freeze({
+  tenant: { id: 'tenant-smoke-001', name: 'Smoke Tenant' },
+  users: {
+    admin: { id: 'user-admin-001', email: 'admin-smoke@example.org', password: 'SmokePass!123', role: 'admin' },
+    staff: { id: 'user-staff-001', email: 'staff-smoke@example.org', password: 'SmokePass!123', role: 'staff' },
+  },
+  appointment: {
+    id: 'appointment-smoke-001',
+    title: 'SMOKE_TERMIN_001',
+    startsAtIso: '2030-01-15T09:00:00.000Z',
+  },
+  task: {
+    id: 'task-smoke-001',
+    title: 'SMOKE_AUFGABE_001',
+    initialStatus: 'offen',
+    nextStatus: 'erledigt',
+  },
+  letter: {
+    id: 'letter-smoke-001',
+    title: 'SMOKE_BRIEF_001',
+    initialStatus: 'draft',
+    reviewStatus: 'review',
+    approvedStatus: 'approved',
+    sentStatus: 'sent',
+  },
+  notification: {
+    id: 'notification-smoke-001',
+    title: 'SMOKE_BENACHRICHTIGUNG_001',
+  },
+});
+
+const createState = () => ({
+  sessions: new Map(),
+  users: new Map(Object.values(FIXTURES.users).map((u) => [u.email, u])),
+  tenants: new Map([[FIXTURES.tenant.id, FIXTURES.tenant]]),
+  tenantMemberships: new Map([
+    [FIXTURES.users.admin.id, new Set([FIXTURES.tenant.id])],
+    [FIXTURES.users.staff.id, new Set([FIXTURES.tenant.id])],
+  ]),
+  appointmentsByTenant: new Map(),
+  tasksByTenant: new Map(),
+  lettersByTenant: new Map(),
+  notificationsByUser: new Map(),
+});
+
+const setupTenantBucket = (state, tenantId) => {
+  if (!state.appointmentsByTenant.has(tenantId)) {
+    state.appointmentsByTenant.set(tenantId, []);
+  }
+  if (!state.tasksByTenant.has(tenantId)) {
+    state.tasksByTenant.set(tenantId, []);
+  }
+  if (!state.lettersByTenant.has(tenantId)) {
+    state.lettersByTenant.set(tenantId, []);
+  }
+};
+
+const clearFixtureRecords = (state, fixtures = FIXTURES) => {
+  setupTenantBucket(state, fixtures.tenant.id);
+
+  state.appointmentsByTenant.set(
+    fixtures.tenant.id,
+    state.appointmentsByTenant
+      .get(fixtures.tenant.id)
+      .filter((a) => a.id !== fixtures.appointment.id),
+  );
+
+  state.tasksByTenant.set(
+    fixtures.tenant.id,
+    state.tasksByTenant
+      .get(fixtures.tenant.id)
+      .filter((t) => t.id !== fixtures.task.id),
+  );
+
+  state.lettersByTenant.set(
+    fixtures.tenant.id,
+    state.lettersByTenant
+      .get(fixtures.tenant.id)
+      .filter((l) => l.id !== fixtures.letter.id),
+  );
+
+  state.notificationsByUser.clear();
+};
+
+const login = (state, email, password) => {
+  const user = state.users.get(email);
+  if (!user || user.password !== password) {
+    throw new Error('Ungültige Login-Daten');
+  }
+
+  const sessionToken = `session-${user.id}`;
+  state.sessions.set(sessionToken, { userId: user.id, tenantId: null });
+  return sessionToken;
+};
+
+const selectTenant = (state, sessionToken, tenantId) => {
+  const session = state.sessions.get(sessionToken);
+  if (!session) throw new Error('Session nicht gefunden');
+
+  const allowedTenants = state.tenantMemberships.get(session.userId) ?? new Set();
+  if (!allowedTenants.has(tenantId) || !state.tenants.has(tenantId)) {
+    throw new Error('Tenant-Auswahl nicht erlaubt');
+  }
+
+  session.tenantId = tenantId;
+  setupTenantBucket(state, tenantId);
+  return tenantId;
+};
+
+const requireTenant = (state, sessionToken) => {
+  const session = state.sessions.get(sessionToken);
+  if (!session) throw new Error('Session nicht gefunden');
+  if (!session.tenantId) throw new Error('Kein Tenant gewählt');
+  return { session, tenantId: session.tenantId };
+};
+
+const createAppointment = (state, sessionToken, payload) => {
+  const { tenantId } = requireTenant(state, sessionToken);
+  const entries = state.appointmentsByTenant.get(tenantId) ?? [];
+  const withoutFixture = entries.filter((a) => a.id !== payload.id);
+  const created = { ...payload, tenantId };
+  state.appointmentsByTenant.set(tenantId, [...withoutFixture, created]);
+  return created;
+};
+
+const listAppointments = (state, sessionToken) => {
+  const { tenantId } = requireTenant(state, sessionToken);
+  return state.appointmentsByTenant.get(tenantId) ?? [];
+};
+
+const createTask = (state, sessionToken, payload) => {
+  const { tenantId } = requireTenant(state, sessionToken);
+  const entries = state.tasksByTenant.get(tenantId) ?? [];
+  const withoutFixture = entries.filter((t) => t.id !== payload.id);
+  const created = { ...payload, tenantId };
+  state.tasksByTenant.set(tenantId, [...withoutFixture, created]);
+  return created;
+};
+
+const updateTaskStatus = (state, sessionToken, taskId, nextStatus) => {
+  const { tenantId } = requireTenant(state, sessionToken);
+  const tasks = state.tasksByTenant.get(tenantId) ?? [];
+  const nextTasks = tasks.map((task) =>
+    task.id === taskId ? { ...task, status: nextStatus } : task,
+  );
+  state.tasksByTenant.set(tenantId, nextTasks);
+  return nextTasks.find((task) => task.id === taskId);
+};
+
+const canAccessAdminArea = (state, sessionToken) => {
+  const session = state.sessions.get(sessionToken);
+  if (!session) return false;
+  for (const user of state.users.values()) {
+    if (user.id === session.userId) {
+      return user.role === 'admin';
+    }
+  }
+  return false;
+};
+
+const createLetter = (state, sessionToken, payload) => {
+  const { tenantId } = requireTenant(state, sessionToken);
+  const entries = state.lettersByTenant.get(tenantId) ?? [];
+  const withoutFixture = entries.filter((l) => l.id !== payload.id);
+  const created = { ...payload, tenantId };
+  state.lettersByTenant.set(tenantId, [...withoutFixture, created]);
+  return created;
+};
+
+const transitionLetterStatus = (state, sessionToken, letterId, nextStatus) => {
+  const { tenantId } = requireTenant(state, sessionToken);
+  const allowed = {
+    draft: ['review'],
+    review: ['approved', 'draft'],
+    approved: ['sent'],
+    sent: [],
+  };
+  const letters = state.lettersByTenant.get(tenantId) ?? [];
+  const letter = letters.find((l) => l.id === letterId);
+  if (!letter) throw new Error('Brief nicht gefunden');
+  if (!allowed[letter.status]?.includes(nextStatus)) {
+    throw new Error(`Unzulässiger Statuswechsel ${letter.status} -> ${nextStatus}`);
+  }
+  letter.status = nextStatus;
+  return letter;
+};
+
+const pushNotification = (state, userId, payload) => {
+  const list = state.notificationsByUser.get(userId) ?? [];
+  list.push({ ...payload, read: false });
+  state.notificationsByUser.set(userId, list);
+};
+
+const markAllNotificationsRead = (state, userId) => {
+  const list = state.notificationsByUser.get(userId) ?? [];
+  list.forEach((n) => { n.read = true; });
+  state.notificationsByUser.set(userId, list);
+  return list.filter((n) => !n.read).length;
+};
+
+const run = () => {
+  const state = createState();
+
+  const runtimeFixtureNamespace = process.env.GITHUB_RUN_ID ?? 'local';
+  const deterministicFixtures = {
+    ...FIXTURES,
+    appointment: {
+      ...FIXTURES.appointment,
+      id: `${FIXTURES.appointment.id}-${runtimeFixtureNamespace}`,
+      title: `${FIXTURES.appointment.title}-${runtimeFixtureNamespace}`,
+    },
+    task: {
+      ...FIXTURES.task,
+      id: `${FIXTURES.task.id}-${runtimeFixtureNamespace}`,
+      title: `${FIXTURES.task.title}-${runtimeFixtureNamespace}`,
+    },
+    letter: {
+      ...FIXTURES.letter,
+      id: `${FIXTURES.letter.id}-${runtimeFixtureNamespace}`,
+      title: `${FIXTURES.letter.title}-${runtimeFixtureNamespace}`,
+    },
+  };
+
+  const flowContext = { state, fixtures: deterministicFixtures };
+
+  const retryFlow = (name, flow) => {
+    for (let attempt = 1; attempt <= DEFAULT_RETRY_COUNT + 1; attempt += 1) {
+      try {
+        flow();
+        console.log(`✅ ${name} erfolgreich (Versuch ${attempt}/${DEFAULT_RETRY_COUNT + 1})`);
+        return;
+      } catch (error) {
+        const isLastAttempt = attempt > DEFAULT_RETRY_COUNT;
+        console.error(`⚠️ ${name} fehlgeschlagen (Versuch ${attempt}/${DEFAULT_RETRY_COUNT + 1}): ${error.message}`);
+        if (isLastAttempt) {
+          throw error;
+        }
+      }
+    }
+  };
+
+  const flows = {
+    loginAndTenantSelection: () => {
+      clearFixtureRecords(state, deterministicFixtures);
+      const adminSession = login(state, deterministicFixtures.users.admin.email, deterministicFixtures.users.admin.password);
+      flowContext.adminSession = adminSession;
+      const selectedTenantId = selectTenant(state, adminSession, deterministicFixtures.tenant.id);
+      assert.equal(selectedTenantId, deterministicFixtures.tenant.id, 'Admin-Tenant muss auswählbar sein.');
+    },
+    appointmentLifecycle: () => {
+      const appointment = createAppointment(state, flowContext.adminSession, deterministicFixtures.appointment);
+      assert.equal(appointment.title, deterministicFixtures.appointment.title, 'Termin-Titel muss korrekt gespeichert werden.');
+      const appointments = listAppointments(state, flowContext.adminSession);
+      assert.equal(
+        appointments.some((entry) => entry.id === deterministicFixtures.appointment.id),
+        true,
+        'Neu angelegter Termin muss in der Liste erscheinen.',
+      );
+    },
+    taskLifecycle: () => {
+      const task = createTask(state, flowContext.adminSession, {
+        id: deterministicFixtures.task.id,
+        title: deterministicFixtures.task.title,
+        status: deterministicFixtures.task.initialStatus,
+      });
+      assert.equal(task.status, deterministicFixtures.task.initialStatus, 'Neue Aufgabe muss im initialen Status starten.');
+
+      const updatedTask = updateTaskStatus(
+        state,
+        flowContext.adminSession,
+        deterministicFixtures.task.id,
+        deterministicFixtures.task.nextStatus,
+      );
+      assert.equal(updatedTask?.status, deterministicFixtures.task.nextStatus, 'Aufgaben-Statuswechsel muss persistiert sein.');
+    },
+    nonAdminAuthorization: () => {
+      const staffSession = login(state, deterministicFixtures.users.staff.email, deterministicFixtures.users.staff.password);
+      selectTenant(state, staffSession, deterministicFixtures.tenant.id);
+      assert.equal(canAccessAdminArea(state, staffSession), false, 'Nicht-Admin darf keinen Zugriff auf den Admin-Bereich erhalten.');
+    },
+    letterApprovalWorkflow: () => {
+      const letter = createLetter(state, flowContext.adminSession, {
+        id: deterministicFixtures.letter.id,
+        title: deterministicFixtures.letter.title,
+        status: deterministicFixtures.letter.initialStatus,
+      });
+      assert.equal(letter.status, 'draft', 'Brief startet im Status draft.');
+      const review = transitionLetterStatus(state, flowContext.adminSession, letter.id, 'review');
+      assert.equal(review.status, 'review', 'Brief muss in review wechseln.');
+      const approved = transitionLetterStatus(state, flowContext.adminSession, letter.id, 'approved');
+      assert.equal(approved.status, 'approved', 'Brief muss approved werden.');
+      const sent = transitionLetterStatus(state, flowContext.adminSession, letter.id, 'sent');
+      assert.equal(sent.status, 'sent', 'Brief muss versendet werden.');
+      assert.throws(
+        () => transitionLetterStatus(state, flowContext.adminSession, letter.id, 'draft'),
+        /Unzulässiger Statuswechsel/,
+        'Versendete Briefe dürfen nicht in draft zurückgesetzt werden.',
+      );
+    },
+    notificationsLifecycle: () => {
+      const adminId = deterministicFixtures.users.admin.id;
+      pushNotification(state, adminId, { id: 'n1', title: 'Brief freigeben' });
+      pushNotification(state, adminId, { id: 'n2', title: 'Aufgabe fällig' });
+      const unread = (state.notificationsByUser.get(adminId) ?? []).filter((n) => !n.read).length;
+      assert.equal(unread, 2, 'Es müssen 2 ungelesene Benachrichtigungen vorhanden sein.');
+      const remaining = markAllNotificationsRead(state, adminId);
+      assert.equal(remaining, 0, 'Nach markAllAsRead müssen 0 ungelesene übrig sein.');
+    },
+  };
+
+  const smokeRequiredFlowOrder = ['loginAndTenantSelection', 'appointmentLifecycle', 'taskLifecycle'];
+  const smokeExtendedFlowOrder = [
+    ...smokeRequiredFlowOrder,
+    'nonAdminAuthorization',
+    'letterApprovalWorkflow',
+    'notificationsLifecycle',
+  ];
+  const selectedFlowOrder = requestedSuite === 'required' ? smokeRequiredFlowOrder : smokeExtendedFlowOrder;
+
+  for (const flowName of selectedFlowOrder) {
+    retryFlow(flowName, flows[flowName]);
+  }
+
+  clearFixtureRecords(state, deterministicFixtures);
+  console.log(`Modell-Smoke-Flows erfolgreich (Suite: ${requestedSuite}).`);
+};
+
+run();

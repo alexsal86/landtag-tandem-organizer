@@ -1,3 +1,4 @@
+import { letterTransitionUpdates, persistLetterTransition } from "@/services/letterWorkflow";
 import { useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Letter, LetterTemplate } from '../types';
@@ -190,29 +191,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
       return;
     }
 
-    const now = new Date().toISOString();
-    const workflowUpdates: Partial<Letter> = { status: newStatus as Letter['status'] };
-
-    if (newStatus === 'pending_approval' && !editedLetter.workflow_locked) {
-      workflowUpdates.submitted_for_review_at = now;
-      workflowUpdates.submitted_for_review_by = userId;
-    }
-    if (newStatus === 'review' && !editedLetter.workflow_locked) {
-      workflowUpdates.submitted_for_review_at = now;
-      workflowUpdates.submitted_for_review_by = userId;
-    }
-    if (newStatus === 'approved' && !editedLetter.workflow_locked) {
-      workflowUpdates.approved_at = now;
-      workflowUpdates.approved_by = userId;
-    }
-    if (newStatus === 'sent') {
-      if (!editedLetter.workflow_locked) {
-        workflowUpdates.sent_at = now;
-        workflowUpdates.sent_by = userId;
-      }
-      workflowUpdates.workflow_locked = true;
-      workflowUpdates.sent_date = new Date().toISOString().split('T')[0];
-    }
+    const workflowUpdates = letterTransitionUpdates(editedLetter.status || 'draft', newStatus, userId!, !!editedLetter.workflow_locked);
 
     const isCreator = userId === letter?.created_by;
     // Open assignment dialog for review or approval
@@ -221,43 +200,32 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
       return;
     }
 
-    setEditedLetter(prev => ({ ...prev, ...workflowUpdates }));
-
     if (letter?.id) {
       try {
-        if (newStatus === 'sent') {
-          const { archiveLetter } = await import('@/utils/letterArchiving');
-          const archiveResult = await archiveLetter(letter.id, userId!);
-
-          if (!archiveResult.success) {
-            throw new Error(archiveResult.error || 'Die Archivierung konnte nicht abgeschlossen werden.');
-          }
-
-          setEditedLetter(prev => ({
-            ...prev,
-            ...workflowUpdates,
+        const result = await persistLetterTransition(letter.id, editedLetter.status || 'draft', newStatus, userId!, !!editedLetter.workflow_locked);
+        if (result.archive) {
+          const archiveResult = result.archive;
+          setEditedLetter(prev => ({ ...prev, ...result.updates,
             archived_document_id: archiveResult.documentId,
             archived_at: archiveResult.archivedAt,
             archived_by: archiveResult.archivedBy,
           }));
-
           notify.success('Brief versendet und archiviert', {
             description: archiveResult.followUpTaskId
               ? 'Brief wurde versendet, archiviert und mit Wiedervorlage versehen.'
               : 'Brief wurde versendet und automatisch in die Dokumentenverwaltung übernommen.'
-});
+          });
         } else {
-          const { error } = await supabase
-            .from('letters')
-            .update({ ...workflowUpdates, updated_at: now })
-            .eq('id', letter.id);
-          if (error) throw error;
+          setEditedLetter(prev => ({ ...prev, ...result.updates }));
         }
       } catch (error) {
         debugConsole.error('Error updating workflow tracking:', error);
         notify.error('Fehler beim Workflow-Update', { description: newStatus === 'sent' ? 'Der Brief konnte nicht versendet und archiviert werden.' : 'Die Workflow-Daten konnten nicht gespeichert werden.'
 });
+        return;
       }
+    } else {
+      setEditedLetter(prev => ({ ...prev, ...workflowUpdates }));
     }
 
     if (newStatus === 'review' || newStatus === 'pending_approval') setIsProofreadingMode(true);

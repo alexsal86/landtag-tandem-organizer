@@ -5,12 +5,19 @@ export interface CreatedRecord {
   id: string;
 }
 
+export interface StorageObject { bucket: string; path: string }
+
 export interface TestContext {
   runId: string;
   tenantId: string;
   userId: string;
   /** Alle erzeugten Datensätze in chronologischer Reihenfolge — Cleanup arbeitet rückwärts. */
   created: CreatedRecord[];
+  storageObjects: StorageObject[];
+  role?: string;
+  /** Sofort registrieren, damit auch ein unterbrochener Schritt aufräumbar bleibt. */
+  trackRecord: (record: CreatedRecord) => void;
+  trackStorage: (object: StorageObject) => void;
   /** Frei nutzbarer Speicher für Werte zwischen Steps. */
   data: Record<string, unknown>;
 }
@@ -27,7 +34,7 @@ export interface TestStep {
   /** Wenn true: Step muss erfolgreich sein, sonst werden weitere Steps übersprungen. */
   critical?: boolean;
   /** "logic" = prüft reine Regeln ohne Datenbank; Standard "db". */
-  kind?: "db" | "logic";
+  kind?: "db" | "logic" | "workflow";
   run: (ctx: TestContext) => Promise<StepResult>;
 }
 
@@ -39,6 +46,12 @@ export interface TestScenario {
   touches: string[];
   /** Domänen-Tags für UI-Badges, z.B. "letters", "case-items". */
   features: string[];
+  /** Tatsächlicher Prüfumfang, getrennt von einem erfolgreichen Testergebnis. */
+  checks?: string[];
+  limitations?: string[];
+  requiredRoles?: string[];
+  /** Von Triggern/Funktionen erzeugte Folgeobjekte auch bei Fehlern einsammeln. */
+  collectArtifacts?: (ctx: TestContext) => Promise<void>;
   /** Spalten-Coverage pro Tabelle — vom Coverage-Script ausgewertet. */
   writes?: Array<{ table: string; columns: string[] }>;
   /** Optional: Deep-Links nach erfolgreichem Lauf (Demo-Modus zeigt sie an). */
@@ -55,12 +68,19 @@ export interface StepRunState {
 }
 
 export interface ScenarioRunState {
+  runId: string;
+  tenantId: string;
+  userId: string;
   scenarioId: string;
-  status: "idle" | "running" | "ok" | "failed";
+  status: "idle" | "running" | "ok" | "failed" | "cancelled" | "blocked";
+  message?: string;
+  mode: "test" | "demo";
+  records: CreatedRecord[];
+  storageObjects: StorageObject[];
   steps: StepRunState[];
   startedAt?: number;
   finishedAt?: number;
-  cleanup: { status: StepStatus; message?: string; remaining?: CreatedRecord[] };
+  cleanup: { status: StepStatus; message?: string; remaining?: CreatedRecord[]; storageRemaining?: StorageObject[] };
   /** Im Demo-Modus gefüllt: Deep-Links zu den erzeugten Datensätzen. */
   links?: Array<{ label: string; href: string }>;
 }

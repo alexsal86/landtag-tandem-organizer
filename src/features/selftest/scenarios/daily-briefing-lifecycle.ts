@@ -38,7 +38,7 @@ export const dailyBriefingLifecycleScenario: TestScenario = {
         });
         if (!error) {
           const { data } = await supabase.from("daily_briefings").select("id").eq("tenant_id", ctx.tenantId).ilike("title", `%heute (muss scheitern) (${ctx.runId})%`);
-          data?.forEach((r) => ctx.created.push({ table: "daily_briefings", id: r.id }));
+          data?.forEach((r) => ctx.trackRecord({ table: "daily_briefings", id: r.id }));
           return { ok: false, message: "Briefing für heute wurde gespeichert — Vortag-Regel greift nicht." };
         }
         return { ok: true, message: "Abgelehnt wie erwartet." };
@@ -57,7 +57,7 @@ export const dailyBriefingLifecycleScenario: TestScenario = {
         };
         const { data, error } = await supabase.from("daily_briefings").insert(payload).select("id").single();
         if (error || !data) return { ok: false, message: describeError(error) };
-        ctx.created.push({ table: "daily_briefings", id: data.id });
+        ctx.trackRecord({ table: "daily_briefings", id: data.id });
         return expectFields("daily_briefings", data.id, payload, "Briefing morgen");
       },
     },
@@ -74,7 +74,7 @@ export const dailyBriefingLifecycleScenario: TestScenario = {
         };
         const { data, error } = await supabase.from("daily_briefings").insert(payload).select("id").single();
         if (error || !data) return { ok: false, message: describeError(error) };
-        ctx.created.push({ table: "daily_briefings", id: data.id });
+        ctx.trackRecord({ table: "daily_briefings", id: data.id });
         return expectFields("daily_briefings", data.id, payload, "Briefing übermorgen");
       },
     },

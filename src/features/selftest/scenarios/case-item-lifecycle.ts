@@ -9,6 +9,7 @@ import {
 } from "@/features/cases/items/ball";
 import { appendEntries, normalizeStore } from "@/components/dayslip/daySlipState";
 import { parseTimelineEvents } from "@/components/my-work/cases/workspace/utils/timeline";
+import { testDay } from "../fixtures";
 
 const tag = (run: string, label: string) => `${SELFTEST_PREFIX} ${label} (${run})`;
 const FIELDS = "ball_owner,next_action_label,next_action_due_at,next_action_assignee_id,intake_payload,status,pending_for_jour_fixe";
@@ -28,12 +29,13 @@ function events(row: Row) {
 async function applyBallPatch(ctx: TestContext, patch: Partial<TriageItem>, now = new Date()): Promise<{ titles: string[] }> {
   const id = ctx.data.caseItemId as string;
   const prev = await load(id);
-  const ev = ballChangeEvents(prev, patch, () => null, now);
+  const autoPatch = withAutoDeadline(prev, patch, now);
+  const ev = ballChangeEvents(prev, autoPatch, () => null, now);
   const payload = (prev.intake_payload ?? {}) as Record<string, unknown>;
   const existing = Array.isArray(payload.timeline_events) ? payload.timeline_events : [];
   const added = ev.map((e) => ({ id: crypto.randomUUID(), type: "system", title: e.title, note: e.note, actorName: "Selbsttest", timestamp: now.toISOString() }));
   const { error } = await supabase.from("case_items")
-    .update({ ...patch, intake_payload: { ...payload, timeline_events: [...existing, ...added] } as unknown as Json })
+    .update({ ...autoPatch, ball_owner: autoPatch.ball_owner ?? undefined, intake_payload: { ...payload, timeline_events: [...existing, ...added] } as unknown as Json })
     .eq("id", id);
   if (error) throw new Error(describeError(error));
   return { titles: ev.map((e) => e.title) };
@@ -50,8 +52,18 @@ export const caseItemLifecycleScenario: TestScenario = {
   title: "Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss)",
   description:
     "Durchläuft einen Vorgang so, wie das Büro ihn bearbeitet: Interaktionen, „Wer ist am Zug?“, Schritt festlegen, Wiedervorlage, Ministeriumsfrist, Übergabe, Entscheidung mit Abstimmung, Tageszettel-Link, Jour fixe, Ortstermin, Schritt erledigt und Abschluss. Regel-Schritte prüfen die Logik ohne Datenbank.",
-  touches: ["case_items", "case_item_interactions", "case_item_handover_log", "task_decisions", "task_decision_participants", "task_decision_responses", "appointment_requests", "day_slips"],
+  touches: ["case_items", "case_item_interactions", "case_item_handover_log", "task_decisions", "task_decision_participants", "task_decision_responses", "appointment_requests", "day_slips", "tasks"],
   features: ["case-items", "decisions", "dayslip", "appointment-requests"],
+  requiredRoles: ["abgeordneter", "bueroleitung"],
+  checks: ["Geschäftsregeln für Wiedervorlage und Fristen", "Übergabe über die Anwendungs-RPC", "Entscheidung und Abstimmung", "Tageszettel-Link nach erneutem Laden"],
+  limitations: ["Keine Bedienprüfung der Vorgangsoberfläche", "Übergabe benötigt eine zweite aktive Person im Büro"],
+  collectArtifacts: async (ctx) => {
+    const id = ctx.data.caseItemId as string | undefined;
+    if (!id) return;
+    const result = await supabase.from("tasks").select("id").eq("tenant_id", ctx.tenantId).eq("source_type", "case_step").eq("source_id", id);
+    if (result.error) throw new Error(result.error.message);
+    for (const task of result.data ?? []) ctx.trackRecord({ table: "tasks", id: task.id });
+  },
   writes: [
     { table: "case_items", columns: ["subject", "summary", "user_id", "tenant_id", "status", "ball_owner", "next_action_label", "next_action_due_at", "next_action_assignee_id", "intake_payload", "pending_for_jour_fixe", "completion_note", "completed_at", "resolution_summary"] },
     { table: "case_item_interactions", columns: ["case_item_id", "tenant_id", "interaction_type", "direction", "interaction_at", "summary", "visibility", "created_by"] },
@@ -85,11 +97,10 @@ export const caseItemLifecycleScenario: TestScenario = {
       id: "create", label: "Vorgang anlegen + Standardwerte (Büro am Zug, kein Schritt)", critical: true,
       run: wrap(async (ctx) => {
         const insert = { subject: tag(ctx.runId, "Vorgang"), summary: `${SELFTEST_MARKER} Selbsttest`, user_id: ctx.userId, tenant_id: ctx.tenantId };
-        // ID clientseitig: RETURNING würde die SELECT-Policy prüfen, bevor die Zeile sichtbar ist.
         const data = { id: crypto.randomUUID() };
         const { error } = await supabase.from("case_items").insert({ ...insert, id: data.id });
         if (error) return { ok: false, message: describeError(error) };
-        ctx.created.push({ table: "case_items", id: data.id });
+        ctx.trackRecord({ table: "case_items", id: data.id });
         ctx.data.caseItemId = data.id;
         const row = await load(data.id);
         if (stepState(row) !== "none" || isOnResubmission(row)) return { ok: false, message: "Neuer Vorgang hat bereits Schritt oder Wiedervorlage." };
@@ -103,13 +114,13 @@ export const caseItemLifecycleScenario: TestScenario = {
           const payload = { case_item_id: ctx.data.caseItemId as string, tenant_id: ctx.tenantId, interaction_type: t, direction: "in" as const, interaction_at: new Date().toISOString(), summary: `${SELFTEST_MARKER} ${t}`, visibility: "internal" as const, created_by: ctx.userId };
           const { data, error } = await supabase.from("case_item_interactions").insert(payload).select("id").single();
           if (error || !data) return { ok: false, message: `${t}: ${describeError(error)}` };
-          ctx.created.push({ table: "case_item_interactions", id: data.id });
+          ctx.trackRecord({ table: "case_item_interactions", id: data.id });
         }
         return { ok: true, message: "3 Interaktionen gespeichert." };
       }),
     },
     {
-      id: "draft-no-resubmission", label: "Am Zug nur vorbereiten → keine Wiedervorlage", kind: "logic",
+      id: "draft-no-resubmission", label: "Am Zug nur vorbereiten → keine Wiedervorlage",
       run: wrap(async (ctx) => {
         // In der UI ist das ein lokaler Entwurf; gespeichert wird erst bei „Schritt festlegen“.
         const row = await load(ctx.data.caseItemId as string);
@@ -132,25 +143,45 @@ export const caseItemLifecycleScenario: TestScenario = {
       }),
     },
     {
+      id: "office-task", label: "Büroschritt erzeugt genau eine verknüpfte Aufgabe", kind: "workflow",
+      run: wrap(async ctx => {
+        const result = await supabase.from("tasks").select("id").eq("tenant_id", ctx.tenantId)
+          .eq("source_type", "case_step").eq("source_id", ctx.data.caseItemId as string).in("status", ["todo", "in-progress"]);
+        if (result.error) return { ok: false, message: describeError(result.error) };
+        for (const task of result.data ?? []) ctx.trackRecord({ table: "tasks", id: task.id });
+        if (result.data?.length !== 1) return { ok: false, message: `${result.data?.length ?? 0} aktive Büro-Aufgaben statt einer.`, details: { expected: 1, actual: result.data?.length } };
+        const row = await load(ctx.data.caseItemId as string);
+        return expectFields("tasks", result.data[0].id, { title: row.next_action_label, assigned_to: ctx.userId, due_date: row.next_action_due_at }, "Verknüpfte Aufgabe");
+      }),
+    },
+    {
       id: "ministry", label: "Am Zug: Ministerium (21-Tage-Frist + Verlauf)",
       run: wrap(async (ctx) => {
+        await applyBallPatch(ctx, { next_action_due_at: null });
         await applyBallPatch(ctx, { ball_owner: "ministry" });
         const row = await load(ctx.data.caseItemId as string);
         if (row.ball_owner !== "ministry") return { ok: false, message: `ball_owner = ${row.ball_owner}` };
         if (!events(row).some((e) => e.title === "Am Zug geändert")) return { ok: false, message: "Kein Verlaufseintrag „Am Zug geändert“." };
-        const auto = withAutoDeadline<Partial<TriageItem>>({ ball_owner: "office" }, { ball_owner: "ministry" });
-        const days = Math.round((new Date(auto.next_action_due_at!).getTime() - new Date(inDays(0)).getTime()) / 86400000);
+        const days = Math.round((new Date(row.next_action_due_at!).getTime() - new Date(inDays(0)).getTime()) / 86400000);
         return days === MINISTRY_RESPONSE_DAYS ? { ok: true, message: "Ministerium am Zug, Frist 21 Tage, Verlauf geschrieben." } : { ok: false, message: `Frist ${days} Tage` };
       }),
     },
     {
-      id: "handover", label: "Übergabe/Vertretung protokollieren", critical: false,
+      id: "handover", label: "Übergabe an zweite Person über Freigabe-Funktion", kind: "workflow", critical: false,
       run: wrap(async (ctx) => {
-        const payload = { case_item_id: ctx.data.caseItemId as string, tenant_id: ctx.tenantId, from_user_id: ctx.userId, to_user_id: ctx.userId, handed_over_by: ctx.userId };
-        const { data, error } = await supabase.from("case_item_handover_log").insert(payload).select("id").single();
-        if (error || !data) return { ok: false, message: `${describeError(error)} (nur Abgeordnete/Büroleitung dürfen übergeben)` };
-        ctx.created.push({ table: "case_item_handover_log", id: data.id });
-        return expectFields("case_item_handover_log", data.id, payload, "Übergabe");
+        const peer = await supabase.from("user_tenant_memberships").select("user_id")
+          .eq("tenant_id", ctx.tenantId).eq("is_active", true).neq("user_id", ctx.userId).limit(1).maybeSingle();
+        if (peer.error) return { ok: false, message: describeError(peer.error) };
+        if (!peer.data) return { ok: false, message: "Für die Übergabe fehlt eine zweite aktive Person im Büro." };
+        const id = ctx.data.caseItemId as string;
+        const { error } = await supabase.rpc("handover_case_items", { p_item_ids: [id], p_to_user_id: peer.data.user_id });
+        if (error) return { ok: false, message: describeError(error) };
+        const log = await supabase.from("case_item_handover_log").select("id, to_user_id, handed_over_by")
+          .eq("case_item_id", id).eq("to_user_id", peer.data.user_id).eq("handed_over_by", ctx.userId);
+        if (log.error) return { ok: false, message: describeError(log.error) };
+        // Das schreibgeschützte Protokoll wird per CASCADE mit dem Testvorgang entfernt.
+        if (log.data?.length !== 1) return { ok: false, message: "Übergabeprotokoll fehlt oder ist doppelt.", details: log.data };
+        return expectFields("case_items", id, { next_action_assignee_id: peer.data.user_id }, "Übergabe");
       }),
     },
     {
@@ -159,13 +190,13 @@ export const caseItemLifecycleScenario: TestScenario = {
         const d = { title: tag(ctx.runId, "Vorgang-Entscheidung"), description: SELFTEST_MARKER, status: "active", created_by: ctx.userId, tenant_id: ctx.tenantId, case_item_id: ctx.data.caseItemId as string, visible_to_all: false };
         const { data, error } = await supabase.from("task_decisions").insert(d).select("id").single();
         if (error || !data) return { ok: false, message: describeError(error) };
-        ctx.created.push({ table: "task_decisions", id: data.id });
+        ctx.trackRecord({ table: "task_decisions", id: data.id });
         const { data: p, error: pe } = await supabase.from("task_decision_participants").insert({ decision_id: data.id, user_id: ctx.userId }).select("id").single();
         if (pe || !p) return { ok: false, message: `Teilnehmer: ${describeError(pe)}` };
-        ctx.created.push({ table: "task_decision_participants", id: p.id });
+        ctx.trackRecord({ table: "task_decision_participants", id: p.id });
         const { data: r, error: re } = await supabase.from("task_decision_responses").insert({ decision_id: data.id, participant_id: p.id, response_type: "yes", comment: SELFTEST_MARKER }).select("id").single();
         if (re || !r) return { ok: false, message: `Stimme: ${describeError(re)}` };
-        ctx.created.push({ table: "task_decision_responses", id: r.id });
+        ctx.trackRecord({ table: "task_decision_responses", id: r.id });
         const { data: linked } = await supabase.from("task_decisions").select("id").eq("case_item_id", ctx.data.caseItemId as string);
         return linked?.length ? { ok: true, message: "Entscheidung verknüpft, Stimme abgegeben." } : { ok: false, message: "Entscheidung am Vorgang nicht auffindbar." };
       }),
@@ -173,12 +204,11 @@ export const caseItemLifecycleScenario: TestScenario = {
     {
       id: "dayslip", label: "Auf Tageszettel → Link übersteht erneutes Laden",
       run: wrap(async (ctx) => {
-        const dayKey = "2099-12-30";
+        const dayKey = testDay(ctx.runId, 2);
         const day = appendEntries({ html: "", plainText: "" }, [{ id: crypto.randomUUID(), text: "Rückruf Bürger", source: { type: "case", id: ctx.data.caseItemId as string } }]);
-        await supabase.from("day_slips").delete().eq("user_id", ctx.userId).eq("day_key", dayKey);
         const { data, error } = await supabase.from("day_slips").insert({ user_id: ctx.userId, tenant_id: ctx.tenantId, day_key: dayKey, data: day as unknown as Json }).select("id").single();
         if (error || !data) return { ok: false, message: describeError(error) };
-        ctx.created.push({ table: "day_slips", id: data.id });
+        ctx.trackRecord({ table: "day_slips", id: data.id });
         const { data: back } = await supabase.from("day_slips").select("data").eq("id", data.id).single();
         const store = normalizeStore({ [dayKey]: back?.data });
         const links = Object.values(store[dayKey]?.sources ?? {});
@@ -202,8 +232,8 @@ export const caseItemLifecycleScenario: TestScenario = {
         const payload = { title: tag(ctx.runId, "Ortstermin"), tenant_id: ctx.tenantId, requested_date: inDays(10).slice(0, 10), channel: "case", notes: SELFTEST_MARKER };
         const { data, error } = await supabase.from("appointment_requests").insert(payload).select("id").single();
         if (error || !data) return { ok: false, message: describeError(error) };
-        ctx.created.push({ table: "appointment_requests", id: data.id });
-        return expectFields("appointment_requests", data.id, { channel: "case", status: "pending" }, "Ortstermin");
+        ctx.trackRecord({ table: "appointment_requests", id: data.id });
+        return expectFields("appointment_requests", data.id, { channel: "case", status: "open" }, "Ortstermin");
       }),
     },
     {

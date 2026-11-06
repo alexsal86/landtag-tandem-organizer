@@ -1,326 +1,220 @@
-import { useCallback, useEffect, useState } from "react";
-import { compareRuns, loadHistory, saveRun, type HistoryRun } from "../history";
-
-const LAST_RUNS_KEY = "selftest:last-runs";
-type LastRun = { status: string; at: number };
-const readLastRuns = (): Record<string, LastRun> => { try { return JSON.parse(localStorage.getItem(LAST_RUNS_KEY) ?? "{}"); } catch { return {}; } };
+import { SharedRunHistory } from "./SharedRunHistory";
+import { saveRun } from "../history";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, CheckCircle2, XCircle, Clock, SkipForward, Play, Trash2, AlertTriangle, Sparkles, ExternalLink } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Clock, SkipForward, Play, Trash2, AlertTriangle, Download, Square } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { SELFTEST_SCENARIOS } from "../registry";
-import { purgeAllSelftestData, runScenario } from "../runner";
-import type { ScenarioRunState, StepStatus } from "../types";
 import { notify } from "@/lib/notify";
+import { SELFTEST_SCENARIOS } from "../registry";
+import { cleanupCreated, runSuite } from "../runner";
+import { downloadReports, needsCleanup, readReports, saveReport, toReport, type RunReport } from "../reports";
+import type { ScenarioRunState, StepStatus, TestScenario } from "../types";
+import coverage from "../coverage-summary.json";
+import { findLegacySelftestRecords } from "../artifacts";
 
-const StatusIcon = ({ status }: { status: StepStatus }) => {
-  switch (status) {
-    case "ok":
-      return <CheckCircle2 className="h-4 w-4 text-palette-green" />;
-    case "failed":
-      return <XCircle className="h-4 w-4 text-destructive" />;
-    case "running":
-      return <Loader2 className="h-4 w-4 animate-spin text-primary" />;
-    case "skipped":
-      return <SkipForward className="h-4 w-4 text-muted-foreground" />;
-    default:
-      return <Clock className="h-4 w-4 text-muted-foreground" />;
-  }
+const labels: Record<ScenarioRunState["status"], string> = {
+  idle: "Noch nicht geprüft", running: "Läuft", ok: "Bestanden", failed: "Fehlgeschlagen", cancelled: "Abgebrochen", blocked: "Voraussetzung fehlt",
 };
+function StatusIcon({ status }: { status: StepStatus }) {
+  if (status === "ok") return <CheckCircle2 aria-label="Bestanden" className="h-4 w-4 text-palette-green" />;
+  if (status === "failed") return <XCircle aria-label="Fehlgeschlagen" className="h-4 w-4 text-destructive" />;
+  if (status === "running") return <Loader2 aria-label="Läuft" className="h-4 w-4 animate-spin" />;
+  if (status === "skipped") return <SkipForward aria-label="Übersprungen" className="h-4 w-4 text-muted-foreground" />;
+  return <Clock aria-label="Ausstehend" className="h-4 w-4 text-muted-foreground" />;
+}
+const pure = (scenario: TestScenario) => scenario.steps.every(s => s.kind === "logic");
 
 export function SelftestView() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const navigate = useNavigate();
   const [runs, setRuns] = useState<Record<string, ScenarioRunState>>({});
-  const [busy, setBusy] = useState<string | null>(null);
-  const [purging, setPurging] = useState(false);
-  const [lastRuns, setLastRuns] = useState<Record<string, LastRun>>(readLastRuns);
+  const [reports, setReports] = useState<RunReport[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [stopping, setStopping] = useState(false);
+  const [storageFailed, setStorageFailed] = useState(false);
+  const [selection, setSelection] = useState("all");
+  const [summary, setSummary] = useState("");
+  const lock = useRef(false);
+  const controller = useRef<AbortController | null>(null);
+  const tenantId = currentTenant?.id ?? "";
+  const userId = user?.id ?? "";
 
-  const canRun = !!user && !!currentTenant;
-  const [history, setHistory] = useState<HistoryRun[]>([]);
-  const [openRun, setOpenRun] = useState<string | null>(null);
-  const tenantId = currentTenant?.id;
-  const refreshHistory = useCallback(async () => {
-    if (!tenantId) return;
-    try { setHistory(await loadHistory(tenantId)); } catch { /* Verlauf optional */ }
-  }, [tenantId]);
-  useEffect(() => { void refreshHistory(); }, [refreshHistory]);
+  useEffect(() => {
+    setReports(readReports(tenantId, userId));
+    setRuns({});
+    setSummary("");
+    return () => { controller.current?.abort(); };
+  }, [tenantId, userId]);
 
-  const [runningAll, setRunningAll] = useState(false);
+  const selected = SELFTEST_SCENARIOS.filter(s => selection === "all" ||
+    (selection === "logic" ? pure(s) : selection === "permissions" ? s.features.includes("permissions") : !pure(s)));
 
-  const handleRunAll = async (keepData: boolean) => {
-    const msg = keepData
-      ? `Alle ${SELFTEST_SCENARIOS.length} Abläufe nacheinander als Demo-Lauf ausführen? Die Daten bleiben mit [SELFTEST] erhalten.`
-      : `Alle ${SELFTEST_SCENARIOS.length} Abläufe nacheinander ausführen? Temporäre Daten werden danach wieder entfernt.`;
-    if (!window.confirm(msg)) return;
-    setRunningAll(true);
-    let failed = 0;
+  const remember = (state: ScenarioRunState) => {
+    setRuns(previous => ({ ...previous, [state.scenarioId]: state }));
+    const report = toReport(state);
+    if (!saveReport(report)) setStorageFailed(true);
+    setReports(previous => [report, ...previous.filter(r => r.runId !== state.runId)]);
+  };
+
+  const handleRun = async (scenarios: TestScenario[], keepData = false) => {
+    if (lock.current || !scenarios.length) return;
+    const writes = scenarios.some(s => !pure(s));
+    if (writes && (!tenantId || !userId)) return;
+    if (writes && !window.confirm(`${scenarios.length} Szenario(en) im Büro „${currentTenant?.name}“ starten?\n\nEs entstehen echte Testdatensätze und Dateien. ${keepData ? "Erfolgreiche Demo-Daten werden behalten." : "Testdaten werden anschließend aufgeräumt."}`)) return;
+    lock.current = true;
+    setBusy(true);
+    setStopping(false);
+    setSummary("");
+    const activeController = new AbortController();
+    controller.current = activeController;
     try {
-      for (const s of SELFTEST_SCENARIOS) {
-        const status = await handleRun(s.id, keepData, true);
-        if (status !== "ok") failed++;
+      const results = await runSuite(scenarios, { tenantId, userId, keepData, signal: activeController.signal, onUpdate: remember });
+      if (tenantId && userId) {
+        for (const result of results) {
+          const scenario = scenarios.find(s => s.id === result.scenarioId)!;
+          await saveRun(result, { tenantId, userId, title: scenario.title, keepData });
+        }
       }
+      const counts = { ok: 0, failed: 0, blocked: 0, cancelled: 0 };
+      results.forEach(r => { if (r.status in counts) counts[r.status as keyof typeof counts] += 1; });
+      const text = `${counts.ok} bestanden · ${counts.failed} fehlgeschlagen · ${counts.blocked} Voraussetzung fehlt · ${counts.cancelled} abgebrochen · ${scenarios.length - results.length} nicht gestartet`;
+      setSummary(text);
+      if (counts.ok === scenarios.length) notify.success("Testsuite bestanden", { description: text });
+      else notify.error("Testsuite nicht vollständig bestanden", { description: text });
+    } catch (error) {
+      setSummary("Testsuite konnte nicht vollständig ausgeführt werden.");
+      notify.error("Testlauf unterbrochen", { description: error instanceof Error ? error.message : String(error) });
     } finally {
-      setRunningAll(false);
+      controller.current = null;
+      lock.current = false;
+      setBusy(false);
+      setStopping(false);
     }
-    if (failed) notify.error(`${failed} von ${SELFTEST_SCENARIOS.length} Abläufen mit Fehlern`);
-    else notify.success(`Alle ${SELFTEST_SCENARIOS.length} Abläufe erfolgreich`);
   };
 
-  const handleRun = async (scenarioId: string, keepData: boolean, silent = false): Promise<string | undefined> => {
-    if (!user || !currentTenant) {
-      notify.error("Nicht bereit", { description: "Login und Tenant erforderlich."
-});
-      return;
-    }
-    const scenario = SELFTEST_SCENARIOS.find((s) => s.id === scenarioId);
-    if (!scenario) return;
-
-    const confirmMsg = keepData
-      ? `„${scenario.title}" als Demo-Lauf ausführen?\n\nDie erzeugten Datensätze bleiben mit dem Prefix [SELFTEST] im System erhalten und sind in den jeweiligen Bereichen (Kalender, Briefing-Widget, Planungen …) sichtbar. Über den Notfall-Aufräumknopf unten lassen sie sich wieder entfernen.`
-      : `„${scenario.title}" jetzt gegen die echte Datenbank ausführen?\n\nEs werden temporäre Datensätze angelegt und am Ende wieder entfernt.`;
-    if (!silent && !window.confirm(confirmMsg)) return;
-
-    setBusy(scenarioId);
+  const scopedReports = reports.filter(r => r.tenantId === tenantId && r.userId === userId);
+  const pending = scopedReports.filter(needsCleanup);
+  const handleFindLegacy = async () => {
+    if (lock.current || !userId || !tenantId) return;
+    lock.current = true;
+    setBusy(true);
     try {
-      const result = await runScenario(scenario, {
-        tenantId: currentTenant.id,
-        userId: user.id,
-        keepData,
-        onUpdate: (state) => setRuns((prev) => ({ ...prev, [scenarioId]: state })),
-      });
-      const nextRuns = { ...readLastRuns(), [scenarioId]: { status: result.status, at: Date.now() } };
-      localStorage.setItem(LAST_RUNS_KEY, JSON.stringify(nextRuns));
-      setLastRuns(nextRuns);
-      await saveRun(result, { tenantId: currentTenant.id, userId: user.id, title: scenario.title, keepData });
-      void refreshHistory();
-      if (silent) return result.status;
-      notify.success(result.status === "ok" ? (keepData ? "Demo-Daten erzeugt" : "Selbsttest erfolgreich") : "Selbsttest mit Fehlern", {
-        description: scenario.title
-});
-    } finally {
-      setBusy(null);
-    }
+      const found = await findLegacySelftestRecords(tenantId, userId);
+      const records = found.filter(record => !pending.some(run => run.records.some(r => r.table === record.table && r.id === record.id)));
+      if (!records.length) { notify.info("Keine zusätzlichen eigenen Testdaten gefunden"); return; }
+      const report = toReport({ runId: crypto.randomUUID(), scenarioId: "recovered-demo-data", tenantId, userId,
+        status: "cancelled", mode: "demo", startedAt: Date.now(), finishedAt: Date.now(), steps: [], records, storageObjects: [],
+        cleanup: { status: "pending", message: "Ältere eigene Testdaten gefunden; noch nicht entfernt." } });
+      if (!saveReport(report)) setStorageFailed(true);
+      setReports(previous => [report, ...previous]);
+      notify.info(`${records.length} eigene Testdatensätze gefunden`, { description: "Über „Läufe aufräumen“ gezielt entfernen." });
+    } catch (error) {
+      notify.error("Suche nach Testdaten fehlgeschlagen", { description: error instanceof Error ? error.message : String(error) });
+    } finally { lock.current = false; setBusy(false); }
   };
-
-
-  const handlePurge = async () => {
-    if (!currentTenant) return;
-    if (!window.confirm("Wirklich ALLE Test-Datensätze (Prefix [SELFTEST]) im aktuellen Tenant löschen?")) return;
-    setPurging(true);
+  const handleCleanup = async () => {
+    if (lock.current || !userId || !tenantId || !pending.length) return;
+    if (!window.confirm(`Testdaten aus ${pending.length} aufgezeichneten Läufen in diesem Büro entfernen?`)) return;
+    lock.current = true;
+    setBusy(true);
     try {
-      const result = await purgeAllSelftestData(currentTenant.id);
-      notify.success(result.ok ? "Aufräumen erfolgreich" : "Aufräumen mit Fehlern", {
-        description: result.message
-});
-    } finally {
-      setPurging(false);
-    }
+      let failed = 0;
+      for (let run of pending) {
+        const result = await cleanupCreated(run.cleanup.remaining ?? run.records, run.cleanup.storageRemaining ?? run.storageObjects, (records, storageObjects) => {
+          run = { ...run, records, storageObjects, cleanup: { ...run.cleanup, remaining: records, storageRemaining: storageObjects } };
+          if (!saveReport(run)) setStorageFailed(true);
+        });
+        const updated: RunReport = { ...run, links: [], status: run.status === "running" ? "cancelled" : run.status,
+          finishedAt: run.finishedAt ?? Date.now(), cleanup: { status: result.ok ? "ok" : "failed", message: [result.message, ...result.errors].join(" "), remaining: result.remaining, storageRemaining: result.storageRemaining } };
+        if (!saveReport(updated)) setStorageFailed(true);
+        if (!result.ok) failed++;
+        setReports(previous => [updated, ...previous.filter(r => r.runId !== updated.runId)]);
+        setRuns(previous => { const next = { ...previous }; if (next[run.scenarioId]?.runId === run.runId) delete next[run.scenarioId]; return next; });
+      }
+      if (failed) notify.error(`${failed} Lauf/Läufe konnten nicht vollständig aufgeräumt werden`, { description: "Verbliebene Daten und Fehlermeldungen stehen bei den offenen Läufen." });
+      else notify.success("Aufgezeichnete Testdaten aufgeräumt");
+    } finally { lock.current = false; setBusy(false); }
   };
 
-  return (
-    <div className="container mx-auto p-6 max-w-4xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Selbsttest-Center</h1>
-        <p className="text-muted-foreground mt-1">
-          End-to-End-Szenarien gegen die echte Datenbank ausführen. Alle erzeugten Datensätze werden am Ende automatisch entfernt.
-        </p>
-      </div>
-
-      <Alert>
-        <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Achtung: echte Schreiboperationen</AlertTitle>
-        <AlertDescription>
-          Diese Tests erstellen reale Datensätze im aktuellen Tenant ({currentTenant?.name ?? "—"}) und löschen sie wieder. Sollte ein Cleanup fehlschlagen, nutze unten den Notfall-Aufräumknopf.
-        </AlertDescription>
-      </Alert>
-
-      <Card>
+  return <div data-testid="selftest-center" data-tenant-id={tenantId} className="container mx-auto p-6 max-w-5xl space-y-6">
+    <div>
+      <h1 className="text-2xl font-bold">Selbsttest-Center</h1>
+      <p className="text-muted-foreground mt-1">Geschäftsregeln, Datenhaltung und ausgewählte Fachabläufe prüfen. Für jeden Lauf siehst du Prüfumfang, Ergebnis und Aufräumstatus.</p>
+    </div>
+    <Alert>
+      <AlertTriangle className="h-4 w-4" />
+      <AlertTitle>Testumgebung und Prüfumfang</AlertTitle>
+      <AlertDescription>Die Workflow-Tests erzeugen echte Daten im Büro „{currentTenant?.name ?? "kein Büro gewählt"}“. Nutze dafür vorzugsweise ein Testbüro. Ein bestandener Lauf bestätigt die aufgeführten Prüfungen. Die vollständige Bedienung aller Oberflächen und externer E-Mail-Versand sind damit nicht abgedeckt.</AlertDescription>
+    </Alert>
+    {storageFailed && <Alert variant="destructive"><AlertTitle>Lokale Speicherung nicht verfügbar</AlertTitle><AlertDescription>Die Laufhistorie konnte nicht gespeichert werden. Exportiere den Bericht vor dem Schließen dieser Seite.</AlertDescription></Alert>}
+    <Card>
+      <CardHeader><CardTitle>Testsuite starten</CardTitle><CardDescription>Szenarien laufen nacheinander. Fehler eines Szenarios verhindern die anderen Prüfungen nicht.</CardDescription></CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex gap-3 flex-wrap items-center">
+          <select aria-label="Testsuite" className="border rounded-md bg-background p-2" value={selection} onChange={e => setSelection(e.target.value)} disabled={busy}>
+            <option value="all">Alle Szenarien</option><option value="logic">Nur Geschäftsregeln (ohne Schreibzugriff)</option><option value="workflows">Datenbank und Fachabläufe</option><option value="permissions">Zugriffsschutz</option>
+          </select>
+          <Button onClick={() => handleRun(selected)} disabled={busy || (selected.some(s => !pure(s)) && (!userId || !tenantId))}><Play className="h-4 w-4 mr-2" />Testsuite ausführen ({selected.length})</Button>
+          {busy && controller.current && <Button variant="outline" disabled={stopping} onClick={() => { controller.current?.abort(); setStopping(true); }}><Square className="h-4 w-4 mr-2" />{stopping ? "Warte auf laufenden Schritt …" : "Nach diesem Schritt stoppen"}</Button>}
+          <Button variant="outline" disabled={!scopedReports.length} onClick={() => downloadReports(scopedReports)}><Download className="h-4 w-4 mr-2" />Bericht exportieren</Button>
+        </div>
+        <p role="status" data-testid="suite-result" className="text-sm" aria-live="polite">{summary || (busy ? "Testsuite läuft …" : "Bereit.")}</p>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardHeader><CardTitle>Abdeckung und offene Bereiche</CardTitle><CardDescription>Ein vorhandenes Szenario ist noch kein erfolgreicher Testlauf.</CardDescription></CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        <p>{coverage.counts.scenario} von {coverage.counts.total} Tabellen haben ein Szenario. {coverage.counts.deferred} sind als Ausbau offen, {coverage.counts.excluded} ausgenommen und {coverage.counts.missing} noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.</p>
+        <details><summary className="cursor-pointer">Offene Fachbereiche ansehen</summary><p className="mt-2 text-muted-foreground break-words">{coverage.tables.filter(t => t.status === "deferred" || t.status === "missing").map(t => t.table).join(", ")}</p></details>
+      </CardContent>
+    </Card>
+    {tenantId && <SharedRunHistory tenantId={tenantId} refreshKey={summary} />}
+    {SELFTEST_SCENARIOS.map(scenario => {
+      const live = runs[scenario.id];
+      const state = live?.tenantId === tenantId && live.userId === userId ? live : scopedReports.find(r => r.scenarioId === scenario.id);
+      const running = state?.status === "running" && busy;
+      return <Card key={scenario.id} data-testid={`scenario-${scenario.id}`}>
         <CardHeader>
-          <CardTitle className="text-base">Abdeckung</CardTitle>
-          <CardDescription>Welche Bereiche einen Selbsttest haben und wann er zuletzt lief.</CardDescription>
-          <div className="flex flex-wrap gap-2 pt-2">
-            <Button onClick={() => handleRunAll(false)} disabled={!canRun || runningAll || !!busy}>
-              {runningAll ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
-              Alle Tests nacheinander ausführen
-            </Button>
-            <Button variant="secondary" onClick={() => handleRunAll(true)} disabled={!canRun || runningAll || !!busy}>
-              <Sparkles className="h-4 w-4 mr-2" />
-              Alle Demo-Daten erzeugen
-            </Button>
+          <div className="flex flex-wrap justify-between gap-3">
+            <div className="space-y-2"><CardTitle className="text-base">{scenario.title}</CardTitle>
+              <div className="flex gap-2 flex-wrap"><Badge variant="outline">{pure(scenario) ? "Geschäftsregeln" : scenario.steps.some(s => s.kind === "workflow") ? "Fachablauf + Datenbank" : "Datenbank"}</Badge>
+                <Badge data-testid="scenario-result" variant={state?.status === "failed" || state?.status === "blocked" ? "destructive" : "secondary"}>{state ? state.status === "running" && !busy ? "Unterbrochener Lauf" : labels[state.status] : "Noch nicht geprüft"}</Badge>
+              </div>
+              <CardDescription>{scenario.description}</CardDescription>
+            </div>
+            <div className="flex gap-2 items-start"><Button disabled={busy || (!pure(scenario) && (!userId || !tenantId))} onClick={() => handleRun([scenario])}>{running ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}Ausführen</Button>
+              {!pure(scenario) && <Button variant="secondary" disabled={busy || !userId || !tenantId} onClick={() => handleRun([scenario], true)}>Demo-Daten erzeugen</Button>}</div>
           </div>
         </CardHeader>
-        <CardContent>
-          <ul className="divide-y text-sm">
-            {SELFTEST_SCENARIOS.map((s) => {
-              const last = lastRuns[s.id];
-              const logic = s.steps.filter((st) => st.kind === "logic").length;
-              return (
-                <li key={s.id} className="flex items-center justify-between gap-3 py-1.5">
-                  <span className="truncate">{s.title.split(" (")[0]}</span>
-                  <span className="flex items-center gap-2 shrink-0 text-xs text-muted-foreground tabular-nums">
-                    {s.steps.length} Schritte{logic ? ` · ${logic} Regel` : ""}
-                    {last ? (
-                      <Badge variant={last.status === "ok" ? "outline" : "destructive"}>
-                        {last.status === "ok" ? "OK" : "Fehler"} · {new Date(last.at).toLocaleDateString("de-DE")}
-                      </Badge>
-                    ) : <Badge variant="secondary">nie gelaufen</Badge>}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
+        <CardContent className="space-y-3 text-sm">
+          <p><strong>Geprüft:</strong> {(scenario.checks ?? ["Anlegen, Ändern und Rücklesen der im Szenario verwendeten Datensätze"]).join(" · ")}</p>
+          <p className="text-muted-foreground"><strong>Grenzen:</strong> {(scenario.limitations ?? ["Keine vollständige Bedienprüfung der Oberfläche oder externer Dienste"]).join(" · ")}</p>
+          {scenario.requiredRoles && <p>Benötigte Rolle: {scenario.requiredRoles.join(" oder ")}.</p>}
+          {state && <>
+            <p className="text-xs text-muted-foreground">Lauf {state.runId} · {state.mode === "demo" ? "Demo" : "Test"} · {state.startedAt ? new Date(state.startedAt).toLocaleString("de-DE") : ""}</p>
+            {state.message && <p className="text-destructive">{state.message}</p>}
+            <ol className="space-y-2">{state.steps.map(s => <li key={s.step.id} className="flex gap-3 border-l-2 pl-3 py-1">
+              <StatusIcon status={s.status} /><div className="flex-1 min-w-0"><div>{s.step.label}</div>{s.message && <p className={s.status === "failed" ? "text-destructive text-xs" : "text-muted-foreground text-xs"}>{s.message}</p>}
+                {s.details !== undefined && <details className="mt-1"><summary className="cursor-pointer text-xs">Prüfdetails / Soll und Ist</summary><pre className="whitespace-pre-wrap break-all bg-muted rounded p-2 text-xs">{JSON.stringify(s.details, null, 2)}</pre></details>}
+              </div>{s.durationMs !== undefined && <span className="text-xs tabular-nums">{s.durationMs} ms</span>}
+            </li>)}</ol>
+            <div className="flex gap-3 border-t pt-3"><StatusIcon status={state.cleanup.status} /><p><strong>Aufräumen:</strong> {state.cleanup.message ?? "Ausstehend"}</p></div>
+            {state.links?.map(link => <Button variant="outline" key={link.href} onClick={() => navigate(link.href)}>{link.label}</Button>)}
+          </>}
         </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Verlauf</CardTitle>
-          <CardDescription>Alle gespeicherten Läufe mit Fehlern und Vergleich zum vorherigen Lauf desselben Ablaufs.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {history.length === 0 ? <p className="text-sm text-muted-foreground">Noch keine Läufe gespeichert.</p> : (
-            <ul className="divide-y text-sm">
-              {history.slice(0, 60).map((r) => {
-                const prev = history.find((h) => h.scenario_id === r.scenario_id && h.created_at < r.created_at);
-                const diff = prev ? compareRuns(prev.steps, r.steps) : null;
-                const open = openRun === r.id;
-                return (
-                  <li key={r.id} className="py-1.5">
-                    <button type="button" className="w-full flex items-center justify-between gap-3 text-left" onClick={() => setOpenRun(open ? null : r.id)}>
-                      <span className="truncate">{r.scenario_title.split(" (")[0]}{r.keep_data ? " · Demo" : ""}</span>
-                      <span className="flex items-center gap-2 shrink-0 text-xs text-muted-foreground tabular-nums">
-                        {diff && diff.fixed.length > 0 && <span className="text-palette-green">+{diff.fixed.length} behoben</span>}
-                        {diff && diff.broken.length > 0 && <span className="text-destructive">{diff.broken.length} neu kaputt</span>}
-                        {r.total_steps - r.failed_steps}/{r.total_steps}
-                        <Badge variant={r.status === "ok" ? "outline" : "destructive"}>{r.status === "ok" ? "OK" : "Fehler"}</Badge>
-                        {new Date(r.created_at).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}
-                      </span>
-                    </button>
-                    {open && (
-                      <ul className="mt-2 ml-2 space-y-1 text-xs">
-                        {r.steps.map((s) => (
-                          <li key={s.id} className="flex gap-2">
-                            <StatusIcon status={s.status as StepStatus} />
-                            <span className="flex-1 min-w-0"><span className="font-medium">{s.label}</span>{s.message && <span className={`block break-words ${s.status === "failed" ? "text-destructive" : "text-muted-foreground"}`}>{s.message}</span>}
-                              {s.status === "failed" && s.details !== undefined && <pre className="mt-1 whitespace-pre-wrap break-all text-muted-foreground">{JSON.stringify(s.details, null, 1)}</pre>}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
-
-      <div className="space-y-4">
-        {SELFTEST_SCENARIOS.map((scenario) => {
-          const state = runs[scenario.id];
-          const isRunning = busy === scenario.id;
-          return (
-            <Card key={scenario.id}>
-              <CardHeader>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <CardTitle className="flex items-center gap-2 flex-wrap">
-                      {scenario.title}
-                      {state?.status === "ok" && <Badge variant="default" className="bg-palette-green">OK</Badge>}
-                      {state?.status === "failed" && <Badge variant="destructive">Fehler</Badge>}
-                    </CardTitle>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {scenario.features.map((f) => (
-                        <Badge key={f} variant="outline" className="text-xs">{f}</Badge>
-                      ))}
-                    </div>
-                    <CardDescription className="mt-2">{scenario.description}</CardDescription>
-                  </div>
-                  <div className="flex flex-col gap-2 shrink-0">
-                    <Button onClick={() => handleRun(scenario.id, false)} disabled={!canRun || isRunning}>
-                      {isRunning ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
-                      Ausführen
-                    </Button>
-                    <Button variant="secondary" onClick={() => handleRun(scenario.id, true)} disabled={!canRun || isRunning}>
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      Demo-Daten erzeugen
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              {state && (
-                <CardContent>
-                  <ol className="space-y-2">
-                    {state.steps.map((s) => (
-                      <li key={s.step.id} className="flex items-start gap-3 text-sm border-l-2 pl-3 py-1" style={{ borderColor: s.status === "failed" ? "hsl(var(--destructive))" : s.status === "ok" ? "hsl(142 71% 45%)" : "hsl(var(--border))" }}>
-                        <StatusIcon status={s.status} />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium">{s.step.label}{s.step.kind === "logic" && <Badge variant="outline" className="ml-2 text-xs">Regel</Badge>}</div>
-                          {s.message && (
-                            <div className={`text-xs ${s.status === "failed" ? "text-destructive" : "text-muted-foreground"} break-words`}>{s.message}</div>
-                          )}
-                        </div>
-                        {s.durationMs !== undefined && (
-                          <span className="text-xs text-muted-foreground tabular-nums">{s.durationMs}ms</span>
-                        )}
-                      </li>
-                    ))}
-                    <li className="flex items-start gap-3 text-sm border-l-2 pl-3 py-1 mt-3 border-dashed">
-                      <StatusIcon status={state.cleanup.status} />
-                      <div className="flex-1">
-                        <div className="font-medium">Cleanup (Aufräumen)</div>
-                        {state.cleanup.message && (
-                          <div className={`text-xs ${state.cleanup.status === "failed" ? "text-destructive" : "text-muted-foreground"}`}>
-                            {state.cleanup.message}
-                            {state.cleanup.remaining && state.cleanup.remaining.length > 0 && (
-                              <div className="mt-1">Verblieben: {state.cleanup.remaining.map((r) => `${r.table}/${r.id.slice(0, 8)}`).join(", ")}</div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </li>
-                  </ol>
-                  {state.links && state.links.length > 0 && (
-                    <div className="mt-4 p-3 rounded-md border border-primary/30 bg-primary/5">
-                      <div className="text-label text-primary mb-2">Im System ansehen</div>
-                      <div className="flex flex-wrap gap-2">
-                        {state.links.map((l) => (
-                          <Button key={l.href} variant="outline" size="sm" onClick={() => navigate(l.href)}>
-                            <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                            {l.label}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              )}
-            </Card>
-          );
-        })}
-      </div>
-
-      <Card className="border-destructive/40">
-        <CardHeader>
-          <CardTitle className="text-base">Notfall: Test-Daten aufräumen</CardTitle>
-          <CardDescription>
-            Löscht alle Datensätze mit dem Prefix <code>[SELFTEST]</code> im aktuellen Tenant aus meetings, appointments, appointment_preparations, appointment_feedback, meeting_agenda_items, meeting_agenda_documents, tasks, letters, letter_attachments, case_items, case_item_interactions, task_decisions, daily_briefings sowie event_plannings inkl. allen Kindtabellen.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button variant="destructive" onClick={handlePurge} disabled={!canRun || purging}>
-            {purging ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
-            Test-Datenmüll entfernen
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
-  );
+      </Card>;
+    })}
+    <Card>
+      <CardHeader><CardTitle>Aufgezeichnete Testdaten aufräumen</CardTitle><CardDescription>Entfernt gezielt die Datensätze und Dateien der in diesem Browser aufgezeichneten Läufe im aktuellen Büro. Dazu gehören Demo-Daten und unterbrochene Läufe.</CardDescription></CardHeader>
+      <CardContent className="space-y-3"><div className="flex gap-3 flex-wrap"><Button variant="destructive" disabled={busy || !userId || !tenantId || !pending.length} onClick={handleCleanup}><Trash2 className="h-4 w-4 mr-2" />{pending.length} Lauf/Läufe aufräumen</Button><Button variant="outline" disabled={busy || !userId || !tenantId} onClick={handleFindLegacy}>Ältere eigene Testdaten suchen</Button></div>
+        {pending.length > 0 && <details><summary className="cursor-pointer text-sm">Offene Läufe und Aufräumfehler</summary><ul className="space-y-2 mt-2 text-xs">{pending.map(run => <li key={run.runId} className="break-words">{run.scenarioId} · {run.runId}: {run.cleanup.message ?? "Aufräumen steht aus."}</li>)}</ul></details>}
+      </CardContent>
+    </Card>
+  </div>;
 }

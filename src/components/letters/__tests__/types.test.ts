@@ -11,9 +11,10 @@ import {
 
 describe('getNextStatus', () => {
   it('returns correct next status for each state', () => {
-    expect(getNextStatus('draft')).toBe('pending_approval');
+    expect(getNextStatus('draft')).toBe('review');
+    expect(getNextStatus('review')).toBe('pending_approval');
     expect(getNextStatus('pending_approval')).toBe('approved');
-    expect(getNextStatus('revision_requested')).toBe('pending_approval');
+    expect(getNextStatus('revision_requested')).toBe('draft');
     expect(getNextStatus('approved')).toBe('sent');
   });
 

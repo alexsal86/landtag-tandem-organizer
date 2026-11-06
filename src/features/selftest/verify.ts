@@ -1,5 +1,10 @@
-import { supabase } from "@/integrations/supabase/client";
+import { selftestDatabase } from "./database";
 import type { StepResult } from "./types";
+
+export function errorMessage(error: unknown): string {
+  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") return error.message;
+  return String(error);
+}
 
 /** Vergleicht erwartete Felder gegen tatsächlich in der DB gespeicherte Werte. */
 export async function expectFields(
@@ -9,7 +14,7 @@ export async function expectFields(
   label = "Felder",
 ): Promise<StepResult> {
   const columns = Object.keys(expected).join(",");
-  const { data, error } = await supabase.from(table)
+  const { data, error } = await selftestDatabase.from(table)
     .select(columns)
     .eq("id", id)
     .single();
@@ -18,7 +23,7 @@ export async function expectFields(
   }
   const mismatches: Array<{ field: string; expected: unknown; actual: unknown }> = [];
   for (const [k, v] of Object.entries(expected)) {
-    const actual = (data as Record<string, unknown>)[k];
+    const actual = (data as unknown as Record<string, unknown>)[k];
     if (!deepEqual(actual, v)) {
       mismatches.push({ field: k, expected: v, actual });
     }
@@ -33,17 +38,16 @@ export async function expectFields(
   return { ok: true, message: `${label}: ${Object.keys(expected).length} Felder verifiziert.` };
 }
 
-const TS_RE = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/;
-const TIME_RE = /^\d{2}:\d{2}(:\d{2})?$/;
-
-/** Postgres liefert Zeitstempel als „…+00:00“ und Uhrzeiten als „HH:MM:SS“ — semantisch vergleichen. */
 export function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
-  if (typeof a === "string" && typeof b === "string") {
-    if (TS_RE.test(a) && TS_RE.test(b)) return Math.abs(new Date(a).getTime() - new Date(b).getTime()) <= 60_000; // Trigger setzen teils now()
-    if (TIME_RE.test(a) && TIME_RE.test(b)) return a.padEnd(8, ":00").slice(0, 8) === b.padEnd(8, ":00").slice(0, 8);
+  if (a == null || b == null) return false;
+  const time = /^\d{2}:\d{2}(:\d{2})?$/;
+  if (typeof a === "string" && typeof b === "string" && time.test(a) && time.test(b)) return (a.length === 5 ? a + ":00" : a) === (b.length === 5 ? b + ":00" : b);
+  // Postgres liefert timestamptz mit +00:00; der Browser schreibt häufig .000Z.
+  const timestamp = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+  if (typeof a === "string" && typeof b === "string" && timestamp.test(a) && timestamp.test(b)) {
+    return Number.isFinite(Date.parse(a)) && Date.parse(a) === Date.parse(b);
   }
-  if (a == null || b == null) return a == null && b == null;
   if (typeof a !== typeof b) return false;
   if (Array.isArray(a) && Array.isArray(b)) {
     if (a.length !== b.length) return false;

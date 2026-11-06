@@ -1,76 +1,63 @@
 import { supabase } from "@/integrations/supabase/client";
-import type {
-  CreatedRecord,
-  ScenarioRunState,
-  StepRunState,
-  TestContext,
-  TestScenario,
-} from "./types";
+import type { CreatedRecord, ScenarioRunState, StorageObject, TestContext, TestScenario } from "./types";
+import { recoverArtifacts } from "./artifacts";
+import { selftestDatabase } from "./database";
+import { errorMessage } from "./verify";
 
 export const SELFTEST_PREFIX = "[SELFTEST]";
 export const SELFTEST_MARKER = "__SELFTEST__";
 
-function newRunId(): string {
-  return crypto.randomUUID().slice(0, 8);
-}
-
-/** Tabellen in Reihenfolge: spezifischere zuerst, danach Eltern. */
+// Fremdschlüssel: Antworten vor Teilnehmern, Anfragen vor Terminen, Kinder vor Eltern.
 const CLEANUP_ORDER = [
-  "task_decision_participants",
-  "task_decisions",
-  "case_item_interactions",
-  "case_items",
-  "letter_attachments",
-  "letters",
-  "tasks",
-  "meeting_agenda_documents",
-  "meeting_agenda_items",
-  "meeting_participants",
-  "appointment_feedback",
-  "appointment_preparations",
-  "appointment_contacts",
-  "appointments",
-  "meetings",
-  "event_planning_timeline_assignments",
-  "event_planning_checklist_items",
-  "event_planning_contacts",
-  "event_planning_speakers",
-  "event_planning_dates",
-  "event_plannings",
-  "daily_briefings",
-];
+  "task_decision_responses", "task_decision_participants", "task_decisions",
+  "letter_attachments", "documents", "letters", "quick_notes", "contact_activities", "contacts", "tasks",
+  "case_item_interactions", "case_items", "day_slips", "appointment_requests",
+  "meeting_agenda_documents", "meeting_agenda_items", "meeting_participants",
+  "appointment_feedback", "appointment_preparations", "appointment_contacts",
+  "appointments", "meetings", "event_planning_timeline_assignments",
+  "event_planning_checklist_items", "event_planning_contacts", "event_planning_speakers",
+  "event_planning_dates", "event_plannings", "daily_briefings",
+] as const;
 
-export async function cleanupCreated(
-  records: CreatedRecord[],
-): Promise<{ ok: boolean; remaining: CreatedRecord[]; message: string }> {
+export async function cleanupCreated(records: CreatedRecord[], storageObjects: StorageObject[] = [], onDiscover?: (records: CreatedRecord[], objects: StorageObject[]) => void) {
+  const recovered = await recoverArtifacts(records, storageObjects);
+  records = recovered.records;
+  storageObjects = recovered.storageObjects;
+  onDiscover?.(records, storageObjects);
   const remaining: CreatedRecord[] = [];
-  // Sortiere nach CLEANUP_ORDER, unbekannte Tabellen am Anfang
-  const sorted = [...records].sort((a, b) => {
-    const ai = CLEANUP_ORDER.indexOf(a.table);
-    const bi = CLEANUP_ORDER.indexOf(b.table);
-    return (ai === -1 ? -1 : ai) - (bi === -1 ? -1 : bi);
-  });
-
-  for (const rec of sorted) {
+  const storageRemaining: StorageObject[] = [];
+  const errors: string[] = [...recovered.errors];
+  for (const object of storageObjects) {
     try {
-      const { error } = await supabase.from(rec.table)
-        .delete()
-        .eq("id", rec.id);
-      if (error) {
-        remaining.push(rec);
-      }
-    } catch {
-      remaining.push(rec);
+      if (object.bucket !== "documents" || !object.path) throw new Error("Unbekanntes Testdatei-Ziel.");
+      const { error } = await supabase.storage.from(object.bucket).remove([object.path]);
+      if (error) throw error;
+    } catch (error) {
+      storageRemaining.push(object);
+      errors.push(errorMessage(error));
     }
   }
-
+  const sorted = [...records].reverse().sort((a, b) =>
+    CLEANUP_ORDER.indexOf(a.table as typeof CLEANUP_ORDER[number]) - CLEANUP_ORDER.indexOf(b.table as typeof CLEANUP_ORDER[number]));
+  for (const record of sorted) {
+    try {
+      if (recovered.blocked.has(`${record.table}/${record.id}`)) { remaining.push(record); continue; }
+      if (!(CLEANUP_ORDER as readonly string[]).includes(record.table)) throw new Error(`Kein Cleanup für ${record.table} definiert.`);
+      const { error } = await selftestDatabase.from(record.table).delete().eq("id", record.id);
+      if (error) throw error;
+      // RLS kann DELETE ohne Fehler und ohne gelöschte Zeile beantworten.
+      const check = await selftestDatabase.from(record.table).select("id").eq("id", record.id).maybeSingle();
+      if (check.error) throw check.error;
+      if (check.data) throw new Error(`${record.table}: Datensatz nach DELETE noch vorhanden.`);
+    } catch (error) {
+      remaining.push(record);
+      errors.push(errorMessage(error));
+    }
+  }
   return {
-    ok: remaining.length === 0,
-    remaining,
-    message:
-      remaining.length === 0
-        ? `${records.length} Datensätze entfernt.`
-        : `${records.length - remaining.length}/${records.length} entfernt, ${remaining.length} verblieben.`,
+    ok: remaining.length === 0 && storageRemaining.length === 0,
+    remaining, storageRemaining, errors,
+    message: `${records.length - remaining.length}/${records.length} Datensätze und ${storageObjects.length - storageRemaining.length}/${storageObjects.length} Dateien entfernt.`,
   };
 }
 
@@ -78,196 +65,126 @@ export interface RunOptions {
   tenantId: string;
   userId: string;
   onUpdate: (state: ScenarioRunState) => void;
-  /** Wenn true: Cleanup wird übersprungen, Daten bleiben sichtbar im System. */
   keepData?: boolean;
+  /** Stoppt nach dem laufenden Schritt; dessen Schreiboperationen werden abgewartet. */
+  signal?: AbortSignal;
 }
 
-async function runPreflight(
-  userId: string,
-  tenantId: string,
-): Promise<{ ok: boolean; message: string }> {
-  try {
-    const { data: sess } = await supabase.auth.getSession();
-    if (!sess.session?.access_token) {
-      return { ok: false, message: "Keine aktive Session — bitte erneut anmelden." };
-    }
-    if (sess.session.user.id !== userId) {
-      return {
-        ok: false,
-        message: `JWT-Drift: Session-User (${sess.session.user.id}) ≠ erwarteter User (${userId}).`,
-      };
-    }
-    const { data: mem, error } = await supabase
-      .from("user_tenant_memberships")
-      .select("id, is_active")
-      .eq("user_id", userId)
-      .eq("tenant_id", tenantId)
-      .eq("is_active", true)
-      .maybeSingle();
-    if (error) return { ok: false, message: `Membership-Check: ${error.message}` };
-    if (!mem) {
-      return {
-        ok: false,
-        message: "Keine aktive Tenant-Membership — INSERTs würden an RLS scheitern.",
-      };
-    }
-    return { ok: true, message: "Preflight ok." };
-  } catch (err) {
-    return { ok: false, message: err instanceof Error ? err.message : String(err) };
+async function runPreflight(userId: string, tenantId: string) {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  if (!data.session?.access_token || data.session.user.id !== userId) {
+    throw new Error("Keine passende aktive Session — bitte erneut anmelden.");
   }
+  const membership = await supabase.from("user_tenant_memberships")
+    .select("id, role").eq("user_id", userId).eq("tenant_id", tenantId).eq("is_active", true).maybeSingle();
+  if (membership.error) throw membership.error;
+  if (!membership.data) throw new Error("Keine aktive Mitgliedschaft im gewählten Büro.");
+  return membership.data.role;
 }
 
-export async function runScenario(
-  scenario: TestScenario,
-  options: RunOptions,
-): Promise<ScenarioRunState> {
+export async function runScenario(scenario: TestScenario, options: RunOptions): Promise<ScenarioRunState> {
   const ctx: TestContext = {
-    runId: newRunId(),
-    tenantId: options.tenantId,
-    userId: options.userId,
-    created: [],
-    data: {},
+    runId: crypto.randomUUID(), tenantId: options.tenantId, userId: options.userId,
+    created: [], storageObjects: [], data: {},
+    trackRecord: (record) => {
+      if (!ctx.created.some(r => r.table === record.table && r.id === record.id)) ctx.created.push(record);
+      emit();
+    },
+    trackStorage: (object) => {
+      if (!ctx.storageObjects.some(o => o.bucket === object.bucket && o.path === object.path)) ctx.storageObjects.push(object);
+      emit();
+    },
   };
-
   const state: ScenarioRunState = {
-    scenarioId: scenario.id,
-    status: "running",
-    startedAt: Date.now(),
-    steps: scenario.steps.map<StepRunState>((step) => ({ step, status: "pending" })),
+    runId: ctx.runId, tenantId: ctx.tenantId, userId: ctx.userId, scenarioId: scenario.id,
+    mode: options.keepData ? "demo" : "test", status: "running", startedAt: Date.now(),
+    records: [], storageObjects: [], steps: scenario.steps.map(step => ({ step, status: "pending" })),
     cleanup: { status: "pending" },
   };
-
-  const emit = () => options.onUpdate({ ...state, steps: state.steps.map((s) => ({ ...s })) });
+  const emit = () => options.onUpdate({ ...state,
+    steps: state.steps.map(s => ({ ...s })), cleanup: { ...state.cleanup },
+    records: [...ctx.created], storageObjects: [...ctx.storageObjects],
+  });
   emit();
-
-  let aborted = false;
-
-  // Preflight: Session + aktive Tenant-Membership prüfen, sonst sofort abbrechen.
-  const preflight = await runPreflight(options.userId, options.tenantId);
-  if (!preflight.ok) {
-    state.steps.forEach((s) => {
-      s.status = "skipped";
-      s.message = preflight.message;
-    });
-    state.cleanup.status = "ok";
-    state.cleanup.message = "Nichts zu tun.";
-    state.status = "failed";
-    state.finishedAt = Date.now();
-    emit();
-    return state;
-  }
-
+  let failedDependency = false;
   try {
-    for (let i = 0; i < scenario.steps.length; i += 1) {
-      const step = scenario.steps[i];
-      const slot = state.steps[i];
-
-      if (aborted) {
+    if (scenario.steps.some(step => step.kind !== "logic")) {
+      try {
+        ctx.role = await runPreflight(options.userId, options.tenantId);
+        if (scenario.requiredRoles && !scenario.requiredRoles.includes(ctx.role)) {
+          throw new Error(`Erforderliche Rolle: ${scenario.requiredRoles.join(" oder ")}. Aktuell: ${ctx.role}.`);
+        }
+      } catch (error) {
+        state.status = "blocked";
+        state.message = errorMessage(error);
+        return state;
+      }
+    }
+    for (const slot of state.steps) {
+      if (options.signal?.aborted || failedDependency) {
         slot.status = "skipped";
+        slot.message = options.signal?.aborted ? "Lauf abgebrochen." : "Vorheriger notwendiger Schritt fehlgeschlagen.";
         emit();
         continue;
       }
-
       slot.status = "running";
       emit();
-      const t0 = performance.now();
+      const started = performance.now();
       try {
-        const res = await step.run(ctx);
-        slot.durationMs = Math.round(performance.now() - t0);
-        slot.message = res.message;
-        slot.details = res.details;
-        slot.status = res.ok ? "ok" : "failed";
-        if (!res.ok && step.critical !== false) aborted = true;
-      } catch (err) {
-        slot.durationMs = Math.round(performance.now() - t0);
-        slot.message = err instanceof Error ? err.message : String(err);
+        const result = await slot.step.run(ctx);
+        slot.status = result.ok ? "ok" : "failed";
+        slot.message = result.message;
+        slot.details = result.details;
+      } catch (error) {
         slot.status = "failed";
-        if (step.critical !== false) aborted = true;
+        slot.message = errorMessage(error);
       }
+      slot.durationMs = Math.round(performance.now() - started);
+      if (slot.status === "failed" && slot.step.critical !== false) failedDependency = true;
       emit();
     }
   } finally {
-    if (options.keepData) {
-      state.cleanup.status = "skipped";
-      state.cleanup.message = `Demo-Modus: ${ctx.created.length} Datensätze behalten. Notfall-Aufräumknopf entfernt sie wieder.`;
+    let discoveryError: string | undefined;
+    if (scenario.collectArtifacts && ctx.created.length > 0) {
+      try { await scenario.collectArtifacts(ctx); }
+      catch (error) { discoveryError = `Folgedaten konnten nicht vollständig ermittelt werden: ${error instanceof Error ? error.message : String(error)}`; }
+    }
+    const stepsOk = state.steps.length > 0 && state.steps.every(s => s.status === "ok");
+    if (state.status === "blocked") {
+      state.steps.forEach(s => { s.status = "skipped"; s.message = state.message; });
+    }
+    if (options.keepData && stepsOk && !discoveryError && !options.signal?.aborted) {
+      state.cleanup = { status: "skipped", message: "Demo-Daten behalten. Über diesen Lauf gezielt aufräumbar." };
+      state.links = scenario.links?.(ctx);
     } else {
       state.cleanup.status = "running";
       emit();
-      const cleanupResult = await cleanupCreated(ctx.created);
-      state.cleanup.status = cleanupResult.ok ? "ok" : "failed";
-      state.cleanup.message = cleanupResult.message;
-      state.cleanup.remaining = cleanupResult.remaining;
+      const result = await cleanupCreated(ctx.created, ctx.storageObjects, (records, objects) => {
+        records.forEach(record => ctx.trackRecord(record));
+        objects.forEach(object => ctx.trackStorage(object));
+      });
+      state.cleanup = { status: result.ok && !discoveryError ? "ok" : "failed", message: [result.message, ...result.errors, discoveryError].filter(Boolean).join(" "),
+        remaining: result.remaining, storageRemaining: result.storageRemaining };
     }
-
+    if (state.status !== "blocked") {
+      state.status = state.cleanup.status === "failed" || state.steps.some(s => s.status === "failed") ? "failed"
+        : options.signal?.aborted ? "cancelled" : stepsOk ? "ok" : "failed";
+    }
+    state.records = [...ctx.created];
+    state.storageObjects = [...ctx.storageObjects];
     state.finishedAt = Date.now();
-    const stepsOk = state.steps.every((s) => s.status === "ok");
-    const cleanupOk = state.cleanup.status === "ok" || state.cleanup.status === "skipped";
-    state.status = stepsOk && cleanupOk ? "ok" : "failed";
-
-    if (options.keepData && stepsOk && scenario.links) {
-      try {
-        state.links = scenario.links(ctx);
-      } catch {
-        state.links = [];
-      }
-    }
     emit();
   }
-
   return state;
 }
 
-/** Notfall-Cleanup: löscht alle Records mit SELFTEST-Marker im Tenant. */
-export async function purgeAllSelftestData(tenantId: string): Promise<{
-  ok: boolean;
-  removed: Record<string, number>;
-  message: string;
-}> {
-  const removed: Record<string, number> = {};
-  const tables: Array<{ name: string; column: string; hasTenant: boolean }> = [
-    { name: "task_decisions", column: "title", hasTenant: true },
-    { name: "case_item_interactions", column: "summary", hasTenant: true },
-    { name: "case_items", column: "subject", hasTenant: true },
-    { name: "letter_attachments", column: "file_name", hasTenant: false },
-    { name: "letters", column: "title", hasTenant: true },
-    { name: "tasks", column: "title", hasTenant: true },
-    { name: "meeting_agenda_documents", column: "file_name", hasTenant: false },
-    { name: "meeting_agenda_items", column: "title", hasTenant: false },
-    { name: "appointment_feedback", column: "notes", hasTenant: true },
-    { name: "appointment_preparations", column: "title", hasTenant: true },
-    { name: "appointments", column: "title", hasTenant: true },
-    { name: "meetings", column: "title", hasTenant: true },
-    { name: "event_planning_checklist_items", column: "title", hasTenant: false },
-    { name: "event_planning_speakers", column: "name", hasTenant: false },
-    { name: "event_planning_contacts", column: "name", hasTenant: false },
-    { name: "event_plannings", column: "title", hasTenant: true },
-    { name: "daily_briefings", column: "title", hasTenant: true },
-    { name: "contact_activities", column: "title", hasTenant: true },
-    { name: "contacts", column: "name", hasTenant: true },
-    { name: "quick_notes", column: "title", hasTenant: true },
-  ];
-
-  for (const t of tables) {
-    try {
-      let query = supabase.from(t.name).delete({ count: "exact" })
-        .ilike(t.column, `${SELFTEST_PREFIX}%`);
-      if (t.hasTenant) query = query.eq("tenant_id", tenantId);
-      const { count, error } = await query;
-      if (error) throw error;
-      removed[t.name] = count ?? 0;
-    } catch (err) {
-      removed[t.name] = -1;
-      console.error("[selftest] purge failed", t.name, err);
-    }
+/** Szenarien laufen nacheinander. Ein Fehler hält unabhängige Szenarien nicht auf. */
+export async function runSuite(scenarios: TestScenario[], options: RunOptions) {
+  const results: ScenarioRunState[] = [];
+  for (const scenario of scenarios) {
+    if (options.signal?.aborted) break;
+    results.push(await runScenario(scenario, options));
   }
-
-  const failed = Object.values(removed).some((c) => c < 0);
-  const total = Object.values(removed).filter((c) => c >= 0).reduce((a, b) => a + b, 0);
-  return {
-    ok: !failed,
-    removed,
-    message: failed
-      ? "Beim Aufräumen sind Fehler aufgetreten. Bitte Konsole prüfen."
-      : `${total} Test-Datensätze entfernt.`,
-  };
+  return results;
 }

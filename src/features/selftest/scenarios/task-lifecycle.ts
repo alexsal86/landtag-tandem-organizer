@@ -22,16 +22,16 @@ export const taskLifecycleScenario: TestScenario = {
         const payload = { title: `${SELFTEST_PREFIX} Aufgabe (${ctx.runId})`, description: SELFTEST_MARKER, status: "todo", priority: "high", user_id: ctx.userId, tenant_id: ctx.tenantId };
         const { data, error } = await supabase.from("tasks").insert(payload).select("id").single();
         if (error || !data) return { ok: false, message: describeError(error) };
-        ctx.created.push({ table: "tasks", id: data.id });
+        ctx.trackRecord({ table: "tasks", id: data.id });
         ctx.data.taskId = data.id;
         return expectFields("tasks", data.id, payload, "Aufgabe");
       },
     },
     {
-      id: "assign", label: "Zuweisen (mehrere Personen, CSV) + Frist",
+      id: "assign", label: "Aufgabe zuweisen + Frist setzen",
       run: async (ctx) => {
         const id = ctx.data.taskId as string;
-        const update = { assigned_to: `${ctx.userId},${ctx.userId}`, due_date: dueIn(5), status: "in_progress", progress: 30 };
+        const update = { assigned_to: ctx.userId, due_date: dueIn(5), status: "in-progress", progress: 30 };
         const { error } = await supabase.from("tasks").update(update).eq("id", id);
         if (error) return { ok: false, message: describeError(error) };
         return expectFields("tasks", id, update, "Zuweisung");
@@ -43,7 +43,7 @@ export const taskLifecycleScenario: TestScenario = {
         const payload = { title: `${SELFTEST_PREFIX} Aufgaben-Entscheidung (${ctx.runId})`, description: SELFTEST_MARKER, status: "active", created_by: ctx.userId, tenant_id: ctx.tenantId, task_id: ctx.data.taskId as string, visible_to_all: false };
         const { data, error } = await supabase.from("task_decisions").insert(payload).select("id").single();
         if (error || !data) return { ok: false, message: describeError(error) };
-        ctx.created.push({ table: "task_decisions", id: data.id });
+        ctx.trackRecord({ table: "task_decisions", id: data.id });
         return expectFields("task_decisions", data.id, payload, "Entscheidung");
       },
     },

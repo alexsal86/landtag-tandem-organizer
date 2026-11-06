@@ -12,7 +12,15 @@ vi.mock('@/integrations/supabase/client', () => ({
 }));
 
 vi.mock('@/hooks/use-toast', () => ({
+  toast: vi.fn(),
   useToast: () => ({ toast: toastSpy }),
+}));
+
+vi.mock('@/lib/notify', () => ({
+  notify: {
+    success: (title: string, options?: { description?: string }) => toastSpy({ title, ...options }),
+    error: (title: string, options?: { description?: string }) => toastSpy({ title, ...options, variant: 'destructive' }),
+  },
 }));
 
 vi.mock('@/utils/debugConsole', () => ({
@@ -32,7 +40,7 @@ const baseLetter: Letter = {
   created_by: 'user-1',
   title: 'Testbrief',
   content: 'Hallo Welt',
-  status: 'review',
+  status: 'pending_approval',
   created_at: '2024-01-01T00:00:00.000Z',
   updated_at: '2024-01-01T00:00:00.000Z',
   recipient_name: null,
@@ -70,12 +78,46 @@ type HookProps = {
   setEditedLetter: React.Dispatch<React.SetStateAction<Partial<Letter>>>;
 };
 
+function renderWorkflow(status: Letter['status']) {
+  let state: Partial<Letter> = { ...baseLetter, status };
+  const setEditedLetter: React.Dispatch<React.SetStateAction<Partial<Letter>>> = update => {
+    state = typeof update === 'function' ? update(state) : update;
+  };
+  const hook = renderHook(() => useLetterOperations({
+    letter: baseLetter, editedLetter: state, setEditedLetter, canEdit: true,
+    userId: 'user-1', tenantId: 'tenant-1', showPagination: false,
+    latestContentRef: { current: { content: 'Hallo Welt', contentNodes: null } },
+    isUpdatingFromRemoteRef: { current: false }, pendingMentionsRef: { current: new Set<string>() },
+    onSave: vi.fn(), setSaving: vi.fn(), setLastSaved: vi.fn(), setIsProofreadingMode: vi.fn(),
+    setShowAssignmentDialog: vi.fn(), fetchComments: vi.fn(), fetchCollaborators: vi.fn(), senderInfos: [], informationBlocks: [],
+  }));
+  return { hook, state: () => state };
+}
+
 describe('useLetterOperations integration', () => {
   beforeEach(() => {
     mockSupabaseClient.reset();
     toastSpy.mockClear();
     archiveLetterMock.mockReset();
     mockSupabaseClient.setTableResult('letters', { data: [], error: null });
+  });
+
+  it('behält bei fehlgeschlagenem Speichern den bisherigen Status und zeigt keinen Erfolg', async () => {
+    mockSupabaseClient.setTableResult('letters', { data: null, error: new Error('Datenbank nicht erreichbar') });
+    const flow = renderWorkflow('pending_approval');
+    await act(async () => { await flow.hook.result.current.handleStatusTransition('approved'); });
+    expect(flow.state().status).toBe('pending_approval');
+    expect(toastSpy).toHaveBeenCalledWith(expect.objectContaining({ title: 'Fehler beim Workflow-Update', variant: 'destructive' }));
+    expect(toastSpy).not.toHaveBeenCalledWith(expect.objectContaining({ title: 'Status geändert' }));
+  });
+
+  it('zeigt einen Brief bei fehlgeschlagener Archivierung nicht als versendet an', async () => {
+    archiveLetterMock.mockResolvedValue({ success: false, error: 'PDF fehlgeschlagen' });
+    const flow = renderWorkflow('approved');
+    await act(async () => { await flow.hook.result.current.handleStatusTransition('sent'); });
+    expect(flow.state().status).toBe('approved');
+    expect(flow.state().workflow_locked).toBe(false);
+    expect(toastSpy).not.toHaveBeenCalledWith(expect.objectContaining({ title: 'Brief versendet und archiviert' }));
   });
 
   it('covers the approved -> sent -> archived flow and stores archive metadata', async () => {

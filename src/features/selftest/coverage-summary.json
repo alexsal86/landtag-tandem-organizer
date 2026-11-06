@@ -1,0 +1,2067 @@
+{
+  "schemaVersion": 1,
+  "source": "src/integrations/supabase/types.ts",
+  "counts": {
+    "total": 267,
+    "scenario": 29,
+    "deferred": 82,
+    "excluded": 156,
+    "missing": 0
+  },
+  "scenarios": [
+    {
+      "id": "access-boundaries",
+      "title": "Zugriffsschutz (Bürogrenzen und Entscheiderrolle)",
+      "touches": [
+        "appointment_requests"
+      ],
+      "features": [
+        "appointment-requests",
+        "permissions"
+      ],
+      "writes": [],
+      "registered": true
+    },
+    {
+      "id": "appointment-lifecycle",
+      "title": "Termin-Lifecycle (Kalender + Briefing + Feedback)",
+      "touches": [
+        "appointments",
+        "appointment_preparations",
+        "appointment_feedback"
+      ],
+      "features": [
+        "appointments",
+        "briefings"
+      ],
+      "writes": [
+        {
+          "table": "appointments",
+          "columns": [
+            "title",
+            "description",
+            "start_time",
+            "end_time",
+            "location",
+            "category",
+            "priority",
+            "status",
+            "is_all_day",
+            "user_id",
+            "tenant_id",
+            "reminder_minutes"
+          ]
+        },
+        {
+          "table": "appointment_preparations",
+          "columns": [
+            "appointment_id",
+            "tenant_id",
+            "created_by",
+            "title",
+            "status",
+            "preparation_data",
+            "checklist_items",
+            "notes"
+          ]
+        },
+        {
+          "table": "appointment_feedback",
+          "columns": [
+            "appointment_id",
+            "user_id",
+            "tenant_id",
+            "feedback_status",
+            "notes",
+            "event_type",
+            "completed_at"
+          ]
+        }
+      ],
+      "registered": true
+    },
+    {
+      "id": "appointment-request-lifecycle",
+      "title": "Terminanfragen-Lifecycle (Eingang → Sperre → Entscheidung → Termin)",
+      "touches": [
+        "appointment_requests",
+        "appointments"
+      ],
+      "features": [
+        "appointment-requests",
+        "appointments"
+      ],
+      "writes": [
+        {
+          "table": "appointment_requests",
+          "columns": [
+            "title",
+            "tenant_id",
+            "requested_date",
+            "requested_time",
+            "duration_minutes",
+            "channel",
+            "requester",
+            "location",
+            "notes"
+          ]
+        }
+      ],
+      "registered": true
+    },
+    {
+      "id": "case-item-lifecycle",
+      "title": "Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss)",
+      "touches": [
+        "case_items",
+        "case_item_interactions",
+        "case_item_handover_log",
+        "task_decisions",
+        "task_decision_participants",
+        "task_decision_responses",
+        "appointment_requests",
+        "day_slips",
+        "tasks"
+      ],
+      "features": [
+        "case-items",
+        "decisions",
+        "dayslip",
+        "appointment-requests"
+      ],
+      "writes": [
+        {
+          "table": "case_items",
+          "columns": [
+            "subject",
+            "summary",
+            "user_id",
+            "tenant_id",
+            "status",
+            "ball_owner",
+            "next_action_label",
+            "next_action_due_at",
+            "next_action_assignee_id",
+            "intake_payload",
+            "pending_for_jour_fixe",
+            "completion_note",
+            "completed_at",
+            "resolution_summary"
+          ]
+        },
+        {
+          "table": "case_item_interactions",
+          "columns": [
+            "case_item_id",
+            "tenant_id",
+            "interaction_type",
+            "direction",
+            "interaction_at",
+            "summary",
+            "visibility",
+            "created_by"
+          ]
+        },
+        {
+          "table": "case_item_handover_log",
+          "columns": [
+            "case_item_id",
+            "tenant_id",
+            "from_user_id",
+            "to_user_id",
+            "handed_over_by"
+          ]
+        },
+        {
+          "table": "task_decisions",
+          "columns": [
+            "title",
+            "description",
+            "status",
+            "created_by",
+            "tenant_id",
+            "case_item_id"
+          ]
+        },
+        {
+          "table": "appointment_requests",
+          "columns": [
+            "title",
+            "tenant_id",
+            "requested_date",
+            "channel",
+            "notes"
+          ]
+        },
+        {
+          "table": "day_slips",
+          "columns": [
+            "user_id",
+            "tenant_id",
+            "day_key",
+            "data"
+          ]
+        }
+      ],
+      "registered": true
+    },
+    {
+      "id": "contact-lifecycle",
+      "title": "Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche)",
+      "touches": [
+        "contacts",
+        "contact_activities"
+      ],
+      "features": [
+        "contacts"
+      ],
+      "writes": [
+        {
+          "table": "contacts",
+          "columns": [
+            "name",
+            "user_id",
+            "tenant_id",
+            "email",
+            "phone",
+            "organization",
+            "title",
+            "category",
+            "tags",
+            "notes"
+          ]
+        },
+        {
+          "table": "contact_activities",
+          "columns": [
+            "contact_id",
+            "tenant_id",
+            "created_by",
+            "activity_type",
+            "title",
+            "description"
+          ]
+        }
+      ],
+      "registered": true
+    },
+    {
+      "id": "daily-briefing-lifecycle",
+      "title": "Tages-Briefings (Vortag-Regel)",
+      "touches": [
+        "daily_briefings"
+      ],
+      "features": [
+        "briefings"
+      ],
+      "writes": [
+        {
+          "table": "daily_briefings",
+          "columns": [
+            "tenant_id",
+            "author_id",
+            "briefing_date",
+            "title",
+            "content"
+          ]
+        }
+      ],
+      "registered": true
+    },
+    {
+      "id": "day-slip-lifecycle",
+      "title": "Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag)",
+      "touches": [
+        "day_slips"
+      ],
+      "features": [
+        "dayslip"
+      ],
+      "writes": [
+        {
+          "table": "day_slips",
+          "columns": [
+            "user_id",
+            "tenant_id",
+            "day_key",
+            "data"
+          ]
+        }
+      ],
+      "registered": true
+    },
+    {
+      "id": "decision-lifecycle",
+      "title": "Entscheidungs-Lifecycle (active → open → archived)",
+      "touches": [
+        "task_decisions",
+        "task_decision_participants"
+      ],
+      "features": [
+        "decisions"
+      ],
+      "writes": [
+        {
+          "table": "task_decisions",
+          "columns": [
+            "title",
+            "description",
+            "status",
+            "created_by",
+            "tenant_id",
+            "visible_to_all",
+            "priority",
+            "response_deadline",
+            "archived_at",
+            "archived_by"
+          ]
+        },
+        {
+          "table": "task_decision_participants",
+          "columns": [
+            "decision_id",
+            "user_id"
+          ]
+        }
+      ],
+      "registered": true
+    },
+    {
+      "id": "event-planning-lifecycle",
+      "title": "Event-Planung (komplett: Termine, Speaker, Checkliste, Timeline)",
+      "touches": [
+        "event_plannings",
+        "event_planning_dates",
+        "event_planning_speakers",
+        "event_planning_contacts",
+        "event_planning_checklist_items",
+        "event_planning_timeline_assignments"
+      ],
+      "features": [
+        "event-planning"
+      ],
+      "writes": [
+        {
+          "table": "event_plannings",
+          "columns": [
+            "title",
+            "description",
+            "location",
+            "background_info",
+            "is_private",
+            "is_digital",
+            "user_id",
+            "tenant_id"
+          ]
+        },
+        {
+          "table": "event_planning_dates",
+          "columns": [
+            "event_planning_id",
+            "date_time",
+            "is_confirmed"
+          ]
+        },
+        {
+          "table": "event_planning_speakers",
+          "columns": [
+            "event_planning_id",
+            "name",
+            "bio",
+            "topic",
+            "order_index"
+          ]
+        },
+        {
+          "table": "event_planning_contacts",
+          "columns": [
+            "event_planning_id",
+            "name",
+            "email",
+            "phone",
+            "role"
+          ]
+        },
+        {
+          "table": "event_planning_checklist_items",
+          "columns": [
+            "event_planning_id",
+            "title",
+            "is_completed",
+            "order_index",
+            "type"
+          ]
+        },
+        {
+          "table": "event_planning_timeline_assignments",
+          "columns": [
+            "event_planning_id",
+            "checklist_item_id",
+            "due_date"
+          ]
+        }
+      ],
+      "registered": true
+    },
+    {
+      "id": "letter-lifecycle",
+      "title": "Brief-Lifecycle (Entwurf → Prüfung → Freigabe → Archiv und Folgeaufgabe)",
+      "touches": [
+        "letters",
+        "letter_attachments",
+        "documents",
+        "tasks"
+      ],
+      "features": [
+        "letters",
+        "documents",
+        "tasks"
+      ],
+      "writes": [
+        {
+          "table": "letters",
+          "columns": [
+            "title",
+            "subject",
+            "content",
+            "content_html",
+            "status",
+            "created_by",
+            "tenant_id",
+            "recipient_name",
+            "recipient_address",
+            "letter_date",
+            "submitted_for_review_at",
+            "submitted_for_review_by",
+            "approved_at",
+            "approved_by",
+            "sent_at",
+            "sent_by",
+            "sent_date",
+            "workflow_locked",
+            "archived_document_id"
+          ]
+        },
+        {
+          "table": "letter_attachments",
+          "columns": [
+            "letter_id",
+            "file_name",
+            "file_path",
+            "file_type",
+            "file_size",
+            "uploaded_by"
+          ]
+        }
+      ],
+      "registered": true
+    },
+    {
+      "id": "meeting-lifecycle",
+      "title": "Meeting-Lifecycle (vollständig + Field-Verifikation)",
+      "touches": [
+        "meetings",
+        "meeting_agenda_items",
+        "meeting_agenda_documents",
+        "meeting_participants",
+        "appointments",
+        "tasks"
+      ],
+      "features": [
+        "meetings",
+        "appointments",
+        "tasks"
+      ],
+      "writes": [
+        {
+          "table": "meetings",
+          "columns": [
+            "title",
+            "description",
+            "meeting_date",
+            "meeting_time",
+            "status",
+            "user_id",
+            "tenant_id",
+            "is_public",
+            "parent_meeting_id",
+            "is_recurring_instance"
+          ]
+        },
+        {
+          "table": "meeting_agenda_items",
+          "columns": [
+            "meeting_id",
+            "title",
+            "description",
+            "order_index",
+            "is_completed",
+            "is_recurring",
+            "system_type",
+            "is_visible",
+            "is_optional",
+            "parent_id",
+            "task_id",
+            "notes",
+            "result_text",
+            "carry_over_to_next",
+            "carryover_notes",
+            "carried_over_from",
+            "original_meeting_date",
+            "original_meeting_title"
+          ]
+        },
+        {
+          "table": "meeting_agenda_documents",
+          "columns": [
+            "meeting_agenda_item_id",
+            "user_id",
+            "file_name",
+            "file_path",
+            "file_type",
+            "file_size"
+          ]
+        },
+        {
+          "table": "meeting_participants",
+          "columns": [
+            "meeting_id",
+            "user_id",
+            "role",
+            "status"
+          ]
+        },
+        {
+          "table": "appointments",
+          "columns": [
+            "title",
+            "description",
+            "start_time",
+            "end_time",
+            "category",
+            "status",
+            "user_id",
+            "tenant_id",
+            "meeting_id"
+          ]
+        },
+        {
+          "table": "tasks",
+          "columns": [
+            "title",
+            "description",
+            "status",
+            "priority",
+            "user_id",
+            "tenant_id"
+          ]
+        }
+      ],
+      "registered": true
+    },
+    {
+      "id": "quick-note-lifecycle",
+      "title": "Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv)",
+      "touches": [
+        "quick_notes",
+        "tasks"
+      ],
+      "features": [
+        "quick-notes",
+        "tasks"
+      ],
+      "writes": [
+        {
+          "table": "quick_notes",
+          "columns": [
+            "title",
+            "content",
+            "user_id",
+            "tenant_id",
+            "priority_level",
+            "color",
+            "category",
+            "tags",
+            "is_pinned",
+            "task_id",
+            "is_archived",
+            "archived_at"
+          ]
+        },
+        {
+          "table": "tasks",
+          "columns": [
+            "title",
+            "description",
+            "user_id",
+            "tenant_id",
+            "status",
+            "priority"
+          ]
+        }
+      ],
+      "registered": true
+    },
+    {
+      "id": "task-lifecycle",
+      "title": "Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt)",
+      "touches": [
+        "tasks",
+        "task_decisions"
+      ],
+      "features": [
+        "tasks",
+        "decisions"
+      ],
+      "writes": [
+        {
+          "table": "tasks",
+          "columns": [
+            "title",
+            "description",
+            "status",
+            "priority",
+            "user_id",
+            "tenant_id",
+            "assigned_to",
+            "due_date",
+            "progress",
+            "pending_for_jour_fixe"
+          ]
+        },
+        {
+          "table": "task_decisions",
+          "columns": [
+            "title",
+            "description",
+            "status",
+            "created_by",
+            "tenant_id",
+            "task_id"
+          ]
+        }
+      ],
+      "registered": true
+    },
+    {
+      "id": "workflow-rules",
+      "title": "Geschäftsregeln (Freigabe, Rollen, Fristen)",
+      "touches": [],
+      "features": [
+        "letters",
+        "appointment-requests",
+        "case-items"
+      ],
+      "writes": [],
+      "registered": true
+    }
+  ],
+  "tables": [
+    {
+      "table": "action_permissions",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "admin_status_options",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "annual_task_completions",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "annual_tasks",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "app_settings",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "appointment_categories",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "appointment_contacts",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "appointment_documents",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "appointment_feedback",
+      "status": "scenario",
+      "scenarios": [
+        "appointment-lifecycle"
+      ]
+    },
+    {
+      "table": "appointment_feedback_settings",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "appointment_guests",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "appointment_locations",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "appointment_polls",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "appointment_preparation_documents",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "appointment_preparation_templates",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "appointment_preparations",
+      "status": "scenario",
+      "scenarios": [
+        "appointment-lifecycle"
+      ]
+    },
+    {
+      "table": "appointment_requests",
+      "status": "scenario",
+      "scenarios": [
+        "access-boundaries",
+        "appointment-request-lifecycle",
+        "case-item-lifecycle"
+      ]
+    },
+    {
+      "table": "appointment_statuses",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "appointment_topics",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "appointments",
+      "status": "scenario",
+      "scenarios": [
+        "appointment-lifecycle",
+        "appointment-request-lifecycle",
+        "meeting-lifecycle"
+      ]
+    },
+    {
+      "table": "archived_tasks",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "audit_log_entries",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "automation_rate_limits",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "automation_rule_run_steps",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "automation_rule_runs",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "automation_rule_versions",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "automation_rules",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "bulk_action_audit",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "calendar_sync_settings",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "call_logs",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "carryover_items",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "case_file_appointments",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "case_file_contacts",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "case_file_documents",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "case_file_letters",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "case_file_notes",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "case_file_participants",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "case_file_processing_statuses",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "case_file_status_history",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "case_file_tasks",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "case_file_timeline",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "case_file_topics",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "case_file_types",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "case_files",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "case_item_attachments",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "case_item_categories",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "case_item_escalation_suggestions",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "case_item_handover_log",
+      "status": "scenario",
+      "scenarios": [
+        "case-item-lifecycle"
+      ]
+    },
+    {
+      "table": "case_item_interactions",
+      "status": "scenario",
+      "scenarios": [
+        "case-item-lifecycle"
+      ]
+    },
+    {
+      "table": "case_item_participants",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "case_item_timeline",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "case_items",
+      "status": "scenario",
+      "scenarios": [
+        "case-item-lifecycle"
+      ]
+    },
+    {
+      "table": "celebration_animations",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "celebration_settings",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "contact_activities",
+      "status": "scenario",
+      "scenarios": [
+        "contact-lifecycle"
+      ]
+    },
+    {
+      "table": "contact_briefing_memory",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "contact_topics",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "contact_usage_stats",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "contacts",
+      "status": "scenario",
+      "scenarios": [
+        "contact-lifecycle"
+      ]
+    },
+    {
+      "table": "daily_briefing_reads",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "daily_briefings",
+      "status": "scenario",
+      "scenarios": [
+        "daily-briefing-lifecycle"
+      ]
+    },
+    {
+      "table": "dashboard_layouts",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "data_lint_findings",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "day_slips",
+      "status": "scenario",
+      "scenarios": [
+        "case-item-lifecycle",
+        "day-slip-lifecycle"
+      ]
+    },
+    {
+      "table": "decision_archive_settings",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "decision_email_templates",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "decision_matrix_messages",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "default_appointment_guests",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "distribution_list_members",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "distribution_lists",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "district_notes",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "district_support_assignments",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "document_categories",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "document_contacts",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "document_folders",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "document_topics",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "documents",
+      "status": "scenario",
+      "scenarios": [
+        "letter-lifecycle"
+      ]
+    },
+    {
+      "table": "dossier_entries",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "dossier_links",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "dossier_position_versions",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "dossier_source_watchers",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "dossier_stakeholders",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "dossier_talking_points",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "dossiers",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "edge_function_cache",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "egress_anomalies",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "egress_metrics",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "election_district_municipalities",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "election_district_notes",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "election_districts",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "election_representatives",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "email_logs",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "email_templates",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "employee_meeting_action_items",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "employee_meeting_requests",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "employee_meetings",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "employee_settings",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "employee_settings_history",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "employee_yearly_stats",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "event_email_templates",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "event_planning_action_logs",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "event_planning_checklist_items",
+      "status": "scenario",
+      "scenarios": [
+        "event-planning-lifecycle"
+      ]
+    },
+    {
+      "table": "event_planning_collaborators",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "event_planning_contacts",
+      "status": "scenario",
+      "scenarios": [
+        "event-planning-lifecycle"
+      ]
+    },
+    {
+      "table": "event_planning_dates",
+      "status": "scenario",
+      "scenarios": [
+        "event-planning-lifecycle"
+      ]
+    },
+    {
+      "table": "event_planning_documents",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "event_planning_item_actions",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "event_planning_speakers",
+      "status": "scenario",
+      "scenarios": [
+        "event-planning-lifecycle"
+      ]
+    },
+    {
+      "table": "event_planning_timeline_assignments",
+      "status": "scenario",
+      "scenarios": [
+        "event-planning-lifecycle"
+      ]
+    },
+    {
+      "table": "event_plannings",
+      "status": "scenario",
+      "scenarios": [
+        "event-planning-lifecycle"
+      ]
+    },
+    {
+      "table": "event_rsvp_public_links",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "event_rsvps",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "expense_budgets",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "expense_categories",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "expenses",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "external_calendars",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "external_events",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "facts",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "field_permissions",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "funding_participants",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "fundings",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "gdpr_requests",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "habit_completions",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "habits",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "information_blocks",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "karlsruhe_districts",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "knowledge_document_collaborators",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "knowledge_document_permissions",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "knowledge_document_snapshots",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "knowledge_document_topics",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "knowledge_document_versions",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "knowledge_documents",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "leave_requests",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "letter_archive_settings",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "letter_attachments",
+      "status": "scenario",
+      "scenarios": [
+        "letter-lifecycle"
+      ]
+    },
+    {
+      "table": "letter_collaborators",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "letter_comments",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "letter_occasions",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "letter_template_assets",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "letter_template_settings",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "letter_templates",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "letter_workflow_history",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "letters",
+      "status": "scenario",
+      "scenarios": [
+        "letter-lifecycle"
+      ]
+    },
+    {
+      "table": "login_customization",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "map_flag_topics",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "map_flag_types",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "map_flags",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "map_layers",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "map_routes",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "matrix_bot_logs",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "matrix_morning_settings",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "matrix_subscriptions",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "matrix_widget_callback_requests",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "matrix_widget_improvement_triggers",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "matrix_widget_message_feedback",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "meeting_agenda_documents",
+      "status": "scenario",
+      "scenarios": [
+        "meeting-lifecycle"
+      ]
+    },
+    {
+      "table": "meeting_agenda_items",
+      "status": "scenario",
+      "scenarios": [
+        "meeting-lifecycle"
+      ]
+    },
+    {
+      "table": "meeting_participants",
+      "status": "scenario",
+      "scenarios": [
+        "meeting-lifecycle"
+      ]
+    },
+    {
+      "table": "meeting_templates",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "meetings",
+      "status": "scenario",
+      "scenarios": [
+        "meeting-lifecycle"
+      ]
+    },
+    {
+      "table": "message_confirmations",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "message_recipients",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "messages",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "mobile_push_tokens",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "news_email_templates",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "notification_navigation_mapping",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "notification_types",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "notifications",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "parliament_protocols",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "party_associations",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "planning_item_comments",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "planning_item_documents",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "planning_item_subtasks",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "planning_templates",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "poll_notifications",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "poll_participants",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "poll_responses",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "poll_time_slots",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "poll_versions",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "pomodoro_sessions",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "preparation_templates",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "press_releases",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "profiles",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "protocol_agenda_items",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "protocol_sessions",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "protocol_speeches",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "public_holidays",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "push_subscriptions",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "quick_note_global_shares",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "quick_note_shares",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "quick_note_versions",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "quick_note_write_receipts",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "quick_notes",
+      "status": "scenario",
+      "scenarios": [
+        "quick-note-lifecycle"
+      ]
+    },
+    {
+      "table": "rss_cache",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "rss_settings",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "rss_sources",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "scheduled_emails",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "search_analytics",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "security_audit_snapshots",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "selftest_runs",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "sender_information",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "sick_days",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "social_approval_comments",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "social_assets",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "social_campaigns",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "social_content_channels",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "social_content_item_channels",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "social_content_items",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "social_content_variants",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "social_hashtag_sets",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "social_planner_notes",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "starred_appointments",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "subtasks",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "superadmin_users",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "system_health",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "tags",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "task_archive_settings",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "task_assignees",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "task_categories",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "task_comments",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "task_decision_attachments",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "task_decision_comment_reactions",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "task_decision_comments",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "task_decision_participants",
+      "status": "scenario",
+      "scenarios": [
+        "case-item-lifecycle",
+        "decision-lifecycle"
+      ]
+    },
+    {
+      "table": "task_decision_response_history",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "task_decision_responses",
+      "status": "scenario",
+      "scenarios": [
+        "case-item-lifecycle"
+      ]
+    },
+    {
+      "table": "task_decision_topics",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "task_decisions",
+      "status": "scenario",
+      "scenarios": [
+        "case-item-lifecycle",
+        "decision-lifecycle",
+        "task-lifecycle"
+      ]
+    },
+    {
+      "table": "task_documents",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "task_snoozes",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "task_statuses",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "task_topics",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "tasks",
+      "status": "scenario",
+      "scenarios": [
+        "case-item-lifecycle",
+        "letter-lifecycle",
+        "meeting-lifecycle",
+        "quick-note-lifecycle",
+        "task-lifecycle"
+      ]
+    },
+    {
+      "table": "team_announcement_dismissals",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "team_announcements",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "team_dashboard_members",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "team_dashboards",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "tenant_collaborations",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "tenant_feature_flags",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "tenant_onboarding_checklist_items",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "tenant_onboarding_slides",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "tenants",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "time_entries",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "time_entry_corrections",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "time_entry_history",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "todo_categories",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "todos",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "topic_backlog",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "topics",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "user_mywork_settings",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "user_navigation_visits",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "user_notification_settings",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "user_onboarding_state",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "user_planning_preferences",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "user_preferences",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "user_roles",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "user_sessions",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "user_status",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "user_tenant_memberships",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "vacation_checklist_responses",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "vacation_checklist_templates",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "vacation_history",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "widget_configurations",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "widget_rate_limits",
+      "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "workflow_action_log",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "workflow_definitions",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "workflow_runs",
+      "status": "deferred",
+      "scenarios": []
+    }
+  ],
+  "errors": []
+}

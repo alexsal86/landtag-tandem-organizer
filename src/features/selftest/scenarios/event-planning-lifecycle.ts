@@ -65,7 +65,7 @@ export const eventPlanningLifecycleScenario: TestScenario = {
         };
         const { data, error } = await supabase.from("event_plannings").insert(payload).select("id").single();
         if (error || !data) return { ok: false, message: describeError(error) };
-        ctx.created.push({ table: "event_plannings", id: data.id });
+        ctx.trackRecord({ table: "event_plannings", id: data.id });
         ctx.data.eventPlanningId = data.id;
         return expectFields("event_plannings", data.id, payload, "Event-Planung");
       },
@@ -81,7 +81,7 @@ export const eventPlanningLifecycleScenario: TestScenario = {
         ];
         const { data, error } = await supabase.from("event_planning_dates").insert(dates).select("id");
         if (error || !data) return { ok: false, message: describeError(error) };
-        for (const r of data) ctx.created.push({ table: "event_planning_dates", id: r.id });
+        for (const r of data) ctx.trackRecord({ table: "event_planning_dates", id: r.id });
         return { ok: true, message: `${data.length} Terminoptionen angelegt.` };
       },
     },
@@ -97,7 +97,7 @@ export const eventPlanningLifecycleScenario: TestScenario = {
         ];
         const { data, error } = await supabase.from("event_planning_speakers").insert(speakers).select("id");
         if (error || !data) return { ok: false, message: describeError(error) };
-        for (const r of data) ctx.created.push({ table: "event_planning_speakers", id: r.id });
+        for (const r of data) ctx.trackRecord({ table: "event_planning_speakers", id: r.id });
         return { ok: true, message: `${data.length} Speaker angelegt.` };
       },
     },
@@ -115,7 +115,7 @@ export const eventPlanningLifecycleScenario: TestScenario = {
         };
         const { data, error } = await supabase.from("event_planning_contacts").insert(payload).select("id").single();
         if (error || !data) return { ok: false, message: describeError(error) };
-        ctx.created.push({ table: "event_planning_contacts", id: data.id });
+        ctx.trackRecord({ table: "event_planning_contacts", id: data.id });
         return expectFields("event_planning_contacts", data.id, payload, "Ansprechpartner");
       },
     },
@@ -132,7 +132,7 @@ export const eventPlanningLifecycleScenario: TestScenario = {
         ];
         const { data, error } = await supabase.from("event_planning_checklist_items").insert(items).select("id, type");
         if (error || !data) return { ok: false, message: describeError(error) };
-        for (const r of data) ctx.created.push({ table: "event_planning_checklist_items", id: r.id });
+        for (const r of data) ctx.trackRecord({ table: "event_planning_checklist_items", id: r.id });
         ctx.data.firstChecklistId = data[0].id;
         return { ok: true, message: `${data.length} Checklist-Items angelegt.` };
       },
@@ -149,7 +149,7 @@ export const eventPlanningLifecycleScenario: TestScenario = {
         };
         const { data, error } = await supabase.from("event_planning_timeline_assignments").insert(payload).select("id").single();
         if (error || !data) return { ok: false, message: describeError(error) };
-        ctx.created.push({ table: "event_planning_timeline_assignments", id: data.id });
+        ctx.trackRecord({ table: "event_planning_timeline_assignments", id: data.id });
         return expectFields("event_planning_timeline_assignments", data.id, payload, "Timeline");
       },
     },

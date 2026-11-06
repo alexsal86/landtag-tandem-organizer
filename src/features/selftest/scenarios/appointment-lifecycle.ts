@@ -65,7 +65,7 @@ export const appointmentLifecycleScenario: TestScenario = {
         };
         const { data, error } = await supabase.from("appointments").insert(payload).select("id").single();
         if (error || !data) return { ok: false, message: describeError(error) };
-        ctx.created.push({ table: "appointments", id: data.id });
+        ctx.trackRecord({ table: "appointments", id: data.id });
         ctx.data.appointmentId = data.id;
         return expectFields("appointments", data.id, payload, "Termin");
       },
@@ -109,7 +109,7 @@ export const appointmentLifecycleScenario: TestScenario = {
         };
         const { data, error } = await supabase.from("appointment_preparations").insert(payload).select("id").single();
         if (error || !data) return { ok: false, message: describeError(error) };
-        ctx.created.push({ table: "appointment_preparations", id: data.id });
+        ctx.trackRecord({ table: "appointment_preparations", id: data.id });
         ctx.data.preparationId = data.id;
         return expectFields("appointment_preparations", data.id, payload, "Vorbereitung");
       },
@@ -130,7 +130,7 @@ export const appointmentLifecycleScenario: TestScenario = {
         };
         const { data, error } = await supabase.from("appointment_feedback").insert(payload).select("id").single();
         if (error || !data) return { ok: false, message: describeError(error) };
-        ctx.created.push({ table: "appointment_feedback", id: data.id });
+        ctx.trackRecord({ table: "appointment_feedback", id: data.id });
         return expectFields("appointment_feedback", data.id, payload, "Feedback");
       },
     },

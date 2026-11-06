@@ -1,3 +1,4 @@
+import { uploadLetterAttachment } from "@/services/letterWorkflow";
 import React, { useState, useEffect, useCallback } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
 import { FileText, Upload, Download, Trash2, X, Edit, Plus, FolderOpen } from "lucide-react";
@@ -88,45 +89,12 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
           continue;
         }
 
-        const fileName = `${Math.random().toString(36).substring(2)}_${file.name}`;
-        const filePath = `${letterId}/${fileName}`;
-
-        // Upload to Supabase Storage
-        const { error: uploadError } = await supabase.storage
-          .from('documents')
-          .upload(filePath, file);
-
-        if (uploadError) {
-          notify.error("Upload-Fehler", {
-            description: `${file.name} konnte nicht hochgeladen werden: ${uploadError.message}`
-});
-          continue;
+        try {
+          const attachment = await uploadLetterAttachment(file, letterId, user?.id ?? '');
+          newAttachments.push(attachment);
+        } catch (error) {
+          notify.error("Upload-Fehler", { description: `${file.name}: ${error instanceof Error ? error.message : String(error)}` });
         }
-
-        // Save attachment record
-        const { data: insertData, error: insertError } = await supabase
-          .from('letter_attachments')
-          .insert([{
-            letter_id: letterId,
-            file_name: file.name,
-            file_path: filePath,
-            file_type: file.type,
-            file_size: file.size,
-            uploaded_by: user?.id
-          }])
-          .select()
-          .single();
-
-        if (insertError) {
-          // Clean up uploaded file
-          await supabase.storage.from('documents').remove([filePath]);
-          notify.error("Datenbankfehler", {
-            description: `${file.name} konnte nicht gespeichert werden: ${insertError.message}`
-});
-          continue;
-        }
-        
-        newAttachments.push(insertData);
       }
 
       onAttachmentUpdate(newAttachments);

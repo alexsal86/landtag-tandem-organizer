@@ -39,7 +39,7 @@ export const decisionLifecycleScenario: TestScenario = {
           .select("id, response_options")
           .single();
         if (error || !data) return { ok: false, message: describeError(error) };
-        ctx.created.push({ table: "task_decisions", id: data.id });
+        ctx.trackRecord({ table: "task_decisions", id: data.id });
         ctx.data.decisionId = data.id;
         ctx.data.responseOptions = data.response_options;
         return expectFields("task_decisions", data.id, payload, "Entscheidung");
@@ -58,7 +58,7 @@ export const decisionLifecycleScenario: TestScenario = {
           .select("id, token")
           .single();
         if (error || !data) return { ok: false, message: error?.message ?? "Insert leer" };
-        ctx.created.push({ table: "task_decision_participants", id: data.id });
+        ctx.trackRecord({ table: "task_decision_participants", id: data.id });
         return { ok: true, message: `Teilnehmer angelegt (Token vergeben: ${data.token ? "ja" : "nein"}).` };
       },
     },

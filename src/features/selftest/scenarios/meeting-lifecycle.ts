@@ -54,7 +54,7 @@ export const meetingLifecycleScenario: TestScenario = {
         };
         const { data, error } = await supabase.from("meetings").insert(payload).select("id").single();
         if (error || !data) return { ok: false, message: describeError(error) };
-        ctx.created.push({ table: "meetings", id: data.id });
+        ctx.trackRecord({ table: "meetings", id: data.id });
         ctx.data.meetingId = data.id;
         return expectFields("meetings", data.id, payload, "Meeting");
       },
@@ -79,7 +79,7 @@ export const meetingLifecycleScenario: TestScenario = {
         };
         const { data, error } = await supabase.from("appointments").insert(payload).select("id").single();
         if (error || !data) return { ok: false, message: describeError(error) };
-        ctx.created.push({ table: "appointments", id: data.id });
+        ctx.trackRecord({ table: "appointments", id: data.id });
         ctx.data.appointmentId = data.id;
         return expectFields("appointments", data.id, payload, "Termin");
       },
@@ -99,7 +99,7 @@ export const meetingLifecycleScenario: TestScenario = {
           .select("id")
           .single();
         if (error || !data) return { ok: false, message: error?.message ?? "Insert lieferte keine Daten" };
-        ctx.created.push({ table: "meeting_participants", id: data.id });
+        ctx.trackRecord({ table: "meeting_participants", id: data.id });
         return { ok: true, message: "Teilnehmer ergänzt." };
       },
     },
@@ -121,7 +121,7 @@ export const meetingLifecycleScenario: TestScenario = {
           .insert(items)
           .select("id");
         if (error || !data) return { ok: false, message: error?.message ?? "Insert lieferte keine Daten" };
-        for (const row of data) ctx.created.push({ table: "meeting_agenda_items", id: row.id });
+        for (const row of data) ctx.trackRecord({ table: "meeting_agenda_items", id: row.id });
         ctx.data.firstAgendaId = data[0].id;
         return { ok: true, message: `${data.length} Agenda-Punkte angelegt.` };
       },
@@ -148,7 +148,7 @@ export const meetingLifecycleScenario: TestScenario = {
           .insert(rows)
           .select("id, system_type");
         if (error || !data) return { ok: false, message: describeError(error) };
-        for (const row of data) ctx.created.push({ table: "meeting_agenda_items", id: row.id });
+        for (const row of data) ctx.trackRecord({ table: "meeting_agenda_items", id: row.id });
         if (data.length !== SYSTEM_TYPES.length) {
           return { ok: false, message: `Nur ${data.length}/${SYSTEM_TYPES.length} System-Punkte angelegt.` };
         }
@@ -203,7 +203,7 @@ export const meetingLifecycleScenario: TestScenario = {
           .select("id")
           .single();
         if (error || !data) return { ok: false, message: error?.message ?? "Insert lieferte keine Daten" };
-        ctx.created.push({ table: "meeting_agenda_items", id: data.id });
+        ctx.trackRecord({ table: "meeting_agenda_items", id: data.id });
         ctx.data.subAgendaId = data.id;
         return { ok: true, message: "Hierarchie ok." };
       },
@@ -226,7 +226,7 @@ export const meetingLifecycleScenario: TestScenario = {
           .select("id")
           .single();
         if (error || !data) return { ok: false, message: error?.message ?? "Insert lieferte keine Daten" };
-        ctx.created.push({ table: "meeting_agenda_documents", id: data.id });
+        ctx.trackRecord({ table: "meeting_agenda_documents", id: data.id });
         return { ok: true, message: "Dokument verknüpft." };
       },
     },
@@ -247,7 +247,7 @@ export const meetingLifecycleScenario: TestScenario = {
           .select("id")
           .single();
         if (error || !data) return { ok: false, message: error?.message ?? "Insert lieferte keine Daten" };
-        ctx.created.push({ table: "tasks", id: data.id });
+        ctx.trackRecord({ table: "tasks", id: data.id });
         ctx.data.taskId = data.id;
 
         if (ctx.data.subAgendaId) {
@@ -322,7 +322,7 @@ export const meetingLifecycleScenario: TestScenario = {
           .select("id")
           .single();
         if (error || !m) return { ok: false, message: error?.message ?? "Insert lieferte keine Daten" };
-        ctx.created.push({ table: "meetings", id: m.id });
+        ctx.trackRecord({ table: "meetings", id: m.id });
         ctx.data.followupMeetingId = m.id;
 
         const { data: ag, error: agErr } = await supabase
@@ -341,7 +341,7 @@ export const meetingLifecycleScenario: TestScenario = {
           .select("id")
           .single();
         if (agErr || !ag) return { ok: false, message: agErr?.message ?? "Carry-Over Insert fehlgeschlagen" };
-        ctx.created.push({ table: "meeting_agenda_items", id: ag.id });
+        ctx.trackRecord({ table: "meeting_agenda_items", id: ag.id });
         return { ok: true, message: "Folge-Meeting + Carry-Over angelegt." };
       },
     },

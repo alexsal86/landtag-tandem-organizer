@@ -21,7 +21,7 @@ export const quickNoteLifecycleScenario: TestScenario = {
         const payload = { title: `${SELFTEST_PREFIX} Notiz (${ctx.runId})`, content: `<p>${SELFTEST_MARKER} Rückruf Bürgerin wegen Lärmschutz</p>`, user_id: ctx.userId, tenant_id: ctx.tenantId, priority_level: 2, color: "#f59e0b", category: "general", tags: ["selbsttest", "lärmschutz"] };
         const { data, error } = await supabase.from("quick_notes").insert(payload).select("id").single();
         if (error || !data) return { ok: false, message: describeError(error) };
-        ctx.created.push({ table: "quick_notes", id: data.id });
+        ctx.trackRecord({ table: "quick_notes", id: data.id });
         ctx.data.noteId = data.id;
         return expectFields("quick_notes", data.id, { ...payload, is_pinned: false, is_archived: false }, "Notiz");
       },
@@ -43,7 +43,7 @@ export const quickNoteLifecycleScenario: TestScenario = {
         const task = { title: `${SELFTEST_PREFIX} Aufgabe aus Notiz (${ctx.runId})`, description: SELFTEST_MARKER, user_id: ctx.userId, tenant_id: ctx.tenantId, status: "todo", priority: "high" };
         const { data, error } = await supabase.from("tasks").insert(task).select("id").single();
         if (error || !data) return { ok: false, message: describeError(error) };
-        ctx.created.splice(0, 0, { table: "tasks", id: data.id }); // Aufgabe zuletzt löschen
+        ctx.trackRecord({ table: "tasks", id: data.id }); // Aufgabe zuletzt löschen
         const { error: le } = await supabase.from("quick_notes").update({ task_id: data.id }).eq("id", id);
         if (le) return { ok: false, message: describeError(le) };
         return expectFields("quick_notes", id, { task_id: data.id }, "Verknüpfung");

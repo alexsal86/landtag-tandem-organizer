@@ -21,7 +21,7 @@ export const contactLifecycleScenario: TestScenario = {
         const payload = { name: `${SELFTEST_PREFIX} Erika Muster (${ctx.runId})`, user_id: ctx.userId, tenant_id: ctx.tenantId, email: "erika.muster@example.org", phone: "+49 721 123456", organization: "Bürgerverein Südstadt", title: "Vorsitzende", category: "citizen", tags: ["selbsttest"], notes: SELFTEST_MARKER };
         const { data, error } = await supabase.from("contacts").insert(payload).select("id").single();
         if (error || !data) return { ok: false, message: describeError(error) };
-        ctx.created.push({ table: "contacts", id: data.id });
+        ctx.trackRecord({ table: "contacts", id: data.id });
         ctx.data.contactId = data.id;
         return expectFields("contacts", data.id, payload, "Kontakt");
       },
@@ -42,7 +42,7 @@ export const contactLifecycleScenario: TestScenario = {
         const payload = { contact_id: ctx.data.contactId as string, tenant_id: ctx.tenantId, created_by: ctx.userId, activity_type: "call", title: `${SELFTEST_PREFIX} Telefonat`, description: SELFTEST_MARKER };
         const { data, error } = await supabase.from("contact_activities").insert(payload).select("id").single();
         if (error || !data) return { ok: false, message: describeError(error) };
-        ctx.created.push({ table: "contact_activities", id: data.id });
+        ctx.trackRecord({ table: "contact_activities", id: data.id });
         return expectFields("contact_activities", data.id, payload, "Aktivität");
       },
     },

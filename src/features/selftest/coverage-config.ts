@@ -1,13 +1,19 @@
 /**
  * Coverage-Konfiguration für die Selbsttest-Szenarien.
  *
- * IGNORED_TABLES = Tabellen, die KEIN Workflow-Szenario brauchen
+ * IGNORED_TABLES = bisher ausgenommene Infrastruktur- und Verknüpfungstabellen
  *  (Konfig/Lookup-Tabellen, Audit, Push, Versionen, Edge-Subsysteme,
  *   reine Settings, Verknüpfungstabellen ohne eigene Geschäftslogik).
  *
  * Wird vom Script `scripts/check-selftest-coverage.mjs` gelesen.
  */
 export const IGNORED_TABLES: string[] = [
+  "selftest_runs",
+  // Infrastruktur aus dem aktuellen Supabase-Schema (keine Testaussage).
+  "bulk_action_audit", "data_lint_findings", "edge_function_cache",
+  "egress_anomalies", "egress_metrics", "mobile_push_tokens",
+  "quick_note_write_receipts", "security_audit_snapshots", "system_health",
+  "tenant_feature_flags", "preparation_templates",
   // Settings / Konfiguration
   "admin_status_options",
   "app_settings",
@@ -106,7 +112,7 @@ export const IGNORED_TABLES: string[] = [
   "external_calendars",
   "external_events",
 
-  // Reine Verknüpfungstabellen (werden indirekt durch Eltern getestet)
+  // Verknüpfungstabellen (ohne eigenes Szenario nicht als geprüft zählen)
   "appointment_contacts",
   "appointment_documents",
   "appointment_guests",
@@ -171,7 +177,16 @@ export const IGNORED_TABLES: string[] = [
   "team_announcement_dismissals",
   "team_dashboard_members",
 
-  // Daten ohne Workflow (Stammdaten / Geo)
+];
+
+/** Bekannte Lücken. Diese Tabellen zählen ausdrücklich NICHT als getestet. */
+export const DEFERRED_TABLES: string[] = [
+  // Sicherheits-, Onboarding- und Automationsabläufe benötigen eigene Szenarien.
+  "action_permissions", "field_permissions", "superadmin_users", "gdpr_requests",
+  "contact_briefing_memory", "facts", "tenant_onboarding_checklist_items",
+  "tenant_onboarding_slides", "user_onboarding_state", "workflow_action_log",
+  "workflow_definitions", "workflow_runs", "external_calendars", "external_events",
+  // Fachbereiche, deren Workflow-Abdeckung noch auszubauen ist
   "carryover_items",
   "contacts",
   "daily_briefing_reads",
