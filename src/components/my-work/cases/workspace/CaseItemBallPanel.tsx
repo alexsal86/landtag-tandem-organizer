@@ -7,12 +7,16 @@ import { cn } from "@/lib/utils";
 import { sendToDaySlip } from "@/lib/daySlipBridge";
 import { openAppointmentRequestCreate } from "@/features/appointment-requests/events";
 import { BALL_OWNERS, PARLIAMENTARY_TOOLS, ballMeta, daysUntilNextAction, type BallOwner, type ParliamentaryTool } from "@/features/cases/items/ball";
+import { format } from "date-fns";
+import { de } from "date-fns/locale";
+import { useCaseHandoverLog } from "@/components/my-work/hooks/useCaseHandoverLog";
 import type { CaseItem, TeamUser } from "@/components/my-work/hooks/useCaseWorkspaceData";
 
 export type BallPatch = Partial<Pick<CaseItem, "ball_owner" | "next_action_label" | "next_action_due_at" | "next_action_assignee_id" | "parliamentary_tool">>;
 
 type Props = {
   item: CaseItem;
+  tenantId?: string;
   subject: string;
   teamUsers: TeamUser[];
   onChange: (patch: BallPatch) => void;
@@ -21,10 +25,12 @@ type Props = {
 
 const NONE = "__none__";
 
-export function CaseItemBallPanel({ item, subject, teamUsers, onChange, onOpenMeetingSelector }: Props) {
+export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange, onOpenMeetingSelector }: Props) {
   const [label, setLabel] = useState(item.next_action_label ?? "");
   useEffect(() => setLabel(item.next_action_label ?? ""), [item.id, item.next_action_label]);
 
+  const lastHandover = useCaseHandoverLog(tenantId, item.id).data?.[0];
+  const userName = (id: string | null) => teamUsers.find((u) => u.id === id)?.name ?? "Unbekannt";
   const meta = ballMeta(item.ball_owner);
   const days = daysUntilNextAction(item);
   const dueText = days === null ? null : days < 0 ? `${-days} T überfällig` : days === 0 ? "heute" : days === 1 ? "morgen" : `in ${days} T`;
@@ -101,6 +107,11 @@ export function CaseItemBallPanel({ item, subject, teamUsers, onChange, onOpenMe
             {PARLIAMENTARY_TOOLS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
           </SelectContent>
         </Select>
+        {lastHandover && (
+          <span className="text-xs text-muted-foreground" title="Letzte Übergabe an Vertretung">
+            Übergeben von {userName(lastHandover.handed_over_by)} an {userName(lastHandover.to_user_id)} · {format(new Date(lastHandover.handed_over_at), "dd.MM. HH:mm", { locale: de })}
+          </span>
+        )}
         <div className="ml-auto flex items-center gap-1">
           <Button
             type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs text-muted-foreground"
