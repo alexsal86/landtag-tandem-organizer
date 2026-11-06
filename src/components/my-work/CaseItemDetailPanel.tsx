@@ -331,6 +331,7 @@ export function CaseItemDetailPanel({
                     <p className="text-[10px] font-medium text-muted-foreground">
                       {formatTimelineDateOnly(entry.timestamp)}
                       <span className="ml-1.5 opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-within:opacity-100">{formatTimelineTimeOnly(entry.timestamp)} Uhr</span>
+                      {entry.actorName && <span className="ml-1.5">· {entry.actorName}</span>}
                     </p>
 
                     <div className="flex items-start justify-between gap-2">
@@ -399,7 +400,7 @@ export function CaseItemDetailPanel({
                           </HoverCardContent>
                         </HoverCard>
                       ) : (
-                        <p className={cn("font-bold leading-4", isFrist && "text-palette-amber")}>{entry.title}</p>
+                        <p className={cn("font-bold leading-4", isFrist && "text-palette-amber", entry.isSystem && "font-semibold text-muted-foreground")}>{entry.title}</p>
                       )}
 
                       {entry.canDelete && entry.onDelete ? (

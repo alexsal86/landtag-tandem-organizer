@@ -23,7 +23,7 @@ export const parseTimelineEvents = (payload: CaseItemIntakePayload | null): Time
     const item = event as Record<string, unknown>;
     if (typeof item.id !== "string" || typeof item.type !== "string" || typeof item.title !== "string" || typeof item.timestamp !== "string") continue;
     const type = item.type as string;
-    if (type !== "status" && type !== "interaktion" && type !== "entscheidung") continue;
+    if (type !== "status" && type !== "interaktion" && type !== "entscheidung" && type !== "system") continue;
     const documents = Array.isArray(item.documents)
       ? item.documents
           .map((doc) => {
@@ -49,6 +49,7 @@ export const parseTimelineEvents = (payload: CaseItemIntakePayload | null): Time
       timestamp: item.timestamp,
       statusValue: typeof item.statusValue === "string" ? item.statusValue : undefined,
       interactionType: parseTimelineInteractionType(item.interactionType),
+      actorName: typeof item.actorName === "string" ? item.actorName : undefined,
     });
   }
   return results.sort((a, b) => toTimeSafe(a.timestamp) - toTimeSafe(b.timestamp));
