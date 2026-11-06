@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { Fragment, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { Draggable, Droppable } from "@hello-pangea/dnd";
 import { Archive, CalendarDays, Circle, FolderOpen, Globe, Link2, Trash2, Vote, ArchiveRestore, Phone } from "lucide-react";
@@ -76,7 +76,21 @@ type CaseItemListProps = {
   loadMoreItems: () => Promise<unknown>;
 };
 
+const RESUB_KEY = "cases:resubmission-open";
+
 export function CaseItemList(props: CaseItemListProps) {
+  const activeItems = props.sortedCaseItems.filter((i) => !isOnResubmission(i));
+  const resubItems = props.sortedCaseItems.filter((i) => isOnResubmission(i));
+  const orderedItems = [...activeItems, ...resubItems];
+  const activeCount = activeItems.length;
+  const resubCount = resubItems.length;
+  const [resubOpen, setResubOpen] = useState(() => {
+    try { return localStorage.getItem(RESUB_KEY) !== "0"; } catch { return true; }
+  });
+  const toggleResub = () => setResubOpen((open) => {
+    try { localStorage.setItem(RESUB_KEY, open ? "0" : "1"); } catch { /* ignore */ }
+    return !open;
+  });
   return (
     <div className="flex h-full min-h-0 flex-col border-r bg-card">
       {/* Header */}
