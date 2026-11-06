@@ -97,7 +97,14 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
   }
 
   const footer = (
+
     <>
+      <TooltipProvider><Tooltip>
+        <TooltipTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Hinweise zur Notizerfassung"><Info className="h-4 w-4" /></Button>
+        </TooltipTrigger>
+        <TooltipContent>Strg/Cmd + Enter speichert. @ erwähnt Personen. [ ] erstellt eine Checkbox. Abbrechen behält deinen lokalen Entwurf.</TooltipContent>
+      </Tooltip></TooltipProvider>
       <span className="mx-1 h-4 w-px bg-border" aria-hidden="true" />
       <Popover>
         <PopoverTrigger asChild>
@@ -119,12 +126,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
         aria-label="Notiz anpinnen" aria-pressed={isPinned} onClick={() => setIsPinned(!isPinned)}>
         <Pin className="h-4 w-4" />
       </Button>
-      <TooltipProvider><Tooltip>
-        <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Hinweise zur Notizerfassung"><Info className="h-4 w-4" /></Button>
-        </TooltipTrigger>
-        <TooltipContent>Strg/Cmd + Enter speichert. @ erwähnt Personen. [ ] erstellt eine Checkbox. Abbrechen behält deinen lokalen Entwurf.</TooltipContent>
-      </Tooltip></TooltipProvider>
+
       <div className="ml-auto flex items-center gap-2">
         <span role="status" title={draftStatus} className="hidden text-xs text-muted-foreground sm:inline">
           {draftStatus === "Entwurf lokal gesichert" ? "Lokal gesichert" : draftStatus || "@ erwähnen"}

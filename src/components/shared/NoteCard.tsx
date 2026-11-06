@@ -1,3 +1,4 @@
+import { useNoteColorPalette, colorLabel as describeColor } from "@/components/my-work/useNoteColorPalette";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -15,7 +16,7 @@ import {
   Star, Share2, Users, Hourglass, Pencil, ListTree,
   History, ArrowRight, Palette, X, FileText, Lightbulb, Wand2, NotebookPen, ClockAlert
 } from "lucide-react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { differenceInCalendarDays, format, formatDistanceToNow, isPast, isToday, isYesterday } from "date-fns";
 import { de } from "date-fns/locale";
@@ -92,6 +93,13 @@ export function NoteCard({
 }: NoteCardProps) {
   const checklist = countChecklist(note.content);
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [showSharedLabel, setShowSharedLabel] = useState(true);
+  useEffect(() => {
+    setShowSharedLabel(true);
+    const timeout = window.setTimeout(() => setShowSharedLabel(false), 3000);
+    return () => window.clearTimeout(timeout);
+  }, [note.id, note.is_shared, note.owner?.display_name]);
+  const { palette } = useNoteColorPalette();
   const hasShared = (note.share_count || 0) > 0 || note.is_shared === true;
 
   const canEdit = note.user_id === userId || note.can_edit === true;
@@ -115,7 +123,8 @@ export function NoteCard({
   const changedAt = new Date(note.updated_at || note.created_at);
   const staleWeeks = Math.max(4, Math.floor(differenceInCalendarDays(new Date(), changedAt) / 7));
   const relTime = isToday(changedAt) ? "heute" : isYesterday(changedAt) ? "gestern" : formatDistanceToNow(changedAt, { addSuffix: true, locale: de });
-  const colorLabel = noteColors.find((c) => c.value === note.color)?.label ?? "Standard";
+  const colorDefinition = palette.find(c => c.value.toLowerCase() === note.color?.toLowerCase());
+  const colorLabel = colorDefinition ? describeColor(colorDefinition) : noteColors.find(c => c.value === note.color)?.label ?? "Standard";
   const prio = note.priority_level || 0;
 
   return (
@@ -328,7 +337,7 @@ export function NoteCard({
       <div
         ref={contentRef}
         className={cn(
-          "mt-1 overflow-hidden text-[13px] leading-[1.45] text-foreground prose prose-sm max-w-none [&_*]:text-[13px] [&_*]:leading-[1.45] [&>p]:mb-1 [&>ul]:mb-1 [&>ol]:mb-1",
+          "mt-2 mb-2 overflow-hidden text-[13px] leading-[1.45] text-foreground prose prose-sm max-w-none [&_*]:text-[13px] [&_*]:leading-[1.45] [&>p]:mb-1 [&>ul]:mb-1 [&>ol]:mb-1",
           !isExpanded && "max-h-[calc(13px*1.45*3)]",
         )}
         style={!isExpanded && truncated ? { WebkitMaskImage: "linear-gradient(to bottom, black 55%, transparent)", maskImage: "linear-gradient(to bottom, black 55%, transparent)" } : undefined}
@@ -384,14 +393,14 @@ export function NoteCard({
         <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
             <Tooltip><TooltipTrigger asChild>
-              <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full border border-border" style={{ backgroundColor: note.color || undefined }} role="img" aria-label={`Farbe: ${colorLabel}`} />
+              <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full border border-border" style={{ backgroundColor: note.color || undefined }} role="img" tabIndex={0} aria-label={`Farbe: ${colorLabel}`} />
             </TooltipTrigger><TooltipContent>Farbe: {colorLabel}</TooltipContent></Tooltip>
             {showPriority && (prio > 0
-              ? <span className="text-warning">★ Prio {prio}</span>
+              ? <span><span className="text-warning">★</span> Prio {prio}</span>
               : <span>Ohne Prio</span>)}
             {hasShared && (
               <Tooltip><TooltipTrigger asChild>
-                <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" />{note.is_shared ? (note.owner?.display_name?.split(" ")[0] || "Geteilt") : note.share_count}</span>
+                <span tabIndex={0} className="inline-flex items-center gap-1" aria-label={note.is_shared ? `Geteilt von ${note.owner?.display_name || "Unbekannt"}` : "Geteilte Notiz"}><Users className="h-3 w-3" />{note.is_shared ? (showSharedLabel && <span>Geteilt von {note.owner?.display_name || "Unbekannt"}</span>) : note.share_count}</span>
               </TooltipTrigger><TooltipContent>
                 {note.is_shared ? `Geteilt von ${note.owner?.display_name || "Unbekannt"}` : (note.shared_with_users?.length ? `Geteilt mit ${note.shared_with_users.map(u => u.display_name || "Unbekannt").join(", ")}` : `Mit ${note.share_count} geteilt`)}
               </TooltipContent></Tooltip>

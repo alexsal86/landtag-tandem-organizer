@@ -263,7 +263,7 @@ const Toolbar = ({ enableChecklists = false, compact = false, extras }: { enable
       >
         <Italic className="h-4 w-4" />
       </Button>
-      {!compact && (<Button
+      <Button
         type="button"
         variant="ghost"
         size="sm"
@@ -272,9 +272,9 @@ const Toolbar = ({ enableChecklists = false, compact = false, extras }: { enable
         title="Unterstrichen"
       >
         <Underline className="h-4 w-4" />
-      </Button>)}
+      </Button>
       <div className="w-px h-5 bg-border mx-1" />
-      {!compact && (<Button
+      <Button
         type="button"
         variant="ghost"
         size="sm"
@@ -283,8 +283,8 @@ const Toolbar = ({ enableChecklists = false, compact = false, extras }: { enable
         title="Aufzählungsliste"
       >
         <List className="h-4 w-4" />
-      </Button>)}
-      {!compact && (<Button
+      </Button>
+      <Button
         type="button"
         variant="ghost"
         size="sm"
@@ -293,7 +293,7 @@ const Toolbar = ({ enableChecklists = false, compact = false, extras }: { enable
         title="Nummerierte Liste"
       >
         <ListOrdered className="h-4 w-4" />
-      </Button>)}
+      </Button>
       {enableChecklists && <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" title="Checkliste" aria-label="Checkliste einfügen" onClick={() => editor.dispatchCommand(INSERT_CHECK_LIST_COMMAND, undefined)}><CheckSquare className="h-4 w-4" /></Button>}
       <div className="w-px h-5 bg-border mx-1" />
       <Button
