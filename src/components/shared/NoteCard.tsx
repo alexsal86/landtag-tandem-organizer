@@ -24,6 +24,7 @@ import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { sanitizeRichHtml } from "@/utils/htmlSanitizer";
 import { noteColors, getCardBackground, stripHtml } from "@/hooks/useQuickNotes";
 import type { QuickNote } from "@/components/shared/QuickNotesList";
+import { applyMentionColors } from "@/utils/mentionColors";
 import { renderChecklistHtml, countChecklist, isNoteStale } from "@/components/shared/quickNoteBoard";
 
 interface NoteCardProps {
@@ -107,6 +108,9 @@ export function NoteCard({
     return () => { ro?.disconnect(); window.removeEventListener("resize", measure); };
   }, [isExpanded, note.content]);
 
+  const cardRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => { applyMentionColors(cardRef.current); }, [note.content, note.title, isExpanded]);
+
   const stale = isNoteStale(note);
   const changedAt = new Date(note.updated_at || note.created_at);
   const staleWeeks = Math.max(4, Math.floor(differenceInCalendarDays(new Date(), changedAt) / 7));
@@ -117,7 +121,7 @@ export function NoteCard({
   return (
     <div
       key={note.id}
-      ref={highlightRef}
+      ref={(el) => { cardRef.current = el; highlightRef?.(el); }}
       {...dragHandleProps}
       tabIndex={-1}
       className={cn("group relative flex flex-col", dragHandleProps && "cursor-grab active:cursor-grabbing", " rounded-lg border border-border bg-card p-3 transition-colors duration-fast ease-standard hover:border-foreground/25 focus-within:border-foreground/25", selected && "ring-2 ring-primary", className)}
@@ -351,7 +355,7 @@ export function NoteCard({
         canEdit={note.user_id === userId}
         onRemoveDecision={() => onRemoveDecision(note)}
         onRemoveFromMeeting={() => onRemoveFromMeeting(note.id)}
-        extra={(
+        extra={(note.pending_for_jour_fixe && !note.meeting_id) || (showFollowUpBadge && note.follow_up_date) ? (
           <>
             {note.pending_for_jour_fixe && !note.meeting_id && (
               <span className={cn(noteChipBase, "cursor-default text-warning")} title="Wartet auf nächsten Jour fixe">
@@ -373,7 +377,7 @@ export function NoteCard({
               );
             })()}
           </>
-        )}
+        ) : undefined}
       />
 
       <TooltipProvider>

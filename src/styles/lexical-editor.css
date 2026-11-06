@@ -260,15 +260,11 @@
 /* Mention styling for RichTextDisplay and rendered HTML */
 span[data-lexical-mention="true"] {
   font-weight: 600;
-  padding: 1px 8px;
+  padding: 2px 8px;
+  margin: 0 1px;
   border-radius: 9999px;
-  background-color: #fcdda3 !important;
-  color: #805000 !important;
-}
-
-.dark span[data-lexical-mention="true"] {
-  background-color: #fcdda3 !important;
-  color: #805000 !important;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
 /* ===== Dossier Block Editor ===== */
