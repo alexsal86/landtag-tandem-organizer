@@ -21,6 +21,8 @@ import { useCaseWorkspaceData, type CaseFile, type CaseItem } from "@/components
 import { useCaseItemEdit, type CaseItemInteractionDocument, type TimelineEvent, type TimelineInteractionType, type TimelineDocumentAttachment } from "@/components/my-work/hooks/useCaseItemEdit";
 
 import { toEditorHtml } from "@/components/my-work/utils/editorContent";
+import { CaseItemBallPanel, type BallPatch } from "@/components/my-work/cases/workspace/CaseItemBallPanel";
+import { countTriage, matchesTriage, ballMeta, type TriageFilter } from "@/features/cases/items/ball";
 import { CaseItemList, type CaseItemSortKey, type SortDirection } from "@/components/my-work/cases/workspace/CaseItemList";
 import { CaseFileList } from "@/components/my-work/cases/workspace/CaseFileList";
 import { CasesWorkspaceShell } from "@/components/my-work/cases/workspace/CasesWorkspaceShell";
@@ -259,12 +261,15 @@ export function MyWorkCasesWorkspace() {
     });
   }, [activeCaseItems, caseFilesById, filters.itemQuery, getCategory]);
 
+  const [triageFilter, setTriageFilter] = useState<TriageFilter>("all");
+  const triageCounts = useMemo(() => countTriage(filteredCaseItems, user?.id ?? null), [filteredCaseItems, user?.id]);
+
   const sortedCaseItems = useMemo(() => {
     const priorityRank: Record<string, number> = { low: 1, medium: 2, high: 3, urgent: 4 };
     const primaryDirectionFactor = itemSort.primary.direction === "asc" ? 1 : -1;
     const secondaryDirectionFactor = itemSort.secondary.direction === "asc" ? 1 : -1;
 
-    return [...filteredCaseItems].sort((a, b) => {
+    return filteredCaseItems.filter((item) => matchesTriage(item, triageFilter, user?.id ?? null)).sort((a, b) => {
       const aAssignee = getAssigneeIds(a).map((id) => teamUsers.find((member) => member.id === id)?.name || "").join(", ");
       const bAssignee = getAssigneeIds(b).map((id) => teamUsers.find((member) => member.id === id)?.name || "").join(", ");
 
@@ -441,6 +446,16 @@ export function MyWorkCasesWorkspace() {
     if (ok) notify.success(`Priorität auf "${priorityOptions.find((p) => p.value === newPriority)?.label || newPriority}" gesetzt.`);
   };
 
+
+  const handleBallChange = async (item: CaseItem, patch: BallPatch) => {
+    const ok = await applyItemOptimisticUpdate(
+      item.id,
+      (row) => ({ ...row, ...patch }),
+      () => supabase.from("case_items").update(patch).eq("id", item.id),
+      "Änderung konnte nicht gespeichert werden.",
+    );
+    if (ok && patch.ball_owner) notify.success(`Am Zug: ${ballMeta(patch.ball_owner).label}`);
+  };
 
   const handleQuickVisibilityChange = async (item: CaseItem, nextPublic: boolean) => {
     const ok = await applyItemOptimisticUpdate(
@@ -1032,6 +1047,10 @@ export function MyWorkCasesWorkspace() {
                 onItemQueryChange={(itemQuery) => setFilters((prev) => ({ ...prev, itemQuery }))}
                 helperText="Vorgänge per Drag & Drop auf eine Fallakte ziehen zum Verknüpfen"
                 sortedCaseItems={sortedCaseItems}
+                triageFilter={triageFilter}
+                onTriageFilterChange={setTriageFilter}
+                triageCounts={triageCounts}
+                handleBallChange={handleBallChange}
                 caseFilesById={caseFilesById}
                 allCaseFiles={allCaseFiles}
                 detailItemId={detailItemId}
@@ -1106,6 +1125,15 @@ export function MyWorkCasesWorkspace() {
                     }
                     setCaseFileSheetOpen(true);
                   }}
+                  ballPanel={
+                    <CaseItemBallPanel
+                      item={detailItem}
+                      subject={editableCaseItem.subject}
+                      teamUsers={teamUsers}
+                      onChange={(patch) => runAsync(() => handleBallChange(detailItem, patch))}
+                      onOpenMeetingSelector={() => { setMeetingSelectorItemId(detailItem.id); setIsMeetingSelectorOpen(true); }}
+                    />
+                  }
                   detailPanel={
                     <CaseItemDetailPanel
                       itemId={detailItem.id}
