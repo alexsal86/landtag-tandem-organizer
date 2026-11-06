@@ -26,6 +26,7 @@ type CaseItemDetailViewProps = {
   priority: string;
   onPriorityChange: (value: string) => void;
   detailPanel: ReactNode;
+  ballPanel?: ReactNode;
   activeTab: DetailTab;
   onTabChange: (tab: DetailTab) => void;
   onOpenCaseFiles?: () => void;
@@ -53,6 +54,7 @@ export function CaseItemDetailView({
   priority,
   onPriorityChange,
   detailPanel,
+  ballPanel,
   activeTab,
   onTabChange,
   onOpenCaseFiles,
@@ -201,6 +203,7 @@ export function CaseItemDetailView({
         </div>
       </div>
 
+      {ballPanel}
       <ScrollArea className="min-h-0 flex-1">
         <div className="p-4">{detailPanel}</div>
       </ScrollArea>
