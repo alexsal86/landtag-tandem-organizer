@@ -242,7 +242,7 @@ const Toolbar = ({ enableChecklists = false, compact = false, extras }: { enable
   };
 
   return (
-    <div className={cn("flex flex-wrap items-center gap-1", compact ? "border-t border-border bg-transparent py-2 text-muted-foreground [&>button]:h-7 [&>button]:w-7" : "p-2 border-b border-border bg-muted/30")}>
+    <div data-slot="editor-toolbar" className={cn("flex flex-wrap items-center gap-1", compact ? "border-t border-border bg-transparent py-2 text-muted-foreground [&>button]:h-7 [&>button]:w-7" : "p-2 border-b border-border bg-muted/30")}>
       <Button
         type="button"
         variant="ghost"
@@ -296,33 +296,35 @@ const Toolbar = ({ enableChecklists = false, compact = false, extras }: { enable
       </Button>
       {enableChecklists && <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" title="Checkliste" aria-label="Checkliste einfügen" onClick={() => editor.dispatchCommand(INSERT_CHECK_LIST_COMMAND, undefined)}><CheckSquare className="h-4 w-4" /></Button>}
       <div className="w-px h-5 bg-border mx-1" />
-      <Button
-        type="button"
-        variant={isListening ? 'default' : 'ghost'}
-        size="sm"
-        onClick={() => {
-          if (!speechSupported) {
-            notify.error('Spracherkennung wird in diesem Browser nicht unterstützt. Bitte verwende Chrome oder Edge.');
-            return;
+      <div role="group" aria-label="Diktat und Sprachbefehle" className={cn("inline-flex shrink-0 items-center gap-1", compact && "[&>button]:h-7 [&>button]:w-7")}>
+        <Button
+          type="button"
+          variant={isListening ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => {
+            if (!speechSupported) {
+              notify.error('Spracherkennung wird in diesem Browser nicht unterstützt. Bitte verwende Chrome oder Edge.');
+              return;
+            }
+            toggleSpeechRecognition();
+          }}
+          onMouseDown={(e) => e.preventDefault()}
+          className={cn("h-8 w-8 p-0 relative", isListening && "bg-destructive text-destructive-foreground hover:bg-destructive/90")}
+          title={
+            !speechSupported
+              ? 'Spracherkennung in diesem Browser nicht unterstützt'
+              : isListening
+                ? "Aufnahme aktiv – klicken zum Beenden. Sprachkommando: 'Stopp'"
+                : "Diktat: Klicken zum Starten (Strg+Shift+M)"
           }
-          toggleSpeechRecognition();
-        }}
-        onMouseDown={(e) => e.preventDefault()}
-        className={cn("h-8 w-8 p-0 relative", isListening && "bg-destructive text-destructive-foreground hover:bg-destructive/90")}
-        title={
-          !speechSupported
-            ? 'Spracherkennung in diesem Browser nicht unterstützt'
-            : isListening
-              ? "Aufnahme aktiv – klicken zum Beenden. Sprachkommando: 'Stopp'"
-              : "Diktat: Klicken zum Starten (Strg+Shift+M)"
-        }
-      >
-        <Mic className="h-4 w-4" />
-        {isListening && (
-          <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-destructive border-2 border-background animate-pulse" />
-        )}
-      </Button>
-      {!compact && <SpeechCommandsDialog />}
+        >
+          <Mic className="h-4 w-4" />
+          {isListening && (
+            <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-destructive border-2 border-background animate-pulse" />
+          )}
+        </Button>
+        {!compact && <SpeechCommandsDialog />}
+      </div>
       {extras}
       {lastRecognizedCommand && (
         <span className="text-xs font-medium text-primary bg-primary/10 rounded px-1.5 py-0.5 animate-in fade-in-0 zoom-in-95">
@@ -472,7 +474,8 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
                 onKeyDown={onKeyDown}
                 aria-placeholder={placeholder}
                 placeholder={
-                  <div 
+                  <div
+                    data-slot="editor-placeholder"
                     className="absolute top-3 left-3 text-muted-foreground pointer-events-none"
                   >
                     {placeholder}

@@ -543,12 +543,12 @@ export function CaseItemDetailPanel({
         </div>
 
         <div className="space-y-3">
-          {activeTab === "overview" && <div className="space-y-2 rounded-md border bg-background p-3">
-            <Label className="font-bold" htmlFor="detail-contact-name">Von / Gesprächspartner</Label>
-            <div className="grid gap-2 lg:grid-cols-3">
-              <div className="rounded-2xl border bg-muted/40 px-4 py-3">
-                <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" htmlFor="detail-contact-name">Name</Label>
-                <div className="relative mt-2" ref={searchContainerRef}>
+          {activeTab === "overview" && <div className="space-y-5 rounded-3xl border bg-background p-5 shadow-sm sm:p-6">
+            <h3 className="text-lg font-semibold tracking-tight text-foreground">Von / Gesprächspartner</h3>
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:gap-6">
+              <div className="group min-w-0">
+                <Label className="text-sm font-normal text-muted-foreground transition-colors group-focus-within:text-success" htmlFor="detail-contact-name">Name</Label>
+                <div className="relative mt-1" ref={searchContainerRef}>
                   <Input
                     id="detail-contact-name"
                     value={contactPerson}
@@ -558,7 +558,7 @@ export function CaseItemDetailPanel({
                       if (selectedContactId) handleClearContact();
                     }}
                     onFocus={() => { if (contactSearchResults.length > 0) setShowSearchResults(true); }}
-                    className={cn("h-9 bg-background", selectedContactId ? "pr-16" : "pr-8")}
+                    className="h-12 rounded-none border-0 border-b border-border bg-transparent px-0 pr-10 text-base shadow-none focus-visible:border-success focus-visible:ring-0 focus-visible:ring-offset-0 md:text-base"
                   />
                   {searchingContacts && <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
                   {!searchingContacts && !selectedContactId && contactPerson.length >= 2 && <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
@@ -591,32 +591,32 @@ export function CaseItemDetailPanel({
                   )}
                 </div>
               </div>
-              <div className="rounded-2xl border bg-muted/40 px-4 py-3">
-                <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" htmlFor="detail-contact-email">E-Mail</Label>
-                <div className="relative mt-2">
+              <div className="group min-w-0">
+                <Label className="text-sm font-normal text-muted-foreground transition-colors group-focus-within:text-success" htmlFor="detail-contact-email">E-Mail</Label>
+                <div className="relative mt-1">
                   <Input
                     id="detail-contact-email"
                     type="email"
                     value={contactEmail}
                     placeholder="name@beispiel.de"
                     onChange={(event) => onContactEmailChange(event.target.value)}
-                    className={cn("h-9 bg-background", selectedContactId ? "pr-10" : undefined)}
+                    className={cn("h-12 rounded-none border-0 border-b border-border bg-transparent px-0 text-base shadow-none focus-visible:border-success focus-visible:ring-0 focus-visible:ring-offset-0 md:text-base", selectedContactId ? "pr-8" : undefined)}
                   />
                   {selectedContactId && (
                     <Link2 className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   )}
                 </div>
               </div>
-              <div className="rounded-2xl border bg-muted/40 px-4 py-3">
-                <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" htmlFor="detail-contact-phone">Telefon</Label>
-                <div className="relative mt-2">
+              <div className="group min-w-0">
+                <Label className="text-sm font-normal text-muted-foreground transition-colors group-focus-within:text-success" htmlFor="detail-contact-phone">Telefon</Label>
+                <div className="relative mt-1">
                   <Input
                     id="detail-contact-phone"
                     type="tel"
                     value={contactPhone}
                     placeholder="+49 …"
                     onChange={(event) => onContactPhoneChange(event.target.value)}
-                    className={cn("h-9 bg-background", selectedContactId ? "pr-10" : undefined)}
+                    className={cn("h-12 rounded-none border-0 border-b border-border bg-transparent px-0 text-base shadow-none focus-visible:border-success focus-visible:ring-0 focus-visible:ring-offset-0 md:text-base", selectedContactId ? "pr-8" : undefined)}
                   />
                   {selectedContactId && (
                     <Link2 className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -626,20 +626,21 @@ export function CaseItemDetailPanel({
             </div>
           </div>}
 
-          <div className="overflow-hidden rounded-xl border bg-background shadow-xs" aria-label="Interaktion erfassen">
-            <div className="space-y-2 p-3">
+          <div className="overflow-hidden rounded-3xl border bg-background shadow-sm" aria-label="Interaktion erfassen">
+            <div className="space-y-3 [&_[data-slot=editor-toolbar]]:bg-background [&_[data-slot=editor-toolbar]]:px-5 [&_[data-slot=editor-toolbar]]:py-3 [&_[contenteditable]]:p-5 [&_[data-slot=editor-placeholder]]:left-5 [&_[data-slot=editor-placeholder]]:top-5">
               {activeSection === "sachlage" ? (
                 <SimpleRichTextEditor
                   key={`detail-summary-${itemId}`}
                   initialContent={toEditorHtml(editableCaseItem.summary)}
                   onChange={(html) => onUpdate({ summary: html })}
                   placeholder="Sachlage beschreiben …"
-                  minHeight="96px"
+                  seamless
+                  minHeight="220px"
                 />
               ) : (
                 <>
                   {(editableCaseItem.interactionType === "anruf" || editableCaseItem.interactionType === "mail" || editableCaseItem.interactionType === "gespraech" || editableCaseItem.interactionType === "treffen") && (
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_200px]">
+                    <div className="grid grid-cols-1 gap-3 px-5 pt-4 sm:grid-cols-[1fr_200px]">
                       <Input
                         className="h-8 text-sm"
                         placeholder={editableCaseItem.interactionType === "mail" ? "E-Mail-Adresse" : editableCaseItem.interactionType === "anruf" ? "Telefonnummer" : "Kontaktperson"}
@@ -654,8 +655,9 @@ export function CaseItemDetailPanel({
                     initialContent={editableCaseItem.interactionNote}
                     onChange={(value) => onUpdate({ interactionNote: value })}
                     placeholder="Was ist passiert? Notiz, Anruf, Treffen …"
-                    minHeight="80px"
-                    maxHeight="180px"
+                    seamless
+                    minHeight="180px"
+                    maxHeight="320px"
                     scrollable
                   />
                   {editableCaseItem.interactionType === "dokument" && (
@@ -664,28 +666,30 @@ export function CaseItemDetailPanel({
                 </>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-1.5 border-t bg-muted/30 px-3 py-2">
-              {([{ value: "sachlage", label: "Sachlage" }, ...captureChipOptions] as const).map((option) => {
-                const selected = activeSection === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    aria-pressed={selected}
-                    onClick={() => {
-                      if (option.value === "sachlage") { setActiveSection("sachlage"); return; }
-                      onUpdate({ interactionType: option.value });
-                      setActiveSection(option.value);
-                    }}
-                    className={cn(
-                      "rounded-pill border px-3 py-1 text-sm transition-colors duration-fast",
-                      selected ? "border-success bg-success/10 font-semibold text-foreground" : "border-border bg-background text-foreground hover:bg-muted/50",
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                );
-              })}
+            <div className="flex flex-wrap items-center gap-4 border-t bg-muted/20 px-4 py-3 sm:px-5">
+              <div role="group" aria-label="Art der Interaktion" className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-2xl bg-muted/50 p-1">
+                {([{ value: "sachlage", label: "Sachlage" }, ...captureChipOptions] as const).map((option) => {
+                  const selected = activeSection === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => {
+                        if (option.value === "sachlage") { setActiveSection("sachlage"); return; }
+                        onUpdate({ interactionType: option.value });
+                        setActiveSection(option.value);
+                      }}
+                      className={cn(
+                        "shrink-0 rounded-xl border px-3 py-2 text-sm transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success focus-visible:ring-offset-1",
+                        selected ? "border-success bg-background font-medium text-success shadow-sm" : "border-transparent bg-transparent text-muted-foreground hover:bg-background/70 hover:text-foreground",
+                      )}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
               {activeSection === "sachlage" ? (
                 <span className="ml-auto text-xs text-muted-foreground">Wird mit „Speichern“ übernommen</span>
               ) : (
