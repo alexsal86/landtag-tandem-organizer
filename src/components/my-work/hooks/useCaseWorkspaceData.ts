@@ -25,6 +25,11 @@ type CaseItemsRow = Pick<
   | "user_id"
   | "owner_user_id"
   | "updated_at"
+  | "ball_owner"
+  | "next_action_label"
+  | "next_action_due_at"
+  | "next_action_assignee_id"
+  | "parliamentary_tool"
 > & {
   intake_payload: CaseItemIntakePayload | null;
 };
@@ -134,7 +139,7 @@ async function fetchTeamUsers(tenantId: string): Promise<TeamUser[]> {
 async function fetchItemsPage(tenantId: string, pageParam: number): Promise<ItemsPage> {
   const { data, error } = await supabase
     .from("case_items")
-    .select("id, visible_to_all, subject, summary, resolution_summary, source_channel, source_received_at, status, completion_note, completed_at, priority, due_at, case_file_id, user_id, owner_user_id, intake_payload, updated_at")
+    .select("id, visible_to_all, subject, summary, resolution_summary, source_channel, source_received_at, status, completion_note, completed_at, priority, due_at, case_file_id, user_id, owner_user_id, intake_payload, updated_at, ball_owner, next_action_label, next_action_due_at, next_action_assignee_id, parliamentary_tool")
     .eq("tenant_id", tenantId)
     .order("updated_at", { ascending: false, nullsFirst: false })
     .range(pageParam, pageParam + PAGE_SIZE - 1);

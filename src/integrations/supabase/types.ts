@@ -2564,6 +2564,7 @@ export type Database = {
       }
       case_items: {
         Row: {
+          ball_owner: string
           case_file_id: string | null
           case_scale: string | null
           completed_at: string | null
@@ -2581,7 +2582,11 @@ export type Database = {
           last_modified_at: string
           last_modified_by: string | null
           meeting_id: string | null
+          next_action_assignee_id: string | null
+          next_action_due_at: string | null
+          next_action_label: string | null
           owner_user_id: string | null
+          parliamentary_tool: string
           pending_for_jour_fixe: boolean
           priority: Database["public"]["Enums"]["case_item_priority"]
           reporter_contact: string | null
@@ -2599,6 +2604,7 @@ export type Database = {
           visible_to_all: boolean
         }
         Insert: {
+          ball_owner?: string
           case_file_id?: string | null
           case_scale?: string | null
           completed_at?: string | null
@@ -2616,7 +2622,11 @@ export type Database = {
           last_modified_at?: string
           last_modified_by?: string | null
           meeting_id?: string | null
+          next_action_assignee_id?: string | null
+          next_action_due_at?: string | null
+          next_action_label?: string | null
           owner_user_id?: string | null
+          parliamentary_tool?: string
           pending_for_jour_fixe?: boolean
           priority?: Database["public"]["Enums"]["case_item_priority"]
           reporter_contact?: string | null
@@ -2634,6 +2644,7 @@ export type Database = {
           visible_to_all?: boolean
         }
         Update: {
+          ball_owner?: string
           case_file_id?: string | null
           case_scale?: string | null
           completed_at?: string | null
@@ -2651,7 +2662,11 @@ export type Database = {
           last_modified_at?: string
           last_modified_by?: string | null
           meeting_id?: string | null
+          next_action_assignee_id?: string | null
+          next_action_due_at?: string | null
+          next_action_label?: string | null
           owner_user_id?: string | null
+          parliamentary_tool?: string
           pending_for_jour_fixe?: boolean
           priority?: Database["public"]["Enums"]["case_item_priority"]
           reporter_contact?: string | null
