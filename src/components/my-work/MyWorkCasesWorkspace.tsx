@@ -1,4 +1,4 @@
-import { type KeyboardEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { de } from "date-fns/locale";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { CaseItemDetailView } from "@/components/my-work/cases/workspace/CaseItemDetailView";
 import { useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
-import { Briefcase, CheckCircle2, Clock, FileText, FolderOpen, Gavel, Inbox, Mail, MessageSquare, Phone, Timer, UserRound, Users } from "lucide-react";
+import { Briefcase, CheckCircle2, Clock, FileText, FolderOpen, Gavel, History, Inbox, Mail, MessageSquare, Phone, Timer, UserRound, Users } from "lucide-react";
 import type { DropResult } from "@hello-pangea/dnd";
 import { CaseFileDetail } from "@/features/cases/files/components";
 import { useCaseFileTypes } from "@/features/cases/files/hooks/useCaseFileTypes";
@@ -27,7 +27,7 @@ import { createLetterFromCase } from "@/features/cases/items/caseLetter";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { CaseHandoverDialog } from "@/components/my-work/cases/workspace/CaseHandoverDialog";
 import { CaseItemBallPanel, type BallPatch } from "@/components/my-work/cases/workspace/CaseItemBallPanel";
-import { countTriage, matchesTriage, ballMeta, withAutoDeadline, type TriageFilter } from "@/features/cases/items/ball";
+import { countTriage, matchesTriage, ballMeta, withAutoDeadline, ballChangeEvents, isOnResubmission, type TriageFilter } from "@/features/cases/items/ball";
 import { CaseItemList, type CaseItemSortKey, type SortDirection } from "@/components/my-work/cases/workspace/CaseItemList";
 import { CaseFileList } from "@/components/my-work/cases/workspace/CaseFileList";
 import { CasesWorkspaceShell } from "@/components/my-work/cases/workspace/CasesWorkspaceShell";
@@ -273,7 +273,7 @@ export function MyWorkCasesWorkspace() {
   const { isAdmin: canHandover } = useResolvedUserRole();
   const triageCounts = useMemo(() => countTriage(filteredCaseItems, user?.id ?? null), [filteredCaseItems, user?.id]);
 
-  const sortedCaseItems = useMemo(() => {
+  const sortedCaseItemsBase = useMemo(() => {
     const priorityRank: Record<string, number> = { low: 1, medium: 2, high: 3, urgent: 4 };
     const primaryDirectionFactor = itemSort.primary.direction === "asc" ? 1 : -1;
     const secondaryDirectionFactor = itemSort.secondary.direction === "asc" ? 1 : -1;
@@ -322,6 +322,8 @@ export function MyWorkCasesWorkspace() {
       return primaryResult;
     });
   }, [caseFilesById, filteredCaseItems, getAssigneeIds, getCategory, getItemDescription, getItemSubject, itemSort, teamUsers, triageFilter, user?.id]);
+  // Wiedervorlagen stehen in der Liste unten in einem eigenen Abschnitt.
+  const sortedCaseItems = useMemo(() => [...sortedCaseItemsBase.filter((i) => !isOnResubmission(i)), ...sortedCaseItemsBase.filter((i) => isOnResubmission(i))], [sortedCaseItemsBase]);
 
   const toggleSort = useCallback((key: CaseItemSortKey, direction: SortDirection) => {
     setItemSort((prev) => 
@@ -456,14 +458,52 @@ export function MyWorkCasesWorkspace() {
   };
 
 
+  const actorName = () => teamUsers.find((u) => u.id === user?.id)?.name ?? undefined;
+  const makeSystemEvent = (title: string, note?: string): TimelineEvent => ({
+    id: crypto.randomUUID(), type: "system", title, note, timestamp: new Date().toISOString(), actorName: actorName(),
+  });
+  const buildSystemEvents = (item: CaseItem, patch: BallPatch): TimelineEvent[] =>
+    ballChangeEvents(item, patch, (id) => (id ? teamUsers.find((u) => u.id === id)?.name ?? null : null)).map((e) => makeSystemEvent(e.title, e.note));
+  /** Hängt einen einzelnen Systemeintrag (Brief, Jour fixe, Entscheidung …) an den Verlauf an. */
+  const logSystemEvent = async (item: CaseItem, title: string, note?: string) => {
+    const event = makeSystemEvent(title, note);
+    const intakePayload = { ...item.intake_payload, timeline_events: [...parseTimelineEvents(item.intake_payload), event] };
+    const ok = await applyItemOptimisticUpdate(
+      item.id,
+      (row) => ({ ...row, intake_payload: intakePayload }),
+      () => supabase.from("case_items").update({ intake_payload: intakePayload as unknown as TablesUpdate<"case_items">["intake_payload"] }).eq("id", item.id),
+      "Verlaufseintrag konnte nicht gespeichert werden.",
+    );
+    if (ok && detailItemId === item.id) setEditableCaseItem((prev) => prev ? { ...prev, timelineEvents: [...prev.timelineEvents, event] } : prev);
+  };
+
+  // Wiedervorlage fällig: einmal im Verlauf vermerken, wenn ein Vorgang zurückkehrt.
+  const dueLoggedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const item = caseItems.find((i) => i.id === detailItemId);
+    if (!item || dueLoggedRef.current === item.id || isOnResubmission(item) || !item.next_action_label?.trim() || !item.next_action_due_at) return;
+    const events = parseTimelineEvents(item.intake_payload).filter((e) => e.type === "system");
+    const lastResub = [...events].reverse().find((e) => e.title === "Auf Wiedervorlage gelegt" || e.title === "Wiedervorlage fällig");
+    if (lastResub?.title !== "Auf Wiedervorlage gelegt") return;
+    dueLoggedRef.current = item.id;
+    void logSystemEvent(item, "Wiedervorlage fällig", item.next_action_label);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detailItemId, caseItems]);
+
   const handleBallChange = async (item: CaseItem, rawPatch: BallPatch) => {
-    const patch = withAutoDeadline(item, rawPatch);
+    const autoPatch = withAutoDeadline(item, rawPatch);
+    const systemEvents = buildSystemEvents(item, autoPatch);
+    const intakePayload = systemEvents.length
+      ? { ...item.intake_payload, timeline_events: [...parseTimelineEvents(item.intake_payload), ...systemEvents] }
+      : null;
+    const patch = intakePayload ? { ...autoPatch, intake_payload: intakePayload } : autoPatch;
     const ok = await applyItemOptimisticUpdate(
       item.id,
       (row) => ({ ...row, ...patch }),
-      () => supabase.from("case_items").update(patch).eq("id", item.id),
+      () => supabase.from("case_items").update({ ...autoPatch, ...(intakePayload ? { intake_payload: intakePayload as unknown as TablesUpdate<"case_items">["intake_payload"] } : {}) }).eq("id", item.id),
       "Änderung konnte nicht gespeichert werden.",
     );
+    if (ok && systemEvents.length && detailItemId === item.id) setEditableCaseItem((prev) => prev ? { ...prev, timelineEvents: [...prev.timelineEvents, ...systemEvents] } : prev);
     if (ok && patch.ball_owner) notify.success(`Am Zug: ${ballMeta(patch.ball_owner).label}${patch.next_action_due_at && !rawPatch.next_action_due_at ? " · Frist in 3 Wochen gesetzt" : ""}`);
   };
 
@@ -477,6 +517,8 @@ export function MyWorkCasesWorkspace() {
       notify.error("Übergabe fehlgeschlagen.");
       return;
     }
+    const toName = teamUsers.find((u) => u.id === toUserId)?.name ?? "Vertretung";
+    for (const id of ids) { const row = snapshot.find((r) => r.id === id); if (row) await logSystemEvent({ ...row, next_action_assignee_id: toUserId }, "An Vertretung übergeben", toName); }
     notify.success(`${ids.length} Vorgänge an ${teamUsers.find((u) => u.id === toUserId)?.name ?? "Vertretung"} übergeben.`);
   };
 
@@ -895,9 +937,11 @@ export function MyWorkCasesWorkspace() {
       note: event.note,
       safeNoteHtml: sanitizeTimelineNote(event.note),
       documents: event.documents,
-      accentClass: "bg-primary",
-      icon: event.type === "entscheidung" ? Gavel : interactionTypeOptions.find((option) => option.value === event.interactionType)?.icon,
-      canDelete: true,
+      accentClass: event.type === "system" ? "bg-muted-foreground/60" : "bg-primary",
+      icon: event.type === "entscheidung" ? Gavel : event.type === "system" ? History : interactionTypeOptions.find((option) => option.value === event.interactionType)?.icon,
+      actorName: event.actorName,
+      isSystem: event.type === "system",
+      canDelete: event.type !== "system",
       onDelete: () => deleteTimelineEvent(event.id),
     })));
 
@@ -1060,8 +1104,8 @@ export function MyWorkCasesWorkspace() {
                       onCompleteStep={async (label) => {
                         const event: TimelineEvent = {
                           id: crypto.randomUUID(),
-                          type: "interaktion",
-                          interactionType: "notiz",
+                          type: "system",
+                          actorName: actorName(),
                           title: "Schritt erledigt",
                           note: [label, detailItem.next_action_assignee_id ? `Zuständig: ${teamUsers.find((member) => member.id === detailItem.next_action_assignee_id)?.name || detailItem.next_action_assignee_id}` : null, `Am Zug: ${ballMeta(detailItem.ball_owner).short}`, detailItem.next_action_due_at ? `Frist: ${formatDateSafe(detailItem.next_action_due_at, "dd.MM.yyyy")}` : null].filter(Boolean).join(" · "),
                           timestamp: new Date().toISOString(),
@@ -1093,12 +1137,18 @@ export function MyWorkCasesWorkspace() {
                         try {
                           const letterId = await createLetterFromCase({ caseItemId: detailItem.id, subject: editableCaseItem.subject, tenantId, userId: user.id });
                           notify.success("Briefentwurf angelegt");
+                          await logSystemEvent(detailItem, "Brief angelegt");
                           navigate(`/letters/${letterId}`);
                         } catch {
                           notify.error("Brief konnte nicht angelegt werden.");
                         }
                       }}
                       onOpenMeetingSelector={() => { setMeetingSelectorItemId(detailItem.id); setIsMeetingSelectorOpen(true); }}
+                      onRequestDecision={() => {
+                        handleRequestDecision();
+                        if (!detailItem.next_action_label?.trim()) runAsync(() => handleBallChange(detailItem, { ball_owner: "office", next_action_label: "Entscheidung abwarten" }));
+                        else void logSystemEvent(detailItem, "Entscheidung angefordert");
+                      }}
                     />
                   
   ) : null;
@@ -1311,6 +1361,8 @@ export function MyWorkCasesWorkspace() {
               if (error) { notify.error("Fehler beim Zuordnen."); return; }
               setCaseItems((prev) => prev.map((i) => i.id === meetingSelectorItemId ? { ...i, meeting_id: meetingId, pending_for_jour_fixe: false } as CaseItem : i));
               notify.success(`Vorgang dem Meeting "${meetingTitle}" zugeordnet.`);
+              const jfItem = caseItems.find((i) => i.id === meetingSelectorItemId);
+              if (jfItem) await logSystemEvent(jfItem, "Auf Jour fixe gesetzt", meetingTitle);
             }}
             onMarkForNextJourFixe={async () => {
               if (!meetingSelectorItemId) return;
@@ -1318,6 +1370,8 @@ export function MyWorkCasesWorkspace() {
               if (error) { notify.error("Fehler beim Vormerken."); return; }
               setCaseItems((prev) => prev.map((i) => i.id === meetingSelectorItemId ? { ...i, pending_for_jour_fixe: true } as CaseItem : i));
               notify.success("Vorgang für Jour Fixe vorgemerkt.");
+              const jfItem = caseItems.find((i) => i.id === meetingSelectorItemId);
+              if (jfItem) await logSystemEvent(jfItem, "Für nächsten Jour fixe vorgemerkt");
             }}
             archivedCaseItems={archivedCaseItems.map((item) => ({ id: item.id, title: getItemSubject(item), subtitle: formatDateSafe(item.updated_at, "dd.MM.yyyy HH:mm", "–", { locale: de }), onRestore: () => runAsync(() => handleArchiveCaseItem(item)) }))}
             isItemArchiveOpen={isItemArchiveOpen}
