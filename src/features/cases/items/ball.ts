@@ -1,0 +1,81 @@
+// "Wer ist am Zug?" – Ball-Logik für Vorgänge (reine Funktionen, testbar).
+
+export type BallOwner = "office" | "citizen" | "ministry" | "authority" | "fraction" | "snoozed";
+export type ParliamentaryTool = "none" | "inquiry" | "onsite_visit" | "speech" | "letter";
+
+export const BALL_OWNERS: { value: BallOwner; label: string; short: string; dotClass: string }[] = [
+  { value: "office", label: "Büro am Zug", short: "Büro", dotClass: "bg-success" },
+  { value: "citizen", label: "Wartet auf Bürger", short: "Bürger", dotClass: "bg-warning" },
+  { value: "ministry", label: "Beim Ministerium", short: "Ministerium", dotClass: "bg-primary" },
+  { value: "authority", label: "Bei Behörde", short: "Behörde", dotClass: "bg-primary/60" },
+  { value: "fraction", label: "In der Fraktion", short: "Fraktion", dotClass: "bg-accent-foreground/60" },
+  { value: "snoozed", label: "Ruhend / Wiedervorlage", short: "Ruhend", dotClass: "bg-muted-foreground/50" },
+];
+
+export const PARLIAMENTARY_TOOLS: { value: ParliamentaryTool; label: string }[] = [
+  { value: "none", label: "Kein Instrument" },
+  { value: "inquiry", label: "Kleine Anfrage" },
+  { value: "onsite_visit", label: "Ortstermin" },
+  { value: "speech", label: "Rede / Plenum" },
+  { value: "letter", label: "Brief" },
+];
+
+export function ballMeta(owner: string | null | undefined) {
+  return BALL_OWNERS.find((b) => b.value === owner) ?? BALL_OWNERS[0];
+}
+
+export type TriageFilter = "all" | "mine" | "office" | "waiting" | "due_soon" | "no_next_action";
+
+export type TriageItem = {
+  ball_owner?: string | null;
+  next_action_label?: string | null;
+  next_action_due_at?: string | null;
+  next_action_assignee_id?: string | null;
+  owner_user_id?: string | null;
+};
+
+/** Tage bis zur Frist des nächsten Schritts (negativ = überfällig), null wenn keine Frist. */
+export function daysUntilNextAction(item: TriageItem, now: Date = new Date()): number | null {
+  if (!item.next_action_due_at) return null;
+  const due = new Date(item.next_action_due_at);
+  if (Number.isNaN(due.getTime())) return null;
+  const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  return Math.round((startOf(due) - startOf(now)) / 86_400_000);
+}
+
+/** "Frist nah" = überfällig oder innerhalb der nächsten 3 Tage. */
+export const DUE_SOON_DAYS = 3;
+
+export function matchesTriage(item: TriageItem, filter: TriageFilter, userId: string | null, now: Date = new Date()): boolean {
+  const owner = item.ball_owner || "office";
+  switch (filter) {
+    case "all":
+      return true;
+    case "mine":
+      return owner === "office" && !!userId && (item.next_action_assignee_id ?? item.owner_user_id) === userId;
+    case "office":
+      return owner === "office";
+    case "waiting":
+      return owner === "citizen" || owner === "ministry" || owner === "authority" || owner === "fraction";
+    case "due_soon": {
+      const d = daysUntilNextAction(item, now);
+      return d !== null && d <= DUE_SOON_DAYS;
+    }
+    case "no_next_action":
+      return owner === "office" && !item.next_action_label?.trim();
+  }
+}
+
+export function countTriage(items: TriageItem[], userId: string | null, now: Date = new Date()): Record<TriageFilter, number> {
+  const filters: TriageFilter[] = ["all", "mine", "office", "waiting", "due_soon", "no_next_action"];
+  return Object.fromEntries(filters.map((f) => [f, items.filter((i) => matchesTriage(i, f, userId, now)).length])) as Record<TriageFilter, number>;
+}
+
+export const TRIAGE_FILTERS: { value: TriageFilter; label: string; hint: string }[] = [
+  { value: "all", label: "Alle", hint: "Alle offenen Vorgänge" },
+  { value: "mine", label: "Mein Ball", hint: "Das Büro ist am Zug und du bist für den nächsten Schritt zuständig" },
+  { value: "office", label: "Büro am Zug", hint: "Wir müssen handeln" },
+  { value: "waiting", label: "Wartet", hint: "Ball liegt bei Bürger, Ministerium, Behörde oder Fraktion" },
+  { value: "due_soon", label: "Frist nah", hint: "Nächster Schritt überfällig oder in den nächsten 3 Tagen fällig" },
+  { value: "no_next_action", label: "Ohne nächsten Schritt", hint: "Büro ist am Zug, aber niemand hat festgelegt, was als Nächstes passiert" },
+];
