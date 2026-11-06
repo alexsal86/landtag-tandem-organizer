@@ -237,9 +237,7 @@ export function MyWorkView() {
       {activeTab === "capture" && (
         <Suspense fallback={tabFallback}>
           <div className="w-full flex flex-col gap-6">
-            <div className="mx-auto w-full max-w-2xl">
-              <MyWorkQuickCapture onNoteSaved={handleNoteSaved} />
-            </div>
+            <MyWorkQuickCapture onNoteSaved={handleNoteSaved} />
             <MyWorkNotesList refreshTrigger={refreshTrigger} />
           </div>
         </Suspense>
