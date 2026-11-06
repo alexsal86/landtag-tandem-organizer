@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Pin, Palette, Save, ListTodo, Loader2, Info, ChevronUp } from "lucide-react";
+import { Pin, Palette, Save, ListTodo, Loader2, Info, ChevronUp, SquarePen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { MentionSharePromptDialog } from "@/components/shared/MentionSharePromptDialog";
@@ -89,10 +89,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
           onClick={() => setExpanded(true)}
           className="flex flex-1 items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
         >
-          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="m16 3 5 5M4 16 16.5 3.5a3.54 3.54 0 0 1 5 5L9 21H3v-6" />
-            <path d="M19 15v6m-3-3h6" />
-          </svg>
+          <SquarePen className="h-4 w-4" aria-hidden="true" />
           <span className="flex-1 text-body">{canSaveNote ? "Entwurf fortsetzen…" : "Notiz erfassen…"}</span>
         </button>
         <span className="hidden sm:inline text-caption text-muted-foreground select-none" aria-hidden="true">@ erwähnen · # Thema</span>

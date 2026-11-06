@@ -162,8 +162,8 @@ export function NoteCard({
           <div className="flex items-center gap-0.5">
             {note.is_pinned && (
               <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                <span className="inline-flex h-6 w-6 items-center justify-center text-warning" role="img" aria-label="Angeheftet">
-                  <Pin className="h-3.5 w-3.5 fill-current" />
+                <span className="inline-flex h-6 w-6 items-center justify-center text-muted-foreground" role="img" aria-label="Angeheftet">
+                  <Pin className="h-3.5 w-3.5" />
                 </span>
               </TooltipTrigger><TooltipContent>Angeheftet</TooltipContent></Tooltip></TooltipProvider>
             )}
@@ -297,7 +297,7 @@ export function NoteCard({
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => onTogglePin(note)}>
-                  <Pin className={cn("h-3 w-3 mr-2", note.is_pinned && "text-palette-amber")} />
+                  <Pin className="h-3 w-3 mr-2" />
                   {note.is_pinned ? 'Loslösen' : 'Anpinnen'}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onArchive(note.id)}>

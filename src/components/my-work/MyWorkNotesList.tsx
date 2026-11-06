@@ -103,7 +103,7 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
             })}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="sm" className={cn("h-7 px-2.5 text-[13px] font-normal", colorFilter && "text-foreground")}>
+                <Button variant="outline" size="sm" className="h-7 rounded-pill border-border bg-background px-3 text-[13px] font-normal text-muted-foreground hover:bg-muted hover:text-muted-foreground">
                   <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
                   <span className="ml-1.5">Weitere Filter{colorFilter || !["all", "pinned", "stale"].includes(filter) ? " aktiv" : ""}</span>
                 </Button>
