@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { sendToDaySlip } from "@/lib/daySlipBridge";
+import { openAppointmentRequestCreate } from "@/features/appointment-requests/events";
 import { BALL_OWNERS, PARLIAMENTARY_TOOLS, ballMeta, daysUntilNextAction, type BallOwner, type ParliamentaryTool } from "@/features/cases/items/ball";
 import type { CaseItem, TeamUser } from "@/components/my-work/hooks/useCaseWorkspaceData";
 
@@ -113,7 +114,7 @@ export function CaseItemBallPanel({ item, subject, teamUsers, onChange, onOpenMe
           </Button>
           <Button
             type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs text-muted-foreground"
-            onClick={() => window.dispatchEvent(new CustomEvent("appointment-request:open", { detail: { title: `Ortstermin: ${subject}` } }))}
+            onClick={() => openAppointmentRequestCreate({ title: `Ortstermin: ${subject}`, notes: label.trim() || undefined })}
           >
             <CalendarDays className="h-3.5 w-3.5" />Ortstermin anfragen
           </Button>
