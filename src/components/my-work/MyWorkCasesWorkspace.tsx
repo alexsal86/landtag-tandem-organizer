@@ -312,7 +312,7 @@ export function MyWorkCasesWorkspace() {
 
       return primaryResult;
     });
-  }, [caseFilesById, filteredCaseItems, getAssigneeIds, getCategory, getItemDescription, getItemSubject, itemSort, teamUsers]);
+  }, [caseFilesById, filteredCaseItems, getAssigneeIds, getCategory, getItemDescription, getItemSubject, itemSort, teamUsers, triageFilter, user?.id]);
 
   const toggleSort = useCallback((key: CaseItemSortKey, direction: SortDirection) => {
     setItemSort((prev) => 

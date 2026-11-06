@@ -11,6 +11,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type { CaseFile, CaseItem, TeamUser } from "@/components/my-work/hooks/useCaseWorkspaceData";
 import { formatDateSafe } from "./utils/dateFormatting";
+import { BALL_OWNERS, TRIAGE_FILTERS, ballMeta, daysUntilNextAction, type TriageFilter } from "@/features/cases/items/ball";
+import type { BallPatch } from "./CaseItemBallPanel";
 
 export type CaseItemSortKey = "channel" | "subject" | "description" | "status" | "received" | "due" | "category" | "priority" | "assignee";
 export type SortDirection = "asc" | "desc";
@@ -26,6 +28,10 @@ type CaseItemListProps = {
   onItemQueryChange: (value: string) => void;
   helperText: string;
   sortedCaseItems: CaseItem[];
+  triageFilter: TriageFilter;
+  onTriageFilterChange: (value: TriageFilter) => void;
+  triageCounts: Record<TriageFilter, number>;
+  handleBallChange: (item: CaseItem, patch: BallPatch) => Promise<void>;
   caseFilesById: Record<string, CaseFile>;
   allCaseFiles: CaseFile[];
   detailItemId: string | null;
@@ -94,6 +100,28 @@ export function CaseItemList(props: CaseItemListProps) {
             + Neu
           </Button>
         </div>
+        <div className="flex flex-wrap gap-1" role="group" aria-label="Wer ist am Zug">
+          {TRIAGE_FILTERS.map((f) => {
+            const active = props.triageFilter === f.value;
+            const count = props.triageCounts[f.value];
+            return (
+              <button
+                key={f.value}
+                type="button"
+                title={f.hint}
+                aria-pressed={active}
+                onClick={() => props.onTriageFilterChange(active ? "all" : f.value)}
+                className={cn(
+                  "rounded-pill px-2.5 py-0.5 text-xs transition-colors duration-fast",
+                  active ? "bg-foreground text-background" : "text-muted-foreground hover:bg-background",
+                  f.value === "due_soon" && count > 0 && !active && "text-destructive",
+                )}
+              >
+                {f.label} <span className="tabular-nums opacity-70">{count}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Card list */}
@@ -116,6 +144,8 @@ export function CaseItemList(props: CaseItemListProps) {
                 props.sortedCaseItems.map((item, index) => {
                   const isActive = props.detailItemId === item.id;
                   const statusMeta = props.getStatusMeta(item.status);
+                  const ball = ballMeta(item.ball_owner);
+                  const nextDays = daysUntilNextAction(item);
                   return (
                     <Draggable key={item.id} draggableId={item.id} index={index}>
                       {(dragProvided, dragSnapshot) => (
@@ -159,6 +189,22 @@ export function CaseItemList(props: CaseItemListProps) {
                                     </p>
                                   )}
 
+                                  {/* Row 2b: Ball + next action */}
+                                  <div className="mt-2 flex items-center gap-1.5 text-xs">
+                                    <span className={cn("h-2 w-2 shrink-0 rounded-full", ball.dotClass)} />
+                                    <span className="shrink-0 text-muted-foreground">{ball.short}</span>
+                                    {item.next_action_label ? (
+                                      <span className="min-w-0 truncate text-foreground">· {item.next_action_label}</span>
+                                    ) : (item.ball_owner ?? "office") === "office" ? (
+                                      <span className="min-w-0 truncate italic text-muted-foreground">· kein nächster Schritt</span>
+                                    ) : null}
+                                    {nextDays !== null && (
+                                      <span className={cn("ml-auto shrink-0 tabular-nums", nextDays < 0 ? "text-destructive" : nextDays <= 3 ? "text-warning" : "text-muted-foreground")}>
+                                        {formatDateSafe(item.next_action_due_at, "dd.MM.", "", { locale: de })}
+                                      </span>
+                                    )}
+                                  </div>
+
                                   {/* Row 3: Date + status */}
                                   <div className="mt-3 flex items-center justify-between gap-2">
                                     <span className="text-xs text-muted-foreground">
@@ -191,6 +237,17 @@ export function CaseItemList(props: CaseItemListProps) {
                                       <span className={cn("mr-2 h-2 w-2 rounded-full inline-block", opt.dotColor)} />
                                       {opt.label}
                                       {item.status === opt.value && <span className="ml-auto text-xs text-muted-foreground">✓</span>}
+                                    </ContextMenuItem>
+                                  ))}
+                                </ContextMenuSubContent>
+                              </ContextMenuSub>
+                              <ContextMenuSub>
+                                <ContextMenuSubTrigger>Wer ist am Zug?</ContextMenuSubTrigger>
+                                <ContextMenuSubContent className="w-52">
+                                  {BALL_OWNERS.map((b) => (
+                                    <ContextMenuItem key={b.value} className={cn(ball.value === b.value && "bg-accent")} onClick={() => props.runAsync(() => props.handleBallChange(item, { ball_owner: b.value }))}>
+                                      <span className={cn("mr-2 inline-block h-2 w-2 rounded-full", b.dotClass)} />
+                                      {b.label}
                                     </ContextMenuItem>
                                   ))}
                                 </ContextMenuSubContent>
