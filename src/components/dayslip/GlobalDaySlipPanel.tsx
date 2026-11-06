@@ -249,13 +249,19 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
     const item = target.closest(".day-slip-item") as HTMLElement | null;
     if (!item) return;
     const rect = item.getBoundingClientRect();
+    const linkType = item.dataset.sourceType; const linkId = item.dataset.sourceId;
+    if (linkType && linkId && rect.right - e.clientX <= 24) {
+      e.preventDefault();
+      navigate(sourcePath({ type: linkType as DaySlipSource["type"], id: linkId }));
+      return;
+    }
     if (e.clientX - rect.left > 24) return;
     const lineText = (item.textContent ?? "").trim();
     if (!lineText || isRuleLine(lineText)) return;
     const lineId = item.dataset.lineId;
     if (!lineId) return;
     ds.toggleStrike(lineId);
-  }, [ds]);
+  }, [ds, navigate]);
 
   const handleEditorContextMenu = useCallback((e: MouseEvent<HTMLDivElement>) => {
     if (ds.todayData.completedAt || ds.isProcessing) return;
