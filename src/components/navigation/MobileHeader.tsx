@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { LogOut, Menu, Search, Settings, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { AppNavigation } from "@/components/navigation/AppNavigation";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -100,15 +100,30 @@ export function MobileHeader() {
                   <span className="sr-only">Navigation öffnen</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="p-0 w-[72px] bg-[hsl(var(--nav))] border-[hsl(var(--nav-foreground)/0.1)]">
-                <AppNavigation 
-                  activeSection={activeSection} 
-                  onSectionChange={(section) => {
-                    navigate(section === 'dashboard' ? '/' : `/${section}`);
-                    setMobileNavOpen(false);
-                  }}
-                  isMobile={true}
-                />
+              <SheetContent
+                side="top"
+                aria-describedby={undefined}
+                className="flex h-app w-full max-w-none flex-col gap-0 overflow-hidden border-0 p-0 pt-safe-top px-safe bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))]"
+              >
+                <div className="flex h-14 shrink-0 items-center justify-between border-b border-[hsl(var(--nav-foreground)/0.1)] px-4">
+                  <SheetTitle className="text-base text-[hsl(var(--nav-foreground))]">Navigation</SheetTitle>
+                  <SheetClose asChild>
+                    <Button variant="ghost" size="icon" className="text-[hsl(var(--nav-foreground))] hover:bg-[hsl(var(--nav-hover))]">
+                      <X className="h-5 w-5" />
+                      <span className="sr-only">Navigation schließen</span>
+                    </Button>
+                  </SheetClose>
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  <AppNavigation
+                    activeSection={activeSection}
+                    onSectionChange={(section) => {
+                      navigate(section === 'dashboard' ? '/' : `/${section}`);
+                      setMobileNavOpen(false);
+                    }}
+                    isMobile={true}
+                  />
+                </div>
               </SheetContent>
             </Sheet>
             
