@@ -22,11 +22,13 @@ type Props = {
   onChange: (patch: BallPatch) => void;
   onOpenMeetingSelector: () => void;
   onCreateLetter: () => Promise<void>;
+  /** "dock" = vertical layout for the right-hand third zone. */
+  variant?: "bar" | "dock";
 };
 
 const NONE = "__none__";
 
-export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange, onOpenMeetingSelector, onCreateLetter }: Props) {
+export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange, onOpenMeetingSelector, onCreateLetter, variant = "bar" }: Props) {
   const [creatingLetter, setCreatingLetter] = useState(false);
   const [label, setLabel] = useState(item.next_action_label ?? "");
   useEffect(() => setLabel(item.next_action_label ?? ""), [item.id, item.next_action_label]);
@@ -44,7 +46,7 @@ export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange
   };
 
   return (
-    <div className="shrink-0 space-y-3 border-b bg-muted/20 px-4 py-3">
+    <div className={cn("shrink-0 space-y-3", variant === "bar" ? "border-b bg-muted/20 px-4 py-3" : "p-4 [&_.case-actions]:ml-0 [&_.case-actions]:w-full [&_.case-actions]:flex-col [&_.case-actions]:items-stretch [&_.case-actions_button]:justify-start")}>
       <div className="flex flex-wrap items-center gap-2">
         <span className="section-label">Am Zug</span>
         {BALL_OWNERS.map((b) => (
@@ -64,7 +66,7 @@ export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_150px_170px]">
+      <div className={cn("grid grid-cols-1 gap-2", variant === "bar" && "md:grid-cols-[1fr_150px_170px]")}>
         <Input
           value={label}
           onChange={(e) => setLabel(e.target.value)}
@@ -114,7 +116,7 @@ export function CaseItemBallPanel({ item, tenantId, subject, teamUsers, onChange
             Übergeben von {userName(lastHandover.handed_over_by)} an {userName(lastHandover.to_user_id)} · {format(new Date(lastHandover.handed_over_at), "dd.MM. HH:mm", { locale: de })}
           </span>
         )}
-        <div className="ml-auto flex items-center gap-1">
+        <div className="case-actions ml-auto flex items-center gap-1">
           <Button
             type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs text-muted-foreground" disabled={creatingLetter}
             onClick={async () => { setCreatingLetter(true); try { await onCreateLetter(); } finally { setCreatingLetter(false); } }}
