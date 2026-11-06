@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { ReactNode } from "react";
 import { FolderOpen, Globe } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -27,6 +28,8 @@ type CaseItemDetailViewProps = {
   onPriorityChange: (value: string) => void;
   detailPanel: ReactNode;
   ballPanel?: ReactNode;
+  /** Plain-text core concern, pinned above the scrolling detail area. */
+  summary?: string;
   activeTab: DetailTab;
   onTabChange: (tab: DetailTab) => void;
   onOpenCaseFiles?: () => void;
@@ -55,6 +58,7 @@ export function CaseItemDetailView({
   onPriorityChange,
   detailPanel,
   ballPanel,
+  summary,
   activeTab,
   onTabChange,
   onOpenCaseFiles,
@@ -204,9 +208,28 @@ export function CaseItemDetailView({
       </div>
 
       {ballPanel}
+      {summary?.trim() ? <PinnedSummary text={summary.trim()} /> : null}
       <ScrollArea className="min-h-0 flex-1">
         <div className="p-4">{detailPanel}</div>
       </ScrollArea>
+    </div>
+  );
+}
+
+function PinnedSummary({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const long = text.length > 180;
+  return (
+    <div className="shrink-0 border-b bg-muted/40 px-6 py-2.5" aria-label="Sachlage">
+      <div className="flex items-start gap-3">
+        <span className="section-label mt-0.5 shrink-0">Sachlage</span>
+        <p className={cn("flex-1 text-sm text-foreground whitespace-pre-line", !expanded && "line-clamp-2")}>{text}</p>
+        {long ? (
+          <button type="button" onClick={() => setExpanded((v) => !v)} className="shrink-0 text-xs font-medium text-primary hover:underline">
+            {expanded ? "Weniger" : "Mehr"}
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
