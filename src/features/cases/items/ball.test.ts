@@ -66,3 +66,24 @@ describe("Vorgänge: Wer ist am Zug", () => {
     expect(daysUntilNextAction({}, now)).toBeNull();
   });
 });
+
+import { isOnResubmission as _isR, stepState as _st, ballChangeEvents as _bce } from "./ball";
+describe("Wiedervorlage", () => {
+  const now = new Date(2026, 10, 6, 10);
+  const tomorrow = new Date(2026, 10, 7, 12).toISOString();
+  const today = new Date(2026, 10, 6, 18).toISOString();
+  it("Schritt mit Frist morgen liegt auf Wiedervorlage", () => {
+    expect(_isR({ next_action_label: "Nachhalten", next_action_due_at: tomorrow }, now)).toBe(true);
+  });
+  it("Frist heute kehrt in die Liste zurück", () => {
+    expect(_isR({ next_action_label: "Nachhalten", next_action_due_at: today }, now)).toBe(false);
+  });
+  it("ohne Schritt keine Wiedervorlage", () => {
+    expect(_isR({ next_action_label: "", next_action_due_at: tomorrow }, now)).toBe(false);
+    expect(_st({ next_action_label: " " })).toBe("none");
+  });
+  it("Wechsel Büro → Verwaltung erzeugt Verlaufseintrag", () => {
+    const ev = _bce({ ball_owner: "office" }, { ball_owner: "authority" }, () => null, now);
+    expect(ev).toEqual([{ title: "Am Zug geändert", note: "Büro → Verwaltung" }]);
+  });
+});
