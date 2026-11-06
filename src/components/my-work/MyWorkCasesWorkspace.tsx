@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { de } from "date-fns/locale";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -1263,7 +1264,7 @@ export function MyWorkCasesWorkspace() {
                   archiveLabel={detailItem.status === "archiviert" ? "Wiederherstellen" : "Archivieren"}
                   onDelete={() => setDeleteConfirmItemId(detailItem.id)}
                   ballPanel={ballPanelNode}
-                  quickActions={detailItem ? <CaseItemQuickActions item={detailItem} subject={editableCaseItem.subject} onCreateLetter={ballPanelNode.props.onCreateLetter} onOpenMeetingSelector={ballPanelNode.props.onOpenMeetingSelector} onRequestDecision={ballPanelNode.props.onRequestDecision} /> : null}
+                  quickActions={ballPanelNode ? <CaseItemQuickActions {...(ballPanelNode.props as ComponentProps<typeof CaseItemQuickActions>)} /> : null}
                   summary={getItemDescription(detailItem)}
                   detailPanel={
                     <CaseItemDetailPanel
