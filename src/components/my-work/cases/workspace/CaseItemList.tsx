@@ -194,8 +194,7 @@ export function CaseItemList(props: CaseItemListProps) {
                                 className={cn(
                                   "group w-full rounded-xl border bg-transparent px-3 py-2 text-left transition-colors hover:bg-muted/30",
                                   isActive && "border-primary/60 bg-primary/5 shadow-sm",
-                                  !isActive && resub && "border-success/60 bg-success/5",
-                                  !isActive && !resub && "border-transparent",
+                                  !isActive && "border-transparent",
                                   props.focusedItemIndex >= 0 && props.focusedItemIndex === index && "ring-1 ring-primary/40",
                                 )}
                                 onClick={() => props.handleSelectCaseItem(item)}
@@ -219,9 +218,9 @@ export function CaseItemList(props: CaseItemListProps) {
                                     <span className="shrink-0 text-muted-foreground">{ball.short}</span>
                                     {item.next_action_label ? (
                                       <span className="min-w-0 truncate text-foreground">· {item.next_action_label}</span>
-                                    ) : (item.ball_owner ?? "office") === "office" ? (
+                                    ) : (
                                       <span className="min-w-0 truncate italic text-muted-foreground">· kein nächster Schritt</span>
-                                    ) : null}
+                                    )}
 
                                   </div>
 

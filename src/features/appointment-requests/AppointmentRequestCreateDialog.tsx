@@ -20,7 +20,7 @@ interface Props {
 const empty = (p: RequestPrefill): NewRequestInput => ({
   title: p.title ?? "",
   requester: p.requester ?? "",
-  channel: "email",
+  channel: p.channel ?? "email",
   requested_date: p.date ?? "",
   requested_time: p.time ?? "",
   duration_minutes: 60,

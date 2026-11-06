@@ -1,4 +1,4 @@
-export type RequestChannel = "email" | "post" | "phone" | "in_person" | "other";
+export type RequestChannel = "email" | "post" | "phone" | "in_person" | "case" | "other";
 export type RequestRecommendation = "accept" | "decline" | "delegate" | "question";
 export type RequestStatus = "open" | "accepted" | "declined";
 

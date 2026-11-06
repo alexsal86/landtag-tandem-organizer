@@ -5,6 +5,7 @@ export interface RequestPrefill {
   time?: string; // HH:MM
   location?: string;
   notes?: string;
+  channel?: import("./logic").RequestChannel;
 }
 
 const OPEN_CREATE = "appointment-request:create";
