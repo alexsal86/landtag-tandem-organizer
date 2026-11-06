@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BALL_OWNERS, ballMeta, countTriage, daysUntilNextAction, matchesTriage, withAutoDeadline } from "./ball";
+import { BALL_OWNERS, TRIAGE_FILTERS, ballMeta, countTriage, daysUntilNextAction, matchesTriage, withAutoDeadline } from "./ball";
 
 const now = new Date(2026, 10, 6, 11, 0);
 
@@ -28,10 +28,36 @@ describe("Vorgänge: Wer ist am Zug", () => {
     expect(matchesTriage({ next_action_due_at: new Date(2026, 10, 1).toISOString() }, "due_soon", null, now)).toBe(true);
   });
 
-  it("Mein Ball nutzt die zuständige Person des nächsten Schritts, sonst die Bearbeitung", () => {
+  it("Mein Ball berücksichtigt Bearbeitung und Schrittzuständigkeit unabhängig davon, wer am Zug ist", () => {
     expect(matchesTriage({ ball_owner: "office", next_action_assignee_id: "u1", owner_user_id: "u2" }, "mine", "u1", now)).toBe(true);
     expect(matchesTriage({ ball_owner: "office", owner_user_id: "u1" }, "mine", "u1", now)).toBe(true);
-    expect(matchesTriage({ ball_owner: "ministry", owner_user_id: "u1" }, "mine", "u1", now)).toBe(false);
+    expect(matchesTriage({ ball_owner: "ministry", owner_user_id: "u1" }, "mine", "u1", now)).toBe(true);
+    expect(matchesTriage({ owner_user_id: "u1", next_action_assignee_id: "u2" }, "mine", "u1", now)).toBe(true);
+    expect(matchesTriage({ owner_user_id: "u2", intake_payload: { assignee_ids: ["u2", "u1"] } }, "mine", "u1", now)).toBe(true);
+    expect(matchesTriage({ ball_owner: "citizen", next_action_assignee_id: "u1" }, "mine", "u1", now)).toBe(true);
+    expect(matchesTriage({ owner_user_id: "u2", next_action_assignee_id: "u3" }, "mine", "u1", now)).toBe(false);
+    expect(matchesTriage({ owner_user_id: null, next_action_assignee_id: null }, "mine", null, now)).toBe(false);
+  });
+
+  it("bietet nur Mein Ball, Wiedervorlage und Alle in dieser Reihenfolge an", () => {
+    expect(TRIAGE_FILTERS.map((filter) => filter.value)).toEqual(["mine", "resubmission", "all"]);
+  });
+
+  it("filtert und zählt Wiedervorlagen ohne fällige oder unvollständige Schritte", () => {
+    const tomorrow = new Date(2026, 10, 7, 12).toISOString();
+    const items = [
+      { owner_user_id: "u1", next_action_assignee_id: "u1", next_action_label: "Nachfragen", next_action_due_at: tomorrow },
+      { owner_user_id: "u2", next_action_label: "Nachfragen", next_action_due_at: tomorrow },
+      { owner_user_id: "u1", next_action_label: "Heute", next_action_due_at: now.toISOString() },
+      { owner_user_id: "u2", next_action_label: "Überfällig", next_action_due_at: new Date(2026, 10, 5).toISOString() },
+      { owner_user_id: "u2", next_action_due_at: tomorrow },
+    ];
+    const counts = countTriage(items, "u1", now);
+    expect(counts.mine).toBe(2);
+    expect(counts.resubmission).toBe(2);
+    expect(counts.all).toBe(5);
+    expect(items.filter((item) => matchesTriage(item, "resubmission", "u1", now))).toHaveLength(2);
+    expect(matchesTriage({ next_action_label: "Ungültig", next_action_due_at: "invalid" }, "resubmission", "u1", now)).toBe(false);
   });
 
   it("Wartet zählt Bürger, Ministerium, Behörde und Fraktion, aber nicht ruhend", () => {

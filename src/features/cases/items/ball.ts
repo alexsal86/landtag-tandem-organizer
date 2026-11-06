@@ -54,7 +54,7 @@ export function withAutoDeadline<T extends { ball_owner?: string | null; next_ac
   };
 }
 
-export type TriageFilter = "all" | "mine" | "office" | "waiting" | "due_soon" | "no_next_action";
+export type TriageFilter = "all" | "mine" | "resubmission" | "office" | "waiting" | "due_soon" | "no_next_action";
 
 export type TriageItem = {
   ball_owner?: string | null;
@@ -62,6 +62,7 @@ export type TriageItem = {
   next_action_due_at?: string | null;
   next_action_assignee_id?: string | null;
   owner_user_id?: string | null;
+  intake_payload?: { assignee_ids?: string[] } | null;
 };
 
 /** Tage bis zur Frist des nächsten Schritts (negativ = überfällig), null wenn keine Frist. */
@@ -82,7 +83,9 @@ export function matchesTriage(item: TriageItem, filter: TriageFilter, userId: st
     case "all":
       return true;
     case "mine":
-      return owner === "office" && !!userId && (item.next_action_assignee_id ?? item.owner_user_id) === userId;
+      return !!userId && (item.owner_user_id === userId || (Array.isArray(item.intake_payload?.assignee_ids) && item.intake_payload.assignee_ids.includes(userId)) || item.next_action_assignee_id === userId);
+    case "resubmission":
+      return isOnResubmission(item, now);
     case "office":
       return owner === "office";
     case "waiting":
@@ -97,17 +100,14 @@ export function matchesTriage(item: TriageItem, filter: TriageFilter, userId: st
 }
 
 export function countTriage(items: TriageItem[], userId: string | null, now: Date = new Date()): Record<TriageFilter, number> {
-  const filters: TriageFilter[] = ["all", "mine", "office", "waiting", "due_soon", "no_next_action"];
+  const filters: TriageFilter[] = ["all", "mine", "resubmission", "office", "waiting", "due_soon", "no_next_action"];
   return Object.fromEntries(filters.map((f) => [f, items.filter((i) => matchesTriage(i, f, userId, now)).length])) as Record<TriageFilter, number>;
 }
 
 export const TRIAGE_FILTERS: { value: TriageFilter; label: string; hint: string }[] = [
-  { value: "all", label: "Alle", hint: "Alle offenen Vorgänge" },
-  { value: "mine", label: "Mein Ball", hint: "Das Büro ist am Zug und du bist für den nächsten Schritt zuständig" },
-  { value: "office", label: "Büro am Zug", hint: "Wir müssen handeln" },
-  { value: "waiting", label: "Wartet", hint: "Ball liegt bei Bürger, Ministerium, Behörde oder Fraktion" },
-  { value: "due_soon", label: "Frist nah", hint: "Nächster Schritt überfällig oder in den nächsten 3 Tagen fällig" },
-  { value: "no_next_action", label: "Ohne nächsten Schritt", hint: "Büro ist am Zug, aber niemand hat festgelegt, was als Nächstes passiert" },
+  { value: "mine", label: "Mein Ball", hint: "Vorgänge, die du bearbeitest oder bei denen dir der nächste Schritt zugewiesen ist" },
+  { value: "resubmission", label: "Wiedervorlage", hint: "Vorgänge mit einem festgelegten Schritt und einer Frist nach heute" },
+  { value: "all", label: "Alle", hint: "Alle nicht archivierten Vorgänge" },
 ];
 
 /** Ein Schritt gilt als festgelegt, sobald ein Text gespeichert ist. */
@@ -137,7 +137,7 @@ export function resubmissionHint(item: TriageItem, now: Date = new Date()): stri
   const date = `${String(due.getDate()).padStart(2, "0")}.${String(due.getMonth() + 1).padStart(2, "0")}.`;
   const owner = ballMeta(item.ball_owner).value;
   const where = owner === "snoozed" ? "ruht" : `liegt ${OWNER_PHRASE[owner]}`;
-  return `Wiedervorlage: Der Vorgang ${where} und erscheint am ${date} wieder unter „Heute“.`;
+  return `Wiedervorlage: Der Vorgang ${where} und erscheint am ${date} wieder als fälliger Vorgang.`;
 }
 
 export type BallChangeEvent = { title: string; note?: string };

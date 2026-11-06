@@ -271,7 +271,7 @@ export function MyWorkCasesWorkspace() {
     });
   }, [activeCaseItems, caseFilesById, filters.itemQuery, getCategory]);
 
-  const [triageFilter, setTriageFilter] = useState<TriageFilter>("all");
+  const [triageFilter, setTriageFilter] = useState<TriageFilter>("mine");
   const [handoverOpen, setHandoverOpen] = useState(false);
   const { isAdmin: canHandover } = useResolvedUserRole();
   const triageCounts = useMemo(() => countTriage(filteredCaseItems, user?.id ?? null), [filteredCaseItems, user?.id]);

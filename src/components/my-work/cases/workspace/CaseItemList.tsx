@@ -83,6 +83,7 @@ export function CaseItemList(props: CaseItemListProps) {
   const resubItems = props.sortedCaseItems.filter((i) => isOnResubmission(i));
   const orderedItems = [...activeItems, ...resubItems];
   const activeCount = activeItems.length;
+  const showResubSection = props.triageFilter === "all";
   const resubCount = resubItems.length;
   const [resubOpen, setResubOpen] = useState(() => {
     try { return localStorage.getItem(RESUB_KEY) !== "0"; } catch { return true; }
@@ -108,7 +109,7 @@ export function CaseItemList(props: CaseItemListProps) {
           placeholder="Suchen…"
           className="h-11 w-full rounded-lg bg-background"
         />
-        <div className="flex flex-wrap gap-1" role="group" aria-label="Wer ist am Zug">
+        <div className="grid grid-cols-[1fr_1.25fr_.75fr] gap-0.5 rounded-xl bg-muted/70 p-1" role="group" aria-label="Vorgänge filtern">
           {TRIAGE_FILTERS.map((f) => {
             const active = props.triageFilter === f.value;
             const count = props.triageCounts[f.value];
@@ -118,11 +119,10 @@ export function CaseItemList(props: CaseItemListProps) {
                 type="button"
                 title={f.hint}
                 aria-pressed={active}
-                onClick={() => props.onTriageFilterChange(active ? "all" : f.value)}
+                onClick={() => props.onTriageFilterChange(f.value)}
                 className={cn(
-                  "rounded-pill px-2.5 py-0.5 text-xs transition-colors duration-fast",
-                  active ? "bg-foreground text-background" : "text-muted-foreground hover:bg-background",
-                  f.value === "due_soon" && count > 0 && !active && "text-destructive",
+                  "min-w-0 whitespace-nowrap rounded-lg px-1 py-2 text-[13px] transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success focus-visible:ring-offset-1",
+                  active ? "bg-background font-semibold text-foreground shadow-sm" : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
                 )}
               >
                 {f.label} <span className="tabular-nums opacity-70">{count}</span>
@@ -151,7 +151,7 @@ export function CaseItemList(props: CaseItemListProps) {
               ) : (
                 orderedItems.map((item, index) => {
                   const resub = index >= activeCount;
-                  const header = index === activeCount ? (
+                  const header = showResubSection && index === activeCount ? (
                     <button
                       key="resub-header"
                       type="button"
@@ -166,7 +166,7 @@ export function CaseItemList(props: CaseItemListProps) {
                       <span className="text-xs font-semibold text-muted-foreground">kommt zurück</span>
                     </button>
                   ) : null;
-                  if (resub && !resubOpen) return header;
+                  if (showResubSection && resub && !resubOpen) return header;
                   const isActive = props.detailItemId === item.id;
                   const ball = ballMeta(item.ball_owner);
                   const nextDays = daysUntilNextAction(item);
