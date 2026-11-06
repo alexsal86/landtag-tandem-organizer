@@ -332,82 +332,86 @@ export function CaseItemDetailPanel({
                     {CircleIcon ? <CircleIcon className={cn("h-3 w-3", decisionMeta?.iconClass)} /> : null}
                   </span>
 
-                  <div className={cn("group py-1 text-xs", decisionId && "cursor-pointer")}
+                  <div tabIndex={0} className={cn("group rounded-sm py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40", decisionId && "cursor-pointer")}
                   >
-                    <p className="text-[10px] font-medium text-muted-foreground">
-                      {formatTimelineDateOnly(entry.timestamp)}
-                      <span className="ml-1.5 opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-within:opacity-100">{formatTimelineTimeOnly(entry.timestamp)} Uhr</span>
-                      {entry.actorName && <span className="ml-1.5">· {entry.actorName}</span>}
-                    </p>
-
                     <div className="flex items-start justify-between gap-2">
-                      {decision ? (
-                        <HoverCard openDelay={350} closeDelay={100}>
-                          <HoverCardTrigger asChild>
-                            <button
-                              type="button"
-                              className={cn("font-bold leading-4 text-left hover:underline")}
-                              onClick={() => openDecision(decisionId!)}
-                            >
-                              {entry.title}
-                            </button>
-                          </HoverCardTrigger>
+                      <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-1">
+                        {decision ? (
+                          <HoverCard openDelay={350} closeDelay={100}>
+                            <HoverCardTrigger asChild>
+                              <button
+                                type="button"
+                                className={cn("font-bold leading-4 text-left hover:underline")}
+                                onClick={() => openDecision(decisionId!)}
+                              >
+                                {entry.title}
+                              </button>
+                            </HoverCardTrigger>
 
-                          <HoverCardContent align="start" className="w-80">
-                            <div className="space-y-2">
-                              <div>
-                                <p className="text-sm font-semibold text-foreground">{decision.title}</p>
-                                <p className="mt-1 text-xs text-muted-foreground whitespace-pre-wrap">
-                                  {decision.description ? toPlainText(decision.description) : "Keine Beschreibung."}
-                                </p>
-                              </div>
-
-                              {decision.response_deadline && (
-                                <p className="text-xs text-muted-foreground">
-                                  Antwort bis <span className="font-medium text-foreground">{formatDecisionDate(decision.response_deadline)}</span>
-                                </p>
-                              )}
-
-                              {counts && (
-                                <div className="text-xs text-muted-foreground">
-                                  <span className="font-medium text-foreground">{counts.responded}</span>/{counts.total} beantwortet · {counts.pending} ausstehend
+                            <HoverCardContent align="start" className="w-80">
+                              <div className="space-y-2">
+                                <div>
+                                  <p className="text-sm font-semibold text-foreground">{decision.title}</p>
+                                  <p className="mt-1 text-xs text-muted-foreground whitespace-pre-wrap">
+                                    {decision.description ? toPlainText(decision.description) : "Keine Beschreibung."}
+                                  </p>
                                 </div>
-                              )}
 
-                              {counts && (
-                                <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
-                                  {counts.yes > 0 && <span className="text-success">Ja {counts.yes}</span>}
-                                  {counts.question > 0 && <span className="text-secondary">Rückfrage {counts.question}</span>}
-                                  {counts.no > 0 && <span className="text-destructive">Nein {counts.no}</span>}
-                                </div>
-                              )}
-
-                              <div className="space-y-1">
-                                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Teilnehmer</p>
-                                {participants.length > 0 ? (
-                                  <ul className="space-y-1">
-                                    {participants.slice(0, 8).map((p) => (
-                                      <li key={p.id} className="flex items-center justify-between gap-2 text-xs">
-                                        <span className="truncate">{teamUsersById.get(p.user_id)?.name || "Unbekannt"}</span>
-                                        <span className="text-muted-foreground">{(p.task_decision_responses?.length ?? 0) > 0 ? "beantwortet" : "ausstehend"}</span>
-                                      </li>
-                                    ))}
-                                    {participants.length > 8 && (
-                                      <li className="text-xs text-muted-foreground">+{participants.length - 8} weitere…</li>
-                                    )}
-                                  </ul>
-                                ) : (
-                                  <p className="text-xs text-muted-foreground">Keine Teilnehmer.</p>
+                                {decision.response_deadline && (
+                                  <p className="text-xs text-muted-foreground">
+                                    Antwort bis <span className="font-medium text-foreground">{formatDecisionDate(decision.response_deadline)}</span>
+                                  </p>
                                 )}
-                              </div>
 
-                              <p className="text-[10px] text-muted-foreground">Klick öffnet Details</p>
-                            </div>
-                          </HoverCardContent>
-                        </HoverCard>
-                      ) : (
-                        <p className={cn("font-bold leading-4", isFrist && "text-palette-amber", entry.isSystem && "font-semibold text-muted-foreground")}>{entry.title}</p>
-                      )}
+                                {counts && (
+                                  <div className="text-xs text-muted-foreground">
+                                    <span className="font-medium text-foreground">{counts.responded}</span>/{counts.total} beantwortet · {counts.pending} ausstehend
+                                  </div>
+                                )}
+
+                                {counts && (
+                                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                                    {counts.yes > 0 && <span className="text-success">Ja {counts.yes}</span>}
+                                    {counts.question > 0 && <span className="text-secondary">Rückfrage {counts.question}</span>}
+                                    {counts.no > 0 && <span className="text-destructive">Nein {counts.no}</span>}
+                                  </div>
+                                )}
+
+                                <div className="space-y-1">
+                                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Teilnehmer</p>
+                                  {participants.length > 0 ? (
+                                    <ul className="space-y-1">
+                                      {participants.slice(0, 8).map((p) => (
+                                        <li key={p.id} className="flex items-center justify-between gap-2 text-xs">
+                                          <span className="truncate">{teamUsersById.get(p.user_id)?.name || "Unbekannt"}</span>
+                                          <span className="text-muted-foreground">{(p.task_decision_responses?.length ?? 0) > 0 ? "beantwortet" : "ausstehend"}</span>
+                                        </li>
+                                      ))}
+                                      {participants.length > 8 && (
+                                        <li className="text-xs text-muted-foreground">+{participants.length - 8} weitere…</li>
+                                      )}
+                                    </ul>
+                                  ) : (
+                                    <p className="text-xs text-muted-foreground">Keine Teilnehmer.</p>
+                                  )}
+                                </div>
+
+                                <p className="text-[10px] text-muted-foreground">Klick öffnet Details</p>
+                              </div>
+                            </HoverCardContent>
+                          </HoverCard>
+                        ) : (
+                          <span className={cn("font-bold leading-4 text-foreground", isFrist && "text-palette-amber")}>{entry.title}</span>
+                        )}
+
+                        <span aria-hidden="true" className="text-muted-foreground">·</span>
+                        <span className="text-muted-foreground">{entry.actorName || "Nicht zugewiesen"}</span>
+                        <span aria-hidden="true" className="text-muted-foreground">·</span>
+                        <time dateTime={entry.timestamp} className="whitespace-nowrap text-muted-foreground">
+                          {formatTimelineDateOnly(entry.timestamp)}
+                          <span className="ml-1 hidden group-hover:inline group-focus-within:inline">{formatTimelineTimeOnly(entry.timestamp)} Uhr</span>
+                        </time>
+                      </div>
 
                       {entry.canDelete && entry.onDelete ? (
                         <TooltipProvider>

@@ -5,6 +5,8 @@ export type TimelineEntry = {
   id: string;
   timestamp: string;
   title: string;
+  actorName?: string;
+  isSystem?: boolean;
   note?: string;
   safeNoteHtml?: string;
   documents?: TimelineDocumentAttachment[];

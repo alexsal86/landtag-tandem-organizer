@@ -1,3 +1,4 @@
+import { mergeStepChangeEvents } from "@/features/cases/items/timeline";
 import { useCaseWorkflow } from "@/components/my-work/hooks/useCaseWorkflow";
 import type { ComponentProps } from "react";
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -466,7 +467,7 @@ export function MyWorkCasesWorkspace() {
     id: crypto.randomUUID(), type: "system", title, note, timestamp: new Date().toISOString(), actorName: actorName(),
   });
   const buildSystemEvents = (item: CaseItem, patch: BallPatch): TimelineEvent[] =>
-    ballChangeEvents(item, patch, (id) => (id ? teamUsers.find((u) => u.id === id)?.name ?? null : null)).map((e) => makeSystemEvent(e.title, e.note));
+    ballChangeEvents(item, patch, (id) => (id ? teamUsers.find((u) => u.id === id)?.name ?? null : null)).map((e) => ({ ...makeSystemEvent(e.title, e.note), responsibleName: e.responsibleName }));
   /** Hängt einen einzelnen Systemeintrag (Brief, Jour fixe, Entscheidung …) an den Verlauf an. */
   const logSystemEvent = async (item: CaseItem, title: string, note?: string) => {
     const event = makeSystemEvent(title, note);
@@ -486,8 +487,8 @@ export function MyWorkCasesWorkspace() {
     const item = caseItems.find((i) => i.id === detailItemId);
     if (!item || dueLoggedRef.current === item.id || isOnResubmission(item) || !item.next_action_label?.trim() || !item.next_action_due_at) return;
     const events = parseTimelineEvents(item.intake_payload).filter((e) => e.type === "system");
-    const lastResub = [...events].reverse().find((e) => e.title === "Auf Wiedervorlage gelegt" || e.title === "Wiedervorlage fällig");
-    if (lastResub?.title !== "Auf Wiedervorlage gelegt") return;
+    const lastResub = [...events].reverse().find((e) => e.title === "Auf Wiedervorlage gelegt" || e.title.endsWith(" + Wiedervorlage") || e.title === "Wiedervorlage fällig");
+    if (!lastResub || lastResub.title === "Wiedervorlage fällig") return;
     dueLoggedRef.current = item.id;
     void logSystemEvent(item, "Wiedervorlage fällig", item.next_action_label);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -915,11 +916,13 @@ export function MyWorkCasesWorkspace() {
   const timelineEntries = useMemo<TimelineEntry[]>(() => {
     if (!editableCaseItem) return [];
     const entries: TimelineEntry[] = [];
+    const responsibleName = teamUsers.find((member) => member.id === (detailItem?.next_action_assignee_id ?? editableCaseItem.assigneeIds[0]))?.name;
     if (editableCaseItem.sourceReceivedAt) {
       entries.push({
         id: "source-received",
         timestamp: `${editableCaseItem.sourceReceivedAt}T08:00:00`,
         title: "Eingang",
+        actorName: responsibleName,
         accentClass: "bg-palette-blue",
         icon: Inbox,
       });
@@ -929,12 +932,13 @@ export function MyWorkCasesWorkspace() {
         id: "due-at",
         timestamp: `${editableCaseItem.dueAt}T18:00:00`,
         title: "Frist",
+        actorName: responsibleName,
         accentClass: "bg-palette-amber",
         icon: Timer,
       });
     }
 
-    entries.push(...editableCaseItem.timelineEvents.map((event) => ({
+    entries.push(...mergeStepChangeEvents(editableCaseItem.timelineEvents).map((event) => ({
       id: event.id,
       timestamp: event.timestamp,
       title: event.title,
@@ -943,18 +947,18 @@ export function MyWorkCasesWorkspace() {
       documents: event.documents,
       accentClass: event.type === "system" ? "bg-muted-foreground/60" : "bg-primary",
       icon: event.type === "entscheidung" ? Gavel : event.type === "system" ? History : interactionTypeOptions.find((option) => option.value === event.interactionType)?.icon,
-      actorName: event.actorName,
+      actorName: event.responsibleName ?? event.actorName ?? responsibleName,
       isSystem: event.type === "system",
       canDelete: event.type !== "system",
       onDelete: () => deleteTimelineEvent(event.id),
     })));
 
     entries.push(...(workflow.data?.events ?? []).map((event) => ({
-      ...event, safeNoteHtml: sanitizeTimelineNote(event.note), accentClass: "bg-muted-foreground/60", icon: History, isSystem: true,
+      ...event, actorName: responsibleName, safeNoteHtml: sanitizeTimelineNote(event.note), accentClass: "bg-muted-foreground/60", icon: History, isSystem: true,
     })));
 
     return entries.sort((a, b) => toTimeSafe(a.timestamp) - toTimeSafe(b.timestamp));
-  }, [deleteTimelineEvent, detailItemId, editableCaseItem, workflow.data]);
+  }, [deleteTimelineEvent, detailItem, editableCaseItem, workflow.data, teamUsers]);
 
 
   const handleDownloadInteractionDocument = useCallback(async (document: CaseItemInteractionDocument) => {
@@ -1089,6 +1093,7 @@ export function MyWorkCasesWorkspace() {
                           id: crypto.randomUUID(),
                           type: "system",
                           actorName: actorName(),
+                          responsibleName: teamUsers.find((member) => member.id === (detailItem.next_action_assignee_id ?? detailItem.owner_user_id))?.name,
                           title: "Schritt erledigt",
                           note: [label, detailItem.next_action_assignee_id ? `Zuständig: ${teamUsers.find((member) => member.id === detailItem.next_action_assignee_id)?.name || detailItem.next_action_assignee_id}` : null, `Am Zug: ${ballMeta(detailItem.ball_owner).short}`, detailItem.next_action_due_at ? `Frist: ${formatDateSafe(detailItem.next_action_due_at, "dd.MM.yyyy")}` : null].filter(Boolean).join(" · "),
                           timestamp: new Date().toISOString(),

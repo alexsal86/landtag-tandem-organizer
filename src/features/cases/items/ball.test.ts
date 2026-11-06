@@ -118,6 +118,26 @@ describe("Wiedervorlage", () => {
     expect(_isR({ next_action_label: "", next_action_due_at: tomorrow }, now)).toBe(false);
     expect(_st({ next_action_label: " " })).toBe("none");
   });
+  it("fasst Zuständigkeitswechsel, Schritt und Wiedervorlage in genau einem Eintrag zusammen", () => {
+    const ev = _bce({ ball_owner: "citizen", owner_user_id: "bearbeiter" }, {
+      ball_owner: "authority", next_action_label: "Antwort des Ministeriums nachhalten", next_action_due_at: tomorrow, next_action_assignee_id: "zustandig",
+    }, (id) => id === "zustandig" ? "Rudolf Salomon" : "Alexander Salomon", now);
+    expect(ev).toEqual([{
+      title: "Neuer Schritt festgelegt + Wiedervorlage",
+      note: "Bürger → Verwaltung · Antwort des Ministeriums nachhalten · Frist: 07.11.2026",
+      responsibleName: "Rudolf Salomon",
+    }]);
+  });
+  it("fasst Änderungen eines bestehenden Schritts zusammen und verwendet sonst den Bearbeiter", () => {
+    const ev = _bce({ ball_owner: "office", owner_user_id: "bearbeiter", next_action_label: "Nachhalten" }, {
+      ball_owner: "citizen", next_action_due_at: tomorrow,
+    }, (id) => id === "bearbeiter" ? "Alexander Salomon" : null, now);
+    expect(ev).toHaveLength(1);
+    expect(ev[0].title).toBe("Schritt geändert + Wiedervorlage");
+    expect(ev[0].note).toBe("Büro → Bürger · Nachhalten · Frist: 07.11.2026");
+    expect(ev[0].responsibleName).toBe("Alexander Salomon");
+    expect(_bce({}, {}, () => null, now)).toEqual([]);
+  });
   it("Wechsel Büro → Verwaltung erzeugt Verlaufseintrag", () => {
     const ev = _bce({ ball_owner: "office" }, { ball_owner: "authority" }, () => null, now);
     expect(ev).toEqual([{ title: "Am Zug geändert", note: "Büro → Verwaltung" }]);

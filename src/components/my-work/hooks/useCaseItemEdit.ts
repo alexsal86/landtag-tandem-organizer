@@ -26,6 +26,7 @@ export type TimelineEvent = {
   type: "status" | "interaktion" | "entscheidung" | "system";
   /** Wer den Eintrag ausgelöst hat (für Systemeinträge). */
   actorName?: string;
+  responsibleName?: string;
   title: string;
   note?: string;
   documents?: TimelineDocumentAttachment[];

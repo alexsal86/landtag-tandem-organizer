@@ -140,7 +140,7 @@ export function resubmissionHint(item: TriageItem, now: Date = new Date()): stri
   return `Wiedervorlage: Der Vorgang ${where} und erscheint am ${date} wieder als fälliger Vorgang.`;
 }
 
-export type BallChangeEvent = { title: string; note?: string };
+export type BallChangeEvent = { title: string; note?: string; responsibleName?: string };
 
 const fmtDate = (iso: string | null | undefined) => {
   if (!iso) return null;
@@ -155,25 +155,23 @@ export function ballChangeEvents(
   nameOf: (id: string | null | undefined) => string | null = () => null,
   now: Date = new Date(),
 ): BallChangeEvent[] {
-  const events: BallChangeEvent[] = [];
-  if (patch.ball_owner !== undefined && (patch.ball_owner || "office") !== (prev.ball_owner || "office")) {
-    events.push({ title: "Am Zug geändert", note: `${ballMeta(prev.ball_owner).short} → ${ballMeta(patch.ball_owner).short}` });
-  }
   const next = { ...prev, ...patch };
+  const ownerChanged = patch.ball_owner !== undefined && (patch.ball_owner || "office") !== (prev.ball_owner || "office");
   const labelChanged = patch.next_action_label !== undefined && (patch.next_action_label ?? "") !== (prev.next_action_label ?? "");
   const dueChanged = patch.next_action_due_at !== undefined && fmtDate(patch.next_action_due_at) !== fmtDate(prev.next_action_due_at);
   const assigneeChanged = patch.next_action_assignee_id !== undefined && (patch.next_action_assignee_id ?? null) !== (prev.next_action_assignee_id ?? null);
-  const details = [
-    fmtDate(next.next_action_due_at) ? `Frist: ${fmtDate(next.next_action_due_at)}` : null,
-    nameOf(next.next_action_assignee_id) ? `Zuständig: ${nameOf(next.next_action_assignee_id)}` : null,
+  if (!ownerChanged && !labelChanged && !dueChanged && !assigneeChanged) return [];
+
+  const hasStep = stepState(next) === "set";
+  const resubmission = isOnResubmission(next, now);
+  const title = hasStep
+    ? `${labelChanged ? "Neuer Schritt festgelegt" : "Schritt geändert"}${resubmission ? " + Wiedervorlage" : ""}`
+    : labelChanged ? "Schritt entfernt" : ownerChanged ? "Am Zug geändert" : "Schritt geändert";
+  const responsibleName = nameOf(next.next_action_assignee_id ?? next.owner_user_id ?? next.intake_payload?.assignee_ids?.[0]);
+  const note = [
+    ownerChanged ? `${ballMeta(prev.ball_owner).short} → ${ballMeta(next.ball_owner).short}` : null,
+    hasStep ? next.next_action_label!.trim() : labelChanged ? prev.next_action_label?.trim() : null,
+    fmtDate(next.next_action_due_at) ? `Frist: ${fmtDate(next.next_action_due_at)}` : dueChanged ? "Frist entfernt" : null,
   ].filter(Boolean).join(" · ");
-  if (labelChanged && next.next_action_label?.trim()) {
-    events.push({ title: stepState(prev) === "set" ? "Schritt geändert" : "Schritt festgelegt", note: [next.next_action_label.trim(), details].filter(Boolean).join(" · ") });
-  } else if ((dueChanged || assigneeChanged) && stepState(next) === "set") {
-    events.push({ title: "Schritt geändert", note: [next.next_action_label!.trim(), details].filter(Boolean).join(" · ") });
-  }
-  if (!isOnResubmission(prev, now) && isOnResubmission(next, now)) {
-    events.push({ title: "Auf Wiedervorlage gelegt", note: `bis ${fmtDate(next.next_action_due_at)}` });
-  }
-  return events;
+  return [{ title, ...(note ? { note } : {}), ...(responsibleName ? { responsibleName } : {}) }];
 }

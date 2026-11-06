@@ -50,6 +50,7 @@ export const parseTimelineEvents = (payload: CaseItemIntakePayload | null): Time
       statusValue: typeof item.statusValue === "string" ? item.statusValue : undefined,
       interactionType: parseTimelineInteractionType(item.interactionType),
       actorName: typeof item.actorName === "string" ? item.actorName : undefined,
+      responsibleName: typeof item.responsibleName === "string" ? item.responsibleName : undefined,
     });
   }
   return results.sort((a, b) => toTimeSafe(a.timestamp) - toTimeSafe(b.timestamp));
