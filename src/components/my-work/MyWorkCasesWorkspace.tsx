@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { CaseItemDetailView } from "@/components/my-work/cases/workspace/CaseItemDetailView";
 import { useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
-import { Briefcase, CheckCircle2, Clock, FileText, FolderOpen, Gavel, Inbox, Mail, MessageSquare, Phone, Timer, UserRound, Users } from "lucide-react";
+import { Briefcase, CheckCircle2, Clock, FileText, FolderOpen, Gavel, History, Inbox, Mail, MessageSquare, Phone, Timer, UserRound, Users } from "lucide-react";
 import type { DropResult } from "@hello-pangea/dnd";
 import { CaseFileDetail } from "@/features/cases/files/components";
 import { useCaseFileTypes } from "@/features/cases/files/hooks/useCaseFileTypes";

@@ -28,6 +28,8 @@ type TimelineEntry = {
   icon?: typeof Phone;
   canDelete?: boolean;
   onDelete?: () => void;
+  actorName?: string;
+  isSystem?: boolean;
 };
 
 type DetailTab = "overview" | "timeline" | "documents";
