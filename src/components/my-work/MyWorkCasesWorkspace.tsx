@@ -475,6 +475,19 @@ export function MyWorkCasesWorkspace() {
     if (ok && detailItemId === item.id) setEditableCaseItem((prev) => prev ? { ...prev, timelineEvents: [...prev.timelineEvents, event] } : prev);
   };
 
+  // Wiedervorlage fällig: einmal im Verlauf vermerken, wenn ein Vorgang zurückkehrt.
+  const dueLoggedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const item = caseItems.find((i) => i.id === detailItemId);
+    if (!item || dueLoggedRef.current === item.id || isOnResubmission(item) || !item.next_action_label?.trim() || !item.next_action_due_at) return;
+    const events = parseTimelineEvents(item.intake_payload).filter((e) => e.type === "system");
+    const lastResub = [...events].reverse().find((e) => e.title === "Auf Wiedervorlage gelegt" || e.title === "Wiedervorlage fällig");
+    if (lastResub?.title !== "Auf Wiedervorlage gelegt") return;
+    dueLoggedRef.current = item.id;
+    void logSystemEvent(item, "Wiedervorlage fällig", item.next_action_label);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detailItemId, caseItems]);
+
   const handleBallChange = async (item: CaseItem, rawPatch: BallPatch) => {
     const autoPatch = withAutoDeadline(item, rawPatch);
     const systemEvents = buildSystemEvents(item, autoPatch);
