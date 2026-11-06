@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -98,9 +98,14 @@ export function DuplicateContactsSheet({
   return (
     <>
       <Sheet open={isOpen} onOpenChange={onClose}>
-        <SheetContent className="w-[700px] sm:w-[640px] overflow-y-auto">
+        <SheetContent className="h-[100dvh] w-full max-w-full overflow-y-auto p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] sm:w-[640px] sm:max-w-[640px] sm:p-6">
           <SheetHeader>
-            <SheetTitle>Duplikat-Prüfung</SheetTitle>
+            <div className="flex items-center justify-between gap-2">
+              <SheetTitle>Duplikat-Prüfung</SheetTitle>
+              <SheetClose asChild>
+                <Button variant="ghost" size="icon" aria-label="Duplikat-Prüfung schließen"><X className="h-5 w-5" /></Button>
+              </SheetClose>
+            </div>
             <SheetDescription>
               Mögliche Duplikate basierend auf Name, E-Mail und Telefonnummer
             </SheetDescription>
@@ -162,7 +167,7 @@ export function DuplicateContactsSheet({
                           </Avatar>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium truncate">{match.contact1.name}</p>
-                            <div className="text-sm text-muted-foreground space-y-1">
+                            <div className="text-sm text-muted-foreground space-y-1 break-words">
                               {match.contact1.email && <p>{match.contact1.email}</p>}
                               {match.contact1.phone && <p>{match.contact1.phone}</p>}
                               {match.contact1.organization && (
@@ -181,7 +186,7 @@ export function DuplicateContactsSheet({
                           </Avatar>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium truncate">{match.contact2.name}</p>
-                            <div className="text-sm text-muted-foreground space-y-1">
+                            <div className="text-sm text-muted-foreground space-y-1 break-words">
                               {match.contact2.email && <p>{match.contact2.email}</p>}
                               {match.contact2.phone && <p>{match.contact2.phone}</p>}
                               {match.contact2.organization && (

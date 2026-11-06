@@ -1,6 +1,9 @@
 import { cn } from "@/lib/utils";
 import { Link, useNavigate } from "react-router-dom";
-import { Plus, Filter, Grid3X3, List, User, CheckSquare, Square, ChevronUp } from "lucide-react";
+import { Plus, Filter, Grid3X3, List, User, CheckSquare, Square, ChevronUp, X } from "lucide-react";
+import { useState } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ContactDetailSheet } from "@/features/contacts/components/ContactDetailSheet";
 import { InfiniteScrollTrigger } from "@/components/shared/InfiniteScrollTrigger";
@@ -20,6 +23,8 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export function ContactsView() {
   const s = useContactsViewState();
+  const isMobile = useIsMobile();
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
 
   if (!s.user || s.tenantLoading) {
     return (
@@ -57,9 +62,7 @@ export function ContactsView() {
 
   const currentViewMode = s.activeTab === "contacts" ? s.viewMode : s.activeTab === "stakeholders" ? s.stakeholderViewMode : s.distributionViewMode;
 
-  return (
-    <div className="flex h-app-headerless">
-      {/* Side Panel */}
+  const sidePanel = (
       <ContactsSidePanel
         activeTab={s.activeTab}
         setActiveTab={s.setActiveTab}
@@ -71,14 +74,41 @@ export function ContactsView() {
         stakeholdersCount={s.stakeholdersCount}
         distributionListsCount={s.distributionListsCount}
         archiveCount={s.archiveCount}
-        navigate={s.navigate}
-        setCreatingDistribution={s.setCreatingDistribution}
-        setIsDuplicateSheetOpen={s.setIsDuplicateSheetOpen}
+        navigate={(path) => { s.navigate(path); setMobilePanelOpen(false); }}
+        setCreatingDistribution={(open) => { s.setCreatingDistribution(open); setMobilePanelOpen(false); }}
+        setIsDuplicateSheetOpen={(open) => { setMobilePanelOpen(false); s.setIsDuplicateSheetOpen(open); }}
       />
+  );
+
+  return (
+    <div className="flex min-h-0 min-w-0 flex-col md:h-[calc(100dvh-3.5rem)] md:flex-row">
+      {isMobile ? (
+        <Sheet open={mobilePanelOpen} onOpenChange={setMobilePanelOpen}>
+          <div className="flex shrink-0 items-center gap-2 border-b p-3">
+            <SheetTrigger asChild>
+              <Button variant="outline" className="min-w-0 flex-1 gap-2">
+                <Filter className="h-4 w-4 shrink-0" />Bereiche & Suche
+              </Button>
+            </SheetTrigger>
+            <Button asChild size="icon" aria-label="Neuer Kontakt">
+              <Link to="/contacts/new"><Plus className="h-4 w-4" /></Link>
+            </Button>
+          </div>
+          <SheetContent side="top" aria-describedby={undefined} className="flex h-app w-full max-w-none flex-col gap-0 overflow-hidden border-0 p-0 pt-safe-top pb-safe-bottom px-safe">
+            <div className="flex h-14 shrink-0 items-center justify-between border-b px-4">
+              <SheetTitle>Kontakte & Filter</SheetTitle>
+              <SheetClose asChild>
+                <Button variant="ghost" size="icon" aria-label="Kontakte und Filter schließen"><X className="h-5 w-5" /></Button>
+              </SheetClose>
+            </div>
+            <div className="min-h-0 flex-1">{sidePanel}</div>
+          </SheetContent>
+        </Sheet>
+      ) : sidePanel}
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="min-h-0 bg-gradient-subtle p-6">
+      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 bg-gradient-subtle p-3 sm:p-6">
           {/* Toolbar: View toggle, Filter, Select */}
           {s.activeTab !== "stakeholder-network" && (
             <div className="flex gap-2 mb-6 items-center flex-wrap">

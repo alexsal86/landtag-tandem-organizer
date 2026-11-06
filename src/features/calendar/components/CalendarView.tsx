@@ -2,7 +2,9 @@ import { CollisionRadar } from "@/components/calendar/CollisionRadar";
 import { overlaps } from "@/components/calendar/collisions";
 import { useState, useEffect, useRef, startTransition, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Calendar, CalendarClock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, CalendarClock, ChevronLeft, ChevronRight, SlidersHorizontal, X } from "lucide-react";
+import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useOpenAppointmentRequests } from "@/features/appointment-requests/useAppointmentRequests";
 import { REQUEST_EVENT_PREFIX, requestEnd, requestStart } from "@/features/appointment-requests/logic";
@@ -39,10 +41,12 @@ type HighlightEventRow = {
 };
 
 export function CalendarView() {
+  const isMobile = useIsMobile();
+  const [mobileSourcesOpen, setMobileSourcesOpen] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<CalendarViewType>("week");
+  const [view, setView] = useState<CalendarViewType>(() => window.matchMedia("(max-width: 767px)").matches ? "day" : "week");
   const [selectedAppointment, setSelectedAppointment] = useState<CalendarEvent | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [preparationSidebarOpen, setPreparationSidebarOpen] = useState(false);
@@ -172,32 +176,52 @@ export function CalendarView() {
     startTransition(() => setCurrentDate(d));
   };
 
-  const monthLabel = format(currentDate, "MMMM yyyy", { locale: de });
+  const dateLabel = format(currentDate, view === "day" ? "EEE, d. MMM yyyy" : "MMMM yyyy", { locale: de });
   const kwLabel = `KW ${getISOWeek(currentDate)}`;
+
+  const calendarHeader = (
+    <CalendarHeader
+      collapsed={!isMobile && sidebarOpen}
+      onCreateAppointment={() => setMobileSourcesOpen(false)}
+      selectedDate={currentDate}
+      onSelectDate={(date) => {
+        setCurrentDate(date);
+        if (view === "polls") setView(isMobile ? "day" : "week");
+      }}
+      onShowPolls={() => { setView("polls"); setMobileSourcesOpen(false); }}
+      hiddenSourceKeys={hiddenSourceKeys}
+      onToggleSourceVisibility={handleToggleSourceVisibility}
+    />
+  );
+
+  const closeDetails = () => { setSidebarOpen(false); setSelectedAppointment(null); };
+  const appointmentDetails = (
+    <>
+      {currentAppointment && <CollisionRadar event={currentAppointment} events={appointments} onMove={handleEventDrop} />}
+      <div className="min-h-0 flex-1">
+        <AppointmentDetailsSidebar
+          appointment={currentAppointment}
+          open={sidebarOpen}
+          onClose={closeDetails}
+          onUpdate={refreshAppointments}
+        />
+      </div>
+    </>
+  );
 
   return (
     <div className="h-full overflow-hidden bg-gradient-subtle">
       <div className="flex h-full min-h-0 transition-all duration-300">
         {/* Sidebar */}
-        <div className={`${sidebarOpen ? "w-[60px]" : "w-[260px]"} shrink-0 min-h-0 transition-all duration-300`}>
-          <CalendarHeader
-            collapsed={sidebarOpen}
-            selectedDate={currentDate}
-            onSelectDate={(date) => {
-              setCurrentDate(date);
-              if (view === "polls") setView("week");
-            }}
-            onShowPolls={() => setView("polls")}
-            hiddenSourceKeys={hiddenSourceKeys}
-            onToggleSourceVisibility={handleToggleSourceVisibility}
-          />
+        <div className={`hidden md:block ${sidebarOpen ? "w-[60px]" : "w-[260px]"} shrink-0 min-h-0 transition-all duration-300`}>
+          {!isMobile && calendarHeader}
         </div>
 
         {/* Main calendar area */}
-        <div className="flex-1 min-w-0 min-h-0 flex flex-col transition-all duration-300 overflow-hidden pl-5 pt-4 pb-1 pr-0">
+        <div className="flex-1 min-w-0 min-h-0 flex flex-col transition-all duration-300 overflow-hidden px-2 pt-3 pb-1 md:pl-5 md:pt-4 md:pr-0">
           {/* Google-style toolbar */}
-          <div className="flex items-center justify-between pr-4 pb-3">
-            <div className="flex items-center gap-3">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 pb-3 md:pr-4">
+            <div className="flex min-w-0 flex-wrap items-center gap-2 md:gap-3">
               <Button
                 variant="outline"
                 size="sm"
@@ -211,6 +235,7 @@ export function CalendarView() {
                   variant="ghost"
                   size="icon"
                   className="h-9 w-9"
+                  aria-label="Vorheriger Zeitraum"
                   onClick={() => navigateDate("prev")}
                 >
                   <ChevronLeft className="h-5 w-5" />
@@ -219,20 +244,37 @@ export function CalendarView() {
                   variant="ghost"
                   size="icon"
                   className="h-9 w-9"
+                  aria-label="Nächster Zeitraum"
                   onClick={() => navigateDate("next")}
                 >
                   <ChevronRight className="h-5 w-5" />
                 </Button>
               </div>
-              <h1 className="text-xl font-semibold text-foreground capitalize">
-                {monthLabel}
+              <h1 className="text-base font-semibold text-foreground capitalize md:text-xl">
+                {dateLabel}
               </h1>
               <span className="text-sm text-muted-foreground font-medium">
                 {kwLabel}
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+            {isMobile && (
+              <Sheet open={mobileSourcesOpen} onOpenChange={setMobileSourcesOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 gap-2"><SlidersHorizontal className="h-4 w-4" />Kalender & Filter</Button>
+                </SheetTrigger>
+                <SheetContent side="top" aria-describedby={undefined} className="flex h-app w-full max-w-none flex-col gap-0 overflow-hidden border-0 p-0 pt-safe-top pb-safe-bottom px-safe">
+                  <div className="flex h-14 shrink-0 items-center justify-between border-b px-4">
+                    <SheetTitle>Kalender & Filter</SheetTitle>
+                    <SheetClose asChild>
+                      <Button variant="ghost" size="icon" aria-label="Kalender und Filter schließen"><X className="h-5 w-5" /></Button>
+                    </SheetClose>
+                  </div>
+                  <div className="min-h-0 flex-1">{calendarHeader}</div>
+                </SheetContent>
+              </Sheet>
+            )}
             <Button
               variant={showRequests ? "secondary" : "ghost"}
               size="sm"
@@ -296,20 +338,21 @@ export function CalendarView() {
           </Card>
         </div>
         {/* Detail sidebar */}
-        {sidebarOpen && selectedAppointment && (
+        {sidebarOpen && selectedAppointment && !isMobile && (
           <div className="w-[420px] shrink-0 min-h-0 border-x border-border overflow-hidden flex flex-col">
-            {currentAppointment && <CollisionRadar event={currentAppointment} events={appointments} onMove={handleEventDrop} />}
-            <div className="flex-1 min-h-0">
-              <AppointmentDetailsSidebar
-              appointment={currentAppointment}
-              open={sidebarOpen}
-              onClose={() => { setSidebarOpen(false); setSelectedAppointment(null); }}
-              onUpdate={refreshAppointments}
-              />
-            </div>
+            {appointmentDetails}
           </div>
         )}
       </div>
+
+      {isMobile && (
+        <Sheet open={sidebarOpen && !!selectedAppointment} onOpenChange={(open) => { if (!open) closeDetails(); }}>
+          <SheetContent side="top" aria-describedby={undefined} className="flex h-app w-full max-w-none flex-col gap-0 overflow-hidden border-0 p-0 pt-safe-top pb-safe-bottom px-safe">
+            <SheetTitle className="sr-only">Termindetails</SheetTitle>
+            {appointmentDetails}
+          </SheetContent>
+        </Sheet>
+      )}
 
       <Dialog open={!!slotChoice} onOpenChange={(o) => !o && setSlotChoice(null)}>
         <DialogContent className="sm:max-w-sm">

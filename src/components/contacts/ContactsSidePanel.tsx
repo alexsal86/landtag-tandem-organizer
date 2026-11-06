@@ -46,7 +46,7 @@ export function ContactsSidePanel({
   ];
 
   return (
-    <div className="w-[280px] min-w-[280px] border-r border-border bg-background flex flex-col">
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-col border-border bg-background md:w-[280px] md:min-w-[280px] md:border-r">
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4">
           {/* Title */}

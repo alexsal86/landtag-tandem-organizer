@@ -1,13 +1,13 @@
 import type { ComponentProps } from "react";
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { de } from "date-fns/locale";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CaseItemDetailView } from "@/components/my-work/cases/workspace/CaseItemDetailView";
 import { useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
-import { Briefcase, CheckCircle2, Clock, FileText, FolderOpen, Gavel, History, Inbox, Mail, MessageSquare, Phone, Timer, UserRound, Users } from "lucide-react";
+import { Briefcase, CheckCircle2, Clock, FileText, FolderOpen, Gavel, History, Inbox, Mail, MessageSquare, Phone, Timer, UserRound, Users, X } from "lucide-react";
 import type { DropResult } from "@hello-pangea/dnd";
 import { CaseFileDetail } from "@/features/cases/files/components";
 import { useCaseFileTypes } from "@/features/cases/files/hooks/useCaseFileTypes";
@@ -1302,11 +1302,16 @@ export function MyWorkCasesWorkspace() {
 
           {/* Case Files Slide-In Sheet */}
           <Sheet open={caseFileSheetOpen} onOpenChange={setCaseFileSheetOpen}>
-            <SheetContent side="right" className="w-[400px] sm:max-w-[400px] p-0">
-              <SheetHeader className="px-4 pt-4 pb-2">
-                <SheetTitle>Fallakten</SheetTitle>
+            <SheetContent side="right" aria-describedby={undefined} className="flex h-[100dvh] w-full max-w-full flex-col gap-0 overflow-hidden p-0 pt-safe-top pb-safe-bottom px-safe sm:max-w-[400px]">
+              <SheetHeader className="shrink-0 px-4 pt-4 pb-2">
+                <div className="flex items-center justify-between gap-2">
+                  <SheetTitle>Fallakten</SheetTitle>
+                  <SheetClose asChild>
+                    <Button variant="ghost" size="icon" aria-label="Fallakten schließen"><X className="h-5 w-5" /></Button>
+                  </SheetClose>
+                </div>
               </SheetHeader>
-              <div className="px-4 pb-4 overflow-y-auto h-[calc(100%-60px)]">
+              <div className="min-h-0 min-w-0 flex-1 overflow-y-auto px-4 pb-4">
                 {detailFileId ? (
                   <CaseFileDetail caseFileId={detailFileId} onBack={() => setDetailFileId(null)} />
                 ) : (

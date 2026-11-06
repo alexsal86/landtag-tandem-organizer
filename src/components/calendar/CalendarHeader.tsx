@@ -7,6 +7,7 @@ import { CalendarSidebarSources, type CalendarSource } from "./CalendarSidebarSo
 interface CalendarHeaderProps {
   collapsed?: boolean;
   onShowPolls: () => void;
+  onCreateAppointment?: () => void;
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
   hiddenSourceKeys: string[];
@@ -16,12 +17,17 @@ interface CalendarHeaderProps {
 export function CalendarHeader({
   collapsed = false,
   onShowPolls,
+  onCreateAppointment,
   selectedDate,
   onSelectDate,
   hiddenSourceKeys,
   onToggleSourceVisibility,
 }: CalendarHeaderProps) {
   const navigate = useNavigate();
+  const createAppointment = () => {
+    onCreateAppointment?.();
+    navigate("/calendar?action=create-appointment");
+  };
 
   const changeMonthPreservingDay = (direction: 1 | -1) => {
     const year = selectedDate.getFullYear();
@@ -38,7 +44,7 @@ export function CalendarHeader({
 
   if (collapsed) return (
     <div className="h-full border-r bg-muted/30 p-2 overflow-y-auto space-y-3">
-      <Button size="icon" title="Neuer Termin" aria-label="Neuer Termin" onClick={() => navigate("/calendar?action=create-appointment")}><Plus className="h-4 w-4" /></Button>
+      <Button size="icon" title="Neuer Termin" aria-label="Neuer Termin" onClick={createAppointment}><Plus className="h-4 w-4" /></Button>
       <Button size="icon" variant="outline" title="Abstimmungen" aria-label="Abstimmungen" onClick={onShowPolls}><Vote className="h-4 w-4" /></Button>
       <CalendarSidebarSources collapsed hiddenSourceKeys={hiddenSourceKeys} onToggleVisibility={onToggleSourceVisibility} />
     </div>
@@ -51,7 +57,7 @@ export function CalendarHeader({
       </div>
 
       <div className="space-y-2">
-        <Button className="w-full justify-start gap-2 min-h-[44px]" onClick={() => navigate("/calendar?action=create-appointment")}>
+        <Button className="w-full justify-start gap-2 min-h-[44px]" onClick={createAppointment}>
           <Plus className="h-4 w-4" />
           Neuer Termin
         </Button>
