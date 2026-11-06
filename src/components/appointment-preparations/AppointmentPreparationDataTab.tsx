@@ -53,6 +53,10 @@ export function AppointmentPreparationDataTab({
     ? new Set(visibleSections.sections)
     : null;
   const showSection = (key: string) => !sectionSet || sectionSet.has(key as never);
+  const useFullWidthLayout = sectionSet && (
+    (sectionSet.size === 1 && sectionSet.has('anlass')) ||
+    (sectionSet.size === 4 && (['gespraechspartner', 'begleitpersonen', 'logistik', 'programm'] as const).every((section) => sectionSet.has(section)))
+  );
   const showFacts = visibleSections?.showFacts ?? true;
   const showTalkingPoints = visibleSections?.showTalkingPoints ?? true;
   const showQa = visibleSections?.showQa ?? true;
@@ -436,7 +440,7 @@ export function AppointmentPreparationDataTab({
         </div>
       )}
 
-      <div className={`grid grid-cols-1 gap-4 ${sectionSet?.size === 1 && sectionSet.has('anlass') ? '' : 'lg:grid-cols-2'}`}>
+      <div className={`grid grid-cols-1 gap-4 ${useFullWidthLayout ? '' : 'lg:grid-cols-2'}`}>
         {/* Linke Spalte */}
         <div className="space-y-4">
           {showSection('anlass') && (
