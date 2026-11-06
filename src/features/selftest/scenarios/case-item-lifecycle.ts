@@ -73,7 +73,7 @@ export const caseItemLifecycleScenario: TestScenario = {
         if (isOnResubmission({ next_action_label: "X", next_action_due_at: new Date(2026, 10, 6, 18).toISOString() }, now)) fails.push("Frist heute bleibt auf Wiedervorlage");
         if (isOnResubmission({ next_action_label: "", next_action_due_at: tomorrow }, now)) fails.push("ohne Schritt auf Wiedervorlage");
         if (!resubmissionHint({ next_action_label: "X", next_action_due_at: tomorrow, ball_owner: "ministry" }, now)?.includes("Ministerium")) fails.push("Hinweistext fehlt");
-        const auto = withAutoDeadline({ ball_owner: "office" }, { ball_owner: "ministry" }, now);
+        const auto = withAutoDeadline<Partial<TriageItem>>({ ball_owner: "office" }, { ball_owner: "ministry" }, now);
         const days = Math.round((new Date(auto.next_action_due_at!).getTime() - new Date(2026, 10, 6, 12).getTime()) / 86400000);
         if (days !== MINISTRY_RESPONSE_DAYS) fails.push(`Ministeriumsfrist ${days} statt ${MINISTRY_RESPONSE_DAYS} Tage`);
         const ev = ballChangeEvents({ ball_owner: "office" }, { ball_owner: "authority" }, () => null, now);
@@ -136,7 +136,7 @@ export const caseItemLifecycleScenario: TestScenario = {
         const row = await load(ctx.data.caseItemId as string);
         if (row.ball_owner !== "ministry") return { ok: false, message: `ball_owner = ${row.ball_owner}` };
         if (!events(row).some((e) => e.title === "Am Zug geändert")) return { ok: false, message: "Kein Verlaufseintrag „Am Zug geändert“." };
-        const auto = withAutoDeadline({ ball_owner: "office" }, { ball_owner: "ministry" });
+        const auto = withAutoDeadline<Partial<TriageItem>>({ ball_owner: "office" }, { ball_owner: "ministry" });
         const days = Math.round((new Date(auto.next_action_due_at!).getTime() - new Date(inDays(0)).getTime()) / 86400000);
         return days === MINISTRY_RESPONSE_DAYS ? { ok: true, message: "Ministerium am Zug, Frist 21 Tage, Verlauf geschrieben." } : { ok: false, message: `Frist ${days} Tage` };
       }),
