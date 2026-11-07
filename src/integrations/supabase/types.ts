@@ -11874,6 +11874,7 @@ export type Database = {
           ball_owner: string
           call_log_id: string | null
           category: string
+          checklist: Json
           created_at: string
           description: string | null
           due_date: string | null
@@ -11892,6 +11893,7 @@ export type Database = {
           progress: number | null
           reminder_at: string | null
           reminder_note: string | null
+          reminder_notified_at: string | null
           source_id: string | null
           source_type: string | null
           status: string
@@ -11907,6 +11909,7 @@ export type Database = {
           ball_owner?: string
           call_log_id?: string | null
           category?: string
+          checklist?: Json
           created_at?: string
           description?: string | null
           due_date?: string | null
@@ -11925,6 +11928,7 @@ export type Database = {
           progress?: number | null
           reminder_at?: string | null
           reminder_note?: string | null
+          reminder_notified_at?: string | null
           source_id?: string | null
           source_type?: string | null
           status?: string
@@ -11940,6 +11944,7 @@ export type Database = {
           ball_owner?: string
           call_log_id?: string | null
           category?: string
+          checklist?: Json
           created_at?: string
           description?: string | null
           due_date?: string | null
@@ -11958,6 +11963,7 @@ export type Database = {
           progress?: number | null
           reminder_at?: string | null
           reminder_note?: string | null
+          reminder_notified_at?: string | null
           source_id?: string | null
           source_type?: string | null
           status?: string
@@ -13647,6 +13653,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      dispatch_due_task_reminders: { Args: never; Returns: number }
       dispatch_workflow_trigger: {
         Args: {
           _entity_id: string
