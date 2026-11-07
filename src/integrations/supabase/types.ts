@@ -11881,6 +11881,11 @@ export type Database = {
           meeting_id: string | null
           next_action: string | null
           next_action_due: string | null
+          nudge_count: number
+          nudge_note: string | null
+          nudge_seen_at: string | null
+          nudged_at: string | null
+          nudged_by: string | null
           parent_task_id: string | null
           pending_for_jour_fixe: boolean | null
           priority: string
@@ -11909,6 +11914,11 @@ export type Database = {
           meeting_id?: string | null
           next_action?: string | null
           next_action_due?: string | null
+          nudge_count?: number
+          nudge_note?: string | null
+          nudge_seen_at?: string | null
+          nudged_at?: string | null
+          nudged_by?: string | null
           parent_task_id?: string | null
           pending_for_jour_fixe?: boolean | null
           priority?: string
@@ -11937,6 +11947,11 @@ export type Database = {
           meeting_id?: string | null
           next_action?: string | null
           next_action_due?: string | null
+          nudge_count?: number
+          nudge_note?: string | null
+          nudge_seen_at?: string | null
+          nudged_at?: string | null
+          nudged_by?: string | null
           parent_task_id?: string | null
           pending_for_jour_fixe?: boolean | null
           priority?: string
@@ -13483,6 +13498,10 @@ export type Database = {
     Functions: {
       _meeting_default_end: { Args: { _date: string }; Returns: string }
       _meeting_default_start: { Args: { _date: string }; Returns: string }
+      ack_task_nudge: {
+        Args: { _reply?: string; _task_id: string }
+        Returns: undefined
+      }
       approve_gdpr_delete: {
         Args: { p_request_id: string }
         Returns: undefined
@@ -13893,6 +13912,10 @@ export type Database = {
           message_id_param: string
           user_id_param: string
         }
+        Returns: undefined
+      }
+      nudge_task: {
+        Args: { _note?: string; _task_id: string }
         Returns: undefined
       }
       parse_task_assignee_ids: {
