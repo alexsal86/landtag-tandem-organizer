@@ -166,7 +166,6 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <span className="sr-only">{nameOf(task.ball_assignee_id)}</span>
     </div>
   );
 }
