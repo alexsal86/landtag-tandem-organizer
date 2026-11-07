@@ -1,4 +1,5 @@
 import { canNudge, checklistEvents, isNudgeActive, shiftDay, isReminderDue, groupByZone, isOnResubmission, stafetteEvents, taskZone, type StafetteTask } from "@/features/tasks/stafette";
+import { TASK_TEMPLATES, buildTemplateRows, nextRecurrenceDate, subtaskProgress } from "@/features/tasks/templates";
 import type { TestScenario } from "../types";
 
 const NOW = new Date(2026, 10, 7, 12);
