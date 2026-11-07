@@ -28,7 +28,7 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
 
   const merged = useMemo(() => tasks.map((t) => ({ ...t, ...local[t.id] })), [tasks, local]);
   const zones = useMemo(() => groupByZone(merged, userId), [merged, userId]);
-  const ordered = useMemo(() => [...zones.mine, ...zones.waiting, ...zones.resubmission], [zones]);
+  const ordered = useMemo(() => [...zones.nudged, ...zones.mine, ...zones.waiting, ...zones.resubmission], [zones]);
   const selected = merged.find((t) => t.id === selectedId) ?? ordered[0] ?? null;
 
   const remindedOnce = useRef(false);
@@ -88,6 +88,19 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
     void onReload();
   };
 
+  const nudge = async (task: MyWorkTask, note: string) => {
+    const { error } = await supabase.rpc("nudge_task", { _task_id: task.id, _note: note || null });
+    if (error) { notify.error(error.message.includes("bereits") ? "Heute schon angestupst" : "Anstupsen fehlgeschlagen"); return; }
+    notify.success("Angestupst");
+    void onReload();
+  };
+  const ackNudge = async (task: MyWorkTask, reply: string) => {
+    setLocal((l) => ({ ...l, [task.id]: { ...l[task.id], nudge_seen_at: new Date().toISOString() } }));
+    const { error } = await supabase.rpc("ack_task_nudge", { _task_id: task.id, _reply: reply || null });
+    if (error) notify.error("Speichern fehlgeschlagen");
+    void onReload();
+  };
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
@@ -120,6 +133,9 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
             profiles={profiles}
             decisionLabel={decisionLabel(selected.id)}
             nameOf={nameOf}
+            meId={userId}
+            onNudge={(n) => nudge(selected, n)}
+            onAckNudge={(r) => ackNudge(selected, r)}
             onSave={(p) => save(selected, p)}
             onComplete={async () => {
               const evts = stafetteEvents(selected, { ...selected, status: "completed" }, { actorName: nameOf(userId) });

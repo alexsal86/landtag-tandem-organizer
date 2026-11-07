@@ -1,6 +1,6 @@
 // Pure rules for the task "Stafette" workspace (who is on the move, next step, resubmission).
 export type TaskBallOwner = "office" | "deputy" | "external";
-export type TaskZone = "mine" | "waiting" | "resubmission";
+export type TaskZone = "nudged" | "mine" | "waiting" | "resubmission";
 
 export const TASK_BALL_LABELS: Record<TaskBallOwner, string> = {
   office: "Büro",
@@ -16,6 +16,25 @@ export interface StafetteTask {
   status?: string | null;
   reminder_at?: string | null;
   reminder_note?: string | null;
+  nudged_at?: string | null;
+  nudged_by?: string | null;
+  nudge_seen_at?: string | null;
+  nudge_count?: number | null;
+}
+
+/** A nudge is active until the recipient marks it as seen. */
+export function isNudgeActive(task: StafetteTask): boolean {
+  if (!task.nudged_at) return false;
+  return !task.nudge_seen_at || new Date(task.nudge_seen_at).getTime() < new Date(task.nudged_at).getTime();
+}
+
+/** Nudging is possible when someone else holds the ball (not external) and I have not nudged in the last 24h. */
+export function canNudge(task: StafetteTask, meId: string | undefined, now: Date = new Date()): boolean {
+  const owner = (task.ball_owner ?? "office") as TaskBallOwner;
+  if (owner === "external") return false;
+  if (owner === "office" && (!task.ball_assignee_id || task.ball_assignee_id === meId)) return false;
+  if (task.nudged_by === meId && task.nudged_at && now.getTime() - new Date(task.nudged_at).getTime() < 24 * 3600_000) return false;
+  return true;
 }
 
 export interface StafetteEvent {
@@ -65,6 +84,7 @@ export function reminderPreset(kind: "tomorrow" | "3days" | "nextweek", now: Dat
 }
 
 export function taskZone(task: StafetteTask, meId: string | undefined, now: Date = new Date()): TaskZone {
+  if (isNudgeActive(task) && task.nudged_by !== meId) return "nudged";
   if (isReminderDue(task, now)) return "mine";
   const owner = (task.ball_owner ?? "office") as TaskBallOwner;
   if (owner !== "office") return "waiting";
@@ -74,7 +94,7 @@ export function taskZone(task: StafetteTask, meId: string | undefined, now: Date
 }
 
 export function groupByZone<T extends StafetteTask>(tasks: T[], meId: string | undefined, now: Date = new Date()) {
-  const out: Record<TaskZone, T[]> = { mine: [], waiting: [], resubmission: [] };
+  const out: Record<TaskZone, T[]> = { nudged: [], mine: [], waiting: [], resubmission: [] };
   for (const t of tasks) {
     if (t.status === "completed") continue;
     out[taskZone(t, meId, now)].push(t);
