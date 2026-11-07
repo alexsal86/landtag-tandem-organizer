@@ -1,9 +1,9 @@
-# Roadmap
-## Selbsttest-Center – nächste Runde
-- [ ] Notizen (Quick Notes) Lifecycle
-- [ ] Terminabstimmung (Umfrage, Gast-Stimme, Auto-Termin)
-- [ ] Kontakte (Interaktion, Briefing-Gedächtnis)
-- [ ] Zeiterfassung/Abwesenheit (Vertretung, 39,5 h)
-- [ ] DSGVO-Löschung (Vier-Augen-Regel, ohne echte Löschung)
-- [ ] Mandantentrennung (fremde Daten nicht lesbar)
-- [ ] Entscheidungs-Lifecycle: echte Abstimmung + Abschluss
+# Roadmap Aufgaben
+
+- [x] Anstupsen (Rules, RPCs, UI, Tests, Selftest)
+- [x] Erinnerung mit freier Uhrzeit
+- [x] Erinnerung ohne geöffnete App (stündliche Benachrichtigung)
+- [x] Checkliste innerhalb einer Aufgabe
+- [x] Mehrfachauswahl: gebündelt übergeben / Frist verschieben / anstupsen
+- [x] Schnelles Abstimmen direkt in der Aufgabe
+- Alte Aufgabenansicht bleibt erhalten (nicht löschen)

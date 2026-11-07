@@ -1,4 +1,4 @@
-import { isReminderDue, groupByZone, isOnResubmission, stafetteEvents, taskZone, type StafetteTask } from "@/features/tasks/stafette";
+import { canNudge, checklistEvents, isNudgeActive, shiftDay, isReminderDue, groupByZone, isOnResubmission, stafetteEvents, taskZone, type StafetteTask } from "@/features/tasks/stafette";
 import type { TestScenario } from "../types";
 
 const NOW = new Date(2026, 10, 7, 12);
@@ -13,6 +13,24 @@ export const taskStafetteLifecycleScenario: TestScenario = {
   checks: ["Zonen Mein Zug / Wartet / Wiedervorlage", "Verlaufseinträge bei Übergaben und Erledigungen"],
   limitations: ["Prüft die Regeln ohne Datenbank; Speichern wird im Aufgaben-Lebenszyklus geprüft."],
   steps: [
+    {
+      id: "nudge", label: "Anstupsen: Empfänger sieht Aufgabe oben, 24h-Limit", kind: "logic",
+      run: async () => {
+        const t: StafetteTask = { ball_owner: "office", ball_assignee_id: ME, nudged_by: "kollegin", nudged_at: NOW.toISOString() };
+        const ok = taskZone(t, ME, NOW) === "nudged" && isNudgeActive(t)
+          && !canNudge({ ball_owner: "deputy", nudged_by: ME, nudged_at: NOW.toISOString() }, ME, NOW)
+          && !canNudge({ ball_owner: "external" }, ME, NOW);
+        return { ok, message: ok ? "Anstupsen korrekt." : "Anstupsen-Regel weicht ab." };
+      },
+    },
+    {
+      id: "checklist-batch", label: "Checkpunkt im Verlauf, Frist +1 Woche", kind: "logic",
+      run: async () => {
+        const ev = checklistEvents([{ id: "1", text: "Anrufen", done: false }], [{ id: "1", text: "Anrufen", done: true }]);
+        const ok = ev.length === 1 && shiftDay("2026-11-28", 7) === "2026-12-05";
+        return { ok, message: ok ? "Checkliste und Stapel-Frist korrekt." : "Abweichung.", details: ev };
+      },
+    },
     {
       id: "reminder", label: "Fällige Erinnerung holt wartende Aufgabe in Mein Zug", kind: "logic",
       run: async () => {

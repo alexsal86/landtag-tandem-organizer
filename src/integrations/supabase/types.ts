@@ -11874,6 +11874,7 @@ export type Database = {
           ball_owner: string
           call_log_id: string | null
           category: string
+          checklist: Json
           created_at: string
           description: string | null
           due_date: string | null
@@ -11881,12 +11882,18 @@ export type Database = {
           meeting_id: string | null
           next_action: string | null
           next_action_due: string | null
+          nudge_count: number
+          nudge_note: string | null
+          nudge_seen_at: string | null
+          nudged_at: string | null
+          nudged_by: string | null
           parent_task_id: string | null
           pending_for_jour_fixe: boolean | null
           priority: string
           progress: number | null
           reminder_at: string | null
           reminder_note: string | null
+          reminder_notified_at: string | null
           source_id: string | null
           source_type: string | null
           status: string
@@ -11902,6 +11909,7 @@ export type Database = {
           ball_owner?: string
           call_log_id?: string | null
           category?: string
+          checklist?: Json
           created_at?: string
           description?: string | null
           due_date?: string | null
@@ -11909,12 +11917,18 @@ export type Database = {
           meeting_id?: string | null
           next_action?: string | null
           next_action_due?: string | null
+          nudge_count?: number
+          nudge_note?: string | null
+          nudge_seen_at?: string | null
+          nudged_at?: string | null
+          nudged_by?: string | null
           parent_task_id?: string | null
           pending_for_jour_fixe?: boolean | null
           priority?: string
           progress?: number | null
           reminder_at?: string | null
           reminder_note?: string | null
+          reminder_notified_at?: string | null
           source_id?: string | null
           source_type?: string | null
           status?: string
@@ -11930,6 +11944,7 @@ export type Database = {
           ball_owner?: string
           call_log_id?: string | null
           category?: string
+          checklist?: Json
           created_at?: string
           description?: string | null
           due_date?: string | null
@@ -11937,12 +11952,18 @@ export type Database = {
           meeting_id?: string | null
           next_action?: string | null
           next_action_due?: string | null
+          nudge_count?: number
+          nudge_note?: string | null
+          nudge_seen_at?: string | null
+          nudged_at?: string | null
+          nudged_by?: string | null
           parent_task_id?: string | null
           pending_for_jour_fixe?: boolean | null
           priority?: string
           progress?: number | null
           reminder_at?: string | null
           reminder_note?: string | null
+          reminder_notified_at?: string | null
           source_id?: string | null
           source_type?: string | null
           status?: string
@@ -13483,6 +13504,10 @@ export type Database = {
     Functions: {
       _meeting_default_end: { Args: { _date: string }; Returns: string }
       _meeting_default_start: { Args: { _date: string }; Returns: string }
+      ack_task_nudge: {
+        Args: { _reply?: string; _task_id: string }
+        Returns: undefined
+      }
       approve_gdpr_delete: {
         Args: { p_request_id: string }
         Returns: undefined
@@ -13628,6 +13653,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      dispatch_due_task_reminders: { Args: never; Returns: number }
       dispatch_workflow_trigger: {
         Args: {
           _entity_id: string
@@ -13893,6 +13919,10 @@ export type Database = {
           message_id_param: string
           user_id_param: string
         }
+        Returns: undefined
+      }
+      nudge_task: {
+        Args: { _note?: string; _task_id: string }
         Returns: undefined
       }
       parse_task_assignee_ids: {

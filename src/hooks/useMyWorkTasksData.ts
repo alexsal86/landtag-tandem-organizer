@@ -27,10 +27,16 @@ export interface MyWorkTask {
   timeline?: unknown;
   reminder_at?: string | null;
   reminder_note?: string | null;
+  nudged_at?: string | null;
+  nudged_by?: string | null;
+  nudge_note?: string | null;
+  nudge_count?: number | null;
+  nudge_seen_at?: string | null;
+  checklist?: unknown;
 }
 
-const TASK_LIST_SELECT = "id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id, ball_owner, ball_assignee_id, next_action, next_action_due, timeline, reminder_at, reminder_note, task_assignees!left(user_id)";
-const TASK_ASSIGNED_SELECT = "id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id, ball_owner, ball_assignee_id, next_action, next_action_due, timeline, reminder_at, reminder_note, task_assignees!inner(user_id)";
+const TASK_LIST_SELECT = "id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id, ball_owner, ball_assignee_id, next_action, next_action_due, timeline, reminder_at, reminder_note, nudged_at, nudged_by, nudge_note, nudge_count, nudge_seen_at, checklist, task_assignees!left(user_id)";
+const TASK_ASSIGNED_SELECT = "id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id, ball_owner, ball_assignee_id, next_action, next_action_due, timeline, reminder_at, reminder_note, nudged_at, nudged_by, nudge_note, nudge_count, nudge_seen_at, checklist, task_assignees!inner(user_id)";
 
 interface TasksQueryResult {
   assignedTasks: MyWorkTask[];

@@ -48,3 +48,28 @@ describe("Erinnerungen", () => {
     expect([d.getDate(), d.getHours()]).toEqual([9, 9]);
   });
 });
+
+import { canNudge, checklistEvents, isNudgeActive, shiftDay } from "./stafette";
+describe("Anstupsen, Checkliste, Stapel", () => {
+  const now = new Date(2026, 10, 7, 10, 0);
+  it("Angestupste Aufgabe steht beim Empfänger ganz oben, beim Absender nicht", () => {
+    const t = { ball_owner: "office", ball_assignee_id: "me", nudged_by: "kollegin", nudged_at: now.toISOString() };
+    expect(taskZone(t, "me", now)).toBe("nudged");
+    expect(taskZone({ ...t, ball_assignee_id: "kollegin", nudged_by: "me" }, "me", now)).toBe("waiting");
+  });
+  it("Gesehen beendet das Anstupsen", () => {
+    expect(isNudgeActive({ nudged_at: "2026-11-07T09:00:00Z", nudge_seen_at: "2026-11-07T09:30:00Z" })).toBe(false);
+  });
+  it("Höchstens einmal pro 24 Stunden, nie bei Extern", () => {
+    const t = { ball_owner: "deputy", nudged_by: "me", nudged_at: new Date(2026, 10, 6, 12).toISOString() };
+    expect(canNudge(t, "me", now)).toBe(false);
+    expect(canNudge(t, "me", new Date(2026, 10, 7, 12, 1))).toBe(true);
+    expect(canNudge({ ball_owner: "external" }, "me", now)).toBe(false);
+  });
+  it("Abgehakter Checkpunkt landet im Verlauf", () => {
+    expect(checklistEvents([{ id: "1", text: "Anrufen", done: false }], [{ id: "1", text: "Anrufen", done: true }])).toEqual(["Checkpunkt erledigt: „Anrufen“"]);
+  });
+  it("Frist +1 Woche", () => {
+    expect(shiftDay("2026-11-28", 7)).toBe("2026-12-05");
+  });
+});
