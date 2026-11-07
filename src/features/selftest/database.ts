@@ -18,4 +18,4 @@ type DynamicTables = {
     CompositeTypes: Record<string, never>;
   };
 };
-export const selftestDatabase = supabase as unknown as SupabaseClient<DynamicTables>;
+export const selftestDatabase = supabase as unknown as SupabaseClient<DynamicTables, "public">;
