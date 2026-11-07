@@ -5,3 +5,4 @@
 - Every new business rule or workflow needs a matching step in a selftest scenario (src/features/selftest); pure rules run as kind:"logic" steps so the Selbsttest-Center verifies logic, not just persistence.
 - Selftest runs are persisted per tenant in selftest_runs (steps + error details as JSON) so the agent can read failures directly via SQL instead of relying on screenshots.
 - Task triage (zones, resubmission, ball handover, timeline events) lives in src/features/tasks/stafette.ts as pure functions; the task workspace UI and selftests import it so rules stay testable.
+- After a vote on a task-linked decision, the DB trigger return_task_ball_after_vote hands the task back to the decision's creator (ball_owner office, next step, timeline, notification) so the loop closes without client logic.

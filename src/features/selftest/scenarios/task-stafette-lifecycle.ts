@@ -1,4 +1,4 @@
-import { groupByZone, isOnResubmission, stafetteEvents, taskZone, type StafetteTask } from "@/features/tasks/stafette";
+import { isReminderDue, groupByZone, isOnResubmission, stafetteEvents, taskZone, type StafetteTask } from "@/features/tasks/stafette";
 import type { TestScenario } from "../types";
 
 const NOW = new Date(2026, 10, 7, 12);
@@ -13,6 +13,16 @@ export const taskStafetteLifecycleScenario: TestScenario = {
   checks: ["Zonen Mein Zug / Wartet / Wiedervorlage", "Verlaufseinträge bei Übergaben und Erledigungen"],
   limitations: ["Prüft die Regeln ohne Datenbank; Speichern wird im Aufgaben-Lebenszyklus geprüft."],
   steps: [
+    {
+      id: "reminder", label: "Fällige Erinnerung holt wartende Aufgabe in Mein Zug", kind: "logic",
+      run: async () => {
+        const t: StafetteTask = { ball_owner: "deputy", reminder_at: new Date(2026, 10, 7, 9).toISOString() };
+        const later: StafetteTask = { ball_owner: "deputy", reminder_at: new Date(2026, 10, 9, 9).toISOString() };
+        const ok = isReminderDue(t, NOW) && taskZone(t, ME, NOW) === "mine" && taskZone(later, ME, NOW) === "waiting";
+        const ev = stafetteEvents({ reminder_at: t.reminder_at }, { reminder_at: null }, { now: NOW }).map((e) => e.text);
+        return { ok: ok && ev.includes("Erinnerung erledigt"), message: ok ? "Erinnerung korrekt." : "Erinnerung falsch eingeordnet.", details: ev };
+      },
+    },
     {
       id: "set-step", label: "Schritt mit Frist in der Zukunft → Wiedervorlage", kind: "logic",
       run: async () => {
