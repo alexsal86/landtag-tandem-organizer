@@ -112,7 +112,7 @@ export async function runScenario(scenario: TestScenario, options: RunOptions): 
     if (scenario.steps.some(step => step.kind !== "logic")) {
       try {
         ctx.role = await runPreflight(options.userId, options.tenantId);
-        if (scenario.requiredRoles && !scenario.requiredRoles.includes(ctx.role)) {
+        if (scenario.requiredRoles && (!ctx.role || !scenario.requiredRoles.includes(ctx.role))) {
           throw new Error(`Erforderliche Rolle: ${scenario.requiredRoles.join(" oder ")}. Aktuell: ${ctx.role}.`);
         }
       } catch (error) {

@@ -20,7 +20,7 @@ export async function findLegacySelftestRecords(tenantId: string, userId: string
   for (const [table, markerColumn, ownerColumn] of sources) {
     const result = await selftestDatabase.from(table).select("id").eq("tenant_id", tenantId).eq(ownerColumn, userId).like(markerColumn, "[SELFTEST]%");
     if (result.error) throw new Error(`${table}: ${result.error.message}`);
-    for (const record of result.data ?? []) records.push({ table, id: record.id });
+    for (const record of result.data ?? []) records.push({ table, id: String(record.id) });
   }
   return records;
 }

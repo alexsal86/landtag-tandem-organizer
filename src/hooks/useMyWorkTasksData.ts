@@ -20,10 +20,15 @@ export interface MyWorkTask {
   parent_task_id?: string | null;
   tenant_id?: string;
   task_assignees?: Array<{ user_id: string }> | null;
+  ball_owner?: string | null;
+  ball_assignee_id?: string | null;
+  next_action?: string | null;
+  next_action_due?: string | null;
+  timeline?: unknown;
 }
 
-const TASK_LIST_SELECT = "id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id, task_assignees!left(user_id)";
-const TASK_ASSIGNED_SELECT = "id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id, task_assignees!inner(user_id)";
+const TASK_LIST_SELECT = "id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id, ball_owner, ball_assignee_id, next_action, next_action_due, timeline, task_assignees!left(user_id)";
+const TASK_ASSIGNED_SELECT = "id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id, ball_owner, ball_assignee_id, next_action, next_action_due, timeline, task_assignees!inner(user_id)";
 
 interface TasksQueryResult {
   assignedTasks: MyWorkTask[];

@@ -11870,6 +11870,8 @@ export type Database = {
       tasks: {
         Row: {
           assigned_to: string | null
+          ball_assignee_id: string | null
+          ball_owner: string
           call_log_id: string | null
           category: string
           created_at: string
@@ -11877,6 +11879,8 @@ export type Database = {
           due_date: string | null
           id: string
           meeting_id: string | null
+          next_action: string | null
+          next_action_due: string | null
           parent_task_id: string | null
           pending_for_jour_fixe: boolean | null
           priority: string
@@ -11885,12 +11889,15 @@ export type Database = {
           source_type: string | null
           status: string
           tenant_id: string
+          timeline: Json
           title: string
           updated_at: string
           user_id: string
         }
         Insert: {
           assigned_to?: string | null
+          ball_assignee_id?: string | null
+          ball_owner?: string
           call_log_id?: string | null
           category?: string
           created_at?: string
@@ -11898,6 +11905,8 @@ export type Database = {
           due_date?: string | null
           id?: string
           meeting_id?: string | null
+          next_action?: string | null
+          next_action_due?: string | null
           parent_task_id?: string | null
           pending_for_jour_fixe?: boolean | null
           priority?: string
@@ -11906,12 +11915,15 @@ export type Database = {
           source_type?: string | null
           status?: string
           tenant_id: string
+          timeline?: Json
           title: string
           updated_at?: string
           user_id: string
         }
         Update: {
           assigned_to?: string | null
+          ball_assignee_id?: string | null
+          ball_owner?: string
           call_log_id?: string | null
           category?: string
           created_at?: string
@@ -11919,6 +11931,8 @@ export type Database = {
           due_date?: string | null
           id?: string
           meeting_id?: string | null
+          next_action?: string | null
+          next_action_due?: string | null
           parent_task_id?: string | null
           pending_for_jour_fixe?: boolean | null
           priority?: string
@@ -11927,6 +11941,7 @@ export type Database = {
           source_type?: string | null
           status?: string
           tenant_id?: string
+          timeline?: Json
           title?: string
           updated_at?: string
           user_id?: string
