@@ -14,6 +14,8 @@ export interface StafetteTask {
   next_action?: string | null;
   next_action_due?: string | null;
   status?: string | null;
+  reminder_at?: string | null;
+  reminder_note?: string | null;
 }
 
 export interface StafetteEvent {
@@ -46,7 +48,24 @@ export function isOnResubmission(task: StafetteTask, now: Date = new Date()): bo
  * - resubmission: my step is due in the future
  * - mine: everything else
  */
+/** A reminder is due once its time has passed; it pulls the task back into "Mein Zug". */
+export function isReminderDue(task: StafetteTask, now: Date = new Date()): boolean {
+  if (!task.reminder_at) return false;
+  const t = new Date(task.reminder_at).getTime();
+  return !Number.isNaN(t) && t <= now.getTime();
+}
+
+/** Preset reminder times (09:00 local) relative to now. */
+export function reminderPreset(kind: "tomorrow" | "3days" | "nextweek", now: Date = new Date()): Date {
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0, 0);
+  if (kind === "tomorrow") d.setDate(d.getDate() + 1);
+  else if (kind === "3days") d.setDate(d.getDate() + 3);
+  else { const dow = d.getDay(); d.setDate(d.getDate() + (((8 - dow) % 7) || 7)); }
+  return d;
+}
+
 export function taskZone(task: StafetteTask, meId: string | undefined, now: Date = new Date()): TaskZone {
+  if (isReminderDue(task, now)) return "mine";
   const owner = (task.ball_owner ?? "office") as TaskBallOwner;
   if (owner !== "office") return "waiting";
   if (task.ball_assignee_id && meId && task.ball_assignee_id !== meId) return "waiting";
@@ -93,6 +112,14 @@ export function stafetteEvents(
     push(`Schritt festgelegt: „${aStep}“${after.next_action_due ? ` bis ${fmtDay(after.next_action_due)}` : ""}`);
   } else if (aStep && (before.next_action_due ?? null) !== (after.next_action_due ?? null)) {
     push(after.next_action_due ? `Frist geändert auf ${fmtDay(after.next_action_due)}` : "Frist entfernt");
+  }
+  const bRem = before.reminder_at ?? null;
+  const aRem = after.reminder_at ?? null;
+  if (bRem !== aRem) {
+    if (aRem) {
+      const d = new Date(aRem);
+      push(`Erinnerung gesetzt: ${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}${after.reminder_note ? ` – ${after.reminder_note}` : ""}`);
+    } else push("Erinnerung erledigt");
   }
   if (before.status !== "completed" && after.status === "completed") push("Aufgabe abgeschlossen");
   return events;

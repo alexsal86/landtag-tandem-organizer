@@ -6,7 +6,7 @@ import type { MyWorkTask } from "@/hooks/useMyWorkTasksData";
 import { notify } from "@/lib/notify";
 import { EmptyState } from "@/components/ui-patterns";
 import { ListTodo } from "lucide-react";
-import { groupByZone, parseTaskTimeline, stafetteEvents, type StafetteEvent } from "@/features/tasks/stafette";
+import { groupByZone, isReminderDue, parseTaskTimeline, stafetteEvents, type StafetteEvent } from "@/features/tasks/stafette";
 import { TaskTriageList } from "./TaskTriageList";
 import { TaskDetailView, type TaskPatch } from "./TaskDetailView";
 
@@ -30,6 +30,15 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
   const zones = useMemo(() => groupByZone(merged, userId), [merged, userId]);
   const ordered = useMemo(() => [...zones.mine, ...zones.waiting, ...zones.resubmission], [zones]);
   const selected = merged.find((t) => t.id === selectedId) ?? ordered[0] ?? null;
+
+  const remindedOnce = useRef(false);
+  useEffect(() => {
+    if (remindedOnce.current || tasks.length === 0) return;
+    remindedOnce.current = true;
+    const due = tasks.filter((t) => t.status !== "completed" && isReminderDue(t));
+    if (due.length === 1) notify.info(`Erinnerung: ${due[0].title}`);
+    else if (due.length > 1) notify.info(`${due.length} Erinnerungen fällig – sie stehen oben unter „Mein Zug“.`);
+  }, [tasks]);
 
   const taskIds = useMemo(() => tasks.map((t) => t.id).sort(), [tasks]);
   const { data: decisions } = useQuery({
@@ -61,6 +70,8 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
     if ("ball_assignee_id" in patch) fields.ball_assignee_id = patch.ball_assignee_id;
     if ("next_action" in patch) fields.next_action = patch.next_action;
     if ("next_action_due" in patch) fields.next_action_due = patch.next_action_due;
+    if ("reminder_at" in patch) fields.reminder_at = patch.reminder_at;
+    if ("reminder_note" in patch) fields.reminder_note = patch.reminder_note;
     const after = { ...task, ...fields };
     const events: StafetteEvent[] = stafetteEvents(task, after, { actorName: nameOf(userId), nameOf: (id) => nameOf(id) });
     if (note) events.push({ id: `${Date.now()}-n`, type: "note", at: new Date().toISOString(), actorName: nameOf(userId), text: note });

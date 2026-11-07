@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CalendarClock, Check, Gavel, Send, Users, Zap } from "lucide-react";
+import { Bell, BellOff, CalendarClock, Check, Gavel, Send, Users, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import type { MyWorkTask } from "@/hooks/useMyWorkTasksData";
 import { sendToDaySlip, formatCaseDaySlipText } from "@/lib/daySlipBridge";
 import {
-  TASK_BALL_LABELS, isOnResubmission, parseTaskTimeline, stepState, type StafetteTask, type TaskBallOwner,
+  TASK_BALL_LABELS, isOnResubmission, isReminderDue, reminderPreset, parseTaskTimeline, stepState, type StafetteTask, type TaskBallOwner,
 } from "@/features/tasks/stafette";
 
 export interface TaskPatch extends StafetteTask {
@@ -39,6 +39,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
   const [note, setNote] = useState("");
   const [doneDialog, setDoneDialog] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [remNote, setRemNote] = useState("");
 
   useEffect(() => {
     setLabel(task.next_action ?? "");
@@ -125,6 +126,34 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
             </Button>
           )}
         </div>
+      </section>
+
+      <section className="rounded-lg border p-md space-y-sm">
+        <div className="section-label flex items-center gap-xs"><Bell className="h-3.5 w-3.5" />Erinnerung</div>
+        {task.reminder_at ? (
+          <div className={cn("rounded-md px-sm py-xs text-caption flex items-center justify-between gap-sm", isReminderDue(task) ? "bg-accent text-accent-foreground" : "bg-muted")}>
+            <span>
+              {isReminderDue(task) ? "Fällig seit " : "Am "}
+              {new Date(task.reminder_at).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}
+              {task.reminder_note ? ` – ${task.reminder_note}` : ""}
+            </span>
+            <Button size="sm" variant="ghost" disabled={saving} onClick={() => run(() => onSave({ reminder_at: null, reminder_note: null }))}>
+              <BellOff className="h-4 w-4 mr-1" />Erledigt
+            </Button>
+          </div>
+        ) : (
+          <>
+            <Input value={remNote} onChange={(e) => setRemNote(e.target.value)} placeholder="Woran erinnern? (optional, z. B. „Beim Ministerium nachfassen“)" className="h-8" />
+            <div className="flex flex-wrap gap-xs">
+              {([["tomorrow", "Morgen"], ["3days", "In 3 Tagen"], ["nextweek", "Nächste Woche"]] as const).map(([k, l]) => (
+                <Button key={k} size="sm" variant="outline" disabled={saving}
+                  onClick={() => run(async () => { await onSave({ reminder_at: reminderPreset(k).toISOString(), reminder_note: remNote.trim() || null }); setRemNote(""); })}>
+                  {l}
+                </Button>
+              ))}
+            </div>
+          </>
+        )}
       </section>
 
       <section className="flex flex-wrap gap-xs border-b pb-md">

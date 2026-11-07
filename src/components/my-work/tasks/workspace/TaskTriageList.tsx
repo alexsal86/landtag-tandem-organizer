@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { MyWorkTask } from "@/hooks/useMyWorkTasksData";
-import { TASK_BALL_LABELS, type TaskBallOwner, type TaskZone } from "@/features/tasks/stafette";
+import { isReminderDue, TASK_BALL_LABELS, type TaskBallOwner, type TaskZone } from "@/features/tasks/stafette";
 
 interface Props {
   zones: Record<TaskZone, MyWorkTask[]>;
@@ -35,6 +35,7 @@ export function TaskTriageList({ zones, selectedId, onSelect, decisionLabel, nam
   const [resubOpen, setResubOpen] = useState(false);
 
   const subFor = (t: MyWorkTask, zone: TaskZone) => {
+    if (isReminderDue(t)) return ["🔔 Erinnerung", t.reminder_note || t.next_action || null].filter(Boolean).join(" · ");
     const step = t.next_action?.trim() ? t.next_action : "kein nächster Schritt";
     const due = fmt(t.next_action_due ?? t.due_date);
     if (zone === "waiting") {
