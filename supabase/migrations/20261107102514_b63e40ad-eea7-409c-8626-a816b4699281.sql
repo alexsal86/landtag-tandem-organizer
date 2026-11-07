@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.return_task_ball_after_vote() FROM PUBLIC, anon, authenticated;
