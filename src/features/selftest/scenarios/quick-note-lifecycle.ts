@@ -7,7 +7,7 @@ export const quickNoteLifecycleScenario: TestScenario = {
   id: "quick-note-lifecycle",
   title: "Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv)",
   description: "Legt eine Notiz mit Priorität, Farbe und Schlagworten an, heftet sie an, macht daraus eine Aufgabe und archiviert sie. Jeder Schritt liest seine Felder zurück.",
-  touches: ["quick_notes", "tasks"],
+  touches: ["quick_notes", "tasks", "task_decisions", "task_decision_participants"],
   features: ["quick-notes", "tasks"],
   writes: [
     { table: "quick_notes", columns: ["title", "content", "user_id", "tenant_id", "priority_level", "color", "category", "tags", "is_pinned", "task_id", "is_archived", "archived_at"] },
@@ -40,13 +40,33 @@ export const quickNoteLifecycleScenario: TestScenario = {
       id: "to-task", label: "Aus Notiz eine Aufgabe machen (verknüpft)",
       run: async (ctx) => {
         const id = ctx.data.noteId as string;
-        const task = { title: `${SELFTEST_PREFIX} Aufgabe aus Notiz (${ctx.runId})`, description: SELFTEST_MARKER, user_id: ctx.userId, tenant_id: ctx.tenantId, status: "todo", priority: "high" };
-        const { data, error } = await supabase.from("tasks").insert(task).select("id").single();
-        if (error || !data) return { ok: false, message: describeError(error) };
-        ctx.trackRecord({ table: "tasks", id: data.id }); // Aufgabe zuletzt löschen
-        const { error: le } = await supabase.from("quick_notes").update({ task_id: data.id }).eq("id", id);
-        if (le) return { ok: false, message: describeError(le) };
-        return expectFields("quick_notes", id, { task_id: data.id }, "Verknüpfung");
+        const { data: taskId, error } = await supabase.rpc("create_note_work", { p_note_id: id, p_kind: "task" });
+        if (error || !taskId) return { ok: false, message: describeError(error) };
+        ctx.trackRecord({ table: "tasks", id: taskId });
+        const retry = await supabase.rpc("create_note_work", { p_note_id: id, p_kind: "task" });
+        if (retry.error || retry.data !== taskId) return { ok: false, message: "Wiederholung erzeugt eine andere Aufgabe" };
+        const result = await expectFields("quick_notes", id, { task_id: taskId }, "Atomare Verknüpfung");
+        const unlink = await supabase.from("quick_notes").update({ task_id: null }).eq("id", id);
+        if (unlink.error) return { ok: false, message: describeError(unlink.error) };
+        const preserved = await expectFields("tasks", taskId, { source_id: id, source_type: "quick_note" }, "Aufgabe nach Entknüpfen erhalten");
+        return result.ok ? preserved : result;
+      },
+    },
+    {
+      id: "decision-links", label: "Entscheidung atomar verknüpfen und Folgeaufgabe mit Herkunft erzeugen", kind: "workflow",
+      run: async ctx => {
+        const id = crypto.randomUUID();
+        const result = await supabase.rpc("create_work_decision", { p_id: id, p_data: { title: `${SELFTEST_PREFIX} Entscheidung`, tenant_id: ctx.tenantId }, p_participants: [ctx.userId], p_note_id: ctx.data.noteId as string });
+        if (result.error) return { ok: false, message: describeError(result.error) };
+        ctx.trackRecord({ table: "task_decisions", id });
+        const task = await supabase.rpc("create_decision_task", { p_decision_id: id });
+        if (task.error || !task.data) return { ok: false, message: describeError(task.error) };
+        ctx.trackRecord({ table: "tasks", id: task.data });
+        const retry = await supabase.rpc("create_decision_task", { p_decision_id: id });
+        if (retry.error || retry.data !== task.data) return { ok: false, message: "Folgeaufgabe nicht idempotent" };
+        const unlink = await supabase.from("quick_notes").update({ decision_id: null }).eq("id", ctx.data.noteId as string);
+        if (unlink.error) return { ok: false, message: describeError(unlink.error) };
+        return expectFields("tasks", task.data, { source_type: "decision", source_id: id }, "Herkunft erhalten");
       },
     },
     {

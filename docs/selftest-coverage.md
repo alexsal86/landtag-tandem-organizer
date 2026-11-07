@@ -21,8 +21,9 @@ Von 267 Tabellen haben 29 ein registriertes Szenario. 82 sind als Ausbau offen, 
 | `event-planning-lifecycle` | Event-Planung (komplett: Termine, Speaker, Checkliste, Timeline) | event_plannings, event_planning_dates, event_planning_speakers, event_planning_contacts, event_planning_checklist_items, event_planning_timeline_assignments |
 | `letter-lifecycle` | Brief-Lifecycle (Entwurf → Prüfung → Freigabe → Archiv und Folgeaufgabe) | letters, letter_attachments, documents, tasks |
 | `meeting-lifecycle` | Meeting-Lifecycle (vollständig + Field-Verifikation) | meetings, meeting_agenda_items, meeting_agenda_documents, meeting_participants, appointments, tasks |
-| `quick-note-lifecycle` | Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv) | quick_notes, tasks |
+| `quick-note-lifecycle` | Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv) | quick_notes, tasks, task_decisions, task_decision_participants |
 | `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | tasks, task_decisions |
+| `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | Keine (reine Regeln) |
 | `workflow-rules` | Geschäftsregeln (Freigabe, Rollen, Fristen) | Keine (reine Regeln) |
 
 ## Tabellen
@@ -252,11 +253,11 @@ Von 267 Tabellen haben 29 ein registriertes Szenario. 82 sind als Ausbau offen, 
 | `task_decision_attachments` | Ausgenommen (nicht geprüft) | — |
 | `task_decision_comment_reactions` | Ausgenommen (nicht geprüft) | — |
 | `task_decision_comments` | Ausgenommen (nicht geprüft) | — |
-| `task_decision_participants` | Szenario vorhanden | case-item-lifecycle, decision-lifecycle |
+| `task_decision_participants` | Szenario vorhanden | case-item-lifecycle, decision-lifecycle, quick-note-lifecycle |
 | `task_decision_response_history` | Ausgenommen (nicht geprüft) | — |
 | `task_decision_responses` | Szenario vorhanden | case-item-lifecycle |
 | `task_decision_topics` | Ausgenommen (nicht geprüft) | — |
-| `task_decisions` | Szenario vorhanden | case-item-lifecycle, decision-lifecycle, task-lifecycle |
+| `task_decisions` | Szenario vorhanden | case-item-lifecycle, decision-lifecycle, quick-note-lifecycle, task-lifecycle |
 | `task_documents` | Ausgenommen (nicht geprüft) | — |
 | `task_snoozes` | Ausgenommen (nicht geprüft) | — |
 | `task_statuses` | Ausgenommen (nicht geprüft) | — |

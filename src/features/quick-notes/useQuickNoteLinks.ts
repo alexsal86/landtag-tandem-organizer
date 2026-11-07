@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { notify } from "@/lib/notify";
 import { debugConsole } from "@/utils/debugConsole";
 import { getErrorMessage } from "@/utils/errorHandler";
-import { stripHtml } from "@/hooks/quickNotes/utils";
 import type { QuickNote } from "./types";
 import type { useQuickNotesData } from "./useQuickNotesData";
 import type { useQuickNoteDialogs } from "./useQuickNoteDialogs";
@@ -15,14 +14,9 @@ export function useQuickNoteLinks(data: ReturnType<typeof useQuickNotesData>, di
   const removeDecisionFromNote = async (note: QuickNote) => {
     if (!note.decision_id || !user?.id) return;
     try {
-      const { data: decisionData } = await supabase
-        .from('task_decisions').select('title').eq('id', note.decision_id).single();
-      const { error: decisionError } = await supabase.from('task_decisions').update({ archived_at: new Date().toISOString() }).eq('id', note.decision_id).select().single();
-      if (decisionError) throw decisionError;
-      const archivedInfo = decisionData ? { id: note.decision_id, title: decisionData.title, archived_at: new Date().toISOString() } : null;
-      const { error: linkError } = await supabase.from("quick_notes").update({ decision_id: null, decision_archived_info: archivedInfo }).eq("id", note.id).eq("user_id", user.id).select().single();
-      if (linkError) throw linkError;
-      notify.success("Entscheidungsanfrage zurückgenommen");
+      const { error } = await supabase.from("quick_notes").update({ decision_id: null }).eq("id", note.id).eq("user_id", user.id).select().single();
+      if (error) throw error;
+      notify.success("Verknüpfung zur Entscheidung entfernt");
       setConfirmRemoveDecision(null);
       await repository.refreshNote(note.id);
     } catch (error) {
@@ -33,27 +27,10 @@ export function useQuickNoteLinks(data: ReturnType<typeof useQuickNotesData>, di
   const createTaskFromNote = async (note: QuickNote) => {
     if (!user || !currentTenant) { notify.error("Nicht angemeldet"); return; }
     try {
-      const plainContent = stripHtml(note.content);
-      const taskTitle = note.title
-        ? stripHtml(note.title)
-        : plainContent.substring(0, 50) + (plainContent.length > 50 ? '...' : '');
-      const mapPriority = (level: number | undefined | null): 'low' | 'medium' | 'high' => {
-        if (!level || level <= 1) return 'low';
-        if (level === 2) return 'medium';
-        return 'high';
-      };
-      const { data: task, error: taskError } = await supabase
-        .from('tasks')
-        .insert([{
-          user_id: user.id, tenant_id: currentTenant.id, title: taskTitle,
-          description: note.content, category: 'personal', priority: mapPriority(note.priority_level),
-          status: 'todo', due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          assigned_to: user.id,
-        }])
-        .select().single();
-      if (taskError) throw taskError;
-      const { error: linkError } = await supabase.from("quick_notes").update({ task_id: task.id }).eq("id", note.id).eq("tenant_id", currentTenant.id).select().single();
-      if (linkError) throw linkError;
+      await repository.sync();
+      if (repository.getSnapshot().writes.some(write => write.noteId === note.id)) throw new Error("Bitte die Notiz vor dem Übernehmen synchronisieren");
+      const { error } = await supabase.rpc("create_note_work", { p_note_id: note.id, p_kind: "task" });
+      if (error) throw error;
       notify.success("Aufgabe erstellt");
       await repository.refreshNote(note.id);
     } catch (error) {
@@ -64,8 +41,6 @@ export function useQuickNoteLinks(data: ReturnType<typeof useQuickNotesData>, di
   const removeTaskFromNote = async (note: QuickNote) => {
     if (!note.task_id || !user?.id) return;
     try {
-      const { error: taskError } = await supabase.from('tasks').delete().eq('id', note.task_id);
-      if (taskError) throw taskError;
       const { error: noteError } = await supabase
         .from("quick_notes").update({ task_id: null }).eq("id", note.id).eq("user_id", user.id);
       if (noteError) throw noteError;
@@ -137,49 +112,10 @@ export function useQuickNoteLinks(data: ReturnType<typeof useQuickNotesData>, di
   const createCaseItemFromNote = async (note: QuickNote) => {
     if (!user || !currentTenant) { notify.error("Nicht angemeldet"); return; }
     try {
-      const plainContent = stripHtml(note.content);
-      const itemSubject = note.title
-        ? stripHtml(note.title)
-        : plainContent.substring(0, 100);
-
-      const mapPriority = (level: number | undefined | null): 'low' | 'medium' | 'high' => {
-        if (!level || level <= 1) return 'low';
-        if (level === 2) return 'medium';
-        return 'high';
-      };
-
-      // Generate ID client-side so we can link the note even if RLS blocks returning rows
-      const caseItemId = crypto.randomUUID();
-
-      const { error: caseError } = await supabase
-        .from('case_items')
-        .insert([
-          {
-            id: caseItemId,
-            tenant_id: currentTenant.id,
-            user_id: user.id,
-            owner_user_id: user.id,
-            subject: itemSubject,
-            summary: note.content,
-            status: 'neu',
-            priority: mapPriority(note.priority_level),
-            source_channel: 'other',
-            intake_payload: {
-              category: 'Allgemein',
-            },
-          },
-        ]);
-
-      if (caseError) throw caseError;
-
-      const { error: linkError } = await supabase
-        .from("quick_notes")
-        .update({ case_item_id: caseItemId })
-        .eq("id", note.id)
-        .eq("user_id", user.id);
-
-      if (linkError) throw linkError;
-
+      await repository.sync();
+      if (repository.getSnapshot().writes.some(write => write.noteId === note.id)) throw new Error("Bitte die Notiz vor dem Übernehmen synchronisieren");
+      const { error } = await supabase.rpc("create_note_work", { p_note_id: note.id, p_kind: "case" });
+      if (error) throw error;
       notify.success("Vorgang erstellt");
       await repository.refreshNote(note.id);
     } catch (error) {
@@ -190,11 +126,9 @@ export function useQuickNoteLinks(data: ReturnType<typeof useQuickNotesData>, di
   const removeCaseItemFromNote = async (note: QuickNote) => {
     if (!note.case_item_id || !user?.id) return;
     try {
-      const { error: caseError } = await supabase.from('case_items').update({ status: 'archiviert' }).eq('id', note.case_item_id).select().single();
-      if (caseError) throw caseError;
       const { error: linkError } = await supabase.from("quick_notes").update({ case_item_id: null }).eq("id", note.id).eq("user_id", user.id).select().single();
       if (linkError) throw linkError;
-      notify.success("Vorgang archiviert und von Notiz entfernt");
+      notify.success("Verknüpfung zum Vorgang entfernt");
       setConfirmRemoveCaseItem(null);
       await repository.refreshNote(note.id);
     } catch (error) {

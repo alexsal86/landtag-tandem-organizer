@@ -1,3 +1,5 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { WorkflowLinks } from "@/components/workflow/WorkflowLinks";
 import { useState, useEffect } from "react";
 import { trackPageVisit } from "@/hooks/useRecentlyVisited";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,6 +42,7 @@ interface CaseFileDetailProps {
 }
 
 export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
+  const queryClient = useQueryClient();
   const details = useCaseFileDetails(caseFileId);
   const { deleteCaseFile } = useCaseFiles();
   const { assignedTopics, setTopics: setAssignedTopics } = useCaseFileTopics(caseFileId);
@@ -179,6 +182,7 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
             </div>
           </div>
 
+          <WorkflowLinks caseFileId={caseFileId} />
           <CaseFileUnifiedTimeline
             timeline={timeline}
             notes={notes}
@@ -319,9 +323,11 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
 
       {showAddDecision && (
         <StandaloneDecisionCreator
+          caseFileId={caseFile.id}
           isOpen={showAddDecision}
           onOpenChange={setShowAddDecision}
           onDecisionCreated={() => {
+            void queryClient.invalidateQueries({ queryKey: ["workflow-links"] });
             setShowAddDecision(false);
             details.refresh();
           }}

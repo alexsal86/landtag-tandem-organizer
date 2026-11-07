@@ -155,6 +155,19 @@ export const caseItemLifecycleScenario: TestScenario = {
       }),
     },
     {
+      id: "reverse-task", label: "Aufgabe erledigen schließt den zugehörigen Vorgangsschritt", kind: "workflow",
+      run: wrap(async ctx => {
+        const tasks = await supabase.from("tasks").select("id").eq("source_type", "case_step").eq("source_id", ctx.data.caseItemId as string).eq("status", "todo").single();
+        if (tasks.error) throw tasks.error;
+        const update = await supabase.from("tasks").update({ status: "completed" }).eq("id", tasks.data.id);
+        if (update.error) throw update.error;
+        const row = await load(ctx.data.caseItemId as string);
+        if (row.next_action_label || row.next_action_due_at) return { ok: false, message: "Erledigter Schritt bleibt offen" };
+        await applyBallPatch(ctx, { next_action_label: "Antwort nachhalten" });
+        return { ok: true, message: "Rückkopplung bestätigt" };
+      }),
+    },
+    {
       id: "ministry", label: "Am Zug: Ministerium (21-Tage-Frist + Verlauf)",
       run: wrap(async (ctx) => {
         await applyBallPatch(ctx, { next_action_due_at: null });

@@ -2,7 +2,6 @@ import { useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { debugConsole } from "@/utils/debugConsole";
 import { supabase } from "@/integrations/supabase/client";
-import { getResponseSummary } from "../utils/decisionOverview";
 import type { DecisionRequest } from "../utils/decisionOverview";
 import type { DecisionResponseNotificationLookup } from "@/types/taskDecisions";
 import { notify } from "@/lib/notify";
@@ -245,32 +244,8 @@ export function useDecisionActions({
     }
 
     setCreatingTaskFromDecisionId(decision.id);
-    const summary = getResponseSummary(decision.participants);
-
-    let resultText = "Ergebnis: ";
-    if (summary.yesCount > summary.noCount) resultText += "Angenommen";
-    else if (summary.noCount > summary.yesCount) resultText += "Abgelehnt";
-    else resultText += "Unentschieden";
-
-    const taskDescription = `
-      <h3>Aus Entscheidung: ${decision.title}</h3>
-      <p><strong>${resultText}</strong> (Ja: ${summary.yesCount}, Nein: ${summary.noCount})</p>
-      ${decision.description ? `<div>${decision.description}</div>` : ""}
-    `;
-
     try {
-      const { error } = await supabase.from("tasks").insert([
-        {
-          user_id: user.id,
-          title: `[Entscheidung] ${decision.title}`,
-          description: taskDescription,
-          assigned_to: user.id,
-          tenant_id: currentTenant.id,
-          status: "todo",
-          priority: "medium",
-          category: "personal",
-        },
-      ]);
+      const { error } = await supabase.rpc("create_decision_task", { p_decision_id: decision.id });
 
       if (error) throw error;
 

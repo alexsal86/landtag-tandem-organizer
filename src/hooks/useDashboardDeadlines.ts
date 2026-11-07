@@ -31,7 +31,7 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
   const [tasksRes, notesRes, casesRes, decisionsRes, planningDeadlinesRes, caseActionsRes] = await Promise.all([
     supabase.from('tasks').select('id, title, due_date, assigned_to, user_id, priority, source_type, source_id')
       .or(`assigned_to.eq.${userId},assigned_to.ilike.%${userId}%,user_id.eq.${userId}`)
-      .neq('status', 'completed')
+      .not('status', 'in', '(completed,cancelled)')
       .not('due_date', 'is', null),
     supabase.from('quick_notes').select('id, title, content, follow_up_date')
       .eq('user_id', userId)
@@ -107,7 +107,7 @@ const fetchDeadlineItems = async (userId: string, tenantId?: string): Promise<De
       canSnooze: c.owner_user_id === userId || c.user_id === userId,
       priority: ({ urgent: 3, high: 2, medium: 1 } as Record<string, number>)[c.priority] ?? 0,
     })),
-    ...(caseActionsRes.data || []).filter((c) => c.next_action_due_at).map((c) => ({
+    ...(caseActionsRes.data || []).filter((c) => c.next_action_due_at && !caseStepIds.includes(c.id)).map((c) => ({
       id: c.id,
       title: formatCaseStepTitle(c.subject, c.next_action_label),
       dueDate: c.next_action_due_at!,

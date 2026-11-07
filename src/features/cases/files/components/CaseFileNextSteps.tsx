@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { CaseFileTask } from "@/features/cases/files/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { format, isPast } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { getCaseTaskDescription, isMatchingCaseParentTaskLink } from "@/features/cases/shared/utils/caseInteropAdapters";
+import { getCaseTaskDescription } from "@/features/cases/shared/utils/caseInteropAdapters";
 import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -30,12 +30,13 @@ export function CaseFileNextSteps({
   tasks,
   caseFileId,
   tenantId,
-  caseFileTitle,
+  caseFileTitle: _caseFileTitle,
   assignedTo,
   onCompleteTask,
-  onAddTask,
+  onAddTask: _onAddTask,
   onRefresh,
 }: CaseFileNextStepsProps) {
+  const creationId = useRef(crypto.randomUUID());
   const [quickTaskTitle, setQuickTaskTitle] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const { user } = useAuth();
@@ -88,56 +89,6 @@ export function CaseFileNextSteps({
     await onCompleteTask(taskId);
   };
 
-  const findOrCreateParentTask = async (): Promise<string | null> => {
-    if (!user || !resolvedTenantId || !caseFileTitle) return null;
-
-    const normalizedCaseFileTitle = caseFileTitle.trim();
-    const targetAssignee = assignedTo || user.id;
-
-    // Check if a parent task already exists for this case file
-    const { data: existingLinks } = await supabase
-      .from("case_file_tasks")
-      .select("task_id, task:tasks(id, title, parent_task_id, status)")
-      .eq("case_file_id", caseFileId);
-
-    // Find the dedicated parent task for this case file title
-    const parentLink = (existingLinks || []).find((link: Record<string, any>) => isMatchingCaseParentTaskLink(link, normalizedCaseFileTitle));
-
-    if (parentLink?.task?.id) {
-      if (parentLink.task.status === "completed" || parentLink.task.status === "cancelled") {
-        await supabase
-          .from("tasks")
-          .update({ status: "todo", assigned_to: targetAssignee })
-          .eq("id", parentLink.task.id);
-      }
-
-      return parentLink.task.id;
-    }
-
-    // Create parent task
-    const { data: parentTask, error } = await supabase
-      .from("tasks")
-      .insert([{
-        title: normalizedCaseFileTitle,
-        description: "Container-Aufgabe für Schnellaufgaben aus der Fallakte",
-        status: "todo",
-        priority: "medium",
-        category: "personal",
-        user_id: user.id,
-        tenant_id: resolvedTenantId,
-        assigned_to: targetAssignee,
-      }])
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // Link parent task to case file
-    await onAddTask(parentTask.id, undefined, parentTask.title);
-
-    return parentTask.id;
-  };
-
   const handleQuickAdd = async () => {
     if (!quickTaskTitle.trim() || !user || !resolvedTenantId) {
       notify.error("Schnellaufgabe konnte nicht erstellt werden", {
@@ -148,35 +99,11 @@ export function CaseFileNextSteps({
     setIsAdding(true);
 
     try {
-      // Find or create parent task
-      const parentTaskId = await findOrCreateParentTask();
-      if (!parentTaskId) {
-        notify.error("Schnellaufgabe konnte nicht erstellt werden", {
-          description: "Die Hauptaufgabe der Fallakte konnte nicht ermittelt werden."
-});
-        return;
-      }
-
-      // Create sub-task
-      const { data: newTask, error: taskError } = await supabase
-        .from("tasks")
-        .insert([{
-          title: quickTaskTitle.trim(),
-          status: "todo",
-          priority: "medium",
-          category: "personal",
-          user_id: user.id,
-          tenant_id: resolvedTenantId,
-          assigned_to: assignedTo || user.id,
-          parent_task_id: parentTaskId,
-        }])
-        .select()
-        .single();
-
-      if (taskError) throw taskError;
-
-      // Link to case file
-      await onAddTask(newTask.id, undefined, newTask.title);
+      const { error } = await supabase.rpc("create_case_file_task", {
+        p_id: creationId.current, p_case_file_id: caseFileId, p_title: quickTaskTitle.trim(), p_assigned_to: assignedTo || user.id,
+      });
+      if (error) throw error;
+      creationId.current = crypto.randomUUID();
       setQuickTaskTitle("");
       onRefresh();
     } catch (error) {

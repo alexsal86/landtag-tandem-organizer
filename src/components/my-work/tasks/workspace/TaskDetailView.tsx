@@ -1,3 +1,4 @@
+import { WorkflowLinks } from "@/components/workflow/WorkflowLinks";
 import { useEffect, useState } from "react";
 import { Bell, BellOff, BellRing, CalendarClock, Check, ListChecks, Plus, X, Gavel, Send, Users, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -108,6 +109,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           {decisionLabel && <Badge variant="secondary"><Gavel className="h-3 w-3 mr-1" />{decisionLabel}</Badge>}
           {task.pending_for_jour_fixe && <Badge variant="secondary"><Users className="h-3 w-3 mr-1" />Jour Fixe</Badge>}
         </div>
+        <WorkflowLinks taskId={task.id} />
         <TaskRecurrence taskId={task.id} value={task.recurrence_rule} onChanged={onReload} />
         {task.description && <p className="text-body text-muted-foreground whitespace-pre-wrap line-clamp-4">{task.description}</p>}
       </div>

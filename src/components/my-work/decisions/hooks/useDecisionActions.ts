@@ -4,7 +4,6 @@ import type { User } from "@supabase/supabase-js";
 import { debugConsole } from "@/utils/debugConsole";
 import { supabase } from "@/integrations/supabase/client";
 import type { MyWorkDecision } from "../types";
-import { getResponseSummary } from "../types";
 import { notify } from "@/lib/notify";
 
 interface UseDecisionActionsOptions {
@@ -136,26 +135,8 @@ export function useDecisionActions({
     if (!user?.id || !currentTenantId) return;
 
     setCreatingTaskId(decision.id);
-    const summary = getResponseSummary(decision.participants);
-
-    let resultText = "Ergebnis: ";
-    if (summary.yesCount > summary.noCount) resultText += "Angenommen";
-    else if (summary.noCount > summary.yesCount) resultText += "Abgelehnt";
-    else resultText += "Unentschieden";
-
     try {
-      const { error } = await supabase.from("tasks").insert([
-        {
-          user_id: user.id,
-          title: `[Entscheidung] ${decision.title}`,
-          description: `<h3>Aus Entscheidung: ${decision.title}</h3><p><strong>${resultText}</strong> (Ja: ${summary.yesCount}, Nein: ${summary.noCount})</p>${decision.description ? `<div>${decision.description}</div>` : ""}`,
-          assigned_to: user.id,
-          tenant_id: currentTenantId,
-          status: "todo",
-          priority: "medium",
-          category: "personal",
-        },
-      ]);
+      const { error } = await supabase.rpc("create_decision_task", { p_decision_id: decision.id });
 
       if (error) throw error;
 

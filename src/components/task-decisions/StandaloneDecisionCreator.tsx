@@ -20,6 +20,7 @@ interface StandaloneDecisionCreatorProps {
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   caseItemId?: string;
+  caseFileId?: string;
   defaultTitle?: string;
   defaultDescription?: string;
   onCreatedWithId?: (decisionId: string) => void;
@@ -78,6 +79,7 @@ export const StandaloneDecisionCreator = ({
   isOpen: externalIsOpen,
   onOpenChange,
   caseItemId,
+  caseFileId,
   defaultTitle,
   defaultDescription,
   onCreatedWithId,
@@ -119,6 +121,7 @@ export const StandaloneDecisionCreator = ({
   } = useDecisionCreator({
     taskId: undefined,
     caseItemId,
+    caseFileId,
     isOpen: externalIsOpen,
     onOpenChange,
     initialTitle: defaultTitle,

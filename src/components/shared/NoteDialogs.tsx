@@ -252,13 +252,13 @@ export function NoteDialogs(props: NoteDialogsProps) {
       <AlertDialog open={!!props.confirmDeleteTaskNote} onOpenChange={(open) => !open && props.setConfirmDeleteTaskNote(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Aufgabe entfernen?</AlertDialogTitle>
-            <AlertDialogDescription>Die verknüpfte Aufgabe wird unwiderruflich gelöscht. Die Notiz selbst bleibt erhalten.</AlertDialogDescription>
+            <AlertDialogTitle>Verknüpfung zur Aufgabe entfernen?</AlertDialogTitle>
+            <AlertDialogDescription>Die Aufgabe bleibt erhalten. Nur ihre Verknüpfung zu dieser Notiz wird entfernt.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Abbrechen</AlertDialogCancel>
             <AlertDialogAction onClick={() => { if (props.confirmDeleteTaskNote) props.removeTaskFromNote(props.confirmDeleteTaskNote); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Aufgabe löschen
+              Verknüpfung entfernen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -268,13 +268,13 @@ export function NoteDialogs(props: NoteDialogsProps) {
       <AlertDialog open={!!props.confirmRemoveDecision} onOpenChange={(open) => !open && props.setConfirmRemoveDecision(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Entscheidungsanfrage zurücknehmen?</AlertDialogTitle>
-            <AlertDialogDescription>Die Entscheidungsanfrage wird archiviert und von dieser Notiz entfernt. Bisherige Antworten bleiben im Archiv erhalten.</AlertDialogDescription>
+            <AlertDialogTitle>Verknüpfung zur Entscheidung entfernen?</AlertDialogTitle>
+            <AlertDialogDescription>Die Entscheidungsanfrage und ihre Antworten bleiben erhalten. Nur die Verknüpfung zu dieser Notiz wird entfernt.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Abbrechen</AlertDialogCancel>
             <AlertDialogAction onClick={() => { if (props.confirmRemoveDecision) props.removeDecisionFromNote(props.confirmRemoveDecision); }}>
-              Zurücknehmen
+              Verknüpfung entfernen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -284,13 +284,13 @@ export function NoteDialogs(props: NoteDialogsProps) {
       <AlertDialog open={!!props.confirmRemoveCaseItem} onOpenChange={(open) => !open && props.setConfirmRemoveCaseItem(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Vorgang entfernen?</AlertDialogTitle>
-            <AlertDialogDescription>Der Vorgang wird archiviert und von dieser Notiz entfernt.</AlertDialogDescription>
+            <AlertDialogTitle>Verknüpfung zum Vorgang entfernen?</AlertDialogTitle>
+            <AlertDialogDescription>Der Vorgang bleibt erhalten. Nur die Verknüpfung zu dieser Notiz wird entfernt.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Abbrechen</AlertDialogCancel>
             <AlertDialogAction onClick={() => { if (props.confirmRemoveCaseItem) props.removeCaseItemFromNote(props.confirmRemoveCaseItem); }}>
-              Archivieren
+              Verknüpfung entfernen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

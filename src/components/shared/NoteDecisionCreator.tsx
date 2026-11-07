@@ -46,6 +46,7 @@ export function NoteDecisionCreator({
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   
+  const creationId = useRef(crypto.randomUUID());
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
@@ -256,11 +257,10 @@ export function NoteDecisionCreator({
         priority: priority ? 1 : 0,
       };
 
-      const { data: decision, error: decisionError } = await supabase
-        .from("task_decisions")
-        .insert([insertData])
-        .select()
-        .single();
+      const { data: decisionJson, error: decisionError } = await supabase.rpc("create_work_decision", {
+        p_id: creationId.current, p_data: insertData, p_participants: selectedUsers, p_note_id: note.id,
+      });
+      const decision = decisionJson as unknown as { id: string };
 
       if (decisionError) throw decisionError;
 
@@ -281,31 +281,6 @@ export function NoteDecisionCreator({
           await supabase.from('task_decisions').delete().eq('id', decision.id);
           throw new Error(`Anhänge konnten nicht gespeichert werden: ${uploadResult.failed.map(f => `${f.fileName}: ${f.reason}`).join(' | ')}`);
         }
-      }
-
-      // Link to note
-      const { error: noteError } = await supabase
-        .from("quick_notes")
-        .update({ decision_id: decision.id })
-        .eq("id", note.id)
-        .eq("user_id", user.id);
-
-      if (noteError) {
-        debugConsole.warn('Error linking decision to note:', noteError);
-      }
-
-      // Add participants (only if there are any)
-      if (selectedUsers.length > 0) {
-        const participantInserts = selectedUsers.map(userId => ({
-          decision_id: decision.id,
-          user_id: userId
-        }));
-
-        const { error: participantError } = await supabase
-          .from("task_decision_participants")
-          .insert(participantInserts);
-
-        if (participantError) throw participantError;
       }
 
       // Send notifications
@@ -357,6 +332,7 @@ export function NoteDecisionCreator({
 
       notify.success("Entscheidungsanfrage erstellt");
       onOpenChange(false);
+      creationId.current = crypto.randomUUID();
       onDecisionCreated();
 
       // Reset form

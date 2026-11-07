@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTenant } from "@/hooks/useTenant";
+import { useRef, useCallback, useEffect, useMemo, useState } from "react";
 import { debugConsole } from "@/utils/debugConsole";
 import { supabase } from "@/integrations/supabase/client";
 import { useDecisionAttachmentUpload } from "@/hooks/useDecisionAttachmentUpload";
@@ -54,6 +55,7 @@ const getErrorMessage = (error: unknown): string => {
 interface UseDecisionCreatorParams {
   taskId?: string;
   caseItemId?: string;
+  caseFileId?: string;
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   initialTitle?: string;
@@ -65,6 +67,7 @@ interface UseDecisionCreatorParams {
 export const useDecisionCreator = ({
   taskId,
   caseItemId,
+  caseFileId,
   isOpen: externalOpen,
   onOpenChange: externalOnOpenChange,
   initialTitle,
@@ -72,6 +75,8 @@ export const useDecisionCreator = ({
   onDecisionCreated,
   onCreatedWithId,
 }: UseDecisionCreatorParams) => {
+  const { currentTenant } = useTenant();
+  const creationId = useRef(crypto.randomUUID());
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = externalOpen !== undefined;
   const isOpen = isControlled ? externalOpen : internalOpen;
@@ -159,7 +164,7 @@ export const useDecisionCreator = ({
       const { data: tenantMembers } = await supabase
         .from("user_tenant_memberships")
         .select("user_id")
-        .eq("tenant_id", tenantData.tenant_id)
+        .eq("tenant_id", tenantData.id)
         .eq("is_active", true);
 
       const tenantUserIdsArray = tenantMembers?.map((member: Record<string, any>) => member.user_id) || [];
@@ -277,22 +282,12 @@ export const useDecisionCreator = ({
         throw new Error("User not authenticated");
       }
 
-      const { data: tenantData, error: tenantError } = await supabase
-        .from("user_tenant_memberships")
-        .select("tenant_id")
-        .eq("user_id", userData.user.id)
-        .eq("is_active", true)
-        .single();
-
-      if (tenantError || !tenantData) {
-        debugConsole.error("Tenant lookup error:", tenantError);
-        throw new Error("Unable to determine user tenant");
-      }
-
+      const tenantData = currentTenant;
+      if (!tenantData) throw new Error("Kein Büro ausgewählt");
       const { data: tenantMembers } = await supabase
         .from("user_tenant_memberships")
         .select("user_id")
-        .eq("tenant_id", tenantData.tenant_id)
+        .eq("tenant_id", tenantData.id)
         .eq("is_active", true);
 
       const tenantUserIds = new Set(tenantMembers?.map((member: Record<string, any>) => member.user_id) || []);
@@ -308,21 +303,21 @@ export const useDecisionCreator = ({
       const insertData = {
         task_id: taskId ?? null,
         case_item_id: caseItemId ?? null,
+        case_file_id: caseFileId ?? null,
         title: title.trim(),
         description: description.trim() || null,
         response_deadline: responseDeadline ? new Date(responseDeadline).toISOString() : null,
         created_by: userData.user.id,
-        tenant_id: tenantData.tenant_id,
+        tenant_id: tenantData.id,
         visible_to_all: visibleToAll,
         response_options: JSON.parse(JSON.stringify(currentOptions)),
         priority: priority ? 1 : 0,
       };
 
-      const { data: decision, error: decisionError } = await supabase
-        .from("task_decisions")
-        .insert(insertData)
-        .select()
-        .single();
+      const { data: decisionJson, error: decisionError } = await supabase.rpc("create_work_decision", {
+        p_id: creationId.current, p_data: insertData, p_participants: validSelectedUsers, p_note_id: undefined,
+      });
+      const decision = decisionJson as unknown as { id: string };
 
       if (decisionError) {
         debugConsole.error("Decision creation error:", decisionError);
@@ -351,19 +346,6 @@ export const useDecisionCreator = ({
 
       if (selectedTopicIds.length > 0) {
         await saveDecisionTopics(decision.id, selectedTopicIds);
-      }
-
-      if (validSelectedUsers.length > 0) {
-        const participants = validSelectedUsers.map((userId) => ({
-          decision_id: decision.id,
-          user_id: userId,
-        }));
-
-        const { error: participantsError } = await supabase.from("task_decision_participants").insert(participants);
-        if (participantsError) {
-          debugConsole.error("Participants creation error:", participantsError);
-          throw participantsError;
-        }
       }
 
       for (const userId of validSelectedUsers) {
@@ -445,7 +427,7 @@ export const useDecisionCreator = ({
               participantIds: validSelectedUsers,
               decisionTitle: title.trim(),
               decisionDescription: description.trim() || null,
-              tenantId: tenantData.tenant_id,
+              tenantId: tenantData.id,
             },
           });
 
@@ -489,6 +471,7 @@ export const useDecisionCreator = ({
 
       resetForm();
       handleOpenChange(false);
+      creationId.current = crypto.randomUUID();
       onDecisionCreated();
       if (onCreatedWithId && decision?.id) onCreatedWithId(decision.id);
     } catch (error) {
@@ -503,7 +486,9 @@ export const useDecisionCreator = ({
       setUploadStatus(null);
     }
   }, [
+    currentTenant,
     caseItemId,
+    caseFileId,
     currentOptions,
     description,
     handleOpenChange,
