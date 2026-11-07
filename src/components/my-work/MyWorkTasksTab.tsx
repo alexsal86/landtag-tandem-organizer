@@ -23,6 +23,8 @@ import { MyWorkEmptyState } from "./MyWorkEmptyState";
 import { ListTodo } from "lucide-react";
 import { useMyWorkTaskActions } from "./useMyWorkTaskActions";
 import { notify } from "@/lib/notify";
+import { Button } from "@/components/ui/button";
+import { TaskStafetteWorkspace } from "./tasks/workspace/TaskStafetteWorkspace";
 
 export function MyWorkTasksTab() {
   const { user } = useAuth();
@@ -68,6 +70,10 @@ export function MyWorkTasksTab() {
   const [showCelebration, setShowCelebration] = useState(false);
 
   const [todoCreateOpen, setTodoCreateOpen] = useState(false);
+  const [workspaceMode, setWorkspaceMode] = usePersistentState<"stafette" | "classic">(
+    "mywork-tasks-workspace-mode",
+    "stafette",
+  );
 
   useEffect(() => {
     const action = searchParams.get("action");
@@ -221,8 +227,76 @@ export function MyWorkTasksTab() {
       void actions.handleQuickClearSnooze(taskId),
   };
 
+  const dialogsAndExtras = (
+    <>
+      <MyWorkTaskDialogs
+        profiles={profiles}
+        tasks={allTasks}
+        taskSnoozes={taskSnoozes}
+        availableTaskStatuses={availableTaskStatuses}
+        availableTaskCategories={availableTaskCategories}
+        dialogState={dialogState}
+        getTaskTitle={helpers.getTaskTitle}
+        onSetSnooze={actions.handleSetSnooze}
+        onClearSnooze={actions.handleClearSnooze}
+        onUpdateAssignee={actions.handleUpdateAssignee}
+        onSelectMeeting={actions.handleSelectMeeting}
+        onMarkForNextJourFixe={actions.handleMarkForNextJourFixe}
+        onSaveTaskEdit={actions.handleSaveTaskEdit}
+        onDecisionCreated={() => {
+          notify.success("Entscheidungsanfrage erstellt");
+        }}
+      />
+      <CelebrationAnimationSystem
+        isVisible={showCelebration}
+        onAnimationComplete={() => setShowCelebration(false)}
+      />
+      <TodoCreateDialog
+        open={todoCreateOpen}
+        onOpenChange={setTodoCreateOpen}
+        onTodoCreated={() => loadTasks()}
+      />
+    </>
+  );
+
+  const modeToggle = (
+    <div className="flex justify-end gap-xs px-4 pt-2">
+      <Button size="sm" variant={workspaceMode === "stafette" ? "default" : "outline"} onClick={() => setWorkspaceMode("stafette")}>
+        Stafette
+      </Button>
+      <Button size="sm" variant={workspaceMode === "classic" ? "default" : "outline"} onClick={() => setWorkspaceMode("classic")}>
+        Klassisch
+      </Button>
+    </div>
+  );
+
+  if (workspaceMode === "stafette") {
+    const uniqueTopLevel = Array.from(
+      new Map([...assignedTasks, ...createdTasks].map((t) => [t.id, t])).values(),
+    );
+    return (
+      <div className="h-[calc(100vh-20rem)] flex flex-col">
+        {modeToggle}
+        <div className="flex-1 min-h-0 flex flex-col pt-2">
+          <TaskStafetteWorkspace
+            userId={user?.id}
+            tasks={uniqueTopLevel}
+            profiles={profiles ?? []}
+            onReload={loadTasks}
+            onComplete={(id) => actions.handleToggleComplete(id)}
+            onDecision={actions.handleDecision}
+            onJourFixe={actions.handleAddToMeeting}
+            onCreate={() => setTodoCreateOpen(true)}
+          />
+        </div>
+        {dialogsAndExtras}
+      </div>
+    );
+  }
+
   return (
     <div className="h-[calc(100vh-20rem)] flex flex-col">
+      {modeToggle}
       <MyWorkTasksToolbar
         totalTasks={totalTasks}
         statusFilter={statusFilter}
@@ -343,35 +417,7 @@ export function MyWorkTasksTab() {
         </div>
       )}
 
-      <MyWorkTaskDialogs
-        profiles={profiles}
-        tasks={allTasks}
-        taskSnoozes={taskSnoozes}
-        availableTaskStatuses={availableTaskStatuses}
-        availableTaskCategories={availableTaskCategories}
-        dialogState={dialogState}
-        getTaskTitle={helpers.getTaskTitle}
-        onSetSnooze={actions.handleSetSnooze}
-        onClearSnooze={actions.handleClearSnooze}
-        onUpdateAssignee={actions.handleUpdateAssignee}
-        onSelectMeeting={actions.handleSelectMeeting}
-        onMarkForNextJourFixe={actions.handleMarkForNextJourFixe}
-        onSaveTaskEdit={actions.handleSaveTaskEdit}
-        onDecisionCreated={() => {
-          notify.success("Entscheidungsanfrage erstellt");
-        }}
-      />
-
-      <CelebrationAnimationSystem
-        isVisible={showCelebration}
-        onAnimationComplete={() => setShowCelebration(false)}
-      />
-
-      <TodoCreateDialog
-        open={todoCreateOpen}
-        onOpenChange={setTodoCreateOpen}
-        onTodoCreated={() => loadTasks()}
-      />
+      {dialogsAndExtras}
     </div>
   );
 }
