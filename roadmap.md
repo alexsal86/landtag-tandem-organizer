@@ -1,9 +1,9 @@
 # Roadmap Aufgaben
 
-- [ ] Anstupsen (Rules, RPCs, UI, Tests, Selftest)
-- [ ] Erinnerung mit freier Uhrzeit
-- [ ] Erinnerung ohne geöffnete App (zeitgesteuerte Benachrichtigung)
-- [ ] Checkliste innerhalb einer Aufgabe
-- [ ] Mehrfachauswahl: gebündelt übergeben / Frist verschieben
-- [ ] Schnelles Abstimmen für Abgeordnete
+- [x] Anstupsen (Rules, RPCs, UI, Tests, Selftest)
+- [x] Erinnerung mit freier Uhrzeit
+- [x] Erinnerung ohne geöffnete App (stündliche Benachrichtigung)
+- [x] Checkliste innerhalb einer Aufgabe
+- [x] Mehrfachauswahl: gebündelt übergeben / Frist verschieben / anstupsen
+- [x] Schnelles Abstimmen direkt in der Aufgabe
 - Alte Aufgabenansicht bleibt erhalten (nicht löschen)
