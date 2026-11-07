@@ -32,3 +32,19 @@ describe("stafette rules", () => {
     expect(ev.map((e) => e.text)).toEqual(["Am Zug: Büro → Abgeordnete/r", "Schritt erledigt: „Entwurf“"]);
   });
 });
+
+import { isReminderDue as _due, reminderPreset as _preset } from "./stafette";
+describe("Erinnerungen", () => {
+  const now = new Date(2026, 10, 7, 10, 0);
+  it("fällige Erinnerung holt wartende Aufgabe in Mein Zug", () => {
+    expect(taskZone({ ball_owner: "deputy", reminder_at: new Date(2026, 10, 7, 9).toISOString() }, "me", now)).toBe("mine");
+  });
+  it("künftige Erinnerung lässt Aufgabe wartend", () => {
+    expect(taskZone({ ball_owner: "deputy", reminder_at: new Date(2026, 10, 8, 9).toISOString() }, "me", now)).toBe("waiting");
+    expect(_due({ reminder_at: null }, now)).toBe(false);
+  });
+  it("Nächste Woche = kommender Montag 9 Uhr", () => {
+    const d = _preset("nextweek", now);
+    expect([d.getDate(), d.getHours()]).toEqual([9, 9]);
+  });
+});
