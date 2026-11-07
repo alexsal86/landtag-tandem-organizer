@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 // Nur die generischen Prüf-/Cleanup-Helfer brauchen einen dynamischen Tabellennamen.
 // Konkrete Szenario-Schreibzugriffe bleiben am vollständigen generierten Schema typisiert.
 type DynamicTables = {
+  __InternalSupabase: { PostgrestVersion: "12.2.3" };
   public: {
     Tables: Record<string, {
       Row: { id: string } & Record<string, unknown>;
