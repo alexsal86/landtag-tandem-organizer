@@ -6,6 +6,7 @@ import { usePersistentState } from "@/hooks/usePersistentState";
 import { useViewPreference } from "@/hooks/useViewPreference";
 import { useMyWorkTasksData } from "@/hooks/useMyWorkTasksData";
 import { useTenant } from "@/hooks/useTenant";
+import { TaskTemplateButton } from "@/components/my-work/tasks/workspace/TaskTemplateDialog";
 import { DEFAULT_TASK_STATUSES, useTaskStatuses } from "@/hooks/useTaskStatuses";
 import { useTaskCategories } from "@/hooks/useTaskCategories";
 import { useTenantProfiles } from "@/hooks/useTenantProfiles";
@@ -261,6 +262,7 @@ export function MyWorkTasksTab() {
 
   const modeToggle = (
     <div className="flex justify-end gap-xs px-4 pt-2">
+      {workspaceMode === "stafette" && <TaskTemplateButton userId={user?.id} tenantId={currentTenant?.id} onCreated={() => void loadTasks()} />}
       <Button size="sm" variant={workspaceMode === "stafette" ? "default" : "outline"} onClick={() => setWorkspaceMode("stafette")}>
         Stafette
       </Button>

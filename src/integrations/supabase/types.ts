@@ -11891,6 +11891,7 @@ export type Database = {
           pending_for_jour_fixe: boolean | null
           priority: string
           progress: number | null
+          recurrence_rule: string | null
           reminder_at: string | null
           reminder_note: string | null
           reminder_notified_at: string | null
@@ -11926,6 +11927,7 @@ export type Database = {
           pending_for_jour_fixe?: boolean | null
           priority?: string
           progress?: number | null
+          recurrence_rule?: string | null
           reminder_at?: string | null
           reminder_note?: string | null
           reminder_notified_at?: string | null
@@ -11961,6 +11963,7 @@ export type Database = {
           pending_for_jour_fixe?: boolean | null
           priority?: string
           progress?: number | null
+          recurrence_rule?: string | null
           reminder_at?: string | null
           reminder_note?: string | null
           reminder_notified_at?: string | null
@@ -13920,6 +13923,10 @@ export type Database = {
           user_id_param: string
         }
         Returns: undefined
+      }
+      next_recurrence_date: {
+        Args: { _base: string; _rule: string }
+        Returns: string
       }
       nudge_task: {
         Args: { _note?: string; _task_id: string }

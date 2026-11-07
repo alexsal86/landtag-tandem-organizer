@@ -199,6 +199,7 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
             onDecision={() => onDecision(selected.id)}
             onJourFixe={() => onJourFixe(selected.id)}
             registerShortcuts={(h) => { shortcuts.current = h; }}
+            onReload={() => void onReload()}
           />
         )}
       </div>

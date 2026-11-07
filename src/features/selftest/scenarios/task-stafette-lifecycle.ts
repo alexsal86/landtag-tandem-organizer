@@ -1,4 +1,5 @@
 import { canNudge, checklistEvents, isNudgeActive, shiftDay, isReminderDue, groupByZone, isOnResubmission, stafetteEvents, taskZone, type StafetteTask } from "@/features/tasks/stafette";
+import { TASK_TEMPLATES, buildTemplateRows, nextRecurrenceDate, subtaskProgress } from "@/features/tasks/templates";
 import type { TestScenario } from "../types";
 
 const NOW = new Date(2026, 10, 7, 12);
@@ -76,6 +77,22 @@ export const taskStafetteLifecycleScenario: TestScenario = {
         const ev = stafetteEvents({ status: "todo" }, done, { now: NOW }).map((e) => e.text);
         const ok = g.mine.length + g.waiting.length + g.resubmission.length === 0 && ev.includes("Aufgabe abgeschlossen");
         return { ok, message: ok ? "Abschluss korrekt." : "Abschluss weicht ab.", details: ev };
+      },
+    },
+    {
+      id: "recurrence", label: "Wiederholung: nächste Frist korrekt berechnet", kind: "logic",
+      run: async () => {
+        const ok = nextRecurrenceDate("2026-11-07", "weekly") === "2026-11-14" && nextRecurrenceDate("2026-11-07", "quarterly") === "2027-02-07";
+        return { ok, message: ok ? "Wiederholungsregeln korrekt." : "Wiederholung weicht ab." };
+      },
+    },
+    {
+      id: "template-subtasks", label: "Vorlage legt Hauptaufgabe mit verknüpften Unteraufgaben an", kind: "logic",
+      run: async () => {
+        const { parent, children } = buildTemplateRows(TASK_TEMPLATES[0], { userId: ME, tenantId: "t" });
+        const prog = subtaskProgress([{ status: "completed" }, { status: "todo" }]);
+        const ok = children.length > 0 && children.every((c) => c.parent_task_id === parent.id) && prog.percent === 50;
+        return { ok, message: ok ? "Vorlage & Fortschritt korrekt." : "Vorlage weicht ab." };
       },
     },
   ],
