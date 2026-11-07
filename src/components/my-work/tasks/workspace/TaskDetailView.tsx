@@ -1,20 +1,27 @@
 import { useEffect, useState } from "react";
-import { Bell, BellOff, CalendarClock, Check, Gavel, Send, Users, Zap } from "lucide-react";
+import { Bell, BellOff, BellRing, CalendarClock, Check, ListChecks, Plus, X, Gavel, Send, Users, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { MyWorkTask } from "@/hooks/useMyWorkTasksData";
 import { sendToDaySlip, formatCaseDaySlipText } from "@/lib/daySlipBridge";
 import {
-  TASK_BALL_LABELS, isOnResubmission, isReminderDue, reminderPreset, parseTaskTimeline, stepState, type StafetteTask, type TaskBallOwner,
+  TASK_BALL_LABELS, canNudge, checklistProgress, isNudgeActive, isOnResubmission, isReminderDue, parseChecklist, reminderPreset, type ChecklistItem, parseTaskTimeline, stepState, type StafetteTask, type TaskBallOwner,
 } from "@/features/tasks/stafette";
 
 export interface TaskPatch extends StafetteTask {
   note?: string;
+  checklist?: ChecklistItem[];
+}
+
+export interface PendingVote {
+  title: string;
+  options: Array<{ key: string; label: string; requiresComment: boolean }>;
 }
 
 interface Props {
@@ -27,11 +34,16 @@ interface Props {
   onJourFixe: () => void;
   nameOf: (id: string | null | undefined) => string | undefined;
   registerShortcuts: (h: { stepDone: () => void; daySlip: () => void }) => void;
+  meId?: string;
+  onNudge: (note: string) => Promise<void>;
+  onAckNudge: (reply: string) => Promise<void>;
+  pendingVote: PendingVote | null;
+  onVote: (key: string, comment: string) => Promise<void>;
 }
 
 const OWNERS: TaskBallOwner[] = ["office", "deputy", "external"];
 
-export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComplete, onDecision, onJourFixe, nameOf, registerShortcuts }: Props) {
+export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComplete, onDecision, onJourFixe, nameOf, registerShortcuts, meId, onNudge, onAckNudge, pendingVote, onVote }: Props) {
   const [label, setLabel] = useState(task.next_action ?? "");
   const [due, setDue] = useState(task.next_action_due ?? "");
   const [owner, setOwner] = useState<TaskBallOwner>((task.ball_owner ?? "office") as TaskBallOwner);
@@ -40,6 +52,22 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
   const [doneDialog, setDoneDialog] = useState(false);
   const [saving, setSaving] = useState(false);
   const [remNote, setRemNote] = useState("");
+  const [remAt, setRemAt] = useState("");
+  const [nudgeNote, setNudgeNote] = useState("");
+  const [reply, setReply] = useState("");
+  const [newItem, setNewItem] = useState("");
+  const [voteComment, setVoteComment] = useState("");
+  const checklist = parseChecklist(task.checklist);
+  const progress = checklistProgress(checklist);
+  const nudgeForMe = isNudgeActive(task) && task.nudged_by !== meId;
+  const mayNudge = canNudge(task, meId);
+  const saveList = (items: ChecklistItem[]) => run(() => onSave({ checklist: items }));
+  const addItem = () => {
+    const text = newItem.trim();
+    if (!text) return;
+    setNewItem("");
+    void saveList([...checklist, { id: crypto.randomUUID(), text, done: false }]);
+  };
 
   useEffect(() => {
     setLabel(task.next_action ?? "");
@@ -80,6 +108,41 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
         </div>
         {task.description && <p className="text-body text-muted-foreground whitespace-pre-wrap line-clamp-4">{task.description}</p>}
       </div>
+
+      {nudgeForMe && (
+        <section className="rounded-lg border-2 border-primary bg-primary/10 p-md space-y-sm" role="alert">
+          <div className="flex items-center gap-xs text-body font-medium">
+            <BellRing className="h-4 w-4 text-primary" />
+            {nameOf(task.nudged_by) ?? "Jemand"} hat dich angestupst
+            {task.nudge_count && task.nudge_count > 1 ? <Badge variant="secondary">{task.nudge_count}×</Badge> : null}
+          </div>
+          <div className="text-caption text-muted-foreground">
+            {task.nudged_at ? new Date(task.nudged_at).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" }) : ""}
+            {task.nudge_note ? ` – „${task.nudge_note}“` : ""}
+          </div>
+          <Input value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Kurze Antwort (optional)" className="h-8" />
+          <div className="flex gap-xs">
+            <Button size="sm" disabled={saving} onClick={() => run(async () => { await onAckNudge(""); })}>Gesehen</Button>
+            <Button size="sm" variant="outline" disabled={saving || !reply.trim()} onClick={() => run(async () => { await onAckNudge(reply.trim()); setReply(""); })}>Antworten</Button>
+          </div>
+        </section>
+      )}
+
+      {pendingVote && (
+        <section className="rounded-lg border-2 border-primary p-md space-y-sm">
+          <div className="section-label flex items-center gap-xs"><Gavel className="h-3.5 w-3.5" />Deine Stimme ist gefragt</div>
+          <div className="text-body font-medium">{pendingVote.title}</div>
+          <Input value={voteComment} onChange={(e) => setVoteComment(e.target.value)} placeholder="Kommentar (bei Rückfrage nötig)" className="h-8" />
+          <div className="flex flex-wrap gap-xs">
+            {pendingVote.options.map((o) => (
+              <Button key={o.key} size="sm" variant={o.key === "yes" ? "default" : "outline"} disabled={saving || (o.requiresComment && !voteComment.trim())}
+                onClick={() => run(async () => { await onVote(o.key, voteComment.trim()); setVoteComment(""); })}>
+                {o.label}
+              </Button>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="rounded-lg border p-md space-y-sm">
         <div className="section-label">Wer ist am Zug?</div>
@@ -126,10 +189,41 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
             </Button>
           )}
         </div>
+        {mayNudge && (
+          <div className="flex gap-xs pt-xs border-t">
+            <Input value={nudgeNote} onChange={(e) => setNudgeNote(e.target.value)} placeholder="Nachricht zum Anstupsen (optional)" className="h-8" />
+            <Button size="sm" variant="outline" disabled={saving} onClick={() => run(async () => { await onNudge(nudgeNote.trim()); setNudgeNote(""); })}>
+              <BellRing className="h-4 w-4 mr-1" />Anstupsen
+            </Button>
+          </div>
+        )}
+        {!mayNudge && task.nudged_by === meId && isNudgeActive(task) && (
+          <div className="text-caption text-muted-foreground pt-xs border-t">Heute bereits angestupst – noch nicht gesehen.</div>
+        )}
       </section>
 
       <section className="rounded-lg border p-md space-y-sm">
-        <div className="section-label flex items-center gap-xs"><Bell className="h-3.5 w-3.5" />Erinnerung</div>
+        <div className="section-label flex items-center gap-xs"><ListChecks className="h-3.5 w-3.5" />Checkliste{progress.total ? ` (${progress.done}/${progress.total})` : ""}</div>
+        <ul className="space-y-2xs">
+          {checklist.map((item) => (
+            <li key={item.id} className="group flex items-center gap-xs">
+              <Checkbox checked={item.done} disabled={saving} aria-label={item.text}
+                onCheckedChange={() => saveList(checklist.map((i) => (i.id === item.id ? { ...i, done: !i.done } : i)))} />
+              <span className={cn("flex-1 text-body", item.done && "line-through text-muted-foreground")}>{item.text}</span>
+              <button type="button" aria-label="Punkt entfernen" className="opacity-0 group-hover:opacity-100 text-muted-foreground"
+                onClick={() => saveList(checklist.filter((i) => i.id !== item.id))}><X className="h-3.5 w-3.5" /></button>
+            </li>
+          ))}
+        </ul>
+        <div className="flex items-center gap-xs">
+          <Plus className="h-4 w-4 text-muted-foreground" />
+          <Input value={newItem} onChange={(e) => setNewItem(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addItem(); } }}
+            placeholder="Punkt hinzufügen, Enter für den nächsten" className="h-8" />
+        </div>
+      </section>
+
+      <section className="rounded-lg border p-md space-y-sm">
+        <div className="section-label flex items-center gap-xs"><Bell className="h-3.5 w-3.5" />Mich erinnern</div>
         {task.reminder_at ? (
           <div className={cn("rounded-md px-sm py-xs text-caption flex items-center justify-between gap-sm", isReminderDue(task) ? "bg-accent text-accent-foreground" : "bg-muted")}>
             <span>
@@ -151,6 +245,13 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
                   {l}
                 </Button>
               ))}
+            </div>
+            <div className="flex items-center gap-xs">
+              <Input type="datetime-local" value={remAt} onChange={(e) => setRemAt(e.target.value)} className="h-8 w-56" aria-label="Eigene Uhrzeit" />
+              <Button size="sm" variant="outline" disabled={saving || !remAt}
+                onClick={() => run(async () => { await onSave({ reminder_at: new Date(remAt).toISOString(), reminder_note: remNote.trim() || null }); setRemNote(""); setRemAt(""); })}>
+                Setzen
+              </Button>
             </div>
           </>
         )}
