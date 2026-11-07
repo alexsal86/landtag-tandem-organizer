@@ -151,3 +151,28 @@ export function parseTaskTimeline(raw: unknown): StafetteEvent[] {
     (e): e is StafetteEvent => !!e && typeof e === "object" && typeof (e as StafetteEvent).text === "string" && typeof (e as StafetteEvent).at === "string",
   );
 }
+
+export interface ChecklistItem { id: string; text: string; done: boolean }
+
+export function parseChecklist(raw: unknown): ChecklistItem[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((i): i is ChecklistItem => !!i && typeof i === "object" && typeof (i as ChecklistItem).text === "string")
+    .map((i) => ({ id: String(i.id ?? i.text), text: i.text, done: !!i.done }));
+}
+
+export function checklistProgress(items: ChecklistItem[]): { done: number; total: number } {
+  return { done: items.filter((i) => i.done).length, total: items.length };
+}
+
+/** Timeline texts for checklist items that were newly ticked off. */
+export function checklistEvents(before: ChecklistItem[], after: ChecklistItem[]): string[] {
+  const was = new Map(before.map((i) => [i.id, i.done]));
+  return after.filter((i) => i.done && !was.get(i.id)).map((i) => `Checkpunkt erledigt: „${i.text}“`);
+}
+
+/** Shift a YYYY-MM-DD date (or today, if empty) by n days. */
+export function shiftDay(day: string | null | undefined, days: number, now: Date = new Date()): string {
+  const base = day ? parseDay(day) : dayStart(now);
+  base.setDate(base.getDate() + days);
+  return `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, "0")}-${String(base.getDate()).padStart(2, "0")}`;
+}
