@@ -11885,6 +11885,8 @@ export type Database = {
           pending_for_jour_fixe: boolean | null
           priority: string
           progress: number | null
+          reminder_at: string | null
+          reminder_note: string | null
           source_id: string | null
           source_type: string | null
           status: string
@@ -11911,6 +11913,8 @@ export type Database = {
           pending_for_jour_fixe?: boolean | null
           priority?: string
           progress?: number | null
+          reminder_at?: string | null
+          reminder_note?: string | null
           source_id?: string | null
           source_type?: string | null
           status?: string
@@ -11937,6 +11941,8 @@ export type Database = {
           pending_for_jour_fixe?: boolean | null
           priority?: string
           progress?: number | null
+          reminder_at?: string | null
+          reminder_note?: string | null
           source_id?: string | null
           source_type?: string | null
           status?: string
