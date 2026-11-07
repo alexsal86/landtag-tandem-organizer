@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { MyWorkTask } from "@/hooks/useMyWorkTasksData";
+import { TaskSubtasks, TaskRecurrence } from "./TaskSubtasks";
 import { sendToDaySlip, formatCaseDaySlipText } from "@/lib/daySlipBridge";
 import {
   TASK_BALL_LABELS, canNudge, checklistProgress, isNudgeActive, isOnResubmission, isReminderDue, parseChecklist, reminderPreset, type ChecklistItem, parseTaskTimeline, stepState, type StafetteTask, type TaskBallOwner,
@@ -39,11 +40,12 @@ interface Props {
   onAckNudge: (reply: string) => Promise<void>;
   pendingVote: PendingVote | null;
   onVote: (key: string, comment: string) => Promise<void>;
+  onReload: () => void;
 }
 
 const OWNERS: TaskBallOwner[] = ["office", "deputy", "external"];
 
-export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComplete, onDecision, onJourFixe, nameOf, registerShortcuts, meId, onNudge, onAckNudge, pendingVote, onVote }: Props) {
+export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComplete, onDecision, onJourFixe, nameOf, registerShortcuts, meId, onNudge, onAckNudge, pendingVote, onVote, onReload }: Props) {
   const [label, setLabel] = useState(task.next_action ?? "");
   const [due, setDue] = useState(task.next_action_due ?? "");
   const [owner, setOwner] = useState<TaskBallOwner>((task.ball_owner ?? "office") as TaskBallOwner);
@@ -106,6 +108,7 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           {decisionLabel && <Badge variant="secondary"><Gavel className="h-3 w-3 mr-1" />{decisionLabel}</Badge>}
           {task.pending_for_jour_fixe && <Badge variant="secondary"><Users className="h-3 w-3 mr-1" />Jour Fixe</Badge>}
         </div>
+        <TaskRecurrence taskId={task.id} value={task.recurrence_rule} onChanged={onReload} />
         {task.description && <p className="text-body text-muted-foreground whitespace-pre-wrap line-clamp-4">{task.description}</p>}
       </div>
 
@@ -201,6 +204,8 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           <div className="text-caption text-muted-foreground pt-xs border-t">Heute bereits angestupst – noch nicht gesehen.</div>
         )}
       </section>
+
+      <TaskSubtasks taskId={task.id} tenantId={task.tenant_id} userId={meId} nameOf={nameOf} profiles={profiles} />
 
       <section className="rounded-lg border p-md space-y-sm">
         <div className="section-label flex items-center gap-xs"><ListChecks className="h-3.5 w-3.5" />Checkliste{progress.total ? ` (${progress.done}/${progress.total})` : ""}</div>
