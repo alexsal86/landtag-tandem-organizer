@@ -205,7 +205,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
         const result = await persistLetterTransition(letter.id, editedLetter.status || 'draft', newStatus, userId!, !!editedLetter.workflow_locked);
         if (result.archive) {
           const archiveResult = result.archive;
-          setEditedLetter(prev => ({ ...prev, ...result.updates,
+          setEditedLetter(prev => ({ ...prev, ...(result.updates as Partial<Letter>),
             archived_document_id: archiveResult.documentId,
             archived_at: archiveResult.archivedAt,
             archived_by: archiveResult.archivedBy,
@@ -216,7 +216,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
               : 'Brief wurde versendet und automatisch in die Dokumentenverwaltung übernommen.'
           });
         } else {
-          setEditedLetter(prev => ({ ...prev, ...result.updates }));
+          setEditedLetter(prev => ({ ...prev, ...(result.updates as Partial<Letter>) }));
         }
       } catch (error) {
         debugConsole.error('Error updating workflow tracking:', error);
@@ -225,7 +225,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
         return;
       }
     } else {
-      setEditedLetter(prev => ({ ...prev, ...workflowUpdates }));
+      setEditedLetter(prev => ({ ...prev, ...(workflowUpdates as Partial<Letter>) }));
     }
 
     if (newStatus === 'review' || newStatus === 'pending_approval') setIsProofreadingMode(true);
