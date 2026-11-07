@@ -55,7 +55,12 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
   );
 
   const save = async (task: MyWorkTask, patch: TaskPatch) => {
-    const { note, ...fields } = patch;
+    const { note } = patch;
+    const fields: Partial<MyWorkTask> = {};
+    if ("ball_owner" in patch) fields.ball_owner = patch.ball_owner;
+    if ("ball_assignee_id" in patch) fields.ball_assignee_id = patch.ball_assignee_id;
+    if ("next_action" in patch) fields.next_action = patch.next_action;
+    if ("next_action_due" in patch) fields.next_action_due = patch.next_action_due;
     const after = { ...task, ...fields };
     const events: StafetteEvent[] = stafetteEvents(task, after, { actorName: nameOf(userId), nameOf: (id) => nameOf(id) });
     if (note) events.push({ id: `${Date.now()}-n`, type: "note", at: new Date().toISOString(), actorName: nameOf(userId), text: note });
