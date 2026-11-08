@@ -498,6 +498,155 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
     </>
   );
 
+  // ── editable overlays for page-1 zones ──
+  const renderOverlays = () => (
+    <>
+            <EditableCanvasOverlay
+              top={50}
+              left={MARGIN_L_MM}
+              width={addressFieldWidth}
+              height={returnAddressHeight}
+              label="Rücksendezeile"
+              canEdit={canEdit && !!onSenderChange}
+            >
+              <div className="space-y-2">
+                <Label className="text-xs">Absender</Label>
+                <Select
+                  value={selectedSenderId || 'none'}
+                  onValueChange={(v) => onSenderChange?.(v === 'none' ? '' : v)}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Absender wählen..." />
+                  </SelectTrigger>
+                  <SelectContent className="z-[200]">
+                    <SelectItem value="none">Kein Absender</SelectItem>
+                    {senderInfos.map((info) => (
+                      <SelectItem key={info.id} value={info.id}>{info.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </EditableCanvasOverlay>
+
+            <EditableCanvasOverlay
+              top={50 + returnAddressHeight}
+              left={MARGIN_L_MM}
+              width={addressFieldWidth}
+              height={addressZoneHeight}
+              label="Empfängeradresse"
+              canEdit={canEdit && !!(onRecipientNameChange || onRecipientAddressChange)}
+            >
+              <div className="space-y-2">
+                <div>
+                  <Label className="text-xs">Aus Kontakten wählen</Label>
+                  <ContactSelector
+                    onSelect={(c) => onRecipientContactSelect?.(c)}
+                    selectedContactId={selectedRecipientContactId}
+                    placeholder="Kontakt aus Adressbuch wählen..."
+                    className="text-xs"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Name</Label>
+                  <Input
+                    className="h-8 text-xs"
+                    value={recipientAddress?.name || ''}
+                    onChange={(e) => onRecipientNameChange?.(e.target.value)}
+                    placeholder="Empfängername"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Adresse</Label>
+                  <Textarea
+                    className="text-xs min-h-[60px]"
+                    value={recipientAddress?.address || ''}
+                    onChange={(e) => onRecipientAddressChange?.(e.target.value)}
+                    placeholder="Straße, PLZ Ort"
+                    rows={3}
+                  />
+                </div>
+              </div>
+            </EditableCanvasOverlay>
+
+            <EditableCanvasOverlay
+              top={50}
+              left={125}
+              width={75}
+              height={40}
+              label="Informationsblock"
+              canEdit={canEdit && !!onInfoBlockChange}
+            >
+              <div className="space-y-2">
+                <Label className="text-xs">Blöcke auswählen</Label>
+                {informationBlocks.map((block) => (
+                  <label key={block.id} className="flex items-center gap-2 text-xs cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedInfoBlockIds.includes(block.id)}
+                      onChange={(e) => {
+                        const newIds = e.target.checked
+                          ? [...selectedInfoBlockIds, block.id]
+                          : selectedInfoBlockIds.filter((id: string) => id !== block.id);
+                        onInfoBlockChange?.(newIds);
+                      }}
+                      className="rounded border-input"
+                    />
+                    {block.label}
+                  </label>
+                ))}
+                {informationBlocks.length === 0 && (
+                  <p className="text-xs text-muted-foreground">Keine Blöcke verfügbar</p>
+                )}
+              </div>
+            </EditableCanvasOverlay>
+
+            <EditableCanvasOverlay
+              top={subjectTopMm}
+              left={MARGIN_L_MM}
+              width={CONTENT_W_MM}
+              height={subjectHeightMm + 2}
+              label="Betreff"
+              canEdit={canEdit && !!onSubjectChange}
+            >
+              <div>
+                <Label className="text-xs">Betreff</Label>
+                <Input
+                  className="h-8 text-xs"
+                  value={subject || ''}
+                  onChange={(e) => onSubjectChange?.(e.target.value)}
+                  placeholder="Betreff des Briefes"
+                />
+              </div>
+            </EditableCanvasOverlay>
+
+            {/* Anlagen-Overlay entfernt: Bearbeitung erfolgt inline im Content-Flow */}
+
+            {salutation && (
+              <EditableCanvasOverlay
+                top={subjectTopMm + subjectHeightMm + gapAfterSubjectMm}
+                left={MARGIN_L_MM}
+                width={CONTENT_W_MM}
+                height={salutationHeightMm + 2}
+                label="Anrede"
+                canEdit={canEdit && !!onSalutationChange}
+              >
+                <div>
+                  <Label className="text-xs">Anrede</Label>
+                  <Input
+                    className="h-8 text-xs"
+                    value={salutation || ''}
+                    onChange={(e) => onSalutationChange?.(e.target.value)}
+                    placeholder="Sehr geehrte Damen und Herren,"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Leer = automatische Anrede
+                  </p>
+                </div>
+              </EditableCanvasOverlay>
+            )}
+          </>
+  );
+
   // ── Google-Docs-Modus: one continuous sheet with live editor and page-break markers ──
   const renderInlinePage = () => {
     const sheetHeightMm = Math.max(PAGE_H_MM, contentStartMm + flowHeightMm + 40);
@@ -699,153 +848,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
         )}
 
         {/* ── Editable overlays (page 1 only) ── */}
-        {isFirst && (
-          <>
-            <EditableCanvasOverlay
-              top={50}
-              left={MARGIN_L_MM}
-              width={addressFieldWidth}
-              height={returnAddressHeight}
-              label="Rücksendezeile"
-              canEdit={canEdit && !!onSenderChange}
-            >
-              <div className="space-y-2">
-                <Label className="text-xs">Absender</Label>
-                <Select
-                  value={selectedSenderId || 'none'}
-                  onValueChange={(v) => onSenderChange?.(v === 'none' ? '' : v)}
-                >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Absender wählen..." />
-                  </SelectTrigger>
-                  <SelectContent className="z-[200]">
-                    <SelectItem value="none">Kein Absender</SelectItem>
-                    {senderInfos.map((info) => (
-                      <SelectItem key={info.id} value={info.id}>{info.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </EditableCanvasOverlay>
-
-            <EditableCanvasOverlay
-              top={50 + returnAddressHeight}
-              left={MARGIN_L_MM}
-              width={addressFieldWidth}
-              height={addressZoneHeight}
-              label="Empfängeradresse"
-              canEdit={canEdit && !!(onRecipientNameChange || onRecipientAddressChange)}
-            >
-              <div className="space-y-2">
-                <div>
-                  <Label className="text-xs">Aus Kontakten wählen</Label>
-                  <ContactSelector
-                    onSelect={(c) => onRecipientContactSelect?.(c)}
-                    selectedContactId={selectedRecipientContactId}
-                    placeholder="Kontakt aus Adressbuch wählen..."
-                    className="text-xs"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Name</Label>
-                  <Input
-                    className="h-8 text-xs"
-                    value={recipientAddress?.name || ''}
-                    onChange={(e) => onRecipientNameChange?.(e.target.value)}
-                    placeholder="Empfängername"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Adresse</Label>
-                  <Textarea
-                    className="text-xs min-h-[60px]"
-                    value={recipientAddress?.address || ''}
-                    onChange={(e) => onRecipientAddressChange?.(e.target.value)}
-                    placeholder="Straße, PLZ Ort"
-                    rows={3}
-                  />
-                </div>
-              </div>
-            </EditableCanvasOverlay>
-
-            <EditableCanvasOverlay
-              top={50}
-              left={125}
-              width={75}
-              height={40}
-              label="Informationsblock"
-              canEdit={canEdit && !!onInfoBlockChange}
-            >
-              <div className="space-y-2">
-                <Label className="text-xs">Blöcke auswählen</Label>
-                {informationBlocks.map((block) => (
-                  <label key={block.id} className="flex items-center gap-2 text-xs cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectedInfoBlockIds.includes(block.id)}
-                      onChange={(e) => {
-                        const newIds = e.target.checked
-                          ? [...selectedInfoBlockIds, block.id]
-                          : selectedInfoBlockIds.filter((id: string) => id !== block.id);
-                        onInfoBlockChange?.(newIds);
-                      }}
-                      className="rounded border-input"
-                    />
-                    {block.label}
-                  </label>
-                ))}
-                {informationBlocks.length === 0 && (
-                  <p className="text-xs text-muted-foreground">Keine Blöcke verfügbar</p>
-                )}
-              </div>
-            </EditableCanvasOverlay>
-
-            <EditableCanvasOverlay
-              top={subjectTopMm}
-              left={MARGIN_L_MM}
-              width={CONTENT_W_MM}
-              height={subjectHeightMm + 2}
-              label="Betreff"
-              canEdit={canEdit && !!onSubjectChange}
-            >
-              <div>
-                <Label className="text-xs">Betreff</Label>
-                <Input
-                  className="h-8 text-xs"
-                  value={subject || ''}
-                  onChange={(e) => onSubjectChange?.(e.target.value)}
-                  placeholder="Betreff des Briefes"
-                />
-              </div>
-            </EditableCanvasOverlay>
-
-            {/* Anlagen-Overlay entfernt: Bearbeitung erfolgt inline im Content-Flow */}
-
-            {salutation && (
-              <EditableCanvasOverlay
-                top={subjectTopMm + subjectHeightMm + gapAfterSubjectMm}
-                left={MARGIN_L_MM}
-                width={CONTENT_W_MM}
-                height={salutationHeightMm + 2}
-                label="Anrede"
-                canEdit={canEdit && !!onSalutationChange}
-              >
-                <div>
-                  <Label className="text-xs">Anrede</Label>
-                  <Input
-                    className="h-8 text-xs"
-                    value={salutation || ''}
-                    onChange={(e) => onSalutationChange?.(e.target.value)}
-                    placeholder="Sehr geehrte Damen und Herren,"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Leer = automatische Anrede
-                  </p>
-                </div>
-              </EditableCanvasOverlay>
-            )}
-          </>
-        )}
+        {isFirst && renderOverlays()}
 
         {/* Click-to-edit on body zone */}
         {canEdit && onRequestContentEdit && (
@@ -943,7 +946,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
             paddingBottom: `${(1 - zoom) * totalPages * PAGE_H_MM * MM_TO_PX}px`,
           }}
         >
-          {Array.from({ length: totalPages }, (_, i) => renderPage(i))}
+          {inlineEditor ? renderInlinePage() : Array.from({ length: totalPages }, (_, i) => renderPage(i))}
         </div>
       </div>
 
