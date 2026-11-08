@@ -12,3 +12,4 @@
 - Appointment briefings move only via set_appointment_briefing/advance_appointment_briefing RPCs (role-checked, create/close the linked task atomically); rules live in src/features/appointments/briefing.ts so UI and selftests share them.
 - Jour-fixe system types use a shared registry and bounded tenant-scoped cached loaders across existing views; adding a source must include editor, focus, template and selftest coverage to prevent rendering drift.
 - Meeting archival goes through archive_meeting_with_stafette with invoker RLS, a locked meeting and per-meeting source uniqueness; notes document decisions by ID without fabricating votes, while existing voting owns approval and ball return.
+- The letter editor's default "page" mode renders the Lexical editor inside LetterEditorCanvas (inlineEditor prop) on one continuous A4 sheet with page-break markers; the split view stays as fallback because a contenteditable cannot be split across separate page DOM nodes.
