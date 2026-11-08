@@ -498,7 +498,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
       </Card>
 
       {editingItem && (
-        <aside aria-label="Beitrag bearbeiten" className="w-full min-w-0 shrink-0 xl:sticky xl:top-4 xl:w-[min(44%,640px)]">
+        <aside aria-label="Beitrag bearbeiten" className="w-full min-w-0 shrink-0 xl:sticky xl:top-4 xl:w-[min(62%,1040px)]">
         <Suspense fallback={<div className="rounded-lg border bg-card p-6" role="status">Lade Beitragsbearbeitung…</div>}>
           <SocialPlannerEditPanel
             key={editingItem.id}

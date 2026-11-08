@@ -32,6 +32,8 @@ const STATUS_LABELS: Record<string, string> = {
   published: "Veröffentlicht",
 };
 
+export const PLANNER_ITEM_MIME = "application/x-planner-item";
+
 interface Props {
   item: SocialPlannerItem;
   onClick?: () => void;
@@ -46,8 +48,14 @@ export const PlannerPostCard = memo(function PlannerPostCard({ item, onClick }: 
 
   return (
     <div
-      className="cursor-pointer rounded-md border bg-card p-2 shadow-sm transition-shadow hover:shadow-md text-xs space-y-1.5"
+      className="cursor-grab active:cursor-grabbing rounded-md border bg-card p-2 shadow-sm transition-shadow hover:shadow-md text-xs space-y-1.5"
       onClick={onClick}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData(PLANNER_ITEM_MIME, item.id);
+        e.dataTransfer.effectAllowed = "move";
+      }}
+      title="Zum Verschieben auf einen anderen Tag ziehen"
     >
       {/* Header: channel icons + time */}
       <div className="flex items-center justify-between gap-1">
