@@ -87,25 +87,22 @@ describe("agenda editor", () => {
     const { update } = setup();
     expect(screen.queryByText("Ungespeicherte Änderungen")).toBeNull();
     fireEvent.focus(screen.getByLabelText("Titel des Agenda-Punkts"));
-    fireEvent.change(screen.getByLabelText("Dauer in Minuten"), {
-      target: { value: "15" },
-    });
+    fireEvent.click(screen.getByRole("button", {name: "Dauer um fünf Minuten erhöhen"}));
     expect(update).toHaveBeenCalledWith(0, "duration_minutes", 15);
     expect(screen.getByText("10:15")).toBeTruthy();
-    fireEvent.click(screen.getByText("Beschreibung hinzufügen"));
     fireEvent.change(screen.getByLabelText("Beschreibung"), {
       target: { value: "Bericht" },
     });
     expect(update).toHaveBeenCalledWith(0, "description", "Bericht");
     fireEvent.click(
-      screen.getByRole("checkbox", { name: "Auf nächstes Meeting übertragen" }),
+      screen.getByRole("checkbox", { name: /Auf nächstes Meeting übertragen/ }),
     );
     expect(update).toHaveBeenCalledWith(0, "carry_over_to_next", true);
     expect(screen.getByText("↩ Übertragen")).toBeTruthy();
-    expect(screen.getByText("Ungespeicherte Änderungen")).toBeTruthy();
+    expect(screen.getByRole("button", {name: "Speichern"})).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Speichern" }));
     await waitFor(() =>
-      expect(screen.queryByText("Ungespeicherte Änderungen")).toBeNull(),
+      expect(screen.getByRole("button", {name: "Gespeichert"})).toBeTruthy(),
     );
   });
   it("preserves title shortcuts and lets Shift+Tab navigate backwards", () => {
@@ -143,9 +140,9 @@ describe("agenda editor", () => {
     const toggles = screen.getAllByRole("button", {
       name: "Baustein-Vorschau ein- oder ausklappen",
     });
-    expect(toggles[0].getAttribute("aria-expanded")).toBe("false");
-    fireEvent.click(toggles[0]);
     expect(toggles[0].getAttribute("aria-expanded")).toBe("true");
+    fireEvent.click(toggles[0]);
+    expect(toggles[0].getAttribute("aria-expanded")).toBe("false");
     fireEvent.click(
       screen.getByRole("checkbox", { name: "Leere Bausteine ausblenden" }),
     );
@@ -163,24 +160,24 @@ describe("agenda editor", () => {
     const { update } = setup({ hasEditPermission: false });
     fireEvent.focus(screen.getByLabelText("Titel des Agenda-Punkts"));
     expect(
-      screen.getByLabelText("Dauer in Minuten").hasAttribute("readonly"),
+      screen.getByRole("button", {name: "Dauer um fünf Minuten erhöhen"}).hasAttribute("disabled"),
     ).toBe(true);
     expect(
       screen
-        .getByRole("checkbox", { name: "Auf nächstes Meeting übertragen" })
+        .getByRole("checkbox", { name: /Auf nächstes Meeting übertragen/ })
         .hasAttribute("disabled"),
     ).toBe(true);
     expect(screen.queryByRole("button", { name: "Speichern" })).toBeNull();
     expect(update).not.toHaveBeenCalled();
   });
-  it("keeps unsaved changes visible after a failed save", async () => {
+  it("keeps the save action available after a failed save", async () => {
     setup({ onSaveAgendaItems: async () => false });
     fireEvent.change(screen.getByLabelText("Titel des Agenda-Punkts"), {
       target: { value: "Geändert" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Speichern" }));
     await waitFor(() =>
-      expect(screen.getByText("Ungespeicherte Änderungen")).toBeTruthy(),
+      expect(screen.getByRole("button", {name: "Speichern"})).toBeTruthy(),
     );
   });
 });
