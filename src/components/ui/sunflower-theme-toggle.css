@@ -1,0 +1,41 @@
+.sunflower-toggle {
+  display: inline-flex;
+  width: 108px;
+  min-height: 60px;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid #7694aa;
+  border-radius: 24px;
+  cursor: pointer;
+  background: #9ed6ed;
+  box-shadow: inset 0 1px 4px #172d5340;
+}
+.sunflower-toggle:focus-visible { outline: 3px solid var(--sunflower-focus, #a77713); outline-offset: 4px; }
+.sunflower-toggle svg { display: block; width: 100%; height: auto; }
+.sunflower-sky { fill: #9ed6ed; }
+.sunflower-ground { fill: #8fb16d; }
+.sunflower-night { opacity: 0; }
+.sunflower-plant { transform-origin: 73px 87px; }
+.sunflower-petal { fill: #ffd338; stroke: #e8ad26; stroke-width: .6; }
+.sunflower-sky, .sunflower-ground, .sunflower-day, .sunflower-night, .sunflower-plant {
+  transition: fill 650ms ease, opacity 650ms ease, transform 750ms ease;
+}
+.sunflower-petal {
+  transition: transform 700ms ease, fill 700ms ease, stroke 700ms ease;
+  transition-delay: var(--petal-delay);
+}
+.sunflower-toggle[data-theme="dark"] { --sunflower-focus: #ffe6a0; border-color: #6c7fa4; }
+.sunflower-toggle[data-theme="dark"] .sunflower-sky { fill: #17294e; }
+.sunflower-toggle[data-theme="dark"] .sunflower-ground { fill: #374e4a; }
+.sunflower-toggle[data-theme="dark"] .sunflower-day { opacity: 0; }
+.sunflower-toggle[data-theme="dark"] .sunflower-night { opacity: 1; }
+.sunflower-toggle[data-theme="dark"] .sunflower-plant { transform: rotate(7deg); }
+/* Broad overlapping petals; .80 night compression with a further 9.5% reduction. */
+.sunflower-toggle[data-theme="dark"] .sunflower-petal {
+  transform: rotate(var(--petal-turn)) scaleY(.724);
+  fill: #bc913e;
+  stroke: #a77d31;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sunflower-toggle *, .sunflower-toggle { transition: none !important; }
+}

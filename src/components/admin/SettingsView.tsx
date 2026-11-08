@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import type { ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
+import { SunflowerThemeToggle } from "@/components/ui/sunflower-theme-toggle";
 import { Monitor, Moon, Sun, Bell, Shield, Globe, User, Save, Volume2, Calendar, Mail, Activity, ClipboardList, Eye, EyeOff } from "lucide-react";
 import { NotificationSettings } from "@/components/notifications/NotificationSettings";
 import { ExternalCalendarSettings } from "@/features/calendar/components/ExternalCalendarSettings";
@@ -155,6 +156,10 @@ export function SettingsView(): React.JSX.Element {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="theme">Design-Modus</Label>
+                <div className="flex items-center gap-3 py-2">
+                  <SunflowerThemeToggle />
+                  <span className="text-sm text-muted-foreground">Hell / Dunkel</span>
+                </div>
                 <Select value={theme} onValueChange={setTheme}>
                   <SelectTrigger id="theme">
                     <SelectValue placeholder="Design auswählen" />
