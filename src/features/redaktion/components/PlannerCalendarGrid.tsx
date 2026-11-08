@@ -395,7 +395,6 @@ export function PlannerCalendarGrid({
                   onUpdateNote={onUpdateNote}
                   onDeleteNote={onDeleteNote}
                   onMoveItem={onMoveItem}
-                onMoveItem={onMoveItem}
                 />
               );
             })}
