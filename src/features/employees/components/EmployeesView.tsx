@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
+import { NewUserForm } from "@/components/admin/NewUserForm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, BarChart3, Clock, Loader2 } from "lucide-react";
+import { Calendar, BarChart3, Clock, Loader2, Plus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmployeeMeetingScheduler } from "@/features/employees/components/EmployeeMeetingScheduler";
@@ -17,12 +18,14 @@ import { PendingLeavesTable, EmployeeListTable } from "@/components/employees/Em
 
 export function EmployeesView() {
   const data = useEmployeesData();
+  const { reloadPendingRequestsCount } = data;
   const ops = useEmployeeOperations({
     setEmployees: data.setEmployees,
     pendingLeaves: data.pendingLeaves,
     setPendingLeaves: data.setPendingLeaves,
   });
 
+  const [newEmployeeOpen, setNewEmployeeOpen] = useState(false);
   const [schedulerOpen, setSchedulerOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<{ id: string; name: string } | null>(null);
   const [requestManagerOpen, setRequestManagerOpen] = useState(false);
@@ -31,8 +34,8 @@ export function EmployeesView() {
 
   const reloadMeetingFlows = useCallback(async (): Promise<void> => {
     setMeetingHistoryRefreshTrigger((prev) => prev + 1);
-    await data.reloadPendingRequestsCount();
-  }, [data.reloadPendingRequestsCount]);
+    await reloadPendingRequestsCount();
+  }, [reloadPendingRequestsCount]);
 
   // SEO
   useEffect(() => {
@@ -60,7 +63,7 @@ export function EmployeesView() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-subtle p-6">
+    <div className="min-h-screen bg-gradient-subtle p-3 sm:p-6">
       <header>
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
@@ -99,6 +102,7 @@ export function EmployeesView() {
             onCancelApproval={ops.handleCancelApproval}
           />
           <EmployeeListTable
+            headerAction={<Button onClick={() => setNewEmployeeOpen(true)} className="h-11 rounded-xl bg-lime-600 px-5 text-white hover:bg-lime-700"><Plus className="mr-2 h-4 w-4" />Mitarbeiter</Button>}
             loading={data.loading}
             employees={data.employees}
             leaves={data.leaves}
@@ -119,6 +123,13 @@ export function EmployeesView() {
           <AdminTimeTrackingView />
         </TabsContent>
       </Tabs>
+
+      <Dialog open={newEmployeeOpen} onOpenChange={setNewEmployeeOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Mitarbeiter hinzufügen</DialogTitle></DialogHeader>
+          <NewUserForm onSuccess={() => { setNewEmployeeOpen(false); void reloadPendingRequestsCount(); }} />
+        </DialogContent>
+      </Dialog>
 
       {selectedEmployee && (
         <EmployeeMeetingScheduler
