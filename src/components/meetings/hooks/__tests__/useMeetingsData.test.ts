@@ -41,6 +41,10 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: mockSupabase }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: mockUser }) }));
 vi.mock("@/hooks/useTenant", () => ({ useTenant: () => ({ currentTenant: mockTenant }) }));
 vi.mock("@/hooks/use-toast", () => ({ toast: mockToast, useToast: () => ({ toast: mockToast }) }));
+vi.mock("@/lib/notify", () => ({ notify: {
+  success: (title: string, opts: { description?: string }) => mockToast({ title, ...opts }),
+  error: (title: string, opts: { description?: string }) => mockToast({ title, variant: 'destructive', ...opts }),
+} }));
 vi.mock("@/hooks/useNotificationHighlight", () => ({
   useNotificationHighlight: () => ({ isHighlighted: false, highlightRef: { current: null } }),
 }));
