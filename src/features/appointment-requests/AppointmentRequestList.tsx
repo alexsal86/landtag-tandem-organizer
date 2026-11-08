@@ -13,17 +13,18 @@ import { useAppointmentRequestMutations, useNextJourFixeDate, useOpenAppointment
 
 interface Props {
   /** "urgent" shows only requests that cannot wait for the next Jour fixe. */
+  readOnly?: boolean;
   mode: "all" | "urgent";
   /** Hide the whole block when there is nothing to show. */
   hideWhenEmpty?: boolean;
 }
 
-export function AppointmentRequestList({ mode, hideWhenEmpty }: Props) {
+export function AppointmentRequestList({ mode, hideWhenEmpty, readOnly = false }: Props) {
   const { data = [], isLoading } = useOpenAppointmentRequests();
   const { data: nextJf = null } = useNextJourFixeDate();
   const { role } = useResolvedUserRole();
   const { decide } = useAppointmentRequestMutations();
-  const mayDecide = canDecide(role);
+  const mayDecide = !readOnly && canDecide(role);
 
   const list = sortByEarliest(mode === "urgent" ? data.filter((r) => isUrgent(r, nextJf)) : data);
 
@@ -36,7 +37,7 @@ export function AppointmentRequestList({ mode, hideWhenEmpty }: Props) {
         title="Keine offenen Terminanfragen"
         description="Neue Anfragen aus E-Mail oder Post hier vormerken."
         size="sm"
-        action={{ label: "Anfrage vormerken", icon: Plus, onClick: () => openAppointmentRequestCreate() }}
+        action={readOnly ? undefined : { label: "Anfrage vormerken", icon: Plus, onClick: () => openAppointmentRequestCreate() }}
       />
     );
   }

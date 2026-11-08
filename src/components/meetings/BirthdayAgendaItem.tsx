@@ -1,15 +1,23 @@
-import { useState, useEffect } from 'react';
-import { debugConsole } from '@/utils/debugConsole';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Cake, Mail, Phone, Gift, CreditCard, Trash, Users } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
-import { useTenant } from '@/hooks/useTenant';
-import { format, addDays, differenceInYears, parseISO } from 'date-fns';
-import { de } from 'date-fns/locale';
-import { MultiUserAssignSelect } from './MultiUserAssignSelect';
+import { useState, useEffect } from "react";
+import { debugConsole } from "@/utils/debugConsole";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Cake,
+  Mail,
+  Phone,
+  Gift,
+  CreditCard,
+  Trash,
+  Users,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useTenant } from "@/hooks/useTenant";
+import { format, addDays, differenceInYears, parseISO } from "date-fns";
+import { de } from "date-fns/locale";
+import { MultiUserAssignSelect } from "./MultiUserAssignSelect";
 
 interface BirthdayContact {
   id: string;
@@ -21,7 +29,7 @@ interface BirthdayContact {
 }
 
 interface BirthdayAction {
-  action: 'card' | 'mail' | 'call' | 'gift';
+  action: "card" | "mail" | "call" | "gift";
   note?: string;
   assigned_to?: string[];
 }
@@ -33,6 +41,7 @@ interface ProfileInfo {
 }
 
 interface BirthdayAgendaItemProps {
+  readOnly?: boolean;
   contentOnly?: boolean;
   onCountChange?: (count: number | null) => void;
   meetingDate?: string | Date;
@@ -46,22 +55,43 @@ interface BirthdayAgendaItemProps {
 }
 
 const ACTION_OPTIONS = [
-  { key: 'card' as const, label: 'Karte', icon: CreditCard, color: 'text-palette-purple' },
-  { key: 'mail' as const, label: 'Mail', icon: Mail, color: 'text-palette-blue' },
-  { key: 'call' as const, label: 'Anruf', icon: Phone, color: 'text-palette-green' },
-  { key: 'gift' as const, label: 'Geschenk', icon: Gift, color: 'text-palette-amber' },
+  {
+    key: "card" as const,
+    label: "Karte",
+    icon: CreditCard,
+    color: "text-palette-purple",
+  },
+  {
+    key: "mail" as const,
+    label: "Mail",
+    icon: Mail,
+    color: "text-palette-blue",
+  },
+  {
+    key: "call" as const,
+    label: "Anruf",
+    icon: Phone,
+    color: "text-palette-green",
+  },
+  {
+    key: "gift" as const,
+    label: "Geschenk",
+    icon: Gift,
+    color: "text-palette-amber",
+  },
 ];
 
 export function BirthdayAgendaItem({
+  readOnly = false,
   contentOnly = false,
   onCountChange,
   meetingDate,
-  meetingId,
+  meetingId: _meetingId,
   resultText,
   onUpdateResult,
   onDelete,
   className,
-  isEmbedded = false,
+  isEmbedded: _isEmbedded = false,
   profiles = [],
 }: BirthdayAgendaItemProps) {
   const { currentTenant } = useTenant();
@@ -92,10 +122,10 @@ export function BirthdayAgendaItem({
         const endDate = addDays(refDate, 14);
 
         const { data: allContacts } = await supabase
-          .from('contacts')
-          .select('id, name, birthday, avatar_url')
-          .eq('tenant_id', currentTenant.id)
-          .not('birthday', 'is', null);
+          .from("contacts")
+          .select("id, name, birthday, avatar_url")
+          .eq("tenant_id", currentTenant.id)
+          .not("birthday", "is", null);
 
         if (!allContacts) {
           setContacts([]);
@@ -130,10 +160,12 @@ export function BirthdayAgendaItem({
           }
         }
 
-        birthdayContacts.sort((a, b) => a.nextBirthday.getTime() - b.nextBirthday.getTime());
+        birthdayContacts.sort(
+          (a, b) => a.nextBirthday.getTime() - b.nextBirthday.getTime(),
+        );
         setContacts(birthdayContacts);
       } catch (error) {
-        debugConsole.error('Error loading birthday contacts:', error);
+        debugConsole.error("Error loading birthday contacts:", error);
       } finally {
         setLoading(false);
       }
@@ -142,14 +174,19 @@ export function BirthdayAgendaItem({
     loadBirthdays();
   }, [currentTenant?.id, meetingDate]);
 
-  useEffect(() => { onCountChange?.(loading ? null : contacts.length); }, [loading, contacts.length, onCountChange]);
+  useEffect(() => {
+    onCountChange?.(loading ? null : contacts.length);
+  }, [loading, contacts.length, onCountChange]);
 
-  const toggleAction = (contactId: string, actionKey: BirthdayAction['action']) => {
+  const toggleAction = (
+    contactId: string,
+    actionKey: BirthdayAction["action"],
+  ) => {
     const newActions = { ...actions };
     if (newActions[contactId]?.action === actionKey) {
       delete newActions[contactId];
     } else {
-      newActions[contactId] = { 
+      newActions[contactId] = {
         action: actionKey,
         assigned_to: newActions[contactId]?.assigned_to,
       };
@@ -170,16 +207,28 @@ export function BirthdayAgendaItem({
   };
 
   return (
-    <Card className={cn(contentOnly ? "border-0 shadow-none bg-transparent" : "border-l-4 border-l-palette-pink", className)}>
+    <Card
+      className={cn(
+        contentOnly
+          ? "border-0 shadow-none bg-transparent"
+          : "border-l-4 border-l-palette-pink",
+        className,
+      )}
+    >
       <CardHeader hidden={contentOnly} className="py-2 px-3 pb-1">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <Cake className="h-4 w-4 text-palette-pink" />
             Geburtstage
-            {contacts.length > 0 && <Badge variant="secondary">{contacts.length}</Badge>}
+            {contacts.length > 0 && (
+              <Badge variant="secondary">{contacts.length}</Badge>
+            )}
           </CardTitle>
           <div className="flex items-center gap-1">
-            <Badge variant="outline" className="text-xs bg-palette-pink/10 text-palette-pink border-palette-pink/30">
+            <Badge
+              variant="outline"
+              className="text-xs bg-palette-pink/10 text-palette-pink border-palette-pink/30"
+            >
               <Cake className="h-3 w-3 mr-1" />
               System
             </Badge>
@@ -215,7 +264,10 @@ export function BirthdayAgendaItem({
                     <div>
                       <h4 className="font-semibold text-sm">{contact.name}</h4>
                       <p className="text-xs text-muted-foreground">
-                        {format(contact.nextBirthday, 'dd. MMMM', { locale: de })} — wird {contact.age} Jahre
+                        {format(contact.nextBirthday, "dd. MMMM", {
+                          locale: de,
+                        })}{" "}
+                        — wird {contact.age} Jahre
                       </p>
                     </div>
                     <Cake className="h-4 w-4 text-palette-pink" />
@@ -226,10 +278,15 @@ export function BirthdayAgendaItem({
                       const isSelected = selectedAction === opt.key;
                       return (
                         <Button
+                          disabled={readOnly}
                           key={opt.key}
                           size="sm"
-                          variant={isSelected ? 'default' : 'outline'}
-                          className={cn("h-7 text-xs gap-1", isSelected && 'bg-palette-pink hover:bg-palette-pink text-white')}
+                          variant={isSelected ? "default" : "outline"}
+                          className={cn(
+                            "h-7 text-xs gap-1",
+                            isSelected &&
+                              "bg-palette-pink hover:bg-palette-pink text-white",
+                          )}
                           onClick={() => toggleAction(contact.id, opt.key)}
                         >
                           <Icon className="h-3 w-3" />
@@ -242,15 +299,23 @@ export function BirthdayAgendaItem({
                   {selectedAction && profiles.length > 0 && (
                     <div className="mt-2 flex items-center gap-2">
                       <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <span className="text-xs text-muted-foreground shrink-0">Zuständig:</span>
-                      <MultiUserAssignSelect
-                        assignedTo={contactAction?.assigned_to || null}
-                        profiles={profiles}
-                        onChange={(userIds) => updateAssignment(contact.id, userIds)}
-                        size="sm"
-                      />
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        Zuständig:
+                      </span>
+                      <fieldset disabled={readOnly}>
+                        <MultiUserAssignSelect
+                          assignedTo={contactAction?.assigned_to || null}
+                          profiles={profiles}
+                          onChange={(userIds) =>
+                            updateAssignment(contact.id, userIds)
+                          }
+                          size="sm"
+                        />
+                      </fieldset>
                       {!contactAction?.assigned_to?.length && (
-                        <span className="text-xs text-muted-foreground italic">Alle Mitarbeiter</span>
+                        <span className="text-xs text-muted-foreground italic">
+                          Alle Mitarbeiter
+                        </span>
                       )}
                     </div>
                   )}

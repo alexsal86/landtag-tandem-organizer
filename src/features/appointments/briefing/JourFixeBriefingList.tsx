@@ -6,7 +6,7 @@ import { useBriefingMutations, useUndecidedBriefings } from "./useBriefing";
 import { BriefingRequestPopover } from "./BriefingRequestPopover";
 
 /** Accepted appointments in the next 14 days without a briefing decision. */
-export function JourFixeBriefingList() {
+export function JourFixeBriefingList({ readOnly = false }: { readOnly?: boolean }) {
   const { data = [], isLoading } = useUndecidedBriefings();
   const { setBriefing } = useBriefingMutations();
   if (isLoading) return <p className="text-caption text-muted-foreground">Lädt…</p>;
@@ -21,12 +21,12 @@ export function JourFixeBriefingList() {
               {format(new Date(a.start_time), "EEE d.M. HH:mm", { locale: de })}{a.location && ` · ${a.location}`}
             </p>
           </div>
-          <div className="flex gap-2">
+          {!readOnly && <div className="flex gap-2">
             <Button size="sm" variant="outline" onClick={async () => {
               try { await setBriefing.mutateAsync({ appointmentId: a.id, decision: "none" }); } catch (e) { notify.error(e instanceof Error ? e.message : "Fehlgeschlagen."); }
             }}>Kein Briefing</Button>
             <BriefingRequestPopover appointmentId={a.id} startTime={a.start_time} trigger={<Button size="sm">Briefing vergeben</Button>} />
-          </div>
+          </div>}
         </li>
       ))}
     </ul>

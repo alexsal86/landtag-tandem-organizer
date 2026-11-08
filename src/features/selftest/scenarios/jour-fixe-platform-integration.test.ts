@@ -4,6 +4,12 @@ import { jourFixePlatformIntegrationScenario } from './jour-fixe-platform-integr
 import type { TestContext } from '../types';
 
 describe('Jour-fixe platform selftest', () => {
+  it('executes duration rules without a database', async () => {
+    const step = jourFixePlatformIntegrationScenario.steps.find(step => step.id === 'agenda-timing');
+    if (!step) throw new Error('Agenda timing selftest missing');
+    const ctx: TestContext = { runId: 'run', tenantId: 'office', userId: 'user', created: [], storageObjects: [], data: {}, trackRecord: vi.fn(), trackStorage: vi.fn() };
+    expect((await step.run(ctx)).ok).toBe(true);
+  });
   it('executes the shared radar rules without a database', async () => {
     const ctx: TestContext = { runId: 'run', tenantId: 'office', userId: 'user', created: [], storageObjects: [], data: {}, trackRecord: vi.fn(), trackStorage: vi.fn() };
     const step = jourFixePlatformIntegrationScenario.steps.find(step => step.id === 'radar-rules');
