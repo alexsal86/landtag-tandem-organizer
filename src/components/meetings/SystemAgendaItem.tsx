@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   CalendarDays,
-  StickyNote,
+  PencilSparkles,
   ListTodo,
   Trash,
   Heart,
@@ -138,7 +138,7 @@ export function SystemAgendaItem({
       case "upcoming_appointments":
         return <CalendarDays className="h-4 w-4 text-palette-blue" />;
       case "quick_notes":
-        return <StickyNote aria-hidden="true" className="h-4 w-4 text-palette-amber" />;
+        return <PencilSparkles aria-hidden="true" className="h-4 w-4 text-palette-amber" />;
       case "tasks":
         return <ListTodo className="h-4 w-4 text-palette-green" />;
       case "birthdays":
@@ -356,7 +356,7 @@ export function SystemAgendaItem({
                   {linkedQuickNotes.map((note, index) =>
                     renderCompactItem(
                       note.title || `Notiz ${index + 1}`,
-                      <StickyNote className="h-2.5 w-2.5 text-palette-amber" />,
+                      <PencilSparkles className="h-2.5 w-2.5 text-palette-amber" />,
                       index,
                       note.user_id
                         ? `von ${profiles?.find((p) => p.user_id === note.user_id)?.display_name || "unbekannt"}`
