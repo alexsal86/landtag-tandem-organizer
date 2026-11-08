@@ -1,3 +1,4 @@
+import { SYSTEM_AGENDA_OPTIONS } from "@/components/meetings/systemAgendaRegistry";
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
@@ -6,14 +7,7 @@ import { getSystemItemIcon } from "@/components/my-work/jour-fixe/utils";
 
 const title = (run: string, label: string) => `${SELFTEST_PREFIX} ${label} (${run})`;
 
-const SYSTEM_TYPES = [
-  "birthdays",
-  "upcoming_appointments",
-  "quick_notes",
-  "tasks",
-  "case_items",
-  "decisions",
-] as const;
+const SYSTEM_TYPES = SYSTEM_AGENDA_OPTIONS.map(option => option.type);
 
 export const meetingLifecycleScenario: TestScenario = {
   id: "meeting-lifecycle",

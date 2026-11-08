@@ -1,3 +1,5 @@
+import { PlatformAgendaSection } from "@/components/meetings/PlatformAgendaSection";
+import { isPlatformAgendaType } from "@/components/meetings/systemAgendaRegistry";
 import { List } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AgendaItem } from "@/hooks/useMyWorkJourFixeSystemData";
@@ -7,6 +9,7 @@ import { getSystemEntries, getSystemItemIcon } from "./utils";
 interface JourFixeMeetingAgendaProps {
   agenda: JourFixeAgendaData;
   systemData: JourFixeSystemDataMaps;
+  meetingDate?: string;
 }
 
 const AgendaSystemEntries = ({ entries }: { entries: ReturnType<typeof getSystemEntries> }) => {
@@ -33,11 +36,13 @@ const AgendaItemRow = ({
   numbering,
   agenda,
   systemData,
+  meetingDate,
 }: {
   item: AgendaItem;
   numbering: string;
   agenda: JourFixeAgendaData;
   systemData: JourFixeSystemDataMaps;
+  meetingDate?: string;
 }) => {
   const childItems = agenda.items
     .filter((subItem) => subItem.parent_id === item.id)
@@ -60,6 +65,7 @@ const AgendaItemRow = ({
         <span className={cn("text-foreground", item.system_type && "font-medium")}>{item.title}</span>
       </div>
       <AgendaSystemEntries entries={systemEntries} />
+      {isPlatformAgendaType(item.system_type) && <PlatformAgendaSection type={item.system_type} meetingDate={meetingDate || new Date()} readOnly />}
       {childItems.length > 0 && (
         <ul className="ml-[0.8rem] mt-1 space-y-0.5">
           {childItems.map((childItem, childIndex) => (
@@ -69,6 +75,7 @@ const AgendaItemRow = ({
               numbering={`${numbering}.${childIndex + 1}`}
               agenda={agenda}
               systemData={systemData}
+              meetingDate={meetingDate}
             />
           ))}
         </ul>
@@ -77,7 +84,7 @@ const AgendaItemRow = ({
   );
 };
 
-export function JourFixeMeetingAgenda({ agenda, systemData }: JourFixeMeetingAgendaProps) {
+export function JourFixeMeetingAgenda({ agenda, systemData, meetingDate }: JourFixeMeetingAgendaProps) {
   const mainItems = agenda.items
     .filter((item) => !item.parent_id)
     .sort((a, b) => a.order_index - b.order_index);
@@ -106,6 +113,7 @@ export function JourFixeMeetingAgenda({ agenda, systemData }: JourFixeMeetingAge
               numbering={`${index + 1}.`}
               agenda={agenda}
               systemData={systemData}
+              meetingDate={meetingDate}
             />
           ))}
         </ul>

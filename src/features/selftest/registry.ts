@@ -15,11 +15,13 @@ import { contactLifecycleScenario } from "./scenarios/contact-lifecycle";
 import { eventPlanningLifecycleScenario } from "./scenarios/event-planning-lifecycle";
 import { workflowRulesScenario } from "./scenarios/workflow-rules";
 import { accessBoundariesScenario } from "./scenarios/access-boundaries";
+import { jourFixePlatformIntegrationScenario } from './scenarios/jour-fixe-platform-integration';
 
 export const SELFTEST_SCENARIOS: TestScenario[] = [
   workflowRulesScenario,
   accessBoundariesScenario,
   meetingLifecycleScenario,
+  jourFixePlatformIntegrationScenario,
   appointmentLifecycleScenario,
   dailyBriefingLifecycleScenario,
   eventPlanningLifecycleScenario,

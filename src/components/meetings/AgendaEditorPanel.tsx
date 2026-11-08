@@ -1,3 +1,4 @@
+import { SYSTEM_AGENDA_OPTIONS } from "./systemAgendaRegistry";
 import type { SystemAgendaType } from "@/components/meetings/types";
 import { debugConsole } from '@/utils/debugConsole';
 import { useState } from "react";
@@ -38,7 +39,7 @@ interface AgendaEditorPanelProps {
   showTaskSelector: { itemIndex: number } | null;
   onSetShowTaskSelector: (v: { itemIndex: number } | null) => void;
   onAddAgendaItem: () => void;
-  onAddSystemAgendaItem: (systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions' | 'case_items', parentItem?: AgendaItem) => void;
+  onAddSystemAgendaItem: (systemType: SystemAgendaType, parentItem?: AgendaItem) => void;
   onUpdateAgendaItem: (index: number, field: keyof AgendaItem, value: unknown) => void;
   onSaveAgendaItems: () => void;
   onAddTaskToAgenda: (task: LinkedTask, parentItem: AgendaItem, parentIndex: number) => void;
@@ -263,19 +264,12 @@ export function AgendaEditorPanel({
                   <CalendarDays className="h-4 w-4 mr-2" /> System
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-56">
+              <PopoverContent className="w-72 max-h-96 overflow-auto">
                 <div className="space-y-2">
                   <p className="text-sm font-medium mb-2">Dynamischen Punkt hinzufügen</p>
-                  {([
-                    { type: 'upcoming_appointments' as const, label: 'Kommende Termine', Icon: CalendarDays, color: 'blue' },
-                    { type: 'quick_notes' as const, label: 'Meine Notizen', Icon: StickyNote, color: 'amber' },
-                    { type: 'tasks' as const, label: 'Aufgaben', Icon: ListTodo, color: 'green' },
-                    { type: 'birthdays' as const, label: 'Geburtstage', Icon: Cake, color: 'pink' },
-                    { type: 'decisions' as const, label: 'Entscheidungen', Icon: Scale, color: 'slate' },
-                    { type: 'case_items' as const, label: 'Vorgänge', Icon: Briefcase, color: 'teal' },
-                  ]).map(({ type, label, Icon, color }) => (
+                  {SYSTEM_AGENDA_OPTIONS.map(({ type, label, Icon }) => (
                     <Button key={type} variant="outline"
-                      className={`w-full justify-start border-${color}-200 text-${color}-700 dark:border-${color}-800 dark:text-${color}-400`}
+                      className="w-full justify-start h-auto whitespace-normal text-left"
                       onClick={() => onAddSystemAgendaItem(type)}
                       disabled={agendaItems.some(i => i.system_type === type)}
                     >
@@ -316,6 +310,7 @@ export function AgendaEditorPanel({
                             linkedCaseItems={meetingLinkedCaseItems}
                             profiles={profiles}
                             resultText={item.result_text}
+                            onUpdateResult={hasEditPermission ? value => onUpdateAgendaItem(index, 'result_text', value) : undefined}
                             onDelete={hasEditPermission ? () => onDeleteAgendaItem(item, index) : undefined}
                             isEmbedded={!!(item.parentLocalKey || item.parent_id)}
                             defaultCollapsed={true}
@@ -591,7 +586,7 @@ export function AgendaEditorPanel({
       {/* Pending Jour Fixe Notes Preview */}
       <PendingJourFixeNotes className="mt-4" />
       <PendingJourFixeCaseItems className="mt-4" />
-      <JourFixeRequestsCard className="mt-4" />
+      {!agendaItems.some(item => item.system_type === 'appointment_requests') && <JourFixeRequestsCard className="mt-4" />}
 
       {/* Upcoming Appointments Preview */}
       {!agendaItems.some(item => item.system_type === 'upcoming_appointments') && (

@@ -40,7 +40,11 @@ const { mockSupabase, mockToast, mockUser, mockTenant, enqueue, responses } = vi
 vi.mock("@/integrations/supabase/client", () => ({ supabase: mockSupabase }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: mockUser }) }));
 vi.mock("@/hooks/useTenant", () => ({ useTenant: () => ({ currentTenant: mockTenant }) }));
-vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: mockToast }) }));
+vi.mock("@/hooks/use-toast", () => ({ toast: mockToast, useToast: () => ({ toast: mockToast }) }));
+vi.mock("@/lib/notify", () => ({ notify: {
+  success: (title: string, opts: { description?: string }) => mockToast({ title, ...opts }),
+  error: (title: string, opts: { description?: string }) => mockToast({ title, variant: 'destructive', ...opts }),
+} }));
 vi.mock("@/hooks/useNotificationHighlight", () => ({
   useNotificationHighlight: () => ({ isHighlighted: false, highlightRef: { current: null } }),
 }));
@@ -228,7 +232,7 @@ describe("useMeetingsData", () => {
     });
 
     await act(async () => {
-      await result.current.updateMeeting("meeting-2", { title: "Ausschuss (neu)" });
+      await result.current.updateMeeting("meeting-2", { title: "Ausschuss (neu)" }, '10:00');
     });
 
     expect(mockToast).toHaveBeenCalledWith(
@@ -236,7 +240,7 @@ describe("useMeetingsData", () => {
     );
 
     await act(async () => {
-      await result.current.updateMeeting("meeting-2", { title: "Ausschuss (retry)" });
+      await result.current.updateMeeting("meeting-2", { title: "Ausschuss (retry)" }, '10:00');
     });
 
     expect(mockToast).toHaveBeenCalledWith(

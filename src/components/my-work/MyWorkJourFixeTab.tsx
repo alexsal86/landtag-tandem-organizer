@@ -75,6 +75,7 @@ export function MyWorkJourFixeTab() {
                 agendaContent={
                   <JourFixeMeetingAgenda
                     agenda={getAgendaData(meeting.id)}
+                    meetingDate={meeting.meeting_date}
                     systemData={systemDataMaps}
                   />
                 }
@@ -102,6 +103,7 @@ export function MyWorkJourFixeTab() {
                   agendaContent={
                     <JourFixeMeetingAgenda
                       agenda={getAgendaData(meeting.id)}
+                      meetingDate={meeting.meeting_date}
                       systemData={systemDataMaps}
                     />
                   }

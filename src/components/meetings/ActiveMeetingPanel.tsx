@@ -1,4 +1,7 @@
 import React from 'react';
+import { PlatformAgendaSection } from './PlatformAgendaSection';
+import { isPlatformAgendaType } from './systemAgendaRegistry';
+import { parseMeetingResults } from './platformAgendaRules';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -210,7 +213,7 @@ export function ActiveMeetingPanel({
   };
 
   const renderDecisions = (parentItem: AgendaItem) => {
-    const decisionResults = (() => { try { return JSON.parse(parentItem.result_text || '{}'); } catch { return {}; } })();
+    const decisionResults = parseMeetingResults(parentItem.result_text);
     return relevantDecisions.length > 0 ? relevantDecisions.map((decision, idx) => (
       <div key={decision.id} className="ml-[0.8rem] pl-4 border-l-2 border-muted space-y-2">
         <div className="flex items-center gap-2">
@@ -222,8 +225,8 @@ export function ActiveMeetingPanel({
         {decision.response_deadline && <p className="text-xs text-muted-foreground">Frist: {format(new Date(decision.response_deadline), "dd.MM.yyyy", { locale: de })}</p>}
         <div>
           <label className="text-xs font-medium mb-1 block text-muted-foreground">Ergebnis</label>
-          <Textarea value={decisionResults[decision.id] || ''} onChange={(e) => {
-            const newResults = { ...decisionResults, [decision.id]: e.target.value };
+          <Textarea value={decisionResults[decision.id]?.result || ''} onChange={(e) => {
+            const newResults = { ...decisionResults, [decision.id]: { ...decisionResults[decision.id], result: e.target.value } };
             onUpdateResult(parentItem.id!, 'result_text', JSON.stringify(newResults));
           }} placeholder="Ergebnis für diese Entscheidung..." className="min-h-[60px] text-xs" />
         </div>
@@ -252,6 +255,7 @@ export function ActiveMeetingPanel({
   };
 
   const renderSystemContent = (item: AgendaItem, prefix?: string) => {
+    if (isPlatformAgendaType(item.system_type)) return <PlatformAgendaSection type={item.system_type} meetingDate={meeting.meeting_date} resultText={item.result_text} profiles={profiles} onUpdateResult={value => { if (item.id) onUpdateResult(item.id, 'result_text', value); }} />;
     switch (item.system_type) {
       case 'upcoming_appointments':
         return (
@@ -562,7 +566,7 @@ export function ActiveMeetingPanel({
           </div>
         </CardContent>
       </Card>
-      <JourFixeRequestsCard className="mt-4" />
+      {!meetingItems.some(item => item.system_type === 'appointment_requests') && <JourFixeRequestsCard className="mt-4" />}
     </div>
   );
 }
