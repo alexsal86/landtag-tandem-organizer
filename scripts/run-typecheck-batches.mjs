@@ -18,6 +18,7 @@ const ALL_BATCHES = [
   'typecheck:services-features-batch3',
   'typecheck:pages-batch2',
   'typecheck:pages-batch3',
+  'typecheck:employees',
 ];
 
 const requested = process.argv.slice(2);

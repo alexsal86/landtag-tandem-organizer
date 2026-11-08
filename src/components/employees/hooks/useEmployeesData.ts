@@ -5,9 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { debugConsole } from '@/utils/debugConsole';
-import { getErrorMessage } from '@/utils/errorHandler';
 import { startOfYear, endOfYear } from "date-fns";
-import { toast } from "@/hooks/use-toast";
 import {
   Employee,
   EmployeeRow,
@@ -24,9 +22,6 @@ type AdminOverviewResponse = {
   employees: Array<Employee & { leave_agg?: LeaveAgg; sick_days_count?: number }>;
   pending_leaves: PendingLeaveRequest[];
   pending_requests_count: number;
-};
-type LatestEmployeeMeetingRpcRow = {
-  meeting_id: string | null;
 };
 
 type EmployeesDataError = {
@@ -220,7 +215,7 @@ export function useEmployeesData(): UseEmployeesDataResult {
     setPendingLeaves(overview.pending_leaves || []);
     setPendingRequestsCount(overview.pending_requests_count || 0);
     setLoading(adminOverviewQuery.isFetching);
-  }, [adminOverviewQuery.data, adminOverviewQuery.error, adminOverviewQuery.isFetching, isAdmin, roleResolved, toast]);
+  }, [adminOverviewQuery.data, adminOverviewQuery.error, adminOverviewQuery.isFetching, isAdmin, roleResolved]);
 
   // Lazy: secondary meeting IDs are refreshed in the background without blocking initial table render.
   useEffect(() => {
@@ -239,7 +234,7 @@ export function useEmployeesData(): UseEmployeesDataResult {
         if (error) throw error;
 
         const latestMeetingByEmployee = new Map<string, string>();
-        (data || []).forEach((meeting: Record<string, any>) => {
+        (data || []).forEach((meeting) => {
           if (!latestMeetingByEmployee.has(meeting.employee_id)) {
             latestMeetingByEmployee.set(meeting.employee_id, meeting.id);
           }
@@ -279,7 +274,7 @@ export function useEmployeesData(): UseEmployeesDataResult {
         .from('employee_settings').select('user_id').eq('user_id', user.id).maybeSingle();
       if (!hasSettings) {
         const { data: profileData } = await supabase.from("profiles").select("user_id, display_name, avatar_url").eq("user_id", user.id).single();
-        setSelfProfile(profileData as Profile || null);
+        setSelfProfile(profileData || null);
         setLoading(false);
         return;
       }
@@ -291,7 +286,7 @@ export function useEmployeesData(): UseEmployeesDataResult {
       try {
         const [settingsRes, profileRes, leavesRes, lastMeetingRes] = await Promise.all([
           supabase.from("employee_settings")
-            .select("user_id, hours_per_week, timezone, workdays, days_per_week, annual_vacation_days, employment_start_date, last_meeting_date")
+            .select("user_id, hours_per_week, timezone, workdays, days_per_week, hours_per_month, days_per_month, annual_vacation_days, employment_start_date, last_meeting_date")
             .eq("user_id", user.id).maybeSingle(),
           supabase.from("profiles").select("user_id, display_name, avatar_url").eq("user_id", user.id).single(),
           supabase.from("leave_requests").select("id, type, status, start_date, end_date").eq("user_id", user.id)
@@ -311,12 +306,12 @@ export function useEmployeesData(): UseEmployeesDataResult {
 });
         }
 
-        setSelfSettings((settingsRes.data as EmployeeSettingsRow) || null);
-        setSelfProfile((profileRes.data as Profile) || null);
+        setSelfSettings(settingsRes.data || null);
+        setSelfProfile(profileRes.data || null);
         setSelfLastMeetingId(lastMeetingRes.data?.meeting_id || null);
 
         const agg = initLeaveAgg();
-        (leavesRes.data || []).forEach((lr: Record<string, any>) => {
+        (leavesRes.data || []).forEach((lr) => {
           const leaveType = lr.type as LeaveType;
           const workingDays = lr.end_date ? calculateWorkingDays(lr.start_date, lr.end_date) : 1;
           if (lr.status === "approved") agg.approved[leaveType] += workingDays;
@@ -338,7 +333,7 @@ export function useEmployeesData(): UseEmployeesDataResult {
     };
 
     checkEmployeeStatus();
-  }, [user, isAdmin, roleResolved, toast]);
+  }, [user, isAdmin, roleResolved]);
 
   return {
     isAdmin,

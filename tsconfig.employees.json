@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "types": ["vite/client"]
+  },
+  "include": [
+    "src/types/speech-recognition.d.ts",
+    "src/features/employees/**/*.ts",
+    "src/features/employees/**/*.tsx",
+    "src/components/employees/**/*.ts",
+    "src/components/employees/**/*.tsx",
+    "src/components/admin/AdminTimeTrackingView.tsx"
+  ]
+}

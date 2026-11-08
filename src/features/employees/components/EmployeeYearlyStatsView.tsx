@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { debugConsole } from "@/utils/debugConsole";
 import {
@@ -37,26 +36,13 @@ interface EmployeeYearlyStatsViewProps {
 }
 
 export function EmployeeYearlyStatsView({ isOpen, onClose }: EmployeeYearlyStatsViewProps) {
-  const { user } = useAuth();
   const { currentTenant } = useTenant();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<YearlyStats[]>([]);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear() - 1);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
 
-  useEffect(() => {
-    if (isOpen) {
-      loadAvailableYears();
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (isOpen && selectedYear) {
-      loadStats();
-    }
-  }, [isOpen, selectedYear]);
-
-  const loadAvailableYears = async () => {
+  const loadAvailableYears = useCallback(async () => {
     try {
       const { data } = await supabase
         .from("employee_yearly_stats")
@@ -64,18 +50,18 @@ export function EmployeeYearlyStatsView({ isOpen, onClose }: EmployeeYearlyStats
         .order("year", { ascending: false });
 
       if (data) {
-        const years = [...new Set(data.map((d: Record<string, any>) => d.year))] as number[];
+        const years = [...new Set(data.map((d) => d.year))];
         setAvailableYears(years);
-        if (years.length > 0 && !years.includes(selectedYear)) {
-          setSelectedYear(years[0] as number);
+        if (years.length > 0) {
+          setSelectedYear(current => years.includes(current) ? current : years[0]);
         }
       }
     } catch (error) {
       debugConsole.error("Error loading years:", error);
     }
-  };
+  }, []);
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     if (!currentTenant) return;
     setLoading(true);
     
@@ -83,23 +69,23 @@ export function EmployeeYearlyStatsView({ isOpen, onClose }: EmployeeYearlyStats
       // Get yearly stats
       const { data: statsData, error: statsError } = await supabase
         .from("employee_yearly_stats")
-        .select("*")
+        .select("user_id, year, annual_vacation_days, used_vacation_days, carry_over_days, sick_days_count")
         .eq("year", selectedYear);
 
       if (statsError) throw statsError;
 
       // Get profile names
-      const userIds = (statsData || []).map((s: Record<string, any>) => s.user_id);
+      const userIds = (statsData || []).map((s) => s.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, display_name")
         .in("user_id", userIds);
 
       const profileMap = new Map(
-        (profiles || []).map((p: Record<string, any>) => [p.user_id, p.display_name])
+        (profiles || []).map((p) => [p.user_id, p.display_name])
       );
 
-      const enrichedStats = (statsData || []).map((s: Record<string, any>) => ({
+      const enrichedStats = (statsData || []).map((s) => ({
         ...s,
         display_name: profileMap.get(s.user_id) || "Unbekannt",
       }));
@@ -110,7 +96,15 @@ export function EmployeeYearlyStatsView({ isOpen, onClose }: EmployeeYearlyStats
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentTenant, selectedYear]);
+
+  useEffect(() => {
+    if (isOpen) void loadAvailableYears();
+  }, [isOpen, loadAvailableYears]);
+
+  useEffect(() => {
+    if (isOpen) void loadStats();
+  }, [isOpen, loadStats]);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
