@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
 import { useResolvedUserRole } from '@/hooks/useResolvedUserRole';
+import { useCurrentProfileId } from '@/hooks/useCurrentProfileId';
 import { notify } from '@/lib/notify';
 import { cn } from '@/lib/utils';
 import { JourFixeRequestsCard } from '@/features/appointment-requests/JourFixeRequestsCard';
@@ -33,6 +34,7 @@ export function PlatformAgendaSection({ type, meetingDate, resultText, onUpdateR
   const qc = useQueryClient();
   const { currentTenant } = useTenant();
   const { user } = useAuth();
+  const profileId = useCurrentProfileId();
   const { role } = useResolvedUserRole();
   const mayApprove = role === 'abgeordneter' || role === 'bueroleitung';
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -42,7 +44,7 @@ export function PlatformAgendaSection({ type, meetingDate, resultText, onUpdateR
   const option = systemAgendaOption(type);
 
   const patchResult = (id: string, patch: Partial<MeetingEntryResult>) => {
-    onUpdateResult?.(JSON.stringify({ ...results, [id]: { result: '', ...results[id], ...patch } }));
+    onUpdateResult?.(JSON.stringify({ ...results, [id]: { ...(results[id] ?? { result: '' }), ...patch } }));
   };
   const approve = async (id: string) => {
     if (!currentTenant?.id || !mayApprove) return;
@@ -57,11 +59,11 @@ export function PlatformAgendaSection({ type, meetingDate, resultText, onUpdateR
     finally { setPending(null); }
   };
   const requestChanges = async (id: string) => {
-    if (!currentTenant?.id || !user?.id || !changeNote.trim()) return;
+    if (!currentTenant?.id || !profileId || !changeNote.trim()) return;
     setPending(id);
     try {
       const { error } = await supabase.from('social_approval_comments').insert({ tenant_id: currentTenant.id,
-        content_item_id: id, author_id: user.id, comment: changeNote.trim(), is_change_request: true });
+        content_item_id: id, author_id: profileId, comment: changeNote.trim(), is_change_request: true });
       if (error) throw error;
       patchResult(id, { result: changeNote.trim() });
       setChangeNote('');

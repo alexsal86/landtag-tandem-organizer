@@ -77,6 +77,10 @@ const AGENDA_STYLES: Record<AgendaSystemType, AgendaStyleSet> = {
 };
 
 function get(systemType: string): AgendaStyleSet {
+  if (['appointment_requests', 'event_plannings'].includes(systemType)) return AGENDA_STYLES.upcoming_appointments;
+  if (['redaktion', 'letters_for_signature'].includes(systemType)) return AGENDA_STYLES.decisions;
+  if (['case_items', 'leave_requests'].includes(systemType)) return AGENDA_STYLES.tasks;
+  if (systemType === 'critical_radar') return { systemItem: 'border-l-4 border-l-destructive bg-destructive/10', child: 'bg-destructive/10 border-destructive/30', icon: 'text-destructive', toggle: 'border-destructive/30 text-destructive hover:bg-destructive/10' };
   return AGENDA_STYLES[systemType as AgendaSystemType] ?? FALLBACK;
 }
 
