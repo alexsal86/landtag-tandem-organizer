@@ -176,7 +176,7 @@ export function MeetingSidebar({
                         </Button>
                       )}
                       {editingMeeting?.id === meeting.id && <>
-                        <Button size="icon" variant="ghost" aria-label="Meeting-Änderungen speichern" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); onUpdateMeeting(meeting.id!, editingMeeting); onSetEditingMeeting(null); }}><Check className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" aria-label="Meeting-Änderungen speichern" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); if (editingMeeting) onUpdateMeeting(meeting.id!, editingMeeting); onSetEditingMeeting(null); }}><Check className="h-4 w-4" /></Button>
                         <Button size="icon" variant="ghost" aria-label="Meeting-Bearbeitung abbrechen" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); onSetEditingMeeting(null); }}><X className="h-4 w-4" /></Button>
                       </>}
                     </div>
