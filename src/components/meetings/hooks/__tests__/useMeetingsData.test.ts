@@ -40,7 +40,7 @@ const { mockSupabase, mockToast, mockUser, mockTenant, enqueue, responses } = vi
 vi.mock("@/integrations/supabase/client", () => ({ supabase: mockSupabase }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: mockUser }) }));
 vi.mock("@/hooks/useTenant", () => ({ useTenant: () => ({ currentTenant: mockTenant }) }));
-vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: mockToast }) }));
+vi.mock("@/hooks/use-toast", () => ({ toast: mockToast, useToast: () => ({ toast: mockToast }) }));
 vi.mock("@/hooks/useNotificationHighlight", () => ({
   useNotificationHighlight: () => ({ isHighlighted: false, highlightRef: { current: null } }),
 }));

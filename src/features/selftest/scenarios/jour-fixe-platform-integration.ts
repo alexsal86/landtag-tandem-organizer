@@ -11,6 +11,12 @@ export const jourFixePlatformIntegrationScenario: TestScenario = {
   id: 'jour-fixe-platform-integration', title: 'Jour Fixe: Plattformquellen & Stafetten-Abschluss',
   description: 'Prüft Quellenabfragen, 12 Systemtypen, echte Entscheidungs-IDs, atomaren Sitzungsabschluss und doppelfreie Wiederholung.',
   touches: ['meetings', 'meeting_agenda_items', 'tasks', 'task_decisions'], features: ['meetings', 'tasks', 'decisions'],
+  writes: [
+    { table: 'meetings', columns: ['title', 'description', 'meeting_date', 'status', 'user_id', 'tenant_id'] },
+    { table: 'meeting_agenda_items', columns: ['meeting_id', 'title', 'assigned_to', 'result_text', 'order_index', 'system_type', 'is_completed', 'is_recurring'] },
+    { table: 'task_decisions', columns: ['title', 'description', 'created_by', 'tenant_id', 'status', 'meeting_id', 'meeting_result'] },
+    { table: 'tasks', columns: ['meeting_id', 'source_type', 'source_id', 'ball_owner', 'ball_assignee_id', 'next_action', 'next_action_due', 'timeline'] },
+  ],
   checks: ['Quellenabfragen unter bestehenden Zugriffsrechten', 'Folgeaufgaben mit Zuständigkeit und Verlauf', 'Notizen ändern keine Abstimmung', 'Wiederholung erzeugt keine Duplikate'],
   limitations: ['Quellenabfragen bestätigen bei leerem Bestand nur die Erreichbarkeit.', 'Freigaben und Sichtbarkeit für andere Rollen erfordern zusätzliche persönliche Sitzungen.'],
   collectArtifacts: async ctx => {
