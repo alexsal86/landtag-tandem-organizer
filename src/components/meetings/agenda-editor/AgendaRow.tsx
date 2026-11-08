@@ -30,7 +30,7 @@ import {
   ListTodo,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { AgendaItem, LinkedTask } from "../types";
+import type { AgendaItem, LinkedTask, Profile } from "../types";
 import type { agendaTiming } from "./agendaTiming";
 interface Props {
   item: AgendaItem;
@@ -53,6 +53,7 @@ interface Props {
   isMainItemCollapsed: (item: AgendaItem) => boolean;
   isHiddenByCollapsedParent: (item: AgendaItem) => boolean;
   setCollapsedMainItems: Dispatch<SetStateAction<Record<string, boolean>>>;
+  profiles: Profile[];
   timing: ReturnType<typeof agendaTiming>;
   onToggleVisibility: (id: string, visible: boolean) => void;
   setDirty: (dirty: boolean) => void;
@@ -85,6 +86,7 @@ export function AgendaRow({
   setCollapsedMainItems,
   isHiddenByCollapsedParent,
   timing,
+  profiles,
   onToggleVisibility,
   setDirty,
   onAddSubItem,
@@ -106,8 +108,9 @@ export function AgendaRow({
           onFocus={() => setSelectedKey(getItemKey(item, index))}
           onClick={() => setSelectedKey(getItemKey(item, index))}
           className={cn(
-            "group transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring border-b border-border/60 hover:bg-muted/30 focus-within:bg-muted/40",
-            getItemKey(item, index) === selectedKey && "rounded-lg border-primary/45 bg-primary/10 hover:bg-primary/10 focus-within:bg-primary/10",
+            "group transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring border border-transparent hover:bg-muted/30 focus-within:bg-muted/40",
+            getItemKey(item, index) === selectedKey &&
+              "rounded-lg border-primary/45 bg-primary/10 hover:bg-primary/10 focus-within:bg-primary/10",
             snapshot.isDragging && "shadow-lg bg-card rounded-lg border",
             (item.parentLocalKey || item.parent_id) && "ml-7 border-l pl-2",
             item.is_optional && "border-dashed",
@@ -140,7 +143,7 @@ export function AgendaRow({
                       : "Agenda-Punkt Titel"
                   }
                   aria-label="Titel des Agenda-Punkts"
-                  className="min-w-0 flex-1 basis-[calc(100%-4rem)] sm:basis-auto border-transparent bg-transparent shadow-none hover:border-border focus-visible:ring-2 font-medium"
+                  className="min-w-0 flex-1 basis-[calc(100%-4rem)] sm:basis-auto border-transparent bg-transparent shadow-none hover:border-border focus:bg-card focus-visible:ring-2 font-medium"
                   readOnly={!hasEditPermission}
                 />
                 {/* Carryover badge */}
@@ -172,6 +175,24 @@ export function AgendaRow({
                       <EyeOff className="h-4 w-4 text-muted-foreground" />
                     )}
                   </Button>
+                )}
+                {!!item.assigned_to?.length && (
+                  <div className="flex -space-x-1 shrink-0">
+                    {item.assigned_to.map((id) => {
+                      const profile = profiles.find((p) => p.user_id === id);
+                      return (
+                        <span
+                          key={id}
+                          title={profile?.display_name || "Unbekannt"}
+                          className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-card bg-muted text-[11px] font-semibold"
+                        >
+                          {(profile?.display_name || "?")
+                            .slice(0, 1)
+                            .toUpperCase()}
+                        </span>
+                      );
+                    })}
+                  </div>
                 )}
                 {item.carry_over_to_next && (
                   <Badge

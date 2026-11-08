@@ -1,4 +1,3 @@
-import { getAgendaIconColor } from "../administration/agendaSystemStyles";
 import { useState, useEffect, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -226,7 +225,14 @@ export function SystemAgendaItem({
         {icon}
         <span className="text-foreground">{label}</span>
         {ownerLabel && (
-          <span className="text-muted-foreground/80">({ownerLabel})</span>
+          <span
+            className={cn(
+              "text-muted-foreground/80",
+              editorRow && "ml-auto shrink-0 text-right",
+            )}
+          >
+            {editorRow ? ownerLabel.replace(/^von /, "") : `(${ownerLabel})`}
+          </span>
         )}
       </div>
     </li>
@@ -283,7 +289,12 @@ export function SystemAgendaItem({
   const renderBody = () => {
     if (isPlatformAgendaType(systemType))
       return (
-        <div className={cn("border-b border-border/60", className)}>
+        <div
+          className={cn(
+            editorRow ? "" : "border-b border-border/60",
+            className,
+          )}
+        >
           {renderHeader()}
           <div className="px-3 pb-2">
             <PlatformAgendaSection
@@ -303,7 +314,9 @@ export function SystemAgendaItem({
       return (
         <div
           className={cn(
-            "border-b border-border/60 hover:bg-muted/30 transition-colors",
+            editorRow
+              ? ""
+              : "border-b border-border/60 hover:bg-muted/30 transition-colors",
             className,
           )}
         >
@@ -328,7 +341,9 @@ export function SystemAgendaItem({
       return (
         <div
           className={cn(
-            "border-b border-border/60 hover:bg-muted/30 transition-colors",
+            editorRow
+              ? ""
+              : "border-b border-border/60 hover:bg-muted/30 transition-colors",
             className,
           )}
         >
@@ -395,7 +410,9 @@ export function SystemAgendaItem({
       return (
         <div
           className={cn(
-            "border-b border-border/60 hover:bg-muted/30 transition-colors",
+            editorRow
+              ? ""
+              : "border-b border-border/60 hover:bg-muted/30 transition-colors",
             className,
           )}
         >
@@ -465,7 +482,9 @@ export function SystemAgendaItem({
       return (
         <div
           className={cn(
-            "border-b border-border/60 hover:bg-muted/30 transition-colors",
+            editorRow
+              ? ""
+              : "border-b border-border/60 hover:bg-muted/30 transition-colors",
             className,
           )}
         >
@@ -549,7 +568,9 @@ export function SystemAgendaItem({
       return (
         <div
           className={cn(
-            "border-b border-border/60 hover:bg-muted/30 transition-colors",
+            editorRow
+              ? ""
+              : "border-b border-border/60 hover:bg-muted/30 transition-colors",
             className,
           )}
         >
@@ -635,16 +656,30 @@ export function SystemAgendaItem({
           </span>
         )}
         {Icon && (
-          <Icon
-            className={cn("h-4 w-4 shrink-0", getAgendaIconColor(systemType))}
-          />
+          <span
+            className={cn(
+              "flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-white",
+              systemType === "quick_notes"
+                ? "bg-palette-amber border-palette-amber"
+                : systemType === "upcoming_appointments" ||
+                    systemType === "appointment_requests"
+                  ? "bg-palette-blue border-palette-blue"
+                  : systemType === "birthdays"
+                    ? "bg-palette-pink border-palette-pink"
+                    : systemType === "decisions"
+                      ? "bg-palette-violet border-palette-violet"
+                      : "bg-palette-green border-palette-green",
+            )}
+          >
+            <Icon className="h-3.5 w-3.5" />
+          </span>
         )}
         <Input
           aria-label="Titel des Bausteins"
           value={title ?? getTitle()}
           readOnly={!canEditTitle}
           onChange={(e) => onTitleChange?.(e.target.value)}
-          className="min-w-0 flex-1 basis-[calc(100%-5rem)] sm:basis-auto h-8 border-transparent bg-transparent shadow-none hover:border-border focus-visible:ring-2 font-medium"
+          className="min-w-0 flex-1 basis-[calc(100%-5rem)] sm:basis-auto h-8 border-transparent bg-transparent shadow-none hover:border-border focus:bg-card focus-visible:ring-2 font-medium"
         />
         <span className="text-xs text-muted-foreground hidden sm:inline">
           automatisch

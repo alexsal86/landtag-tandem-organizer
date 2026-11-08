@@ -363,8 +363,17 @@ export function AgendaEditorPanel({
   return (
     <>
       <div className="flex flex-wrap justify-between items-start gap-3">
-        <div><h2 className="text-xl font-semibold">{selectedMeeting.title}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{format(new Date(selectedMeeting.meeting_date), "EEEE, d. MMMM", { locale: de })}{selectedMeeting.meeting_time && `, ${selectedMeeting.meeting_time.substring(0, 5)} Uhr`}{selectedMeeting.location && `, ${selectedMeeting.location}`}</p></div>
+        <div>
+          <h2 className="text-xl font-semibold">{selectedMeeting.title}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {format(new Date(selectedMeeting.meeting_date), "EEEE, d. MMMM", {
+              locale: de,
+            })}
+            {selectedMeeting.meeting_time &&
+              `, ${selectedMeeting.meeting_time.substring(0, 5)} Uhr`}
+            {selectedMeeting.location && `, ${selectedMeeting.location}`}
+          </p>
+        </div>
         {hasEditPermission && (
           <div className="flex flex-wrap gap-2">
             <AddAgendaMenu
@@ -381,7 +390,10 @@ export function AgendaEditorPanel({
             <Button
               onClick={async () => {
                 const result = await onSaveAgendaItems();
-                if (result !== false) { setDirty(false); setSaved(true); }
+                if (result !== false) {
+                  setDirty(false);
+                  setSaved(true);
+                }
               }}
             >
               {saved && !dirty ? "Gespeichert" : "Speichern"}
@@ -390,13 +402,14 @@ export function AgendaEditorPanel({
         )}
       </div>
 
-      <AgendaSummaryBar
-        timing={timing}
-        hideEmpty={hideEmpty}
-        onHideEmptyChange={setHideEmpty}
-      />
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start mt-4">
         <div className="min-w-0 rounded-xl border bg-card p-2">
+          <AgendaSummaryBar
+            timing={timing}
+            hideEmpty={hideEmpty}
+            onHideEmptyChange={setHideEmpty}
+          />
+
           <DragDropContext
             onDragEnd={(result) => {
               if (result.destination) setDirty(true);
@@ -524,6 +537,7 @@ export function AgendaEditorPanel({
                               isHiddenByCollapsedParent={
                                 isHiddenByCollapsedParent
                               }
+                              profiles={profiles}
                               timing={timing}
                               onToggleVisibility={onToggleVisibility}
                               setDirty={setDirty}
@@ -568,13 +582,37 @@ export function AgendaEditorPanel({
             </Card>
           )}
 
+          {hasEditPermission && (
+            <Button
+              variant="outline"
+              className="mt-4 w-full border-dashed bg-card py-5 shadow-none"
+              onClick={() => {
+                setDirty(true);
+                onAddAgendaItem();
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Neuer Punkt
+            </Button>
+          )}
           <p className="text-xs text-muted-foreground mt-4">
             Enter = neuer Punkt · Tab = Unterpunkt · Ziehen am Griff = sortieren
           </p>
         </div>
         {selectedItem ? (
           <AgendaInspector
-            startTime={timing.starts.get(selectedItem.parent_id || selectedItem.parentLocalKey ? agendaItems.find(parent => parent.id === (selectedItem.parent_id || selectedItem.parentLocalKey) || parent.localKey === (selectedItem.parentLocalKey || selectedItem.parent_id))! : selectedItem)}
+            startTime={timing.starts.get(
+              selectedItem.parent_id || selectedItem.parentLocalKey
+                ? agendaItems.find(
+                    (parent) =>
+                      parent.id ===
+                        (selectedItem.parent_id ||
+                          selectedItem.parentLocalKey) ||
+                      parent.localKey ===
+                        (selectedItem.parentLocalKey || selectedItem.parent_id),
+                  )!
+                : selectedItem,
+            )}
             key={getItemKey(selectedItem, selectedIndex)}
             item={selectedItem}
             index={selectedIndex}
