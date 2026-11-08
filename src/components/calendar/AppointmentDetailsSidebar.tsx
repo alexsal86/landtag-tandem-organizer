@@ -18,6 +18,9 @@ import { useTenant } from "@/hooks/useTenant";
 import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { notify } from "@/lib/notify";
+import { AppointmentBriefingStatusCard } from "@/features/appointments/briefing/AppointmentBriefingStatusCard";
+import { canDecide } from "@/features/appointment-requests/logic";
+import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 
 interface AppointmentDetailsSidebarProps {
   appointment: CalendarEvent | null;
@@ -767,6 +770,21 @@ export function AppointmentDetailsSidebar({
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Briefing */}
+          {appointment.id && !appointment.id.startsWith('blocked-') && !appointment.id.startsWith('external-') && appointment.id !== 'no-id' && (
+            <AppointmentBriefingStatusCard
+              appointmentId={appointment.id}
+              title={appointment.title}
+              isDecider={canDecide(resolvedRole)}
+              startTime={(() => {
+                const d = new Date(appointment.date);
+                const [h, m] = (appointment.time || "09:00").split(":").map(Number);
+                if (!Number.isNaN(h)) d.setHours(h, Number.isNaN(m) ? 0 : m, 0, 0);
+                return d.toISOString();
+              })()}
+            />
           )}
 
           {/* Category */}

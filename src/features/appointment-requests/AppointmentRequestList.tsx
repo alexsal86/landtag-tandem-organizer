@@ -40,10 +40,12 @@ export function AppointmentRequestList({ mode, hideWhenEmpty }: Props) {
     );
   }
 
-  const quick = async (id: string, decision: "accepted" | "declined") => {
+  const quick = async (id: string, decision: "accepted" | "declined", briefing?: "none") => {
     try {
-      await decide.mutateAsync({ id, decision });
-      notify.success(decision === "accepted" ? "Zugesagt – Termin steht im Kalender" : "Abgesagt");
+      await decide.mutateAsync({ id, decision, briefing });
+      notify.success(decision === "declined" ? "Abgesagt" : briefing === "none"
+        ? "Zugesagt ohne Briefing – Termin steht im Kalender"
+        : "Zugesagt – Briefing-Bedarf steht jetzt unter „Briefing-Bedarf“");
     } catch (e) {
       notify.error("Entscheidung fehlgeschlagen", { description: e instanceof Error ? e.message : undefined });
     }
@@ -68,6 +70,9 @@ export function AppointmentRequestList({ mode, hideWhenEmpty }: Props) {
             <div className="flex shrink-0 gap-1">
               <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Zusagen" title="Zusagen" disabled={decide.isPending} onClick={() => quick(r.id, "accepted")}>
                 <CalendarCheck className="h-4 w-4" />
+              </Button>
+              <Button size="sm" variant="ghost" className="h-8 px-2 text-caption" title="Zusagen, kein Briefing nötig" disabled={decide.isPending} onClick={() => quick(r.id, "accepted", "none")}>
+                ohne Briefing
               </Button>
               <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Absagen" title="Absagen" disabled={decide.isPending} onClick={() => quick(r.id, "declined")}>
                 <CalendarX className="h-4 w-4" />
