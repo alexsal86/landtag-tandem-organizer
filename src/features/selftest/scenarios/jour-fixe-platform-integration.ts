@@ -3,6 +3,7 @@ import { persistMeetingArchive } from '@/components/meetings/archiveMeeting';
 import { criticalTaskReason } from '@/components/meetings/platformAgendaRules';
 import { loadPlatformAgenda } from '@/components/meetings/usePlatformAgenda';
 import { SYSTEM_AGENDA_OPTIONS, PLATFORM_AGENDA_TYPES } from '@/components/meetings/systemAgendaRegistry';
+import { agendaHorizon } from '@/components/meetings/platformAgendaRules';
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from '../runner';
 import { describeError } from '../verify';
 import type { TestScenario } from '../types';
@@ -34,6 +35,11 @@ export const jourFixePlatformIntegrationScenario: TestScenario = {
         && criticalTaskReason({ ...base, due_date: '2026-11-01T11:59:59Z' }, now) !== null
         && criticalTaskReason({ ...base, status: 'completed', nudge_count: 2 }, now) === null;
       return { ok, message: ok ? 'Radarregeln korrekt.' : 'Radarregel verletzt.' };
+    } },
+    { id: 'horizon-rules', label: 'Zeitfenster: Redaktion 10, Briefings/Abwesenheiten 14 und Veranstaltungen 60 Tage', kind: 'logic', run: async () => {
+      const date = new Date(2026,10,8,12);
+      const ok = [7,10,14,60].every(days => new Date(agendaHorizon(date,days).end).getDate() === new Date(2026,10,8+days).getDate());
+      return { ok, message: ok ? 'Alle Sitzungszeitfenster korrekt.' : 'Zeitfenster weichen ab.' };
     } },
     ...PLATFORM_AGENDA_TYPES.filter(type => type !== 'appointment_requests').map(type => ({
       id: `source-${type}`, label: `Plattformquelle: ${type}`, critical: false, run: async (ctx: Parameters<NonNullable<TestScenario['collectArtifacts']>>[0]) => {

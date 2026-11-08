@@ -55,6 +55,9 @@ export function PlatformAgendaSection({ type, meetingDate, resultText, onUpdateR
       const { error } = await supabase.from('social_content_items').update({ approval_state: 'approved' })
         .eq('id', id).eq('tenant_id', currentTenant.id).eq('approval_state', 'pending_approval');
       if (error) throw error;
+      const verified = await supabase.from('social_content_items').select('approval_state').eq('id', id).eq('tenant_id', currentTenant.id).single();
+      if (verified.error) throw verified.error;
+      if (verified.data.approval_state !== 'approved') throw new Error('Freigabe wurde nicht gespeichert');
       await qc.invalidateQueries({ queryKey: ['jour-fixe-platform'] });
       notify.success('Beitrag freigegeben');
     } catch (error) { notify.error('Freigabe fehlgeschlagen', { description: error instanceof Error ? error.message : undefined }); }
