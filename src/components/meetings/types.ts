@@ -1,6 +1,6 @@
 export type ParticipantRole = 'organizer' | 'participant' | 'optional';
 
-export type SystemAgendaType = 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions' | 'case_items';
+export type SystemAgendaType = 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions' | 'case_items' | 'appointment_requests' | 'redaktion' | 'leave_requests' | 'event_plannings' | 'letters_for_signature' | 'critical_radar';
 
 export interface RecurrenceData {
   enabled: boolean;
