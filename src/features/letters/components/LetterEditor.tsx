@@ -58,6 +58,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
   const [showPagination, setShowPagination] = useState(true);
   const [showLayoutDebug, setShowLayoutDebug] = useState(false);
   const [showTextSplitEditor, setShowTextSplitEditor] = useState(true);
+  const [viewMode, setViewMode] = useState<'page' | 'split'>('page');
   const [draftContent, setDraftContent] = useState('');
   const [draftContentNodes, setDraftContentNodes] = useState<LetterContentNodes>(null);
   const [draftContentHtml, setDraftContentHtml] = useState<string | null>(null);
@@ -67,6 +68,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
   const latestContentRef = useRef<{ content: string; contentNodes?: LetterContentNodes }>({ content: '' });
   const pendingMentionsRef = useRef<Set<string>>(new Set());
   const draftInitializedRef = useRef(false);
+  const pageToolbarRef = useRef<HTMLDivElement>(null);
   const liveSyncTimerRef = useRef<NodeJS.Timeout>(null);
 
   const {
@@ -373,7 +375,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
             </div>
           ) : (
             <div className="flex-1 flex overflow-hidden">
-              {showTextSplitEditor && (
+              {viewMode === 'split' && showTextSplitEditor && (
                 <div className="w-[52%] min-w-[420px] border-r bg-background flex flex-col">
                   <div className="flex items-center justify-between gap-2 px-3 py-2 border-b bg-muted/20">
                     <div className="flex items-center gap-2">
@@ -395,7 +397,22 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
                 </div>
               )}
               <div className="flex-1 overflow-auto bg-muted/30 p-4">
-                {!showTextSplitEditor && (
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="inline-flex rounded-md border bg-background p-0.5" role="group" aria-label="Ansicht">
+                    <Button size="sm" variant={viewMode === 'page' ? 'default' : 'ghost'} className="h-7 px-3"
+                      onClick={() => { setShowTextSplitEditor(true); setViewMode('page'); }}>Auf der Seite schreiben</Button>
+                    <Button size="sm" variant={viewMode === 'split' ? 'default' : 'ghost'} className="h-7 px-3"
+                      onClick={() => setViewMode('split')}>Geteilte Ansicht</Button>
+                  </div>
+                  {viewMode === 'page' && (
+                    <Button size="sm" variant="default" className="h-7 px-2 ml-auto" disabled={!canEdit || saving}
+                      onClick={() => handleManualSave(latestContentRef.current.content, toSerializedContentNodes(latestContentRef.current.contentNodes ?? undefined))}>
+                      <Save className="h-3.5 w-3.5 mr-1" />Speichern
+                    </Button>
+                  )}
+                </div>
+                {viewMode === 'page' && canEdit && <div ref={pageToolbarRef} className="sticky top-0 z-sticky mb-3 rounded-md border bg-background shadow-sm" />}
+                {viewMode === 'split' && !showTextSplitEditor && (
                   <div className="flex items-center gap-2 mb-3">
                     <Button size="sm" variant="outline" onClick={() => {
                       setDraftContent(editedLetter.content || ''); setDraftContentNodes(editedLetter.content_nodes || null); setDraftContentHtml(editedLetter.content_html || null); setShowTextSplitEditor(true);
@@ -408,7 +425,14 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
                   letterDate={editedLetter.letter_date} referenceNumber={editedLetter.reference_number} attachments={attachments}
                   showPagination={showPagination} senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}
                   informationBlock={informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id)) ? [informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id))!] : undefined} layoutSettings={getLayoutSettings()}
-                  displayContentHtml={editedLetter.content_html || editedLetter.content || ''}
+                  displayContentHtml={viewMode === 'page' ? (draftContentHtml ?? editedLetter.content_html ?? editedLetter.content ?? '') : (editedLetter.content_html || editedLetter.content || '')}
+                  inlineEditor={viewMode === 'page' ? (
+                    <EnhancedLexicalEditor key={`page-${letter?.id || 'new'}`} bare content={draftContent || letter?.content || ''} contentNodes={toSerializedContentNodes(draftContentNodes ?? letter?.content_nodes)}
+                      onChange={({ plainText, nodesJson, html }) => { setDraftContent(plainText || ''); setDraftContentNodes(nodesJson && nodesJson.trim() !== '' ? nodesJson : null); setDraftContentHtml(html || null); }}
+                      placeholder="Hier direkt auf dem Brief schreiben…" documentId={letter?.id} showToolbar={canEdit} editable={canEdit}
+                      renderToolbarPortal={pageToolbarRef}
+                      onMentionInsert={(userId) => pendingMentionsRef.current.add(userId)} defaultFontFamily={templateDefaultFontFamily} />
+                  ) : undefined}
                   addressFieldElements={substitutedBlocks.canvasBlocks.addressField} returnAddressElements={substitutedBlocks.canvasBlocks.returnAddress}
                   infoBlockElements={substitutedBlocks.canvasBlocks.infoBlock} subjectElements={substitutedBlocks.canvasBlocks.subject}
                   attachmentElements={substitutedBlocks.canvasBlocks.attachments} footerTextElements={substitutedBlocks.canvasBlocks.footer}
