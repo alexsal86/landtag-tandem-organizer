@@ -49,8 +49,8 @@ import { BriefingGroup } from "./BriefingGroup";
 import { RecurrenceForm, DEFAULT_RECURRENCE, expandRecurrence, type RecurrenceState } from "./RecurrenceForm";
 import { notify } from "@/lib/notify";
 
-const SocialPlannerEditDialog = lazyWithRetry(
-  () => import("./SocialPlannerEditDialog"),
+const SocialPlannerEditPanel = lazyWithRetry(
+  () => import("./SocialPlannerEditPanel"),
 );
 
 interface PlannerBoardProps {
@@ -105,9 +105,6 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   const [createAppointmentId, setCreateAppointmentId] = useState<string | null>(null);
   const [createRecurrence, setCreateRecurrence] = useState<RecurrenceState>(DEFAULT_RECURRENCE);
 
-  // Track whether edit dialog was ever opened to keep it mounted after first load
-  const [editDialogEverOpened, setEditDialogEverOpened] = useState(false);
-
   const editingItem = useMemo(
     () => items.find((item) => item.id === editingItemId) || null,
     [editingItemId, items],
@@ -126,13 +123,6 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
     () => [...new Set(items.flatMap((item) => item.tags))].sort(),
     [items],
   );
-
-  // Lazy-load edit dialog chunk on first open
-  useEffect(() => {
-    if (editingItem !== null && !editDialogEverOpened) {
-      setEditDialogEverOpened(true);
-    }
-  }, [editingItem, editDialogEverOpened]);
 
   const filteredItems = useMemo(() => {
     const search = tagSearch.trim().toLowerCase();
@@ -405,7 +395,8 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   }, [searchParams.get("socialAppointmentId")]);
 
   return (
-    <Card>
+    <div className="flex min-w-0 flex-col items-start gap-4 xl:flex-row">
+      <Card className="min-w-0 w-full flex-1">
       <CardContent className="pt-6">
         <Kalenderansicht
           items={filteredItems}
@@ -422,7 +413,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
           onUpdateNote={updateNote}
           onDeleteNote={deleteNote}
           headerActions={(
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button size="sm" variant="outline" onClick={() => setIsCreateDialogOpen(true)}>
                 <Plus className="mr-1 h-4 w-4" />
                 Neuen Inhalt entwerfen
@@ -504,10 +495,13 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
 
         {loading && <p className="mt-3 text-xs text-muted-foreground">Lade Social-Planer…</p>}
       </CardContent>
+      </Card>
 
-      {editDialogEverOpened && (
-        <Suspense fallback={null}>
-          <SocialPlannerEditDialog
+      {editingItem && (
+        <aside aria-label="Beitrag bearbeiten" className="w-full min-w-0 shrink-0 xl:sticky xl:top-4 xl:w-[min(44%,640px)]">
+        <Suspense fallback={<div className="rounded-lg border bg-card p-6" role="status">Lade Beitragsbearbeitung…</div>}>
+          <SocialPlannerEditPanel
+            key={editingItem.id}
             item={editingItem}
             open={editingItem !== null}
             users={users}
@@ -520,6 +514,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
             onSave={handleSaveItem}
           />
         </Suspense>
+        </aside>
       )}
 
       <AlertDialog open={!!deleteCandidate} onOpenChange={(open) => { if (!open) setDeleteItemId(null); }}>
@@ -837,6 +832,6 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Card>
+    </div>
   );
 }

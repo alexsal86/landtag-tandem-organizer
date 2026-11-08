@@ -89,7 +89,7 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateA
   return (
     <div className="space-y-3">
       {/* Toolbar */}
-      <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 xl:flex-row xl:items-center xl:justify-between">
+      <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 xl:flex-row xl:flex-wrap xl:items-center xl:justify-between">
         <div className="flex flex-wrap items-center gap-3 xl:flex-1">
           <div className="flex items-center gap-1">
             <Button type="button" size="sm" variant={view === "week" ? "default" : "ghost"} className="h-8 px-3" onClick={() => setView("week")}>Woche</Button>

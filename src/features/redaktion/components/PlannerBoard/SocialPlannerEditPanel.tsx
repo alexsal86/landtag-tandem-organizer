@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarDays, CheckCircle2, CheckSquare, ClipboardList, Eye, Image as ImageIcon, MessageSquare, Pencil, Scissors, Send, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
@@ -45,7 +44,7 @@ import { AssetLibraryDialog } from "./AssetLibraryDialog";
 import { ApprovalCommentsTab } from "./ApprovalCommentsTab";
 import { notify } from "@/lib/notify";
 
-export interface SocialPlannerEditDialogProps {
+export interface SocialPlannerEditPanelProps {
   item: SocialPlannerItem | null;
   open: boolean;
   users: Array<{ id: string; display_name: string }>;
@@ -56,7 +55,7 @@ export interface SocialPlannerEditDialogProps {
   onSave: (itemId: string, payload: SocialPlannerDraftPayload) => Promise<void>;
 }
 
-export default function SocialPlannerEditDialog({ item, open, users, channels, campaigns, tagSuggestions, onOpenChange, onSave }: SocialPlannerEditDialogProps) {
+export default function SocialPlannerEditPanel({ item, open, users, channels, campaigns, tagSuggestions, onOpenChange, onSave }: SocialPlannerEditPanelProps) {
   const { user } = useAuth();
   const [selectedTemplate, setSelectedTemplate] = useState<string>("none");
   const [topic, setTopic] = useState("");
@@ -247,15 +246,22 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
     }
   }, [item, topic, tagsValue, selectedChannels, formatValue, contentGoal, formatVariant, assetRequirements, approvalRequired, publishLink, performanceNotes, hookValue, coreMessage, draftText, ctaValue, notesValue, responsibleUserId, scheduledDate, approvalState, workflowStatus, hashtags, hashtagsInComment, altText, imageUrl, variantsByChannel, campaignId, contentPillar, channels, toast, onSave, onOpenChange]);
 
+  if (!open || !item) return null;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Beitrag bearbeiten</DialogTitle>
-          <DialogDescription>
+    <>
+      <section className="space-y-4 rounded-lg border bg-card p-4 shadow-sm xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto">
+        <header className="flex items-start justify-between gap-3">
+          <div>
+          <h2 className="text-lg font-semibold">Beitrag bearbeiten</h2>
+          <p className="text-sm text-muted-foreground">
             Pflege Inhalte, Kanäle, Briefing und Veröffentlichungsstatus direkt im Social Planner.
-          </DialogDescription>
-        </DialogHeader>
+          </p>
+          </div>
+          <Button type="button" variant="ghost" size="icon" aria-label="Bearbeitung schließen" onClick={() => onOpenChange(false)} disabled={isSaving}>
+            <X className="h-4 w-4" />
+          </Button>
+        </header>
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "content" | "approval")}>
           <TabsList className="grid w-full grid-cols-2">
@@ -795,7 +801,7 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
           </TabsContent>
         </Tabs>
 
-        <DialogFooter className="gap-2 sm:gap-2">
+        <div className="sticky bottom-0 flex flex-wrap justify-end gap-2 border-t bg-card py-3">
           <Button
             type="button"
             variant="outline"
@@ -808,8 +814,8 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
           </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>Abbrechen</Button>
           <Button onClick={() => void handleSave()} disabled={isSaving}>Speichern</Button>
-        </DialogFooter>
-      </DialogContent>
+        </div>
+      </section>
       <MarkPublishedDialog
         item={item}
         channels={channels}
@@ -865,6 +871,6 @@ export default function SocialPlannerEditDialog({ item, open, users, channels, c
         onOpenChange={setAssetLibraryOpen}
         onSelect={(url) => setImageUrl(url)}
       />
-    </Dialog>
+    </>
   );
 }
