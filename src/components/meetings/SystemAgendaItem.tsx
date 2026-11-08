@@ -10,10 +10,12 @@ import { cn } from '@/lib/utils';
 import { RichTextDisplay } from '@/components/ui/RichTextDisplay';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import type { LinkedQuickNote, LinkedTask, LinkedCaseItem, RelevantDecision, Profile } from './types';
+import type { LinkedQuickNote, LinkedTask, LinkedCaseItem, RelevantDecision, Profile, SystemAgendaType } from './types';
+import { PlatformAgendaSection } from './PlatformAgendaSection';
+import { isPlatformAgendaType, systemAgendaOption } from './systemAgendaRegistry';
 
 interface SystemAgendaItemProps {
-  systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions' | 'case_items';
+  systemType: SystemAgendaType;
   meetingDate?: string | Date;
   meetingId?: string;
   allowStarring?: boolean;
@@ -86,7 +88,7 @@ export function SystemAgendaItem({
       case 'birthdays': return <Cake className="h-4 w-4 text-palette-pink" />;
       case 'decisions': return <Scale className="h-4 w-4 text-palette-violet" />;
       case 'case_items': return <Briefcase className="h-4 w-4 text-palette-teal" />;
-      default: return null;
+      default: { const Icon = systemAgendaOption(systemType)?.Icon; return Icon ? <Icon className="h-4 w-4 text-primary" /> : null; }
     }
   };
 
@@ -98,7 +100,7 @@ export function SystemAgendaItem({
       case 'birthdays': return 'Geburtstage';
       case 'decisions': return 'Entscheidungen';
       case 'case_items': return 'Vorgänge';
-      default: return '';
+      default: return systemAgendaOption(systemType)?.label || '';
     }
   };
 
@@ -162,13 +164,18 @@ export function SystemAgendaItem({
     );
   };
 
+  if (isPlatformAgendaType(systemType)) return <div className={cn('border-b border-border/60', className)}>
+    {renderHeader()}
+    <div className="px-3 pb-2"><PlatformAgendaSection type={systemType} meetingDate={meetingDate || new Date()} resultText={resultText} onUpdateResult={onUpdateResult} profiles={profiles} /></div>
+  </div>;
+
   if (systemType === 'upcoming_appointments') {
     return (
       <div className={cn('border-b border-border/60 hover:bg-muted/30 transition-colors', className)}>
         {renderHeader()}
         <div className="px-3 pb-2">
           <UpcomingAppointmentsSection
-            meetingDate={meetingDate!}
+            meetingDate={meetingDate || new Date()}
             meetingId={meetingId}
             allowStarring={allowStarring}
             profiles={profiles}
