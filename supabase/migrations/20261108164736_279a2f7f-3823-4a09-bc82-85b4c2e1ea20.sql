@@ -1,0 +1,1 @@
+ALTER TABLE public.meeting_agenda_items ADD COLUMN IF NOT EXISTS duration_minutes integer;

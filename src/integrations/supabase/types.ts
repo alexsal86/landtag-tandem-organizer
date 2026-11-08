@@ -8104,6 +8104,7 @@ export type Database = {
           carryover_notes: string | null
           created_at: string
           description: string | null
+          duration_minutes: number | null
           file_path: string | null
           id: string
           is_completed: boolean
@@ -8130,6 +8131,7 @@ export type Database = {
           carryover_notes?: string | null
           created_at?: string
           description?: string | null
+          duration_minutes?: number | null
           file_path?: string | null
           id?: string
           is_completed?: boolean
@@ -8156,6 +8158,7 @@ export type Database = {
           carryover_notes?: string | null
           created_at?: string
           description?: string | null
+          duration_minutes?: number | null
           file_path?: string | null
           id?: string
           is_completed?: boolean
