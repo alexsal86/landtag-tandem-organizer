@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { NewUserForm } from "@/components/admin/NewUserForm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, BarChart3, Clock, Loader2, Plus } from "lucide-react";
+import { Calendar, BarChart3, Clock, Loader2, MessageSquare, Plus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmployeeMeetingScheduler } from "@/features/employees/components/EmployeeMeetingScheduler";
@@ -93,6 +93,7 @@ export function EmployeesView() {
       <Tabs defaultValue="overview" className="mt-4">
         <TabsList className="mb-4">
           <TabsTrigger value="overview"><Calendar className="h-4 w-4 mr-2" />Übersicht</TabsTrigger>
+          <TabsTrigger value="meetings"><MessageSquare className="h-4 w-4 mr-2" />Gespräche</TabsTrigger>
           <TabsTrigger value="timetracking"><Clock className="h-4 w-4 mr-2" />Zeiterfassung</TabsTrigger>
         </TabsList>
 
@@ -115,9 +116,10 @@ export function EmployeesView() {
             updateStartDate={ops.updateStartDate}
             onScheduleMeeting={(emp): void => { setSelectedEmployee(emp); setSchedulerOpen(true); }}
           />
-          <section className="pb-6">
-            <EmployeeMeetingHistory showFilters={true} refreshTrigger={meetingHistoryRefreshTrigger} onScheduleMeeting={() => setMeetingEmployeePickerOpen(true)} />
-          </section>
+        </TabsContent>
+
+        <TabsContent value="meetings" className="pb-6">
+          <EmployeeMeetingHistory showFilters={true} refreshTrigger={meetingHistoryRefreshTrigger} onScheduleMeeting={() => setMeetingEmployeePickerOpen(true)} />
         </TabsContent>
 
         <TabsContent value="timetracking">
