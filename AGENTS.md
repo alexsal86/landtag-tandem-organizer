@@ -9,3 +9,4 @@
 - After a vote on a task-linked decision, the DB trigger return_task_ball_after_vote hands the task back to the decision's creator (ball_owner office, next step, timeline, notification) so the loop closes without client logic.
 - Task nudges go only through the nudge_task/ack_task_nudge RPCs (tenant-checked, 24h limit enforced in DB); due reminders are dispatched hourly by dispatch_due_task_reminders via pg_cron.
 - Recurring tasks (tasks.recurrence_rule) are respawned by the DB trigger spawn_recurring_task on completion; mandate templates and recurrence date math live as pure functions in src/features/tasks/templates.ts so they stay testable.
+- Appointment briefings move only via set_appointment_briefing/advance_appointment_briefing RPCs (role-checked, create/close the linked task atomically); rules live in src/features/appointments/briefing.ts so UI and selftests share them.

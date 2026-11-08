@@ -37,6 +37,7 @@ export function AppointmentDetailsSidebar({
 }: AppointmentDetailsSidebarProps) {
   const { currentTenant } = useTenant();
   const navigate = useNavigate();
+  const { role: resolvedRole } = useResolvedUserRole();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [appointmentCategories, setAppointmentCategories] = useState<Array<{ name: string; label: string; color: string | null }>>([]);
