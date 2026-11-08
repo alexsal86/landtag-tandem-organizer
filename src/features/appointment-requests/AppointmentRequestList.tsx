@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState, LoadingState } from "@/components/ui-patterns";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { notify } from "@/lib/notify";
+import { AcceptWithBriefingPopover, type AcceptBriefingChoice } from "@/features/appointments/briefing/AcceptWithBriefingPopover";
 import { RECOMMENDATION_LABELS, canDecide, isUrgent, requestStart, sortByEarliest } from "./logic";
 import { openAppointmentRequestCreate, openAppointmentRequestDetail } from "./events";
 import { useAppointmentRequestMutations, useNextJourFixeDate, useOpenAppointmentRequests } from "./useAppointmentRequests";
@@ -40,11 +41,12 @@ export function AppointmentRequestList({ mode, hideWhenEmpty }: Props) {
     );
   }
 
-  const quick = async (id: string, decision: "accepted" | "declined", briefing?: "none") => {
+  const quick = async (id: string, decision: "accepted" | "declined", choice: AcceptBriefingChoice = { briefing: undefined }) => {
     try {
-      await decide.mutateAsync({ id, decision, briefing });
-      notify.success(decision === "declined" ? "Abgesagt" : briefing === "none"
+      await decide.mutateAsync({ id, decision, ...choice });
+      notify.success(decision === "declined" ? "Abgesagt" : choice.briefing === "none"
         ? "Zugesagt ohne Briefing – Termin steht im Kalender"
+        : choice.briefing === "assigned" ? "Zugesagt – Briefing vergeben, Aufgabe angelegt"
         : "Zugesagt – Briefing-Bedarf steht jetzt unter „Briefing-Bedarf“");
     } catch (e) {
       notify.error("Entscheidung fehlgeschlagen", { description: e instanceof Error ? e.message : undefined });
@@ -68,12 +70,8 @@ export function AppointmentRequestList({ mode, hideWhenEmpty }: Props) {
           </button>
           {mayDecide && (
             <div className="flex shrink-0 gap-1">
-              <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Zusagen" title="Zusagen" disabled={decide.isPending} onClick={() => quick(r.id, "accepted")}>
-                <CalendarCheck className="h-4 w-4" />
-              </Button>
-              <Button size="sm" variant="ghost" className="h-8 px-2 text-caption" title="Zusagen, kein Briefing nötig" disabled={decide.isPending} onClick={() => quick(r.id, "accepted", "none")}>
-                ohne Briefing
-              </Button>
+              <AcceptWithBriefingPopover start={requestStart(r)} disabled={decide.isPending} onAccept={(c) => quick(r.id, "accepted", c)}
+                trigger={<Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Zusagen" title="Zusagen" disabled={decide.isPending}><CalendarCheck className="h-4 w-4" /></Button>} />
               <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Absagen" title="Absagen" disabled={decide.isPending} onClick={() => quick(r.id, "declined")}>
                 <CalendarX className="h-4 w-4" />
               </Button>
