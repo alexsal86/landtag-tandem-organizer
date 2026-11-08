@@ -4,7 +4,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import { SunflowerThemeToggle } from "@/components/ui/sunflower-theme-toggle";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
@@ -467,7 +466,6 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
             </Button>
           ))}
         </div>
-        <SunflowerThemeToggle className="h-9 w-14" />
       </header>
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative min-w-48 flex-1 max-w-md">
