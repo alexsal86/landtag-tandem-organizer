@@ -75,6 +75,8 @@ interface LetterEditorCanvasProps {
   onContentChange: (content: string, contentNodes?: string, contentHtml?: string) => void;
   enableInlineContentEditing?: boolean;
   onRequestContentEdit?: () => void;
+  /** Google-Docs-Modus: live editor rendered directly in the body zone of the page */
+  inlineEditor?: React.ReactNode;
   /** HTML produced by the left-side editor — this is what we paginate */
   displayContentHtml?: string;
   onMentionInsert?: (userId: string, displayName: string) => void;
@@ -129,6 +131,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   onContentChange,
   enableInlineContentEditing = false,
   onRequestContentEdit,
+  inlineEditor,
   displayContentHtml,
   isReviewMode = false,
   reviewerName = '',
@@ -480,16 +483,93 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   })).filter(isEditableAttachment);
 
   // ── The complete content flow (used for both measurement and rendering) ──
-  const renderContentFlow = () => (
+  const renderContentFlow = (live = false) => (
     <>
-      <div
-        className="din5008-content-text"
-        dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(renderedHtml) }}
-      />
+      {live && inlineEditor ? (
+        <div className="din5008-content-text">{inlineEditor}</div>
+      ) : (
+        <div
+          className="din5008-content-text"
+          dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(renderedHtml) }}
+        />
+      )}
       {renderClosing()}
       {renderAttachments()}
     </>
   );
+
+  // ── Google-Docs-Modus: one continuous sheet with live editor and page-break markers ──
+  const renderInlinePage = () => {
+    const sheetHeightMm = Math.max(PAGE_H_MM, contentStartMm + flowHeightMm + 40);
+    const breakMarkers = pageOffsets.slice(1).map((offset, i) => ({ top: contentStartMm + offset, page: i + 2 }));
+    return (
+      <div
+        className="mx-auto bg-white relative"
+        style={{
+          width: `${PAGE_W_MM}mm`,
+          minHeight: `${sheetHeightMm}mm`,
+          boxShadow: '0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)',
+          fontFamily: 'Calibri,Carlito,"Segoe UI",Arial,sans-serif',
+          fontSize: `${contentFontSizePt}pt`,
+          lineHeight: '1.2',
+        }}
+      >
+        <DIN5008LetterLayout
+          template={template}
+          senderInfo={senderInfo}
+          informationBlock={informationBlock}
+          recipientAddress={recipientAddress}
+          subject={subject}
+          letterDate={letterDate}
+          referenceNumber={referenceNumber}
+          content=""
+          attachments={[]}
+          showPagination={false}
+          layoutSettings={layoutSettings}
+          salutation={salutation}
+          hideClosing={true}
+          allowContentOverflow={false}
+          addressFieldElements={addressFieldElements}
+          returnAddressElements={returnAddressElements}
+          infoBlockElements={infoBlockElements}
+          subjectElements={subjectElements}
+          attachmentElements={attachmentElements}
+          footerTextElements={footerTextElements}
+          addressFieldLines={addressFieldLines}
+          returnAddressLines={returnAddressLines}
+          infoBlockLines={infoBlockLines}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            top: `${contentStartMm}mm`,
+            left: `${MARGIN_L_MM}mm`,
+            right: `${MARGIN_R_MM}mm`,
+            fontSize: `${contentFontSizePt}pt`,
+            lineHeight: '1.2',
+            color: '#000',
+            zIndex: 20,
+            cursor: 'text',
+          }}
+        >
+          {renderContentFlow(true)}
+        </div>
+        {breakMarkers.map((m) => (
+          <div
+            key={`break-${m.page}`}
+            aria-hidden="true"
+            style={{ position: 'absolute', top: `${m.top}mm`, left: 0, right: 0, pointerEvents: 'none', zIndex: 25 }}
+            className="border-t border-dashed border-primary/50"
+          >
+            <span className="absolute right-[2mm] -top-[3.5mm] text-[7pt] text-primary bg-background/90 px-1 rounded-sm">
+              Seitenumbruch – ab hier Seite {m.page}
+            </span>
+          </div>
+        ))}
+        {renderOverlays()}
+      </div>
+    );
+  };
 
   // ── single page renderer (viewport/offset model) ──
   const renderPage = (pageIndex: number) => {

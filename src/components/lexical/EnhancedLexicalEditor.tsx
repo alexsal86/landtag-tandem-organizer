@@ -79,6 +79,8 @@ interface EnhancedLexicalEditorProps {
   defaultFontFamily?: string;
   /** Render editor as DIN A4 writing area (210mm width) for letter-like WYSIWYG editing */
   matchLetterPreview?: boolean;
+  /** Render without frame, padding or background so the text sits directly on a host surface (e.g. A4 page) */
+  bare?: boolean;
   /** Track Changes: review mode active */
   isReviewMode?: boolean;
   /** Track Changes: reviewer display name */
@@ -190,6 +192,7 @@ export default function EnhancedLexicalEditor({
   defaultFontSize,
   defaultFontFamily,
   matchLetterPreview = false,
+  bare = false,
   isReviewMode = false,
   reviewerName = '',
   reviewerId = '',
@@ -253,29 +256,29 @@ export default function EnhancedLexicalEditor({
   const toolbarElement = showToolbar ? <EnhancedLexicalToolbar documentId={documentId} defaultFontSize={defaultFontSize} defaultFontFamily={defaultFontFamily || pageTypography} /> : null;
 
   return (
-    <div className="relative min-h-[200px] h-full border rounded-md overflow-hidden flex flex-col">
+    <div className={bare ? 'relative' : 'relative min-h-[200px] h-full border rounded-md overflow-hidden flex flex-col'}>
       <LexicalComposer initialConfig={initialConfig}>
         {/* Portal toolbar to external container if provided */}
         {renderToolbarPortal && toolbarElement ? (
           <ToolbarPortalRenderer target={renderToolbarPortal}>{toolbarElement}</ToolbarPortalRenderer>
         ) : null}
-        <div className="editor-inner relative h-full flex flex-col min-h-0">
+        <div className={bare ? 'editor-inner relative' : 'editor-inner relative h-full flex flex-col min-h-0'}>
           {!renderToolbarPortal && toolbarElement}
 
           {/* Track Changes banner / accept-reject bar */}
           <TrackChangesToolbar isReviewMode={isReviewMode} showAcceptReject={showAcceptReject} />
 
-          <div className={matchLetterPreview ? 'relative bg-muted/50 overflow-auto p-6 flex-1 min-h-0' : 'relative flex-1 min-h-0 overflow-y-auto'}>
+          <div className={bare ? 'relative' : matchLetterPreview ? 'relative bg-muted/50 overflow-auto p-6 flex-1 min-h-0' : 'relative flex-1 min-h-0 overflow-y-auto'}>
             <RichTextPlugin
               contentEditable={
                 <ContentEditable
-                  className={[
+                  className={bare ? 'editor-input min-h-[40mm] focus:outline-none max-w-none' : [
                     'editor-input min-h-[300px] focus:outline-none resize-none max-w-none bg-white',
                     matchLetterPreview
                       ? 'mx-auto'
                       : 'p-4 prose prose-sm dark:bg-card',
                   ].join(' ')}
-                  style={matchLetterPreview ? {
+                  style={bare ? { fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', color: 'inherit' } : matchLetterPreview ? {
                     width: '210mm',
                     minHeight: '297mm',
                     padding: '20mm 25mm 25mm',
@@ -291,7 +294,7 @@ export default function EnhancedLexicalEditor({
               }
               placeholder={
                 <div
-                  className={[
+                  className={bare ? 'editor-placeholder text-muted-foreground pointer-events-none absolute top-0 left-0' : [
                     'editor-placeholder text-muted-foreground pointer-events-none',
                     matchLetterPreview ? 'absolute top-6 left-1/2 -translate-x-1/2 w-[210mm] px-[25mm] pt-[20mm]' : 'absolute top-4 left-4',
                   ].join(' ')}
