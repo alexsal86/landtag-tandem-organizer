@@ -71,6 +71,7 @@ export function useAppointmentRequestMutations() {
     qc.invalidateQueries({ queryKey: [KEY] });
     qc.invalidateQueries({ queryKey: ["case-workflow"] });
     qc.invalidateQueries({ queryKey: ["calendar-data"] });
+    qc.invalidateQueries({ queryKey: ["appointment-briefing"] });
   };
 
   const create = useMutation({
