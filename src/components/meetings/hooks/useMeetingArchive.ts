@@ -4,7 +4,6 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import type { AgendaItem, Meeting, Profile } from "@/components/meetings/types";
 import type { MeetingsDataReturn } from "./useMeetingsData";
-import { normalizeTaskAssigneeIds, serializeLegacyTaskAssignees, syncTaskAssignees } from "@/lib/taskAssignees";
 import { persistMeetingArchive } from "../archiveMeeting";
 
 type ArchiveDeps = Pick<MeetingsDataReturn, 
@@ -201,9 +200,8 @@ export function useMeetingArchive(deps: ArchiveDeps) {
         .from('meeting_agenda_items').select('*').eq('meeting_id', meeting.id);
       if (agendaError) throw agendaError;
       await persistMeetingArchive(meeting.id);
-      const carryoverItems = agendaItemsData?.filter(item => item.carry_over_to_next) || [];
-      if (carryoverItems.length) await processCarryoverItems(meeting, carryoverItems);
       await clearCompletedCarryoverBuffer(meeting);
+      await loadCarryoverBufferItems();
 
       // Step 6b: Notify participants
       try {

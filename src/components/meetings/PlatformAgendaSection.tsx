@@ -18,6 +18,7 @@ import { useCurrentProfileId } from '@/hooks/useCurrentProfileId';
 import { notify } from '@/lib/notify';
 import { cn } from '@/lib/utils';
 import { JourFixeRequestsCard } from '@/features/appointment-requests/JourFixeRequestsCard';
+import { TaskDecisionDetails } from '@/components/task-decisions/TaskDecisionDetails';
 import { parseMeetingResults, type MeetingEntryResult } from './platformAgendaRules';
 import { systemAgendaOption, type PlatformAgendaType } from './systemAgendaRegistry';
 import { usePlatformAgenda } from './usePlatformAgenda';
@@ -40,6 +41,7 @@ export function PlatformAgendaSection({ type, meetingDate, resultText, onUpdateR
   const [expanded, setExpanded] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const [changeNote, setChangeNote] = useState('');
+  const [decisionId, setDecisionId] = useState<string | null>(null);
   const results = parseMeetingResults(resultText);
   const option = systemAgendaOption(type);
 
@@ -105,6 +107,7 @@ export function PlatformAgendaSection({ type, meetingDate, resultText, onUpdateR
               </div>
               {(isExpanded || !!result?.follow_up) && <div className="mt-space-xs ml-space-lg space-y-space-xs">
                 {entry.content && <RichTextDisplay content={entry.content} className="text-body break-words max-h-80 overflow-auto" />}
+                {!readOnly && entry.decisionId && <Button size="sm" variant="outline" onClick={() => setDecisionId(entry.decisionId || null)}><Check className="h-4 w-4 mr-1" /> Freigabe / Überarbeitung entscheiden</Button>}
                 {!readOnly && entry.approval === 'social' && <div className="flex flex-wrap items-center gap-space-xs">
                   {mayApprove && <Button size="sm" disabled={pending === entry.id} onClick={() => void approve(entry.id)}><Check className="h-4 w-4 mr-space-2xs" /> Freigeben</Button>}
                   <Input aria-label="Korrekturhinweis" placeholder="Korrekturhinweis" value={changeNote} onChange={e => setChangeNote(e.target.value)} className="min-w-0 flex-1" />
@@ -129,6 +132,7 @@ export function PlatformAgendaSection({ type, meetingDate, resultText, onUpdateR
           })}
         </ul>
       )}
+      {decisionId && <TaskDecisionDetails decisionId={decisionId} isOpen onClose={() => { setDecisionId(null); void qc.invalidateQueries({ queryKey: ['jour-fixe-platform'] }); }} />}
     </section>
   );
 }

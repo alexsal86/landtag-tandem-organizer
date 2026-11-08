@@ -8,6 +8,7 @@ export interface PlatformAgendaEntry {
   id: string; title: string; detail?: string; date?: string | null; status?: string;
   ownerId?: string | null; path: string; content?: string | null;
   approval?: 'social';
+  decisionId?: string;
 }
 
 /** Bounded, cached source queries shared by editor, meeting, focus mode and My Work. */
@@ -62,9 +63,13 @@ export async function loadPlatformAgenda(type: PlatformAgendaType, tenantId: str
     const { data, error } = await supabase.from('letters').select('id, title, subject, recipient_name, status, content_html, created_by')
       .eq('tenant_id', tenantId).in('status', ['review', 'pending_approval', 'approved']).order('updated_at').limit(200);
     if (error) throw error;
+    const decisions = await supabase.from('task_decisions').select('id, description').eq('tenant_id', tenantId)
+      .in('status', ['active', 'open']).like('description', '%letter_approval_letter_id:%').limit(200);
+    if (decisions.error) throw decisions.error;
     return (data ?? []).map(row => ({ id: row.id, title: row.subject || row.title, detail: row.recipient_name || 'Empfänger offen',
       status: row.status === 'approved' ? 'Freigegeben · Versand offen' : row.status === 'review' ? 'Kollegenprüfung' : 'Zur Freigabe',
-      path: `/letters/${row.id}`, content: row.content_html }));
+      path: `/letters/${row.id}`, content: row.content_html,
+      decisionId: decisions.data?.find(decision => decision.description?.split('\n').some(line => line.trim() === `letter_approval_letter_id:${row.id}`))?.id }));
   }
   if (type === 'critical_radar') {
     const until = agendaHorizon(date, 7).end;
@@ -79,7 +84,7 @@ export async function loadPlatformAgenda(type: PlatformAgendaType, tenantId: str
     if (cases.error) throw cases.error;
     if (tasks.error) throw tasks.error;
     const critical: PlatformAgendaEntry[] = (cases.data ?? []).map(row => ({ id: row.id, title: row.subject || 'Vorgang',
-      detail: row.next_action_label || 'Antwort nachhalten', date: row.next_action_due_at, status: 'Ministeriumsfrist', ownerId: row.owner_user_id, path: `/caseitems/${row.id}` }));
+      detail: row.next_action_label || 'Antwort nachhalten', date: row.next_action_due_at, status: 'Ministeriumsfrist', ownerId: row.owner_user_id, path: `/mywork?tab=cases&highlight=${row.id}` }));
     for (const task of tasks.data ?? []) {
       const reason = criticalTaskReason(task, new Date(date));
       if (reason) critical.push({ id: task.id, title: task.title, date: task.next_action_due || task.due_date, status: reason, ownerId: task.ball_assignee_id, path: `/tasks?highlight=${task.id}` });
