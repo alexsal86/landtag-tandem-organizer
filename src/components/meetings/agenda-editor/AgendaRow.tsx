@@ -212,7 +212,7 @@ export function AgendaRow({
                     </span>
                   )}
                 {hasEditPermission && (
-                  <span className="flex opacity-0 group-data-[selected=true]:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100">
+                  <span className="flex shrink-0 max-w-0 -ml-1 overflow-hidden opacity-0 transition-[max-width,margin,opacity] duration-200 ease-out group-hover:max-w-14 group-hover:ml-0 group-hover:opacity-100 group-focus-within:max-w-14 group-focus-within:ml-0 group-focus-within:opacity-100 group-data-[selected=true]:max-w-14 group-data-[selected=true]:ml-0 group-data-[selected=true]:opacity-100 motion-reduce:transition-none">
                     {!item.parent_id && !item.parentLocalKey && (
                       <Button
                         size="icon"
@@ -253,7 +253,7 @@ export function AgendaRow({
                     variant="ghost"
                     aria-label="Unterpunkte ein- oder ausklappen"
                     aria-expanded={!isMainItemCollapsed(item)}
-                    className="h-6 w-6 shrink-0 ml-auto opacity-0 group-data-[selected=true]:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
+                    className="h-7 shrink-0 w-0 max-w-0 -ml-1 overflow-hidden p-0 opacity-0 transition-[width,max-width,margin,opacity] duration-200 ease-out group-hover:w-7 group-hover:max-w-7 group-hover:ml-0 group-hover:opacity-100 group-focus-within:w-7 group-focus-within:max-w-7 group-focus-within:ml-0 group-focus-within:opacity-100 group-data-[selected=true]:w-7 group-data-[selected=true]:max-w-7 group-data-[selected=true]:ml-0 group-data-[selected=true]:opacity-100 motion-reduce:transition-none"
                     onClick={() => {
                       const key = item.localKey || item.id;
                       if (!key) return;
@@ -285,7 +285,7 @@ export function AgendaRow({
                           size="icon"
                           variant="ghost"
                           aria-label="Aufgabe als Unterpunkt"
-                          className="h-7 w-7 opacity-0 group-data-[selected=true]:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
+                          className="h-7 shrink-0 w-0 max-w-0 -ml-1 overflow-hidden p-0 opacity-0 transition-[width,max-width,margin,opacity] duration-200 ease-out group-hover:w-7 group-hover:max-w-7 group-hover:ml-0 group-hover:opacity-100 group-focus-within:w-7 group-focus-within:max-w-7 group-focus-within:ml-0 group-focus-within:opacity-100 group-data-[selected=true]:w-7 group-data-[selected=true]:max-w-7 group-data-[selected=true]:ml-0 group-data-[selected=true]:opacity-100 motion-reduce:transition-none"
                         >
                           <ListTodo className="h-4 w-4" />
                         </Button>

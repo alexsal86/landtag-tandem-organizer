@@ -692,7 +692,7 @@ export function SystemAgendaItem({
           variant="ghost"
           aria-label="Baustein-Vorschau ein- oder ausklappen"
           aria-expanded={expanded}
-          className="h-7 w-7"
+          className="h-7 shrink-0 w-0 max-w-0 -ml-1 overflow-hidden p-0 opacity-0 transition-[width,max-width,margin,opacity] duration-200 ease-out group-hover:w-7 group-hover:max-w-7 group-hover:ml-0 group-hover:opacity-100 group-focus-within:w-7 group-focus-within:max-w-7 group-focus-within:ml-0 group-focus-within:opacity-100 group-data-[selected=true]:w-7 group-data-[selected=true]:max-w-7 group-data-[selected=true]:ml-0 group-data-[selected=true]:opacity-100 motion-reduce:transition-none"
           onClick={() => setExpanded((value) => !value)}
         >
           {expanded ? (
@@ -706,7 +706,7 @@ export function SystemAgendaItem({
             size="icon"
             variant="ghost"
             aria-label="Baustein entfernen"
-            className="h-7 w-7 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+            className="h-7 shrink-0 w-0 max-w-0 -ml-1 overflow-hidden p-0 opacity-0 transition-[width,max-width,margin,opacity] duration-200 ease-out group-hover:w-7 group-hover:max-w-7 group-hover:ml-0 group-hover:opacity-100 group-focus-within:w-7 group-focus-within:max-w-7 group-focus-within:ml-0 group-focus-within:opacity-100 group-data-[selected=true]:w-7 group-data-[selected=true]:max-w-7 group-data-[selected=true]:ml-0 group-data-[selected=true]:opacity-100 motion-reduce:transition-none"
             onClick={onDelete}
           >
             <Trash className="h-4 w-4" />

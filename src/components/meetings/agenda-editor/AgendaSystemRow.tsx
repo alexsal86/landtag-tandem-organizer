@@ -15,6 +15,7 @@ export function AgendaSystemRow({
 }) {
   return (
     <div
+      data-selected={selected}
       className={cn(
         "group flex min-w-0 border border-transparent hover:bg-muted/30 focus-within:bg-muted/40",
         selected && "rounded-lg border-primary/45 bg-primary/10",
