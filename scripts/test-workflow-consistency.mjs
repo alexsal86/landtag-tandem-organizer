@@ -1,10 +1,10 @@
 // Isolated PostgreSQL integration test; never connects to the live database.
-// npm install --prefix /tmp/case-step-test-tools @electric-sql/pglite
-// PGLITE_MODULE_PATH=/tmp/case-step-test-tools/node_modules/@electric-sql/pglite/dist/index.js node scripts/test-case-step-tasks.mjs
+// npm ci --prefix tests/database
+// npm --prefix tests/database test
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-const { PGlite } = await import(process.env.PGLITE_MODULE_PATH ? pathToFileURL(process.env.PGLITE_MODULE_PATH).href : '@electric-sql/pglite');
+const { PGlite } = await import(process.env.PGLITE_MODULE_PATH ? pathToFileURL(process.env.PGLITE_MODULE_PATH).href : new URL('../tests/database/node_modules/@electric-sql/pglite/dist/index.js', import.meta.url).href);
 const db = new PGlite();
 const a = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const b = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

@@ -1,3 +1,4 @@
+import type { TablesInsert } from "@/integrations/supabase/types";
 import { supabase } from '@/integrations/supabase/client';
 import { persistMeetingArchive } from '@/components/meetings/archiveMeeting';
 import { criticalTaskReason } from '@/components/meetings/platformAgendaRules';
@@ -58,7 +59,7 @@ export const jourFixePlatformIntegrationScenario: TestScenario = {
         if (d.error) return { ok: false, message: describeError(d.error) };
         ctx.trackRecord({ table: 'task_decisions', id: did });
       }
-      const rows = [{ id: crypto.randomUUID(), meeting_id: id, title: `${SELFTEST_PREFIX} Auftrag ${ctx.runId}`, assigned_to: [ctx.userId], result_text: 'Rückmeldung einholen', order_index: 0, is_completed: true, is_recurring: false, system_type: null as string | null },
+      const rows: (TablesInsert<"meeting_agenda_items"> & { id: string })[] = [{ id: crypto.randomUUID(), meeting_id: id, title: `${SELFTEST_PREFIX} Auftrag ${ctx.runId}`, assigned_to: [ctx.userId], result_text: 'Rückmeldung einholen', order_index: 0, is_completed: true, is_recurring: false, system_type: null as string | null },
         ...SYSTEM_AGENDA_OPTIONS.map((option, i) => ({ id: crypto.randomUUID(), meeting_id: id, title: option.label, assigned_to: null, result_text: option.type === 'decisions' ? JSON.stringify({ [decisionId]: { result: 'Besprochen, Abstimmung bleibt offen' } }) : null, order_index: i+1, is_completed: false, is_recurring: false, system_type: option.type }))];
       for (const row of rows) {
         const r = await supabase.from('meeting_agenda_items').insert(row);

@@ -24,14 +24,24 @@ jobs:
           node-version: "22"
           cache: npm
       # Bestehendes @eslint/js-10 / eslint-9 Peer-Delta betrifft die Testinstallation.
-      - run: npm ci --legacy-peer-deps
-      - run: npm run check:selftest-coverage
-      - run: npm run test:selftest:coverage-check
-      - run: npm run typecheck:selftest
-      - run: npm run test:selftest
-      - run: npm ci --prefix e2e
-      - run: npx --prefix e2e playwright install --with-deps chromium
-      - run: npm run test:e2e -- --project=public
+      - id: install
+        run: npm ci --legacy-peer-deps
+      - if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run check:selftest-coverage
+      - if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run test:selftest:coverage-check
+      - if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run typecheck:selftest
+      - if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run test:selftest
+      - if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        id: e2e-install
+        run: npm ci --prefix e2e
+      - if: ${{ !cancelled() && steps.e2e-install.outcome == 'success' }}
+        id: chromium-install
+        run: npx --prefix e2e playwright install --with-deps chromium
+      - if: ${{ !cancelled() && steps.chromium-install.outcome == 'success' }}
+        run: npm run test:e2e -- --project=public
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -39,6 +49,18 @@ jobs:
           path: |
             work/e2e-results
             work/e2e-report
+
+  database-workflows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: tests/database/package-lock.json
+      - run: npm ci --prefix tests/database
+      - run: npm --prefix tests/database test
 
   live-workflows:
     if: github.event_name == 'workflow_dispatch' && inputs.run_live

@@ -1,0 +1,11 @@
+{
+  "name": "landtagsos-database-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node ../../scripts/test-workflow-consistency.mjs && node ../../scripts/test-appointment-role-workflow.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.15"
+  }
+}

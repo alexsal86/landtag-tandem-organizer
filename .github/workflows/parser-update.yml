@@ -42,7 +42,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+          key: pip-${{ runner.os }}-${{ hashFiles('.github/workflows/requirements.txt') }}
           restore-keys: |
             pip-${{ runner.os }}-
 
@@ -53,8 +53,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y jq
           python -m pip install -U pip
-          if [ -f requirements.txt ]; then
-            pip install -r requirements.txt
+          if [ -f .github/workflows/requirements.txt ]; then
+            pip install -r .github/workflows/requirements.txt
           else
             pip install pdfplumber requests jsonschema
           fi
@@ -123,7 +123,7 @@ jobs:
           echo "Parserlauf abgeschlossen. Dateien in data/:"
           ls -lah data || true
 
-      - name: Fallback: copy any session outputs to data/
+      - name: "Fallback: copy any session outputs to data/"
         shell: bash
         run: |
           set -euo pipefail

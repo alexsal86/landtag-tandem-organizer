@@ -23,6 +23,31 @@
       "registered": true
     },
     {
+      "id": "appointment-briefing-lifecycle",
+      "title": "Briefing-Lifecycle (vergeben → Aufgabe → vorlegen → freigeben)",
+      "touches": [
+        "appointments",
+        "tasks"
+      ],
+      "features": [
+        "appointments",
+        "tasks"
+      ],
+      "writes": [
+        {
+          "table": "appointments",
+          "columns": [
+            "title",
+            "tenant_id",
+            "user_id",
+            "start_time",
+            "end_time"
+          ]
+        }
+      ],
+      "registered": true
+    },
+    {
       "id": "appointment-lifecycle",
       "title": "Termin-Lifecycle (Kalender + Briefing + Feedback)",
       "touches": [
@@ -404,6 +429,73 @@
       "registered": true
     },
     {
+      "id": "jour-fixe-platform-integration",
+      "title": "Jour Fixe: Plattformquellen & Stafetten-Abschluss",
+      "touches": [
+        "meetings",
+        "meeting_agenda_items",
+        "tasks",
+        "task_decisions"
+      ],
+      "features": [
+        "meetings",
+        "tasks",
+        "decisions"
+      ],
+      "writes": [
+        {
+          "table": "meetings",
+          "columns": [
+            "title",
+            "description",
+            "meeting_date",
+            "status",
+            "user_id",
+            "tenant_id"
+          ]
+        },
+        {
+          "table": "meeting_agenda_items",
+          "columns": [
+            "meeting_id",
+            "title",
+            "assigned_to",
+            "result_text",
+            "order_index",
+            "system_type",
+            "is_completed",
+            "is_recurring"
+          ]
+        },
+        {
+          "table": "task_decisions",
+          "columns": [
+            "title",
+            "description",
+            "created_by",
+            "tenant_id",
+            "status",
+            "meeting_id",
+            "meeting_result"
+          ]
+        },
+        {
+          "table": "tasks",
+          "columns": [
+            "meeting_id",
+            "source_type",
+            "source_id",
+            "ball_owner",
+            "ball_assignee_id",
+            "next_action",
+            "next_action_due",
+            "timeline"
+          ]
+        }
+      ],
+      "registered": true
+    },
+    {
       "id": "letter-lifecycle",
       "title": "Brief-Lifecycle (Entwurf → Prüfung → Freigabe → Archiv und Folgeaufgabe)",
       "touches": [
@@ -776,6 +868,7 @@
       "table": "appointments",
       "status": "scenario",
       "scenarios": [
+        "appointment-briefing-lifecycle",
         "appointment-lifecycle",
         "appointment-request-lifecycle",
         "meeting-lifecycle"
@@ -1500,6 +1593,7 @@
       "table": "meeting_agenda_items",
       "status": "scenario",
       "scenarios": [
+        "jour-fixe-platform-integration",
         "meeting-lifecycle"
       ]
     },
@@ -1519,6 +1613,7 @@
       "table": "meetings",
       "status": "scenario",
       "scenarios": [
+        "jour-fixe-platform-integration",
         "meeting-lifecycle"
       ]
     },
@@ -1871,6 +1966,7 @@
       "scenarios": [
         "case-item-lifecycle",
         "decision-lifecycle",
+        "jour-fixe-platform-integration",
         "quick-note-lifecycle",
         "task-lifecycle"
       ]
@@ -1899,7 +1995,9 @@
       "table": "tasks",
       "status": "scenario",
       "scenarios": [
+        "appointment-briefing-lifecycle",
         "case-item-lifecycle",
+        "jour-fixe-platform-integration",
         "letter-lifecycle",
         "meeting-lifecycle",
         "quick-note-lifecycle",

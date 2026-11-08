@@ -11,6 +11,7 @@ Von 267 Tabellen haben 29 ein registriertes Szenario. 82 sind als Ausbau offen, 
 | ID | Titel | Tabellen |
 |---|---|---|
 | `access-boundaries` | Zugriffsschutz (Bürogrenzen und Entscheiderrolle) | appointment_requests |
+| `appointment-briefing-lifecycle` | Briefing-Lifecycle (vergeben → Aufgabe → vorlegen → freigeben) | appointments, tasks |
 | `appointment-lifecycle` | Termin-Lifecycle (Kalender + Briefing + Feedback) | appointments, appointment_preparations, appointment_feedback |
 | `appointment-request-lifecycle` | Terminanfragen-Lifecycle (Eingang → Sperre → Entscheidung → Termin) | appointment_requests, appointments |
 | `case-item-lifecycle` | Vorgangs-Lifecycle (Am Zug → Schritt → Wiedervorlage → Entscheidung → Tageszettel → Abschluss) | case_items, case_item_interactions, case_item_handover_log, task_decisions, task_decision_participants, task_decision_responses, appointment_requests, day_slips, tasks |
@@ -19,6 +20,7 @@ Von 267 Tabellen haben 29 ein registriertes Szenario. 82 sind als Ausbau offen, 
 | `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | day_slips |
 | `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | task_decisions, task_decision_participants |
 | `event-planning-lifecycle` | Event-Planung (komplett: Termine, Speaker, Checkliste, Timeline) | event_plannings, event_planning_dates, event_planning_speakers, event_planning_contacts, event_planning_checklist_items, event_planning_timeline_assignments |
+| `jour-fixe-platform-integration` | Jour Fixe: Plattformquellen & Stafetten-Abschluss | meetings, meeting_agenda_items, tasks, task_decisions |
 | `letter-lifecycle` | Brief-Lifecycle (Entwurf → Prüfung → Freigabe → Archiv und Folgeaufgabe) | letters, letter_attachments, documents, tasks |
 | `meeting-lifecycle` | Meeting-Lifecycle (vollständig + Field-Verifikation) | meetings, meeting_agenda_items, meeting_agenda_documents, meeting_participants, appointments, tasks |
 | `quick-note-lifecycle` | Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv) | quick_notes, tasks, task_decisions, task_decision_participants |
@@ -49,7 +51,7 @@ Von 267 Tabellen haben 29 ein registriertes Szenario. 82 sind als Ausbau offen, 
 | `appointment_requests` | Szenario vorhanden | access-boundaries, appointment-request-lifecycle, case-item-lifecycle |
 | `appointment_statuses` | Ausgenommen (nicht geprüft) | — |
 | `appointment_topics` | Ausgenommen (nicht geprüft) | — |
-| `appointments` | Szenario vorhanden | appointment-lifecycle, appointment-request-lifecycle, meeting-lifecycle |
+| `appointments` | Szenario vorhanden | appointment-briefing-lifecycle, appointment-lifecycle, appointment-request-lifecycle, meeting-lifecycle |
 | `archived_tasks` | Ausstehend | — |
 | `audit_log_entries` | Ausgenommen (nicht geprüft) | — |
 | `automation_rate_limits` | Ausgenommen (nicht geprüft) | — |
@@ -186,10 +188,10 @@ Von 267 Tabellen haben 29 ein registriertes Szenario. 82 sind als Ausbau offen, 
 | `matrix_widget_improvement_triggers` | Ausgenommen (nicht geprüft) | — |
 | `matrix_widget_message_feedback` | Ausgenommen (nicht geprüft) | — |
 | `meeting_agenda_documents` | Szenario vorhanden | meeting-lifecycle |
-| `meeting_agenda_items` | Szenario vorhanden | meeting-lifecycle |
+| `meeting_agenda_items` | Szenario vorhanden | jour-fixe-platform-integration, meeting-lifecycle |
 | `meeting_participants` | Szenario vorhanden | meeting-lifecycle |
 | `meeting_templates` | Ausgenommen (nicht geprüft) | — |
-| `meetings` | Szenario vorhanden | meeting-lifecycle |
+| `meetings` | Szenario vorhanden | jour-fixe-platform-integration, meeting-lifecycle |
 | `message_confirmations` | Ausgenommen (nicht geprüft) | — |
 | `message_recipients` | Ausgenommen (nicht geprüft) | — |
 | `messages` | Ausstehend | — |
@@ -257,12 +259,12 @@ Von 267 Tabellen haben 29 ein registriertes Szenario. 82 sind als Ausbau offen, 
 | `task_decision_response_history` | Ausgenommen (nicht geprüft) | — |
 | `task_decision_responses` | Szenario vorhanden | case-item-lifecycle |
 | `task_decision_topics` | Ausgenommen (nicht geprüft) | — |
-| `task_decisions` | Szenario vorhanden | case-item-lifecycle, decision-lifecycle, quick-note-lifecycle, task-lifecycle |
+| `task_decisions` | Szenario vorhanden | case-item-lifecycle, decision-lifecycle, jour-fixe-platform-integration, quick-note-lifecycle, task-lifecycle |
 | `task_documents` | Ausgenommen (nicht geprüft) | — |
 | `task_snoozes` | Ausgenommen (nicht geprüft) | — |
 | `task_statuses` | Ausgenommen (nicht geprüft) | — |
 | `task_topics` | Ausgenommen (nicht geprüft) | — |
-| `tasks` | Szenario vorhanden | case-item-lifecycle, letter-lifecycle, meeting-lifecycle, quick-note-lifecycle, task-lifecycle |
+| `tasks` | Szenario vorhanden | appointment-briefing-lifecycle, case-item-lifecycle, jour-fixe-platform-integration, letter-lifecycle, meeting-lifecycle, quick-note-lifecycle, task-lifecycle |
 | `team_announcement_dismissals` | Ausgenommen (nicht geprüft) | — |
 | `team_announcements` | Ausstehend | — |
 | `team_dashboard_members` | Ausgenommen (nicht geprüft) | — |
@@ -302,6 +304,7 @@ Von 267 Tabellen haben 29 ein registriertes Szenario. 82 sind als Ausbau offen, 
 
 Diese Manifeste sind keine Messung ausgeführter Assertions.
 
+- appointment-briefing-lifecycle: `appointments`: title, tenant_id, user_id, start_time, end_time
 - appointment-lifecycle: `appointments`: title, description, start_time, end_time, location, category, priority, status, is_all_day, user_id, tenant_id, reminder_minutes
 - appointment-lifecycle: `appointment_preparations`: appointment_id, tenant_id, created_by, title, status, preparation_data, checklist_items, notes
 - appointment-lifecycle: `appointment_feedback`: appointment_id, user_id, tenant_id, feedback_status, notes, event_type, completed_at
@@ -324,6 +327,10 @@ Diese Manifeste sind keine Messung ausgeführter Assertions.
 - event-planning-lifecycle: `event_planning_contacts`: event_planning_id, name, email, phone, role
 - event-planning-lifecycle: `event_planning_checklist_items`: event_planning_id, title, is_completed, order_index, type
 - event-planning-lifecycle: `event_planning_timeline_assignments`: event_planning_id, checklist_item_id, due_date
+- jour-fixe-platform-integration: `meetings`: title, description, meeting_date, status, user_id, tenant_id
+- jour-fixe-platform-integration: `meeting_agenda_items`: meeting_id, title, assigned_to, result_text, order_index, system_type, is_completed, is_recurring
+- jour-fixe-platform-integration: `task_decisions`: title, description, created_by, tenant_id, status, meeting_id, meeting_result
+- jour-fixe-platform-integration: `tasks`: meeting_id, source_type, source_id, ball_owner, ball_assignee_id, next_action, next_action_due, timeline
 - letter-lifecycle: `letters`: title, subject, content, content_html, status, created_by, tenant_id, recipient_name, recipient_address, letter_date, submitted_for_review_at, submitted_for_review_by, approved_at, approved_by, sent_at, sent_by, sent_date, workflow_locked, archived_document_id
 - letter-lifecycle: `letter_attachments`: letter_id, file_name, file_path, file_type, file_size, uploaded_by
 - meeting-lifecycle: `meetings`: title, description, meeting_date, meeting_time, status, user_id, tenant_id, is_public, parent_meeting_id, is_recurring_instance

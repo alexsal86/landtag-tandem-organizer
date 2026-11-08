@@ -78,3 +78,29 @@ Erforderliche Umgebungsvariablen bzw. GitHub-Secrets:
 | `E2E_STAFF_EMAIL`, `E2E_STAFF_PASSWORD` | Zweites Testkonto mit Rolle `mitarbeiter`, im selben Testbüro |
 
 Beide Konten müssen aktive Mitglieder des Testbüros sein. Die Live-Suite läuft explizit mit `E2E_LIVE=1 npm run test:e2e -- --project=live` oder über den manuellen Workflow mit `run_live=true`. Fehlt dann die Konfiguration, schlägt der Aufruf fehl. Ohne Aktivierung sind Live-Tests als übersprungen ausgewiesen. Passwörter gehören nicht in eingecheckte Dateien. Live-Tests speichern keine Browsertraces, Videos oder Session-Dateien mit Zugangsdaten.
+
+## CI-Reparatur und isolierte Rollenprüfung
+
+Die Parser-CI nutzt `.github/workflows/requirements.txt` und prüft den tatsächlichen CLI-Einstieg (`--help`) sowie die Parser-Unit-Tests. Veraltete Download-/Schema-CLI-Parameter werden dort nicht mehr verwendet. Parser, Sicherheitsprüfungen, Node-Qualitätsprüfungen und Unit-Tests laufen unabhängig, damit ein früher Fehler andere Ergebnisse nicht verdeckt. Fehlgeschlagene erforderliche Modelltests werden nicht automatisch heruntergestuft.
+
+Auch bei einem veralteten Abdeckungsbericht führt die Center-CI die weiteren unabhängigen Prüfungen aus; der Berichtfehler lässt den Job weiterhin fehlschlagen. Vor Änderungen an Szenarien: `npm run update:selftest-coverage` ausführen und die generierten Berichte mit übernehmen.
+
+Zusätzlich läuft eine isolierte PostgreSQL-Prüfung ohne Netzwerkverbindung zur Anwendungsdatenbank:
+
+```sh
+npm ci --prefix tests/database
+npm --prefix tests/database test
+```
+
+Sie führt die vorhandenen Migrationsfunktionen für Notiz/Aufgabe/Entscheidung mit Rollback und Idempotenz aus. Ein zweiter Ablauf verwendet die tatsächliche Terminanfragen-Migration einschließlich RLS und Freigabe-RPC unter `SET ROLE authenticated`: Mitarbeiter darf anlegen, darf nicht entscheiden; Büroleitung sagt zu; eine echte zweite Büro-ID bleibt getrennt; Wiederholung erzeugt keinen zweiten Termin; Testdaten werden gelöscht. Die dazu nötigen Benutzer-/Mitgliedschafts- und Termin-Tabellen sind isolierte Fixtures. Das bestätigt diese SQL-Regeln, ersetzt aber keinen angemeldeten Browserdurchlauf gegen die bereitgestellte Anwendung.
+
+Der Live-Browseraufruf wurde lokal versucht und scheitert ohne die sechs `E2E_*`-Einstellungen ausdrücklich an der Konfigurationsprüfung. Dafür sind Testbüro und beide Testkonten in den geschützten Umgebungseinstellungen oder GitHub-Secrets zu hinterlegen; keine Passwörter im Chat oder Repository ablegen.
+
+### Verifizierter Reparaturstand
+
+- Gezielte Center-Suite: 60 Tests bestanden; Center-Typprüfung und Abdeckungsprüfung bestanden.
+- Parser: CLI-Einstieg sowie drei Unit-Tests mit der vorhandenen Requirements-Datei bestanden.
+- Isolierte Datenbank: beide SQL-Workflow-Suiten einschließlich Mitarbeiter-/Büroleitungsprüfung bestanden.
+- Öffentlicher Browser-Test und Produktionsbuild bestanden.
+- Die breite Vitest-Suite bleibt separat rot: 30 Tests fehlgeschlagen, 438 bestanden, zusätzlich sieben nicht geladene Testsuiten (19 fehlgeschlagene Dateien insgesamt). Betroffen sind unter anderem veraltete/hochgezogene Mocks, Mandanten-Hooks, Editor-Tests und Sanitizer-/Automationsprüfungen. Diese Ergebnisse werden nicht durch Skip-/Pass-Flags ausgeblendet.
+- Der bestehende Security-Dokumentationscheck scheitert außerdem beim Einlesen der Markdown-Trennzeile der Funktionsmatrix. Auch dieser unabhängige Befund bleibt sichtbar und ist nicht Gegenstand der Center-Typkorrektur.

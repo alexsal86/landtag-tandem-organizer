@@ -1,0 +1,61 @@
+// Isolated PostgreSQL with actual request policies and decision RPC. No live connection.
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { PGlite } from '../tests/database/node_modules/@electric-sql/pglite/dist/index.js';
+
+const db = new PGlite();
+const lead = '11111111-1111-4111-8111-111111111111';
+const staff = '22222222-2222-4222-8222-222222222222';
+const office = '33333333-3333-4333-8333-333333333333';
+const foreignOffice = '44444444-4444-4444-8444-444444444444';
+const request = '55555555-5555-4555-8555-555555555555';
+const foreignRequest = '66666666-6666-4666-8666-666666666666';
+const rows = async (sql, values = []) => (await db.query(sql, values)).rows;
+const actor = user => db.query("SELECT set_config('test.actor',$1,false)", [user]);
+try {
+  await db.exec(`
+    CREATE SCHEMA auth;
+    CREATE ROLE authenticated;
+    CREATE ROLE anon;
+    CREATE ROLE service_role;
+    CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$ SELECT nullif(current_setting('test.actor',true),'')::uuid $$;
+    CREATE TABLE tenants(id uuid PRIMARY KEY);
+    INSERT INTO tenants VALUES ('${office}'),('${foreignOffice}');
+    CREATE TABLE user_tenant_memberships(user_id uuid,tenant_id uuid,role text,is_active boolean);
+    INSERT INTO user_tenant_memberships VALUES ('${lead}','${office}','bueroleitung',true),('${staff}','${office}','mitarbeiter',true);
+    CREATE FUNCTION get_user_tenant_ids(who uuid) RETURNS uuid[] LANGUAGE sql SECURITY DEFINER AS $$ SELECT array_agg(tenant_id) FROM user_tenant_memberships WHERE user_id=who AND is_active $$;
+    CREATE FUNCTION has_active_tenant_role(who uuid,office uuid,roles text[]) RETURNS boolean LANGUAGE sql SECURITY DEFINER AS $$ SELECT EXISTS(SELECT 1 FROM user_tenant_memberships WHERE user_id=who AND tenant_id=office AND is_active AND role=ANY(roles)) $$;
+    CREATE TABLE appointments(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid,tenant_id uuid,title text,description text,start_time timestamptz,end_time timestamptz,location text,is_all_day boolean,status text);
+    ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
+    CREATE POLICY own_appointments ON appointments TO authenticated USING (user_id=auth.uid() AND tenant_id=ANY(get_user_tenant_ids(auth.uid()))) WITH CHECK (user_id=auth.uid() AND tenant_id=ANY(get_user_tenant_ids(auth.uid())));
+    GRANT USAGE ON SCHEMA auth,public TO authenticated;
+    GRANT SELECT,DELETE ON appointments TO authenticated;
+  `);
+  await db.exec(await readFile(new URL('../supabase/migrations/20261105212555_2cd5693c-1150-4997-9a48-f84071a1b73a.sql', import.meta.url), 'utf8'));
+  await db.query(`INSERT INTO appointment_requests(id,tenant_id,created_by,title,requested_date) VALUES($1,$2,$3,'Other office','2030-01-15')`, [foreignRequest,foreignOffice,lead]);
+  await db.exec('SET ROLE authenticated');
+  await actor(staff);
+  await db.query(`INSERT INTO appointment_requests(id,tenant_id,title,requested_date,requested_time,duration_minutes) VALUES($1,$2,'Role workflow','2030-01-15','10:00',60)`, [request,office]);
+  assert.equal((await rows('SELECT status FROM appointment_requests WHERE id=$1',[request]))[0].status,'open');
+  await assert.rejects(db.query("UPDATE appointment_requests SET status='accepted' WHERE id=$1",[request]), /Entscheidungen nur über/);
+  await assert.rejects(db.query("SELECT decide_appointment_request($1,'accepted')",[request]), /Nur Abgeordnete oder Büroleitung/);
+  assert.equal((await rows('SELECT id FROM appointment_requests WHERE id=$1',[foreignRequest])).length,0,'Real second-office request stays invisible');
+  await assert.rejects(db.query("INSERT INTO appointment_requests(tenant_id,title,requested_date) VALUES($1,'Forbidden','2030-01-15')",[foreignOffice]), error => error.code === '42501');
+  await actor(lead);
+  const appointment = (await rows("SELECT decide_appointment_request($1,'accepted') AS id",[request]))[0].id;
+  const decided = (await rows('SELECT status,appointment_id,decided_by FROM appointment_requests WHERE id=$1',[request]))[0];
+  assert.deepEqual(decided,{status:'accepted',appointment_id:appointment,decided_by:lead});
+  const saved = (await rows('SELECT user_id,tenant_id,start_time,end_time FROM appointments WHERE id=$1',[appointment]))[0];
+  assert.equal(saved.user_id,lead); assert.equal(saved.tenant_id,office);
+  assert.equal(new Date(saved.end_time)-new Date(saved.start_time),60*60*1000);
+  await assert.rejects(db.query("SELECT decide_appointment_request($1,'accepted')",[request]),/bereits entschieden/);
+  assert.equal((await rows('SELECT id FROM appointments')).length,1,'Retry creates no duplicate');
+  await actor(staff);
+  assert.equal((await rows('SELECT id FROM appointments WHERE id=$1',[appointment])).length,0,'Fixture appointment ownership policy is enforced');
+  await db.query('DELETE FROM appointment_requests WHERE id=$1',[request]);
+  await actor(lead);
+  await db.query('DELETE FROM appointments WHERE id=$1',[appointment]);
+  assert.equal((await rows('SELECT id FROM appointments')).length,0);
+  assert.equal((await rows('SELECT id FROM appointment_requests WHERE id=$1',[request])).length,0);
+  console.log('Appointment role workflow passed: actual RPC and RLS, staff denial, lead approval, second-office isolation, retry and cleanup.');
+} finally { await db.close(); }
