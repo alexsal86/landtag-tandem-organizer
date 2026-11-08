@@ -141,6 +141,41 @@ export function AgendaEditorPanel({
     Record<string, boolean>
   >({});
 
+  const [systemExpanded, setSystemExpanded] = useState<Record<string, boolean>>(
+    {},
+  );
+  const expandableMain = agendaItems.filter(
+    (item) =>
+      !item.parent_id &&
+      !item.parentLocalKey &&
+      agendaItems.some(
+        (child) =>
+          (item.id && child.parent_id === item.id) ||
+          (item.localKey && child.parentLocalKey === item.localKey),
+      ),
+  );
+  const systemItems = agendaItems.filter((item) => item.system_type);
+  const allCollapsed =
+    expandableMain.length + systemItems.length > 0 &&
+    expandableMain.every(
+      (item) => !!collapsedMainItems[item.localKey || item.id || ""],
+    ) &&
+    systemItems.every(
+      (item) => systemExpanded[item.localKey || item.id || ""] === false,
+    );
+  const toggleAll = () => {
+    const expand = allCollapsed;
+    setCollapsedMainItems(
+      Object.fromEntries(
+        expandableMain.map((item) => [item.localKey || item.id || "", !expand]),
+      ),
+    );
+    setSystemExpanded(
+      Object.fromEntries(
+        systemItems.map((item) => [item.localKey || item.id || "", expand]),
+      ),
+    );
+  };
   const isMainItemCollapsed = (item: AgendaItem) => {
     const key = item.localKey || item.id;
     if (!key) return false;
@@ -405,6 +440,8 @@ export function AgendaEditorPanel({
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start mt-4">
         <div className="min-w-0 rounded-xl border bg-card p-2">
           <AgendaSummaryBar
+            allCollapsed={allCollapsed}
+            onToggleAll={toggleAll}
             timing={timing}
             hideEmpty={hideEmpty}
             onHideEmptyChange={setHideEmpty}
@@ -465,6 +502,16 @@ export function AgendaEditorPanel({
                                 }
                               >
                                 <SystemAgendaItem
+                                  expandedOverride={
+                                    systemExpanded[getItemKey(item, index)] ??
+                                    true
+                                  }
+                                  onExpandedChange={(expanded) =>
+                                    setSystemExpanded((prev) => ({
+                                      ...prev,
+                                      [getItemKey(item, index)]: expanded,
+                                    }))
+                                  }
                                   editorRow
                                   onCountChange={(count) =>
                                     setSystemCounts((prev) =>

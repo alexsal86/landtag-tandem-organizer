@@ -1,10 +1,15 @@
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { agendaTiming } from "./agendaTiming";
 export function AgendaSummaryBar({
+  allCollapsed,
+  onToggleAll,
   timing,
   hideEmpty,
   onHideEmptyChange,
 }: {
+  allCollapsed?: boolean;
+  onToggleAll?: () => void;
   timing: ReturnType<typeof agendaTiming>;
   hideEmpty: boolean;
   onHideEmptyChange: (value: boolean) => void;
@@ -34,6 +39,16 @@ export function AgendaSummaryBar({
           />
           Leere Bausteine ausblenden
         </label>
+        {onToggleAll && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={onToggleAll}
+          >
+            {allCollapsed ? "Alles ausklappen" : "Alles einklappen"}
+          </Button>
+        )}
       </div>
       {timing.total > 0 && (
         <div

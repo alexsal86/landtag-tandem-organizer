@@ -176,9 +176,18 @@ export function AgendaRow({
                     )}
                   </Button>
                 )}
-                {!!item.assigned_to?.length && (
-                  <div className="flex -space-x-1 shrink-0">
-                    {item.assigned_to.map((id) => {
+                {item.carry_over_to_next && (
+                  <Badge
+                    variant="outline"
+                    title="Auf nächstes Meeting übertragen"
+                    className="whitespace-nowrap"
+                  >
+                    ↩ Übertragen
+                  </Badge>
+                )}
+                {
+                  <div className="flex -space-x-1 w-20 shrink-0 justify-end">
+                    {(item.assigned_to ?? []).map((id) => {
                       const profile = profiles.find((p) => p.user_id === id);
                       return (
                         <span
@@ -193,24 +202,19 @@ export function AgendaRow({
                       );
                     })}
                   </div>
-                )}
-                {item.carry_over_to_next && (
-                  <Badge
-                    variant="outline"
-                    title="Auf nächstes Meeting übertragen"
-                    className="whitespace-nowrap"
-                  >
-                    ↩ Übertragen
-                  </Badge>
-                )}
-                {!item.parent_id &&
-                  !item.parentLocalKey &&
-                  timing.total > 0 && (
-                    <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
-                      {timing.starts.get(item)} · {item.duration_minutes ?? 0}{" "}
-                      min
-                    </span>
-                  )}
+                }
+                <span className="grid w-28 shrink-0 grid-cols-2 gap-2 text-xs text-muted-foreground tabular-nums whitespace-nowrap text-right">
+                  <span>
+                    {!item.parent_id && !item.parentLocalKey && timing.total > 0
+                      ? timing.starts.get(item)
+                      : ""}
+                  </span>
+                  <span>
+                    {!item.parent_id && !item.parentLocalKey && timing.total > 0
+                      ? `${item.duration_minutes ?? 0} min`
+                      : ""}
+                  </span>
+                </span>
                 {hasEditPermission && (
                   <span className="flex shrink-0 max-w-0 -ml-1 overflow-hidden opacity-0 transition-[max-width,margin,opacity] duration-200 ease-out group-hover:max-w-14 group-hover:ml-0 group-hover:opacity-100 group-focus-within:max-w-14 group-focus-within:ml-0 group-focus-within:opacity-100 group-data-[selected=true]:max-w-14 group-data-[selected=true]:ml-0 group-data-[selected=true]:opacity-100 motion-reduce:transition-none">
                     {!item.parent_id && !item.parentLocalKey && (

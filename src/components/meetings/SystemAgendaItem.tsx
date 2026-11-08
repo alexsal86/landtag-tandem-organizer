@@ -35,6 +35,8 @@ import {
 } from "./systemAgendaRegistry";
 
 interface SystemAgendaItemProps {
+  expandedOverride?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
   editorRow?: boolean;
   onCountChange?: (count: number | null) => void;
   systemType: SystemAgendaType;
@@ -89,6 +91,8 @@ function ProfileBadge({
 
 export function SystemAgendaItem({
   systemType,
+  expandedOverride,
+  onExpandedChange,
   editorRow = false,
   onCountChange,
   meetingDate,
@@ -116,7 +120,8 @@ export function SystemAgendaItem({
     number | null
   >(null);
   const [remoteCount, setRemoteCount] = useState<number | null>(null);
-  const [expanded, setExpanded] = useState(!defaultCollapsed);
+  const [localExpanded, setExpanded] = useState(!defaultCollapsed);
+  const expanded = expandedOverride ?? localExpanded;
   const count =
     systemType === "quick_notes"
       ? linkedQuickNotes.length
@@ -138,7 +143,12 @@ export function SystemAgendaItem({
       case "upcoming_appointments":
         return <CalendarDays className="h-4 w-4 text-palette-blue" />;
       case "quick_notes":
-        return <PencilSparkles aria-hidden="true" className="h-4 w-4 text-palette-amber" />;
+        return (
+          <PencilSparkles
+            aria-hidden="true"
+            className="h-4 w-4 text-palette-amber"
+          />
+        );
       case "tasks":
         return <ListTodo className="h-4 w-4 text-palette-green" />;
       case "birthdays":
@@ -212,14 +222,21 @@ export function SystemAgendaItem({
         "rounded px-2 py-1.5 text-xs",
         onItemClick && itemId
           ? "cursor-pointer hover:bg-muted/60 transition-colors"
-          : editorRow ? "bg-transparent" : "bg-muted/40",
+          : editorRow
+            ? "bg-transparent"
+            : "bg-muted/40",
       )}
       onClick={() =>
         onItemClick && itemType && itemId && onItemClick(itemType, itemId)
       }
     >
       <div className={cn("flex items-center", editorRow ? "gap-1" : "gap-2")}>
-        <span className={cn("text-[11px] font-medium text-foreground/70", editorRow ? "shrink-0" : "min-w-[2rem]")}>
+        <span
+          className={cn(
+            "text-[11px] font-medium text-foreground/70",
+            editorRow ? "shrink-0" : "min-w-[2rem]",
+          )}
+        >
           {String.fromCharCode(97 + idx)})
         </span>
         {!editorRow && icon}
@@ -688,7 +705,10 @@ export function SystemAgendaItem({
           aria-label="Baustein-Vorschau ein- oder ausklappen"
           aria-expanded={expanded}
           className="h-7 shrink-0 w-0 max-w-0 -ml-1 overflow-hidden p-0 opacity-0 transition-[width,max-width,margin,opacity] duration-200 ease-out group-hover:w-7 group-hover:max-w-7 group-hover:ml-0 group-hover:opacity-100 group-focus-within:w-7 group-focus-within:max-w-7 group-focus-within:ml-0 group-focus-within:opacity-100 group-data-[selected=true]:w-7 group-data-[selected=true]:max-w-7 group-data-[selected=true]:ml-0 group-data-[selected=true]:opacity-100 motion-reduce:transition-none"
-          onClick={() => setExpanded((value) => !value)}
+          onClick={() => {
+            if (onExpandedChange) onExpandedChange(!expanded);
+            else setExpanded((value) => !value);
+          }}
         >
           {expanded ? (
             <ChevronDown className="h-4 w-4" />
