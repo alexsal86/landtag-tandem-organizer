@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 import { Card, CardContent } from "@/components/ui/card";
 import { Users } from "lucide-react";
@@ -24,13 +24,16 @@ export function MeetingsView() {
   const sidebarPanel = useRef<ImperativePanelHandle>(null);
   const expandedSidebarSize = useRef(28);
   const hasSelectedMeeting = !!data.selectedMeeting;
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  const compactSidebar = hasSelectedMeeting && !sidebarExpanded;
   useEffect(() => {
     const panel = sidebarPanel.current;
     if (!panel) return;
     const from = panel.getSize();
-    if (hasSelectedMeeting) expandedSidebarSize.current = from;
-    const to = hasSelectedMeeting
-      ? Math.max(12, from / 2)
+    if (compactSidebar)
+      expandedSidebarSize.current = Math.max(from, expandedSidebarSize.current);
+    const to = compactSidebar
+      ? Math.max(12, expandedSidebarSize.current / 2)
       : expandedSidebarSize.current;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       panel.resize(to);
@@ -45,7 +48,7 @@ export function MeetingsView() {
     };
     frame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(frame);
-  }, [hasSelectedMeeting]);
+  }, [compactSidebar]);
   const { archiveMeeting, loadAndApplyCarryoverItems } = useMeetingArchive({
     user: data.user,
     currentTenant: data.currentTenant,
@@ -159,6 +162,8 @@ export function MeetingsView() {
           maxSize={38}
         >
           <MeetingSidebar
+            compact={compactSidebar}
+            onToggleCompact={() => setSidebarExpanded((value) => !value)}
             meetings={data.meetings}
             upcomingMeetings={data.upcomingMeetings}
             selectedMeeting={data.selectedMeeting}

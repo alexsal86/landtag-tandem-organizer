@@ -682,12 +682,6 @@ export function SystemAgendaItem({
           onChange={(e) => onTitleChange?.(e.target.value)}
           className="min-w-0 flex-1 basis-[calc(100%-5rem)] sm:basis-auto h-8 border-transparent bg-transparent shadow-none hover:border-border focus:bg-card focus-visible:ring-2 font-medium"
         />
-        <span className="text-xs text-muted-foreground hidden sm:inline">
-          automatisch
-        </span>
-        <Badge variant="outline" className="text-xs text-muted-foreground">
-          {count === null ? "…" : count === 0 ? "leer" : count}
-        </Badge>
         <Button
           size="icon"
           variant="ghost"
