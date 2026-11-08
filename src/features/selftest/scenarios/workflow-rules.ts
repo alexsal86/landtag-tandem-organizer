@@ -1,6 +1,7 @@
 import { canTransitionStatus } from "@/components/letters/types";
 import { canDecide } from "@/features/appointment-requests/logic";
 import { isOnResubmission, MINISTRY_RESPONSE_DAYS, withAutoDeadline, type TriageItem } from "@/features/cases/items/ball";
+import { computeCropRect, isCrowdedDay, rescheduleToDay } from "@/features/redaktion/utils/plannerRules";
 import type { TestScenario } from "../types";
 
 export const workflowRulesScenario: TestScenario = {
@@ -40,6 +41,22 @@ export const workflowRulesScenario: TestScenario = {
         const future = { ...patch, next_action_label: "Antwort abwarten" };
         const ok = days === MINISTRY_RESPONSE_DAYS && isOnResubmission(future, now) && !isOnResubmission(future, due);
         return { ok, message: ok ? "Frist und Wiedervorlage korrekt." : "Frist oder Wiedervorlage weicht ab.", details: { expectedDays: MINISTRY_RESPONSE_DAYS, actualDays: days } };
+      },
+    },
+    {
+      id: "redaktion-planner", label: "Redaktion: Verschieben behält Uhrzeit, volle Tage, Bildzuschnitt", kind: "logic",
+      run: async () => {
+        const moved = rescheduleToDay(new Date(2026, 10, 3, 14, 30).toISOString(), new Date(2026, 10, 9));
+        const fresh = rescheduleToDay(null, new Date(2026, 10, 9));
+        const crop = computeCropRect(2000, 1000, 4 / 5);
+        const checks = {
+          keepsTime: moved.getDate() === 9 && moved.getHours() === 14 && moved.getMinutes() === 30,
+          defaultTen: fresh.getHours() === 10,
+          crowded: !isCrowdedDay(2) && isCrowdedDay(3),
+          crop45: crop.sw === 800 && crop.sh === 1000 && crop.sx === 600,
+        };
+        const ok = Object.values(checks).every(Boolean);
+        return { ok, message: ok ? "Planer-Regeln korrekt." : "Planer-Regel weicht ab.", details: checks };
       },
     },
   ],
