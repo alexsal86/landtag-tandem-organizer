@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { mentionColors } from "@/utils/mentionColors";
+import { getHashedColor } from "@/utils/userColors";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { debugConsole } from '@/utils/debugConsole';
 import { useNavigate } from "react-router-dom";
@@ -186,7 +188,6 @@ export function EmployeeListTable({
   const filteredEmployees = employees.filter(employee =>
     (employee.display_name ?? "Unbenannt").toLocaleLowerCase("de").includes(query.trim().toLocaleLowerCase("de")),
   );
-  const avatarColors = ["bg-lime-600", "bg-blue-500", "bg-violet-500", "bg-amber-500"];
 
   return (
     <section aria-label="Mitarbeiterliste">
@@ -229,7 +230,7 @@ export function EmployeeListTable({
                   const usedPercent = totalVacation > 0 ? Math.min(100, Math.max(0, vacApproved / totalVacation * 100)) : 0;
                   const daysUntilMeeting = e.next_meeting_due ? differenceInDays(new Date(e.next_meeting_due), new Date()) : null;
                   const name = e.display_name || "Unbenannt";
-                  const avatarColor = avatarColors[employees.indexOf(e) % avatarColors.length];
+                  const avatarColor = mentionColors(e.badge_color || getHashedColor(e.user_id));
 
                   return (
                     <TableRow key={e.user_id}>
@@ -237,7 +238,7 @@ export function EmployeeListTable({
                         <div className="flex items-center gap-3">
                           <Avatar className="h-12 w-12 shrink-0">
                             <AvatarImage src={e.avatar_url ?? undefined} alt={name} />
-                            <AvatarFallback className={`${avatarColor} font-semibold text-white`}>{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                            <AvatarFallback className="font-semibold" style={{ backgroundColor: avatarColor.background, color: avatarColor.text }}>{name.slice(0, 2).toUpperCase()}</AvatarFallback>
                           </Avatar>
                           <div className="min-w-0">
                             <div className="break-words text-base font-semibold">{name}</div>

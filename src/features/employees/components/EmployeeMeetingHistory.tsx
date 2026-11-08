@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import { mentionColors } from "@/utils/mentionColors";
+import { getHashedColor } from "@/utils/userColors";
 import { debugConsole } from '@/utils/debugConsole';
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,6 +27,7 @@ interface Meeting {
   next_meeting_due: string | null;
   employee_name?: string;
   employee_avatar_url?: string | null;
+  employee_badge_color?: string | null;
   conductor_name?: string;
   open_action_items?: number;
   total_action_items?: number;
@@ -83,7 +86,7 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
       // Fetch profiles
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, display_name, avatar_url")
+        .select("user_id, display_name, avatar_url, badge_color")
         .in("user_id", Array.from(userIds));
 
       const profileMap = new Map(profiles?.map((profile) => [profile.user_id, profile]) || []);
@@ -110,6 +113,7 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
         ...m,
         employee_name: profileMap.get(m.employee_id)?.display_name || "Unbekannt",
         employee_avatar_url: profileMap.get(m.employee_id)?.avatar_url,
+        employee_badge_color: profileMap.get(m.employee_id)?.badge_color,
         conductor_name: profileMap.get(m.conducted_by)?.display_name || "Unbekannt",
         open_action_items: actionItemsMap.get(m.id)?.open || 0,
         total_action_items: actionItemsMap.get(m.id)?.total || 0,
@@ -233,7 +237,6 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
       { count: meetings.filter(meeting => isCancelled(meeting.status)).length, label: "abgesagt" },
     ].filter(item => item.count > 0).map(item => `${item.count} ${item.label}`),
   ].join(" · ");
-  const avatarColors = ["bg-lime-600", "bg-blue-500", "bg-violet-500", "bg-amber-500"];
 
   return (
     <Card className="overflow-hidden rounded-2xl shadow-none">
@@ -300,7 +303,7 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
                 const total = meeting.total_action_items ?? 0;
                 const open = meeting.open_action_items ?? 0;
                 const completed = total - open;
-                const avatarColor = avatarColors[Array.from(meeting.employee_id).reduce((sum, char) => sum + char.charCodeAt(0), 0) % avatarColors.length];
+                const avatarColor = mentionColors(meeting.employee_badge_color || getHashedColor(meeting.employee_id));
                 return (
                   <li key={meeting.id} className="grid grid-cols-1 items-center gap-4 border-t px-5 py-4 hover:bg-muted/20 sm:grid-cols-2 sm:px-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
                     <div className={`flex min-w-0 items-center gap-3 ${cancelled ? "opacity-50" : ""}`}>
@@ -311,7 +314,7 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
                       <div className="flex min-w-0 items-center gap-2.5">
                         <Avatar className="h-9 w-9 shrink-0">
                           <AvatarImage src={meeting.employee_avatar_url ?? undefined} alt={meeting.employee_name || "Mitarbeiter"} />
-                          <AvatarFallback className={`${avatarColor} text-xs font-semibold text-white`}>{(meeting.employee_name || "?").slice(0, 2).toUpperCase()}</AvatarFallback>
+                          <AvatarFallback className="text-xs font-semibold" style={{ backgroundColor: avatarColor.background, color: avatarColor.text }}>{(meeting.employee_name || "?").slice(0, 2).toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div className="min-w-0">
                           <p className="break-words font-semibold">{meeting.employee_name}</p>

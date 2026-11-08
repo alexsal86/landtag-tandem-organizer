@@ -25,6 +25,7 @@ export type Profile = {
   user_id: string;
   display_name: string | null;
   avatar_url: string | null;
+  badge_color?: string | null;
 };
 
 export type LeaveRow = {

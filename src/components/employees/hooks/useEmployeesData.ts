@@ -56,6 +56,28 @@ export type UseEmployeesDataResult = {
 const ADMIN_OVERVIEW_STALE_TIME_MS = 60 * 1000;
 const ADMIN_OVERVIEW_GC_TIME_MS = 10 * 60 * 1000;
 
+async function fetchAdminOverview(tenantId: string): Promise<AdminOverviewResponse> {
+  const { data, error } = await supabase.rpc("get_employee_admin_overview", {
+    p_tenant_id: tenantId,
+  });
+  if (error) throw error;
+
+  const overview = (data ?? { employees: [], pending_leaves: [], pending_requests_count: 0 }) as unknown as AdminOverviewResponse;
+  if (!overview.employees.length) return overview;
+
+  const { data: profiles, error: profilesError } = await supabase
+    .from("profiles")
+    .select("user_id, badge_color")
+    .in("user_id", overview.employees.map(employee => employee.user_id));
+  if (profilesError) throw profilesError;
+
+  const colors = new Map(profiles?.map(profile => [profile.user_id, profile.badge_color]));
+  return {
+    ...overview,
+    employees: overview.employees.map(employee => ({ ...employee, badge_color: colors.get(employee.user_id) ?? null })),
+  };
+}
+
 export function useEmployeesData(): UseEmployeesDataResult {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
@@ -86,14 +108,7 @@ export function useEmployeesData(): UseEmployeesDataResult {
         queryKey: adminOverviewKey,
         staleTime: 0,
         gcTime: ADMIN_OVERVIEW_GC_TIME_MS,
-        queryFn: async () => {
-          const { data: rpcData, error } = await supabase.rpc("get_employee_admin_overview", {
-            p_tenant_id: currentTenant.id,
-          });
-
-          if (error) throw error;
-          return (rpcData ?? { employees: [], pending_leaves: [], pending_requests_count: 0 }) as unknown as AdminOverviewResponse;
-        },
+        queryFn: () => fetchAdminOverview(currentTenant.id),
       });
       setPendingRequestsCount(data.pending_requests_count || 0);
     } catch (error) {
@@ -134,12 +149,7 @@ export function useEmployeesData(): UseEmployeesDataResult {
     queryFn: async () => {
       if (!currentTenant) return { employees: [], pending_leaves: [], pending_requests_count: 0 } as AdminOverviewResponse;
 
-      const { data, error } = await supabase.rpc("get_employee_admin_overview", {
-        p_tenant_id: currentTenant.id,
-      });
-
-      if (error) throw error;
-      return (data ?? { employees: [], pending_leaves: [], pending_requests_count: 0 }) as unknown as AdminOverviewResponse;
+      return fetchAdminOverview(currentTenant.id);
     },
   });
 
@@ -179,6 +189,7 @@ export function useEmployeesData(): UseEmployeesDataResult {
         workdays: employee.workdays ?? [true, true, true, true, true, false, false],
         display_name: employee.display_name ?? null,
         avatar_url: employee.avatar_url ?? null,
+        badge_color: employee.badge_color ?? null,
         admin_id: employee.admin_id ?? null,
         annual_vacation_days: employee.annual_vacation_days ?? 30,
         employment_start_date: employee.employment_start_date ?? null,
