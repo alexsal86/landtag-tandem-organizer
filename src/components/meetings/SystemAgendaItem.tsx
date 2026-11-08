@@ -212,17 +212,17 @@ export function SystemAgendaItem({
         "rounded px-2 py-1.5 text-xs",
         onItemClick && itemId
           ? "cursor-pointer hover:bg-muted/60 transition-colors"
-          : "bg-muted/40",
+          : editorRow ? "bg-transparent" : "bg-muted/40",
       )}
       onClick={() =>
         onItemClick && itemType && itemId && onItemClick(itemType, itemId)
       }
     >
-      <div className="flex items-center gap-2">
-        <span className="min-w-[2rem] text-[11px] font-medium text-foreground/70">
+      <div className={cn("flex items-center", editorRow ? "gap-1" : "gap-2")}>
+        <span className={cn("text-[11px] font-medium text-foreground/70", editorRow ? "shrink-0" : "min-w-[2rem]")}>
           {String.fromCharCode(97 + idx)})
         </span>
-        {icon}
+        {!editorRow && icon}
         <span className="text-foreground">{label}</span>
         {ownerLabel && (
           <span
@@ -652,7 +652,7 @@ export function SystemAgendaItem({
     <section className="min-w-0">
       <div className="flex flex-wrap sm:flex-nowrap items-center gap-1 py-1.5 px-2">
         {agendaNumber && (
-          <span className="text-muted-foreground text-sm tabular-nums">
+          <span className="mr-2 text-muted-foreground text-sm tabular-nums">
             {agendaNumber}
           </span>
         )}
@@ -680,7 +680,7 @@ export function SystemAgendaItem({
           value={title ?? getTitle()}
           readOnly={!canEditTitle}
           onChange={(e) => onTitleChange?.(e.target.value)}
-          className="min-w-0 flex-1 basis-[calc(100%-5rem)] sm:basis-auto h-8 border-transparent bg-transparent shadow-none hover:border-border focus:bg-card focus-visible:ring-2 font-medium"
+          className="min-w-0 flex-1 basis-[calc(100%-5rem)] sm:basis-auto h-8 px-1 border-transparent bg-transparent shadow-none hover:border-border focus:bg-card focus-visible:ring-2 font-medium"
         />
         <Button
           size="icon"
