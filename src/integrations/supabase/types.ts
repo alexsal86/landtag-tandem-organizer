@@ -11644,7 +11644,6 @@ export type Database = {
         Row: {
           archived_at: string | null
           archived_by: string | null
-          case_file_id: string | null
           case_item_id: string | null
           created_at: string
           created_by: string
@@ -11666,7 +11665,6 @@ export type Database = {
         Insert: {
           archived_at?: string | null
           archived_by?: string | null
-          case_file_id?: string | null
           case_item_id?: string | null
           created_at?: string
           created_by: string
@@ -11688,7 +11686,6 @@ export type Database = {
         Update: {
           archived_at?: string | null
           archived_by?: string | null
-          case_file_id?: string | null
           case_item_id?: string | null
           created_at?: string
           created_by?: string
@@ -13508,11 +13505,6 @@ export type Database = {
       }
     }
     Functions: {
-      create_case_file_task: { Args: { p_id: string; p_case_file_id: string; p_title: string; p_assigned_to?: string }; Returns: string }
-      create_work_decision: { Args: { p_id: string; p_data: Json; p_participants: string[]; p_note_id?: string }; Returns: Json }
-      create_note_work: { Args: { p_note_id: string; p_kind: string }; Returns: string }
-      create_decision_task: { Args: { p_decision_id: string }; Returns: string }
-
       _meeting_default_end: { Args: { _date: string }; Returns: string }
       _meeting_default_start: { Args: { _date: string }; Returns: string }
       ack_task_nudge: {
