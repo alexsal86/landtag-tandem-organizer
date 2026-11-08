@@ -7,7 +7,7 @@ import {
   StickyNote,
   ListTodo,
   Trash,
-  Cake,
+  Heart,
   Scale,
   Briefcase,
   ChevronDown,
@@ -138,11 +138,11 @@ export function SystemAgendaItem({
       case "upcoming_appointments":
         return <CalendarDays className="h-4 w-4 text-palette-blue" />;
       case "quick_notes":
-        return <StickyNote className="h-4 w-4 text-palette-amber" />;
+        return <StickyNote aria-hidden="true" className="h-4 w-4 text-palette-amber" />;
       case "tasks":
         return <ListTodo className="h-4 w-4 text-palette-green" />;
       case "birthdays":
-        return <Cake className="h-4 w-4 text-palette-pink" />;
+        return <Heart className="h-4 w-4 text-palette-pink" />;
       case "decisions":
         return <Scale className="h-4 w-4 text-palette-violet" />;
       case "case_items":

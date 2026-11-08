@@ -1,11 +1,11 @@
-import { CalendarDays, StickyNote, ListTodo, Cake, Scale, Briefcase, CalendarClock, Megaphone, Users, CalendarCheck, FileCheck, Radar } from 'lucide-react';
+import { CalendarDays, StickyNote, ListTodo, Heart, Scale, Briefcase, CalendarClock, Megaphone, Users, CalendarCheck, FileCheck, Radar } from 'lucide-react';
 import type { SystemAgendaType } from './types';
 
 export const SYSTEM_AGENDA_OPTIONS = [
   { type: 'upcoming_appointments', label: 'Kommende Termine', Icon: CalendarDays },
   { type: 'quick_notes', label: 'Meine Notizen', Icon: StickyNote },
   { type: 'tasks', label: 'Aufgaben', Icon: ListTodo },
-  { type: 'birthdays', label: 'Geburtstage', Icon: Cake },
+  { type: 'birthdays', label: 'Geburtstage', Icon: Heart },
   { type: 'decisions', label: 'Entscheidungen', Icon: Scale },
   { type: 'case_items', label: 'Vorgänge', Icon: Briefcase },
   { type: 'appointment_requests', label: 'Terminanfragen & Briefing-Bedarf', Icon: CalendarClock },

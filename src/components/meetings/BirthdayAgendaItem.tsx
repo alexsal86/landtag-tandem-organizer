@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Cake,
+  Heart,
   Mail,
   Phone,
   Gift,
@@ -218,7 +218,7 @@ export function BirthdayAgendaItem({
       <CardHeader hidden={contentOnly} className="py-2 px-3 pb-1">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
-            <Cake className="h-4 w-4 text-palette-pink" />
+            <Heart className="h-4 w-4 text-palette-pink" />
             Geburtstage
             {contacts.length > 0 && (
               <Badge variant="secondary">{contacts.length}</Badge>
@@ -229,7 +229,7 @@ export function BirthdayAgendaItem({
               variant="outline"
               className="text-xs bg-palette-pink/10 text-palette-pink border-palette-pink/30"
             >
-              <Cake className="h-3 w-3 mr-1" />
+              <Heart className="h-3 w-3 mr-1" />
               System
             </Badge>
             {onDelete && (
@@ -270,7 +270,7 @@ export function BirthdayAgendaItem({
                         — wird {contact.age} Jahre
                       </p>
                     </div>
-                    <Cake className="h-4 w-4 text-palette-pink" />
+                    <Heart className="h-4 w-4 text-palette-pink" />
                   </div>
                   <div className="flex gap-1 flex-wrap">
                     {ACTION_OPTIONS.map((opt) => {
