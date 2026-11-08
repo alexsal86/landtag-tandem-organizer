@@ -1,3 +1,5 @@
+import { parseMeetingResults } from "@/components/meetings/platformAgendaRules";
+import { systemAgendaOption } from "@/components/meetings/systemAgendaRegistry";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Calendar, MapPin, FileText, Printer, Star, Users, Scale, StickyNote, Briefcase, CheckSquare, ChevronRight } from "lucide-react";
@@ -112,7 +114,7 @@ export function MeetingProtocolView({ meetingId, onBack, isPostArchive }: Meetin
       // Load meeting details
       const { data: meetingData, error: meetingError } = await supabase
         .from('meetings')
-        .select('id, title, description, meeting_date, meeting_time, location, status, user_id')
+        .select('id, title, description, meeting_date, meeting_time, location, status, user_id, tenant_id')
         .eq('id', meetingId)
         .single();
       if (meetingError) throw meetingError;
@@ -128,7 +130,7 @@ export function MeetingProtocolView({ meetingId, onBack, isPostArchive }: Meetin
       // Load all profiles
       const { data: profilesData } = await supabase
         .from('profiles')
-        .select('user_id, display_name, avatar_url');
+        .select('user_id, display_name, avatar_url').eq('tenant_id', meetingData.tenant_id);
 
       // Load participants
       const { data: participantsData } = await supabase
@@ -174,33 +176,18 @@ export function MeetingProtocolView({ meetingId, onBack, isPostArchive }: Meetin
         (item) => item.system_type === 'decisions'
       );
       const decisionList: ProtocolDecision[] = [];
-      if (decisionAgendaItems.length > 0) {
-        // Try to load the actual decisions by title match (best effort)
-        const { data: decisionsData } = await supabase
-          .from('decisions')
-          .select('id, title, status, response_deadline')
-          .limit(100);
-        
-        for (const agendaItem of decisionAgendaItems) {
-          const matchedDecision = decisionsData?.find((d: Record<string, any>) => d.title === agendaItem.title);
-          decisionList.push({
-            id: matchedDecision?.id || agendaItem.id,
-            title: agendaItem.title,
-            status: matchedDecision?.status || 'open',
-            response_deadline: matchedDecision?.response_deadline,
-            result_text: agendaItem.result_text,
-          });
-        }
+      const resultById = Object.assign({}, ...decisionAgendaItems.map(item => parseMeetingResults(item.result_text))) as ReturnType<typeof parseMeetingResults>;
+      const decisionIds = Object.keys(resultById).filter(id => /^[0-9a-f-]{36}$/i.test(id));
+      if (decisionIds.length) {
+        const { data: decisionsData, error } = await supabase.from('task_decisions')
+          .select('id, title, status, response_deadline, meeting_result').eq('tenant_id', meetingData.tenant_id).in('id', decisionIds);
+        if (error) throw error;
+        for (const decision of decisionsData ?? []) decisionList.push({ ...decision, result_text: resultById[decision.id]?.result || decision.meeting_result });
       }
-
-      // Load tasks created from this meeting (category='meeting', description mentions meeting title)
-      const meetingDateFormatted = format(new Date(meetingData.meeting_date), 'dd.MM.yyyy', { locale: de });
-      const { data: tasksData } = await supabase
-        .from('tasks')
-        .select('id, title, assigned_to, parent_task_id')
-        .eq('category', 'meeting')
-        .ilike('description', `%${meetingData.title}%${meetingDateFormatted}%`)
-        .limit(50);
+      const { data: tasksData, error: tasksError } = await supabase.from('tasks')
+        .select('id, title, assigned_to, parent_task_id').eq('tenant_id', meetingData.tenant_id)
+        .eq('meeting_id', meetingId).like('source_type', 'jour_fixe_%').limit(200);
+      if (tasksError) throw tasksError;
 
       // Load starred appointments
       const starredList: StarredAppointment[] = [];
@@ -268,7 +255,7 @@ export function MeetingProtocolView({ meetingId, onBack, isPostArchive }: Meetin
       case 'case_items': return <Briefcase className="h-4 w-4 text-palette-green" />;
       case 'birthdays': return <span className="text-base">🎂</span>;
       case 'upcoming_appointments': return <Calendar className="h-4 w-4 text-palette-orange" />;
-      default: return null;
+      default: { const Icon = systemAgendaOption(systemType)?.Icon; return Icon ? <Icon className="h-4 w-4 text-primary" /> : null; }
     }
   };
 
@@ -352,7 +339,9 @@ export function MeetingProtocolView({ meetingId, onBack, isPostArchive }: Meetin
           {item.result_text?.trim() && !item.system_type?.includes('birthday') && (
             <div className="bg-muted/50 p-3 rounded-md border-l-4 border-primary">
               <p className="text-sm font-medium text-primary mb-1">Ergebnis:</p>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">{item.result_text}</p>
+              {item.system_type && Object.keys(parseMeetingResults(item.result_text)).length > 0
+                ? <ul className="space-y-2">{Object.entries(parseMeetingResults(item.result_text)).filter(([, entry]) => entry.result.trim()).map(([id, entry]) => <li key={id} className="text-sm whitespace-pre-wrap">{entry.result}{entry.follow_up && <Badge variant="outline" className="ml-2">Folgeaufgabe</Badge>}</li>)}</ul>
+                : <p className="text-sm leading-relaxed whitespace-pre-wrap">{item.result_text}</p>}
             </div>
           )}
         </div>

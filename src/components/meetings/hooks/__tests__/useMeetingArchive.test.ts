@@ -188,10 +188,14 @@ describe("useMeetingArchive", () => {
     setLinkedQuickNotes: vi.fn(),
     setSelectedMeeting: vi.fn(),
     setIsFocusMode: vi.fn(),
+    setArchivedMeetingId: vi.fn(),
+    agendaItems: [],
+    updateTimeouts: { current: {} },
   });
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSupabase.rpc.mockResolvedValue({ data: { tasks_created: 3 }, error: null });
     responses.clear();
     insertsByTable.clear();
     updatesByTable.clear();
@@ -223,16 +227,9 @@ describe("useMeetingArchive", () => {
 
     await archiveMeeting(baseMeeting);
 
-    const taskInserts = (insertsByTable.get("tasks") ?? []).flat() as Array<Record<string, unknown>>;
-    expect(taskInserts).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ parent_task_id: "task-1", title: "Follow-up linked" }),
-        expect.objectContaining({ title: "Zuweisung", assigned_to: "user-2" }),
-        expect.objectContaining({ title: expect.stringContaining("Nachbereitung Plenum") }),
-        expect.objectContaining({ parent_task_id: "followup-1", title: expect.stringContaining("Offen") }),
-      ]),
-    );
-
+    expect(mockSupabase.rpc).toHaveBeenCalledWith('archive_meeting_with_stafette', { _meeting_id: 'meeting-1' });
+    expect(insertsByTable.get('tasks')).toBeUndefined();
+    expect(mockSupabase.from).not.toHaveBeenCalledWith('decisions');
     expect(deps.setActiveMeeting).toHaveBeenCalledWith(null);
     expect(deps.setActiveMeetingId).toHaveBeenCalledWith(null);
     expect(deps.setAgendaItems).toHaveBeenCalledWith([]);
@@ -253,23 +250,14 @@ describe("useMeetingArchive", () => {
       data: [buildAgendaItem({ id: "ai-1", title: "Carry", carry_over_to_next: true, order_index: 1 })],
       error: null,
     });
-    enqueue("meetings", { data: null, error: null });
-    enqueue("carryover_items", { data: null, error: null });
-    enqueue<TaskFixture>("tasks", { data: { id: "followup-1" }, error: null });
-    enqueue("starred_appointments", { data: [], error: null });
     enqueue("meeting_agenda_items", { data: [], error: null });
-    enqueue<MeetingStatusFixture[]>("meetings", { data: [{ id: "meeting-1", status: "archived" }], error: null });
     enqueue<ParticipantFixture[]>("meeting_participants", { data: [], error: null });
 
     await archiveMeeting(baseMeeting);
 
-    expect((insertsByTable.get("carryover_items") ?? []).flat()).toEqual(
-      expect.arrayContaining([expect.objectContaining({ title: "Carry", original_meeting_id: "meeting-1" })]),
-    );
-    expect(deps.toast).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "Punkte vorgemerkt", description: expect.stringContaining("1 Punkte") }),
-    );
-
+    expect(mockSupabase.rpc).toHaveBeenCalledWith('archive_meeting_with_stafette', { _meeting_id: 'meeting-1' });
+    expect(insertsByTable.get('carryover_items')).toBeUndefined();
+    expect(deps.loadCarryoverBufferItems).toHaveBeenCalled();
     enqueue<CarryoverFixture[]>("carryover_items", {
       data: [
         buildCarryover(),
@@ -315,6 +303,18 @@ describe("useMeetingArchive", () => {
 
     expect(deps.loadAgendaItems).not.toHaveBeenCalled();
     expect((insertsByTable.get("meeting_agenda_items") ?? []).flat()).toHaveLength(0);
+  });
+
+  it("does not reset the meeting or perform client task writes when the transaction fails", async () => {
+    const deps = createDeps();
+    enqueue('meeting_agenda_items', { data: [], error: null });
+    mockSupabase.rpc.mockResolvedValueOnce({ data: null, error: { message: 'transaction rolled back' } });
+    await useMeetingArchive(deps).archiveMeeting(baseMeeting);
+    expect(deps.setActiveMeeting).not.toHaveBeenCalled();
+    expect(deps.setArchivedMeetingId).not.toHaveBeenCalled();
+    expect(insertsByTable.get('tasks')).toBeUndefined();
+    expect(updatesByTable.get('meetings')).toBeUndefined();
+    expect(deps.toast).toHaveBeenCalledWith(expect.objectContaining({ variant: 'destructive', description: expect.stringContaining('transaction rolled back') }));
   });
 
   it("maps birthday task assignee deterministically", () => {
