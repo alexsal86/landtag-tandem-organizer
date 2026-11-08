@@ -1,20 +1,19 @@
-import { SYSTEM_AGENDA_OPTIONS } from "./systemAgendaRegistry";
+import { AgendaRow } from "./agenda-editor/AgendaRow";
+import { AgendaInspector } from "./agenda-editor/AgendaInspector";
+import { AgendaSummaryBar } from "./agenda-editor/AgendaSummaryBar";
+import { AgendaSystemRow } from "./agenda-editor/AgendaSystemRow";
+import { AddAgendaMenu } from "./agenda-editor/AddAgendaMenu";
+import { agendaTiming } from "./agenda-editor/agendaTiming";
 import type { SystemAgendaType } from "@/components/meetings/types";
 import { debugConsole } from '@/utils/debugConsole';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu";
-import { CalendarDays, Plus, Save, Clock, Users, GripVertical, Trash, ListTodo, Upload, FileText, Download, StickyNote, Eye, EyeOff, Star, Cake, Scale, Briefcase, X, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Save, Clock, StickyNote } from "lucide-react";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { SystemAgendaItem } from "@/components/meetings/SystemAgendaItem";
-import { MultiUserAssignSelect } from "@/components/meetings/MultiUserAssignSelect";
 import { UpcomingAppointmentsSection } from "@/components/meetings/UpcomingAppointmentsSection";
 import { PendingJourFixeNotes } from "@/components/meetings/PendingJourFixeNotes";
 import { PendingJourFixeCaseItems } from "@/components/meetings/PendingJourFixeCaseItems";
@@ -23,7 +22,6 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { SUBPOINT_OPTIONS } from "@/components/meetings/types";
 import type { AgendaItem, Meeting, Profile, LinkedQuickNote, LinkedTask, LinkedCaseItem, RelevantDecision, AgendaDocument } from "@/components/meetings/types";
 import { notify } from "@/lib/notify";
 
@@ -41,7 +39,7 @@ interface AgendaEditorPanelProps {
   onAddAgendaItem: () => void;
   onAddSystemAgendaItem: (systemType: SystemAgendaType, parentItem?: AgendaItem) => void;
   onUpdateAgendaItem: (index: number, field: keyof AgendaItem, value: unknown) => void;
-  onSaveAgendaItems: () => void;
+  onSaveAgendaItems: () => void | boolean | Promise<void | boolean>;
   onAddTaskToAgenda: (task: LinkedTask, parentItem: AgendaItem, parentIndex: number) => void;
   onAddSubItem: (parent: AgendaItem, title: string) => void;
   onDeleteAgendaItem: (item: AgendaItem, index: number) => void;
@@ -63,10 +61,18 @@ export function AgendaEditorPanel({
   onToggleVisibility, onDragEnd, onUploadAgendaDocument, onDeleteAgendaDocument,
   onSetAgendaItems, meetingLinkedTasks, meetingLinkedCaseItems, meetingRelevantDecisions,
 }: AgendaEditorPanelProps) {
-  const [editingField, setEditingField] = useState<Record<string, 'description' | 'notes' | null>>({});
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [hideEmpty, setHideEmpty] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [systemCounts, setSystemCounts] = useState<Record<string, number | null>>({});
+  const selectedIndex = agendaItems.findIndex((item, index) => getItemKey(item, index) === selectedKey);
+  const selectedItem = agendaItems[selectedIndex];
+  const change = (index: number, field: keyof AgendaItem, value: unknown) => { setDirty(true); onUpdateAgendaItem(index, field, value); };
+  useEffect(() => { setSelectedKey(null); setDirty(false); setSystemCounts({}); }, [selectedMeeting.id]);
+  const timing = agendaTiming(agendaItems, selectedMeeting.meeting_time);
   const [collapsedMainItems, setCollapsedMainItems] = useState<Record<string, boolean>>({});
 
-  const getItemKey = (item: AgendaItem, index: number) => item.id || item.localKey || `agenda-${index}`;
+  const getItemKey = (item: AgendaItem, index: number) => item.localKey || item.id || `agenda-${index}`;
 
   const isMainItemCollapsed = (item: AgendaItem) => {
     const key = item.id || item.localKey;
@@ -203,9 +209,9 @@ export function AgendaEditorPanel({
   const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, item: AgendaItem, index: number) => {
     if (!hasEditPermission) return;
 
-    if (e.key === 'Tab' && !(item.parent_id || item.parentLocalKey)) {
+    if (e.key === 'Tab' && !e.shiftKey && !(item.parent_id || item.parentLocalKey)) {
       e.preventDefault();
-      onAddSubItem(item, '');
+      (setDirty(true), onAddSubItem)(item, '');
       return;
     }
 
@@ -248,58 +254,42 @@ export function AgendaEditorPanel({
 
   return (
     <>
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-start gap-3">
         <h2 className="text-xl font-semibold">
           Agenda: {selectedMeeting.title} am {format(new Date(selectedMeeting.meeting_date), "EEEE, d. MMMM", { locale: de })}
           {selectedMeeting.meeting_time && ` um ${selectedMeeting.meeting_time.substring(0, 5)} Uhr`}
         </h2>
         {hasEditPermission && (
           <div className="flex gap-2">
-            <Button variant="outline" onClick={onAddAgendaItem}>
-              <Plus className="h-4 w-4 mr-2" /> Punkt
-            </Button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <CalendarDays className="h-4 w-4 mr-2" /> System
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-72 max-h-96 overflow-auto">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium mb-2">Dynamischen Punkt hinzufügen</p>
-                  {SYSTEM_AGENDA_OPTIONS.map(({ type, label, Icon }) => (
-                    <Button key={type} variant="outline"
-                      className="w-full justify-start h-auto whitespace-normal text-left"
-                      onClick={() => onAddSystemAgendaItem(type)}
-                      disabled={agendaItems.some(i => i.system_type === type)}
-                    >
-                      <Icon className="h-4 w-4 mr-2" /> {label}
-                    </Button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-            <Button onClick={onSaveAgendaItems}>
+            <AddAgendaMenu agendaItems={agendaItems} onAdd={() => { setDirty(true); onAddAgendaItem(); }} onAddSystem={type => { setDirty(true); onAddSystemAgendaItem(type); }} />
+            {dirty && <span role="status" className="text-xs text-muted-foreground self-center">Ungespeicherte Änderungen</span>}
+            <Button onClick={async () => { const result = await onSaveAgendaItems(); if (result !== false) setDirty(false); }}>
               <Save className="h-4 w-4 mr-2" /> Speichern
             </Button>
           </div>
         )}
       </div>
 
-      <DragDropContext onDragEnd={onDragEnd}>
+      <AgendaSummaryBar timing={timing} hideEmpty={hideEmpty} onHideEmptyChange={setHideEmpty} />
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start mt-4">
+      <div className="min-w-0">
+      <DragDropContext onDragEnd={result => { if (result.destination) setDirty(true); onDragEnd(result); }}>
         <Droppable droppableId="agenda-items">
           {(provided) => (
-            <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-2 mt-4">
+            <div ref={provided.innerRef} {...provided.droppableProps} className="min-w-0">
               {agendaItems.map((item, index) => (
-                <Draggable key={item.id || item.localKey || `agenda-${index}`} draggableId={item.id || item.localKey || `agenda-${index}`} index={index} isDragDisabled={!hasEditPermission}>
+                <Draggable key={item.localKey || item.id || `agenda-${index}`} draggableId={item.localKey || item.id || `agenda-${index}`} index={index} isDragDisabled={!hasEditPermission}>
                   {(provided, snapshot) => (
                     <>
                       {/* System item rendering */}
                       {item.system_type ? (
-                        <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
-                          className={cn("transition-shadow", snapshot.isDragging && "shadow-lg", (item.parentLocalKey || item.parent_id) && "pl-8", isHiddenByCollapsedParent(item) && "hidden")}
+                        <div ref={provided.innerRef} {...provided.draggableProps} onFocus={() => setSelectedKey(getItemKey(item, index))} onClick={() => setSelectedKey(getItemKey(item, index))}
+                          className={cn("transition-shadow", snapshot.isDragging && "shadow-lg", (item.parentLocalKey || item.parent_id) && "ml-7 border-l pl-2", (isHiddenByCollapsedParent(item) || (hideEmpty && systemCounts[getItemKey(item, index)] === 0)) && "hidden")}
                         >
+                          <AgendaSystemRow dragHandleProps={provided.dragHandleProps} canEdit={hasEditPermission} selected={getItemKey(item, index) === selectedKey}>
                           <SystemAgendaItem
+                            editorRow
+                            onCountChange={count => setSystemCounts(prev => prev[getItemKey(item, index)] === count ? prev : {...prev, [getItemKey(item, index)]: count})}
                             systemType={item.system_type as SystemAgendaType}
                             meetingDate={selectedMeeting.meeting_date}
                             meetingId={selectedMeeting.id}
@@ -310,7 +300,7 @@ export function AgendaEditorPanel({
                             linkedCaseItems={meetingLinkedCaseItems}
                             profiles={profiles}
                             resultText={item.result_text}
-                            onUpdateResult={hasEditPermission ? value => onUpdateAgendaItem(index, 'result_text', value) : undefined}
+                            onUpdateResult={hasEditPermission ? value => change(index, 'result_text', value) : undefined}
                             onDelete={hasEditPermission ? () => onDeleteAgendaItem(item, index) : undefined}
                             isEmbedded={!!(item.parentLocalKey || item.parent_id)}
                             defaultCollapsed={true}
@@ -318,247 +308,13 @@ export function AgendaEditorPanel({
                             compact={true}
                             title={item.title}
                             canEditTitle={hasEditPermission}
-                            onTitleChange={(value) => onUpdateAgendaItem(index, 'title', value)}
+                            onTitleChange={(value) => change(index, 'title', value)}
                           />
+                          </AgendaSystemRow>
                         </div>
                       ) : (
                         /* Regular agenda item */
-                        <ContextMenu>
-                          <ContextMenuTrigger asChild>
-                        <div ref={provided.innerRef} {...provided.draggableProps}
-                          className={cn(
-                            "transition-colors border-b border-border/60 hover:bg-muted/30",
-                            snapshot.isDragging && "shadow-lg bg-card rounded-lg border",
-                            (item.parentLocalKey || item.parent_id) && "pl-8",
-                            item.is_optional && "border-dashed",
-                            item.is_optional && item.is_visible === false && "opacity-50",
-                            isHiddenByCollapsedParent(item) && "hidden"
-                          )}
-                        >
-                          <div className="py-2 px-3">
-                            <div className="space-y-3">
-                              <div className="flex items-center gap-1 group">
-                                {hasEditPermission && (
-                                  <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <GripVertical className="h-4 w-4 text-muted-foreground" />
-                                  </div>
-                                )}
-                                <span className="text-muted-foreground font-medium min-w-[1.75rem] text-right">
-                                  {getAgendaNumber(item)}
-                                </span>
-                                <Input value={item.title} onChange={(e) => onUpdateAgendaItem(index, 'title', e.target.value)}
-                                  onKeyDown={(e) => handleTitleKeyDown(e, item, index)}
-                                  placeholder={item.parentLocalKey || item.parent_id ? "Unterpunkt-Titel" : "Agenda-Punkt Titel"}
-                                  className={cn("font-semibold", !(item.parentLocalKey || item.parent_id) && "text-lg")}
-                                  readOnly={!hasEditPermission}
-                                />
-                                {/* Carryover badge */}
-                                {item.source_meeting_id && (
-                                  <Badge variant="outline" className="text-[10px] bg-palette-amber/10 text-palette-amber border-palette-amber/30 whitespace-nowrap">
-                                    ↩ {item.original_meeting_title ? `von ${item.original_meeting_title}` : 'Übertragen'}
-                                  </Badge>
-                                )}
-                                {/* Optional visibility toggle */}
-                                {item.is_optional && item.id && hasEditPermission && (
-                                  <Button size="icon" variant="ghost" className="shrink-0 h-7 w-7" onClick={() => onToggleVisibility(item.id!, item.is_visible !== false)}>
-                                    {item.is_visible !== false ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
-                                  </Button>
-                                )}
-                                {/* Carry over checkbox */}
-                                {!(item.parentLocalKey || item.parent_id) && hasEditPermission && (
-                                  <label className="flex items-center gap-1 shrink-0 cursor-pointer" title="Auf nächstes Meeting übertragen">
-                                    <Checkbox checked={!!item.carry_over_to_next} onCheckedChange={(checked) => onUpdateAgendaItem(index, 'carry_over_to_next', !!checked)} />
-                                    <span className="text-xs text-muted-foreground">↩</span>
-                                  </label>
-                                )}
-                                {hasContentIndicator(item) && (
-                                  <span className="h-2 w-2 rounded-full bg-palette-blue/80 shrink-0" title="Enthält Beschreibung, Notizen oder Dokumente" />
-                                )}
-                                {hasSubItems(item) && (
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-6 w-6 shrink-0 ml-auto"
-                                    onClick={() => {
-                                      const key = item.id || item.localKey;
-                                      if (!key) return;
-                                      setCollapsedMainItems((prev) => ({ ...prev, [key]: !prev[key] }));
-                                    }}
-                                  >
-                                    {isMainItemCollapsed(item) ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                                  </Button>
-                                )}
-                              </div>
-
-                              {!(item.parentLocalKey || item.parent_id) && hasEditPermission && (
-                                <Popover open={showTaskSelector?.itemIndex === index} onOpenChange={(open) => onSetShowTaskSelector(open ? { itemIndex: index } : null)}>
-                                  <PopoverTrigger asChild>
-                                    <span className="hidden" />
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-[min(92vw,32rem)]">
-                                    <div className="space-y-2">
-                                      <div className="text-sm font-medium mb-3">Aufgabe als Unterpunkt hinzufügen</div>
-                                      {tasks.length > 0 ? (
-                                        <div className="space-y-2 max-h-60 overflow-y-auto">
-                                          {tasks.map((task) => (
-                                            <Button key={task.id} variant="outline" className="w-full justify-start text-left h-auto p-3 whitespace-normal"
-                                              onClick={() => onAddTaskToAgenda(task, item, index)}>
-                                              <div><div className="font-medium whitespace-normal break-words">{task.title}</div></div>
-                                            </Button>
-                                          ))}
-                                        </div>
-                                      ) : (
-                                        <div className="text-sm text-muted-foreground text-center py-4">Keine offenen Aufgaben verfügbar</div>
-                                      )}
-                                    </div>
-                                  </PopoverContent>
-                                </Popover>
-                              )}
-
-                              {/* Sub-item details */}
-                              {(item.parentLocalKey || item.parent_id) && (
-                                <>
-                                  {editingField[getItemKey(item, index)] === 'description' ? (
-                                    <Textarea
-                                      autoFocus
-                                      value={item.description || ''}
-                                      onBlur={() => setEditingField((prev) => ({ ...prev, [getItemKey(item, index)]: null }))}
-                                      onChange={(e) => onUpdateAgendaItem(index, 'description', e.target.value)}
-                                      placeholder="Beschreibung"
-                                      className="min-h-[60px]"
-                                    />
-                                  ) : (
-                                    <button
-                                      type="button"
-                                      className="text-left text-sm text-muted-foreground rounded border border-dashed border-transparent hover:border-border px-2 py-1"
-                                      onClick={() => hasEditPermission && setEditingField((prev) => ({ ...prev, [getItemKey(item, index)]: 'description' }))}
-                                    >
-                                      {item.description?.trim() ? item.description : 'Beschreibung hinzufügen'}
-                                    </button>
-                                  )}
-                                  <MultiUserAssignSelect assignedTo={item.assigned_to ?? null} profiles={profiles}
-                                    onChange={(userIds) => onUpdateAgendaItem(index, 'assigned_to', userIds.length > 0 ? userIds : null)} size="sm" />
-
-                                  {/* Task documents */}
-                                  {item.task_id && taskDocuments[item.task_id] && taskDocuments[item.task_id].length > 0 && (
-                                    <div className="mb-3">
-                                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                                        <FileText className="h-3 w-3" /><span>Aufgaben-Dokumente:</span>
-                                      </div>
-                                      <div className="space-y-1">
-                                        {taskDocuments[item.task_id].map((doc, docIndex) => (
-                                          <div key={docIndex} className="flex items-center justify-between py-1 px-2 hover:bg-muted/30 rounded text-xs">
-                                            <span className="text-muted-foreground truncate">{doc.file_name || 'Dokument'}</span>
-                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                                              onClick={async () => {
-                                                try {
-                                                  const { data, error } = await supabase.storage.from('task-documents').download(doc.file_path);
-                                                  if (error) throw error;
-                                                  const url = URL.createObjectURL(data);
-                                                  const a = document.createElement('a'); a.href = url; a.download = doc.file_name || 'download'; a.click(); URL.revokeObjectURL(url);
-                                                 } catch (error) { showDocumentActionError('download', error); }
-                                              }}>
-                                              <Download className="h-3 w-3" />
-                                            </Button>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                      <label className="text-sm font-medium">Notizen</label>
-                                      {editingField[getItemKey(item, index)] === 'notes' ? (
-                                        <Textarea
-                                          autoFocus
-                                          value={item.notes || ''}
-                                          onBlur={() => setEditingField((prev) => ({ ...prev, [getItemKey(item, index)]: null }))}
-                                          onChange={(e) => onUpdateAgendaItem(index, 'notes', e.target.value)}
-                                          placeholder="Notizen und Hinweise"
-                                          className="min-h-[80px]"
-                                        />
-                                      ) : (
-                                        <button
-                                          type="button"
-                                          className="w-full text-left text-sm text-muted-foreground rounded border border-dashed border-transparent hover:border-border px-2 py-1 min-h-10"
-                                          onClick={() => hasEditPermission && setEditingField((prev) => ({ ...prev, [getItemKey(item, index)]: 'notes' }))}
-                                        >
-                                          {item.notes?.trim() ? item.notes : 'Notizen hinzufügen'}
-                                        </button>
-                                      )}
-                                    </div>
-
-                                    <div>
-                                      {/* Agenda documents */}
-                                      {agendaDocuments[item.id!] && agendaDocuments[item.id!].length > 0 && (
-                                        <div className="mb-2 bg-muted/30 p-2 rounded-lg border">
-                                          <h4 className="text-sm font-medium mb-1">Angehängte Dokumente:</h4>
-                                          <div className="space-y-1">
-                                            {agendaDocuments[item.id!].map((doc, docIndex) => (
-                                              <div key={docIndex} className="flex items-center justify-between p-1.5 bg-background rounded border">
-                                                <div className="flex items-center gap-2">
-                                                  <FileText className="h-3.5 w-3.5 text-palette-blue" />
-                                                  <span className="text-xs truncate">{doc.file_name}</span>
-                                                </div>
-                                                <div className="flex gap-1">
-                                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
-                                                    onClick={async () => {
-                                                      try {
-                                                        const { data, error } = await supabase.storage.from('documents').download(doc.file_path);
-                                                        if (error) throw error;
-                                                        const url = URL.createObjectURL(data); const a = document.createElement('a'); a.href = url; a.download = doc.file_name; a.click(); URL.revokeObjectURL(url);
-                                                      } catch (error) { showDocumentActionError('download', error); }
-                                                    }}>
-                                                    <Download className="h-3 w-3" />
-                                                  </Button>
-                                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => onDeleteAgendaDocument(doc.id, item.id!, doc.file_path)}>
-                                                    <X className="h-3 w-3" />
-                                                  </Button>
-                                                </div>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      )}
-                                      <label className="text-sm font-medium">Dokument hinzufügen</label>
-                                      <div className="flex items-center gap-2 mt-1">
-                                        <Button variant="outline" size="sm" className="flex-1"
-                                          onClick={() => handleAgendaDocumentUpload(item, index)}>
-                                          <Upload className="h-4 w-4 mr-2" /> Dokument hinzufügen
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                          </ContextMenuTrigger>
-                          {hasEditPermission && (
-                            <ContextMenuContent className="w-56">
-                              {!(item.parentLocalKey || item.parent_id) && (
-                                <>
-                                  <ContextMenuItem onClick={() => onAddSubItem(item, "")}>
-                                    <Plus className="h-4 w-4 mr-2" /> Unterpunkt hinzufügen
-                                  </ContextMenuItem>
-                                  <ContextMenuItem onClick={() => onSetShowTaskSelector({ itemIndex: index })}>
-                                    <ListTodo className="h-4 w-4 mr-2" /> Aufgabe als Unterpunkt
-                                  </ContextMenuItem>
-                                  <ContextMenuSeparator />
-                                  <ContextMenuItem onClick={() => onUpdateAgendaItem(index, "is_completed", !item.is_completed)}>
-                                    <Checkbox checked={item.is_completed} className="mr-2" /> Status umschalten
-                                  </ContextMenuItem>
-                                </>
-                              )}
-                              <ContextMenuSeparator />
-                              <ContextMenuItem onClick={() => onDeleteAgendaItem(item, index)} className="text-destructive focus:text-destructive">
-                                <Trash className="h-4 w-4 mr-2" /> Punkt löschen
-                              </ContextMenuItem>
-                            </ContextMenuContent>
-                          )}
-                        </ContextMenu>
+<AgendaRow item={item} index={index} provided={provided} snapshot={snapshot} hasEditPermission={hasEditPermission} selectedKey={selectedKey} setSelectedKey={setSelectedKey} getItemKey={getItemKey} getAgendaNumber={getAgendaNumber} change={change} handleTitleKeyDown={handleTitleKeyDown} hasContentIndicator={hasContentIndicator} hasSubItems={hasSubItems} isMainItemCollapsed={isMainItemCollapsed} setCollapsedMainItems={setCollapsedMainItems} isHiddenByCollapsedParent={isHiddenByCollapsedParent} timing={timing} onToggleVisibility={onToggleVisibility} setDirty={setDirty} onAddSubItem={onAddSubItem} onDeleteAgendaItem={onDeleteAgendaItem} showTaskSelector={showTaskSelector} onSetShowTaskSelector={onSetShowTaskSelector} tasks={tasks} onAddTaskToAgenda={onAddTaskToAgenda} />
                       )}
                     </>
                   )}
@@ -576,13 +332,17 @@ export function AgendaEditorPanel({
             <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium">Keine Agenda-Punkte</h3>
             <p className="text-muted-foreground mb-4">Fügen Sie Punkte zur Agenda hinzu oder importieren Sie Aufgaben</p>
-            <Button onClick={onAddAgendaItem}>
+            {hasEditPermission && <Button onClick={() => { setDirty(true); onAddAgendaItem(); }}>
               <Plus className="h-4 w-4 mr-2" /> Ersten Punkt hinzufügen
-            </Button>
+            </Button>}
           </CardContent>
         </Card>
       )}
 
+      <p className="text-xs text-muted-foreground mt-4">Enter = neuer Punkt · Tab = Unterpunkt · Ziehen am Griff = sortieren</p>
+      </div>
+      {selectedItem ? <AgendaInspector key={getItemKey(selectedItem, selectedIndex)} item={selectedItem} index={selectedIndex} profiles={profiles} hasEditPermission={hasEditPermission} agendaDocuments={agendaDocuments} taskDocuments={taskDocuments} onUpdateAgendaItem={change} onDeleteAgendaDocument={onDeleteAgendaDocument} handleAgendaDocumentUpload={handleAgendaDocumentUpload} showDocumentActionError={showDocumentActionError} onDeleteAgendaItem={(item, index) => { setDirty(true); onDeleteAgendaItem(item, index); }} onToggleVisibility={onToggleVisibility} /> : <aside className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground xl:sticky xl:top-4">Wähle einen Punkt aus, um seine Details zu bearbeiten.</aside>}
+      </div>
       {/* Pending Jour Fixe Notes Preview */}
       <PendingJourFixeNotes className="mt-4" />
       <PendingJourFixeCaseItems className="mt-4" />

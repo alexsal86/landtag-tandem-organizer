@@ -33,6 +33,8 @@ interface ProfileInfo {
 }
 
 interface BirthdayAgendaItemProps {
+  contentOnly?: boolean;
+  onCountChange?: (count: number | null) => void;
   meetingDate?: string | Date;
   meetingId?: string;
   resultText?: string | null;
@@ -51,6 +53,8 @@ const ACTION_OPTIONS = [
 ];
 
 export function BirthdayAgendaItem({
+  contentOnly = false,
+  onCountChange,
   meetingDate,
   meetingId,
   resultText,
@@ -138,6 +142,8 @@ export function BirthdayAgendaItem({
     loadBirthdays();
   }, [currentTenant?.id, meetingDate]);
 
+  useEffect(() => { onCountChange?.(loading ? null : contacts.length); }, [loading, contacts.length, onCountChange]);
+
   const toggleAction = (contactId: string, actionKey: BirthdayAction['action']) => {
     const newActions = { ...actions };
     if (newActions[contactId]?.action === actionKey) {
@@ -164,8 +170,8 @@ export function BirthdayAgendaItem({
   };
 
   return (
-    <Card className={cn("border-l-4 border-l-palette-pink", className)}>
-      <CardHeader className="py-2 px-3 pb-1">
+    <Card className={cn(contentOnly ? "border-0 shadow-none bg-transparent" : "border-l-4 border-l-palette-pink", className)}>
+      <CardHeader hidden={contentOnly} className="py-2 px-3 pb-1">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <Cake className="h-4 w-4 text-palette-pink" />

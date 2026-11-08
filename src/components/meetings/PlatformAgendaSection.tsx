@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowUpRight, Check, MessageSquare, CornerDownRight } from 'lucide-react';
@@ -25,12 +25,14 @@ import { usePlatformAgenda } from './usePlatformAgenda';
 import type { Profile } from './types';
 
 interface Props {
+  onCountChange?: (count: number | null) => void;
   type: PlatformAgendaType; meetingDate: string | Date; resultText?: string | null;
   onUpdateResult?: (value: string) => void; profiles?: Profile[]; readOnly?: boolean;
 }
 
-export function PlatformAgendaSection({ type, meetingDate, resultText, onUpdateResult, profiles = [], readOnly = false }: Props) {
+export function PlatformAgendaSection({ type, meetingDate, resultText, onUpdateResult, profiles = [], readOnly = false, onCountChange }: Props) {
   const query = usePlatformAgenda(type, meetingDate);
+  useEffect(() => { if (type !== 'appointment_requests') onCountChange?.(query.isLoading || query.error ? null : (query.data?.length ?? 0)); }, [type, query.isLoading, query.error, query.data, onCountChange]);
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { currentTenant } = useTenant();
@@ -77,7 +79,7 @@ export function PlatformAgendaSection({ type, meetingDate, resultText, onUpdateR
     finally { setPending(null); }
   };
 
-  if (type === 'appointment_requests') return <JourFixeRequestsCard embedded />;
+  if (type === 'appointment_requests') return <JourFixeRequestsCard embedded onCountChange={onCountChange} />;
   if (query.isLoading) return <LoadingState variant="inline" />;
   if (query.error) return <ErrorState title="Sitzungsinhalt nicht geladen" onRetry={() => void query.refetch()} />;
   const entries = query.data ?? [];

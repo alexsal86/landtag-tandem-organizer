@@ -1,8 +1,9 @@
-import { useState, type ReactNode } from 'react';
+import { getAgendaIconColor } from "../administration/agendaSystemStyles";
+import { useState, useEffect, type ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { CalendarDays, StickyNote, ListTodo, Trash, Cake, Scale, Briefcase } from 'lucide-react';
+import { CalendarDays, StickyNote, ListTodo, Trash, Cake, Scale, Briefcase, ChevronDown, ChevronRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UpcomingAppointmentsSection } from './UpcomingAppointmentsSection';
 import { BirthdayAgendaItem } from './BirthdayAgendaItem';
@@ -15,6 +16,8 @@ import { PlatformAgendaSection } from './PlatformAgendaSection';
 import { isPlatformAgendaType, systemAgendaOption } from './systemAgendaRegistry';
 
 interface SystemAgendaItemProps {
+  editorRow?: boolean;
+  onCountChange?: (count: number | null) => void;
   systemType: SystemAgendaType;
   meetingDate?: string | Date;
   meetingId?: string;
@@ -57,6 +60,8 @@ function ProfileBadge({ userId, profiles }: { userId?: string; profiles?: Profil
 
 export function SystemAgendaItem({
   systemType,
+  editorRow = false,
+  onCountChange,
   meetingDate,
   meetingId,
   allowStarring = false,
@@ -78,7 +83,11 @@ export function SystemAgendaItem({
   canEditTitle = false,
   onTitleChange,
 }: SystemAgendaItemProps) {
-  const [upcomingAppointmentsCount, setUpcomingAppointmentsCount] = useState(0);
+  const [upcomingAppointmentsCount, setUpcomingAppointmentsCount] = useState<number | null>(null);
+  const [remoteCount, setRemoteCount] = useState<number | null>(null);
+  const [expanded, setExpanded] = useState(!defaultCollapsed);
+  const count = systemType === 'quick_notes' ? linkedQuickNotes.length : systemType === 'tasks' ? linkedTasks.length : systemType === 'decisions' ? linkedDecisions.length : systemType === 'case_items' ? linkedCaseItems.length : systemType === 'upcoming_appointments' ? upcomingAppointmentsCount : remoteCount;
+  useEffect(() => { onCountChange?.(count); }, [count, onCountChange]);
 
   const getIcon = () => {
     switch (systemType) {
@@ -106,7 +115,7 @@ export function SystemAgendaItem({
 
   const getCountBadge = () => {
     switch (systemType) {
-      case 'upcoming_appointments': return upcomingAppointmentsCount > 0 ? upcomingAppointmentsCount : undefined;
+      case 'upcoming_appointments': return upcomingAppointmentsCount !== null && upcomingAppointmentsCount > 0 ? upcomingAppointmentsCount : undefined;
       case 'quick_notes': return linkedQuickNotes.length > 0 ? linkedQuickNotes.length : undefined;
       case 'tasks': return linkedTasks.length > 0 ? linkedTasks.length : undefined;
       case 'decisions': return linkedDecisions.length > 0 ? linkedDecisions.length : undefined;
@@ -134,6 +143,7 @@ export function SystemAgendaItem({
   );
 
   const renderHeader = () => {
+    if (editorRow) return null;
     const count = getCountBadge();
     return (
       <div className="py-2 px-3 pb-1">
@@ -164,9 +174,10 @@ export function SystemAgendaItem({
     );
   };
 
+  const renderBody = () => {
   if (isPlatformAgendaType(systemType)) return <div className={cn('border-b border-border/60', className)}>
     {renderHeader()}
-    <div className="px-3 pb-2"><PlatformAgendaSection type={systemType} meetingDate={meetingDate || new Date()} resultText={resultText} onUpdateResult={onUpdateResult} profiles={profiles} /></div>
+    <div className="px-3 pb-2"><PlatformAgendaSection type={systemType} meetingDate={meetingDate || new Date()} resultText={resultText} onUpdateResult={onUpdateResult} profiles={profiles} readOnly={editorRow && !canEditTitle} onCountChange={setRemoteCount} /></div>
   </div>;
 
   if (systemType === 'upcoming_appointments') {
@@ -180,7 +191,7 @@ export function SystemAgendaItem({
             allowStarring={allowStarring}
             profiles={profiles}
             className="border-0 shadow-none bg-transparent p-0"
-            defaultCollapsed={defaultCollapsed}
+            defaultCollapsed={editorRow ? false : defaultCollapsed}
             showCountBadge={false}
             onAppointmentsCountChange={setUpcomingAppointmentsCount}
           />
@@ -309,6 +320,8 @@ export function SystemAgendaItem({
   if (systemType === 'birthdays') {
     return (
       <BirthdayAgendaItem
+        contentOnly={editorRow}
+        onCountChange={setRemoteCount}
         meetingDate={meetingDate}
         meetingId={meetingId}
         resultText={resultText}
@@ -322,4 +335,19 @@ export function SystemAgendaItem({
   }
 
   return null;
+  };
+  if (!editorRow) return renderBody();
+  const Icon = systemAgendaOption(systemType)?.Icon;
+  return <section className="min-w-0">
+    <div className="flex items-center gap-2 py-2 px-3">
+      {agendaNumber && <span className="text-muted-foreground text-sm tabular-nums">{agendaNumber}</span>}
+      {Icon && <Icon className={cn('h-4 w-4 shrink-0', getAgendaIconColor(systemType))} />}
+      <Input aria-label="Titel des Bausteins" value={title ?? getTitle()} readOnly={!canEditTitle} onChange={e => onTitleChange?.(e.target.value)} className="min-w-0 flex-1 h-8 border-transparent bg-transparent shadow-none hover:border-border focus-visible:ring-2 font-medium" />
+      <span className="text-xs text-muted-foreground hidden sm:inline">automatisch</span>
+      <Badge variant="secondary" className="text-xs">{count === null ? '…' : count === 0 ? 'leer' : count}</Badge>
+      <Button size="icon" variant="ghost" aria-label="Baustein-Vorschau ein- oder ausklappen" aria-expanded={expanded} className="h-7 w-7" onClick={() => setExpanded(value => !value)}>{expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</Button>
+      {onDelete && <Button size="icon" variant="ghost" aria-label="Baustein entfernen" className="h-7 w-7 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100" onClick={onDelete}><Trash className="h-4 w-4" /></Button>}
+    </div>
+    <div hidden={!expanded || count === 0} className="px-3 pb-2">{renderBody()}</div>
+  </section>;
 }
