@@ -3,7 +3,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useTenant } from "@/hooks/useTenant";
 import { newlyCompletedMeetingCases } from "@/features/cases/items/workflow";
 import { supabase } from "@/integrations/supabase/client";
-import type { AgendaItem } from "@/components/meetings/types";
+import { systemAgendaOption } from "../systemAgendaRegistry";
+import type { AgendaItem, SystemAgendaType } from "@/components/meetings/types";
 import type { MeetingsDataReturn } from "./useMeetingsData";
 import type { DropResult } from "@hello-pangea/dnd";
 import { debugConsole } from "@/utils/debugConsole";
@@ -90,16 +91,13 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
     setAgendaItems(next);
   };
 
-  const addSystemAgendaItem = async (systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions' | 'case_items', parentItem?: AgendaItem) => {
+  const addSystemAgendaItem = async (systemType: SystemAgendaType, parentItem?: AgendaItem) => {
     if (!selectedMeeting?.id) return;
     if (agendaItems.some(i => i.system_type === systemType)) {
       toast({ title: "Bereits vorhanden", description: "Dieser dynamische Punkt ist bereits in der Agenda.", variant: "destructive" });
       return;
     }
-    const titles: Record<string, string> = {
-      'upcoming_appointments': 'Kommende Termine', 'quick_notes': 'Meine Notizen',
-      'tasks': 'Aufgaben', 'birthdays': 'Geburtstage', 'decisions': 'Entscheidungen', 'case_items': 'Vorgänge'
-    };
+    const title = systemAgendaOption(systemType)?.label || systemType;
     try {
       let parentId: string | null = null;
       let parentIndex = -1;
@@ -134,7 +132,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
 
       const { data: savedItem, error } = await supabase
         .from('meeting_agenda_items').insert([{
-          meeting_id: selectedMeeting.id, title: titles[systemType], description: null,
+          meeting_id: selectedMeeting.id, title: title, description: null,
           system_type: systemType, parent_id: parentId, order_index: insertIndex,
           is_completed: false, is_recurring: false, is_visible: true,
         }]).select().single();
@@ -151,7 +149,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
           await supabase.from('meeting_agenda_items').update({ order_index: item.order_index }).eq('id', item.id);
         }
       }
-      toast({ title: "Dynamischer Punkt hinzugefügt", description: `"${titles[systemType]}" wurde zur Agenda hinzugefügt.` });
+      toast({ title: "Dynamischer Punkt hinzugefügt", description: `"${title}" wurde zur Agenda hinzugefügt.` });
     } catch (error) {
       debugConsole.error('Error saving system agenda item:', error);
       toast({ title: "Fehler", description: "Der dynamische Punkt konnte nicht gespeichert werden.", variant: "destructive" });

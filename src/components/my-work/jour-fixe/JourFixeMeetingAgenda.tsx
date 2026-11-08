@@ -1,3 +1,5 @@
+import { PlatformAgendaSection } from "@/components/meetings/PlatformAgendaSection";
+import { isPlatformAgendaType } from "@/components/meetings/systemAgendaRegistry";
 import { List } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AgendaItem } from "@/hooks/useMyWorkJourFixeSystemData";
@@ -60,6 +62,7 @@ const AgendaItemRow = ({
         <span className={cn("text-foreground", item.system_type && "font-medium")}>{item.title}</span>
       </div>
       <AgendaSystemEntries entries={systemEntries} />
+      {isPlatformAgendaType(item.system_type) && <PlatformAgendaSection type={item.system_type} meetingDate={agenda.meeting.meeting_date} readOnly />}
       {childItems.length > 0 && (
         <ul className="ml-[0.8rem] mt-1 space-y-0.5">
           {childItems.map((childItem, childIndex) => (

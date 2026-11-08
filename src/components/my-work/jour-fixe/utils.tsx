@@ -1,3 +1,4 @@
+import { systemAgendaOption } from "@/components/meetings/systemAgendaRegistry";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { Briefcase, Cake, Calendar, ListTodo, Scale, StickyNote } from "lucide-react";
@@ -27,7 +28,8 @@ export const getSystemItemIcon = (systemType: string | null | undefined) => {
   if (systemType === "decisions") return <Scale className="h-3 w-3 text-palette-violet" />;
   if (systemType === "birthdays") return <Cake className="h-3 w-3 text-palette-pink" />;
   if (systemType === "case_items") return <Briefcase className="h-3 w-3 text-palette-teal" />;
-  return null;
+  const Icon = systemAgendaOption(systemType)?.Icon;
+  return Icon ? <Icon className="h-3 w-3 text-primary" /> : null;
 };
 
 export const getSystemEntries = ({

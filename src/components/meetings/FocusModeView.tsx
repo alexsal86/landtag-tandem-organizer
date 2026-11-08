@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { PlatformAgendaSection } from './PlatformAgendaSection';
+import { isPlatformAgendaType } from './systemAgendaRegistry';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -312,7 +314,7 @@ export function FocusModeView({
 
       const source = navigable.sourceData as Record<string, unknown> | undefined;
       const sourceId = source?.id as string | undefined;
-      if (sourceId && navigable.parentItem?.id && (navigable.sourceType === 'appointment' || navigable.sourceType === 'task')) {
+      if (sourceId && navigable.parentItem?.id && (navigable.sourceType === 'appointment' || navigable.sourceType === 'task' || navigable.sourceType === 'decision')) {
         const results = parseSystemSubItemResults(navigable.parentItem.result_text);
         const previousEntry = results[sourceId];
         const nextResult = typeof previousEntry === 'string' ? previousEntry : previousEntry?.result || '';
@@ -431,7 +433,7 @@ export function FocusModeView({
       }
       
       // Don't capture if user is typing in an input
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      if (e.target instanceof HTMLElement && (e.target.closest('input, textarea, button, [role=dialog], [role=combobox], [role=tab], [contenteditable=true]'))) {
         if (e.key === 'Escape') {
           (e.target as HTMLElement).blur();
         }
@@ -886,6 +888,8 @@ export function FocusModeView({
                 {relevantDecisions.length} {relevantDecisions.length === 1 ? 'Entscheidung' : 'Entscheidungen'} — einzeln navigierbar
               </div>
             )}
+
+            {isPlatformAgendaType(item.system_type) && <div className="mt-3"><PlatformAgendaSection type={item.system_type} meetingDate={meeting.meeting_date} resultText={item.result_text} profiles={profiles} onUpdateResult={value => { if (item.id) onUpdateResult(item.id, 'result_text', value); }} /></div>}
 
             {/* Assigned users */}
             {item.assigned_to && item.assigned_to.length > 0 && (

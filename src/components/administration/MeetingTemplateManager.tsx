@@ -1,3 +1,5 @@
+import { SYSTEM_AGENDA_OPTIONS, systemAgendaOption } from "@/components/meetings/systemAgendaRegistry";
+import type { SystemAgendaType } from "@/components/meetings/types";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
@@ -168,7 +170,7 @@ export function MeetingTemplateManager() {
       case 'tasks': return 'Aufgaben';
       case 'birthdays': return 'Geburtstage';
       case 'decisions': return 'Entscheidungen';
-      default: return systemType;
+      default: return systemAgendaOption(systemType)?.label || systemType;
     }
   };
 
@@ -187,7 +189,7 @@ export function MeetingTemplateManager() {
     setNewTemplateItem(null);
   };
 
-  const addSystemTemplateItem = (systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions', parentIndex?: number) => {
+  const addSystemTemplateItem = (systemType: SystemAgendaType, parentIndex?: number) => {
     if (!selectedTemplate) return false;
     const existsInMain = templateItems.find(item => item.system_type === systemType);
     const existsInChildren = templateItems.some(item => item.children?.some((child) => child.system_type === systemType));
@@ -264,7 +266,7 @@ export function MeetingTemplateManager() {
       case 'tasks': return <ListTodo className={cls} />;
       case 'birthdays': return <Cake className={cls} />;
       case 'decisions': return <Scale className={cls} />;
-      default: return null;
+      default: { const Icon = systemAgendaOption(systemType)?.Icon; return Icon ? <Icon className={cls} /> : null; }
     }
   };
 
@@ -280,7 +282,7 @@ export function MeetingTemplateManager() {
       case 'tasks': return <ListTodo className={colorCls} />;
       case 'birthdays': return <Cake className={colorCls} />;
       case 'decisions': return <Scale className={colorCls} />;
-      default: return null;
+      default: { const Icon = systemAgendaOption(systemType)?.Icon; return Icon ? <Icon className={colorCls} /> : null; }
     }
   };
 
@@ -497,13 +499,13 @@ export function MeetingTemplateManager() {
                                             <div className="border-t pt-2">
                                               <p className="text-xs text-muted-foreground mb-2">Dynamische Inhalte:</p>
                                               <div className="flex flex-wrap gap-1">
-                                                {(['upcoming_appointments', 'quick_notes', 'tasks', 'birthdays', 'decisions'] as const).map(type => {
+                                                {SYSTEM_AGENDA_OPTIONS.map(({ type, label }) => {
                                                   const labels: Record<string, string> = {
                                                     upcoming_appointments: 'Termine', quick_notes: 'Notizen', tasks: 'Aufgaben', birthdays: 'Geburtstage', decisions: 'Entscheidungen',
                                                   };
                                                   return (
                                                     <Button key={type} variant="outline" size="sm" className={`flex-1 justify-start ${getAgendaToggleClass(type)} h-7 text-xs`} onClick={() => { addSystemTemplateItem(type, index); setChildPopoverOpen(null); }}>
-                                                      {getSmallIcon(type)}<span className="ml-1">{labels[type]}</span>
+                                                      {getSmallIcon(type)}<span className="ml-1">{label}</span>
                                                     </Button>
                                                   );
                                                 })}
@@ -602,13 +604,13 @@ export function MeetingTemplateManager() {
                     <p className="text-xs text-muted-foreground w-full mb-1">Dynamische Inhalte als Hauptpunkt:</p>
                     {selectedTemplate && (
                       <>
-                        {(['upcoming_appointments', 'quick_notes', 'tasks', 'birthdays', 'decisions'] as const).map(type => {
+                        {SYSTEM_AGENDA_OPTIONS.map(({ type, label }) => {
                           const labels: Record<string, string> = {
                             upcoming_appointments: 'Termine', quick_notes: 'Notizen', tasks: 'Aufgaben', birthdays: 'Geburtstage', decisions: 'Entscheidungen',
                           };
                           return (
                             <Button key={type} variant="outline" size="sm" className={getAgendaToggleClass(type)} onClick={() => addSystemTemplateItem(type)}>
-                              {getSystemIcon(type)}<span className="ml-2">{labels[type]}</span>
+                              {getSystemIcon(type)}<span className="ml-2">{label}</span>
                             </Button>
                           );
                         })}
