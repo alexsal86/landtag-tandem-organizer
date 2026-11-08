@@ -1,11 +1,10 @@
 import { toast } from "@/hooks/use-toast";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarDays, CheckCircle2, CheckSquare, ClipboardList, Eye, Image as ImageIcon, MessageSquare, Pencil, Scissors, Send, Upload, X } from "lucide-react";
+import { CalendarDays, CheckCircle2, CheckSquare, ClipboardList, MessageSquare, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,8 +13,6 @@ import { TagInput } from "@/components/ui/tag-input";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  type SocialContentMediaType,
-  type SocialContentPlatformStatus,
   type SocialContentVariant,
   type SocialPlannerItem,
   PlannerWorkflowStatus,
@@ -28,15 +25,12 @@ import {
   CONTENT_PILLAR_OPTIONS,
   FORMAT_VARIANT_CHAR_LIMITS,
   FORMAT_VARIANT_OPTIONS,
-  PLATFORM_STATUS_OPTIONS,
   STATUS_COLUMNS,
   TEMPLATE_OPTIONS,
-  VARIANT_MEDIA_TYPES,
 } from "./constants";
 import type { SocialPlannerDraftPayload, SocialPlannerTemplateId } from "./types";
-import { getChannelRules, validateVariant, applyTemplateToState } from "./utils";
+import { validateVariant, applyTemplateToState } from "./utils";
 import { BriefingGroup } from "./BriefingGroup";
-import { CharCounter } from "./CharCounter";
 import { ComposerSection } from "./ComposerSection";
 import { ImageCropDialog } from "./ImageCropDialog";
 import { effectiveCaption } from "@/features/redaktion/utils/plannerRules";
@@ -89,7 +83,6 @@ export default function SocialPlannerEditPanel({ item, open, users, channels, ca
   const [activeVariantChannelId, setActiveVariantChannelId] = useState<string>("");
   const [variantsByChannel, setVariantsByChannel] = useState<Record<string, SocialContentVariant>>({});
   const [isSaving, setIsSaving] = useState(false);
-  const [showPreview, setShowPreview] = useState(true);
   const [markPublishedOpen, setMarkPublishedOpen] = useState(false);
   const [assetLibraryOpen, setAssetLibraryOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"content" | "approval">("content");
@@ -175,11 +168,6 @@ export default function SocialPlannerEditPanel({ item, open, users, channels, ca
     };
     input.click();
   }, []);
-
-  const channelOptions = useMemo(
-    () => channels.map((channel) => ({ value: channel.id, label: channel.name })),
-    [channels],
-  );
 
   const handleTemplateChange = (value: string) => {
     setSelectedTemplate(value);

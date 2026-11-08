@@ -10,6 +10,9 @@ import type { SocialPlannerItem, PlannerWorkflowStatus } from "@/features/redakt
 import type { PlannerNote } from "@/features/redaktion/hooks/usePlannerNotes";
 import { type SpecialDay } from "@/utils/dashboard/specialDays";
 import { PlannerCalendarGrid } from "./PlannerCalendarGrid";
+import { PLANNER_ITEM_MIME } from "./PlannerPostCard";
+import { rescheduleToDay } from "@/features/redaktion/utils/plannerRules";
+import { notify } from "@/lib/notify";
 
 const STATUS_COLORS: Record<PlannerWorkflowStatus, string> = {
   ideas: "hsl(var(--muted-foreground))",
@@ -126,6 +129,13 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateA
         onCreateNote={onCreateNote}
         onUpdateNote={onUpdateNote}
         onDeleteNote={onDeleteNote}
+        onMoveItem={(id, day) => {
+          const item = items.find((entry) => entry.id === id);
+          if (!item) return;
+          const target = rescheduleToDay(item.scheduled_for, day);
+          if (item.scheduled_for && new Date(item.scheduled_for).getTime() === target.getTime()) return;
+          void persistSchedule(id, target).then(() => notify.success(`Verschoben auf ${format(target, "EEE d. MMM, HH:mm", { locale: de })}`));
+        }}
       />
 
       {/* Unscheduled items */}
@@ -139,7 +149,13 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateA
         ) : (
           <div className="grid gap-2">
             {unscheduled.map((item) => (
-              <div key={item.id} className="rounded-md border bg-card p-2 text-xs space-y-2">
+              <div
+                key={item.id}
+                className="cursor-grab rounded-md border bg-card p-2 text-xs space-y-2"
+                draggable
+                onDragStart={(e) => { e.dataTransfer.setData(PLANNER_ITEM_MIME, item.id); e.dataTransfer.effectAllowed = "move"; }}
+                title="In den Kalender ziehen zum Einplanen (10:00 Uhr)"
+              >
                 <div className="space-y-1">
                   <p className="font-medium leading-tight">{item.topic}</p>
                   <div className="flex items-center gap-1">

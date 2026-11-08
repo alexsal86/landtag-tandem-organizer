@@ -13,11 +13,12 @@ import {
   startOfWeek,
 } from "date-fns";
 import { de } from "date-fns/locale";
-import { FileText, Pencil } from "lucide-react";
+import { AlertTriangle, FileText, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
-import { PlannerPostCard } from "./PlannerPostCard";
+import { PLANNER_ITEM_MIME, PlannerPostCard } from "./PlannerPostCard";
+import { isCrowdedDay } from "@/features/redaktion/utils/plannerRules";
 import { PlannerNoteCard } from "./PlannerNoteCard";
 import { NOTE_COLORS, type PlannerNote } from "@/features/redaktion/hooks/usePlannerNotes";
 import type { SocialPlannerItem } from "@/features/redaktion/hooks/useSocialPlannerItems";
@@ -36,6 +37,7 @@ interface Props {
   onCreateNote: (noteDate: string, content: string, color?: string) => Promise<void>;
   onUpdateNote: (id: string, patch: Partial<Pick<PlannerNote, "content" | "color" | "visible_to_all">>) => Promise<void>;
   onDeleteNote: (id: string) => Promise<void>;
+  onMoveItem?: (id: string, day: Date) => void;
 }
 
 function getGridDays(view: "week" | "month", currentDate: Date) {
@@ -50,6 +52,17 @@ function getGridDays(view: "week" | "month", currentDate: Date) {
   return eachDayOfInterval({ start: gridStart, end: gridEnd });
 }
 
+function CrowdedBadge({ count }: { count: number }) {
+  return (
+    <span
+      className="inline-flex items-center gap-0.5 rounded-pill bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive"
+      title={`${count} Beiträge an einem Tag – eventuell entzerren`}
+    >
+      <AlertTriangle className="h-2.5 w-2.5" />{count} Posts
+    </span>
+  );
+}
+
 function DayCell({
   day,
   view,
@@ -62,6 +75,7 @@ function DayCell({
   onCreateNote,
   onUpdateNote,
   onDeleteNote,
+  onMoveItem,
 }: {
   day: Date;
   view: "week" | "month";
@@ -74,7 +88,9 @@ function DayCell({
   onCreateNote: (noteDate: string, content: string, color?: string) => Promise<void>;
   onUpdateNote: (id: string, patch: Partial<Pick<PlannerNote, "content" | "color" | "visible_to_all">>) => Promise<void>;
   onDeleteNote: (id: string) => Promise<void>;
+  onMoveItem?: (id: string, day: Date) => void;
 }) {
+  const [dragOver, setDragOver] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [newNoteText, setNewNoteText] = useState("");
   const [newNoteColor, setNewNoteColor] = useState("yellow");
@@ -99,7 +115,23 @@ function DayCell({
         view === "week" ? "min-h-[calc(100vh-280px)]" : "min-h-[120px]"
       } ${isCurrentMonth ? "bg-background" : "bg-muted/30"} ${
         today ? "ring-2 ring-inset ring-primary/30" : ""
-      }`}
+      } ${dragOver ? "bg-primary/10 ring-2 ring-inset ring-primary" : ""}`}
+      onDragOver={(e) => {
+        if (!onMoveItem || !e.dataTransfer.types.includes(PLANNER_ITEM_MIME)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        if (!dragOver) setDragOver(true);
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragOver(false);
+      }}
+      onDrop={(e) => {
+        setDragOver(false);
+        const id = e.dataTransfer.getData(PLANNER_ITEM_MIME);
+        if (!id || !onMoveItem) return;
+        e.preventDefault();
+        onMoveItem(id, day);
+      }}
       onClick={(e) => {
         if (e.target === e.currentTarget && onCreateAtSlot) onCreateAtSlot(day);
       }}
@@ -118,7 +150,11 @@ function DayCell({
           >
             {format(day, "d")}
           </span>
+          {isCrowdedDay(items.length) && <CrowdedBadge count={items.length} />}
         </div>
+      )}
+      {view === "week" && isCrowdedDay(items.length) && (
+        <div className="flex justify-end px-1.5 pt-1"><CrowdedBadge count={items.length} /></div>
       )}
 
       <div className="px-1.5 pb-1">
@@ -225,6 +261,7 @@ export function PlannerCalendarGrid({
   onCreateNote,
   onUpdateNote,
   onDeleteNote,
+  onMoveItem,
 }: Props) {
   const days = useMemo(() => getGridDays(view, currentDate), [view, currentDate]);
 
@@ -333,6 +370,7 @@ export function PlannerCalendarGrid({
                 onCreateNote={onCreateNote}
                 onUpdateNote={onUpdateNote}
                 onDeleteNote={onDeleteNote}
+                onMoveItem={onMoveItem}
               />
             );
           })}
@@ -356,6 +394,8 @@ export function PlannerCalendarGrid({
                   onCreateNote={onCreateNote}
                   onUpdateNote={onUpdateNote}
                   onDeleteNote={onDeleteNote}
+                  onMoveItem={onMoveItem}
+                onMoveItem={onMoveItem}
                 />
               );
             })}
