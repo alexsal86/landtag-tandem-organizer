@@ -42,6 +42,7 @@ import { usePlatformAgenda } from "./usePlatformAgenda";
 import type { Profile } from "./types";
 
 interface Props {
+  defaultExpanded?: boolean;
   onCountChange?: (count: number | null) => void;
   type: PlatformAgendaType;
   meetingDate: string | Date;
@@ -59,6 +60,7 @@ export function PlatformAgendaSection({
   profiles = [],
   readOnly = false,
   onCountChange,
+  defaultExpanded = false,
 }: Props) {
   const query = usePlatformAgenda(type, meetingDate);
   useEffect(() => {
@@ -74,6 +76,7 @@ export function PlatformAgendaSection({
   const profileId = useCurrentProfileId();
   const { role } = useResolvedUserRole();
   const mayApprove = role === "abgeordneter" || role === "bueroleitung";
+  const [collapsedEntries, setCollapsedEntries] = useState<Record<string, boolean>>({});
   const [expanded, setExpanded] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const [changeNote, setChangeNote] = useState("");
@@ -179,7 +182,7 @@ export function PlatformAgendaSection({
         <ul className="divide-y divide-border">
           {entries.map((entry) => {
             const result = results[entry.id];
-            const isExpanded = expanded === entry.id;
+            const isExpanded = defaultExpanded ? !collapsedEntries[entry.id] : expanded === entry.id;
             return (
               <li key={entry.id} className="py-space-xs min-w-0">
                 <div className="flex items-start gap-space-xs">
@@ -198,7 +201,8 @@ export function PlatformAgendaSection({
                       variant="ghost"
                       className="h-auto p-0 justify-start text-left whitespace-normal"
                       onClick={() => {
-                        setExpanded(isExpanded ? null : entry.id);
+                        if (defaultExpanded) setCollapsedEntries(prev => ({ ...prev, [entry.id]: isExpanded }));
+                        else setExpanded(isExpanded ? null : entry.id);
                         setChangeNote("");
                       }}
                     >

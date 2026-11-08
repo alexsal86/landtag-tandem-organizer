@@ -505,7 +505,7 @@ export function AgendaEditorPanel({
                                   isEmbedded={
                                     !!(item.parentLocalKey || item.parent_id)
                                   }
-                                  defaultCollapsed={true}
+                                  defaultCollapsed={false}
                                   agendaNumber={getAgendaNumber(item)}
                                   compact={true}
                                   title={item.title}
@@ -652,7 +652,7 @@ export function AgendaEditorPanel({
             <UpcomingAppointmentsSection
               meetingDate={selectedMeeting.meeting_date}
               meetingId={selectedMeeting.id}
-              defaultCollapsed={true}
+              defaultCollapsed={false}
               allowStarring={true}
             />
           </CardContent>

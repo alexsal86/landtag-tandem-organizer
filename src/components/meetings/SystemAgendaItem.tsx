@@ -299,6 +299,7 @@ export function SystemAgendaItem({
           <div className="px-3 pb-2">
             <PlatformAgendaSection
               type={systemType}
+              defaultExpanded={editorRow}
               meetingDate={meetingDate || new Date()}
               resultText={resultText}
               onUpdateResult={onUpdateResult}
