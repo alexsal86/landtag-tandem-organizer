@@ -72,9 +72,9 @@ export function MeetingSidebar({
       <div>
         <h1 className="text-2xl font-bold tracking-tight mb-1.5">Meeting Agenda</h1>
         <p className="text-sm text-muted-foreground mb-5">Ihre wöchentlichen Besprechungen</p>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <MeetingCreateDialog
-            triggerClassName="h-11 min-w-0 flex-1 rounded-xl px-3 text-sm font-semibold shadow-none"
+            triggerClassName="h-11 min-w-32 flex-1 rounded-xl px-3 text-sm font-semibold shadow-none"
             open={isNewMeetingOpen}
             onOpenChange={onSetIsNewMeetingOpen}
             meeting={newMeeting}

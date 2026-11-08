@@ -649,7 +649,7 @@ export function SystemAgendaItem({
   const Icon = systemAgendaOption(systemType)?.Icon;
   return (
     <section className="min-w-0">
-      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 py-2 px-3">
+      <div className="flex flex-wrap sm:flex-nowrap items-center gap-1 py-1.5 px-2">
         {agendaNumber && (
           <span className="text-muted-foreground text-sm tabular-nums">
             {agendaNumber}

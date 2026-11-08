@@ -112,13 +112,13 @@ export function AgendaRow({
             getItemKey(item, index) === selectedKey &&
               "rounded-lg border-primary/45 bg-primary/10 hover:bg-primary/10 focus-within:bg-primary/10",
             snapshot.isDragging && "shadow-lg bg-card rounded-lg border",
-            (item.parentLocalKey || item.parent_id) && "ml-7 border-l pl-2",
+            (item.parentLocalKey || item.parent_id) && "ml-5 pl-0",
             item.is_optional && "border-dashed",
             item.is_optional && item.is_visible === false && "opacity-50",
             isHiddenByCollapsedParent(item) && "hidden",
           )}
         >
-          <div className="py-2 px-3">
+          <div className="py-1 px-3">
             <div className="space-y-3">
               <div className="flex flex-wrap sm:flex-nowrap items-center gap-1 group">
                 {hasEditPermission && (
@@ -130,7 +130,7 @@ export function AgendaRow({
                     <GripVertical className="h-4 w-4 text-muted-foreground" />
                   </div>
                 )}
-                <span className="text-muted-foreground font-medium min-w-[1.75rem] text-right">
+                <span className="text-muted-foreground font-medium min-w-[1.25rem] -ml-1 text-right">
                   {getAgendaNumber(item)}
                 </span>
                 <Input
@@ -143,7 +143,7 @@ export function AgendaRow({
                       : "Agenda-Punkt Titel"
                   }
                   aria-label="Titel des Agenda-Punkts"
-                  className="min-w-0 flex-1 basis-[calc(100%-4rem)] sm:basis-auto border-transparent bg-transparent shadow-none hover:border-border focus:bg-card focus-visible:ring-2 font-medium"
+                  className="min-w-0 flex-1 basis-[calc(100%-4rem)] sm:basis-auto px-1 border-transparent bg-transparent shadow-none hover:border-border focus:bg-card focus-visible:ring-2 font-medium"
                   readOnly={!hasEditPermission}
                 />
                 {/* Carryover badge */}

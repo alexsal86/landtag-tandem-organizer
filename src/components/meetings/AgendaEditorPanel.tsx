@@ -449,7 +449,7 @@ export function AgendaEditorPanel({
                                 "transition-shadow",
                                 snapshot.isDragging && "shadow-lg",
                                 (item.parentLocalKey || item.parent_id) &&
-                                  "ml-7 border-l pl-2",
+                                  "ml-5 pl-0",
                                 (isHiddenByCollapsedParent(item) ||
                                   (hideEmpty &&
                                     systemCounts[getItemKey(item, index)] ===

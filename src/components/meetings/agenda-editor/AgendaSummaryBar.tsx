@@ -10,7 +10,7 @@ export function AgendaSummaryBar({
   onHideEmptyChange: (value: boolean) => void;
 }) {
   return (
-    <div className="mt-4 rounded-lg border bg-muted/20 overflow-hidden">
+    <div className="-mx-2 mb-2 overflow-hidden border-b border-border pb-3">
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 text-sm">
         <span>
           <b>{timing.main.length}</b> Punkte
@@ -37,7 +37,7 @@ export function AgendaSummaryBar({
       </div>
       {timing.total > 0 && (
         <div
-          className="flex h-1 gap-0.5"
+          className="mx-3 flex h-1 gap-0.5"
           aria-label="Zeitanteile der Hauptpunkte"
         >
           {timing.main.map((item, index) => (
