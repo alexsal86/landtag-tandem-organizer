@@ -13703,6 +13703,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      document_meeting_decision: {
+        Args: { _decision: string; _meeting: string; _result: string }
+        Returns: undefined
+      }
       dossier_is_duplicate_entry: {
         Args: {
           p_dossier_id: string
