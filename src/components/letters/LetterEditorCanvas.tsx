@@ -75,6 +75,8 @@ interface LetterEditorCanvasProps {
   onContentChange: (content: string, contentNodes?: string, contentHtml?: string) => void;
   enableInlineContentEditing?: boolean;
   onRequestContentEdit?: () => void;
+  /** Google-Docs-Modus: live editor rendered directly in the body zone of the page */
+  inlineEditor?: React.ReactNode;
   /** HTML produced by the left-side editor — this is what we paginate */
   displayContentHtml?: string;
   onMentionInsert?: (userId: string, displayName: string) => void;
@@ -129,6 +131,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   onContentChange,
   enableInlineContentEditing = false,
   onRequestContentEdit,
+  inlineEditor,
   displayContentHtml,
   isReviewMode = false,
   reviewerName = '',
@@ -480,147 +483,24 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   })).filter(isEditableAttachment);
 
   // ── The complete content flow (used for both measurement and rendering) ──
-  const renderContentFlow = () => (
+  const renderContentFlow = (live = false) => (
     <>
-      <div
-        className="din5008-content-text"
-        dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(renderedHtml) }}
-      />
+      {live && inlineEditor ? (
+        <div className="din5008-content-text">{inlineEditor}</div>
+      ) : (
+        <div
+          className="din5008-content-text"
+          dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(renderedHtml) }}
+        />
+      )}
       {renderClosing()}
       {renderAttachments()}
     </>
   );
 
-  // ── single page renderer (viewport/offset model) ──
-  const renderPage = (pageIndex: number) => {
-    const isFirst = pageIndex === 0;
-    const localTopMm = isFirst ? contentStartMm : page2TopMm;
-
-    // Use measured page offsets for offset and body height
-    const offsetMm = pageOffsets[pageIndex] ?? 0;
-    const nextOffset = pageOffsets[pageIndex + 1] ?? flowHeightMm;
-    const bodyHeightMm = isFirst
-      ? Math.min(page1BodyMmRaw, nextOffset - offsetMm)
-      : Math.min(pageNBodyMmRaw, nextOffset - offsetMm);
-
-    return (
-      <div
-        key={`page-${pageIndex}`}
-        className="mx-auto bg-white relative"
-        style={{
-          width: `${PAGE_W_MM}mm`,
-          height: `${PAGE_H_MM}mm`,
-          overflow: 'hidden',
-          boxShadow: '0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)',
-          fontFamily: 'Calibri,Carlito,"Segoe UI",Arial,sans-serif',
-          fontSize: `${contentFontSizePt}pt`,
-          lineHeight: '1.2',
-          marginBottom: pageIndex < totalPages - 1 ? '8mm' : 0,
-        }}
-      >
-        {/* ── Page chrome (header, address zones, footer) — page 1 only ── */}
-        {isFirst && (
-          <DIN5008LetterLayout
-            template={template}
-            senderInfo={senderInfo}
-            informationBlock={informationBlock}
-            recipientAddress={recipientAddress}
-            subject={subject}
-            letterDate={letterDate}
-            referenceNumber={referenceNumber}
-            content=""
-            attachments={[]}
-            showPagination={false}
-            layoutSettings={layoutSettings}
-            salutation={salutation}
-            hideClosing={true}
-            allowContentOverflow={false}
-            addressFieldElements={addressFieldElements}
-            returnAddressElements={returnAddressElements}
-            infoBlockElements={infoBlockElements}
-            subjectElements={subjectElements}
-            attachmentElements={attachmentElements}
-            footerTextElements={footerTextElements}
-            addressFieldLines={addressFieldLines}
-            returnAddressLines={returnAddressLines}
-            infoBlockLines={infoBlockLines}
-          />
-        )}
-
-        {/* ── Fold/hole marks on all pages ── */}
-        {!isFirst && layout.foldHoleMarks?.enabled !== false && (() => {
-          const marks = layout.foldHoleMarks ?? { enabled: true, left: 3, strokeWidthPt: 1, foldMarkWidth: 5, holeMarkWidth: 8, topMarkY: 105, holeMarkY: 148.5, bottomMarkY: 210 };
-          const markLeft = marks.left ?? 3;
-          const foldW = marks.foldMarkWidth ?? 5;
-          const holeW = marks.holeMarkWidth ?? 8;
-          const strokePt = marks.strokeWidthPt ?? 1;
-          const topY = marks.topMarkY ?? 105;
-          const holeY = marks.holeMarkY ?? 148.5;
-          const bottomY = marks.bottomMarkY ?? 210;
-          return (
-            <>
-              {[topY, bottomY].map((y) => (
-                <div key={`fold-${y}`} style={{
-                  position: 'absolute', top: `${y}mm`, left: `${markLeft}mm`,
-                  width: `${foldW}mm`, height: 0,
-                  borderTop: `${strokePt}pt solid #999`,
-                }} />
-              ))}
-              <div style={{
-                position: 'absolute', top: `${holeY}mm`, left: `${markLeft}mm`,
-                width: `${holeW}mm`, height: 0,
-                borderTop: `${strokePt}pt solid #999`,
-              }} />
-            </>
-          );
-        })()}
-
-        {/* ── Body viewport: shows a window into the content flow ── */}
-        <div
-          style={{
-            position: 'absolute',
-            top: `${localTopMm}mm`,
-            left: `${MARGIN_L_MM}mm`,
-            right: `${MARGIN_R_MM}mm`,
-            height: `${bodyHeightMm}mm`,
-            overflow: 'hidden',
-            fontSize: `${contentFontSizePt}pt`,
-            lineHeight: '1.2',
-            color: '#000',
-          }}
-        >
-          {/* Inner flow shifted by offset */}
-          <div
-            style={{
-              transform: `translateY(-${offsetMm}mm)`,
-              width: '100%',
-            }}
-          >
-            {renderContentFlow()}
-          </div>
-        </div>
-
-        {/* ── Pagination ── */}
-        {paginationEnabled && (
-          <div
-            style={{
-              position: 'absolute',
-              top: `${paginationTopMm}mm`,
-              right: layout.pagination?.align === 'left' ? 'auto' : `${MARGIN_R_MM}mm`,
-              left: layout.pagination?.align === 'left' ? `${MARGIN_L_MM}mm` : undefined,
-              fontSize: `${layout.pagination?.fontSize ?? 8}pt`,
-              color: '#666',
-              fontFamily: 'Calibri,Carlito,"Segoe UI",Arial,sans-serif',
-              pointerEvents: 'none',
-            }}
-          >
-            Seite {pageIndex + 1} von {totalPages}
-          </div>
-        )}
-
-        {/* ── Editable overlays (page 1 only) ── */}
-        {isFirst && (
-          <>
+  // ── editable overlays for page-1 zones ──
+  const renderOverlays = () => (
+    <>
             <EditableCanvasOverlay
               top={50}
               left={MARGIN_L_MM}
@@ -765,7 +645,210 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
               </EditableCanvasOverlay>
             )}
           </>
+  );
+
+  // ── Google-Docs-Modus: one continuous sheet with live editor and page-break markers ──
+  const renderInlinePage = () => {
+    const sheetHeightMm = Math.max(PAGE_H_MM, contentStartMm + flowHeightMm + 40);
+    const breakMarkers = pageOffsets.slice(1).map((offset, i) => ({ top: contentStartMm + offset, page: i + 2 }));
+    return (
+      <div
+        className="mx-auto bg-white relative"
+        style={{
+          width: `${PAGE_W_MM}mm`,
+          minHeight: `${sheetHeightMm}mm`,
+          boxShadow: '0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)',
+          fontFamily: 'Calibri,Carlito,"Segoe UI",Arial,sans-serif',
+          fontSize: `${contentFontSizePt}pt`,
+          lineHeight: '1.2',
+        }}
+      >
+        <DIN5008LetterLayout
+          template={template}
+          senderInfo={senderInfo}
+          informationBlock={informationBlock}
+          recipientAddress={recipientAddress}
+          subject={subject}
+          letterDate={letterDate}
+          referenceNumber={referenceNumber}
+          content=""
+          attachments={[]}
+          showPagination={false}
+          layoutSettings={layoutSettings}
+          salutation={salutation}
+          hideClosing={true}
+          allowContentOverflow={false}
+          addressFieldElements={addressFieldElements}
+          returnAddressElements={returnAddressElements}
+          infoBlockElements={infoBlockElements}
+          subjectElements={subjectElements}
+          attachmentElements={attachmentElements}
+          footerTextElements={footerTextElements}
+          addressFieldLines={addressFieldLines}
+          returnAddressLines={returnAddressLines}
+          infoBlockLines={infoBlockLines}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            top: `${contentStartMm}mm`,
+            left: `${MARGIN_L_MM}mm`,
+            right: `${MARGIN_R_MM}mm`,
+            fontSize: `${contentFontSizePt}pt`,
+            lineHeight: '1.2',
+            color: '#000',
+            zIndex: 20,
+            cursor: 'text',
+          }}
+        >
+          {renderContentFlow(true)}
+        </div>
+        {breakMarkers.map((m) => (
+          <div
+            key={`break-${m.page}`}
+            aria-hidden="true"
+            style={{ position: 'absolute', top: `${m.top}mm`, left: 0, right: 0, pointerEvents: 'none', zIndex: 25 }}
+            className="border-t border-dashed border-primary/50"
+          >
+            <span className="absolute right-[2mm] -top-[3.5mm] text-[7pt] text-primary bg-background/90 px-1 rounded-sm">
+              Seitenumbruch – ab hier Seite {m.page}
+            </span>
+          </div>
+        ))}
+        {renderOverlays()}
+      </div>
+    );
+  };
+
+  // ── single page renderer (viewport/offset model) ──
+  const renderPage = (pageIndex: number) => {
+    const isFirst = pageIndex === 0;
+    const localTopMm = isFirst ? contentStartMm : page2TopMm;
+
+    // Use measured page offsets for offset and body height
+    const offsetMm = pageOffsets[pageIndex] ?? 0;
+    const nextOffset = pageOffsets[pageIndex + 1] ?? flowHeightMm;
+    const bodyHeightMm = isFirst
+      ? Math.min(page1BodyMmRaw, nextOffset - offsetMm)
+      : Math.min(pageNBodyMmRaw, nextOffset - offsetMm);
+
+    return (
+      <div
+        key={`page-${pageIndex}`}
+        className="mx-auto bg-white relative"
+        style={{
+          width: `${PAGE_W_MM}mm`,
+          height: `${PAGE_H_MM}mm`,
+          overflow: 'hidden',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)',
+          fontFamily: 'Calibri,Carlito,"Segoe UI",Arial,sans-serif',
+          fontSize: `${contentFontSizePt}pt`,
+          lineHeight: '1.2',
+          marginBottom: pageIndex < totalPages - 1 ? '8mm' : 0,
+        }}
+      >
+        {/* ── Page chrome (header, address zones, footer) — page 1 only ── */}
+        {isFirst && (
+          <DIN5008LetterLayout
+            template={template}
+            senderInfo={senderInfo}
+            informationBlock={informationBlock}
+            recipientAddress={recipientAddress}
+            subject={subject}
+            letterDate={letterDate}
+            referenceNumber={referenceNumber}
+            content=""
+            attachments={[]}
+            showPagination={false}
+            layoutSettings={layoutSettings}
+            salutation={salutation}
+            hideClosing={true}
+            allowContentOverflow={false}
+            addressFieldElements={addressFieldElements}
+            returnAddressElements={returnAddressElements}
+            infoBlockElements={infoBlockElements}
+            subjectElements={subjectElements}
+            attachmentElements={attachmentElements}
+            footerTextElements={footerTextElements}
+            addressFieldLines={addressFieldLines}
+            returnAddressLines={returnAddressLines}
+            infoBlockLines={infoBlockLines}
+          />
         )}
+
+        {/* ── Fold/hole marks on all pages ── */}
+        {!isFirst && layout.foldHoleMarks?.enabled !== false && (() => {
+          const marks = layout.foldHoleMarks ?? { enabled: true, left: 3, strokeWidthPt: 1, foldMarkWidth: 5, holeMarkWidth: 8, topMarkY: 105, holeMarkY: 148.5, bottomMarkY: 210 };
+          const markLeft = marks.left ?? 3;
+          const foldW = marks.foldMarkWidth ?? 5;
+          const holeW = marks.holeMarkWidth ?? 8;
+          const strokePt = marks.strokeWidthPt ?? 1;
+          const topY = marks.topMarkY ?? 105;
+          const holeY = marks.holeMarkY ?? 148.5;
+          const bottomY = marks.bottomMarkY ?? 210;
+          return (
+            <>
+              {[topY, bottomY].map((y) => (
+                <div key={`fold-${y}`} style={{
+                  position: 'absolute', top: `${y}mm`, left: `${markLeft}mm`,
+                  width: `${foldW}mm`, height: 0,
+                  borderTop: `${strokePt}pt solid #999`,
+                }} />
+              ))}
+              <div style={{
+                position: 'absolute', top: `${holeY}mm`, left: `${markLeft}mm`,
+                width: `${holeW}mm`, height: 0,
+                borderTop: `${strokePt}pt solid #999`,
+              }} />
+            </>
+          );
+        })()}
+
+        {/* ── Body viewport: shows a window into the content flow ── */}
+        <div
+          style={{
+            position: 'absolute',
+            top: `${localTopMm}mm`,
+            left: `${MARGIN_L_MM}mm`,
+            right: `${MARGIN_R_MM}mm`,
+            height: `${bodyHeightMm}mm`,
+            overflow: 'hidden',
+            fontSize: `${contentFontSizePt}pt`,
+            lineHeight: '1.2',
+            color: '#000',
+          }}
+        >
+          {/* Inner flow shifted by offset */}
+          <div
+            style={{
+              transform: `translateY(-${offsetMm}mm)`,
+              width: '100%',
+            }}
+          >
+            {renderContentFlow()}
+          </div>
+        </div>
+
+        {/* ── Pagination ── */}
+        {paginationEnabled && (
+          <div
+            style={{
+              position: 'absolute',
+              top: `${paginationTopMm}mm`,
+              right: layout.pagination?.align === 'left' ? 'auto' : `${MARGIN_R_MM}mm`,
+              left: layout.pagination?.align === 'left' ? `${MARGIN_L_MM}mm` : undefined,
+              fontSize: `${layout.pagination?.fontSize ?? 8}pt`,
+              color: '#666',
+              fontFamily: 'Calibri,Carlito,"Segoe UI",Arial,sans-serif',
+              pointerEvents: 'none',
+            }}
+          >
+            Seite {pageIndex + 1} von {totalPages}
+          </div>
+        )}
+
+        {/* ── Editable overlays (page 1 only) ── */}
+        {isFirst && renderOverlays()}
 
         {/* Click-to-edit on body zone */}
         {canEdit && onRequestContentEdit && (
@@ -863,7 +946,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
             paddingBottom: `${(1 - zoom) * totalPages * PAGE_H_MM * MM_TO_PX}px`,
           }}
         >
-          {Array.from({ length: totalPages }, (_, i) => renderPage(i))}
+          {inlineEditor ? renderInlinePage() : Array.from({ length: totalPages }, (_, i) => renderPage(i))}
         </div>
       </div>
 
