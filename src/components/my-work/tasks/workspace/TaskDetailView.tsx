@@ -99,8 +99,8 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
   });
 
   return (
-    <div className="grid min-h-0 min-w-0 flex-1 auto-rows-max grid-cols-1 overflow-y-auto min-[1440px]:grid-cols-[minmax(0,1fr)_300px] min-[1440px]:auto-rows-auto min-[1440px]:overflow-hidden">
-      <main aria-label="Aufgabendetails" className="min-h-0 min-w-0 space-y-5 bg-[#f4f6f4] p-6 [&>section]:rounded-xl [&>section]:bg-card [&>section]:p-4 [&>section]:space-y-3 dark:bg-muted/30 min-[1440px]:overflow-y-auto">
+    <div className="grid min-h-0 min-w-0 flex-1 auto-rows-max grid-cols-1  min-[1440px]:grid-cols-[minmax(0,1fr)_300px] min-[1440px]:auto-rows-auto ">
+      <main aria-label="Aufgabendetails" className="min-h-0 min-w-0 space-y-5 bg-[#f4f6f4] p-6 [&>section]:rounded-xl [&>section]:bg-card [&>section]:p-4 [&>section]:space-y-3 dark:bg-muted/30 ">
         <div className="space-y-2">
           <div className="flex items-start justify-between gap-3">
             <h2 className="break-words text-2xl font-bold leading-tight tracking-tight">{task.title}</h2>
@@ -149,65 +149,12 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           </section>
         )}
 
-        <TaskSubtasks taskId={task.id} tenantId={task.tenant_id} userId={meId} nameOf={nameOf} profiles={profiles} />
-
-        <section className="rounded-xl border bg-card p-4 space-y-3">
-          <div className="section-label flex items-center gap-2"><ListChecks className="h-3.5 w-3.5" />Checkliste{progress.total ? ` (${progress.done}/${progress.total})` : ""}</div>
-          <ul className="space-y-1">
-            {checklist.map((item) => (
-              <li key={item.id} className="group flex items-center gap-2">
-                <Checkbox checked={item.done} disabled={saving} aria-label={item.text}
-                  onCheckedChange={() => saveList(checklist.map((i) => (i.id === item.id ? { ...i, done: !i.done } : i)))} />
-                <span className={cn("flex-1 text-body", item.done && "line-through text-muted-foreground")}>{item.text}</span>
-                <button type="button" aria-label="Punkt entfernen" className="opacity-0 group-hover:opacity-100 text-muted-foreground"
-                  onClick={() => saveList(checklist.filter((i) => i.id !== item.id))}><X className="h-3.5 w-3.5" /></button>
-              </li>
-            ))}
-          </ul>
-          <div className="flex items-center gap-2">
-            <Plus className="h-4 w-4 text-muted-foreground" />
-            <Input value={newItem} onChange={(e) => setNewItem(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addItem(); } }}
-              placeholder="Punkt hinzufügen, Enter für den nächsten" className="h-8" />
-          </div>
-        </section>
-
-        <section className="space-y-3">
-          <div className="section-label">Verlauf</div>
-          <Textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Notiz zum aktuellen Stand…" rows={2} />
-          <div className="flex justify-end">
-            <Button size="sm" variant="outline" disabled={!note.trim() || saving} onClick={() => run(async () => { await onSave({ note: note.trim() }); setNote(""); })}>
-              Notiz speichern
-            </Button>
-          </div>
-          <ul className="space-y-2">
-            {timeline.length === 0 && <li className="text-caption text-muted-foreground">Noch keine Einträge</li>}
-            {timeline.map((e) => (
-              <li key={e.id} className={cn("rounded-xl border bg-card p-3 text-sm leading-relaxed", e.type === "system" ? "text-muted-foreground" : "text-foreground")}>
-                <span className="tabular-nums">{new Date(e.at).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}</span>
-                {e.actorName ? ` · ${e.actorName}` : ""}: {e.text}
-              </li>
-            ))}
-          </ul>
-        </section>
-
-      </main>
-      <aside aria-label="Eigenschaften und Aktionen" className="min-h-0 min-w-0 space-y-6 border-t bg-card p-5 min-[1440px]:overflow-y-auto min-[1440px]:border-l min-[1440px]:border-t-0">
-        <section className="space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Eigenschaften</h3>
-          <dl className="text-sm [&>div]:flex [&>div]:justify-between [&>div]:gap-3 [&>div]:border-b [&>div]:border-border/50 [&>div]:py-3 [&_dt]:text-muted-foreground [&_dd]:text-right [&_dd]:break-words">
-            <div><dt>Status</dt><dd>{task.status === "todo" ? "Offen" : task.status === "in_progress" ? "In Bearbeitung" : task.status === "completed" ? "Erledigt" : task.status}</dd></div>
-            <div><dt>Priorität</dt><dd>{{ low: "Niedrig", medium: "Mittel", high: "Hoch", urgent: "Dringend" }[task.priority] ?? task.priority}</dd></div>
-            <div><dt>Fälligkeit</dt><dd>{task.due_date ? new Date(task.due_date).toLocaleDateString("de-DE") : "Keine Frist"}</dd></div>
-            <div><dt>Erstellt von</dt><dd>{nameOf(task.user_id) ?? "Unbekannt"}</dd></div>
-          </dl>
-          <TaskRecurrence taskId={task.id} value={task.recurrence_rule} onChanged={onReload} />
-        </section>
-        <section className="rounded-xl border bg-background p-4 space-y-3">
+        <section className="rounded-2xl border bg-card p-5 shadow-sm space-y-4">
           <div className="section-label">Wer ist am Zug?</div>
           <div className="flex flex-wrap gap-2">
             {OWNERS.map((o) => (
-              <Button key={o} size="sm" variant={owner === o ? "default" : "outline"} onClick={() => setOwner(o)}>
-                {TASK_BALL_LABELS[o]}
+              <Button key={o} size="sm" variant="outline" aria-pressed={owner === o} className={cn("rounded-full border px-4 py-2", owner === o ? "border-success bg-success/10 text-success hover:bg-success/15" : "bg-background text-muted-foreground")} onClick={() => setOwner(o)}>
+                <span className={cn("mr-2 h-2 w-2 rounded-full", o === "office" ? "bg-success" : o === "deputy" ? "bg-primary" : "bg-muted-foreground")} />{TASK_BALL_LABELS[o]}
               </Button>
             ))}
           </div>
@@ -260,6 +207,60 @@ export function TaskDetailView({ task, profiles, decisionLabel, onSave, onComple
           )}
         </section>
 
+
+        <TaskSubtasks taskId={task.id} tenantId={task.tenant_id} userId={meId} nameOf={nameOf} profiles={profiles} />
+
+        <section className="rounded-xl border bg-card p-4 space-y-3">
+          <div className="section-label flex items-center gap-2"><ListChecks className="h-3.5 w-3.5" />Checkliste{progress.total ? ` (${progress.done}/${progress.total})` : ""}</div>
+          <ul className="space-y-1">
+            {checklist.map((item) => (
+              <li key={item.id} className="group flex items-center gap-2">
+                <Checkbox checked={item.done} disabled={saving} aria-label={item.text}
+                  onCheckedChange={() => saveList(checklist.map((i) => (i.id === item.id ? { ...i, done: !i.done } : i)))} />
+                <span className={cn("flex-1 text-body", item.done && "line-through text-muted-foreground")}>{item.text}</span>
+                <button type="button" aria-label="Punkt entfernen" className="opacity-0 group-hover:opacity-100 text-muted-foreground"
+                  onClick={() => saveList(checklist.filter((i) => i.id !== item.id))}><X className="h-3.5 w-3.5" /></button>
+              </li>
+            ))}
+          </ul>
+          <div className="flex items-center gap-2">
+            <Plus className="h-4 w-4 text-muted-foreground" />
+            <Input value={newItem} onChange={(e) => setNewItem(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addItem(); } }}
+              placeholder="Punkt hinzufügen, Enter für den nächsten" className="h-8" />
+          </div>
+        </section>
+
+        <section className="space-y-3">
+          <div className="section-label">Verlauf</div>
+          <Textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Notiz zum aktuellen Stand…" rows={2} />
+          <div className="flex justify-end">
+            <Button size="sm" variant="outline" disabled={!note.trim() || saving} onClick={() => run(async () => { await onSave({ note: note.trim() }); setNote(""); })}>
+              Notiz speichern
+            </Button>
+          </div>
+          <ul className="space-y-2">
+            {timeline.length === 0 && <li className="text-caption text-muted-foreground">Noch keine Einträge</li>}
+            {timeline.map((e) => (
+              <li key={e.id} className={cn("rounded-xl border bg-card p-3 text-sm leading-relaxed", e.type === "system" ? "text-muted-foreground" : "text-foreground")}>
+                <span className="tabular-nums">{new Date(e.at).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}</span>
+                {e.actorName ? ` · ${e.actorName}` : ""}: {e.text}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+      </main>
+      <aside aria-label="Eigenschaften und Aktionen" className="min-h-0 min-w-0 space-y-6 border-t bg-card p-5  min-[1440px]:border-l min-[1440px]:border-t-0">
+        <section className="space-y-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Eigenschaften</h3>
+          <dl className="text-sm [&>div]:flex [&>div]:justify-between [&>div]:gap-3 [&>div]:border-b [&>div]:border-border/50 [&>div]:py-3 [&_dt]:text-muted-foreground [&_dd]:text-right [&_dd]:break-words">
+            <div><dt>Status</dt><dd>{task.status === "todo" ? "Offen" : task.status === "in_progress" ? "In Bearbeitung" : task.status === "completed" ? "Erledigt" : task.status}</dd></div>
+            <div><dt>Priorität</dt><dd>{{ low: "Niedrig", medium: "Mittel", high: "Hoch", urgent: "Dringend" }[task.priority] ?? task.priority}</dd></div>
+            <div><dt>Fälligkeit</dt><dd>{task.due_date ? new Date(task.due_date).toLocaleDateString("de-DE") : "Keine Frist"}</dd></div>
+            <div><dt>Erstellt von</dt><dd>{nameOf(task.user_id) ?? "Unbekannt"}</dd></div>
+          </dl>
+          <TaskRecurrence taskId={task.id} value={task.recurrence_rule} onChanged={onReload} />
+        </section>
         <section className="rounded-xl border bg-background p-4 space-y-3">
           <div className="section-label flex items-center gap-2"><Bell className="h-3.5 w-3.5" />Mich erinnern</div>
           {task.reminder_at ? (

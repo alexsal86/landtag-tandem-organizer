@@ -175,13 +175,13 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
   }
 
   return (
-    <div className="flex-1 min-h-0 grid auto-rows-max grid-cols-1 overflow-y-auto rounded-2xl border bg-card shadow-sm lg:grid-cols-[320px_minmax(0,1fr)] lg:auto-rows-auto lg:overflow-hidden">
+    <div className="flex-1 min-h-0 grid auto-rows-max grid-cols-1  rounded-2xl border bg-card shadow-sm lg:grid-cols-[320px_minmax(0,1fr)] lg:auto-rows-auto ">
       <div className="flex min-h-0 min-w-0 flex-col border-b lg:border-b-0 lg:border-r">
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b p-4">
           <h2 className="text-xl font-bold tracking-tight">Aufgaben</h2>
           <Button onClick={onCreate} className="h-10 rounded-lg bg-success px-3 font-semibold text-white hover:bg-success/90"><Plus className="mr-1 h-4 w-4" />Neue Aufgabe</Button>
         </div>
-        <div className="max-h-80 overflow-y-auto lg:max-h-none lg:flex-1">
+        <div className="max-h-80   lg:flex-1">
           <TaskTriageList zones={zones} selectedId={selected?.id ?? null} onSelect={setSelectedId} decisionLabel={decisionLabel} nameOf={nameOf} selection={selection} onToggleSelect={toggleSelect} onClearSelection={() => setSelection(new Set())} onBatch={batch} />
         </div>
       </div>
