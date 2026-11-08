@@ -1,7 +1,6 @@
 import { format, getYear } from "date-fns";
 import { de } from "date-fns/locale";
 import { Calendar, Clock, Gift, Plus, TrendingUp } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -65,127 +64,110 @@ export function AdminTimeMetricsCards({
 }: AdminTimeMetricsCardsProps) {
   return (
     <>
-      {/* Yearly balance card */}
-      <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium text-primary flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Überstundensaldo {getYear(currentMonth)}
-            </CardTitle>
-            <div className="flex gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onInitialBalance}
-                className="text-xs"
-              >
-                Anfangsbestand
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onShowBreakdown}
-                className="text-xs"
-              >
-                Aufschlüsselung
-              </Button>
+      <Card className="overflow-hidden rounded-2xl shadow-none">
+        <CardContent className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(240px,1fr)_2fr] lg:items-center">
+          <div>
+            <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Überstundensaldo {getYear(currentMonth)}</h3>
+            {loadingYearlyBalance ? (
+              <div role="status" aria-label="Saldo wird geladen" className="my-2 h-10 w-40 animate-pulse rounded bg-muted" />
+            ) : (
+              <div className={`mt-1 font-mono text-4xl font-bold tracking-tight tabular-nums ${yearlyBalance >= 0 ? "text-palette-green" : "text-destructive"}`}>
+                {yearlyBalance >= 0 ? "+" : ""}{fmt(yearlyBalance)}
+              </div>
+            )}
+            <p className="mt-2 text-xs text-muted-foreground">
+              {totalCorrectionMinutes !== 0 && <>inkl. {totalCorrectionMinutes >= 0 ? "+" : ""}{fmt(totalCorrectionMinutes)} Korrekturen · </>}
+              Summe aller Monate bis heute
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={onInitialBalance} className="rounded-xl">Anfangsbestand</Button>
+              <Button variant="outline" size="sm" onClick={onShowBreakdown} className="rounded-xl">Aufschlüsselung</Button>
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
           {loadingYearlyBalance ? (
-            <div className="space-y-2">
-              <div className="h-8 w-32 bg-muted animate-pulse rounded" />
-              <div className="h-4 w-48 bg-muted animate-pulse rounded" />
-            </div>
-          ) : (
-            <div className="flex items-baseline gap-4">
-              <div
-                className={`text-3xl font-bold ${yearlyBalance >= 0 ? "text-palette-green" : "text-destructive"}`}
-              >
-                {yearlyBalance >= 0 ? "+" : ""}
-                {fmt(yearlyBalance)}
-              </div>
-              {totalCorrectionMinutes !== 0 && (
-                <span className="text-sm text-muted-foreground">
-                  (inkl. {totalCorrectionMinutes >= 0 ? "+" : ""}
-                  {fmt(totalCorrectionMinutes)} Korrekturen)
-                </span>
-              )}
-            </div>
-          )}
-          <p className="text-xs text-muted-foreground mt-1">Summe aller Monate bis heute</p>
-          {yearlyBreakdown.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {yearlyBreakdown.map((mb, idx) => (
-                <TooltipProvider key={idx}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Badge
-                        variant={mb.balance >= 0 ? "default" : "destructive"}
-                        className={`cursor-help ${mb.balance >= 0 ? "bg-palette-green/20 text-palette-green hover:bg-palette-green/30" : ""}`}
-                      >
-                        {format(mb.month, "MMM", { locale: de })}:{" "}
-                        {mb.balance >= 0 ? "+" : ""}
-                        {fmt(mb.balance)}
-                      </Badge>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="text-xs">
-                      <div className="space-y-1">
-                        <div className="font-medium">
-                          {format(mb.month, "MMMM yyyy", { locale: de })}
-                        </div>
-                        <div className="flex justify-between gap-4">
-                          <span>Soll:</span>
-                          <span>{fmt(mb.targetMinutes)}</span>
-                        </div>
-                        <div className="flex justify-between gap-4">
-                          <span>Gearbeitet:</span>
-                          <span>{fmt(mb.workedMinutes)}</span>
-                        </div>
-                        <div className="flex justify-between gap-4">
-                          <span>Gutschriften:</span>
-                          <span>+{fmt(mb.creditMinutes)}</span>
-                        </div>
-                        {mb.overtimeReductionMinutes > 0 && (
-                          <div className="flex justify-between gap-4 text-palette-amber">
-                            <span>⏰ ÜA-Abbau:</span>
-                            <span>{fmt(mb.overtimeReductionMinutes)}</span>
+            <div className="h-32 animate-pulse rounded-xl bg-muted" />
+          ) : yearlyBreakdown.length > 0 ? (
+            <TooltipProvider>
+              <div role="group" aria-label="Monatliche Stundensalden, positive Werte oberhalb und negative unterhalb der Nulllinie" className="overflow-x-auto">
+                <div className="relative flex min-w-[320px] gap-1.5">
+                  <div aria-hidden="true" className="pointer-events-none absolute left-0 right-0 top-12 border-t border-border" />
+                  {yearlyBreakdown.map((mb) => {
+                    const current = format(mb.month, "yyyy-MM") === format(currentMonth, "yyyy-MM");
+                    const max = Math.max(1, ...yearlyBreakdown.map(month => Math.abs(month.balance)));
+                    const height = mb.balance === 0 ? 2 : Math.max(3, Math.abs(mb.balance) / max * 44);
+                    const color = mb.balance >= 0
+                      ? current ? "bg-palette-green" : "bg-palette-green/25 border-palette-green"
+                      : current ? "bg-destructive" : "bg-destructive/15 border-destructive/60";
+                    return (
+                      <Tooltip key={format(mb.month, "yyyy-MM")}>
+                        <TooltipTrigger asChild>
+                          <button type="button" aria-label={`${format(mb.month, "MMMM yyyy", { locale: de })}: ${mb.balance >= 0 ? "+" : ""}${fmt(mb.balance)}${current ? ", ausgewählter Monat" : ""}`} className={`relative flex min-w-0 flex-1 flex-col items-center rounded-lg px-0.5 pb-1 outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring ${current ? "bg-muted/60 font-semibold" : "text-muted-foreground"}`}>
+                            <span className="flex h-12 w-full items-end justify-center">
+                              {mb.balance >= 0 && <span className={`block w-full max-w-7 rounded-t border-t-2 ${color}`} style={{ height }} />}
+                            </span>
+                            <span className="flex h-12 w-full items-start justify-center">
+                              {mb.balance < 0 && <span className={`block w-full max-w-7 rounded-b border-b-2 ${color}`} style={{ height }} />}
+                            </span>
+                            <span className={`mt-1 text-[10px] sm:text-xs ${current ? "text-foreground" : ""}`}>{format(mb.month, "MMM", { locale: de }).slice(0, 3)}</span>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-xs">
+                          <div className="space-y-1">
+                            <div className="font-medium">
+                              {format(mb.month, "MMMM yyyy", { locale: de })}
+                            </div>
+                            <div className="flex justify-between gap-4">
+                              <span>Soll:</span>
+                              <span>{fmt(mb.targetMinutes)}</span>
+                            </div>
+                            <div className="flex justify-between gap-4">
+                              <span>Gearbeitet:</span>
+                              <span>{fmt(mb.workedMinutes)}</span>
+                            </div>
+                            <div className="flex justify-between gap-4">
+                              <span>Gutschriften:</span>
+                              <span>+{fmt(mb.creditMinutes)}</span>
+                            </div>
+                            {mb.overtimeReductionMinutes > 0 && (
+                              <div className="flex justify-between gap-4 text-palette-amber">
+                                <span>⏰ ÜA-Abbau:</span>
+                                <span>{fmt(mb.overtimeReductionMinutes)}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between gap-4 font-medium border-t pt-1">
+                              <span>Saldo:</span>
+                              <span
+                                className={
+                                  mb.balance >= 0 ? "text-palette-green" : "text-destructive"
+                                }
+                              >
+                                {mb.balance >= 0 ? "+" : ""}
+                                {fmt(mb.balance)}
+                              </span>
+                            </div>
                           </div>
-                        )}
-                        <div className="flex justify-between gap-4 font-medium border-t pt-1">
-                          <span>Saldo:</span>
-                          <span
-                            className={
-                              mb.balance >= 0 ? "text-palette-green" : "text-destructive"
-                            }
-                          >
-                            {mb.balance >= 0 ? "+" : ""}
-                            {fmt(mb.balance)}
-                          </span>
-                        </div>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              ))}
-            </div>
-          )}
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              </div>
+            </TooltipProvider>
+          ) : <p className="text-sm text-muted-foreground">Noch keine Monatssalden vorhanden.</p>}
         </CardContent>
       </Card>
 
       {/* Monthly metric cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5 [&>div]:rounded-2xl [&>div]:shadow-none">
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="p-4 pb-1">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               Soll (dynamisch)
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{fmt(monthlyTargetMinutes)}</div>
+          <CardContent className="p-4 pt-1">
+            <div className="font-mono text-2xl font-bold tabular-nums">{fmt(monthlyTargetMinutes)}</div>
             <p className="text-xs text-muted-foreground">
               {workdaysInMonth} Arbeitstage × {fmt(dailyMinutes)}
             </p>
@@ -193,33 +175,36 @@ export function AdminTimeMetricsCards({
         </Card>
 
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="p-4 pb-1">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Clock className="h-4 w-4" />
               Gearbeitet
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{fmt(workedMinutes)}</div>
+          <CardContent className="p-4 pt-1">
+            <div className="font-mono text-2xl font-bold tabular-nums">{fmt(workedMinutes)}</div>
             <p className="text-xs text-muted-foreground">
-              {combinedEntries.filter((e) => e.entry_type === "work").length} Arbeitstage
+              {new Set(combinedEntries.filter((e) => e.entry_type === "work").map(entry => entry.work_date)).size} Arbeitstage
             </p>
+            <div role="progressbar" aria-label="Gearbeitet im Verhältnis zum Monatssoll" aria-valuemin={0} aria-valuemax={100} aria-valuenow={monthlyTargetMinutes > 0 ? Math.min(100, Math.round(workedMinutes / monthlyTargetMinutes * 100)) : 0} aria-valuetext={`${fmt(workedMinutes)} von ${fmt(monthlyTargetMinutes)} Stunden`} className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+              <div className="h-full rounded-full bg-lime-600" style={{ width: `${monthlyTargetMinutes > 0 ? Math.min(100, Math.max(0, workedMinutes / monthlyTargetMinutes * 100)) : 0}%` }} />
+            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="p-4 pb-1">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Gift className="h-4 w-4" />
               Gutschriften
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 pt-1">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className="cursor-help">
-                    <div className="text-2xl font-bold text-palette-blue">
+                    <div className="font-mono text-2xl font-bold tabular-nums text-palette-blue">
                       +{fmt(creditMinutes)}
                     </div>
                     <p className="text-xs text-muted-foreground">Urlaub, Krankheit, etc.</p>
@@ -299,25 +284,25 @@ export function AdminTimeMetricsCards({
         </Card>
 
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="p-4 pb-1">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
               Monatssaldo
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 pt-1">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className="cursor-help">
                     <div
-                      className={`text-2xl font-bold ${balanceMinutes >= 0 ? "text-palette-green" : "text-destructive"}`}
+                      className={`font-mono text-2xl font-bold tabular-nums ${balanceMinutes >= 0 ? "text-palette-green" : "text-destructive"}`}
                     >
                       {balanceMinutes >= 0 ? "+" : ""}
                       {fmt(balanceMinutes)}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Gesamt-Ist: {fmt(totalActual)}
+                      <span className="font-mono tabular-nums">{fmt(workedMinutes)} + {fmt(creditMinutes)} − {fmt(monthlyTargetMinutes)}</span>
                     </p>
                   </div>
                 </TooltipTrigger>
@@ -344,6 +329,7 @@ export function AdminTimeMetricsCards({
                         <span>{fmt(overtimeReductionMinutes)} (reduziert Saldo)</span>
                       </div>
                     )}
+                    <div className="flex justify-between gap-4"><span>Gesamt-Ist:</span><span>{fmt(totalActual)}</span></div>
                     <div className="flex justify-between gap-4 font-medium border-t pt-1">
                       <span>Saldo:</span>
                       <span
@@ -362,16 +348,13 @@ export function AdminTimeMetricsCards({
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Aktionen</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Button variant="default" size="sm" onClick={onCreateEntry} className="w-full">
+        <Card className="flex flex-col justify-center">
+          <CardContent className="space-y-2 p-4">
+            <Button variant="default" size="sm" onClick={onCreateEntry} className="w-full rounded-xl text-xs bg-lime-600 text-white hover:bg-lime-700">
               <Plus className="h-4 w-4 mr-2" />
               Eintrag erstellen
             </Button>
-            <Button variant="outline" size="sm" onClick={onAddCorrection} className="w-full">
+            <Button variant="outline" size="sm" onClick={onAddCorrection} className="w-full rounded-xl text-xs">
               <TrendingUp className="h-4 w-4 mr-2" />
               Korrektur hinzufügen
             </Button>

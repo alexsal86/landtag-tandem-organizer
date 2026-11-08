@@ -2,6 +2,7 @@ export interface Employee {
   user_id: string;
   display_name: string | null;
   avatar_url: string | null;
+  badge_color?: string | null;
   hours_per_week: number;
   days_per_week: number;
 }

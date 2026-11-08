@@ -147,17 +147,18 @@ export function AdminTimeTrackingView() {
     <div className="space-y-6">
       {/* Header: employee picker + month navigation */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="w-full">
+        <div className="min-w-0 flex-1">
           <AdminEmployeePicker
             employees={employees}
             selectedUserId={selectedUserId}
             onSelectEmployee={setSelectedUserId}
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <Button
             variant="outline"
             size="icon"
+            aria-label="Vorheriger Monat"
             onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
           >
             <ChevronLeft className="h-4 w-4" />
@@ -168,6 +169,7 @@ export function AdminTimeTrackingView() {
           <Button
             variant="outline"
             size="icon"
+            aria-label="Nächster Monat"
             onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
           >
             <ChevronRight className="h-4 w-4" />
@@ -223,6 +225,8 @@ export function AdminTimeTrackingView() {
             combinedEntries={calculations.combinedEntries}
             timeEntries={timeEntries}
             actualAfterEntryById={calculations.actualAfterEntryById}
+            dailyMinutes={calculations.dailyMinutes}
+            holidays={holidays}
             onEditEntry={(original, combined) => {
               setEditingEntry(original ?? null);
               setEditingCombinedEntry(combined);

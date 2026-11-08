@@ -15,10 +15,10 @@ interface AdminCorrectionsTabProps {
 
 export function AdminCorrectionsTab({ corrections, onAddCorrection }: AdminCorrectionsTabProps) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+    <Card className="overflow-hidden rounded-2xl shadow-none">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 p-5">
         <div>
-          <CardTitle>Saldo-Korrekturen</CardTitle>
+          <CardTitle className="text-lg">Saldo-Korrekturen</CardTitle>
           <CardDescription>Administrative Korrekturen des Stundensaldos</CardDescription>
         </div>
         <Button variant="outline" size="sm" onClick={onAddCorrection}>
@@ -26,7 +26,7 @@ export function AdminCorrectionsTab({ corrections, onAddCorrection }: AdminCorre
           Korrektur
         </Button>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-0">
         <ScrollArea className="h-[400px]">
           {corrections.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
@@ -37,7 +37,7 @@ export function AdminCorrectionsTab({ corrections, onAddCorrection }: AdminCorre
               </p>
             </div>
           ) : (
-            <Table>
+            <Table className="min-w-[600px] [&_th]:bg-muted/40 [&_th]:px-5 [&_th]:text-xs [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wide [&_td]:px-5 [&_td]:py-3">
               <TableHeader>
                 <TableRow>
                   <TableHead>Datum</TableHead>
@@ -49,26 +49,26 @@ export function AdminCorrectionsTab({ corrections, onAddCorrection }: AdminCorre
               <TableBody>
                 {corrections.map((corr) => (
                   <TableRow key={corr.id}>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap font-mono tabular-nums">
                       {format(parseISO(corr.correction_date), "dd.MM.yyyy")}
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        className={
+                      <Badge variant="outline"
+                        className={`rounded-full border-0 font-mono tabular-nums ${
                           corr.correction_minutes >= 0
                             ? "bg-palette-green/20 text-palette-green"
                             : "bg-palette-red/20 text-palette-red"
-                        }
+                        }`}
                       >
                         {corr.correction_minutes >= 0 ? "+" : ""}
                         {fmt(corr.correction_minutes)}
                       </Badge>
                     </TableCell>
                     <TableCell>{corr.reason}</TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground tabular-nums">
                       {format(
                         parseISO(corr.created_at ?? new Date().toISOString()),
-                        "dd.MM.yyyy HH:mm"
+                        "dd.MM.yyyy · HH:mm"
                       )}
                     </TableCell>
                   </TableRow>

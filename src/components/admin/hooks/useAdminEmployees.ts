@@ -60,7 +60,7 @@ export function useAdminEmployees({ currentTenant, isAdmin, roleLoading }: UseAd
       const [profilesRes, settingsRes] = await Promise.all([
         supabase
           .from("profiles")
-          .select("user_id, display_name, avatar_url")
+          .select("user_id, display_name, avatar_url, badge_color")
           .in("user_id", employeeIds),
         supabase
           .from("employee_settings")
@@ -70,7 +70,7 @@ export function useAdminEmployees({ currentTenant, isAdmin, roleLoading }: UseAd
 
       type EmployeeProfileRow = Pick<
         Database["public"]["Tables"]["profiles"]["Row"],
-        "user_id" | "display_name" | "avatar_url"
+        "user_id" | "display_name" | "avatar_url" | "badge_color"
       >;
       type EmployeeSettingRow = Pick<
         Database["public"]["Tables"]["employee_settings"]["Row"],
@@ -86,6 +86,7 @@ export function useAdminEmployees({ currentTenant, isAdmin, roleLoading }: UseAd
         user_id: uid,
         display_name: profileMap.get(uid)?.display_name || "Unbekannt",
         avatar_url: profileMap.get(uid)?.avatar_url || null,
+        badge_color: profileMap.get(uid)?.badge_color ?? null,
         hours_per_week: settingsMap.get(uid)?.hours_per_week || 39.5,
         days_per_week: settingsMap.get(uid)?.days_per_week || 5,
       }));
