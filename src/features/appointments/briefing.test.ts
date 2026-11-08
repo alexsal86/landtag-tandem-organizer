@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canAdvanceBriefing, needsBriefingDecision, nextBriefingStatus, suggestBriefingDue } from "./briefing";
+import { showsInDailyBriefing, canAdvanceBriefing, needsBriefingDecision, nextBriefingStatus, suggestBriefingDue } from "./briefing";
 
 describe("appointment briefing rules", () => {
   it("assignee may submit, but not approve", () => {
@@ -24,5 +24,11 @@ describe("appointment briefing rules", () => {
     expect(needsBriefingDecision({ briefing_status: "undecided", start_time: "2026-11-10T10:00:00Z" }, now)).toBe(true);
     expect(needsBriefingDecision({ briefing_status: "undecided", start_time: "2026-11-20T10:00:00Z" }, now)).toBe(false);
     expect(needsBriefingDecision({ briefing_status: "none", start_time: "2026-11-05T10:00:00Z" }, now)).toBe(false);
+  });
+  it("approved briefings show in the daily briefing only on the appointment day", () => {
+    const now = new Date(2026, 10, 12, 8);
+    expect(showsInDailyBriefing({ briefing_status: "approved", start_time: new Date(2026, 10, 12, 18).toISOString() }, now)).toBe(true);
+    expect(showsInDailyBriefing({ briefing_status: "approved", start_time: new Date(2026, 10, 13, 18).toISOString() }, now)).toBe(false);
+    expect(showsInDailyBriefing({ briefing_status: "in_review", start_time: new Date(2026, 10, 12, 18).toISOString() }, now)).toBe(false);
   });
 });
