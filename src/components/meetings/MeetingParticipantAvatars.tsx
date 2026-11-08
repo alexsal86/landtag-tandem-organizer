@@ -12,11 +12,12 @@ interface Participant {
 }
 
 interface MeetingParticipantAvatarsProps {
+  compact?: boolean;
   meetingId?: string;
   size?: 'xs' | 'sm' | 'default';
 }
 
-export function MeetingParticipantAvatars({ meetingId, size = 'default' }: MeetingParticipantAvatarsProps) {
+export function MeetingParticipantAvatars({ meetingId, size = 'default', compact = false }: MeetingParticipantAvatarsProps) {
   const [participants, setParticipants] = useState<Participant[]>([]);
 
   useEffect(() => {
@@ -70,11 +71,11 @@ export function MeetingParticipantAvatars({ meetingId, size = 'default' }: Meeti
   const s = sizeClasses[size];
 
   return (
-    <div className={`flex items-center ${s.wrapper}`}>
-      <Users className={`${s.icon} text-muted-foreground`} />
+    <div className={`flex items-center ${compact ? "gap-0" : s.wrapper}`}>
+      {!compact && <Users className={`${s.icon} text-muted-foreground`} />}
       <div className="flex -space-x-1">
         {participants.slice(0, 5).map(p => (
-          <Avatar key={p.user_id} className={`${s.avatar} border-2 border-background`}>
+          <Avatar key={p.user_id} title={p.user?.display_name || "Unbekannt"} className={`${s.avatar} border-2 border-background`}>
             <AvatarImage src={p.user?.avatar_url || undefined} />
             <AvatarFallback className={s.text}>
               {getInitials(p.user?.display_name)}

@@ -1,14 +1,14 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { CalendarIcon, Clock, Plus, Edit, Check, X, Trash, Repeat, Archive, Globe, CheckCircle, ChevronRight, MapPin, MoreVertical } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Edit, Check, X, Trash, RotateCcw, Archive, Globe, Play, MoreVertical } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { QuickAccessMenuItem } from "@/components/shared/QuickAccessMenuItem";
 import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
 import { InlineMeetingParticipantsEditor } from "@/components/meetings/InlineMeetingParticipantsEditor";
@@ -55,7 +55,7 @@ interface MeetingSidebarProps {
 }
 
 export function MeetingSidebar({
-  meetings, upcomingMeetings, selectedMeeting, activeMeetingId, editingMeeting,
+  meetings: _meetings, upcomingMeetings, selectedMeeting, activeMeetingId, editingMeeting,
   isNewMeetingOpen, newMeeting, newMeetingTime, newMeetingParticipants, newMeetingRecurrence,
   meetingTemplates, showCarryoverBuffer, carryoverBufferItems,
   isHighlighted, highlightRef,
@@ -64,14 +64,17 @@ export function MeetingSidebar({
   onSetShowCarryoverBuffer, onCreateMeeting, onUpdateMeeting, onDeleteMeeting,
   onStartMeeting, onStopMeeting, onShowArchive, onLoadCarryoverBufferItems, loadAgendaItems,
 }: MeetingSidebarProps) {
+  const [meetingToDelete, setMeetingToDelete] = useState<Meeting | null>(null);
+
   return (
-    <div className="flex flex-col pr-4 space-y-4">
+    <div className="flex min-w-0 flex-col gap-6 pr-4 pt-2">
       {/* Header & Buttons */}
       <div>
-        <h1 className="text-2xl font-bold mb-1">Meeting Agenda</h1>
-        <p className="text-sm text-muted-foreground mb-4">Ihre wöchentlichen Besprechungen</p>
+        <h1 className="text-2xl font-bold tracking-tight mb-1.5">Meeting Agenda</h1>
+        <p className="text-sm text-muted-foreground mb-5">Ihre wöchentlichen Besprechungen</p>
         <div className="flex gap-2">
           <MeetingCreateDialog
+            triggerClassName="h-11 min-w-0 flex-1 rounded-xl px-3 text-sm font-semibold shadow-none"
             open={isNewMeetingOpen}
             onOpenChange={onSetIsNewMeetingOpen}
             meeting={newMeeting}
@@ -85,119 +88,99 @@ export function MeetingSidebar({
             templates={meetingTemplates}
             onCreateMeeting={onCreateMeeting}
           />
-          <Button variant="outline" size="sm" onClick={async () => { await onLoadCarryoverBufferItems(); onSetShowCarryoverBuffer(true); }} title="Übertragene Punkte anzeigen">
-            <Repeat className="h-4 w-4" />
+          <Button variant="outline" size="icon" className="h-11 w-11 shrink-0 rounded-xl bg-card shadow-none" aria-label="Übertragene Punkte anzeigen" onClick={async () => { await onLoadCarryoverBufferItems(); onSetShowCarryoverBuffer(true); }} title="Übertragene Punkte anzeigen">
+            <RotateCcw className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="sm" onClick={onShowArchive}>
+          <Button variant="outline" size="icon" className="h-11 w-11 shrink-0 rounded-xl bg-card shadow-none" aria-label="Meeting-Archiv öffnen" title="Meeting-Archiv" onClick={onShowArchive}>
             <Archive className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
       {/* Meeting List */}
-      <div className="flex-1 space-y-2 mt-3">
-        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Nächste Besprechungen</h3>
+      <div className="flex-1 space-y-3">
+        <h3 className="px-1 text-sm font-semibold text-muted-foreground">Nächste Besprechungen</h3>
         <div className="space-y-3">
           {upcomingMeetings.map((meeting) => (
             <Card
               key={meeting.id}
               ref={highlightRef(meeting.id!)}
               className={cn(
-                "cursor-pointer hover:shadow-sm transition-all",
-                selectedMeeting?.id === meeting.id && "border-primary ring-1 ring-primary bg-primary/5",
+                "relative cursor-pointer rounded-xl border-transparent bg-transparent shadow-none transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                selectedMeeting?.id === meeting.id && "border-primary/45 bg-primary/10 hover:bg-primary/10 before:absolute before:left-0 before:top-3 before:bottom-3 before:w-1 before:rounded-full before:bg-primary",
                 isHighlighted(meeting.id!) && "notification-highlight"
               )}
+              tabIndex={0}
+              aria-label={`Meeting auswählen: ${meeting.title}`}
+              aria-current={selectedMeeting?.id === meeting.id ? "true" : undefined}
+              onKeyDown={(event) => {
+                if (event.target !== event.currentTarget) return;
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onSelectMeeting(meeting);
+                  if (meeting.id) loadAgendaItems(meeting.id);
+                }
+              }}
               onClick={() => { onSelectMeeting(meeting); if (meeting.id) { loadAgendaItems(meeting.id); } }}
             >
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-semibold text-base truncate">{meeting.title}</h4>
-                      {meeting.is_public && <Globe className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
+              <CardContent className="p-3">
+                <div className="flex items-start gap-3">
+                  <time
+                    dateTime={format(new Date(meeting.meeting_date), 'yyyy-MM-dd')}
+                    aria-label={format(new Date(meeting.meeting_date), 'EEEE, d. MMMM yyyy', { locale: de })}
+                    className="flex h-[4.5rem] w-12 shrink-0 flex-col items-center justify-center rounded-xl border bg-card text-muted-foreground"
+                  >
+                    <span className="text-xs leading-5">{format(new Date(meeting.meeting_date), 'EEEEEE', { locale: de })}</span>
+                    <span className="text-xl font-bold leading-6 text-foreground">{format(new Date(meeting.meeting_date), 'dd')}</span>
+                    <span className="text-xs leading-5">{format(new Date(meeting.meeting_date), 'MMM', { locale: de }).replace(/\.$/, '')}</span>
+                  </time>
+                  <div className="min-w-0 flex-1 pt-0.5">
+                    <div className="flex items-start gap-1">
+                      <h4 className="min-w-0 flex-1 break-words text-base font-semibold leading-6">{meeting.title}</h4>
+                      {meeting.is_public && <Globe aria-label="Öffentliches Meeting" className="mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="icon" variant="ghost" aria-label={`Aktionen für ${meeting.title}`} className="-mr-1 -mt-0.5 h-7 w-7 shrink-0 text-muted-foreground" onClick={(e) => e.stopPropagation()}>
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" sideOffset={8} className="w-60 max-w-[calc(100vw-2rem)] rounded-2xl border-border/70 bg-popover p-2 shadow-xl [&_[role=menuitem]]:rounded-lg [&_[role=menuitem]]:px-3 [&_[role=menuitem]]:py-3" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenuItem onSelect={() => onSetEditingMeeting(meeting)}>
+                            <Edit className="mr-2 h-4 w-4" /> Bearbeiten
+                          </DropdownMenuItem>
+                          <QuickAccessMenuItem
+                            id={`meeting-${meeting.id}`}
+                            label={meeting.title}
+                            icon="Calendar"
+                            route={`/meetings?highlight=${meeting.id}`}
+                          />
+                          <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => setMeetingToDelete(meeting)}>
+                            <X className="mr-2 h-4 w-4" /> Löschen
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1.5">
-                      <CalendarIcon className="h-3.5 w-3.5" />
-                      <span>{format(new Date(meeting.meeting_date), 'dd.MM.', { locale: de })}</span>
-                      {meeting.meeting_time && (
-                        <>
-                          <Clock className="h-3.5 w-3.5 ml-1" />
-                          <span>{meeting.meeting_time.substring(0, 5)}</span>
-                        </>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
+                      {meeting.meeting_time && <span className="whitespace-nowrap tabular-nums">{meeting.meeting_time.substring(0, 5)} Uhr</span>}
+                      {meeting.location && <span className="max-w-full truncate" title={meeting.location}>{meeting.location}</span>}
+                      <MeetingParticipantAvatars meetingId={meeting.id} size="default" compact />
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      {activeMeetingId === meeting.id ? (
+                        <Button size="sm" onClick={(e) => { e.stopPropagation(); onStopMeeting(); }} className="h-8 rounded-lg px-3 text-sm font-semibold shadow-none">
+                          <span aria-hidden="true" className="mr-1.5 h-2 w-2 rounded-full bg-current" /> Läuft – beenden
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onStartMeeting(meeting); }} className="h-8 rounded-lg bg-card px-3 text-sm shadow-none" disabled={activeMeetingId !== null}>
+                          <Play className="mr-1 h-3.5 w-3.5 fill-current" /> Starten
+                        </Button>
                       )}
+                      {editingMeeting?.id === meeting.id && <>
+                        <Button size="icon" variant="ghost" aria-label="Meeting-Änderungen speichern" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); onUpdateMeeting(meeting.id!, editingMeeting); onSetEditingMeeting(null); }}><Check className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" aria-label="Meeting-Bearbeitung abbrechen" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); onSetEditingMeeting(null); }}><X className="h-4 w-4" /></Button>
+                      </>}
                     </div>
-                    {meeting.location && (
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5">
-                        <MapPin className="h-3.5 w-3.5" />
-                        <span className="truncate">{meeting.location}</span>
-                      </div>
-                    )}
-                    <MeetingParticipantAvatars meetingId={meeting.id} size="xs" />
                   </div>
-                  <div className="flex items-center gap-1">
-                    {editingMeeting?.id === meeting.id ? (
-                      <>
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onUpdateMeeting(meeting.id!, editingMeeting as Meeting); onSetEditingMeeting(null); }}>
-                          <Check className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onSetEditingMeeting(null); }}>
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onSetEditingMeeting(meeting); }}>
-                          <Edit className="h-3.5 w-3.5" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={(e) => e.stopPropagation()}>
-                              <Trash className="h-3.5 w-3.5" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Meeting löschen</AlertDialogTitle>
-                              <AlertDialogDescription>Sind Sie sicher, dass Sie das Meeting "{meeting.title}" löschen möchten?</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => onDeleteMeeting(meeting.id!)}>Löschen</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </>
-                    )}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => e.stopPropagation()}>
-                          <MoreVertical className="h-3.5 w-3.5" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <QuickAccessMenuItem
-                          id={`meeting-${meeting.id}`}
-                          label={meeting.title}
-                          icon="Calendar"
-                          route={`/meetings?highlight=${meeting.id}`}
-                        />
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  </div>
-                </div>
-
-                {/* Start/Stop Button */}
-                <div className="mt-3 pt-2 border-t">
-                  {activeMeetingId === meeting.id ? (
-                    <Button size="sm" variant="default" onClick={(e) => { e.stopPropagation(); onStopMeeting(); }} className="w-full h-7 text-xs bg-palette-green hover:bg-palette-green">
-                      <CheckCircle className="h-3 w-3 mr-1" /> Laufend
-                    </Button>
-                  ) : (
-                    <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onStartMeeting(meeting); }} className="w-full h-7 text-xs" disabled={activeMeetingId !== null}>
-                      <CheckCircle className="h-3 w-3 mr-1" /> Starten
-                    </Button>
-                  )}
                 </div>
 
                 {editingMeeting?.id === meeting.id && (
@@ -252,6 +235,18 @@ export function MeetingSidebar({
         </div>
       </div>
 
+      <AlertDialog open={meetingToDelete !== null} onOpenChange={(open) => { if (!open) setMeetingToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Meeting löschen</AlertDialogTitle>
+            <AlertDialogDescription>Sind Sie sicher, dass Sie das Meeting "{meetingToDelete?.title}" löschen möchten?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (meetingToDelete?.id) onDeleteMeeting(meetingToDelete.id); setMeetingToDelete(null); }}><Trash className="mr-2 h-4 w-4" />Löschen</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <CarryoverBufferDialog open={showCarryoverBuffer} onOpenChange={onSetShowCarryoverBuffer} items={carryoverBufferItems} />
     </div>
   );

@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Meeting, MeetingTemplate, NewMeetingParticipant, RecurrenceData } from './types';
 
 interface MeetingCreateDialogProps {
+  triggerClassName?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   meeting: Meeting;
@@ -33,6 +34,7 @@ interface MeetingCreateDialogProps {
 }
 
 export function MeetingCreateDialog({
+  triggerClassName,
   open,
   onOpenChange,
   meeting,
@@ -49,7 +51,7 @@ export function MeetingCreateDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button className="flex-1" size="sm">
+        <Button className={cn("flex-1", triggerClassName)} size="sm">
           <Plus className="h-4 w-4 mr-2" />
           Neues Meeting
         </Button>
