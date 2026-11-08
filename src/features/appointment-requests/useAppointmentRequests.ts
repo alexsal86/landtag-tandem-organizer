@@ -108,8 +108,8 @@ export function useAppointmentRequestMutations() {
   });
 
   const decide = useMutation({
-    mutationFn: async (v: { id: string; decision: "accepted" | "declined" }) => {
-      const { error } = await supabase.rpc("decide_appointment_request", { _request_id: v.id, _decision: v.decision });
+    mutationFn: async (v: { id: string; decision: "accepted" | "declined"; briefing?: "none" | "assigned" }) => {
+      const { error } = await supabase.rpc("decide_appointment_request", { _request_id: v.id, _decision: v.decision, _briefing: v.briefing });
       if (error) throw error;
     },
     onSuccess: invalidate,

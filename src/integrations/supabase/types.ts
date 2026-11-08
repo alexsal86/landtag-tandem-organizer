@@ -953,6 +953,11 @@ export type Database = {
       }
       appointments: {
         Row: {
+          briefing_assignee_id: string | null
+          briefing_due_at: string | null
+          briefing_instructions: string | null
+          briefing_status: string
+          briefing_task_id: string | null
           calendar_uid: string | null
           call_log_id: string | null
           category: string | null
@@ -984,6 +989,11 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          briefing_assignee_id?: string | null
+          briefing_due_at?: string | null
+          briefing_instructions?: string | null
+          briefing_status?: string
+          briefing_task_id?: string | null
           calendar_uid?: string | null
           call_log_id?: string | null
           category?: string | null
@@ -1015,6 +1025,11 @@ export type Database = {
           user_id: string
         }
         Update: {
+          briefing_assignee_id?: string | null
+          briefing_due_at?: string | null
+          briefing_instructions?: string | null
+          briefing_status?: string
+          briefing_task_id?: string | null
           calendar_uid?: string | null
           call_log_id?: string | null
           category?: string | null
@@ -11644,7 +11659,6 @@ export type Database = {
         Row: {
           archived_at: string | null
           archived_by: string | null
-          case_file_id: string | null
           case_item_id: string | null
           created_at: string
           created_by: string
@@ -11666,7 +11680,6 @@ export type Database = {
         Insert: {
           archived_at?: string | null
           archived_by?: string | null
-          case_file_id?: string | null
           case_item_id?: string | null
           created_at?: string
           created_by: string
@@ -11688,7 +11701,6 @@ export type Database = {
         Update: {
           archived_at?: string | null
           archived_by?: string | null
-          case_file_id?: string | null
           case_item_id?: string | null
           created_at?: string
           created_by?: string
@@ -13508,15 +13520,18 @@ export type Database = {
       }
     }
     Functions: {
-      create_case_file_task: { Args: { p_id: string; p_case_file_id: string; p_title: string; p_assigned_to?: string }; Returns: string }
-      create_work_decision: { Args: { p_id: string; p_data: Json; p_participants: string[]; p_note_id?: string }; Returns: Json }
-      create_note_work: { Args: { p_note_id: string; p_kind: string }; Returns: string }
-      create_decision_task: { Args: { p_decision_id: string }; Returns: string }
-
+      _briefing_task_event: {
+        Args: { _task: string; _text: string }
+        Returns: undefined
+      }
       _meeting_default_end: { Args: { _date: string }; Returns: string }
       _meeting_default_start: { Args: { _date: string }; Returns: string }
       ack_task_nudge: {
         Args: { _reply?: string; _task_id: string }
+        Returns: undefined
+      }
+      advance_appointment_briefing: {
+        Args: { _action: string; _appointment_id: string }
         Returns: undefined
       }
       approve_gdpr_delete: {
@@ -13647,7 +13662,14 @@ export type Database = {
         Returns: string
       }
       decide_appointment_request: {
-        Args: { _decision: string; _request_id: string }
+        Args: {
+          _briefing?: string
+          _briefing_assignee?: string
+          _briefing_due?: string
+          _briefing_instructions?: string
+          _decision: string
+          _request_id: string
+        }
         Returns: string
       }
       delete_employee_meeting: {
@@ -13998,6 +14020,16 @@ export type Database = {
           title_param: string
         }
         Returns: undefined
+      }
+      set_appointment_briefing: {
+        Args: {
+          _appointment_id: string
+          _assignee?: string
+          _decision: string
+          _due?: string
+          _instructions?: string
+        }
+        Returns: string
       }
       snapshot_rls_coverage: { Args: never; Returns: string }
       snapshot_rls_coverage_internal: { Args: never; Returns: string }
