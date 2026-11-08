@@ -17,7 +17,7 @@ export function AgendaSystemRow({
     <div
       className={cn(
         "group flex min-w-0 border-b hover:bg-muted/30 focus-within:bg-muted/40",
-        selected && "bg-muted/50",
+        selected && "rounded-lg border-primary/45 bg-primary/10",
       )}
     >
       {canEdit && (

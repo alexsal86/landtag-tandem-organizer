@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   FileText,
@@ -13,9 +12,10 @@ import {
   Trash,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { MultiUserAssignSelect } from "../MultiUserAssignSelect";
+
 import type { AgendaItem, AgendaDocument, Profile } from "../types";
 interface Props {
+  startTime?: string;
   item: AgendaItem;
   index: number;
   profiles: Profile[];
@@ -43,6 +43,7 @@ export function AgendaInspector({
   hasEditPermission,
   agendaDocuments,
   taskDocuments,
+  startTime,
   onUpdateAgendaItem,
   onDeleteAgendaDocument,
   handleAgendaDocumentUpload,
@@ -60,37 +61,16 @@ export function AgendaInspector({
       aria-label="Agenda-Details"
       className="rounded-lg border bg-card p-4 space-y-4 xl:sticky xl:top-4 min-w-0"
     >
-      <div>
-        <p className="text-xs text-muted-foreground">
-          {item.system_type ? "Automatischer Baustein" : "Details zum Punkt"}
-        </p>
-        <h3 className="font-semibold break-words">
-          {item.title || "Neuer Punkt"}
-        </h3>
+      <div><h3 className="font-semibold break-words">{item.title || "Neuer Punkt"}</h3>
+      <p className="mt-1 text-sm text-muted-foreground">{item.system_type ? "Automatischer Baustein. Der Inhalt wird beim Meeting aus der Plattform geladen." : item.parent_id || item.parentLocalKey ? "Unterpunkt" : "Hauptpunkt"}</p></div>
+      <div className="grid grid-cols-2 gap-3">
+      {!item.parent_id && !item.parentLocalKey && <div><span className="text-sm">Dauer</span><div className="mt-1 flex items-center rounded-lg border bg-muted/30">
+      <Button variant="ghost" size="icon" aria-label="Dauer um fünf Minuten verringern" disabled={!hasEditPermission} onClick={() => onUpdateAgendaItem(index, "duration_minutes", Math.max(0, (item.duration_minutes ?? 0) - 5))}>−</Button>
+      <span className="flex-1 text-center text-sm tabular-nums">{item.duration_minutes ?? 0} min</span>
+      <Button variant="ghost" size="icon" aria-label="Dauer um fünf Minuten erhöhen" disabled={!hasEditPermission} onClick={() => onUpdateAgendaItem(index, "duration_minutes", (item.duration_minutes ?? 0) + 5)}>+</Button>
+      </div></div>}
+      <div><span className="text-sm">Beginn</span><div className="mt-1 rounded-lg border bg-muted/30 px-3 py-2 text-center text-sm tabular-nums">{startTime || "–"}</div></div>
       </div>
-      {!item.parent_id && !item.parentLocalKey && (
-        <label className="block text-sm space-y-1">
-          <span>Dauer in Minuten</span>
-          <Input
-            aria-label="Dauer in Minuten"
-            type="number"
-            min="0"
-            step="1"
-            value={item.duration_minutes ?? ""}
-            placeholder="0"
-            readOnly={!hasEditPermission}
-            onChange={(e) =>
-              onUpdateAgendaItem(
-                index,
-                "duration_minutes",
-                e.target.value === ""
-                  ? null
-                  : Math.max(0, Math.trunc(Number(e.target.value))),
-              )
-            }
-          />
-        </label>
-      )}
       {item.system_type ? (
         <>
           <label className="block text-sm space-y-1">
@@ -150,20 +130,10 @@ export function AgendaInspector({
                 : "Beschreibung hinzufügen"}
             </button>
           )}
-          <fieldset disabled={!hasEditPermission}>
-            <MultiUserAssignSelect
-              assignedTo={item.assigned_to ?? null}
-              profiles={profiles}
-              onChange={(userIds) =>
-                onUpdateAgendaItem(
-                  index,
-                  "assigned_to",
-                  userIds.length > 0 ? userIds : null,
-                )
-              }
-              size="sm"
-            />
-          </fieldset>
+          <div><p className="mb-2 text-sm font-semibold">Zuständig</p><div className="flex flex-wrap gap-2">{profiles.map(profile => {
+            const selected = item.assigned_to?.includes(profile.user_id) ?? false;
+            return <Button key={profile.user_id} variant="outline" size="sm" disabled={!hasEditPermission} aria-pressed={selected} className={selected ? "rounded-full border-primary bg-primary/10 hover:bg-primary/15" : "rounded-full bg-muted/30"} onClick={() => { const ids = selected ? (item.assigned_to ?? []).filter(id => id !== profile.user_id) : [...(item.assigned_to ?? []), profile.user_id]; onUpdateAgendaItem(index, "assigned_to", ids.length ? ids : null); }}><span className="mr-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs">{(profile.display_name || "?").slice(0,1).toUpperCase()}</span>{profile.display_name || "Unbekannt"}</Button>;
+          })}</div></div>
 
           {/* Task documents */}
           {item.task_id &&

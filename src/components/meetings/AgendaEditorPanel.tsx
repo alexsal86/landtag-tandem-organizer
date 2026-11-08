@@ -10,7 +10,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Save, Clock, StickyNote } from "lucide-react";
+import { Plus, Clock, StickyNote } from "lucide-react";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import {
   DragDropContext,
@@ -115,6 +115,7 @@ export function AgendaEditorPanel({
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [hideEmpty, setHideEmpty] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [systemCounts, setSystemCounts] = useState<
     Record<string, number | null>
   >({});
@@ -130,6 +131,7 @@ export function AgendaEditorPanel({
     onUpdateAgendaItem(index, field, value);
   };
   useEffect(() => {
+    setSaved(false);
     setSelectedKey(null);
     setDirty(false);
     setSystemCounts({});
@@ -361,14 +363,8 @@ export function AgendaEditorPanel({
   return (
     <>
       <div className="flex flex-wrap justify-between items-start gap-3">
-        <h2 className="text-xl font-semibold">
-          Agenda: {selectedMeeting.title} am{" "}
-          {format(new Date(selectedMeeting.meeting_date), "EEEE, d. MMMM", {
-            locale: de,
-          })}
-          {selectedMeeting.meeting_time &&
-            ` um ${selectedMeeting.meeting_time.substring(0, 5)} Uhr`}
-        </h2>
+        <div><h2 className="text-xl font-semibold">{selectedMeeting.title}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{format(new Date(selectedMeeting.meeting_date), "EEEE, d. MMMM", { locale: de })}{selectedMeeting.meeting_time && `, ${selectedMeeting.meeting_time.substring(0, 5)} Uhr`}{selectedMeeting.location && `, ${selectedMeeting.location}`}</p></div>
         {hasEditPermission && (
           <div className="flex flex-wrap gap-2">
             <AddAgendaMenu
@@ -382,21 +378,13 @@ export function AgendaEditorPanel({
                 onAddSystemAgendaItem(type);
               }}
             />
-            {dirty && (
-              <span
-                role="status"
-                className="text-xs text-muted-foreground self-center"
-              >
-                Ungespeicherte Änderungen
-              </span>
-            )}
             <Button
               onClick={async () => {
                 const result = await onSaveAgendaItems();
-                if (result !== false) setDirty(false);
+                if (result !== false) { setDirty(false); setSaved(true); }
               }}
             >
-              <Save className="h-4 w-4 mr-2" /> Speichern
+              {saved && !dirty ? "Gespeichert" : "Speichern"}
             </Button>
           </div>
         )}
@@ -408,7 +396,7 @@ export function AgendaEditorPanel({
         onHideEmptyChange={setHideEmpty}
       />
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start mt-4">
-        <div className="min-w-0">
+        <div className="min-w-0 rounded-xl border bg-card p-2">
           <DragDropContext
             onDragEnd={(result) => {
               if (result.destination) setDirty(true);
@@ -586,6 +574,7 @@ export function AgendaEditorPanel({
         </div>
         {selectedItem ? (
           <AgendaInspector
+            startTime={timing.starts.get(selectedItem.parent_id || selectedItem.parentLocalKey ? agendaItems.find(parent => parent.id === (selectedItem.parent_id || selectedItem.parentLocalKey) || parent.localKey === (selectedItem.parentLocalKey || selectedItem.parent_id))! : selectedItem)}
             key={getItemKey(selectedItem, selectedIndex)}
             item={selectedItem}
             index={selectedIndex}

@@ -19,7 +19,7 @@ export function AddAgendaMenu({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline">
+        <Button variant="outline" className="bg-card">
           <Plus className="h-4 w-4 mr-2" />
           Hinzufügen
         </Button>

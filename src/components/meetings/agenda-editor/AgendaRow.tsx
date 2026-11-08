@@ -107,7 +107,7 @@ export function AgendaRow({
           onClick={() => setSelectedKey(getItemKey(item, index))}
           className={cn(
             "group transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring border-b border-border/60 hover:bg-muted/30 focus-within:bg-muted/40",
-            getItemKey(item, index) === selectedKey && "bg-muted/50",
+            getItemKey(item, index) === selectedKey && "rounded-lg border-primary/45 bg-primary/10 hover:bg-primary/10 focus-within:bg-primary/10",
             snapshot.isDragging && "shadow-lg bg-card rounded-lg border",
             (item.parentLocalKey || item.parent_id) && "ml-7 border-l pl-2",
             item.is_optional && "border-dashed",
