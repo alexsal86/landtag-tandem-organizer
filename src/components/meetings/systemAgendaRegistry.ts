@@ -1,4 +1,5 @@
-import { CalendarDays, PencilSparkles, ListTodo, Heart, Scale, Briefcase, CalendarClock, Megaphone, Users, CalendarCheck, FileCheck, Radar } from 'lucide-react';
+import { PencilSparkles } from "@/components/icons/PencilSparkles";
+import { CalendarDays, ListTodo, Heart, Scale, Briefcase, CalendarClock, Megaphone, Users, CalendarCheck, FileCheck, Radar } from 'lucide-react';
 import type { SystemAgendaType } from './types';
 
 export const SYSTEM_AGENDA_OPTIONS = [

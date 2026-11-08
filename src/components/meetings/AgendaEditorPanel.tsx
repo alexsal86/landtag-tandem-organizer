@@ -1,3 +1,4 @@
+import { PencilSparkles } from "@/components/icons/PencilSparkles";
 import { AgendaRow } from "./agenda-editor/AgendaRow";
 import { AgendaInspector } from "./agenda-editor/AgendaInspector";
 import { AgendaSummaryBar } from "./agenda-editor/AgendaSummaryBar";
@@ -10,7 +11,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Clock, PencilSparkles } from "lucide-react";
+import { Plus, Clock } from "lucide-react";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import {
   DragDropContext,

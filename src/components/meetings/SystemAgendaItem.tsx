@@ -1,10 +1,10 @@
+import { PencilSparkles } from "@/components/icons/PencilSparkles";
 import { useState, useEffect, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   CalendarDays,
-  PencilSparkles,
   ListTodo,
   Trash,
   Heart,
