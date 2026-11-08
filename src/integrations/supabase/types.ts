@@ -8098,7 +8098,6 @@ export type Database = {
       }
       meeting_agenda_items: {
         Row: {
-          duration_minutes: number | null
           assigned_to: string[] | null
           carried_over_from: string | null
           carry_over_to_next: boolean | null
@@ -8125,7 +8124,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          duration_minutes?: number | null
           assigned_to?: string[] | null
           carried_over_from?: string | null
           carry_over_to_next?: boolean | null
@@ -8152,7 +8150,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          duration_minutes?: number | null
           assigned_to?: string[] | null
           carried_over_from?: string | null
           carry_over_to_next?: boolean | null
@@ -13526,22 +13523,6 @@ export type Database = {
       }
     }
     Functions: {
-      create_note_work: {
-        Args: { p_note_id: string; p_kind: string }
-        Returns: string
-      }
-      create_decision_task: {
-        Args: { p_decision_id: string }
-        Returns: string
-      }
-      create_work_decision: {
-        Args: { p_id: string; p_data: Json; p_participants: string[]; p_note_id?: string }
-        Returns: Json
-      }
-      create_case_file_task: {
-        Args: { p_id: string; p_case_file_id: string; p_title: string; p_assigned_to?: string }
-        Returns: string
-      }
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined
