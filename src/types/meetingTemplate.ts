@@ -8,6 +8,7 @@ export interface MeetingTemplateChildItem {
 }
 
 export interface MeetingTemplateItem {
+  duration_minutes?: number | null;
   title: string;
   order_index: number;
   type?: string;

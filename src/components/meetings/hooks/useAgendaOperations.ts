@@ -84,7 +84,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
     if (!selectedMeeting?.id) return;
     const localKey = `local-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
     const newItem: AgendaItem = {
-      title: "", description: "", assigned_to: [], notes: "",
+      title: "", description: "", assigned_to: [], notes: "", duration_minutes: 10,
       is_completed: false, is_recurring: false, order_index: agendaItems.length, localKey,
     };
     const next = [...agendaItems, newItem].map((it, idx) => ({ ...it, order_index: idx }));
@@ -108,7 +108,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
           const { data: parentData, error: parentError } = await supabase
             .from('meeting_agenda_items').insert([{
               meeting_id: selectedMeeting.id, title: parentItem.title, description: parentItem.description || null,
-              order_index: parentItem.order_index, is_completed: false, is_recurring: false,
+              order_index: parentItem.order_index, duration_minutes: parentItem.duration_minutes ?? null, is_completed: false, is_recurring: false,
             }]).select().single();
           if (parentError) throw parentError;
           parentId = parentData.id;
@@ -133,7 +133,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       const { data: savedItem, error } = await supabase
         .from('meeting_agenda_items').insert([{
           meeting_id: selectedMeeting.id, title: title, description: null,
-          system_type: systemType, parent_id: parentId, order_index: insertIndex,
+          system_type: systemType, parent_id: parentId, order_index: insertIndex, duration_minutes: parentItem ? null : 10,
           is_completed: false, is_recurring: false, is_visible: true,
         }]).select().single();
       if (error) throw error;
@@ -227,7 +227,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
   };
 
   const saveAgendaItems = async () => {
-    if (!selectedMeeting?.id) return;
+    if (!selectedMeeting?.id) return false;
 
     const toDbPayload = (item: AgendaItem, orderIndex: number, parentId: string | null = null) => ({
       meeting_id: selectedMeeting.id!,
@@ -240,6 +240,9 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       task_id: item.task_id || null,
       order_index: orderIndex,
       parent_id: parentId,
+      duration_minutes: parentId ? null : (item.duration_minutes ?? null),
+      carry_over_to_next: item.carry_over_to_next ?? false,
+      result_text: item.result_text ?? null,
       system_type: item.system_type || null,
       is_optional: Boolean(item.is_optional),
       is_visible: item.is_visible !== false,
@@ -326,6 +329,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       if (activeMeeting && activeMeeting.id === selectedMeeting.id) {
         await loadAgendaItems(selectedMeeting.id);
       }
+      return true;
     } catch (error: unknown) {
       debugConsole.error('Error saving agenda:', error);
       const msg = error instanceof Error ? error.message : '';
@@ -333,6 +337,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       if (msg.includes('invalid input syntax for type json')) errorMessage = 'Ungültiges Datenformat. Bitte prüfen Sie die Eingaben.';
       else if (msg.includes('Failed to fetch')) errorMessage = 'Netzwerkfehler. Die Änderungen werden beim nächsten Laden synchronisiert.';
       toast({ title: 'Fehler beim Speichern', description: errorMessage, variant: 'destructive' });
+      return false;
     }
   };
 
@@ -345,7 +350,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
         const { data: parentData, error: parentError } = await supabase
           .from('meeting_agenda_items').insert([{
             meeting_id: selectedMeeting.id, title: parentItem.title, description: parentItem.description || null,
-            order_index: parentItem.order_index, is_completed: false, is_recurring: false,
+            order_index: parentItem.order_index, duration_minutes: parentItem.duration_minutes ?? null, is_completed: false, is_recurring: false,
           }]).select().single();
         if (parentError) throw parentError;
         parentId = parentData.id;

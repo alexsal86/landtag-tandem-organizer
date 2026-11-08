@@ -391,7 +391,7 @@ export function useMeetingsData() {
   const loadAgendaItems = async (meetingId: string) => {
     try {
       const { data, error } = await supabase
-        .from('meeting_agenda_items').select('id, meeting_id, title, description, notes, order_index, parent_id, task_id, result_text, assigned_to, is_completed, system_type, is_optional, is_visible, carry_over_to_next, source_meeting_id, carried_over_from, original_meeting_date, original_meeting_title, carryover_notes, file_path, is_recurring, created_at, updated_at').eq('meeting_id', meetingId).order('order_index');
+        .from('meeting_agenda_items').select('id, meeting_id, title, description, notes, duration_minutes, order_index, parent_id, task_id, result_text, assigned_to, is_completed, system_type, is_optional, is_visible, carry_over_to_next, source_meeting_id, carried_over_from, original_meeting_date, original_meeting_title, carryover_notes, file_path, is_recurring, created_at, updated_at').eq('meeting_id', meetingId).order('order_index');
       if (error) throw error;
 
       const mainItems = (data || []).filter((item: Record<string, any>) => !item.parent_id).sort((a: Record<string, any>, b: Record<string, any>) => a.order_index - b.order_index);

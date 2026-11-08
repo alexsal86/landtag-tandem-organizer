@@ -29,6 +29,7 @@ export interface NewMeetingParticipant {
 }
 
 export interface AgendaItem {
+  duration_minutes?: number | null;
   id?: string;
   meeting_id?: string;
   title: string;
@@ -165,6 +166,7 @@ export interface AgendaDocument {
 
 /** A template item inside a meeting template */
 export interface MeetingTemplateItem {
+  duration_minutes?: number | null;
   title: string;
   description?: string;
   is_recurring?: boolean;

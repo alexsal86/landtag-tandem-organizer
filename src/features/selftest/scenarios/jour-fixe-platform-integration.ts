@@ -1,3 +1,4 @@
+import { agendaTiming } from "@/components/meetings/agenda-editor/agendaTiming";
 import type { TablesInsert } from "@/integrations/supabase/types";
 import { supabase } from '@/integrations/supabase/client';
 import { persistMeetingArchive } from '@/components/meetings/archiveMeeting';
@@ -28,6 +29,13 @@ export const jourFixePlatformIntegrationScenario: TestScenario = {
     for (const row of data ?? []) if (!ctx.created.some(record => record.table === 'tasks' && record.id === row.id)) ctx.trackRecord({ table: 'tasks', id: row.id });
   },
   steps: [
+    { id: 'agenda-timing', label: 'Agenda: nur Hauptpunkte zählen, Altbestand ohne erfundene Endzeit', kind: 'logic', run: async () => {
+      const base = { title: 'Punkt', is_completed: false, is_recurring: false, order_index: 0 };
+      const legacy = agendaTiming([base], '10:00');
+      const planned = agendaTiming([{ ...base, id: 'main', duration_minutes: 20 }, { ...base, parent_id: 'main', duration_minutes: 99 }], '23:50');
+      const ok = legacy.total === 0 && legacy.end === null && planned.total === 20 && planned.end === '00:10';
+      return { ok, message: ok ? 'Dauer, Unterpunkte und Tageswechsel korrekt.' : 'Agenda-Zeitberechnung weicht ab.' };
+    } },
     { id: 'radar-rules', label: 'Radar: mehrfache Anstupser, 7-Tage-Grenze und abgeschlossene Aufgaben', kind: 'logic', run: async () => {
       const now = new Date('2026-11-08T12:00:00Z');
       const base = { status: 'todo', due_date: null, next_action_due: null, nudge_count: 1 };

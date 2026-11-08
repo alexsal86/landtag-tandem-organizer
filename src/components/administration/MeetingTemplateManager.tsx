@@ -182,7 +182,7 @@ export function MeetingTemplateManager() {
       newItems[parentIndex].children.push({ title, order_index: newItems[parentIndex].children.length });
     } else {
       const itemType = title.startsWith('---') ? 'separator' : 'item';
-      newItems.push({ title: itemType === 'separator' ? title.replace(/^---\s*/, '') : title, type: itemType, order_index: newItems.length });
+      newItems.push({ title: itemType === 'separator' ? title.replace(/^---\s*/, '') : title, type: itemType, duration_minutes: 10, order_index: newItems.length });
     }
     setTemplateItems(newItems);
     saveTemplateItems(newItems);

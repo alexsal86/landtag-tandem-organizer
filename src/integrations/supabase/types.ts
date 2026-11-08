@@ -8098,6 +8098,7 @@ export type Database = {
       }
       meeting_agenda_items: {
         Row: {
+          duration_minutes: number | null
           assigned_to: string[] | null
           carried_over_from: string | null
           carry_over_to_next: boolean | null
@@ -8124,6 +8125,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          duration_minutes?: number | null
           assigned_to?: string[] | null
           carried_over_from?: string | null
           carry_over_to_next?: boolean | null
@@ -8150,6 +8152,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          duration_minutes?: number | null
           assigned_to?: string[] | null
           carried_over_from?: string | null
           carry_over_to_next?: boolean | null
