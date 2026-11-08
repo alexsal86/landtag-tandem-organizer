@@ -11665,6 +11665,7 @@ export type Database = {
           description: string | null
           id: string
           meeting_id: string | null
+          meeting_result: string | null
           pending_for_jour_fixe: boolean
           priority: number | null
           response_deadline: string | null
@@ -11686,6 +11687,7 @@ export type Database = {
           description?: string | null
           id?: string
           meeting_id?: string | null
+          meeting_result?: string | null
           pending_for_jour_fixe?: boolean
           priority?: number | null
           response_deadline?: string | null
@@ -11707,6 +11709,7 @@ export type Database = {
           description?: string | null
           id?: string
           meeting_id?: string | null
+          meeting_result?: string | null
           pending_for_jour_fixe?: boolean
           priority?: number | null
           response_deadline?: string | null
@@ -13545,6 +13548,10 @@ export type Database = {
       archive_employee_year_stats: {
         Args: { target_year: number }
         Returns: number
+      }
+      archive_meeting_with_stafette: {
+        Args: { _meeting_id: string }
+        Returns: Json
       }
       assign_contact_to_organization: {
         Args: { contact_id: string; org_id: string }
