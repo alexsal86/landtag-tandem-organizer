@@ -1,4 +1,3 @@
-import { toast } from "@/hooks/use-toast";
 import { useCallback, useEffect, useState } from "react";
 import { debugConsole } from '@/utils/debugConsole';
 import { useNavigate } from "react-router-dom";
@@ -6,14 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { Calendar, Clock, FileText, Loader2, Trash2 } from "lucide-react";
+import { FileText, Loader2, Plus, Trash2 } from "lucide-react";
 import { notify } from "@/lib/notify";
 
 interface Meeting {
@@ -25,6 +24,7 @@ interface Meeting {
   status: string;
   next_meeting_due: string | null;
   employee_name?: string;
+  employee_avatar_url?: string | null;
   conductor_name?: string;
   open_action_items?: number;
   total_action_items?: number;
@@ -34,15 +34,17 @@ interface EmployeeMeetingHistoryProps {
   employeeId?: string; // Optional: Filter by specific employee
   showFilters?: boolean;
   refreshTrigger?: number;
+  onScheduleMeeting?: () => void;
 }
 
-export function EmployeeMeetingHistory({ employeeId, showFilters = true, refreshTrigger = 0 }: EmployeeMeetingHistoryProps) {
+export function EmployeeMeetingHistory({ employeeId, showFilters = true, refreshTrigger = 0, onScheduleMeeting }: EmployeeMeetingHistoryProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const [loading, setLoading] = useState(true);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [employeeFilter, setEmployeeFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [deletingMeetingId, setDeletingMeetingId] = useState<string | null>(null);
 
@@ -68,20 +70,12 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
         query = query.eq("employee_id", employeeId);
       }
 
-      if (statusFilter !== "all") {
-        query = query.eq("status", statusFilter);
-      }
-
-      if (typeFilter !== "all") {
-        query = query.eq("meeting_type", typeFilter);
-      }
-
       const { data: meetingsData, error: meetingsError } = await query;
       if (meetingsError) throw meetingsError;
 
       // Get all unique user IDs
       const userIds = new Set<string>();
-      meetingsData?.forEach((m: Record<string, any>) => {
+      meetingsData?.forEach((m) => {
         userIds.add(m.employee_id);
         userIds.add(m.conducted_by);
       });
@@ -89,20 +83,20 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
       // Fetch profiles
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, display_name")
+        .select("user_id, display_name, avatar_url")
         .in("user_id", Array.from(userIds));
 
-      const profileMap = new Map(profiles?.map((p: Record<string, any>) => [p.user_id, p.display_name]) || []);
+      const profileMap = new Map(profiles?.map((profile) => [profile.user_id, profile]) || []);
 
       // Fetch action items counts
-      const meetingIds = meetingsData?.map((m: Record<string, any>) => m.id) || [];
+      const meetingIds = meetingsData?.map((m) => m.id) || [];
       const { data: actionItems } = await supabase
         .from("employee_meeting_action_items")
         .select("meeting_id, status")
         .in("meeting_id", meetingIds);
 
       const actionItemsMap = new Map<string, { open: number; total: number }>();
-      actionItems?.forEach((item: Record<string, any>) => {
+      actionItems?.forEach((item) => {
         const existing = actionItemsMap.get(item.meeting_id) || { open: 0, total: 0 };
         existing.total += 1;
         if (item.status !== "completed") {
@@ -112,10 +106,11 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
       });
 
       // Combine data
-      const enrichedMeetings: Meeting[] = (meetingsData || []).map((m: Record<string, any>) => ({
+      const enrichedMeetings: Meeting[] = (meetingsData || []).map((m) => ({
         ...m,
-        employee_name: profileMap.get(m.employee_id) || "Unbekannt",
-        conductor_name: profileMap.get(m.conducted_by) || "Unbekannt",
+        employee_name: profileMap.get(m.employee_id)?.display_name || "Unbekannt",
+        employee_avatar_url: profileMap.get(m.employee_id)?.avatar_url,
+        conductor_name: profileMap.get(m.conducted_by)?.display_name || "Unbekannt",
         open_action_items: actionItemsMap.get(m.id)?.open || 0,
         total_action_items: actionItemsMap.get(m.id)?.total || 0,
       }));
@@ -129,12 +124,12 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
     } finally {
       setLoading(false);
     }
-  }, [currentTenant, employeeId, statusFilter, toast, typeFilter, user]);
+  }, [currentTenant, employeeId, user]);
 
   useEffect(() => {
     if (!user || !currentTenant) return;
     loadMeetings();
-  }, [user, currentTenant, employeeId, statusFilter, typeFilter, refreshTrigger, loadMeetings]);
+  }, [user, currentTenant, refreshTrigger, loadMeetings]);
 
   const handleDeleteMeeting = async (meetingId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -165,6 +160,9 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
   const getMeetingTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
       regular: "Regulär",
+      annual_review: "Jahresgespräch",
+      probation_review: "Probezeitgespräch",
+      development_review: "Entwicklungsgespräch",
       probation: "Probezeit",
       development: "Entwicklung",
       performance: "Leistung",
@@ -173,15 +171,8 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
     return labels[type] || type;
   };
 
+  const isCancelled = (status: string) => status === "cancelled" || status === "cancelled_by_employee";
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-      scheduled: "default",
-      in_progress: "secondary",
-      completed: "outline",
-      cancelled: "destructive",
-      cancelled_by_employee: "destructive",
-      rescheduled: "secondary",
-    };
     const labels: Record<string, string> = {
       scheduled: "Geplant",
       in_progress: "In Bearbeitung",
@@ -190,171 +181,185 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
       cancelled_by_employee: "Vom MA abgesagt",
       rescheduled: "Umterminiert",
     };
+    const color = isCancelled(status)
+      ? "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+      : status === "completed"
+        ? "bg-lime-50 text-lime-700 dark:bg-lime-950/40 dark:text-lime-300"
+        : status === "in_progress"
+          ? "bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300"
+          : "bg-muted text-muted-foreground";
     return (
-      <Badge variant={variants[status] || "default"}>
+      <Badge variant="outline" className={`gap-1.5 rounded-full border-0 px-3 py-1 font-medium ${color}`}>
+        <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
         {labels[status] || status}
       </Badge>
     );
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  const employeeOptions = Array.from(new Map(meetings.map(meeting => [
+    meeting.employee_id, meeting.employee_name || "Unbekannt",
+  ])).entries()).sort((a, b) => a[1].localeCompare(b[1], "de"));
+  const typeOptions = Array.from(new Set([
+    "regular", "probation", "development", "performance", "conflict",
+    ...meetings.map(meeting => meeting.meeting_type),
+  ]));
+  const filteredMeetings = meetings.filter(meeting =>
+    (statusFilter === "all" || (statusFilter === "cancelled" ? isCancelled(meeting.status) : meeting.status === statusFilter)) &&
+    (typeFilter === "all" || meeting.meeting_type === typeFilter) &&
+    (employeeId || employeeFilter === "all" || meeting.employee_id === employeeFilter),
+  );
+  const groups = new Map<string, { label: string; meetings: Meeting[] }>();
+  filteredMeetings.forEach(meeting => {
+    const date = new Date(meeting.meeting_date);
+    const key = format(date, "yyyy-MM");
+    const group = groups.get(key) ?? { label: format(date, "MMMM yyyy", { locale: de }), meetings: [] };
+    group.meetings.push(meeting);
+    groups.set(key, group);
+  });
+  const statusOptions = [
+    { value: "all", label: "Alle" },
+    { value: "in_progress", label: "In Bearbeitung" },
+    { value: "completed", label: "Abgeschlossen" },
+    { value: "cancelled", label: "Abgesagt" },
+    ...(["scheduled", "rescheduled"].filter(status => meetings.some(meeting => meeting.status === status)).map(status => ({
+      value: status, label: status === "scheduled" ? "Geplant" : "Umterminiert",
+    }))),
+  ];
+  const summary = [
+    `${meetings.length} ${meetings.length === 1 ? "Gespräch" : "Gespräche"}`,
+    ...[
+      { count: meetings.filter(meeting => meeting.status === "in_progress").length, label: "in Bearbeitung" },
+      { count: meetings.filter(meeting => meeting.status === "completed").length, label: "abgeschlossen" },
+      { count: meetings.filter(meeting => isCancelled(meeting.status)).length, label: "abgesagt" },
+    ].filter(item => item.count > 0).map(item => `${item.count} ${item.label}`),
+  ].join(" · ");
+  const avatarColors = ["bg-lime-600", "bg-blue-500", "bg-violet-500", "bg-amber-500"];
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>Gesprächshistorie</CardTitle>
-          {showFilters && (
-            <div className="flex gap-2">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Status filtern" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Alle Status</SelectItem>
-                  <SelectItem value="scheduled">Geplant</SelectItem>
-                  <SelectItem value="in_progress">In Bearbeitung</SelectItem>
-                  <SelectItem value="completed">Abgeschlossen</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Typ filtern" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Alle Typen</SelectItem>
-                  <SelectItem value="regular">Regulär</SelectItem>
-                  <SelectItem value="probation">Probezeit</SelectItem>
-                  <SelectItem value="development">Entwicklung</SelectItem>
-                  <SelectItem value="performance">Leistung</SelectItem>
-                  <SelectItem value="conflict">Konflikt</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+    <Card className="overflow-hidden rounded-2xl shadow-none">
+      <CardHeader className="gap-4 p-5 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <CardTitle className="text-xl">Gesprächshistorie</CardTitle>
+            {!loading && <p className="mt-1 text-sm text-muted-foreground">{summary}</p>}
+          </div>
+          {onScheduleMeeting && (
+            <Button onClick={onScheduleMeeting} className="gap-2 rounded-xl bg-lime-600 text-white hover:bg-lime-700">
+              <Plus className="h-4 w-4" />Gespräch planen
+            </Button>
           )}
         </div>
-      </CardHeader>
-      <CardContent>
-        {meetings.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
-            <p>Keine Gespräche gefunden</p>
+        {showFilters && (
+          <div className="flex flex-wrap items-center gap-2">
+            <div role="group" aria-label="Nach Gesprächsstatus filtern" className="flex flex-wrap gap-2">
+              {statusOptions.map(option => (
+                <Button key={option.value} variant="outline" size="sm" aria-pressed={statusFilter === option.value}
+                  onClick={() => setStatusFilter(option.value)}
+                  className={`rounded-full px-3 font-medium ${statusFilter === option.value ? "border-lime-600 bg-lime-50 text-lime-700 hover:bg-lime-100 dark:bg-lime-950/40 dark:text-lime-300" : "text-muted-foreground"}`}>
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+            <span aria-hidden="true" className="mx-1 hidden h-6 w-px bg-border sm:block" />
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger aria-label="Nach Gesprächstyp filtern" className="h-9 w-full rounded-xl sm:w-44"><SelectValue placeholder="Alle Typen" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle Typen</SelectItem>
+                {typeOptions.map(type => <SelectItem key={type} value={type}>{getMeetingTypeLabel(type)}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {!employeeId && (
+              <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
+                <SelectTrigger aria-label="Nach Mitarbeiter filtern" className="h-9 w-full rounded-xl sm:w-48"><SelectValue placeholder="Alle Mitarbeitenden" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Mitarbeitenden</SelectItem>
+                  {employeeOptions.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
           </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Datum</TableHead>
-                <TableHead>Typ</TableHead>
-                <TableHead>Status</TableHead>
-                {!employeeId && <TableHead>Mitarbeiter</TableHead>}
-                <TableHead>Durchgeführt von</TableHead>
-                <TableHead>Nächstes Gespräch</TableHead>
-                <TableHead>Action Items</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {meetings.map((meeting) => (
-                <TableRow
-                  key={meeting.id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => navigate(`/employee-meeting/${meeting.id}`)}
-                >
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
+        )}
+      </CardHeader>
+      <CardContent className="p-0" aria-busy={loading}>
+        {loading ? (
+          <div role="status" className="flex items-center justify-center gap-2 p-8 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" />Gespräche werden geladen …
+          </div>
+        ) : filteredMeetings.length === 0 ? (
+          <div role="status" className="border-t py-10 text-center text-muted-foreground">
+            <FileText className="mx-auto mb-2 h-10 w-10 opacity-50" />
+            <p>{meetings.length === 0 ? "Noch keine Gespräche vorhanden." : "Keine Gespräche für diese Filter gefunden."}</p>
+          </div>
+        ) : Array.from(groups.entries()).map(([key, group]) => (
+          <section key={key} aria-label={group.label}>
+            <h3 className="border-t bg-muted/40 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:px-6">{group.label}</h3>
+            <ul>
+              {group.meetings.map(meeting => {
+                const cancelled = isCancelled(meeting.status);
+                const date = new Date(meeting.meeting_date);
+                const total = meeting.total_action_items ?? 0;
+                const open = meeting.open_action_items ?? 0;
+                const completed = total - open;
+                const avatarColor = avatarColors[Array.from(meeting.employee_id).reduce((sum, char) => sum + char.charCodeAt(0), 0) % avatarColors.length];
+                return (
+                  <li key={meeting.id} className="grid grid-cols-1 items-center gap-4 border-t px-5 py-4 hover:bg-muted/20 sm:grid-cols-2 sm:px-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+                    <div className={`flex min-w-0 items-center gap-3 ${cancelled ? "opacity-50" : ""}`}>
+                      <time dateTime={meeting.meeting_date} aria-label={format(date, "dd.MM.yyyy")} className="w-14 shrink-0 rounded-xl border bg-card py-2 text-center">
+                        <span className={`block text-xl font-semibold leading-none ${cancelled ? "line-through" : ""}`}>{format(date, "dd")}</span>
+                        <span className="mt-1 block text-xs uppercase text-muted-foreground">{format(date, "MMM", { locale: de }).slice(0, 3)}</span>
+                      </time>
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <Avatar className="h-9 w-9 shrink-0">
+                          <AvatarImage src={meeting.employee_avatar_url ?? undefined} alt={meeting.employee_name || "Mitarbeiter"} />
+                          <AvatarFallback className={`${avatarColor} text-xs font-semibold text-white`}>{(meeting.employee_name || "?").slice(0, 2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <p className="break-words font-semibold">{meeting.employee_name}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">{getMeetingTypeLabel(meeting.meeting_type)} · <span title="Durchgeführt von">{meeting.conductor_name}</span></p>
+                        </div>
+                      </div>
+                    </div>
+                    <div>{getStatusBadge(meeting.status)}</div>
+                    <div className={`space-y-2 ${cancelled ? "opacity-50" : ""}`}>
                       <div>
-                        <div className="font-medium">
-                          {format(new Date(meeting.meeting_date), "dd.MM.yyyy", { locale: de })}
+                        <p className="text-xs text-muted-foreground">Nächstes Gespräch</p>
+                        <p className="text-sm">{meeting.next_meeting_due ? format(new Date(meeting.next_meeting_due), "dd.MM.yyyy", { locale: de }) : "–"}</p>
+                      </div>
+                      <div className="flex items-center gap-2" title={`${open} offene Action Items`}>
+                        <div role="progressbar" aria-label="Abgeschlossene Action Items" aria-valuemin={0} aria-valuemax={Math.max(total, 1)} aria-valuenow={completed} aria-valuetext={`${completed} von ${total} Action Items abgeschlossen`} className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+                          <div className="h-full rounded-full bg-lime-600" style={{ width: `${total > 0 ? completed / total * 100 : 0}%` }} />
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {format(new Date(meeting.meeting_date), "HH:mm", { locale: de })} Uhr
-                        </div>
+                        <span className={`text-xs text-muted-foreground ${total === 0 ? "opacity-60" : ""}`}>{completed}/{total} erledigt</span>
                       </div>
                     </div>
-                  </TableCell>
-                  <TableCell>{getMeetingTypeLabel(meeting.meeting_type)}</TableCell>
-                  <TableCell>{getStatusBadge(meeting.status)}</TableCell>
-                  {!employeeId && <TableCell>{meeting.employee_name}</TableCell>}
-                  <TableCell>{meeting.conductor_name}</TableCell>
-                  <TableCell>
-                    {meeting.next_meeting_due ? (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Clock className="h-3 w-3 text-muted-foreground" />
-                        {format(new Date(meeting.next_meeting_due), "dd.MM.yyyy", { locale: de })}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground text-sm">–</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Badge variant={(meeting.open_action_items ?? 0) > 0 ? "default" : "outline"}>
-                        {meeting.open_action_items ?? 0}/{meeting.total_action_items ?? 0}
-                      </Badge>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/employee-meeting/${meeting.id}`);
-                        }}
-                      >
-                        Öffnen
-                      </Button>
+                    <div className="flex items-center gap-2 lg:justify-end">
+                      <Button variant="outline" size="sm" className="rounded-xl" onClick={() => navigate(`/employee-meeting/${meeting.id}`)}>Öffnen</Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            onClick={(e) => e.stopPropagation()}
-                            disabled={deletingMeetingId === meeting.id}
-                          >
-                            {deletingMeetingId === meeting.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
+                          <Button variant="ghost" size="icon" aria-label={`Gespräch mit ${meeting.employee_name} vom ${format(date, "dd.MM.yyyy")} löschen`} className="h-8 w-8 rounded-xl text-muted-foreground hover:text-destructive" disabled={deletingMeetingId !== null}>
+                            {deletingMeetingId === meeting.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                           </Button>
                         </AlertDialogTrigger>
-                        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                        <AlertDialogContent>
                           <AlertDialogHeader>
                             <AlertDialogTitle>Gespräch löschen?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Dieses Mitarbeitergespräch wird unwiderruflich gelöscht, einschließlich aller zugehörigen Bewertungen und Action Items.
-                            </AlertDialogDescription>
+                            <AlertDialogDescription>Dieses Mitarbeitergespräch wird unwiderruflich gelöscht, einschließlich aller zugehörigen Bewertungen und Action Items.</AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                            <AlertDialogAction
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              onClick={(e) => handleDeleteMeeting(meeting.id, e)}
-                              disabled={deletingMeetingId === meeting.id}
-                            >
+                            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={event => handleDeleteMeeting(meeting.id, event)} disabled={deletingMeetingId !== null}>
                               {deletingMeetingId === meeting.id ? "Lösche..." : "Löschen"}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
                     </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ))}
       </CardContent>
     </Card>
   );

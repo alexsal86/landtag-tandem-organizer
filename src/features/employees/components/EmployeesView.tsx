@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, BarChart3, Clock, Loader2, Plus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmployeeMeetingScheduler } from "@/features/employees/components/EmployeeMeetingScheduler";
 import { EmployeeMeetingHistory } from "@/features/employees/components/EmployeeMeetingHistory";
 import { EmployeeMeetingRequestManager } from "@/features/employees/components/EmployeeMeetingRequestManager";
@@ -26,6 +26,7 @@ export function EmployeesView() {
   });
 
   const [newEmployeeOpen, setNewEmployeeOpen] = useState(false);
+  const [meetingEmployeePickerOpen, setMeetingEmployeePickerOpen] = useState(false);
   const [schedulerOpen, setSchedulerOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<{ id: string; name: string } | null>(null);
   const [requestManagerOpen, setRequestManagerOpen] = useState(false);
@@ -115,7 +116,7 @@ export function EmployeesView() {
             onScheduleMeeting={(emp): void => { setSelectedEmployee(emp); setSchedulerOpen(true); }}
           />
           <section className="pb-6">
-            <EmployeeMeetingHistory showFilters={true} refreshTrigger={meetingHistoryRefreshTrigger} />
+            <EmployeeMeetingHistory showFilters={true} refreshTrigger={meetingHistoryRefreshTrigger} onScheduleMeeting={() => setMeetingEmployeePickerOpen(true)} />
           </section>
         </TabsContent>
 
@@ -128,6 +129,26 @@ export function EmployeesView() {
         <DialogContent>
           <DialogHeader><DialogTitle>Mitarbeiter hinzufügen</DialogTitle></DialogHeader>
           <NewUserForm onSuccess={() => { setNewEmployeeOpen(false); void reloadPendingRequestsCount(); }} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={meetingEmployeePickerOpen} onOpenChange={setMeetingEmployeePickerOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Gespräch planen</DialogTitle>
+            <DialogDescription>Mit wem möchten Sie ein Gespräch planen?</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-80 space-y-2 overflow-y-auto">
+            {data.employees.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Noch keine Mitarbeitenden zugewiesen.</p>
+            ) : data.employees.map(employee => (
+              <Button key={employee.user_id} variant="outline" className="w-full justify-start rounded-xl" onClick={() => {
+                setSelectedEmployee({ id: employee.user_id, name: employee.display_name || "Unbenannt" });
+                setMeetingEmployeePickerOpen(false);
+                setSchedulerOpen(true);
+              }}>{employee.display_name || "Unbenannt"}</Button>
+            ))}
+          </div>
         </DialogContent>
       </Dialog>
 
