@@ -1,16 +1,7 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  FileText,
-  Download,
-  X,
-  Upload,
-  Eye,
-  EyeOff,
-  Trash,
-} from "lucide-react";
+import { FileText, Download, X, Eye, EyeOff, Trash } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 import type { AgendaItem, AgendaDocument, Profile } from "../types";
@@ -51,25 +42,70 @@ export function AgendaInspector({
   onDeleteAgendaItem,
   onToggleVisibility,
 }: Props) {
-  const [editingField, setEditingField] = useState<
-    Record<string, "description" | "notes" | null>
-  >({});
-  const getItemKey = (item: AgendaItem, index: number) =>
-    item.localKey || item.id || `agenda-${index}`;
   return (
     <aside
       aria-label="Agenda-Details"
       className="rounded-lg border bg-card p-4 space-y-4 xl:sticky xl:top-4 min-w-0"
     >
-      <div><h3 className="font-semibold break-words">{item.title || "Neuer Punkt"}</h3>
-      <p className="mt-1 text-sm text-muted-foreground">{item.system_type ? "Automatischer Baustein. Der Inhalt wird beim Meeting aus der Plattform geladen." : item.parent_id || item.parentLocalKey ? "Unterpunkt" : "Hauptpunkt"}</p></div>
+      <div>
+        <h3 className="font-semibold break-words">
+          {item.title || "Neuer Punkt"}
+        </h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {item.system_type
+            ? "Automatischer Baustein. Der Inhalt wird beim Meeting aus der Plattform geladen."
+            : item.parent_id || item.parentLocalKey
+              ? "Unterpunkt"
+              : "Hauptpunkt"}
+        </p>
+      </div>
       <div className="grid grid-cols-2 gap-3">
-      {!item.parent_id && !item.parentLocalKey && <div><span className="text-sm">Dauer</span><div className="mt-1 flex items-center rounded-lg border bg-muted/30">
-      <Button variant="ghost" size="icon" aria-label="Dauer um fünf Minuten verringern" disabled={!hasEditPermission} onClick={() => onUpdateAgendaItem(index, "duration_minutes", Math.max(0, (item.duration_minutes ?? 0) - 5))}>−</Button>
-      <span className="flex-1 text-center text-sm tabular-nums">{item.duration_minutes ?? 0} min</span>
-      <Button variant="ghost" size="icon" aria-label="Dauer um fünf Minuten erhöhen" disabled={!hasEditPermission} onClick={() => onUpdateAgendaItem(index, "duration_minutes", (item.duration_minutes ?? 0) + 5)}>+</Button>
-      </div></div>}
-      <div><span className="text-sm">Beginn</span><div className="mt-1 rounded-lg border bg-muted/30 px-3 py-2 text-center text-sm tabular-nums">{startTime || "–"}</div></div>
+        {!item.parent_id && !item.parentLocalKey && (
+          <div>
+            <span className="text-sm">Dauer</span>
+            <div className="mt-1 flex items-center rounded-lg border bg-muted/30">
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Dauer um fünf Minuten verringern"
+                disabled={!hasEditPermission}
+                onClick={() =>
+                  onUpdateAgendaItem(
+                    index,
+                    "duration_minutes",
+                    Math.max(0, (item.duration_minutes ?? 0) - 5),
+                  )
+                }
+              >
+                −
+              </Button>
+              <span className="flex-1 text-center text-sm tabular-nums">
+                {item.duration_minutes ?? 0} min
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Dauer um fünf Minuten erhöhen"
+                disabled={!hasEditPermission}
+                onClick={() =>
+                  onUpdateAgendaItem(
+                    index,
+                    "duration_minutes",
+                    (item.duration_minutes ?? 0) + 5,
+                  )
+                }
+              >
+                +
+              </Button>
+            </div>
+          </div>
+        )}
+        <div>
+          <span className="text-sm">Beginn</span>
+          <div className="mt-1 rounded-lg border bg-muted/30 px-3 py-2 text-center text-sm tabular-nums">
+            {startTime || "–"}
+          </div>
+        </div>
       </div>
       {item.system_type ? (
         <>
@@ -96,131 +132,125 @@ export function AgendaInspector({
         </>
       ) : (
         <>
-          {editingField[getItemKey(item, index)] === "description" ? (
-            <Textarea
-              autoFocus
-              value={item.description || ""}
-              onBlur={() =>
-                setEditingField((prev) => ({
-                  ...prev,
-                  [getItemKey(item, index)]: null,
-                }))
-              }
-              onChange={(e) =>
-                onUpdateAgendaItem(index, "description", e.target.value)
-              }
-              aria-label="Beschreibung"
-              placeholder="Beschreibung"
-              className="min-h-[60px]"
-            />
-          ) : (
-            <button
-              type="button"
-              className="text-left text-sm text-muted-foreground rounded border border-dashed border-transparent hover:border-border px-2 py-1"
-              onClick={() =>
-                hasEditPermission &&
-                setEditingField((prev) => ({
-                  ...prev,
-                  [getItemKey(item, index)]: "description",
-                }))
-              }
-            >
-              {item.description?.trim()
-                ? item.description
-                : "Beschreibung hinzufügen"}
-            </button>
-          )}
-          <div><p className="mb-2 text-sm font-semibold">Zuständig</p><div className="flex flex-wrap gap-2">{profiles.map(profile => {
-            const selected = item.assigned_to?.includes(profile.user_id) ?? false;
-            return <Button key={profile.user_id} variant="outline" size="sm" disabled={!hasEditPermission} aria-pressed={selected} className={selected ? "rounded-full border-primary bg-primary/10 hover:bg-primary/15" : "rounded-full bg-muted/30"} onClick={() => { const ids = selected ? (item.assigned_to ?? []).filter(id => id !== profile.user_id) : [...(item.assigned_to ?? []), profile.user_id]; onUpdateAgendaItem(index, "assigned_to", ids.length ? ids : null); }}><span className="mr-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs">{(profile.display_name || "?").slice(0,1).toUpperCase()}</span>{profile.display_name || "Unbekannt"}</Button>;
-          })}</div></div>
-
-          {/* Task documents */}
-          {item.task_id &&
-            taskDocuments[item.task_id] &&
-            taskDocuments[item.task_id].length > 0 && (
-              <div className="mb-3">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                  <FileText className="h-3 w-3" />
-                  <span>Aufgaben-Dokumente:</span>
-                </div>
-                <div className="space-y-1">
-                  {taskDocuments[item.task_id].map((doc, docIndex) => (
-                    <div
-                      key={docIndex}
-                      className="flex items-center justify-between py-1 px-2 hover:bg-muted/30 rounded text-xs"
-                    >
-                      <span className="text-muted-foreground truncate">
-                        {doc.file_name || "Dokument"}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label="Aufgaben-Dokument herunterladen"
-                        className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                        onClick={async () => {
-                          try {
-                            const { data, error } = await supabase.storage
-                              .from("task-documents")
-                              .download(doc.file_path);
-                            if (error) throw error;
-                            const url = URL.createObjectURL(data);
-                            const a = document.createElement("a");
-                            a.href = url;
-                            a.download = doc.file_name || "download";
-                            a.click();
-                            URL.revokeObjectURL(url);
-                          } catch (error) {
-                            showDocumentActionError("download", error);
-                          }
-                        }}
-                      >
-                        <Download aria-hidden="true" className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+          <div>
+            <p className="mb-2 text-sm font-semibold">Zuständig</p>
+            <div className="flex flex-wrap gap-2">
+              {profiles.map((profile) => {
+                const selected =
+                  item.assigned_to?.includes(profile.user_id) ?? false;
+                return (
+                  <Button
+                    key={profile.user_id}
+                    variant="outline"
+                    size="sm"
+                    disabled={!hasEditPermission}
+                    aria-pressed={selected}
+                    className={
+                      selected
+                        ? "h-8 gap-0 rounded-full border-primary bg-primary/10 py-1 pl-1 pr-2.5 text-xs hover:bg-primary/15"
+                        : "h-8 gap-0 rounded-full bg-muted/30 py-1 pl-1 pr-2.5 text-xs"
+                    }
+                    onClick={() => {
+                      const ids = selected
+                        ? (item.assigned_to ?? []).filter(
+                            (id) => id !== profile.user_id,
+                          )
+                        : [...(item.assigned_to ?? []), profile.user_id];
+                      onUpdateAgendaItem(
+                        index,
+                        "assigned_to",
+                        ids.length ? ids : null,
+                      );
+                    }}
+                  >
+                    <span className="mr-1.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[11px]">
+                      {(profile.display_name || "?").slice(0, 1).toUpperCase()}
+                    </span>
+                    {profile.display_name || "Unbekannt"}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
 
           <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Notizen</label>
-              {editingField[getItemKey(item, index)] === "notes" ? (
-                <Textarea
-                  autoFocus
-                  value={item.notes || ""}
-                  onBlur={() =>
-                    setEditingField((prev) => ({
-                      ...prev,
-                      [getItemKey(item, index)]: null,
-                    }))
-                  }
-                  onChange={(e) =>
-                    onUpdateAgendaItem(index, "notes", e.target.value)
-                  }
-                  aria-label="Notizen"
-                  placeholder="Notizen und Hinweise"
-                  className="min-h-[80px]"
-                />
-              ) : (
-                <button
-                  type="button"
-                  className="w-full text-left text-sm text-muted-foreground rounded border border-dashed border-transparent hover:border-border px-2 py-1 min-h-10"
-                  onClick={() =>
-                    hasEditPermission &&
-                    setEditingField((prev) => ({
-                      ...prev,
-                      [getItemKey(item, index)]: "notes",
-                    }))
-                  }
-                >
-                  {item.notes?.trim() ? item.notes : "Notizen hinzufügen"}
-                </button>
-              )}
-            </div>
+            <label className="block space-y-2">
+              <span className="text-sm font-semibold">Beschreibung</span>
+              <Textarea
+                aria-label="Beschreibung"
+                placeholder="Worum geht es?"
+                className="min-h-24 rounded-xl bg-muted/30 shadow-none"
+                value={item.description || ""}
+                readOnly={!hasEditPermission}
+                onChange={(e) =>
+                  onUpdateAgendaItem(index, "description", e.target.value)
+                }
+              />
+            </label>
+            <label className="block space-y-2">
+              <span className="text-sm font-semibold">Notizen</span>
+              <Textarea
+                aria-label="Notizen"
+                placeholder="Hinweise für das Meeting"
+                className="min-h-24 rounded-xl bg-muted/30 shadow-none"
+                value={item.notes || ""}
+                readOnly={!hasEditPermission}
+                onChange={(e) =>
+                  onUpdateAgendaItem(index, "notes", e.target.value)
+                }
+              />
+            </label>
 
             <div>
+              <h4 className="mb-2 text-sm font-semibold">Dokumente</h4>
+              {/* Task documents */}
+              {item.task_id &&
+                taskDocuments[item.task_id] &&
+                taskDocuments[item.task_id].length > 0 && (
+                  <div className="mb-3">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                      <FileText className="h-3 w-3" />
+                      <span>Aufgaben-Dokumente:</span>
+                    </div>
+                    <div className="space-y-1">
+                      {taskDocuments[item.task_id].map((doc, docIndex) => (
+                        <div
+                          key={docIndex}
+                          className="flex items-center justify-between py-1 px-2 hover:bg-muted/30 rounded text-xs"
+                        >
+                          <span className="text-muted-foreground truncate">
+                            {doc.file_name || "Dokument"}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label="Aufgaben-Dokument herunterladen"
+                            className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                            onClick={async () => {
+                              try {
+                                const { data, error } = await supabase.storage
+                                  .from("task-documents")
+                                  .download(doc.file_path);
+                                if (error) throw error;
+                                const url = URL.createObjectURL(data);
+                                const a = document.createElement("a");
+                                a.href = url;
+                                a.download = doc.file_name || "download";
+                                a.click();
+                                URL.revokeObjectURL(url);
+                              } catch (error) {
+                                showDocumentActionError("download", error);
+                              }
+                            }}
+                          >
+                            <Download aria-hidden="true" className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
               {/* Agenda documents */}
               {agendaDocuments[item.id!] &&
                 agendaDocuments[item.id!].length > 0 && (
@@ -290,23 +320,22 @@ export function AgendaInspector({
                     </div>
                   </div>
                 )}
-              <label className="text-sm font-medium">Dokument hinzufügen</label>
               <div className="flex items-center gap-2 mt-1">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1"
+                  className="h-auto min-h-14 flex-1 rounded-xl border-dashed bg-card px-3 py-3 text-muted-foreground whitespace-normal shadow-none"
                   disabled={!hasEditPermission}
                   onClick={() => handleAgendaDocumentUpload(item, index)}
                 >
-                  <Upload className="h-4 w-4 mr-2" /> Dokument hinzufügen
+                  Datei auswählen
                 </Button>
               </div>
             </div>
           </div>
 
           <label
-            className="flex items-center gap-2 text-sm"
+            className="flex items-start gap-3 rounded-xl border bg-muted/30 p-3 text-sm cursor-pointer"
             title="Auf nächstes Meeting übertragen"
           >
             <Checkbox
@@ -316,7 +345,14 @@ export function AgendaInspector({
                 onUpdateAgendaItem(index, "carry_over_to_next", v === true)
               }
             />
-            Auf nächstes Meeting übertragen
+            <span>
+              <span className="block font-semibold">
+                Auf nächstes Meeting übertragen
+              </span>
+              <span className="mt-1 block text-xs text-muted-foreground">
+                Der Punkt erscheint dort automatisch wieder.
+              </span>
+            </span>
           </label>
           {item.is_optional && (
             <Button
