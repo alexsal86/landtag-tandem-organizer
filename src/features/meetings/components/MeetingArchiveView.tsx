@@ -593,8 +593,21 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
               {meetings.map((meeting) =>
                 viewMode === "list" ? (
                   <article
+                    tabIndex={0}
+                    aria-label={`Protokoll öffnen: ${meeting.title}`}
+                    onClick={(event) => {
+                      if ((event.target as HTMLElement).closest('button, a, [role="menu"], [role="menuitem"]')) return;
+                      setSelectedMeetingId(meeting.id);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.target !== event.currentTarget) return;
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        setSelectedMeetingId(meeting.id);
+                      }
+                    }}
                     key={meeting.id}
-                    className="group flex flex-wrap items-center gap-3 px-3 py-3 hover:bg-muted/30 focus-within:bg-muted/30 sm:flex-nowrap"
+                    className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group flex flex-wrap items-center gap-3 px-3 py-3 hover:bg-muted/30 focus-within:bg-muted/30 sm:flex-nowrap"
                   >
                     {dateTile(meeting)}
                     {details(meeting)}
@@ -612,8 +625,21 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
                   </article>
                 ) : (
                   <article
+                    tabIndex={0}
+                    aria-label={`Protokoll öffnen: ${meeting.title}`}
+                    onClick={(event) => {
+                      if ((event.target as HTMLElement).closest('button, a, [role="menu"], [role="menuitem"]')) return;
+                      setSelectedMeetingId(meeting.id);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.target !== event.currentTarget) return;
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        setSelectedMeetingId(meeting.id);
+                      }
+                    }}
                     key={meeting.id}
-                    className="relative flex flex-col gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-primary/50"
+                    className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring relative flex flex-col gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-primary/50"
                   >
                     <div className="flex items-start gap-3">
                       {dateTile(meeting)}
