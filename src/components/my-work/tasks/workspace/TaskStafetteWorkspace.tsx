@@ -5,7 +5,8 @@ import type { Json } from "@/integrations/supabase/types";
 import type { MyWorkTask } from "@/hooks/useMyWorkTasksData";
 import { notify } from "@/lib/notify";
 import { EmptyState } from "@/components/ui-patterns";
-import { ListTodo } from "lucide-react";
+import { ListTodo, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { checklistEvents, parseChecklist, shiftDay, groupByZone, isReminderDue, type ChecklistItem, parseTaskTimeline, stafetteEvents, type StafetteEvent } from "@/features/tasks/stafette";
 import { TaskTriageList } from "./TaskTriageList";
 import { TaskDetailView, type TaskPatch } from "./TaskDetailView";
@@ -170,17 +171,24 @@ export function TaskStafetteWorkspace({ userId, tasks, profiles, onReload, onCom
   }, [ordered, selected, onCreate]);
 
   if (ordered.length === 0) {
-    return <EmptyState icon={ListTodo} title="Alles erledigt" description="Keine offenen Aufgaben. Mit C legst du eine neue an." />;
+    return <div className="flex flex-1 flex-col items-center justify-center gap-4 rounded-2xl border bg-card p-6 shadow-sm"><EmptyState icon={ListTodo} title="Alles erledigt" description="Keine offenen Aufgaben. Lege eine neue Aufgabe an." /><Button onClick={onCreate}><Plus className="mr-2 h-4 w-4" />Neue Aufgabe</Button></div>;
   }
 
   return (
-    <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-[340px_1fr] border-t">
-      <div className="border-r overflow-y-auto">
-        <TaskTriageList zones={zones} selectedId={selected?.id ?? null} onSelect={setSelectedId} decisionLabel={decisionLabel} nameOf={nameOf} selection={selection} onToggleSelect={toggleSelect} onClearSelection={() => setSelection(new Set())} onBatch={batch} />
+    <div className="flex-1 min-h-0 grid auto-rows-max grid-cols-1 overflow-y-auto rounded-2xl border bg-card shadow-sm lg:grid-cols-[320px_minmax(0,1fr)] lg:auto-rows-auto lg:overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-col border-b lg:border-b-0 lg:border-r">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b p-4">
+          <h2 className="text-xl font-bold tracking-tight">Aufgaben</h2>
+          <Button onClick={onCreate} className="h-10 rounded-lg bg-success px-3 font-semibold text-white hover:bg-success/90"><Plus className="mr-1 h-4 w-4" />Neue Aufgabe</Button>
+        </div>
+        <div className="max-h-80 overflow-y-auto lg:max-h-none lg:flex-1">
+          <TaskTriageList zones={zones} selectedId={selected?.id ?? null} onSelect={setSelectedId} decisionLabel={decisionLabel} nameOf={nameOf} selection={selection} onToggleSelect={toggleSelect} onClearSelection={() => setSelection(new Set())} onBatch={batch} />
+        </div>
       </div>
-      <div className="min-h-0 flex flex-col">
+      <div className="min-h-0 min-w-0 flex flex-col">
         {selected && (
           <TaskDetailView
+            key={selected.id}
             task={selected}
             profiles={profiles}
             decisionLabel={decisionLabel(selected.id)}
