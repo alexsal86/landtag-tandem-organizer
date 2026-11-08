@@ -1,3 +1,4 @@
+import { combineAgendaItems } from "@/components/meetings/agenda-editor/combineAgendaItems";
 import { agendaTiming } from "@/components/meetings/agenda-editor/agendaTiming";
 import type { TablesInsert } from "@/integrations/supabase/types";
 import { supabase } from '@/integrations/supabase/client';
@@ -29,6 +30,13 @@ export const jourFixePlatformIntegrationScenario: TestScenario = {
     for (const row of data ?? []) if (!ctx.created.some(record => record.table === 'tasks' && record.id === row.id)) ctx.trackRecord({ table: 'tasks', id: row.id });
   },
   steps: [
+    { id: 'agenda-combine', label: 'Agenda: Hauptpunkt mit Unterpunkten unter anderen Hauptpunkt verschieben', kind: 'logic', run: async () => {
+      const base = {title:'Punkt',order_index:0,is_completed:false,is_recurring:false};
+      const source = [{...base,id:'a'},{...base,id:'child',parent_id:'a'},{...base,id:'b'}];
+      const moved = combineAgendaItems(source,'a','b');
+      const ok = moved?.map(item => item.id).join(',') === 'b,a,child' && moved.slice(1).every(item => item.parent_id === 'b') && !('parent_id' in source[0]) && combineAgendaItems(source,'a','child') === null;
+      return {ok, message:ok ? 'Hierarchie und Inhalte bleiben erhalten.' : 'Verschieben verletzt die Agenda-Hierarchie.'};
+    } },
     { id: 'agenda-timing', label: 'Agenda: nur Hauptpunkte zählen, Altbestand ohne erfundene Endzeit', kind: 'logic', run: async () => {
       const base = { title: 'Punkt', is_completed: false, is_recurring: false, order_index: 0 };
       const legacy = agendaTiming([base], '10:00');

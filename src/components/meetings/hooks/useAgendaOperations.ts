@@ -1,3 +1,4 @@
+import { combineAgendaItems } from "../agenda-editor/combineAgendaItems";
 import type { TablesUpdate } from "@/integrations/supabase/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTenant } from "@/hooks/useTenant";
@@ -488,120 +489,176 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
   };
 
   const onDragEnd = async (result: DropResult) => {
-    if (!result.destination) return;
-    const { source, destination } = result;
-    const previousItems = [...agendaItems];
-    const allItems = [...agendaItems];
-    const draggedItem = allItems[source.index];
-    allItems.splice(source.index, 1);
-
-    const findParentAbove = (items: AgendaItem[], startIndex: number) => {
-      for (let i = startIndex - 1; i >= 0; i--) {
-        const potentialParent = items[i];
-        if (!potentialParent.parent_id && !potentialParent.parentLocalKey) {
-          return potentialParent;
-        }
-      }
-      return null;
-    };
-
-    const findParentBelow = (items: AgendaItem[], startIndex: number) => {
-      for (let i = startIndex; i < items.length; i++) {
-        const potentialParent = items[i];
-        if (!potentialParent.parent_id && !potentialParent.parentLocalKey) {
-          return potentialParent;
-        }
-      }
-      return null;
-    };
-
-    const validateParentConsistency = (items: AgendaItem[]) => {
-      const orderByKey = new Map<string, number>();
-      items.forEach((item, index) => {
-        const key = item.id || item.localKey;
-        if (key) orderByKey.set(key, index);
-      });
-
-      return items.every((item, index) => {
-        const parentKey = item.parent_id || item.parentLocalKey;
-        if (!parentKey) return true;
-        const parentIndex = orderByKey.get(parentKey);
-        if (parentIndex === undefined || parentIndex >= index) return false;
-        const parent = items[parentIndex];
-        return !parent.parent_id && !parent.parentLocalKey;
-      });
-    };
-
-    if (!draggedItem.parent_id && !draggedItem.parentLocalKey) {
-      const draggedKey = draggedItem.id || draggedItem.localKey;
-      const children = allItems.filter(item => item.parent_id === draggedItem.id || item.parentLocalKey === draggedKey);
-      children.reverse().forEach(child => {
-        const childIndex = allItems.findIndex(item => item.id === child.id || item.localKey === child.localKey);
-        if (childIndex !== -1) allItems.splice(childIndex, 1);
-      });
-      allItems.splice(destination.index, 0, draggedItem);
-      children.reverse().forEach((child, index) => { allItems.splice(destination.index + 1 + index, 0, child); });
-    } else {
-      let newParentItem = findParentAbove(allItems, destination.index);
-
-      if (!newParentItem && destination.index === 0) {
-        newParentItem = findParentBelow(allItems, destination.index);
-      }
-
-      if (!newParentItem) {
-        setAgendaItems(previousItems);
+    if (result.reason === "CANCEL") return;
+    const previousItems = agendaItems.map((item) => ({ ...item }));
+    let reorderedItems: AgendaItem[];
+    if (result.combine) {
+      const combined = combineAgendaItems(
+        agendaItems,
+        result.draggableId,
+        result.combine.draggableId,
+      );
+      if (!combined) {
         toast({
           title: "Ungültige Position",
-          description: "Unterpunkte können nur unter einem Hauptpunkt abgelegt werden.",
-          variant: "destructive"
+          description:
+            "Bitte einen Hauptpunkt direkt auf einen anderen Hauptpunkt ziehen.",
+          variant: "destructive",
         });
         return;
       }
+      reorderedItems = combined;
+    } else {
+      if (!result.destination) return;
+      const { source, destination } = result;
+      const allItems = agendaItems.map((item) => ({ ...item }));
+      const draggedItem = allItems[source.index];
+      allItems.splice(source.index, 1);
 
-      draggedItem.parent_id = newParentItem.id || null;
-      draggedItem.parentLocalKey = (newParentItem.id || newParentItem.localKey) ?? undefined;
-      allItems.splice(destination.index, 0, draggedItem);
-    }
+      const findParentAbove = (items: AgendaItem[], startIndex: number) => {
+        for (let i = startIndex - 1; i >= 0; i--) {
+          const potentialParent = items[i];
+          if (!potentialParent.parent_id && !potentialParent.parentLocalKey) {
+            return potentialParent;
+          }
+        }
+        return null;
+      };
 
-    const reorderedItems = allItems.map((item, index) => ({ ...item, order_index: index }));
+      const findParentBelow = (items: AgendaItem[], startIndex: number) => {
+        for (let i = startIndex; i < items.length; i++) {
+          const potentialParent = items[i];
+          if (!potentialParent.parent_id && !potentialParent.parentLocalKey) {
+            return potentialParent;
+          }
+        }
+        return null;
+      };
 
-    if (!validateParentConsistency(reorderedItems)) {
-      setAgendaItems(previousItems);
-      toast({
-        title: "Ungültige Reihenfolge",
-        description: "Die Verschiebung wurde zurückgesetzt, weil Unterpunkte ohne gültigen Hauptpunkt entstanden wären.",
-        variant: "destructive"
-      });
-      return;
+      const validateParentConsistency = (items: AgendaItem[]) => {
+        const orderByKey = new Map<string, number>();
+        items.forEach((item, index) => {
+          const key = item.id || item.localKey;
+          if (key) orderByKey.set(key, index);
+        });
+
+        return items.every((item, index) => {
+          const parentKey = item.parent_id || item.parentLocalKey;
+          if (!parentKey) return true;
+          const parentIndex = orderByKey.get(parentKey);
+          if (parentIndex === undefined || parentIndex >= index) return false;
+          const parent = items[parentIndex];
+          return !parent.parent_id && !parent.parentLocalKey;
+        });
+      };
+
+      if (!draggedItem.parent_id && !draggedItem.parentLocalKey) {
+        const draggedKey = draggedItem.id || draggedItem.localKey;
+        const children = allItems.filter(
+          (item) =>
+            (draggedItem.id && item.parent_id === draggedItem.id) ||
+            (draggedKey && item.parentLocalKey === draggedKey),
+        );
+        children.reverse().forEach((child) => {
+          const childIndex = allItems.findIndex(
+            (item) =>
+              (child.id && item.id === child.id) ||
+              (child.localKey && item.localKey === child.localKey),
+          );
+          if (childIndex !== -1) allItems.splice(childIndex, 1);
+        });
+        allItems.splice(destination.index, 0, draggedItem);
+        children.reverse().forEach((child, index) => {
+          allItems.splice(destination.index + 1 + index, 0, child);
+        });
+      } else {
+        let newParentItem = findParentAbove(allItems, destination.index);
+
+        if (!newParentItem && destination.index === 0) {
+          newParentItem = findParentBelow(allItems, destination.index);
+        }
+
+        if (!newParentItem) {
+          setAgendaItems(previousItems);
+          toast({
+            title: "Ungültige Position",
+            description:
+              "Unterpunkte können nur unter einem Hauptpunkt abgelegt werden.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        draggedItem.parent_id = newParentItem.id || null;
+        draggedItem.parentLocalKey =
+          (newParentItem.id || newParentItem.localKey) ?? undefined;
+        allItems.splice(destination.index, 0, draggedItem);
+      }
+
+      reorderedItems = allItems.map((item, index) => ({
+        ...item,
+        order_index: index,
+      }));
+
+      if (!validateParentConsistency(reorderedItems)) {
+        setAgendaItems(previousItems);
+        toast({
+          title: "Ungültige Reihenfolge",
+          description:
+            "Die Verschiebung wurde zurückgesetzt, weil Unterpunkte ohne gültigen Hauptpunkt entstanden wären.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setAgendaItems(reorderedItems);
 
     if (activeMeeting?.id === selectedMeeting?.id) {
-      setActiveMeeting(prev => prev ? {...prev} : prev);
+      setActiveMeeting((prev) => (prev ? { ...prev } : prev));
     }
 
     if (selectedMeeting?.id) {
       try {
-        const existingItems = reorderedItems.filter(item => item.id);
+        const existingItems = reorderedItems.filter(
+          (item) => item.id && !(item.parentLocalKey && !item.parent_id),
+        );
         if (existingItems.length > 0) {
-          const { error } = await supabase.from('meeting_agenda_items').upsert(
-            existingItems.map(item => ({
-              id: item.id!, order_index: item.order_index, meeting_id: selectedMeeting.id!,
-              title: item.title, description: item.description || '',
-              assigned_to: Array.isArray(item.assigned_to) ? item.assigned_to : (item.assigned_to ? [item.assigned_to] : []),
-              parent_id: item.parent_id, updated_at: new Date().toISOString()
+          const { error } = await supabase.from("meeting_agenda_items").upsert(
+            existingItems.map((item) => ({
+              id: item.id!,
+              order_index: item.order_index,
+              meeting_id: selectedMeeting.id!,
+              title: item.title,
+              description: item.description || "",
+              assigned_to: Array.isArray(item.assigned_to)
+                ? item.assigned_to
+                : item.assigned_to
+                  ? [item.assigned_to]
+                  : [],
+              parent_id: item.parent_id,
+              duration_minutes: item.duration_minutes ?? null,
+              updated_at: new Date().toISOString(),
             })),
-            { onConflict: 'id' }
+            { onConflict: "id" },
           );
           if (error) throw error;
         }
-        if (activeMeeting && activeMeeting.id === selectedMeeting.id) {
+        if (
+          activeMeeting &&
+          activeMeeting.id === selectedMeeting.id &&
+          !reorderedItems.some((item) => item.parentLocalKey && !item.parent_id)
+        ) {
           loadAgendaItems(selectedMeeting.id);
         }
       } catch (error) {
-        debugConsole.error('Error updating order:', error);
-        toast({ title: "Fehler", description: "Die neue Reihenfolge konnte nicht gespeichert werden.", variant: "destructive" });
+        setAgendaItems(previousItems);
+        debugConsole.error("Error updating order:", error);
+        toast({
+          title: "Fehler",
+          description: "Die neue Reihenfolge konnte nicht gespeichert werden.",
+          variant: "destructive",
+        });
       }
     }
   };

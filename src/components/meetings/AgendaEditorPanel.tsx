@@ -450,11 +450,15 @@ export function AgendaEditorPanel({
 
           <DragDropContext
             onDragEnd={(result) => {
-              if (result.destination) setDirty(true);
+              if (result.destination || result.combine) setDirty(true);
+              if (result.combine) {
+                const target = agendaItems.find(item => getItemKey(item, 0) === result.combine?.draggableId);
+                if (target) setCollapsedMainItems(prev => ({...prev, [target.localKey || target.id!]: false}));
+              }
               onDragEnd(result);
             }}
           >
-            <Droppable droppableId="agenda-items">
+            <Droppable droppableId="agenda-items" isCombineEnabled>
               {(provided) => (
                 <div
                   ref={provided.innerRef}

@@ -43,7 +43,7 @@ export function AgendaSummaryBar({
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 text-xs"
+            className="h-7 text-xs font-normal text-muted-foreground hover:text-muted-foreground"
             onClick={onToggleAll}
           >
             {allCollapsed ? "Alles ausklappen" : "Alles einklappen"}

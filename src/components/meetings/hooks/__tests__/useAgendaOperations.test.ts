@@ -1,3 +1,4 @@
+import type { DropResult } from "@hello-pangea/dnd";
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { useAgendaOperations } from '../useAgendaOperations';
@@ -45,4 +46,19 @@ describe('agenda duration persistence', () => {
   await act(async () => { expect(await result.current.saveAgendaItems()).toBe(false); });
   failure.current = false;
  });
+ it('persists a main point dropped onto another main point as a child', async () => {
+  const {result,deps}=setup([{...base,id:'source',duration_minutes:10},{...base,id:'target',order_index:1}]);
+  const drop:DropResult={draggableId:'source',type:'DEFAULT',reason:'DROP',mode:'FLUID',source:{droppableId:'agenda-items',index:0},destination:null,combine:{droppableId:'agenda-items',draggableId:'target'}};
+  await act(async()=>{await result.current.onDragEnd(drop);});
+  expect(deps.setAgendaItems).toHaveBeenCalledWith([expect.objectContaining({id:'target'}),expect.objectContaining({id:'source',parent_id:'target',duration_minutes:null})]);
+  expect(upsert).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({id:'source',parent_id:'target'})]),expect.anything());
+ });
+ it('keeps children of unsaved parents local until an explicit save can resolve IDs', async()=>{
+  const {result,deps}=setup([{...base,id:'source'},{...base,id:undefined,localKey:'local-target',order_index:1}]);
+  const drop:DropResult={draggableId:'source',type:'DEFAULT',reason:'DROP',mode:'FLUID',source:{droppableId:'agenda-items',index:0},destination:null,combine:{droppableId:'agenda-items',draggableId:'local-target'}};
+  await act(async()=>{await result.current.onDragEnd(drop);});
+  expect(deps.setAgendaItems).toHaveBeenCalledWith([expect.objectContaining({localKey:'local-target'}),expect.objectContaining({id:'source',parent_id:null,parentLocalKey:'local-target'})]);
+  expect(upsert).not.toHaveBeenCalled();
+ });
+
 });

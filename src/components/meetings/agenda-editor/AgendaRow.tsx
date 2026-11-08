@@ -111,6 +111,7 @@ export function AgendaRow({
             "group transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring border border-transparent hover:bg-muted/30 focus-within:bg-muted/40",
             getItemKey(item, index) === selectedKey &&
               "rounded-lg border-primary/45 bg-primary/10 hover:bg-primary/10 focus-within:bg-primary/10",
+            snapshot.combineTargetFor && "rounded-lg ring-2 ring-primary bg-primary/10",
             snapshot.isDragging && "shadow-lg bg-card rounded-lg border",
             (item.parentLocalKey || item.parent_id) && "ml-5 pl-0",
             item.is_optional && "border-dashed",
