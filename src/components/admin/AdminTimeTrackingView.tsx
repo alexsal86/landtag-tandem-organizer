@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { format, addMonths, subMonths, getYear } from "date-fns";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { format, addMonths, subMonths, getYear, parseISO, startOfMonth } from "date-fns";
 import { de } from "date-fns/locale";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -37,7 +38,17 @@ export function AdminTimeTrackingView() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
 
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedMonth = searchParams.get("month");
+  const currentMonth = useMemo(() => {
+    if (requestedMonth && /^\d{4}-(0[1-9]|1[0-2])$/.test(requestedMonth)) {
+      return parseISO(`${requestedMonth}-01`);
+    }
+    return startOfMonth(new Date());
+  }, [requestedMonth]);
+  const requestedTimeTab = searchParams.get("timeTab");
+  const activeTimeTab = requestedTimeTab && ["entries", "absences", "corrections"].includes(requestedTimeTab)
+    ? requestedTimeTab : "entries";
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const [editingCombinedEntry, setEditingCombinedEntry] = useState<CombinedTimeEntry | null>(null);
 
@@ -49,11 +60,51 @@ export function AdminTimeTrackingView() {
 
   // Core hooks
   const { isAdmin, roleLoading } = useAdminAccessControl(user);
-  const { loading, employees, selectedUserId, setSelectedUserId } = useAdminEmployees({
+  const { loading, employees } = useAdminEmployees({
     currentTenant,
     isAdmin,
     roleLoading,
   });
+  const requestedEmployee = searchParams.get("employee");
+  const selectedUserId = employees.find(employee => employee.user_id === requestedEmployee)?.user_id
+    ?? employees[0]?.user_id ?? "";
+
+  const setSelectedUserId = (userId: string) => {
+    if (!employees.some(employee => employee.user_id === userId)) return;
+    setSearchParams(previous => {
+      const next = new URLSearchParams(previous);
+      next.set("employee", userId);
+      return next;
+    });
+  };
+  const setCurrentMonth = (month: Date) => {
+    setSearchParams(previous => {
+      const next = new URLSearchParams(previous);
+      next.set("month", format(month, "yyyy-MM"));
+      return next;
+    });
+  };
+  const handleTimeTabChange = (tab: string) => {
+    setSearchParams(previous => {
+      const next = new URLSearchParams(previous);
+      next.set("timeTab", tab);
+      return next;
+    });
+  };
+
+  // Make the initial selection shareable too; invalid IDs fall back to an accessible employee.
+  useEffect(() => {
+    if (loading || !isAdmin || !selectedUserId) return;
+    const month = format(currentMonth, "yyyy-MM");
+    if (requestedEmployee === selectedUserId && requestedMonth === month) return;
+    setSearchParams(previous => {
+      const next = new URLSearchParams(previous);
+      next.set("employee", selectedUserId);
+      next.set("month", month);
+      return next;
+    }, { replace: true });
+  }, [loading, isAdmin, selectedUserId, requestedEmployee, requestedMonth, currentMonth, setSearchParams]);
+
   const { timeEntries, leaveRequests, corrections, holidays, monthStart, monthEnd, loadMonthData } =
     useAdminMonthData({ selectedUserId, currentMonth, isAdmin });
 
@@ -212,7 +263,7 @@ export function AdminTimeTrackingView() {
       />
 
       {/* Tabs */}
-      <Tabs defaultValue="entries" className="space-y-4">
+      <Tabs value={activeTimeTab} onValueChange={handleTimeTabChange} className="space-y-4">
         <TabsList>
           <TabsTrigger value="entries">Zeiteinträge</TabsTrigger>
           <TabsTrigger value="absences">Abwesenheiten</TabsTrigger>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { NewUserForm } from "@/components/admin/NewUserForm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,17 @@ import { EmployeeSelfView } from "@/components/employees/EmployeeSelfView";
 import { PendingLeavesTable, EmployeeListTable } from "@/components/employees/EmployeeAdminTable";
 
 export function EmployeesView() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const activeTab = requestedTab && ["overview", "meetings", "timetracking"].includes(requestedTab)
+    ? requestedTab : "overview";
+  const handleTabChange = (tab: string) => {
+    setSearchParams(previous => {
+      const next = new URLSearchParams(previous);
+      next.set("tab", tab);
+      return next;
+    });
+  };
   const data = useEmployeesData();
   const { reloadPendingRequestsCount } = data;
   const ops = useEmployeeOperations({
@@ -90,7 +102,7 @@ export function EmployeesView() {
         </div>
       </header>
 
-      <Tabs defaultValue="overview" className="mt-4">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-4">
         <TabsList className="mb-4">
           <TabsTrigger value="overview"><Calendar className="h-4 w-4 mr-2" />Übersicht</TabsTrigger>
           <TabsTrigger value="meetings"><MessageSquare className="h-4 w-4 mr-2" />Gespräche</TabsTrigger>
