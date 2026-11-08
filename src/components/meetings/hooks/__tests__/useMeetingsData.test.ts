@@ -232,7 +232,7 @@ describe("useMeetingsData", () => {
     });
 
     await act(async () => {
-      await result.current.updateMeeting("meeting-2", { title: "Ausschuss (neu)" });
+      await result.current.updateMeeting("meeting-2", { title: "Ausschuss (neu)" }, '10:00');
     });
 
     expect(mockToast).toHaveBeenCalledWith(
@@ -240,7 +240,7 @@ describe("useMeetingsData", () => {
     );
 
     await act(async () => {
-      await result.current.updateMeeting("meeting-2", { title: "Ausschuss (retry)" });
+      await result.current.updateMeeting("meeting-2", { title: "Ausschuss (retry)" }, '10:00');
     });
 
     expect(mockToast).toHaveBeenCalledWith(
