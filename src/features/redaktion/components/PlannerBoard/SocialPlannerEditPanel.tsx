@@ -37,7 +37,9 @@ import type { SocialPlannerDraftPayload, SocialPlannerTemplateId } from "./types
 import { getChannelRules, validateVariant, applyTemplateToState } from "./utils";
 import { BriefingGroup } from "./BriefingGroup";
 import { CharCounter } from "./CharCounter";
-import { ChannelPreview } from "./ChannelPreview";
+import { ComposerSection } from "./ComposerSection";
+import { ImageCropDialog } from "./ImageCropDialog";
+import { effectiveCaption } from "@/features/redaktion/utils/plannerRules";
 import { HashtagSetPicker } from "./HashtagSetPicker";
 import { MarkPublishedDialog } from "./MarkPublishedDialog";
 import { AssetLibraryDialog } from "./AssetLibraryDialog";
@@ -91,6 +93,7 @@ export default function SocialPlannerEditPanel({ item, open, users, channels, ca
   const [markPublishedOpen, setMarkPublishedOpen] = useState(false);
   const [assetLibraryOpen, setAssetLibraryOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"content" | "approval">("content");
+  const [cropSource, setCropSource] = useState<File | string | null>(null);
 
   useEffect(() => {
     if (!item) return;
@@ -144,6 +147,35 @@ export default function SocialPlannerEditPanel({ item, open, users, channels, ca
     setActiveVariantChannelId((current) => (selectedChannels.includes(current) ? current : (selectedChannels[0] || "")));
   }, [draftText, selectedChannels]);
 
+  const uploadImageBlob = useCallback(async (blob: Blob, ext: string) => {
+    setUploadingImage(true);
+    try {
+      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const filePath = `${user?.id}/planner-images/${fileName}`;
+      const { error: uploadError } = await supabase.storage.from("documents").upload(filePath, blob, { contentType: blob.type || undefined });
+      if (uploadError) throw uploadError;
+      const { data } = supabase.storage.from("documents").getPublicUrl(filePath);
+      setImageUrl(data.publicUrl);
+      notify.success("Bild gespeichert");
+    } catch (err) {
+      console.error("Image upload error:", err);
+      notify.error("Upload fehlgeschlagen", { description: String(err instanceof Error ? err.message : err) });
+    } finally {
+      setUploadingImage(false);
+    }
+  }, [user?.id]);
+
+  const pickImageFile = useCallback(() => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (file) setCropSource(file);
+    };
+    input.click();
+  }, []);
+
   const channelOptions = useMemo(
     () => channels.map((channel) => ({ value: channel.id, label: channel.name })),
     [channels],
@@ -194,7 +226,7 @@ export default function SocialPlannerEditPanel({ item, open, users, channels, ca
         const slug = channel?.slug || "";
         // Instagram strategy: hashtags in first comment when toggle on
         const useFirstComment = hashtagsInComment && (slug === "instagram");
-        let nextCaption = variant.caption || "";
+        let nextCaption = effectiveCaption(variant.caption, draftText);
         let nextFirstComment = variant.first_comment || "";
         if (hashtagBlock) {
           const captionHasTags = nextCaption.includes(hashtagBlock);
@@ -292,219 +324,28 @@ export default function SocialPlannerEditPanel({ item, open, users, channels, ca
               </Select>
             </div>
 
-            <div className="space-y-2 md:col-span-2">
-              <Label>Kanäle</Label>
-              <MultiSelect
-                options={channelOptions}
-                selected={selectedChannels}
-                onChange={setSelectedChannels}
-                placeholder="Kanäle auswählen"
+            <div className="md:col-span-2">
+              <ComposerSection
+                channels={channels}
+                masterText={draftText}
+                setMasterText={setDraftText}
+                masterLimit={FORMAT_VARIANT_CHAR_LIMITS[formatVariant] ?? null}
+                selectedChannels={selectedChannels}
+                setSelectedChannels={setSelectedChannels}
+                activeChannelId={activeVariantChannelId}
+                setActiveChannelId={setActiveVariantChannelId}
+                variants={variantsByChannel}
+                setVariants={setVariantsByChannel}
+                hashtags={hashtags}
+                hashtagsInComment={hashtagsInComment}
+                imageUrl={imageUrl}
+                uploadingImage={uploadingImage}
+                onPickFile={pickImageFile}
+                onOpenLibrary={() => setAssetLibraryOpen(true)}
+                onCropExisting={() => imageUrl && setCropSource(imageUrl)}
+                onRemoveImage={() => setImageUrl(null)}
               />
             </div>
-
-            {selectedChannels.length > 0 && (
-              <div className="space-y-2 md:col-span-2 rounded-md border p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <Label className="m-0">Kanalvariante bearbeiten</Label>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowPreview((v) => !v)}
-                    >
-                      <Eye className="h-3.5 w-3.5 mr-1" />
-                      {showPreview ? "Vorschau aus" : "Vorschau an"}
-                    </Button>
-                  </div>
-                </div>
-                <Select value={activeVariantChannelId} onValueChange={setActiveVariantChannelId}>
-                  <SelectTrigger><SelectValue placeholder="Kanalvariante wählen" /></SelectTrigger>
-                  <SelectContent>
-                    {selectedChannels.map((channelId) => {
-                      const channel = channels.find((entry) => entry.id === channelId);
-                      return <SelectItem key={channelId} value={channelId}>{channel?.name || channelId}</SelectItem>;
-                    })}
-                  </SelectContent>
-                </Select>
-                {activeVariantChannelId && (() => {
-                  const activeChannel = channels.find((c) => c.id === activeVariantChannelId);
-                  const activeSlug = activeChannel?.slug || "";
-                  const rules = getChannelRules(activeSlug);
-                  const variant = variantsByChannel[activeVariantChannelId];
-                  return (
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div className={cn("space-y-3", showPreview ? "md:col-span-1" : "md:col-span-2") }>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label>Caption</Label>
-                        <CharCounter text={variant?.caption || ""} limit={rules.captionMax} />
-                      </div>
-                      <Textarea
-                        rows={4}
-                        value={variant?.caption || ""}
-                        onChange={(event) => setVariantsByChannel((current) => ({
-                          ...current,
-                          [activeVariantChannelId]: { ...current[activeVariantChannelId], caption: event.target.value },
-                        }))}
-                      />
-                      <div className="flex flex-wrap gap-1">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-xs"
-                          onClick={() => {
-                            const baseCaption = variant?.caption || "";
-                            if (!baseCaption.trim()) {
-                              notify.error("Caption ist leer");
-                              return;
-                            }
-                            setVariantsByChannel((current) => {
-                              const next = { ...current };
-                              selectedChannels.forEach((cid) => {
-                                if (cid !== activeVariantChannelId) {
-                                  next[cid] = { ...next[cid], caption: baseCaption };
-                                }
-                              });
-                              return next;
-                            });
-                            notify.success("Caption auf alle Kanäle übernommen");
-                          }}
-                        >
-                          <Send className="h-3 w-3 mr-1" />Auf alle Kanäle
-                        </Button>
-                        {(activeSlug === "x" || activeSlug === "twitter") && (variant?.caption.length || 0) > 280 && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() => {
-                              const cap = variant?.caption || "";
-                              const trimmed = cap.length > 280 ? `${cap.slice(0, 279)}…` : cap;
-                              setVariantsByChannel((current) => ({
-                                ...current,
-                                [activeVariantChannelId]: { ...current[activeVariantChannelId], caption: trimmed },
-                              }));
-                            }}
-                          >
-                            <Scissors className="h-3 w-3 mr-1" />Auf 280 kürzen
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>First Comment</Label>
-                      <Textarea
-                        rows={3}
-                        value={variant?.first_comment || ""}
-                        onChange={(event) => setVariantsByChannel((current) => ({
-                          ...current,
-                          [activeVariantChannelId]: { ...current[activeVariantChannelId], first_comment: event.target.value },
-                        }))}
-                      />
-                    </div>
-                    <div className="grid gap-3 grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Media Type</Label>
-                      <Select
-                        value={variant?.media_type || "none"}
-                        onValueChange={(value) => setVariantsByChannel((current) => ({
-                          ...current,
-                          [activeVariantChannelId]: { ...current[activeVariantChannelId], media_type: value === "none" ? "" : value as SocialContentMediaType },
-                        }))}
-                      >
-                        <SelectTrigger><SelectValue placeholder="Medium" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Bitte wählen</SelectItem>
-                          {VARIANT_MEDIA_TYPES.map((entry) => <SelectItem key={entry.value} value={entry.value}>{entry.label}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Platform Status</Label>
-                      <Select
-                        value={variant?.platform_status || "draft"}
-                        onValueChange={(value) => setVariantsByChannel((current) => ({
-                          ...current,
-                          [activeVariantChannelId]: { ...current[activeVariantChannelId], platform_status: value as SocialContentPlatformStatus },
-                        }))}
-                      >
-                        <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
-                        <SelectContent>
-                          {PLATFORM_STATUS_OPTIONS.map((entry) => <SelectItem key={entry.value} value={entry.value}>{entry.label}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Publish-Link für diesen Kanal</Label>
-                      <Input
-                        placeholder="https://…"
-                        value={variant?.publish_link || ""}
-                        onChange={(event) => setVariantsByChannel((current) => ({
-                          ...current,
-                          [activeVariantChannelId]: { ...current[activeVariantChannelId], publish_link: event.target.value },
-                        }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Asset IDs (Komma-getrennt)</Label>
-                      <Input
-                        value={(variant?.asset_ids || []).join(", ")}
-                        onChange={(event) => setVariantsByChannel((current) => ({
-                          ...current,
-                          [activeVariantChannelId]: {
-                            ...current[activeVariantChannelId],
-                            asset_ids: event.target.value.split(",").map((value) => value.trim()).filter(Boolean),
-                          },
-                        }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Platform Metadata (JSON)</Label>
-                      <Textarea
-                        rows={3}
-                        value={JSON.stringify(variant?.platform_metadata || {}, null, 2)}
-                        onChange={(event) => {
-                          try {
-                            const parsed = JSON.parse(event.target.value) as Record<string, unknown>;
-                            setVariantsByChannel((current) => ({
-                              ...current,
-                              [activeVariantChannelId]: { ...current[activeVariantChannelId], platform_metadata: parsed },
-                            }));
-                          } catch {
-                            // handled via inline validation hint below
-                          }
-                        }}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      {validateVariant(variant, activeSlug).map((error) => (
-                        <p key={error} className="text-xs text-destructive">{error}</p>
-                      ))}
-                    </div>
-                    </div>
-                    {showPreview && (
-                      <div className="md:col-span-1 space-y-2">
-                        <Label className="text-xs uppercase tracking-wide text-muted-foreground">Vorschau</Label>
-                        <ChannelPreview
-                          channelSlug={activeSlug}
-                          channelName={activeChannel?.name || ""}
-                          caption={variant?.caption || ""}
-                          firstComment={variant?.first_comment}
-                          hashtags={hashtags}
-                          hashtagsInComment={hashtagsInComment}
-                          imageUrl={imageUrl}
-                        />
-                      </div>
-                    )}
-                  </div>
-                  );
-                })()}
-              </div>
-            )}
 
             <div className="space-y-2 md:col-span-2">
               <Label>Interne Tags</Label>
@@ -587,14 +428,6 @@ export default function SocialPlannerEditPanel({ item, open, users, channels, ca
 
             <div className="space-y-2 md:col-span-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="edit-draft-text">Entwurfstext</Label>
-                <CharCounter text={draftText} limit={FORMAT_VARIANT_CHAR_LIMITS[formatVariant] ?? null} />
-              </div>
-              <Textarea id="edit-draft-text" rows={6} value={draftText} onChange={(event) => setDraftText(event.target.value)} placeholder="Textentwurf für den Beitrag" />
-            </div>
-
-            <div className="space-y-2 md:col-span-2">
-              <div className="flex items-center justify-between">
                 <Label>Hashtags</Label>
                 <div className="flex items-center gap-2">
                   <span className={cn(
@@ -643,69 +476,6 @@ export default function SocialPlannerEditPanel({ item, open, users, channels, ca
                   );
                 })}
               </div>
-            </div>
-
-            <div className="space-y-3 md:col-span-2">
-              <div className="flex items-center justify-between">
-                <Label>Bild</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={() => setAssetLibraryOpen(true)}
-                >
-                  <ImageIcon className="h-3.5 w-3.5 mr-1" /> Aus Bibliothek wählen
-                </Button>
-              </div>
-              {imageUrl ? (
-                <div className="relative inline-block">
-                  <img src={imageUrl} alt="Vorschau" className="max-h-40 rounded-md border object-contain" />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    className="absolute -top-2 -right-2 h-6 w-6"
-                    onClick={() => setImageUrl(null)}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-              ) : (
-                <div
-                  className="flex cursor-pointer items-center gap-2 rounded-md border border-dashed p-4 text-sm text-muted-foreground hover:bg-muted/50 transition-colors"
-                  onClick={() => {
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.accept = 'image/*';
-                    input.onchange = async () => {
-                      const file = input.files?.[0];
-                      if (!file) return;
-                      setUploadingImage(true);
-                      try {
-                        const fileExt = file.name.split('.').pop();
-                        const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
-                        const filePath = `${user?.id}/planner-images/${fileName}`;
-                        const { error: uploadError } = await supabase.storage.from('documents').upload(filePath, file);
-                        if (uploadError) throw uploadError;
-                        const { data } = supabase.storage.from('documents').getPublicUrl(filePath);
-                        setImageUrl(data.publicUrl);
-                        notify.success("Bild hochgeladen");
-                      } catch (err) {
-                        console.error("Image upload error:", err);
-                        notify.error("Upload fehlgeschlagen", { description: String(err instanceof Error ? err.message : err)
-});
-                      } finally {
-                        setUploadingImage(false);
-                      }
-                    };
-                    input.click();
-                  }}
-                >
-                  <Upload className="h-4 w-4" />
-                  <span>{uploadingImage ? "Wird hochgeladen…" : "Bild auswählen oder hierher ziehen"}</span>
-                </div>
-              )}
             </div>
 
             <div className="space-y-2 md:col-span-2">
@@ -864,6 +634,16 @@ export default function SocialPlannerEditPanel({ item, open, users, channels, ca
             campaign_id: campaignId === "none" ? null : campaignId,
             content_pillar: contentPillar === "none" ? null : contentPillar,
           });
+        }}
+      />
+      <ImageCropDialog
+        open={cropSource !== null}
+        source={cropSource}
+        onOpenChange={(o) => { if (!o) setCropSource(null); }}
+        onConfirm={async ({ blob }) => {
+          const src = cropSource;
+          if (blob) await uploadImageBlob(blob, "jpg");
+          else if (src instanceof File) await uploadImageBlob(src, src.name.split(".").pop() || "jpg");
         }}
       />
       <AssetLibraryDialog
