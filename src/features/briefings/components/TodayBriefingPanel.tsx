@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
-import { Check, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, FileText, Sparkles } from "lucide-react";
+import { useTodayApprovedBriefings, type BriefingAppointment } from "@/features/appointments/briefing/useBriefing";
+import { CompactBriefingEditor } from "@/features/appointments/briefing/CompactBriefingEditor";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -97,11 +99,28 @@ function BriefingItem({ briefing }: { briefing: DailyBriefingWithAuthor }) {
   );
 }
 
+function AppointmentBriefingItem({ a }: { a: BriefingAppointment }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium">{a.title}</p>
+        <p className="text-xs text-muted-foreground tabular-nums">
+          {format(new Date(a.start_time), "HH:mm", { locale: de })} Uhr{a.location ? ` · ${a.location}` : ""} · Briefing freigegeben
+        </p>
+      </div>
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)}><FileText className="mr-1 h-3.5 w-3.5" />Öffnen</Button>
+      <CompactBriefingEditor open={open} onOpenChange={setOpen} appointmentId={a.id} title={a.title} />
+    </div>
+  );
+}
+
 export function TodayBriefingPanel() {
-  const { data: briefings, isLoading } = useTodayBriefings();
+  const { data: briefings = [], isLoading } = useTodayBriefings();
+  const { data: apptBriefings = [] } = useTodayApprovedBriefings();
 
   if (isLoading) return null;
-  if (!briefings || briefings.length === 0) return null;
+  if (briefings.length === 0 && apptBriefings.length === 0) return null;
 
   // Ungelesene zuerst, gelesene unten
   const sorted = [...briefings].sort((a, b) => {
@@ -123,6 +142,12 @@ export function TodayBriefingPanel() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
+        {apptBriefings.length > 0 && (
+          <div className="space-y-2">
+            <p className="section-label">Termin-Briefings heute</p>
+            {apptBriefings.map((a) => <AppointmentBriefingItem key={a.id} a={a} />)}
+          </div>
+        )}
         {sorted.map((b) => (
           <BriefingItem key={b.id} briefing={b} />
         ))}

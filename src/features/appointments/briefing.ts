@@ -48,3 +48,10 @@ export function needsBriefingDecision(a: { briefing_status?: string | null; star
   const t = new Date(a.start_time).getTime();
   return t >= now.getTime() && t <= now.getTime() + BRIEFING_HORIZON_DAYS * 86400_000;
 }
+
+/** Approved briefings appear in the deputy's daily briefing on the appointment day. */
+export function showsInDailyBriefing(a: { briefing_status?: string | null; start_time: string }, now: Date = new Date()): boolean {
+  if (asBriefingStatus(a.briefing_status) !== "approved") return false;
+  const d = new Date(a.start_time);
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+}

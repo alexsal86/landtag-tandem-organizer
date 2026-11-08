@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { canAdvanceBriefing, needsBriefingDecision, suggestBriefingDue } from "@/features/appointments/briefing";
+import { showsInDailyBriefing, canAdvanceBriefing, needsBriefingDecision, suggestBriefingDue } from "@/features/appointments/briefing";
 import type { TestScenario } from "../types";
 import { SELFTEST_PREFIX } from "../runner";
 import { describeError } from "../verify";
@@ -30,6 +30,8 @@ export const appointmentBriefingLifecycleScenario: TestScenario = {
           canAdvanceBriefing("assigned", "submit", { isDecider: false, isAssignee: true }),
           !canAdvanceBriefing("in_review", "approve", { isDecider: false, isAssignee: true }),
           due.getDate() === 11 && due.getHours() === 12,
+          showsInDailyBriefing({ briefing_status: "approved", start_time: new Date().toISOString() }),
+          !showsInDailyBriefing({ briefing_status: "in_review", start_time: new Date().toISOString() }),
           needsBriefingDecision({ briefing_status: "undecided", start_time: new Date(Date.now() + 86400_000).toISOString() }),
         ];
         return { ok: checks.every(Boolean), message: `${checks.filter(Boolean).length}/${checks.length} Regeln bestanden.` };
@@ -89,6 +91,22 @@ export const appointmentBriefingLifecycleScenario: TestScenario = {
         if (error) return { ok: false, message: describeError(error) };
         const a = await read(ctx.data.appointmentId as string);
         return { ok: a.briefing_status === "none" && !a.briefing_task_id, message: `Status: ${a.briefing_status}` };
+      },
+    },
+    {
+      id: "accept-with-briefing", label: "Zusage im Jour Fixe vergibt Briefing in einem Schritt", kind: "workflow",
+      run: async (ctx) => {
+        const d = new Date(); d.setDate(d.getDate() + 7);
+        const reqId = crypto.randomUUID();
+        const ins = await supabase.from("appointment_requests").insert({ id: reqId, title: `${SELFTEST_PREFIX} Briefing-Anfrage (${ctx.runId})`, tenant_id: ctx.tenantId, requested_date: d.toISOString().slice(0, 10), requested_time: "10:00:00", duration_minutes: 60, channel: "email" });
+        if (ins.error) return { ok: false, message: describeError(ins.error) };
+        ctx.trackRecord({ table: "appointment_requests", id: reqId });
+        const { data: apptId, error } = await supabase.rpc("decide_appointment_request", { _request_id: reqId, _decision: "accepted", _briefing: "assigned", _briefing_assignee: ctx.userId, _briefing_due: new Date(Date.now() + 86400_000).toISOString() });
+        if (apptId) ctx.trackRecord({ table: "appointments", id: apptId });
+        if (error || !apptId) return { ok: false, message: describeError(error) };
+        const a = await read(apptId);
+        if (a.briefing_task_id) ctx.trackRecord({ table: "tasks", id: a.briefing_task_id });
+        return { ok: a.briefing_status === "assigned" && !!a.briefing_task_id, message: `Status ${a.briefing_status}, Aufgabe ${a.briefing_task_id ? "angelegt" : "fehlt"}` };
       },
     },
   ],

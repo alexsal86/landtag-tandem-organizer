@@ -36,6 +36,25 @@ export function useUndecidedBriefings() {
   });
 }
 
+export function useTodayApprovedBriefings(enabled = true) {
+  const { currentTenant } = useTenant();
+  return useQuery({
+    queryKey: [KEY, "today-approved", currentTenant?.id],
+    enabled: enabled && !!currentTenant?.id,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const s = new Date(); s.setHours(0, 0, 0, 0);
+      const e = new Date(s); e.setDate(e.getDate() + 1);
+      const { data, error } = await supabase.from("appointments").select(COLS)
+        .eq("tenant_id", currentTenant!.id).eq("briefing_status", "approved")
+        .gte("start_time", s.toISOString()).lt("start_time", e.toISOString())
+        .order("start_time", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as BriefingAppointment[];
+    },
+  });
+}
+
 export function useAppointmentBriefing(appointmentId: string | undefined) {
   return useQuery({
     queryKey: [KEY, "one", appointmentId],
