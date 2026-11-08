@@ -10,7 +10,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Clock, PencilLine } from "lucide-react";
+import { Plus, Clock, PencilSparkles } from "lucide-react";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import {
   DragDropContext,
@@ -712,7 +712,7 @@ export function AgendaEditorPanel({
           <Card className="mt-4">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex items-center gap-2">
-                <PencilLine className="h-5 w-5 text-palette-amber" /> Quick
+                <PencilSparkles className="h-5 w-5 text-palette-amber" /> Quick
                 Notes für dieses Meeting{" "}
                 <Badge variant="secondary">{linkedQuickNotes.length}</Badge>
               </CardTitle>

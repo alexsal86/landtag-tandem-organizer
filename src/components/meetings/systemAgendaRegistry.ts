@@ -1,9 +1,9 @@
-import { CalendarDays, PencilLine, ListTodo, Heart, Scale, Briefcase, CalendarClock, Megaphone, Users, CalendarCheck, FileCheck, Radar } from 'lucide-react';
+import { CalendarDays, PencilSparkles, ListTodo, Heart, Scale, Briefcase, CalendarClock, Megaphone, Users, CalendarCheck, FileCheck, Radar } from 'lucide-react';
 import type { SystemAgendaType } from './types';
 
 export const SYSTEM_AGENDA_OPTIONS = [
   { type: 'upcoming_appointments', label: 'Kommende Termine', Icon: CalendarDays },
-  { type: 'quick_notes', label: 'Meine Notizen', Icon: PencilLine },
+  { type: 'quick_notes', label: 'Meine Notizen', Icon: PencilSparkles },
   { type: 'tasks', label: 'Aufgaben', Icon: ListTodo },
   { type: 'birthdays', label: 'Geburtstage', Icon: Heart },
   { type: 'decisions', label: 'Entscheidungen', Icon: Scale },
