@@ -18,7 +18,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Calendar } from "@/components/ui/calendar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DragDropContext, type DropResult } from "@hello-pangea/dnd";
-import { Plus, Calendar as CalendarIcon, Trash2, Check, X, Upload, Clock, Edit2, FileText, Download, Archive, Eye, CheckCircle, Info, Mail, Phone, Ellipsis, AlertCircle, LayoutDashboard, Users, ListChecks, Files } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Trash2, Check, X, Upload, Clock, Edit2, FileText, Download, Archive, Eye, CheckCircle, Info, Mail, Phone, Ellipsis, AlertCircle, LayoutDashboard, Users, ListChecks, Files, MapPin } from "lucide-react";
 import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -285,6 +285,10 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                   <span className="inline-flex items-center gap-2">
                     <Clock className="h-4 w-4" />
                     {headerTimeLabel}
+                  </span>
+                  <span className="inline-flex min-w-0 items-start gap-2">
+                    <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                    <span className="break-words">{selectedPlanning.location?.trim() || "Ort offen"}</span>
                   </span>
                 </div>
               </div>
