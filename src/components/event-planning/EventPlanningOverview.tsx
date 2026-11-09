@@ -28,7 +28,7 @@ export function EventPlanningOverview({ plannings, allProfiles, collaborators, u
     const date = confirmedDate(planning);
     return Boolean(planning.is_completed || (date && date.getTime() < today));
   };
-  const visible = plannings.filter(planning => filter === "all" || (filter === "open" ? !planning.is_completed : planning.user_id === user?.id || collaborators.some(c => c.event_planning_id === planning.id && c.user_id === user?.id)));
+  const visible = plannings.filter(planning => filter === "all" || (filter === "open" ? !past(planning) : planning.user_id === user?.id || collaborators.some(c => c.event_planning_id === planning.id && c.user_id === user?.id)));
   const groups = [
     { label: "Anstehend", items: visible.filter(p => !past(p)), muted: false },
     { label: "Vergangen & abgeschlossen", items: visible.filter(past), muted: true },
