@@ -101,10 +101,14 @@ export async function loadPlatformAgenda(type: PlatformAgendaType, tenantId: str
     const feedback = ids.length ? await supabase.from('appointment_feedback').select('appointment_id, feedback_status, notes, has_tasks')
       .eq('tenant_id', tenantId).in('appointment_id', ids).limit(500) : { data: [], error: null };
     if (feedback.error) throw feedback.error;
+    const promises = ids.length ? await supabase.from('tasks').select('source_id, title, ball_assignee_id')
+      .eq('tenant_id', tenantId).eq('source_type', 'appointment_briefing_followup').in('source_id', ids).neq('status', 'completed').like('title', 'Zusage:%').limit(500) : { data: [], error: null };
+    if (promises.error) throw promises.error;
     return (data ?? []).map(row => {
       const fb = feedback.data?.find(entry => entry.appointment_id === row.id);
-      const review = pastAppointmentReview(fb);
-      return { id: row.id, title: row.title, date: row.start_time, detail: [row.location, fb?.notes?.trim().slice(0, 140)].filter(Boolean).join(' · ') || undefined,
+      const open = (promises.data ?? []).filter(task => task.source_id === row.id);
+      const review = pastAppointmentReview(fb, open.length);
+      return { id: row.id, title: row.title, date: row.start_time, detail: [row.location, ...open.map(task => task.title), fb?.notes?.trim().slice(0, 140)].filter(Boolean).join(' · ') || undefined,
         status: review.status, ownerId: row.user_id, path: `/calendar?date=${row.start_time.slice(0, 10)}&event=${row.id}`, content: fb?.notes };
     });
   }

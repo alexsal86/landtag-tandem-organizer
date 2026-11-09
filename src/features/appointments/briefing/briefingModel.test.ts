@@ -4,7 +4,7 @@ import { canCompleteBriefing, canGoLive, compactToFull, dossierExtrasLine, follo
 describe("briefing model (one record, two zoom levels)", () => {
   it("compact positions become dossier talking points", () => {
     const full = compactToFull({ compact_positions: "- Radweg ausbauen\n- Fördermittel" });
-    expect(full.talking_point_items).toEqual([{ id: "c-0", text: "Radweg ausbauen" }, { id: "c-1", text: "Fördermittel" }]);
+    expect(full.talking_point_items).toEqual([{ id: "c-0", point: "Radweg ausbauen", text: "Radweg ausbauen", background: "" }, { id: "c-1", point: "Fördermittel", text: "Fördermittel", background: "" }]);
   });
   it("never overwrites richer dossier data", () => {
     const full = compactToFull({ compact_goal: "neu" }, { objectives: "alt" });

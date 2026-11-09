@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { DebriefQuickActions } from '@/features/appointments/briefing/DebriefQuickActions';
 import { StandaloneDecisionCreator } from '@/components/task-decisions/StandaloneDecisionCreator';
 import { useCaseItems } from '@/features/cases/items/hooks/useCaseItems';
 import { followUpTaskFromLive } from '@/features/appointments/briefing/briefingModel';
@@ -426,6 +427,7 @@ export default function BriefingLivePage() {
             <Button variant="ghost" onClick={handleCreateCase}>Als Vorgang anlegen</Button>
             <Button variant="ghost" onClick={() => { if (!taskTitle.trim()) { notify.error('Fehler', { description: 'Bitte einen Titel eingeben.' }); return; } setDecisionOpen(true); }}>Entscheidung anfordern</Button>
           </div>
+          {effectiveAppointmentId && <DebriefQuickActions appointmentId={effectiveAppointmentId} title={appointmentInfo?.title || preparation?.title || 'Termin'} debrief={taskDescription} preparationId={preparation?.id} />}
           {decisionOpen && (
             <StandaloneDecisionCreator isOpen={decisionOpen} onOpenChange={setDecisionOpen}
               defaultTitle={taskTitle} defaultDescription={taskDescription || `Aus Termin: ${appointmentInfo?.title || preparation?.title || ''}`}
