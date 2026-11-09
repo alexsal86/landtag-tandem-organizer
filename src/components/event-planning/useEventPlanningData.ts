@@ -54,7 +54,7 @@ async function resolveLinkedPlanningDates(dates: EventPlanningDate[]): Promise<E
   if (!ids.length) return dates;
   const { data, error } = await supabase.from("appointments").select("id,start_time").in("id", ids);
   if (error) throw error;
-  const starts = new Map((data ?? []).map(a => [a.id, a.start_time]));
+  const starts = new Map<string, string>((data ?? []).map(a => [String(a.id), String(a.start_time)]));
   return dates.map(date => ({ ...date, date_time: (date.appointment_id && starts.get(date.appointment_id)) || date.date_time }));
 }
 
@@ -410,7 +410,8 @@ export function useEventPlanningData() {
         .select("id,title,start_time,location,status,user_id,briefing_status,briefing_assignee_id")
         .eq("tenant_id", currentTenant.id).in("id", appointmentIds) : { data: [], error: null };
       if (appointments.error) throw appointments.error;
-      const byId = new Map((appointments.data ?? []).map(a => [a.id, a]));
+      type LinkedAppointment = NonNullable<AppointmentPreparation["appointment"]>;
+      const byId = new Map<string, LinkedAppointment>(((appointments.data ?? []) as unknown as LinkedAppointment[]).map(a => [a.id, a]));
       const normalized = preparations.map(preparation => {
         const appointment = preparation.appointment_id ? byId.get(preparation.appointment_id) ?? null : null;
         return { ...preparation, appointment, title: appointment?.title ?? preparation.title.replace(/^Termin(?:planung|vorbereitung)\s*:\s*/i, "") };

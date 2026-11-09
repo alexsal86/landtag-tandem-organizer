@@ -1,5 +1,7 @@
 import { compactToFull, mergeLegacy, type PrepData } from "@/features/appointments/briefing/briefingModel";
 import jsPDF from "jspdf";
+import { supabase } from "@/integrations/supabase/client";
+import { briefingFactLines } from "./briefingFacts";
 import "svg2pdf.js";
 import {
   AppointmentPreparation,
