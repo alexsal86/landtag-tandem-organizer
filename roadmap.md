@@ -20,5 +20,6 @@
 - [x] Phase 1: Jahresaufgaben atomar ins Stafetten-System übergeben und Abschluss synchronisieren
 - [x] Phase 1: Regeln, Datenbank-Verknüpfung und Selbsttests absichern
 - [ ] Phase 2: Regeln/Workflows und RSS-Navigation zusammenführen
+- [ ] Phase 2: Alte Links, gemeinsame Reiter und Selbsttest prüfen
 - [ ] Phase 3: Kalendarische Stichtage im Regel-Builder und Scheduler ergänzen
 - [ ] Angemeldeten Jahresaufgaben-Gesamtablauf prüfen — externe Supabase-Testsitzung fehlt

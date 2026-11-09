@@ -156,11 +156,9 @@ export const adminMenuItems: AdminMenuItem[] = [
     label: "Automatisierung",
     icon: Workflow,
     children: [
-      { id: "rules", label: "Regel-Builder", icon: Workflow },
-      { id: "engine", label: "Workflow-Engine 2.0", icon: Workflow },
-      { id: "rss-sources", label: "RSS-Quellen", icon: Rss },
-      { id: "rss-settings", label: "RSS-Einstellungen", icon: Settings },
-      { id: "annual", label: "Jährliche Aufgaben", icon: CircleCheck },
+      { id: "rules", label: "Regeln & Workflows", icon: Workflow },
+      { id: "annual", label: "Büro-Routinen & Stichtage", icon: CircleCheck },
+      { id: "rss", label: "RSS-Monitoring", icon: Rss },
     ],
   },
   {
