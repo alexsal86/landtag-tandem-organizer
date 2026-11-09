@@ -12,6 +12,21 @@ export const accessBoundariesScenario: TestScenario = {
   limitations: ["Getestet wird die aktuelle Rolle. Für die vollständige Rollenmatrix mit beiden Testkonten ausführen.", "Lesetrennung zweier existierender Büros erfordert eine separate Testumgebung mit zwei Konten."],
   steps: [
     {
+      id: "admin-role-guard", label: "Globale Rollenänderung: Plattformrecht und gültige Rolle erforderlich", kind: "workflow",
+      run: async (ctx) => {
+        const platform = await supabase.rpc("is_superadmin", { _user_id: ctx.userId });
+        if (platform.error) return { ok: false, message: describeError(platform.error) };
+        // An invalid role is rejected before any write, including for platform admins.
+        const result = await supabase.rpc("replace_user_role", {
+          _tenant_id: ctx.tenantId, _user_id: ctx.userId, _role: "__selftest_invalid__",
+        });
+        const expectedCode = platform.data ? "22023" : "42501";
+        return { ok: result.error?.code === expectedCode,
+          message: result.error?.code === expectedCode ? "Ungültige oder unberechtigte Rollenänderung verweigert." : "Erwartete Rollensperre fehlt.",
+          details: { expectedCode, actualCode: result.error?.code } };
+      },
+    },
+    {
       id: "foreign-tenant", label: "Schreiben mit nicht zugehöriger Büro-ID wird verweigert", kind: "workflow",
       run: async (ctx) => {
         const tenantId = crypto.randomUUID();

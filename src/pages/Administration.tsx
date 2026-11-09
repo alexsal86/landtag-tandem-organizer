@@ -1,17 +1,15 @@
 import { PlanningDefaultCollaboratorsSettings } from "@/components/administration/PlanningDefaultCollaboratorsSettings";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { GeneralSettings } from "@/components/admin/GeneralSettings";
 import { ExpenseManagement } from "@/features/expenses/components/ExpenseManagement";
 import { StatusAdminSettings } from "@/components/status/StatusAdminSettings";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
-import { Clock, MapPin, Building, Users } from "lucide-react";
+import { Clock, MapPin, Building } from "lucide-react";
 import { DecisionEmailTemplates } from "@/components/task-decisions/DecisionEmailTemplates";
 import { DefaultGuestsAdmin } from "@/features/appointments/components/DefaultGuestsAdmin";
 import AppointmentPreparationTemplateAdmin from "@/features/appointments/components/AppointmentPreparationTemplateAdmin";
@@ -69,72 +67,31 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Menu } from "lucide-react";
-
-const DEFAULT_SUB_SECTION: Record<string, string> = {
-  security: "general",
-  users: "status",
-  calendar: "config",
-  content: "topics",
-  templates: "letters",
-  politics: "associations",
-  automation: "rules",
-  superadmin: "tenants",
-};
-
-const resolveNavigationState = (
-  section: string | null,
-  subSection: string | null,
-  isSuperAdmin: boolean,
-) : { section: string; subSection: string } => {
-  const visibleSections = adminMenuItems.filter((item) => !item.superAdminOnly || isSuperAdmin);
-  const fallbackSection = visibleSections[0]?.id ?? "security";
-  const matchedSection = visibleSections.find((item) => item.id === section) ??
-    visibleSections.find((item) => item.id === fallbackSection);
-
-  const nextSection = matchedSection?.id ?? "security";
-  const visibleSubSections = matchedSection?.children?.filter((child) => !child.superAdminOnly || isSuperAdmin) ?? [];
-  const fallbackSubSection =
-    visibleSubSections.find((child) => child.id === DEFAULT_SUB_SECTION[nextSection])?.id ??
-    visibleSubSections[0]?.id ??
-    "";
-  const nextSubSection = visibleSubSections.find((child) => child.id === subSection)?.id ?? fallbackSubSection;
-
-  return { section: nextSection, subSection: nextSubSection };
-};
+import { useAdministrationAccess } from "@/components/administration/useAdministrationAccess";
+import { resolveNavigationState } from "@/components/administration/adminNavigation";
 
 export default function Administration(): React.JSX.Element | null {
   const { user, loading } = useAuth();
-  const { currentTenant } = useTenant();
+  const { currentTenant, loading: tenantLoading } = useTenant();
   const navigate = useNavigate();
   const location = useLocation();
-  const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false);
-  const [checkingAdmin, setCheckingAdmin] = useState<boolean>(true);
+  const { checkingAdmin, isAdmin, isSuperAdmin, error: accessError } = useAdministrationAccess(
+    user?.id, currentTenant?.id, loading || tenantLoading,
+  );
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
   const isMobile = useIsMobile();
 
-  // Navigation state
-  const [activeSection, setActiveSection] = useState(() =>
-    resolveNavigationState(new URLSearchParams(location.search).get("adminSection"), new URLSearchParams(location.search).get("adminSubSection"), false).section,
-  );
-  const [activeSubSection, setActiveSubSection] = useState(() =>
-    resolveNavigationState(new URLSearchParams(location.search).get("adminSection"), new URLSearchParams(location.search).get("adminSubSection"), false).subSection,
+  const { section: activeSection, subSection: activeSubSection } = resolveNavigationState(
+    new URLSearchParams(location.search).get("adminSection"),
+    new URLSearchParams(location.search).get("adminSubSection"),
+    isSuperAdmin,
   );
   const [annualTasksBadge, setAnnualTasksBadge] = useState<number>(0);
 
   useEffect(() => {
-    if (!loading && user && currentTenant) {
-      checkAdminStatus();
-      loadAnnualTasksBadge();
-    }
-  }, [loading, user, currentTenant]);
-
-  useEffect(() => {
+    if (checkingAdmin || !isAdmin) return;
     const params = new URLSearchParams(location.search);
     const nextNavigation = resolveNavigationState(params.get("adminSection"), params.get("adminSubSection"), isSuperAdmin);
-
-    setActiveSection(nextNavigation.section);
-    setActiveSubSection(nextNavigation.subSection);
 
     if (
       params.get("adminSection") !== nextNavigation.section ||
@@ -149,31 +106,9 @@ export default function Administration(): React.JSX.Element | null {
 
       navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
     }
-  }, [isSuperAdmin, location.pathname, location.search, navigate]);
+  }, [checkingAdmin, isAdmin, isSuperAdmin, location.pathname, location.search, navigate]);
 
-  const checkAdminStatus = async (): Promise<void> => {
-    if (!user) {
-      setCheckingAdmin(false);
-      return;
-    }
-    
-    try {
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      setIsAdmin(roleData?.role === 'abgeordneter' || roleData?.role === 'bueroleitung');
-      setIsSuperAdmin(roleData?.role === 'abgeordneter');
-    } catch (error: unknown) {
-      debugConsole.error('Error checking admin status:', error);
-    } finally {
-      setCheckingAdmin(false);
-    }
-  };
-
-  const loadAnnualTasksBadge = async (): Promise<void> => {
+  const loadAnnualTasksBadge = useCallback(async (): Promise<void> => {
     if (!currentTenant?.id) return;
     
     try {
@@ -192,9 +127,9 @@ export default function Administration(): React.JSX.Element | null {
         .select('annual_task_id')
         .eq('year', currentYear);
       
-      const completedIds = new Set((completions ?? []).map((completion: Record<string, any>) => completion.annual_task_id));
+      const completedIds = new Set((completions ?? []).map((completion) => completion.annual_task_id));
       
-      const pendingCount = tasks.filter((task: Record<string, any>) => {
+      const pendingCount = tasks.filter((task) => {
         const isDue = task.due_month <= currentMonth;
         const isCompleted = completedIds.has(task.id);
         return isDue && !isCompleted;
@@ -204,7 +139,11 @@ export default function Administration(): React.JSX.Element | null {
     } catch (error: unknown) {
       debugConsole.error('Error loading annual tasks badge:', error);
     }
-  };
+  }, [currentTenant]);
+
+  useEffect(() => {
+    if (isAdmin) void loadAnnualTasksBadge();
+  }, [isAdmin, loadAnnualTasksBadge]);
 
   const handleNavigate = (section: string, subSection?: string): void => {
     const nextNavigation = resolveNavigationState(section, subSection ?? null, isSuperAdmin);
@@ -228,14 +167,14 @@ export default function Administration(): React.JSX.Element | null {
     .find((item) => item.id === activeSection)
     ?.children?.find((child) => child.id === activeSubSection)?.label;
 
-  if (loading || checkingAdmin) return null;
+  if (checkingAdmin) return <main className="container mx-auto p-6" role="status">Berechtigungen werden geprüft…</main>;
 
   if (!isAdmin) {
     return (
       <main className="container mx-auto p-6">
         <header className="mb-6">
           <h1 className="text-2xl font-semibold">Administration</h1>
-          <p className="text-muted-foreground">Sie besitzen keine Berechtigung, diese Seite zu sehen.</p>
+          <p className="text-muted-foreground">{accessError ? "Die Berechtigungen konnten nicht geprüft werden. Bitte laden Sie die Seite erneut." : "Sie besitzen keine Berechtigung, diese Seite zu sehen."}</p>
         </header>
       </main>
     );
@@ -396,7 +335,7 @@ export default function Administration(): React.JSX.Element | null {
     }
 
     // SECTION 7: Super-Admin
-    if (activeSection === "superadmin") {
+    if (activeSection === "superadmin" && isSuperAdmin) {
       switch (activeSubSection) {
         case "tenants": return <SuperadminTenantManagement />;
         case "push-tests":

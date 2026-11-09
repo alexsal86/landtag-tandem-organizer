@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
 import { getErrorMessage } from "@/utils/errorHandler";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { useToast } from "@/components/ui/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -46,52 +45,73 @@ export function UserRolesManager() {
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
+  const currentTenantRef = useRef(currentTenant?.id);
+  currentTenantRef.current = currentTenant?.id;
+  const loadSequence = useRef(0);
+  const [loadedTenant, setLoadedTenant] = useState<string>();
+  const [loadError, setLoadError] = useState(false);
+  const savingRef = useRef(false);
 
-  useEffect(() => {
-    if (currentTenant) loadData();
-  }, [currentTenant]);
-
-  const loadData = async () => {
-    if (!currentTenant?.id) return;
+  const loadData = useCallback(async () => {
+    const sequence = ++loadSequence.current;
+    const tenantId = currentTenant?.id;
+    if (!tenantId) return;
     setLoading(true);
+    setLoadError(false);
     try {
-      const { data: memberships } = await supabase
+      const { data: memberships, error: membershipError } = await supabase
         .from('user_tenant_memberships')
         .select('user_id')
-        .eq('tenant_id', currentTenant.id)
+        .eq('tenant_id', tenantId)
         .eq('is_active', true);
 
+      if (membershipError) throw membershipError;
+      if (sequence !== loadSequence.current || currentTenantRef.current !== tenantId) return;
+      setLoadedTenant(tenantId);
       if (!memberships?.length) {
         setProfiles([]);
         setRoles([]);
         return;
       }
 
-      const userIds = memberships.map((m: Record<string, any>) => m.user_id);
+      const userIds = memberships.map(m => m.user_id);
       const [profilesRes, rolesRes] = await Promise.all([
         supabase.from('profiles').select('user_id, display_name, avatar_url').in('user_id', userIds).order('display_name'),
         supabase.from('user_roles').select('user_id, role').in('user_id', userIds),
       ]);
+      if (profilesRes.error) throw profilesRes.error;
+      if (rolesRes.error) throw rolesRes.error;
+      if (sequence !== loadSequence.current || currentTenantRef.current !== tenantId) return;
       setProfiles(profilesRes.data || []);
       setRoles(rolesRes.data || []);
     } catch (error) {
       debugConsole.error('Error loading data:', error);
+      if (sequence === loadSequence.current && currentTenantRef.current === tenantId) setLoadError(true);
     } finally {
-      setLoading(false);
+      if (sequence === loadSequence.current && currentTenantRef.current === tenantId) setLoading(false);
     }
-  };
+  }, [currentTenant]);
+
+  useEffect(() => {
+    void loadData();
+    return () => { loadSequence.current += 1; };
+  }, [loadData]);
 
   const updateUserRole = async (targetUserId: string, role: RoleValue | "none") => {
+    if (!user || !currentTenant || savingRef.current) return;
+    const tenantId = currentTenant.id;
+    savingRef.current = true;
     try {
       setBusyUserId(targetUserId);
-      const { error: delErr } = await supabase.from("user_roles").delete().eq("user_id", targetUserId);
-      if (delErr) throw delErr;
-      if (role !== "none" && user) {
-        const { error: insErr } = await supabase.from("user_roles").insert([{ user_id: targetUserId, role, assigned_by: user.id }]);
-        if (insErr) throw insErr;
-      }
-      const { data: newRoles } = await supabase.from("user_roles").select("user_id, role");
-      setRoles((newRoles as UserRole[]) || []);
+      const { error } = await supabase.rpc("replace_user_role", {
+        _tenant_id: tenantId, _user_id: targetUserId, _role: role === "none" ? null : role,
+      });
+      if (error) throw error;
+      if (currentTenantRef.current !== tenantId) return;
+      setRoles(previous => [
+        ...previous.filter(item => item.user_id !== targetUserId),
+        ...(role === "none" ? [] : [{ user_id: targetUserId, role }]),
+      ]);
       notify.success("Gespeichert", { description: "Rolle erfolgreich aktualisiert." 
 });
     } catch (error: unknown) {
@@ -99,6 +119,7 @@ export function UserRolesManager() {
       notify.error("Fehler", { description: getErrorMessage(error) || "Änderung fehlgeschlagen."
 });
     } finally {
+      savingRef.current = false;
       setBusyUserId(null);
     }
   };
@@ -108,8 +129,9 @@ export function UserRolesManager() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Users className="h-5 w-5" />
-          Benutzerrollen
+          Globale Benutzerrollen
         </CardTitle>
+        <p className="text-sm text-muted-foreground">Globale Rollen gelten systemweit. Die Rollen der Büromitgliedschaften bleiben unverändert; widersprüchliche Änderungen werden abgelehnt.</p>
         <div className="flex gap-2">
           <Dialog>
             <DialogTrigger asChild>
@@ -124,7 +146,7 @@ export function UserRolesManager() {
         </div>
       </CardHeader>
       <CardContent>
-        {loading ? (
+        {loadError ? <p role="alert">Benutzerrollen konnten nicht geladen werden. Bitte laden Sie die Seite erneut.</p> : loading || loadedTenant !== currentTenant?.id ? (
           <div className="space-y-4">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="flex items-center gap-3">
@@ -159,10 +181,10 @@ export function UserRolesManager() {
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Select value={roles.find(r => r.user_id === p.user_id)?.role ?? "none"} onValueChange={(val) => updateUserRole(p.user_id, val as RoleValue | "none")} disabled={busyUserId === p.user_id}>
+                    <Select value={roles.find(r => r.user_id === p.user_id)?.role ?? "none"} onValueChange={(val) => updateUserRole(p.user_id, val as RoleValue | "none")} disabled={busyUserId !== null}>
                       <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">Keine Rolle</SelectItem>
+                        <SelectItem value="none">Keine globale Rolle</SelectItem>
                         {ROLE_OPTIONS.map(role => (<SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>))}
                       </SelectContent>
                     </Select>

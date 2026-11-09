@@ -1,3 +1,4 @@
+import { getAdministrationAccess } from "@/components/administration/access";
 import { canTransitionStatus } from "@/components/letters/types";
 import { canDecide } from "@/features/appointment-requests/logic";
 import { isOnResubmission, MINISTRY_RESPONSE_DAYS, withAutoDeadline, type TriageItem } from "@/features/cases/items/ball";
@@ -11,6 +12,23 @@ export const workflowRulesScenario: TestScenario = {
   checks: ["Erlaubte und verbotene Brief-Statuswechsel", "Entscheiderrollen", "Ministeriumsfrist und Wiedervorlage"],
   limitations: ["Berechtigungen der Datenbank werden separat in den Zugriffstests geprüft."],
   steps: [
+    {
+      id: "administration-access", label: "Administration: Büro- und Plattformrechte bleiben getrennt", kind: "logic",
+      run: async () => {
+        const cases = [
+          { role: "abgeordneter", platform: false, admin: true, superadmin: false },
+          { role: "bueroleitung", platform: false, admin: true, superadmin: false },
+          { role: "mitarbeiter", platform: false, admin: false, superadmin: false },
+          { role: null, platform: false, admin: false, superadmin: false },
+          { role: null, platform: true, admin: true, superadmin: true },
+        ];
+        const failures = cases.filter(c => {
+          const access = getAdministrationAccess(c.role, c.platform);
+          return access.isAdmin !== c.admin || access.isSuperAdmin !== c.superadmin;
+        });
+        return { ok: failures.length === 0, message: `${cases.length - failures.length}/${cases.length} Admin-Rollenregeln bestanden.`, details: failures };
+      },
+    },
     {
       id: "letter-rules", label: "Brief: Freigabe erforderlich; versendete Briefe bleiben abgeschlossen", kind: "logic",
       run: async () => {

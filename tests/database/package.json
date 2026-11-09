@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node ../../scripts/test-workflow-consistency.mjs && node ../../scripts/test-appointment-role-workflow.mjs"
+    "test": "node ../../scripts/test-workflow-consistency.mjs && node ../../scripts/test-appointment-role-workflow.mjs && node ../../scripts/test-admin-role-replacement.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.15"

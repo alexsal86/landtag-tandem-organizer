@@ -1,16 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/components/ui/use-toast";
 import { notify } from "@/lib/notify";
+import type { Database } from "@/integrations/supabase/types";
 
-type AppRole = "abgeordneter" | "bueroleitung" | "mitarbeiter" | "praktikant" | "gast";
-const ALL_ROLES: AppRole[] = ["abgeordneter", "bueroleitung", "mitarbeiter", "praktikant", "gast"];
+type AppRole = Database["public"]["Enums"]["app_role"];
+const ALL_ROLES: AppRole[] = ["abgeordneter", "bueroleitung", "mitarbeiter", "praktikant"];
 
 const FEATURE_KEYS: Array<{ key: string; label: string; description: string }> = [
   { key: "module.events", label: "Veranstaltungen", description: "Eventplanung, RSVP, Checklisten" },
@@ -55,101 +54,111 @@ export function PermissionsManager() {
   // key = `${table}.${column}.${role}`
   const [fields, setFields] = useState<Map<string, FieldPerm>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [loadedTenant, setLoadedTenant] = useState<string>();
+  const [saving, setSaving] = useState(false);
+  const currentTenantRef = useRef(tenantId);
+  currentTenantRef.current = tenantId;
+  const pending = useRef<object | null>(null);
 
   useEffect(() => {
     if (!tenantId) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const [flagsRes, actionsRes, fieldsRes] = await Promise.all([
-        supabase.from("tenant_feature_flags").select("feature_key, enabled").eq("tenant_id", tenantId),
-        supabase.from("action_permissions").select("action_key, allowed_roles").eq("tenant_id", tenantId),
-        supabase.from("field_permissions")
-          .select("table_name, column_name, role, can_read, can_write")
-          .eq("tenant_id", tenantId),
-      ]);
-      if (cancelled) return;
-      const fmap = new Map<string, boolean>();
-      for (const r of flagsRes.data ?? []) fmap.set(r.feature_key, r.enabled);
-      const amap = new Map<string, AppRole[]>();
-      for (const r of actionsRes.data ?? []) amap.set(r.action_key, (r.allowed_roles ?? []) as AppRole[]);
-      const fdmap = new Map<string, FieldPerm>();
-      for (const r of fieldsRes.data ?? []) {
-        fdmap.set(`${r.table_name}.${r.column_name}.${r.role}`, {
-          can_read: r.can_read, can_write: r.can_write,
-        });
+      setLoadError(false);
+      setSaving(false);
+      pending.current = null;
+      try {
+        const [flagsRes, actionsRes, fieldsRes] = await Promise.all([
+          supabase.from("tenant_feature_flags").select("feature_key, enabled").eq("tenant_id", tenantId),
+          supabase.from("action_permissions").select("action_key, allowed_roles").eq("tenant_id", tenantId),
+          supabase.from("field_permissions")
+            .select("table_name, column_name, role, can_read, can_write")
+            .eq("tenant_id", tenantId),
+        ]);
+        if (flagsRes.error) throw flagsRes.error;
+        if (actionsRes.error) throw actionsRes.error;
+        if (fieldsRes.error) throw fieldsRes.error;
+        if (cancelled) return;
+        const fmap = new Map<string, boolean>();
+        for (const r of flagsRes.data ?? []) fmap.set(r.feature_key, r.enabled);
+        const amap = new Map<string, AppRole[]>();
+        for (const r of actionsRes.data ?? []) amap.set(r.action_key, (r.allowed_roles ?? []) as AppRole[]);
+        const fdmap = new Map<string, FieldPerm>();
+        for (const r of fieldsRes.data ?? []) {
+          fdmap.set(`${r.table_name}.${r.column_name}.${r.role}`, {
+            can_read: r.can_read, can_write: r.can_write,
+          });
+        }
+        setFlags(fmap);
+        setActions(amap);
+        setFields(fdmap);
+        setLoadedTenant(tenantId);
+      } catch {
+        if (!cancelled) setLoadError(true);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setFlags(fmap);
-      setActions(amap);
-      setFields(fdmap);
-      setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [tenantId]);
 
 
-  const toggleFlag = async (key: string, enabled: boolean) => {
-    if (!tenantId) return;
-    const next = new Map(flags);
-    next.set(key, enabled);
-    setFlags(next);
-    const { error } = await supabase
-      .from("tenant_feature_flags")
-      .upsert({ tenant_id: tenantId, feature_key: key, enabled }, { onConflict: "tenant_id,feature_key" });
-    if (error) {
-      notify.error("Fehler", { description: error.message
-});
-      next.set(key, !enabled);
-      setFlags(new Map(next));
+  // Commit only confirmed writes. A failed write leaves the displayed value unchanged.
+  const save = async (
+    write: () => PromiseLike<{ error: { message: string } | null }>,
+    commit: () => void,
+  ) => {
+    if (pending.current || loading || loadError || loadedTenant !== tenantId) return;
+    const operation = {};
+    pending.current = operation;
+    setSaving(true);
+    try {
+      const { error } = await write();
+      if (error) throw error;
+      if (currentTenantRef.current === tenantId && pending.current === operation) commit();
+    } catch {
+      notify.error("Nicht gespeichert", { description: "Die Berechtigungen konnten nicht gespeichert werden. Bitte versuchen Sie es erneut." });
+    } finally {
+      if (pending.current === operation) {
+        pending.current = null;
+        setSaving(false);
+      }
     }
   };
 
-  const toggleActionRole = async (actionKey: string, role: AppRole) => {
-    if (!tenantId) return;
+  const toggleFlag = (key: string, enabled: boolean) => save(
+    () => supabase.from("tenant_feature_flags")
+      .upsert({ tenant_id: tenantId!, feature_key: key, enabled }, { onConflict: "tenant_id,feature_key" }),
+    () => setFlags(previous => new Map(previous).set(key, enabled)),
+  );
+
+  const toggleActionRole = (actionKey: string, role: AppRole) => {
     const current = actions.get(actionKey) ?? ALL_ROLES;
-    const has = current.includes(role);
-    const nextRoles = has ? current.filter((r) => r !== role) : [...current, role];
-    const next = new Map(actions);
-    next.set(actionKey, nextRoles);
-    setActions(next);
-    const { error } = await supabase
-      .from("action_permissions")
-      .upsert(
-        { tenant_id: tenantId, action_key: actionKey, allowed_roles: nextRoles },
+    const nextRoles = current.includes(role) ? current.filter(r => r !== role) : [...current, role];
+    return save(
+      () => supabase.from("action_permissions").upsert(
+        { tenant_id: tenantId!, action_key: actionKey, allowed_roles: nextRoles },
         { onConflict: "tenant_id,action_key" },
-      );
-    if (error) notify.error("Fehler", { description: error.message
-});
+      ),
+      () => setActions(previous => new Map(previous).set(actionKey, nextRoles)),
+    );
   };
 
-  const toggleField = async (table: string, column: string, role: AppRole, key: "can_read" | "can_write") => {
-    if (!tenantId) return;
+  const toggleField = (table: string, column: string, role: AppRole, key: "can_read" | "can_write") => {
     const mapKey = `${table}.${column}.${role}`;
     const current = fields.get(mapKey) ?? { can_read: true, can_write: true };
-    const nextVal = !current[key];
-    const nextPerm = { ...current, [key]: nextVal };
-    // Wenn Lesen verweigert wird, kann auch nicht geschrieben werden.
-    if (key === "can_read" && nextVal === false) nextPerm.can_write = false;
-    const next = new Map(fields);
-    next.set(mapKey, nextPerm);
-    setFields(next);
-    const { error } = await supabase
-      .from("field_permissions")
-      .upsert(
-        {
-          tenant_id: tenantId,
-          table_name: table,
-          column_name: column,
-          role,
-          can_read: nextPerm.can_read,
-          can_write: nextPerm.can_write,
-        },
+    const nextPerm = { ...current, [key]: !current[key] };
+    if (!nextPerm.can_read) nextPerm.can_write = false;
+    return save(
+      () => supabase.from("field_permissions").upsert(
+        { tenant_id: tenantId!, table_name: table, column_name: column, role, ...nextPerm },
         { onConflict: "tenant_id,table_name,column_name,role" },
-      );
-    if (error) notify.error("Fehler", { description: error.message
-});
+      ),
+      () => setFields(previous => new Map(previous).set(mapKey, nextPerm)),
+    );
   };
-
 
   if (!tenantId) return null;
 
@@ -163,103 +172,110 @@ export function PermissionsManager() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="features">
-          <TabsList>
-            <TabsTrigger value="features">Module</TabsTrigger>
-            <TabsTrigger value="actions">Aktionen</TabsTrigger>
-            <TabsTrigger value="fields">Felder</TabsTrigger>
-          </TabsList>
+        {loadError ? (
+          <p role="alert">Berechtigungen konnten nicht geladen werden. Bitte laden Sie die Seite erneut.</p>
+        ) : loading || loadedTenant !== tenantId ? (
+          <p role="status">Berechtigungen werden geladen…</p>
+        ) : (
+          <fieldset disabled={saving} aria-busy={saving} className="min-w-0">
+            {saving && <p role="status">Wird gespeichert…</p>}
+            <Tabs defaultValue="features">
+              <TabsList>
+                <TabsTrigger value="features">Module</TabsTrigger>
+                <TabsTrigger value="actions">Aktionen</TabsTrigger>
+                <TabsTrigger value="fields">Felder</TabsTrigger>
+              </TabsList>
 
-          <TabsContent value="features" className="space-y-3 pt-4">
-            {loading && <p className="text-caption text-muted-foreground">Lade…</p>}
-            {FEATURE_KEYS.map((f) => {
-              const enabled = flags.has(f.key) ? flags.get(f.key)! : true;
-              return (
-                <div key={f.key} className="flex items-start justify-between gap-4 border rounded-md p-3">
-                  <div>
-                    <Label className="font-medium">{f.label}</Label>
-                    <p className="text-caption text-muted-foreground">{f.description}</p>
-                    <code className="text-caption text-muted-foreground">{f.key}</code>
-                  </div>
-                  <Switch checked={enabled} onCheckedChange={(v) => toggleFlag(f.key, v)} />
-                </div>
-              );
-            })}
-          </TabsContent>
-
-          <TabsContent value="actions" className="space-y-3 pt-4">
-            {loading && <p className="text-caption text-muted-foreground">Lade…</p>}
-            {ACTION_KEYS.map((a) => {
-              const allowed = actions.get(a.key) ?? ALL_ROLES;
-              return (
-                <div key={a.key} className="border rounded-md p-3">
-                  <div className="flex items-baseline justify-between mb-2">
-                    <Label className="font-medium">{a.label}</Label>
-                    <code className="text-caption text-muted-foreground">{a.key}</code>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {ALL_ROLES.map((role) => {
-                      const active = allowed.includes(role);
-                      return (
-                        <Badge
-                          key={role}
-                          variant={active ? "default" : "outline"}
-                          className="cursor-pointer select-none"
-                          onClick={() => toggleActionRole(a.key, role)}
-                        >
-                          {role}
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </TabsContent>
-
-          <TabsContent value="fields" className="space-y-3 pt-4">
-            {loading && <p className="text-caption text-muted-foreground">Lade…</p>}
-            <p className="text-caption text-muted-foreground">
-              Pro Rolle festlegen, ob ein sensibles Feld gelesen oder geschrieben werden darf.
-              Standard ist Vollzugriff. Lese-Verbot impliziert Schreib-Verbot.
-            </p>
-            {FIELD_TARGETS.map((t) => (
-              <div key={`${t.table}.${t.column}`} className="border rounded-md p-3">
-                <div className="flex items-baseline justify-between mb-2">
-                  <Label className="font-medium">{t.label}</Label>
-                  <code className="text-caption text-muted-foreground">{t.table}.{t.column}</code>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {ALL_ROLES.map((role) => {
-                    const perm = fields.get(`${t.table}.${t.column}.${role}`) ?? { can_read: true, can_write: true };
-                    return (
-                      <div key={role} className="flex items-center justify-between border rounded-md px-2 py-1.5">
-                        <span className="text-caption">{role}</span>
-                        <div className="flex gap-3">
-                          <label className="flex items-center gap-1 text-caption">
-                            <Switch
-                              checked={perm.can_read}
-                              onCheckedChange={() => toggleField(t.table, t.column, role, "can_read")}
-                            />
-                            Lesen
-                          </label>
-                          <label className="flex items-center gap-1 text-caption">
-                            <Switch
-                              checked={perm.can_write}
-                              disabled={!perm.can_read}
-                              onCheckedChange={() => toggleField(t.table, t.column, role, "can_write")}
-                            />
-                            Schreiben
-                          </label>
-                        </div>
+              <TabsContent value="features" className="space-y-3 pt-4">
+                {FEATURE_KEYS.map((f) => {
+                  const enabled = flags.has(f.key) ? flags.get(f.key)! : true;
+                  return (
+                    <div key={f.key} className="flex items-start justify-between gap-4 border rounded-md p-3">
+                      <div>
+                        <Label className="font-medium">{f.label}</Label>
+                        <p className="text-caption text-muted-foreground">{f.description}</p>
+                        <code className="text-caption text-muted-foreground">{f.key}</code>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </TabsContent>
-        </Tabs>
+                      <Switch checked={enabled} onCheckedChange={(v) => toggleFlag(f.key, v)} />
+                    </div>
+                  );
+                })}
+              </TabsContent>
+
+              <TabsContent value="actions" className="space-y-3 pt-4">
+                {ACTION_KEYS.map((a) => {
+                  const allowed = actions.get(a.key) ?? ALL_ROLES;
+                  return (
+                    <div key={a.key} className="border rounded-md p-3">
+                      <div className="flex items-baseline justify-between mb-2">
+                        <Label className="font-medium">{a.label}</Label>
+                        <code className="text-caption text-muted-foreground">{a.key}</code>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {ALL_ROLES.map((role) => {
+                          const active = allowed.includes(role);
+                          return (
+                            <button
+                              type="button"
+                              aria-pressed={active}
+                              key={role}
+                              className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold disabled:opacity-50 ${active ? "bg-primary text-primary-foreground" : "bg-background"}`}
+                              onClick={() => toggleActionRole(a.key, role)}
+                            >
+                              {role}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </TabsContent>
+
+              <TabsContent value="fields" className="space-y-3 pt-4">
+                <p className="text-caption text-muted-foreground">
+                  Pro Rolle festlegen, ob ein sensibles Feld gelesen oder geschrieben werden darf.
+                  Standard ist Vollzugriff. Lese-Verbot impliziert Schreib-Verbot.
+                </p>
+                {FIELD_TARGETS.map((t) => (
+                  <div key={`${t.table}.${t.column}`} className="border rounded-md p-3">
+                    <div className="flex items-baseline justify-between mb-2">
+                      <Label className="font-medium">{t.label}</Label>
+                      <code className="text-caption text-muted-foreground">{t.table}.{t.column}</code>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {ALL_ROLES.map((role) => {
+                        const perm = fields.get(`${t.table}.${t.column}.${role}`) ?? { can_read: true, can_write: true };
+                        return (
+                          <div key={role} className="flex items-center justify-between border rounded-md px-2 py-1.5">
+                            <span className="text-caption">{role}</span>
+                            <div className="flex gap-3">
+                              <label className="flex items-center gap-1 text-caption">
+                                <Switch
+                                  checked={perm.can_read}
+                                  onCheckedChange={() => toggleField(t.table, t.column, role, "can_read")}
+                                />
+                                Lesen
+                              </label>
+                              <label className="flex items-center gap-1 text-caption">
+                                <Switch
+                                  checked={perm.can_write}
+                                  disabled={!perm.can_read}
+                                  onCheckedChange={() => toggleField(t.table, t.column, role, "can_write")}
+                                />
+                                Schreiben
+                              </label>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </TabsContent>
+            </Tabs>
+          </fieldset>
+        )}
       </CardContent>
     </Card>
   );

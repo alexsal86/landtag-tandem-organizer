@@ -13535,6 +13535,10 @@ export type Database = {
       }
     }
     Functions: {
+      replace_user_role: {
+        Args: { _tenant_id: string; _user_id: string; _role: string | null }
+        Returns: undefined
+      }
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined
