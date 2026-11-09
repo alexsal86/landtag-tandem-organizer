@@ -1,6 +1,6 @@
 import { type ReactNode, useCallback, useMemo, useState } from "react";
-import { CalendarDays, AlertTriangle, Clock3, ChevronLeft, ChevronRight, Tag } from "lucide-react";
-import { addMonths, addWeeks, endOfWeek, format, startOfWeek } from "date-fns";
+import { CalendarDays, Clock3, ChevronLeft, ChevronRight, Tag } from "lucide-react";
+import { addMonths, addWeeks, endOfWeek, format, getISOWeek, startOfWeek } from "date-fns";
 import { de } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -65,7 +65,10 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateA
     }
     const weekStart = startOfWeek(currentDate, { locale: de });
     const weekEnd = endOfWeek(currentDate, { locale: de });
-    return `${format(weekStart, "d. MMM", { locale: de })} – ${format(weekEnd, "d. MMM yyyy", { locale: de })}`;
+    const startFormat = weekStart.getFullYear() !== weekEnd.getFullYear()
+      ? "d. MMM yyyy"
+      : weekStart.getMonth() !== weekEnd.getMonth() ? "d. MMM" : "d.";
+    return `${format(weekStart, startFormat, { locale: de })} – ${format(weekEnd, "d. MMM yyyy", { locale: de })}`;
   }, [currentDate, view]);
 
   const navigateCalendar = useCallback((direction: "prev" | "next" | "today") => {
@@ -92,28 +95,28 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateA
   return (
     <div className="space-y-3">
       {/* Toolbar */}
-      <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 xl:flex-row xl:flex-wrap xl:items-center xl:justify-between">
-        <div className="flex flex-wrap items-center gap-3 xl:flex-1">
-          <div className="flex items-center gap-1">
-            <Button type="button" size="sm" variant={view === "week" ? "default" : "ghost"} className="h-8 px-3" onClick={() => setView("week")}>Woche</Button>
-            <Button type="button" size="sm" variant={view === "month" ? "default" : "ghost"} className="h-8 px-3" onClick={() => setView("month")}>Monat</Button>
+      <div className="space-y-5 rounded-2xl border bg-card p-4 sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex rounded-2xl border bg-muted/30 p-1" role="group" aria-label="Kalenderansicht">
+            <Button type="button" variant={view === "week" ? "default" : "ghost"} aria-pressed={view === "week"} className="h-11 rounded-xl px-5 text-base" onClick={() => setView("week")}>Woche</Button>
+            <Button type="button" variant={view === "month" ? "default" : "ghost"} aria-pressed={view === "month"} className="h-11 rounded-xl px-5 text-base" onClick={() => setView("month")}>Monat</Button>
           </div>
-          <Button type="button" variant="outline" size="sm" className="h-9 px-4 text-sm font-medium" onClick={() => navigateCalendar("today")}>Heute</Button>
-          <div className="flex items-center gap-0.5">
-            <Button type="button" variant="ghost" size="icon" className="h-9 w-9" onClick={() => navigateCalendar("prev")}>
+          <div className="ml-auto flex items-center gap-2">
+            <Button type="button" variant="outline" className="h-11 rounded-xl px-5 text-base" onClick={() => navigateCalendar("today")}>Heute</Button>
+            <Button type="button" variant="outline" size="icon" aria-label="Vorheriger Zeitraum" className="h-11 w-11 rounded-xl" onClick={() => navigateCalendar("prev")}>
               <ChevronLeft className="h-5 w-5" />
             </Button>
-            <Button type="button" variant="ghost" size="icon" className="h-9 w-9" onClick={() => navigateCalendar("next")}>
+            <Button type="button" variant="outline" size="icon" aria-label="Nächster Zeitraum" className="h-11 w-11 rounded-xl" onClick={() => navigateCalendar("next")}>
               <ChevronRight className="h-5 w-5" />
             </Button>
           </div>
         </div>
-        <div className="xl:ml-auto xl:text-right">
-          <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-            <h4 className="text-lg font-semibold capitalize text-foreground">{rangeLabel}</h4>
-            {headerActions}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <h4 className="text-xl font-bold text-foreground">{rangeLabel}</h4>
+            {view === "week" && <span className="rounded-full border bg-muted/30 px-3 py-1 text-sm font-semibold text-muted-foreground">KW {getISOWeek(currentDate)}</span>}
           </div>
-          <p className="text-xs text-muted-foreground">Planungskalender</p>
+          {headerActions}
         </div>
       </div>
 

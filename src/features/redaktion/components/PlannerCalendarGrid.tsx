@@ -112,7 +112,7 @@ function DayCell({
   return (
     <div
       className={`group/cell relative flex flex-col border-r border-b ${
-        view === "week" ? "min-h-[calc(100vh-280px)]" : "min-h-[120px]"
+        view === "week" ? "min-h-[calc(50vh-140px)]" : "min-h-[60px]"
       } ${isCurrentMonth ? "bg-background" : "bg-muted/30"} ${
         today ? "ring-2 ring-inset ring-primary/30" : ""
       } ${dragOver ? "bg-primary/10 ring-2 ring-inset ring-primary" : ""}`}

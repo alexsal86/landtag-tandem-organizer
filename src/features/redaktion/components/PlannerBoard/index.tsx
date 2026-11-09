@@ -395,7 +395,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   }, [searchParams.get("socialAppointmentId")]);
 
   return (
-    <div className="flex min-w-0 flex-col items-start gap-4 xl:flex-row">
+    <div className="flex min-w-0 flex-col items-start gap-4">
       <Card className="min-w-0 w-full flex-1">
       <CardContent className="pt-6">
         <Kalenderansicht
@@ -414,13 +414,9 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
           onDeleteNote={deleteNote}
           headerActions={(
             <div className="flex flex-wrap items-center gap-2">
-              <Button size="sm" variant="outline" onClick={() => setIsCreateDialogOpen(true)}>
-                <Plus className="mr-1 h-4 w-4" />
-                Neuen Inhalt entwerfen
-              </Button>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="relative">
+                  <Button variant="outline" className="relative h-11 rounded-xl px-5 text-base">
                     <Filter className="mr-1 h-4 w-4" />
                     Filter
                     {hasActiveFilters && (
@@ -489,6 +485,10 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
                   </Select>
                 </PopoverContent>
               </Popover>
+              <Button className="h-11 rounded-xl px-5 text-base font-semibold" onClick={() => setIsCreateDialogOpen(true)}>
+                <Plus className="mr-1 h-4 w-4" />
+                Neuer Inhalt
+              </Button>
             </div>
           )}
         />
@@ -498,7 +498,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
       </Card>
 
       {editingItem && (
-        <aside aria-label="Beitrag bearbeiten" className="w-full min-w-0 shrink-0 xl:sticky xl:top-4 xl:w-[min(62%,1040px)]">
+        <aside aria-label="Beitrag bearbeiten" className="w-full min-w-0">
         <Suspense fallback={<div className="rounded-lg border bg-card p-6" role="status">Lade Beitragsbearbeitung…</div>}>
           <SocialPlannerEditPanel
             key={editingItem.id}

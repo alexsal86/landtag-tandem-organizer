@@ -272,7 +272,7 @@ export default function SocialPlannerEditPanel({ item, open, users, channels, ca
 
   return (
     <>
-      <section className={cn(styles.editor, "rounded-2xl border bg-card text-card-foreground shadow-sm xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto")}>
+      <section className={cn(styles.editor, "rounded-2xl border bg-card text-card-foreground shadow-sm")}>
         <header className="flex items-start justify-between gap-3 px-6 pt-5">
           <div>
           <div className="mb-1 flex flex-wrap items-center gap-2">
@@ -568,7 +568,7 @@ export default function SocialPlannerEditPanel({ item, open, users, channels, ca
           </TabsContent>
         </Tabs>
 
-        <div className="xl:sticky bottom-0 z-10 flex flex-wrap items-center justify-end gap-2 border-t bg-card px-6 py-3.5">
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t bg-card px-6 py-3.5">
           <Button
             type="button"
             variant="outline"
