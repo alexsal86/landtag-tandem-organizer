@@ -195,18 +195,12 @@ export function RSSSourceManager() {
 
     setTestingUrl(true);
     try {
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const text = await response.text();
-      if (text.includes("<rss") || text.includes("<feed")) {
-        notify.success("RSS-Feed ist gültig!");
-      } else {
-        notify.error("Die URL scheint kein gültiger RSS-Feed zu sein");
-      }
-    } catch (error: unknown) {
-      notify.error("Feed-Test im Browser nicht möglich", { description: "Der Feed kann durch CORS blockiert sein. Dies bedeutet nicht, dass die Quelle ungültig ist." });
+      if (!currentTenant?.id) return;
+      const { data, error } = await supabase.functions.invoke('test-rss-feed', { body: { url, tenant_id: currentTenant.id } });
+      if (error || !data?.valid) throw new Error('Feed konnte nicht geprüft werden');
+      notify.success('RSS/Atom-Feed ist gültig', { description: `${data.items} Einträge${data.title ? ` · ${data.title}` : ''}` });
+    } catch {
+      notify.error('Serverseitiger Feed-Test fehlgeschlagen', { description: 'Öffentliche URL, Erreichbarkeit, Zeit-/Größenlimit und gültiges RSS/Atom prüfen.' });
     } finally {
       setTestingUrl(false);
     }

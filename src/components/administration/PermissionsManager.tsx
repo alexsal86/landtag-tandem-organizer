@@ -36,13 +36,15 @@ const FIELD_TARGETS: Array<{ table: string; column: string; label: string }> = [
   { table: "contacts", column: "phone", label: "Kontakt · Telefon" },
   { table: "contacts", column: "email", label: "Kontakt · E-Mail" },
   { table: "contacts", column: "notes", label: "Kontakt · Notizen" },
-  { table: "employees", column: "salary", label: "Mitarbeiter · Gehalt" },
-  { table: "employees", column: "private_notes", label: "Mitarbeiter · Private Notizen" },
-  { table: "case_items", column: "internal_notes", label: "Vorgang · Interne Notizen" },
-  { table: "letters", column: "draft_content", label: "Brief · Entwurfsinhalt" },
+  { table: "contacts", column: "email_2", label: "Kontakt · weitere E-Mail" },
+  { table: "contacts", column: "email_3", label: "Kontakt · dritte E-Mail" },
+  { table: "contacts", column: "mobile_phone", label: "Kontakt · Mobiltelefon" },
+  { table: "contacts", column: "business_phone", label: "Kontakt · Geschäftstelefon" },
+  { table: "letters", column: "content", label: "Brief · Inhalt" },
+  { table: "letters", column: "content_html", label: "Brief · formatierter Inhalt" },
 ];
 
-interface FieldPerm { can_read: boolean; can_write: boolean }
+interface FieldPerm { can_read: boolean; can_write: boolean; read_mode?: "mask" | "record" }
 
 
 export function PermissionsManager() {
@@ -74,7 +76,7 @@ export function PermissionsManager() {
           supabase.from("tenant_feature_flags").select("feature_key, enabled").eq("tenant_id", tenantId),
           supabase.from("action_permissions").select("action_key, allowed_roles").eq("tenant_id", tenantId),
           supabase.from("field_permissions")
-            .select("table_name, column_name, role, can_read, can_write")
+            .select("table_name, column_name, role, can_read, can_write, read_mode")
             .eq("tenant_id", tenantId),
         ]);
         if (flagsRes.error) throw flagsRes.error;
@@ -88,7 +90,7 @@ export function PermissionsManager() {
         const fdmap = new Map<string, FieldPerm>();
         for (const r of fieldsRes.data ?? []) {
           fdmap.set(`${r.table_name}.${r.column_name}.${r.role}`, {
-            can_read: r.can_read, can_write: r.can_write,
+            can_read: r.can_read, can_write: r.can_write, read_mode: r.read_mode === "record" ? "record" : "mask",
           });
         }
         setFlags(fmap);
@@ -160,15 +162,21 @@ export function PermissionsManager() {
     );
   };
 
+  const setReadMode = (table: string, column: string, role: AppRole, mode: "mask" | "record") => {
+    const mapKey = `${table}.${column}.${role}`;
+    const current = fields.get(mapKey) ?? { can_read: true, can_write: true };
+    const next = { ...current, read_mode: mode };
+    return save(() => supabase.from("field_permissions").upsert({ tenant_id: tenantId!, table_name: table, column_name: column, role, ...next }, { onConflict: "tenant_id,table_name,column_name,role" }), () => setFields(previous => new Map(previous).set(mapKey, next)));
+  };
+
   if (!tenantId) return null;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Berechtigungsregeln (Vorschau)</CardTitle>
+        <CardTitle>Module und Berechtigungen</CardTitle>
         <CardDescription>
-          Vorbereitung zukünftiger Modul- und Berechtigungsregeln für das aktuelle Büro.
-          Vorschau: Diese Regeln werden noch nicht in allen Funktionen durchgesetzt. Sie sind derzeit kein verlässlicher Zugriffsschutz.
+          Module werden im Arbeitsbereich ein- oder ausgeblendet. Aktions- und Feldregeln gelten zusätzlich zu den bestehenden Büro- und Rollenrechten; Plattformadministratoren bleiben handlungsfähig.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -183,7 +191,7 @@ export function PermissionsManager() {
               <TabsList>
                 <TabsTrigger value="features">Module</TabsTrigger>
                 <TabsTrigger value="actions">Aktionen</TabsTrigger>
-                <TabsTrigger value="fields">Felder (Vorschau)</TabsTrigger>
+                <TabsTrigger value="fields">Felder</TabsTrigger>
               </TabsList>
 
               <TabsContent value="features" className="space-y-3 pt-4">
@@ -235,7 +243,7 @@ export function PermissionsManager() {
               <TabsContent value="fields" className="space-y-3 pt-4">
                 <p className="text-caption text-muted-foreground">
                   Pro Rolle festlegen, ob ein sensibles Feld gelesen oder geschrieben werden darf.
-                  Feldschutz ist noch nicht aktiv. Diese Einstellungen allein verhindern keine Datenzugriffe. Lese-Verbot impliziert Schreib-Verbot.
+                  Bei einem Leseverbot können Sie nur das Feld ausblenden oder den gesamten Datensatz sperren. Ausgeblendete Werte werden serverseitig entfernt. Ein Leseverbot sperrt auch das Schreiben.
                 </p>
                 {FIELD_TARGETS.map((t) => (
                   <div key={`${t.table}.${t.column}`} className="border rounded-md p-3">
@@ -257,6 +265,10 @@ export function PermissionsManager() {
                                 />
                                 Lesen
                               </label>
+                              <select aria-label={`${t.label} · ${role} · Leseverbot`} className="max-w-40 rounded border bg-background text-xs" value={perm.read_mode ?? "mask"} onChange={event => void setReadMode(t.table, t.column, role, event.target.value as "mask" | "record")}>
+                                <option value="mask">Nur Feld ausblenden</option>
+                                <option value="record">Datensatz sperren</option>
+                              </select>
                               <label className="flex items-center gap-1 text-caption">
                                 <Switch
                                   checked={perm.can_write}

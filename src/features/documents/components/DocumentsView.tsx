@@ -1,3 +1,4 @@
+import { useTenantFeatureFlag } from '@/hooks/useTenantFeatureFlag';
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
@@ -66,6 +67,7 @@ const parseAutoArchiveDays = (value: unknown): number | null => {
 };
 
 export function DocumentsView() {
+  const { enabled: lettersEnabled } = useTenantFeatureFlag('module.letters');
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTabParam = searchParams.get('tab');
@@ -253,7 +255,7 @@ export function DocumentsView() {
     setEditFolderId(doc.folder_id || ""); setShowEditDialog(true);
   };
 
-  const handleCreateLetter = () => { setSelectedLetter(undefined); setShowWizard(true); };
+  const handleCreateLetter = () => { if (!lettersEnabled) return; setSelectedLetter(undefined); setShowWizard(true); };
 
   const handleWizardComplete = (config: { occasion: string; recipientName: string; recipientAddress: string; contactId?: string; templateId?: string; senderInfoId?: string; }) => {
     setShowWizard(false);
@@ -320,7 +322,7 @@ export function DocumentsView() {
                 {activeTab === 'documents' ? 'Verwalten Sie Ihre parlamentarischen Dokumente' : activeTab === 'press' ? 'Erstellen und veröffentlichen Sie Pressemitteilungen' : 'Erstellen und verwalten Sie Ihre Abgeordnetenbriefe'}
               </p>
             </div>
-            {activeTab !== 'press' && activeTab !== 'emails' && (
+            {activeTab !== 'press' && activeTab !== 'emails' && (activeTab !== 'letters' || lettersEnabled) && (
               <div className="flex gap-2">
                 {activeTab === 'documents' ? (
                   <>
@@ -389,7 +391,7 @@ export function DocumentsView() {
           {/* Tab Navigation */}
           <div className="mb-6">
             <div className="flex border-b">
-              {(['documents', 'letters', 'emails', 'press'] as const).map(tab => {
+              {(['documents', 'letters', 'emails', 'press'] as const).filter(tab => tab !== 'letters' || lettersEnabled).map(tab => {
                 const icons = { documents: FileText, letters: Mail, emails: Send, press: Newspaper };
                 const labels = { documents: 'Dokumente', letters: 'Briefe', emails: 'E-Mails', press: 'Presse' };
                 const Icon = icons[tab];
@@ -400,7 +402,7 @@ export function DocumentsView() {
                 );
               })}
             </div>
-            {activeTab === 'letters' && (
+            {activeTab === 'letters' && lettersEnabled && (
               <div className="mt-4">
                 <div className="flex border-b">
                   <button onClick={() => setLetterSubTab('active')} className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${letterSubTab === 'active' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Aktive Briefe</button>
@@ -440,7 +442,7 @@ export function DocumentsView() {
         )}
 
         {/* Content */}
-        {activeTab === 'press' ? (
+        {activeTab === 'letters' && !lettersEnabled ? <p role="status">Das Briefmodul ist für dieses Büro ausgeblendet.</p> : activeTab === 'press' ? (
           showPressWizard ? <PressReleaseWizard onComplete={(config) => { setPressDraftConfig(config); setShowPressWizard(false); setSelectedPressReleaseId(null); setShowPressEditor(true); }} onCancel={() => setShowPressWizard(false)} /> :
           showPressEditor ? <PressReleaseEditor pressReleaseId={selectedPressReleaseId} initialDraft={selectedPressReleaseId ? null : pressDraftConfig} onBack={() => { setShowPressEditor(false); setSelectedPressReleaseId(null); setPressDraftConfig(null); }} /> :
           <PressReleasesList onCreateNew={() => { setSelectedPressReleaseId(null); setPressDraftConfig(null); setShowPressWizard(true); setShowPressEditor(false); }} onSelect={(id) => { setPressDraftConfig(null); setSelectedPressReleaseId(id); setShowPressEditor(true); setShowPressWizard(false); }} />
@@ -550,11 +552,11 @@ export function DocumentsView() {
         )}
 
         {/* Letter Wizard */}
-        {showWizard && <LetterWizard onComplete={handleWizardComplete} onCancel={() => setShowWizard(false)} />}
+        {lettersEnabled && showWizard && <LetterWizard onComplete={handleWizardComplete} onCancel={() => setShowWizard(false)} />}
 
         {/* Letter Editor (only for new unsaved letters) */}
         {/* @ts-expect-error LettersView Letter type differs from LetterEditor's Letter type (legacy duplicate) */}
-        <LetterEditor letter={selectedLetter} isOpen={showLetterEditor && !selectedLetter?.id} onClose={() => { setShowLetterEditor(false); setSelectedLetter(undefined); data.fetchLetters(); }} onSave={() => data.fetchLetters()} />
+        <LetterEditor letter={selectedLetter} isOpen={lettersEnabled && showLetterEditor && !selectedLetter?.id} onClose={() => { setShowLetterEditor(false); setSelectedLetter(undefined); data.fetchLetters(); }} onSave={() => data.fetchLetters()} />
 
         <DocumentDialogs
           showEditDialog={dialogState.showEditDialog} setShowEditDialog={setShowEditDialog}

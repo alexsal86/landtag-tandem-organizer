@@ -180,3 +180,9 @@ schedule = "* * * * *"
 
 [functions.ics-validation]
 verify_jwt = true
+
+[functions.test-rss-feed]
+verify_jwt = true
+
+[functions.workflow-dispatcher]
+verify_jwt = true

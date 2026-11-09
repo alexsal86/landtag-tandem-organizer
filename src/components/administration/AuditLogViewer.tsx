@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { collectAuditCsv, type ExportPage } from "./utils/auditExport";
+import { notify } from "@/lib/notify";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { EmptyState, LoadingState } from '@/components/ui-patterns';
+import { EmptyState } from '@/components/ui-patterns';
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +20,9 @@ type AuditLog = { id: string; created_at: string; ip_address: string | null; pay
 type AuditResult = { logs: AuditLog[]; totalCount: number };
 
 export function AuditLogViewer() {
+  const [exportCount, setExportCount] = useState<number | null>(null);
+  const exportController = useRef<AbortController | null>(null);
+  useEffect(() => () => exportController.current?.abort(), []);
   const [offset, setOffset] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [ipFilter, setIpFilter] = useState("");
@@ -27,7 +32,7 @@ export function AuditLogViewer() {
     const timer = setTimeout(() => { setFilters({ search: searchTerm, ip: ipFilter }); setOffset(0); }, 350);
     return () => clearTimeout(timer);
   }, [searchTerm, ipFilter]);
-  useEffect(() => { setOffset(0); }, [currentTenant?.id]);
+  useEffect(() => { setOffset(0); exportController.current?.abort(); }, [currentTenant?.id]);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['audit-logs', offset, filters, currentTenant?.id],
@@ -60,6 +65,33 @@ export function AuditLogViewer() {
     link.download = `audit-logs-${format(new Date(), 'yyyy-MM-dd')}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const exportAll = async () => {
+    if (!currentTenant?.id || exportController.current) return;
+    const controller = new AbortController();
+    exportController.current = controller;
+    setExportCount(0);
+    try {
+      const blob = await collectAuditCsv(async (cursor, signal) => {
+        const { data, error } = await supabase.rpc('export_admin_audit_logs', {
+          _tenant_id: currentTenant.id, _search: filters.search, _ip: filters.ip,
+          _as_of: cursor.asOf, _before_created: cursor.beforeCreated, _before_id: cursor.beforeId,
+        }).abortSignal(signal);
+        if (error) throw error;
+        return data as unknown as ExportPage;
+      }, controller.signal, setExportCount);
+      controller.signal.throwIfAborted();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a'); link.href = url;
+      link.download = `audit-logs-gesamt-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+      link.click(); URL.revokeObjectURL(url);
+      notify.success('Alle gefilterten Protokolle exportiert');
+    } catch {
+      if (!controller.signal.aborted) notify.error('Gesamtexport fehlgeschlagen. Es wurde keine unvollständige Datei heruntergeladen.');
+    } finally {
+      exportController.current = null; setExportCount(null);
+    }
   };
 
   const handlePrevious = () => {
@@ -104,6 +136,11 @@ export function AuditLogViewer() {
             <Download className="h-4 w-4 mr-2" />
             Aktuelle Seite als CSV
           </Button>
+        </div>
+
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <Button onClick={() => void exportAll()} disabled={isError || isLoading || exportCount !== null || !data?.totalCount}>Alle gefilterten Einträge exportieren</Button>
+          {exportCount !== null && <><span role="status">{exportCount} Einträge geladen…</span><Button variant="outline" onClick={() => exportController.current?.abort()}>Export abbrechen</Button></>}
         </div>
 
         {isError ? <div role="alert">Audit-Logs konnten nicht geladen werden. <Button onClick={() => void refetch()}>Erneut versuchen</Button></div> : isLoading ? (

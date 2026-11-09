@@ -76,6 +76,8 @@ serve(withSafeHandler("send-document-email", async (req) => {
     const user_id = tenantAccess.user.id;
     const tenant_id = tenantAccess.tenantId;
 
+    const userReader = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') ?? '', { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } });
+
     // Collect recipients with contact data for personalization
     const allRecipients: Array<{ email: string; contact_data?: any }> = [];
 
@@ -85,16 +87,17 @@ serve(withSafeHandler("send-document-email", async (req) => {
 
     // Get emails from distribution lists with contact data
     if (distribution_list_ids.length > 0) {
-      const { data: listMembers, error: listError } = await supabase
+      const { data: listMembers, error: listError } = await userReader
         .from("distribution_list_members")
-        .select("contact_id, contacts(id, name, email, organization, phone)")
+        .select("contact_id, distribution_lists!inner(tenant_id), contacts:contacts_secured(id, name, email, organization, phone, tenant_id)")
+        .eq("distribution_lists.tenant_id", tenant_id)
         .in("distribution_list_id", distribution_list_ids);
 
       if (listError) {
         console.error("Distribution list error:", listError);
       } else if (listMembers) {
         listMembers.forEach((member: any) => {
-          if (member.contacts?.email) {
+          if (member.contacts?.email && member.contacts.tenant_id === tenant_id) {
             allRecipients.push({
               email: member.contacts.email,
               contact_data: member.contacts,
@@ -106,10 +109,9 @@ serve(withSafeHandler("send-document-email", async (req) => {
 
     // Get contact data
     if (contact_ids.length > 0) {
-      const { data: contacts, error: contactError } = await supabase
-        .from("contacts")
-        .select("id, name, email, organization, phone")
-        .in("id", contact_ids);
+      const { data: contacts, error: contactError } = await userReader
+        .rpc("read_secured_contacts", { _tenant_id: tenant_id, _ids: contact_ids })
+        .select("id, name, email, organization, phone");
 
       if (contactError) {
         console.error("Contacts error:", contactError);

@@ -217,7 +217,9 @@ serve(withSafeHandler("manage-tenant-user", async (req) => {
         }
 
         const password = generatePassword();
-        console.log(`Creating user: ${email} for tenant: ${tenantId}`);
+        const { data: inviteAllowed, error: inviteError } = await supabaseAdmin.rpc('is_tenant_action_allowed', { _user_id: user.id, _tenant_id: tenantId, _action: 'tenant.invite_user' });
+        if (inviteError || !inviteAllowed) throw new HttpError(403, 'Einladen in dieses Büro ist gesperrt');
+
 
         // Create user in auth
         const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({

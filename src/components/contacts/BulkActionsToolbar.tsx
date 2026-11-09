@@ -16,7 +16,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -75,17 +74,12 @@ export function BulkActionsToolbar({
       const tagsToAdd = [...selectedTags];
       if (newTag) tagsToAdd.push(newTag);
 
-      for (const contact of selectedContacts) {
-        const existingTags = contact.tags || [];
-        const updatedTags = [...new Set([...existingTags, ...tagsToAdd])];
-
-        const { error } = await supabase
-          .from('contacts')
-          .update({ tags: updatedTags })
-          .eq('id', contact.id);
-
-        if (error) throw error;
-      }
+      if (!currentTenant?.id) throw new Error('Kein Büro ausgewählt');
+      const { error } = await supabase.rpc('bulk_update_contact_fields', {
+        _tenant_id: currentTenant.id, _ids: selectedContacts.map(contact => contact.id),
+        _operation: 'tags_add', _value: [...new Set(tagsToAdd.map(tag => tag.trim()).filter(Boolean))],
+      });
+      if (error) throw error;
 
       notify.success('Tags hinzugefügt', {
         description: `${selectedContacts.length} Kontakte aktualisiert`
@@ -110,14 +104,12 @@ export function BulkActionsToolbar({
 
     setProcessing(true);
     try {
-      for (const contact of selectedContacts) {
-        const { error } = await supabase
-          .from('contacts')
-          .update({ category: selectedCategory })
-          .eq('id', contact.id);
-
-        if (error) throw error;
-      }
+      if (!currentTenant?.id) throw new Error('Kein Büro ausgewählt');
+      const { error } = await supabase.rpc('bulk_update_contact_fields', {
+        _tenant_id: currentTenant.id, _ids: selectedContacts.map(contact => contact.id),
+        _operation: 'category_set', _value: selectedCategory,
+      });
+      if (error) throw error;
 
       notify.success('Kategorie geändert', {
         description: `${selectedContacts.length} Kontakte aktualisiert`

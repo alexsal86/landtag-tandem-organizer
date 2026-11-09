@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const AUTH_GUARD_PATTERNS = [
+  /requireTenantAccess\s*\(/,
   /requireAuth\s*\(/,
   /auth\.getUser\s*\(/,
   /Authorization/i,

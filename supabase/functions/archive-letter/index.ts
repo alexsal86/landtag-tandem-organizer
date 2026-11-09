@@ -21,7 +21,8 @@ serve(withSafeHandler("archive-letter", async (req) => {
   if (!auth) return unauthorizedResponse();
 
   try {
-    const { letterId, userId } = await req.json();
+    const { letterId } = await req.json();
+    const userId = auth.userId;
     console.log('Processing letter archive for ID:', letterId, 'requested by:', userId);
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -47,7 +48,19 @@ serve(withSafeHandler("archive-letter", async (req) => {
       );
     }
 
-    console.log('Letter fetched:', letter.title);
+    const { data: allowed, error: permissionError } = await supabase.rpc('is_tenant_action_allowed', {
+      _user_id: auth.userId, _tenant_id: letter.tenant_id, _action: 'letter.send',
+    });
+    if (permissionError || !allowed) return new Response(JSON.stringify({ error: 'Keine Berechtigung für diesen Brief' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+
+    const reader = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') ?? '', { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } });
+    const [visible, contentRule, htmlRule] = await Promise.all([
+      reader.rpc('read_secured_letters', { _tenant_id: letter.tenant_id, _ids: [letter.id] }).select('id').maybeSingle(),
+      reader.rpc('field_read_rule', { _tenant: letter.tenant_id, _table: 'letters', _column: 'content' }),
+      reader.rpc('field_read_rule', { _tenant: letter.tenant_id, _table: 'letters', _column: 'content_html' }),
+    ]);
+    if (visible.error || !visible.data || contentRule.error || htmlRule.error || contentRule.data !== 'allow' || htmlRule.data !== 'allow') return new Response(JSON.stringify({ error: 'Briefinhalt ist nicht freigegeben' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     // Fetch attachments separately
     const { data: attachments } = await supabase
@@ -477,7 +490,7 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
           infoYPos -= mmToPoints(4);
         }
         break;
-      case 'date':
+      case 'date': {
         const date = new Date();
         const formatDate = (date: Date, format: string) => {
           switch (format) {
@@ -506,7 +519,8 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
           infoYPos -= mmToPoints(4);
         }
         break;
-      case 'reference':
+      }
+      case 'reference': {
         const refText = `${informationBlock.block_data?.reference_prefix || ''}${letter.reference_number || informationBlock.block_data?.reference_pattern || ''}`;
         page.drawText(refText, {
           x: infoBlockLeft,
@@ -517,6 +531,7 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
         });
         infoYPos -= mmToPoints(4);
         break;
+      }
       case 'custom':
         if (informationBlock.block_data?.custom_content || informationBlock.block_data?.custom_lines) {
           const customLines = Array.isArray(informationBlock.block_data?.custom_lines)
@@ -560,7 +575,6 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
           font: helveticaFont,
           color: rgb(0, 0, 0),
         });
-        infoYPos -= mmToPoints(4);
       }
     }
   }

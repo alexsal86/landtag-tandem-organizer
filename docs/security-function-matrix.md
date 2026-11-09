@@ -15,6 +15,8 @@ Diese Matrix klassifiziert alle Supabase Edge Functions nach Sicherheitsmodell.
 
 | Function                          | verify_jwt | Kategorie          | Zusätzlicher Schutz / Hinweis                                                                                                                                                                             |
 | --------------------------------- | ---------: | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| generate-preparation-suggestions | true | authenticated | JWT und requireAuth; bestehende Funktion, weitergehende Härtung offen |
+| run-workflow-cron | false | internal-scheduled | Service-Role-Prüfung vor Konfigurationszugriff; sicherer Handler und originabhängiges CORS |
 | fetch-karlsruhe-districts         |      false | public-readonly    | Externe Datenabfrage, keine Benutzerkontext-Abhängigkeit                                                                                                                                                  |
 | auto-archive-decisions            |      false | internal-scheduled | Nur als interner Job betreiben                                                                                                                                                                            |
 | send-poll-invitation              |       true | authenticated      | JWT erforderlich                                                                                                                                                                                          |
@@ -67,3 +69,7 @@ Diese Matrix klassifiziert alle Supabase Edge Functions nach Sicherheitsmodell.
 4. `internal-scheduled` Endpunkte dürfen nicht als allgemeine Browser-API genutzt werden.
 
 | ics-validation | true | authenticated | Aktive Büro-Adminrolle oder Plattformadministration vor Feed- und Terminzugriff erforderlich. |
+
+| test-rss-feed | true | authenticated | Aktive Büro-Adminrolle; explizite tenant-Prüfung, öffentliche DNS-Adressen, Weiterleitungs-, Zeit- und Größenlimits. |
+
+| workflow-dispatcher | true | authenticated | Service-Role für Ausführung; angemeldete Büro-Admins mit Aktionsrecht dürfen explizite Dry-Runs ausführen. |

@@ -11,6 +11,7 @@ Von 268 Tabellen haben 29 ein registriertes Szenario. 83 sind als Ausbau offen, 
 | ID | Titel | Tabellen |
 |---|---|---|
 | `access-boundaries` | Zugriffsschutz (Bürogrenzen und Entscheiderrolle) | appointment_requests |
+| `admin-controls` | Adminregeln: Feldschutz, Aktionen, Export, Rücknahme und Feeds | Keine (reine Regeln) |
 | `appointment-briefing-lifecycle` | Briefing-Lifecycle (vergeben → Aufgabe → vorlegen → freigeben) | appointments, tasks |
 | `appointment-lifecycle` | Termin-Lifecycle (Kalender + Briefing + Feedback) | appointments, appointment_preparations, appointment_feedback |
 | `appointment-request-lifecycle` | Terminanfragen-Lifecycle (Eingang → Sperre → Entscheidung → Termin) | appointment_requests, appointments |

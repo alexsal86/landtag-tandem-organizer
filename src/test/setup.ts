@@ -16,7 +16,7 @@ vi.mock("@/hooks/useAuditLog", () => ({
   AuditActions: { LOGOUT: "LOGOUT" },
 }));
 
-Object.defineProperty(window, "matchMedia", {
+if (typeof window !== "undefined") Object.defineProperty(window, "matchMedia", {
   writable: true,
   value: (query: string) => ({
     matches: false,
@@ -45,6 +45,6 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
-  localStorage.clear();
+  if (typeof localStorage !== "undefined") localStorage.clear();
   vi.clearAllMocks();
 });

@@ -273,6 +273,13 @@ serve(withSafeHandler("run-automation-rule", async (req) => {
       }
     }
 
+    if (!isInternalCall) {
+      const { data: allowed, error } = await supabaseAdmin.rpc("is_tenant_action_allowed", {
+        _user_id: user!.id, _tenant_id: rule.tenant_id, _action: "workflow.execute_manual",
+      });
+      if (error || !allowed) return new Response(JSON.stringify({ error: "Manuelle Ausführung gesperrt" }), { status: 403, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+    }
+
     // Kill-Switch: check if tenant has paused all automations
     if (!dryRun) {
       const { data: tenantRow } = await supabaseAdmin

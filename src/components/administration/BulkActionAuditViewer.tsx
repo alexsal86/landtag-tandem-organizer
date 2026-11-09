@@ -6,8 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/hooks/use-toast";
-import { History, Loader2, Undo2 } from "lucide-react";
+import { History, Undo2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { notify } from "@/lib/notify";
@@ -20,10 +19,12 @@ interface AuditRow {
   affected_count: number | null;
   created_at: string;
   undone_at: string | null;
+  undo_payload: unknown;
 }
 
 export function BulkActionAuditViewer() {
   const { currentTenant } = useTenant();
+  const [undoing, setUndoing] = useState<string | null>(null);
   const [rows, setRows] = useState<AuditRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,7 +33,7 @@ export function BulkActionAuditViewer() {
     setLoading(true);
     const { data, error } = await supabase
       .from("bulk_action_audit")
-      .select("id, actor_id, action, payload, affected_count, created_at, undone_at")
+      .select("id, actor_id, action, payload, affected_count, created_at, undone_at, undo_payload")
       .eq("tenant_id", currentTenant.id)
       .gte("created_at", new Date(Date.now() - 30 * 86400000).toISOString())
       .order("created_at", { ascending: false })
@@ -44,9 +45,22 @@ export function BulkActionAuditViewer() {
       return;
     }
     setRows((data ?? []) as AuditRow[]);
-  }, [currentTenant?.id, toast]);
+  }, [currentTenant?.id]);
 
   useEffect(() => { void load(); }, [load]);
+
+  const undo = async (row: AuditRow) => {
+    if (undoing || !confirm(`${row.affected_count ?? 0} Kontaktänderungen rückgängig machen?`)) return;
+    setUndoing(row.id);
+    try {
+      const { error } = await supabase.rpc("undo_contact_bulk_action", { _audit_id: row.id });
+      if (error) throw error;
+      notify.success("Sammelaktion rückgängig gemacht");
+      await load();
+    } catch {
+      notify.error("Rücknahme nicht möglich", { description: "Die Berechtigung fehlt, die Aktion wurde bereits zurückgenommen oder betroffene Kontakte wurden inzwischen verändert." });
+    } finally { setUndoing(null); }
+  };
 
   return (
     <Card>
@@ -56,7 +70,7 @@ export function BulkActionAuditViewer() {
           Sammelaktionen-Verlauf
         </CardTitle>
         <CardDescription>
-          Audit-Log von Sammelaktionen der letzten 30 Tage (maximal 200 Einträge). Rückgängig machen ist hier noch nicht verfügbar.
+          Audit-Log von Sammelaktionen der letzten 30 Tage (maximal 200 Einträge). Kontakt-Tags und -Kategorien können mit gespeicherten Rücknahmedaten rückgängig gemacht werden.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -81,7 +95,7 @@ export function BulkActionAuditViewer() {
                       {formatDistanceToNow(new Date(r.created_at), { addSuffix: true, locale: de })}
                     </div>
                   </div>
-
+                  {!r.undone_at && r.action === "contacts.fields_updated" && r.undo_payload != null && <Button size="sm" variant="outline" disabled={undoing !== null} onClick={() => void undo(r)}><Undo2 className="mr-2 h-4 w-4" />{undoing === r.id ? "Wird zurückgenommen…" : "Rückgängig"}</Button>}
                 </div>
               ))}
             </div>

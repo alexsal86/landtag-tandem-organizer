@@ -48,6 +48,11 @@ try{
  await page.getByText('Audit-Logs konnten nicht geladen werden.',{exact:false}).waitFor({timeout:15000});
  assert.equal(await page.getByText('Keine Logs gefunden',{exact:true}).count(),0);
  failAudit=false;
+ await page.goto('/administration?adminSection=security&adminSubSection=permissions');
+ await page.getByRole('tab', { name: 'Felder', exact: true }).click();
+ await page.getByRole('combobox').first().waitFor();
+ assert.ok(await page.getByRole('option', { name: 'Nur Feld ausblenden', exact: true }).count());
+ assert.ok(await page.getByRole('option', { name: 'Datensatz sperren', exact: true }).count());
  await page.setViewportSize({width:390,height:844});
  await page.goto('/administration?adminSection=security&adminSubSection=general');
  await page.getByRole('button',{name:'System & Sicherheit · Allgemein'}).click();

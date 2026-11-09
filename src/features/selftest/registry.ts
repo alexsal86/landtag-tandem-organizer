@@ -1,3 +1,4 @@
+import { adminControlsScenario } from './scenarios/admin-controls';
 import type { TestScenario } from "./types";
 import { meetingLifecycleScenario } from "./scenarios/meeting-lifecycle";
 import { taskLifecycleScenario } from "./scenarios/task-lifecycle";
@@ -18,6 +19,7 @@ import { accessBoundariesScenario } from "./scenarios/access-boundaries";
 import { jourFixePlatformIntegrationScenario } from './scenarios/jour-fixe-platform-integration';
 
 export const SELFTEST_SCENARIOS: TestScenario[] = [
+  adminControlsScenario,
   workflowRulesScenario,
   accessBoundariesScenario,
   meetingLifecycleScenario,

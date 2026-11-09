@@ -6170,6 +6170,7 @@ export type Database = {
       }
       field_permissions: {
         Row: {
+          read_mode: "mask" | "record"
           can_read: boolean
           can_write: boolean
           column_name: string
@@ -6182,6 +6183,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          read_mode?: "mask" | "record"
           can_read?: boolean
           can_write?: boolean
           column_name: string
@@ -6194,6 +6196,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          read_mode?: "mask" | "record"
           can_read?: boolean
           can_write?: boolean
           column_name?: string
@@ -13541,6 +13544,16 @@ export type Database = {
       }
     }
     Functions: {
+      field_read_rule: { Args: { _tenant: string; _table: string; _column: string }; Returns: string }
+      read_secured_contacts: { Args: { _tenant_id?: string; _ids?: string[] }; Returns: Database["public"]["Tables"]["contacts"]["Row"][] }
+      read_secured_letters: { Args: { _tenant_id?: string; _ids?: string[] }; Returns: Database["public"]["Tables"]["letters"]["Row"][] }
+      is_tenant_action_allowed: { Args: { _user_id: string; _tenant_id: string; _action: string }; Returns: boolean }
+
+      bulk_update_contact_fields: { Args: { _tenant_id: string; _ids: string[]; _operation: string; _value: Json }; Returns: number }
+      undo_contact_bulk_action: { Args: { _audit_id: string }; Returns: number }
+
+      export_admin_audit_logs: { Args: { _tenant_id: string; _search?: string; _ip?: string; _as_of?: string; _before_created?: string; _before_id?: string }; Returns: Json }
+
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined

@@ -3,10 +3,7 @@
 // prüft cron_expression gegen "jetzt" und delegiert an workflow-dispatcher.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, requireServiceRole, withSafeHandler } from "../_shared/security.ts";
 
 // Minimaler 5-Feld Cron-Matcher (m h dom mon dow). Stützt: *, */n, n, n,m, n-m
 function matchField(expr: string, value: number, min: number, max: number): boolean {
@@ -46,8 +43,11 @@ function cronMatches(expr: string, d: Date): boolean {
   );
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withSafeHandler("run-workflow-cron", async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  if (!requireServiceRole(req)) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
     .not("cron_expression", "is", null);
 
   if (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: "Workflow-Konfiguration konnte nicht geladen werden" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
@@ -111,4 +111,4 @@ Deno.serve(async (req) => {
   return new Response(JSON.stringify({ checked: defs?.length ?? 0, dispatched }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
-});
+}));

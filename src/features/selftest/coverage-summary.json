@@ -23,6 +23,18 @@
       "registered": true
     },
     {
+      "id": "admin-controls",
+      "title": "Adminregeln: Feldschutz, Aktionen, Export, Rücknahme und Feeds",
+      "touches": [],
+      "features": [
+        "permissions",
+        "contacts",
+        "audit"
+      ],
+      "writes": [],
+      "registered": true
+    },
+    {
       "id": "appointment-briefing-lifecycle",
       "title": "Briefing-Lifecycle (vergeben → Aufgabe → vorlegen → freigeben)",
       "touches": [

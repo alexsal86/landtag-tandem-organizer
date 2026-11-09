@@ -2,12 +2,9 @@
 // Liest aktive workflow_definitions zu einem Trigger, prüft Bedingungen
 // und führt Aktionen aus. Erzeugt workflow_runs + workflow_action_log.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { requireServiceRole, forbiddenResponse } from "../_shared/security.ts";
+import { requireServiceRole, requireAuth, forbiddenResponse, withSafeHandler, getCorsHeaders } from "../_shared/security.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+
 
 interface DispatchBody {
   trigger_type: string;
@@ -50,11 +47,14 @@ function renderTemplate(tpl: string, payload: Record<string, unknown>): string {
   });
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withSafeHandler("workflow-dispatcher", async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
 
-  if (!requireServiceRole(req)) return forbiddenResponse("Service role required");
+  const internal = requireServiceRole(req);
+  const actor = internal ? null : await requireAuth(req);
+  if (!internal && !actor) return forbiddenResponse("Anmeldung erforderlich");
   try {
     const body = (await req.json()) as DispatchBody;
     if (!body.trigger_type || !body.tenant_id) {
@@ -67,6 +67,14 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    if (!internal) {
+      const [{ data: admin }, { data: allowed, error }] = await Promise.all([
+        supabase.rpc("is_tenant_admin", { _user_id: actor!.userId, _tenant_id: body.tenant_id }),
+        supabase.rpc("is_tenant_action_allowed", { _user_id: actor!.userId, _tenant_id: body.tenant_id, _action: "workflow.execute_manual" }),
+      ]);
+      if (error || !admin || !allowed || body.dry_run !== true || !body.workflow_id) return forbiddenResponse("Nur autorisierte Workflow-Diagnose erlaubt");
+    }
 
     // 1) Passende Workflows holen
     let q = supabase.from("workflow_definitions")
@@ -227,8 +235,8 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     console.error("workflow-dispatcher error", e);
-    return new Response(JSON.stringify({ error: (e as Error).message }), {
+    return new Response(JSON.stringify({ error: "Workflow konnte nicht verarbeitet werden" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}));

@@ -35,7 +35,7 @@ for (const row of matrixRows) {
   const cols = row.split('|').map((c) => c.trim()).filter(Boolean);
   if (cols.length < 4) continue;
   const [fnName, verifyJwt] = cols;
-  if (fnName === 'Function') continue;
+  if (fnName === 'Function' || /^[-:]+$/.test(fnName)) continue;
 
   if (verifyJwt !== 'true' && verifyJwt !== 'false') {
     throw new Error(`Invalid verify_jwt value in matrix for ${fnName}: ${verifyJwt}`);

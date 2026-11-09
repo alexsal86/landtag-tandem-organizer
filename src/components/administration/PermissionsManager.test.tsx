@@ -32,10 +32,11 @@ afterEach(cleanup);
 const loaded = () => waitFor(() => expect(screen.queryByText("Berechtigungen werden geladen…")).not.toBeInTheDocument());
 
 describe("permission persistence", () => {
-  it("marks the rules as a preview rather than promising effective access control", async () => {
+  it("offers field masking and whole-record blocking", async () => {
     render(<PermissionsManager />);
     await loaded();
-    expect(screen.getByText(/kein verlässlicher Zugriffsschutz/)).toBeInTheDocument();
+    expect(screen.getAllByRole("option", { name: "Nur Feld ausblenden" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("option", { name: "Datensatz sperren" }).length).toBeGreaterThan(0);
   });
   it("shows a load failure instead of editable default permissions", async () => {
     mock.readError = true;

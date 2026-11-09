@@ -1,3 +1,4 @@
+import { TenantModuleGate } from "@/components/shared/TenantModuleGate";
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -23,5 +24,5 @@ export function ProtectedRoute() {
     return <Navigate to={to} replace />;
   }
 
-  return <Outlet />;
+  return <TenantModuleGate><Outlet /></TenantModuleGate>;
 }
