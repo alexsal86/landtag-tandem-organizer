@@ -60,3 +60,21 @@ export function computeCropRect(srcW: number, srcH: number, ratio: number, focus
 export function effectiveCaption(channelCaption: string | null | undefined, masterText: string): string {
   return channelCaption && channelCaption.trim() ? channelCaption : masterText;
 }
+
+/** Only topic IDs and the explicitly selected local time are transferred by drag and drop. */
+export const PLANNER_TOPIC_MIME = "application/x-redaktion-topic";
+
+export function parseTopicDrop(raw: string, day: Date): { topicId: string; scheduledFor: Date } | null {
+  try {
+    const payload: unknown = JSON.parse(raw);
+    if (!payload || typeof payload !== "object" || !("topicId" in payload) || !("time" in payload)) return null;
+    if (typeof payload.topicId !== "string" || !payload.topicId.trim() || typeof payload.time !== "string" || !/^([01]\d|2[0-3]):[0-5]\d$/.test(payload.time)) return null;
+    const [hours, minutes] = payload.time.split(":").map(Number);
+    const scheduledFor = new Date(day);
+    scheduledFor.setHours(hours, minutes, 0, 0);
+    if (Number.isNaN(scheduledFor.getTime())) return null;
+    return { topicId: payload.topicId, scheduledFor };
+  } catch {
+    return null;
+  }
+}

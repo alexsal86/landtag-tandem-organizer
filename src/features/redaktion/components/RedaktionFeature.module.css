@@ -1,0 +1,15 @@
+.workspace { container-type: inline-size; }
+.layout { display: grid; grid-template-areas: "topics" "planner"; gap: 16px; }
+.sidebar { grid-area: topics; min-width: 0; overflow: hidden; }
+.planner { grid-area: planner; min-width: 0; }
+.topicList { max-height: 340px; overflow-y: auto; }
+.layout[data-open="false"] { gap: 0; }
+@container (min-width: 1000px) {
+  .layout { grid-template-areas: "topics planner"; grid-template-columns: 300px minmax(0, 1fr); transition: grid-template-columns 200ms ease, gap 200ms ease; align-items: start; }
+  .layout[data-side="right"] { grid-template-areas: "planner topics"; grid-template-columns: minmax(0, 1fr) 300px; }
+  .layout[data-open="false"] { grid-template-columns: 0 minmax(0, 1fr); }
+  .layout[data-side="right"][data-open="false"] { grid-template-columns: minmax(0, 1fr) 0; }
+  .sidebar { position: sticky; top: 12px; }
+  .topicList { max-height: calc(100vh - 220px); }
+}
+@media (prefers-reduced-motion: reduce) { .layout { transition: none; } }

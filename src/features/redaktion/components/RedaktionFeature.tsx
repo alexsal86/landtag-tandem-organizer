@@ -1,62 +1,41 @@
 import { useState } from "react";
-import { Lightbulb, X } from "lucide-react";
+import { Lightbulb, PanelLeft, PanelRight, X } from "lucide-react";
 import { PlannerBoard } from "./PlannerBoard";
 import { Themenspeicher } from "./Themenspeicher";
 import { useRedaktionSpecialDays } from "@/features/redaktion/hooks/useRedaktionSpecialDays";
 import { Button } from "@/components/ui/button";
-import { debugConsole } from "@/utils/debugConsole";
+import styles from "./RedaktionFeature.module.css";
 
 export function RedaktionFeature() {
-  debugConsole.log("[RedaktionFeature] mounted");
   const { data: specialDays = [] } = useRedaktionSpecialDays();
-  const [isThemenspeicherOpen, setIsThemenspeicherOpen] = useState(false);
+  const [isThemenspeicherOpen, setIsThemenspeicherOpen] = useState(true);
+  const [dockSide, setDockSide] = useState<"left" | "right">("left");
 
   return (
-    <div className="p-4 pb-8">
-      {!isThemenspeicherOpen && (
-        <Button
-          type="button"
-          variant="outline"
-          className="fixed right-0 top-1/2 z-30 h-auto -translate-y-1/2 rounded-l-md rounded-r-none border-r-0 px-2 py-3 shadow-md"
-          onClick={() => setIsThemenspeicherOpen(true)}
-        >
-          <span className="flex flex-col items-center gap-2">
-            <Lightbulb className="h-8 w-8" />
-            <span className="[writing-mode:vertical-rl] rotate-180 text-xs font-medium tracking-wide">
-              Themenspeicher
-            </span>
-          </span>
+    <div className={`${styles.workspace} p-4 pb-8`}>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <Button type="button" variant={isThemenspeicherOpen ? "secondary" : "outline"} aria-expanded={isThemenspeicherOpen} aria-controls="redaktion-topics" onClick={() => setIsThemenspeicherOpen((open) => !open)}>
+          <Lightbulb className="mr-2 h-4 w-4" />Themenspeicher
         </Button>
-      )}
-      <div className="flex gap-4">
-        {/* Main content */}
-        <div className="min-w-0 flex-1">
-          <PlannerBoard specialDays={specialDays} />
-        </div>
-
-        {/* Themenspeicher side panel */}
-        {isThemenspeicherOpen && (
-          <div className="w-[400px] shrink-0 rounded-lg border bg-card shadow-sm">
-            <div className="flex items-center justify-between border-b px-4 py-3">
-              <h3 className="flex items-center gap-2 text-sm font-semibold">
-                <Lightbulb className="h-4 w-4" />
-                Themenspeicher
-              </h3>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => setIsThemenspeicherOpen(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
+        <span className="text-xs text-muted-foreground">Ideen sammeln und direkt in den Kalender ziehen.</span>
+      </div>
+      <div className={styles.layout} data-side={dockSide} data-open={isThemenspeicherOpen}>
+        <aside id="redaktion-topics" aria-label="Themenspeicher" className={styles.sidebar} inert={!isThemenspeicherOpen}>
+          {isThemenspeicherOpen && (
+            <div className="rounded-lg border bg-card shadow-sm">
+              <div className="flex items-center justify-between gap-2 border-b px-3 py-2">
+                <span className="text-xs font-semibold text-muted-foreground">Andocken</span>
+                <div className="flex items-center gap-1">
+                  <Button type="button" variant={dockSide === "left" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" aria-label="Links andocken" aria-pressed={dockSide === "left"} onClick={() => setDockSide("left")}><PanelLeft className="h-4 w-4" /></Button>
+                  <Button type="button" variant={dockSide === "right" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" aria-label="Rechts andocken" aria-pressed={dockSide === "right"} onClick={() => setDockSide("right")}><PanelRight className="h-4 w-4" /></Button>
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8" aria-label="Themenspeicher schließen" onClick={() => setIsThemenspeicherOpen(false)}><X className="h-4 w-4" /></Button>
+                </div>
+              </div>
+              <div className={styles.topicList}><Themenspeicher compact /></div>
             </div>
-            <div className="overflow-y-auto p-4" style={{ maxHeight: "calc(100vh - 200px)" }}>
-              <Themenspeicher />
-            </div>
-          </div>
-        )}
+          )}
+        </aside>
+        <div className={styles.planner}><PlannerBoard specialDays={specialDays} /></div>
       </div>
     </div>
   );

@@ -2,7 +2,7 @@ import { getAdministrationAccess } from "@/components/administration/access";
 import { canTransitionStatus } from "@/components/letters/types";
 import { canDecide } from "@/features/appointment-requests/logic";
 import { isOnResubmission, MINISTRY_RESPONSE_DAYS, withAutoDeadline, type TriageItem } from "@/features/cases/items/ball";
-import { computeCropRect, isCrowdedDay, rescheduleToDay } from "@/features/redaktion/utils/plannerRules";
+import { computeCropRect, isCrowdedDay, parseTopicDrop, rescheduleToDay } from "@/features/redaktion/utils/plannerRules";
 import type { TestScenario } from "../types";
 
 export const workflowRulesScenario: TestScenario = {
@@ -67,7 +67,12 @@ export const workflowRulesScenario: TestScenario = {
         const moved = rescheduleToDay(new Date(2026, 10, 3, 14, 30).toISOString(), new Date(2026, 10, 9));
         const fresh = rescheduleToDay(null, new Date(2026, 10, 9));
         const crop = computeCropRect(2000, 1000, 4 / 5);
+        const topicDrop = parseTopicDrop(JSON.stringify({ topicId: "idea-one", time: "10:00" }), new Date(2026, 10, 11));
+        const customDrop = parseTopicDrop(JSON.stringify({ topicId: "idea-one", time: "14:30" }), new Date(2026, 10, 11));
         const checks = {
+          topicDrop: topicDrop?.topicId === "idea-one" && topicDrop.scheduledFor.getDate() === 11 && topicDrop.scheduledFor.getHours() === 10,
+          customDrop: customDrop?.scheduledFor.getHours() === 14 && customDrop.scheduledFor.getMinutes() === 30,
+          invalidDrop: parseTopicDrop('{"topicId":"idea-one","time":"25:00"}', new Date()) === null && parseTopicDrop("invalid", new Date()) === null,
           keepsTime: moved.getDate() === 9 && moved.getHours() === 14 && moved.getMinutes() === 30,
           defaultTen: fresh.getHours() === 10,
           crowded: !isCrowdedDay(2) && isCrowdedDay(3),

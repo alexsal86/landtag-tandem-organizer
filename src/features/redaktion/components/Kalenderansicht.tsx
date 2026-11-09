@@ -50,9 +50,10 @@ interface Props {
   onUpdateNote: (id: string, patch: Partial<Pick<PlannerNote, "content" | "color" | "visible_to_all">>) => Promise<void>;
   onDeleteNote: (id: string) => Promise<void>;
   headerActions?: ReactNode;
+  onDropTopic?: (topicId: string, scheduledFor: Date) => void;
 }
 
-export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateAtSlot, specialDays, notes, onCreateNote, onUpdateNote, onDeleteNote, headerActions }: Props) {
+export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateAtSlot, specialDays, notes, onCreateNote, onUpdateNote, onDeleteNote, headerActions, onDropTopic }: Props) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"week" | "month">("week");
   const [inlineScheduleDates, setInlineScheduleDates] = useState<Record<string, string>>({});
@@ -122,6 +123,7 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateA
 
       {/* Calendar Grid */}
       <PlannerCalendarGrid
+        onDropTopic={onDropTopic}
         view={view}
         currentDate={currentDate}
         items={items}

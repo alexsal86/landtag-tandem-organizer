@@ -71,6 +71,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   const [createAppointmentId, setCreateAppointmentId] = useState<string | null>(null);
   const [isCreatingDraft, setIsCreatingDraft] = useState(false);
   const skipCreateFocusRestore = useRef(false);
+  const pendingTopicDrops = useRef(new Set<string>());
 
   const editingItem = useMemo(
     () => items.find((item) => item.id === editingItemId) || null,
@@ -205,6 +206,42 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
     }
   };
 
+  const handleTopicDrop = async (topicId: string, scheduledFor: Date) => {
+    // Resolve metadata from this tenant's loaded topics, never from the drag payload.
+    const topic = topics.find((entry) => entry.id === topicId);
+    if (!topic) { notify.error("Thema nicht verfügbar. Bitte den Themenspeicher neu öffnen."); return; }
+    const scheduledIso = scheduledFor.toISOString();
+    const dropKey = `${topicId}:${scheduledIso}`;
+    if (pendingTopicDrops.current.has(dropKey)) return;
+    if (items.some((item) => item.topic_backlog_id === topicId && item.scheduled_for && new Date(item.scheduled_for).getTime() === scheduledFor.getTime())) {
+      notify.error("Dieses Thema ist zu diesem Zeitpunkt bereits eingeplant.");
+      return;
+    }
+    pendingTopicDrops.current.add(dropKey);
+    try {
+      const created = await createItem({
+        topic_backlog_id: topic.id,
+        scheduled_for: scheduledIso,
+        workflow_status: "ideas",
+        approval_state: "draft",
+        approval_required: true,
+        hook: topic.short_description || topic.topic,
+        core_message: topic.topic,
+        notes: `Aus Themenspeicher übernommen (${topic.topic})`,
+        responsible_user_id: topic.owner_id,
+        campaign_id: topic.campaign_id,
+        content_pillar: topic.content_pillar,
+        asset_requirements: topic.open_production_needs || [],
+      });
+      if (!created?.id) throw new Error("topic-drop-create-failed");
+      notify.success(`Eingeplant am ${format(scheduledFor, "dd.MM.yyyy 'um' HH:mm")}`);
+    } catch {
+      notify.error("Thema konnte nicht eingeplant werden. Bitte erneut versuchen.");
+    } finally {
+      pendingTopicDrops.current.delete(dropKey);
+    }
+  };
+
   const handleDeleteItem = useCallback(async () => {
     if (!deleteItemId) return;
 
@@ -280,6 +317,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
       <Card className="min-w-0 w-full flex-1">
       <CardContent className="pt-6">
         <Kalenderansicht
+          onDropTopic={(topicId, date) => { void handleTopicDrop(topicId, date); }}
           items={filteredItems}
           onUpdateSchedule={handleCalendarScheduleUpdate}
           onEditItem={(itemId) => {

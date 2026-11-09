@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { Lightbulb, Pencil, PlusCircle, Trash2, TriangleAlert } from "lucide-react";
+import { GripVertical, Lightbulb, Pencil, PlusCircle, Trash2, TriangleAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -17,6 +17,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSocialCampaigns } from "@/features/redaktion/hooks/useSocialCampaigns";
 import { notify } from "@/lib/notify";
+
+import { PLANNER_TOPIC_MIME } from "@/features/redaktion/utils/plannerRules";
 
 interface TemplateDefinition {
   key: string;
@@ -43,16 +45,18 @@ const STATUS_META: Record<TopicEditorialStatus, { label: string; variant: "secon
 };
 
 interface Props {
+  compact?: boolean;
   onContentCreated?: () => void;
 }
 
-export function Themenspeicher({ onContentCreated }: Props) {
+export function Themenspeicher({ onContentCreated, compact = false }: Props) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const profileId = useCurrentProfileId();
   const { createTopic: createBacklogTopic, topics, loading, channels, loadTopics, updateTopic, deleteTopic } = useTopicBacklog();
   const { campaigns } = useSocialCampaigns();
 
+  const [dropTime, setDropTime] = useState("10:00");
   const [selectedTopic, setSelectedTopic] = useState<TopicBacklogEntry | null>(null);
   const [isCreateTopicDialogOpen, setIsCreateTopicDialogOpen] = useState(false);
   const [editingTopic, setEditingTopic] = useState<TopicBacklogEntry | null>(null);
@@ -283,8 +287,8 @@ export function Themenspeicher({ onContentCreated }: Props) {
   };
 
   return (
-    <section className="rounded-lg border bg-card p-4 space-y-3">
-      <div className="flex items-center gap-2">
+    <section className={cn("bg-card p-3 space-y-3", !compact && "rounded-lg border")}>
+      <div className="flex flex-wrap items-center gap-2">
         <Lightbulb className="h-4 w-4 text-muted-foreground" />
         <h3 className="text-sm font-semibold text-foreground">Themenspeicher</h3>
         <Button size="sm" variant="outline" className="ml-auto" onClick={() => { resetTopicForm(); setIsCreateTopicDialogOpen(true); }}>
@@ -292,7 +296,14 @@ export function Themenspeicher({ onContentCreated }: Props) {
           Neues Thema
         </Button>
       </div>
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="rounded-lg border border-dashed bg-primary/5 p-3 space-y-2">
+        <p className="text-xs text-muted-foreground">Ziehe eine Themenkarte auf den gewünschten Kalendertag. Die Idee bleibt erhalten und wird mit dem Entwurf verknüpft.</p>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="topic-drop-time" className="text-xs">Einplanen um</Label>
+          <Input id="topic-drop-time" type="time" value={dropTime} onChange={(event) => setDropTime(event.target.value)} className="h-8 w-28" required />
+        </div>
+      </div>
+      <div className={cn("grid gap-2", !compact && "sm:grid-cols-3")}>
         <Select value={campaignFilter} onValueChange={setCampaignFilter}>
           <SelectTrigger><SelectValue placeholder="Kampagne" /></SelectTrigger>
           <SelectContent>
@@ -345,12 +356,23 @@ export function Themenspeicher({ onContentCreated }: Props) {
             .map((topic) => {
             const statusMeta = STATUS_META[topic.status] ?? STATUS_META.idea;
             return (
-              <div key={topic.id} className="group rounded-md border p-3 pr-14 space-y-3 relative">
+              <div
+                key={topic.id}
+                draggable={/^([01]\d|2[0-3]):[0-5]\d$/.test(dropTime)}
+                onDragStart={(event) => {
+                  if ((event.target as HTMLElement).closest("button")) { event.preventDefault(); return; }
+                  event.dataTransfer.setData(PLANNER_TOPIC_MIME, JSON.stringify({ topicId: topic.id, time: dropTime }));
+                  event.dataTransfer.effectAllowed = "copy";
+                }}
+                className="group cursor-grab active:cursor-grabbing rounded-md border p-3 pr-14 space-y-3 relative hover:border-primary/50"
+                title={`Auf einen Kalendertag ziehen, um ${dropTime} einzuplanen`}
+              >
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-medium">{topic.topic}</p>
+                      <p className="flex items-center gap-1 text-sm font-medium"><GripVertical className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />{topic.topic}</p>
                       <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
+                      {topic.linked_content_count > 0 && <Badge variant="outline">{topic.linked_content_count} Beiträge</Badge>}
                       {topic.campaign_name && <Badge variant="outline">{topic.campaign_name}</Badge>}
                       {topic.content_pillar && <Badge variant="secondary">{topic.content_pillar}</Badge>}
                     </div>
@@ -359,7 +381,7 @@ export function Themenspeicher({ onContentCreated }: Props) {
                 </div>
                 <div className={cn(
                   "absolute right-2 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1 transition-opacity duration-150",
-                  "opacity-0 pointer-events-none group-hover:opacity-100 group-focus-within:opacity-100 group-hover:pointer-events-auto group-focus-within:pointer-events-auto",
+                  compact ? "opacity-100" : "opacity-0 pointer-events-none group-hover:opacity-100 group-focus-within:opacity-100 group-hover:pointer-events-auto group-focus-within:pointer-events-auto",
                 )}>
                   <div className="relative group/icon">
                     <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setEditingTopic(topic); }}>

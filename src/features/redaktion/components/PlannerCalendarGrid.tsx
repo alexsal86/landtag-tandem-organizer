@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { PLANNER_ITEM_MIME, PlannerPostCard } from "./PlannerPostCard";
-import { isCrowdedDay } from "@/features/redaktion/utils/plannerRules";
+import { isCrowdedDay, parseTopicDrop, PLANNER_TOPIC_MIME } from "@/features/redaktion/utils/plannerRules";
 import { PlannerNoteCard } from "./PlannerNoteCard";
 import { NOTE_COLORS, type PlannerNote } from "@/features/redaktion/hooks/usePlannerNotes";
 import type { SocialPlannerItem } from "@/features/redaktion/hooks/useSocialPlannerItems";
@@ -38,6 +38,7 @@ interface Props {
   onUpdateNote: (id: string, patch: Partial<Pick<PlannerNote, "content" | "color" | "visible_to_all">>) => Promise<void>;
   onDeleteNote: (id: string) => Promise<void>;
   onMoveItem?: (id: string, day: Date) => void;
+  onDropTopic?: (topicId: string, scheduledFor: Date) => void;
 }
 
 function getGridDays(view: "week" | "month", currentDate: Date) {
@@ -76,6 +77,7 @@ function DayCell({
   onUpdateNote,
   onDeleteNote,
   onMoveItem,
+  onDropTopic,
 }: {
   day: Date;
   view: "week" | "month";
@@ -89,6 +91,7 @@ function DayCell({
   onUpdateNote: (id: string, patch: Partial<Pick<PlannerNote, "content" | "color" | "visible_to_all">>) => Promise<void>;
   onDeleteNote: (id: string) => Promise<void>;
   onMoveItem?: (id: string, day: Date) => void;
+  onDropTopic?: (topicId: string, scheduledFor: Date) => void;
 }) {
   const [dragOver, setDragOver] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
@@ -117,9 +120,11 @@ function DayCell({
         today ? "ring-2 ring-inset ring-primary/30" : ""
       } ${dragOver ? "bg-primary/10 ring-2 ring-inset ring-primary" : ""}`}
       onDragOver={(e) => {
-        if (!onMoveItem || !e.dataTransfer.types.includes(PLANNER_ITEM_MIME)) return;
+        const isTopic = !!onDropTopic && e.dataTransfer.types.includes(PLANNER_TOPIC_MIME);
+        const isPost = !!onMoveItem && e.dataTransfer.types.includes(PLANNER_ITEM_MIME);
+        if (!isTopic && !isPost) return;
         e.preventDefault();
-        e.dataTransfer.dropEffect = "move";
+        e.dataTransfer.dropEffect = isTopic ? "copy" : "move";
         if (!dragOver) setDragOver(true);
       }}
       onDragLeave={(e) => {
@@ -127,6 +132,13 @@ function DayCell({
       }}
       onDrop={(e) => {
         setDragOver(false);
+        if (onDropTopic && e.dataTransfer.types.includes(PLANNER_TOPIC_MIME)) {
+          e.preventDefault();
+          e.stopPropagation();
+          const drop = parseTopicDrop(e.dataTransfer.getData(PLANNER_TOPIC_MIME), day);
+          if (drop) onDropTopic(drop.topicId, drop.scheduledFor);
+          return;
+        }
         const id = e.dataTransfer.getData(PLANNER_ITEM_MIME);
         if (!id || !onMoveItem) return;
         e.preventDefault();
@@ -136,6 +148,7 @@ function DayCell({
         if (e.target === e.currentTarget && onCreateAtSlot) onCreateAtSlot(day);
       }}
     >
+      {dragOver && <div className="pointer-events-none absolute inset-x-1 top-1 z-20 rounded border border-primary bg-background/95 px-1 py-2 text-center text-xs font-medium text-primary">Hier am {format(day, "EEE d. MMM", { locale: de })} einplanen</div>}
       {/* Day label (month view only — week header is separate) */}
       {view === "month" && (
         <div className="flex items-center justify-between px-1.5 py-1">
@@ -262,6 +275,7 @@ export function PlannerCalendarGrid({
   onUpdateNote,
   onDeleteNote,
   onMoveItem,
+  onDropTopic,
 }: Props) {
   const days = useMemo(() => getGridDays(view, currentDate), [view, currentDate]);
 
@@ -371,6 +385,7 @@ export function PlannerCalendarGrid({
                 onUpdateNote={onUpdateNote}
                 onDeleteNote={onDeleteNote}
                 onMoveItem={onMoveItem}
+                onDropTopic={onDropTopic}
               />
             );
           })}
@@ -395,6 +410,7 @@ export function PlannerCalendarGrid({
                   onUpdateNote={onUpdateNote}
                   onDeleteNote={onDeleteNote}
                   onMoveItem={onMoveItem}
+                  onDropTopic={onDropTopic}
                 />
               );
             })}
