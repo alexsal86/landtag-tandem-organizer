@@ -155,10 +155,18 @@ export function PerformanceDashboard(): JSX.Element {
       <header className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-h2 font-semibold flex items-center gap-2">
-            <Activity className="h-5 w-5" /> Performance & Egress
+            <Activity className="h-5 w-5" /> Speichergrößen & Egress
           </h2>
           <p className="text-body text-muted-foreground">
-            Tägliche Metriken zur Datenbankgröße und Anomalien (Cron 02:00 UTC).
+            Tägliche Datenbank-Speichergrößen und Wachstumsanomalien (Cron 02:00 UTC).
+            Letzter erfolgreicher Abruf:{" "}
+            {latest?.collected_at ? format(parseISO(latest.collected_at), "dd.MM.yyyy HH:mm", { locale: de }) : "keiner"}
+          </p>
+          <p className="text-caption text-muted-foreground mt-1">
+            Hinweis: Speichergrößen sind kein Egress. Den tatsächlichen Egress (cached/uncached, je Dienst) stellt
+            Supabase nicht über eine offizielle API bereit – er ist nur im Supabase-Dashboard unter
+            „Organization → Usage“ bzw. auf der Rechnung einsehbar.{" "}
+            <a className="underline" href="https://supabase.com/dashboard/org/_/usage" target="_blank" rel="noreferrer">Usage öffnen</a>
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={triggerCollection}>
@@ -170,7 +178,7 @@ export function PerformanceDashboard(): JSX.Element {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-1"><Database className="h-4 w-4" /> DB-Größe</CardDescription>
-            <CardTitle className="text-h2 tabular-nums">{formatBytes(latest?.db_size_bytes ?? 0)}</CardTitle>
+            <CardTitle className="text-h2 tabular-nums">{latest?.db_size_bytes != null ? formatBytes(latest.db_size_bytes) : "keine Daten"}</CardTitle>
           </CardHeader>
           <CardContent className="text-caption text-muted-foreground">
             {dbDelta !== null ? `${dbDelta >= 0 ? "+" : ""}${dbDelta.toFixed(2)} % vs. Vortag` : "Keine Vergleichsdaten"}
