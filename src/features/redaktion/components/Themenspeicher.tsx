@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
-import { GripVertical, Lightbulb, Pencil, PlusCircle, Trash2, TriangleAlert } from "lucide-react";
+import { ChevronLeft, ChevronRight, Filter, GripVertical, Lightbulb, Pencil, PlusCircle, Settings2, Trash2, TriangleAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -56,6 +56,12 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
   const { createTopic: createBacklogTopic, topics, loading, channels, loadTopics, updateTopic, deleteTopic } = useTopicBacklog();
   const { campaigns } = useSocialCampaigns();
 
+  const [showSettings, setShowSettings] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+  const [pageCapacity, setPageCapacity] = useState(10);
+  const listRef = useRef<HTMLDivElement>(null);
   const [dropTime, setDropTime] = useState("10:00");
   const [selectedTopic, setSelectedTopic] = useState<TopicBacklogEntry | null>(null);
   const [isCreateTopicDialogOpen, setIsCreateTopicDialogOpen] = useState(false);
@@ -286,24 +292,69 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
     }
   };
 
+  const filteredTopics = useMemo(() => topics
+            .filter((topic) => campaignFilter === "all" || topic.campaign_id === campaignFilter)
+            .filter((topic) => pillarFilter === "all" || topic.content_pillar === pillarFilter)
+            .sort((a, b) => {
+              if (sortBy === "priority") return b.priority - a.priority;
+              const campaignById = new Map(campaigns.map((campaign) => [campaign.id, campaign]));
+              const today = new Date();
+              const phaseRank = (campaignId: string | null): number => {
+                const campaign = campaignId ? campaignById.get(campaignId) : null;
+                if (!campaign?.start_date || !campaign?.end_date) return 3;
+                const start = new Date(campaign.start_date);
+                const end = new Date(campaign.end_date);
+                if (today < start) return 0;
+                if (today > end) return 2;
+                return 1;
+              };
+              return phaseRank(a.campaign_id) - phaseRank(b.campaign_id);
+            }), [topics, campaignFilter, pillarFilter, sortBy, campaigns]);
+  const effectivePageSize = compact ? Math.min(pageSize, pageCapacity) : pageSize;
+  const totalPages = Math.max(1, Math.ceil(filteredTopics.length / effectivePageSize));
+  const currentPage = Math.min(page, totalPages);
+  const visibleTopics = filteredTopics.slice((currentPage - 1) * effectivePageSize, currentPage * effectivePageSize);
+
+  useEffect(() => { setPage(1); }, [campaignFilter, pillarFilter, sortBy, pageSize, effectivePageSize]);
+  useEffect(() => { setPage((current) => Math.min(current, totalPages)); }, [totalPages]);
+  useEffect(() => {
+    if (!compact || !listRef.current) return;
+    const observer = new ResizeObserver(([entry]) => {
+      // Compact cards are 96px tall with an 8px gap. Fit full cards, never add an inner scrollbar.
+      const constrained = listRef.current && getComputedStyle(listRef.current).getPropertyValue("--topic-height-constrained").trim() === "1";
+      setPageCapacity(constrained ? Math.max(1, Math.min(10, Math.floor((entry.contentRect.height + 8) / 104))) : 10);
+    });
+    observer.observe(listRef.current);
+    return () => observer.disconnect();
+  }, [compact]);
+
   return (
-    <section className={cn("bg-card p-3 space-y-3", !compact && "rounded-lg border")}>
-      <div className="flex flex-wrap items-center gap-2">
-        <Lightbulb className="h-4 w-4 text-muted-foreground" />
+    <section className={cn("bg-card p-3", compact ? "flex h-full min-h-0 flex-col gap-3 rounded-lg" : "space-y-3 rounded-lg border")}>
+      <div className="flex shrink-0 items-center gap-2">
+        <Lightbulb className="h-4 w-4 shrink-0 text-muted-foreground" />
         <h3 className="text-sm font-semibold text-foreground">Themenspeicher</h3>
-        <Button size="sm" variant="outline" className="ml-auto" onClick={() => { resetTopicForm(); setIsCreateTopicDialogOpen(true); }}>
-          <PlusCircle className="h-3.5 w-3.5 mr-1" />
-          Neues Thema
-        </Button>
+        <div className="ml-auto flex items-center gap-0.5">
+          <Button type="button" size="icon" variant="ghost" className="h-7 w-7" aria-label="Themenspeicher-Einstellungen" aria-expanded={showSettings} aria-controls="topic-settings" onClick={() => { setShowSettings((show) => !show); setShowFilters(false); }}><Settings2 className="h-4 w-4" /></Button>
+          <Button type="button" size="icon" variant="ghost" className={cn("h-7 w-7", (showFilters || campaignFilter !== "all" || pillarFilter !== "all") && "text-primary bg-primary/10")} aria-label="Themenfilter" aria-expanded={showFilters} aria-controls="topic-filters" onClick={() => { setShowFilters((show) => !show); setShowSettings(false); }}><Filter className="h-4 w-4" /></Button>
+          <Button type="button" size="icon" variant="ghost" className="h-7 w-7" aria-label="Neues Thema" onClick={() => { resetTopicForm(); setIsCreateTopicDialogOpen(true); }}><PlusCircle className="h-4 w-4" /></Button>
+        </div>
       </div>
-      <div className="rounded-lg border border-dashed bg-primary/5 p-3 space-y-2">
+      {showSettings && (
+      <div id="topic-settings" className="shrink-0 rounded-lg border bg-muted/20 p-3 space-y-2">
         <p className="text-xs text-muted-foreground">Ziehe eine Themenkarte auf den gewünschten Kalendertag. Die Idee bleibt erhalten und wird mit dem Entwurf verknüpft.</p>
         <div className="flex items-center gap-2">
           <Label htmlFor="topic-drop-time" className="text-xs">Einplanen um</Label>
           <Input id="topic-drop-time" type="time" value={dropTime} onChange={(event) => setDropTime(event.target.value)} className="h-8 w-28" required />
         </div>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="topic-page-size" className="text-xs">Max. Ideen pro Seite</Label>
+          <select id="topic-page-size" className="ml-auto rounded-md border bg-background px-2 py-1 text-sm" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
+            <option value={5}>5</option><option value={10}>10</option>
+          </select>
+        </div>
       </div>
-      <div className={cn("grid gap-2", !compact && "sm:grid-cols-3")}>
+      )}
+      {showFilters && <div id="topic-filters" className={cn("grid shrink-0 gap-2", !compact && "sm:grid-cols-3")}>
         <Select value={campaignFilter} onValueChange={setCampaignFilter}>
           <SelectTrigger><SelectValue placeholder="Kampagne" /></SelectTrigger>
           <SelectContent>
@@ -327,33 +378,16 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
             <SelectItem value="campaign_phase">Kampagnenphase</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </div>}
 
+      <div ref={listRef} className={compact ? "min-h-0 flex-1 overflow-hidden" : ""}>
       {loading ? (
         <div className="text-sm text-muted-foreground">Lade Themen…</div>
-      ) : topics.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Noch keine Themen vorhanden.</p>
+      ) : filteredTopics.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{topics.length ? "Keine Ideen für diese Filter." : "Noch keine Themen vorhanden."}</p>
       ) : (
         <div className="space-y-2">
-          {topics
-            .filter((topic) => campaignFilter === "all" || topic.campaign_id === campaignFilter)
-            .filter((topic) => pillarFilter === "all" || topic.content_pillar === pillarFilter)
-            .sort((a, b) => {
-              if (sortBy === "priority") return b.priority - a.priority;
-              const campaignById = new Map(campaigns.map((campaign) => [campaign.id, campaign]));
-              const today = new Date();
-              const phaseRank = (campaignId: string | null): number => {
-                const campaign = campaignId ? campaignById.get(campaignId) : null;
-                if (!campaign?.start_date || !campaign?.end_date) return 3;
-                const start = new Date(campaign.start_date);
-                const end = new Date(campaign.end_date);
-                if (today < start) return 0;
-                if (today > end) return 2;
-                return 1;
-              };
-              return phaseRank(a.campaign_id) - phaseRank(b.campaign_id);
-            })
-            .map((topic) => {
+          {visibleTopics.map((topic) => {
             const statusMeta = STATUS_META[topic.status] ?? STATUS_META.idea;
             return (
               <div
@@ -364,19 +398,19 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
                   event.dataTransfer.setData(PLANNER_TOPIC_MIME, JSON.stringify({ topicId: topic.id, time: dropTime }));
                   event.dataTransfer.effectAllowed = "copy";
                 }}
-                className="group cursor-grab active:cursor-grabbing rounded-md border p-3 pr-14 space-y-3 relative hover:border-primary/50"
+                className={cn("group cursor-grab active:cursor-grabbing rounded-md border relative hover:border-primary/50", compact ? "h-24 overflow-hidden p-2 pr-12" : "p-3 pr-14 space-y-3")}
                 title={`Auf einen Kalendertag ziehen, um ${dropTime} einzuplanen`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="flex items-center gap-1 text-sm font-medium"><GripVertical className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />{topic.topic}</p>
+                    <div className={cn(compact ? "flex flex-wrap gap-1 max-h-12 overflow-hidden" : "flex flex-wrap items-center gap-2")}>
+                      <p className={cn("flex items-center gap-1 text-sm font-medium", compact && "w-full min-w-0")}><GripVertical className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" /><span className={compact ? "truncate" : ""}>{topic.topic}</span></p>
                       <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
                       {topic.linked_content_count > 0 && <Badge variant="outline">{topic.linked_content_count} Beiträge</Badge>}
                       {topic.campaign_name && <Badge variant="outline">{topic.campaign_name}</Badge>}
                       {topic.content_pillar && <Badge variant="secondary">{topic.content_pillar}</Badge>}
                     </div>
-                    {topic.short_description && <p className="text-xs text-muted-foreground">{topic.short_description}</p>}
+                    {topic.short_description && <p className={cn("text-xs text-muted-foreground", compact && "line-clamp-1")}>{topic.short_description}</p>}
                   </div>
                 </div>
                 <div className={cn(
@@ -384,7 +418,7 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
                   compact ? "opacity-100" : "opacity-0 pointer-events-none group-hover:opacity-100 group-focus-within:opacity-100 group-hover:pointer-events-auto group-focus-within:pointer-events-auto",
                 )}>
                   <div className="relative group/icon">
-                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setEditingTopic(topic); }}>
+                    <Button size="icon" variant="ghost" className={compact ? "h-7 w-7" : "h-8 w-8"} onClick={() => { setEditingTopic(topic); }}>
                       <Pencil className="h-4 w-4" />
                       <span className="sr-only">Bearbeiten</span>
                     </Button>
@@ -393,7 +427,7 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
                     </span>
                   </div>
                   <div className="relative group/icon">
-                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setSelectedTopic(topic)}>
+                    <Button size="icon" variant="ghost" className={compact ? "h-7 w-7" : "h-8 w-8"} onClick={() => setSelectedTopic(topic)}>
                       <PlusCircle className="h-4 w-4" />
                       <span className="sr-only">In Planner</span>
                     </Button>
@@ -402,7 +436,7 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
                     </span>
                   </div>
                   <div className="relative group/icon">
-                    <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTopicCandidate(topic)}>
+                    <Button size="icon" variant="ghost" className={cn(compact ? "h-7 w-7" : "h-8 w-8", "text-destructive hover:text-destructive")} onClick={() => setDeleteTopicCandidate(topic)}>
                       <Trash2 className="h-4 w-4" />
                       <span className="sr-only">Löschen</span>
                     </Button>
@@ -416,6 +450,13 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
           })}
         </div>
       )}
+
+      </div>
+      <nav aria-label="Themenspeicher-Seiten" className="flex shrink-0 items-center justify-between gap-2 border-t pt-2">
+        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label="Vorherige Themenseite" disabled={currentPage === 1 || loading} onClick={() => setPage(currentPage - 1)}><ChevronLeft className="h-4 w-4" /></Button>
+        <span className="text-xs text-muted-foreground" aria-live="polite">{currentPage} / {totalPages} · {filteredTopics.length} Ideen</span>
+        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label="Nächste Themenseite" disabled={currentPage === totalPages || loading} onClick={() => setPage(currentPage + 1)}><ChevronRight className="h-4 w-4" /></Button>
+      </nav>
 
       <Dialog open={!!selectedTopic} onOpenChange={(open) => { if (!open) { setSelectedTopic(null); resetDialogState(); } }}>
         <DialogContent>

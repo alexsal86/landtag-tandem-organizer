@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Filter, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { useSearchParams } from "react-router-dom";
@@ -38,11 +38,14 @@ const SocialPlannerEditPanel = lazyWithRetry(
   () => import("./SocialPlannerEditPanel"),
 );
 
+import workspaceStyles from "../RedaktionFeature.module.css";
+
 interface PlannerBoardProps {
+  topicSidebar?: ReactNode;
   specialDays?: SpecialDay[];
 }
 
-export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
+export function PlannerBoard({ specialDays = [], topicSidebar }: PlannerBoardProps) {
   const [searchParams] = useSearchParams();
   const { users } = useTenantUsers();
   const { topics, createTopic } = useTopicBacklog();
@@ -314,8 +317,8 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   }, [searchParams.get("socialAppointmentId")]);
 
   return (
-    <div className="flex min-w-0 flex-col items-start gap-4">
-      <Card className="min-w-0 w-full flex-1">
+    <div className={topicSidebar ? workspaceStyles.layout : "flex min-w-0 flex-col items-start gap-4"}>
+      <Card className={topicSidebar ? workspaceStyles.calendar : "min-w-0 w-full flex-1"}>
       <CardContent className="pt-6">
         <Kalenderansicht
           onDropTopic={(topicId, date) => { void handleTopicDrop(topicId, date); }}
@@ -420,8 +423,9 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
       </CardContent>
       </Card>
 
+      {topicSidebar && <aside aria-label="Themenspeicher" className={workspaceStyles.sidebar}>{topicSidebar}</aside>}
       {editingItem && (
-        <aside aria-label="Beitrag bearbeiten" className="w-full min-w-0">
+        <aside aria-label="Beitrag bearbeiten" className={topicSidebar ? workspaceStyles.editor : "w-full min-w-0"}>
         <Suspense fallback={<div className="rounded-lg border bg-card p-6" role="status">Lade Beitragsbearbeitung…</div>}>
           <SocialPlannerEditPanel
             key={editingItem.id}
