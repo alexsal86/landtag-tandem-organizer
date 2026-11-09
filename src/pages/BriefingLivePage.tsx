@@ -214,7 +214,8 @@ export default function BriefingLivePage() {
       await ensureFeedbackCompleted();
       setFeedbackCompleted(true);
       queryClient.invalidateQueries({ queryKey: ['appointment-feedback-appointments'] });
-      notify.success('Termin als erledigt markiert');
+      notify.success('Live beendet – jetzt nachbereiten', { description: 'Deine Notizen stehen schon in der Nachbereitung.' });
+      if (preparation?.id) navigate(`/appointment-preparation/${preparation.id}`);
     } catch (err) {
       debugConsole.error('Error marking completed:', err);
       notify.error('Fehler');
