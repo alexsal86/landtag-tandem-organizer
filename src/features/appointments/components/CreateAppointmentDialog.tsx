@@ -15,6 +15,34 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
 import { TopicSelector } from "@/components/topics/TopicSelector";
 import { useCreateAppointment } from "@/components/appointments/hooks/useCreateAppointment";
+import { useTenantUsers } from "@/hooks/useTenantUsers";
+
+const BRIEFING_OPTIONS = [["later", "Später klären"], ["none", "Kein Briefing"], ["compact", "Kurz-Briefing"], ["full", "Umfassend"]] as const;
+
+function BriefingChoiceBlock({ hook }: { hook: ReturnType<typeof useCreateAppointment> }) {
+  const { users } = useTenantUsers();
+  const assigned = hook.briefingChoice === "compact" || hook.briefingChoice === "full";
+  return (
+    <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
+      <p className="text-label font-medium">Briefing</p>
+      <div className="flex flex-wrap gap-1">
+        {BRIEFING_OPTIONS.map(([v, l]) => (
+          <Button key={v} type="button" size="sm" variant={hook.briefingChoice === v ? "default" : "outline"} onClick={() => hook.setBriefingChoice(v)}>{l}</Button>
+        ))}
+      </div>
+      {assigned && (
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+          <Select value={hook.briefingAssignee} onValueChange={hook.setBriefingAssignee}>
+            <SelectTrigger><SelectValue placeholder="Wer übernimmt?" /></SelectTrigger>
+            <SelectContent>{users.map((u) => <SelectItem key={u.id} value={u.id}>{u.display_name}</SelectItem>)}</SelectContent>
+          </Select>
+          <Input type="datetime-local" value={hook.briefingDue} onChange={(e) => hook.setBriefingDue(e.target.value)} aria-label="Frist (Standard: Vortag 12 Uhr)" />
+        </div>
+      )}
+      <p className="text-caption text-muted-foreground">Briefings vergeben können nur Abgeordnete und Büroleitung. Ohne Frist gilt der Vortag 12 Uhr.</p>
+    </div>
+  );
+}
 
 interface CreateAppointmentDialogProps {
   open: boolean;
@@ -54,6 +82,8 @@ export const CreateAppointmentDialog = ({ open, onOpenChange }: CreateAppointmen
                   <FormField control={hook.form.control} name="priority" render={({ field }) => (<FormItem><FormLabel>Priorität</FormLabel><FormControl><Select value={field.value} onValueChange={field.onChange}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.entries(hook.priorityLabels).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={hook.form.control} name="reminder_minutes" render={({ field }) => (<FormItem><FormLabel>Erinnerung (Minuten)</FormLabel><FormControl><Select value={field.value?.toString()} onValueChange={(v) => field.onChange(parseInt(v))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="0">Keine Erinnerung</SelectItem><SelectItem value="5">5 Minuten</SelectItem><SelectItem value="15">15 Minuten</SelectItem><SelectItem value="30">30 Minuten</SelectItem><SelectItem value="60">1 Stunde</SelectItem><SelectItem value="1440">1 Tag</SelectItem></SelectContent></Select></FormControl><FormMessage /></FormItem>)} />
                 </div>
+
+                <BriefingChoiceBlock hook={hook} />
 
                 <Collapsible open={hook.showAdvancedOptions} onOpenChange={hook.setShowAdvancedOptions}>
                   <CollapsibleTrigger asChild><Button variant="outline" className="w-full flex items-center gap-2"><ChevronDown className={`h-4 w-4 transition-transform ${hook.showAdvancedOptions ? 'rotate-180' : ''}`} />Erweiterte Optionen</Button></CollapsibleTrigger>
