@@ -306,11 +306,15 @@ export default function SocialPlannerEditPanel({ item, open, scrollRequest = 0, 
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "content" | "approval" | "briefing")}>
           <TabsList className={styles.tabs}>
-            <TabsTrigger value="content">Inhalt</TabsTrigger>
-            <TabsTrigger value="approval">
-              <MessageSquare className="h-3.5 w-3.5 mr-1" /> Freigabe
+            <TabsTrigger value="content">
+              <Pencil className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> Inhalt
             </TabsTrigger>
-            <TabsTrigger value="briefing">Briefing</TabsTrigger>
+            <TabsTrigger value="briefing">
+              <ClipboardList className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> Briefing
+            </TabsTrigger>
+            <TabsTrigger value="approval">
+              <MessageSquare className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> Freigabe
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="content" className="m-0 space-y-5 px-6 py-5">

@@ -95,7 +95,7 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateA
   return (
     <div className="space-y-3">
       {/* Toolbar */}
-      <div className="space-y-5 rounded-2xl border bg-card p-4 sm:p-5">
+      <div className="space-y-5 border-b border-border px-4 pb-5 pt-4 sm:px-5 sm:pt-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="inline-flex rounded-2xl border bg-muted/30 p-1" role="group" aria-label="Kalenderansicht">
             <Button type="button" variant={view === "week" ? "default" : "ghost"} aria-pressed={view === "week"} className="h-11 rounded-xl px-5 text-base" onClick={() => setView("week")}>Woche</Button>
