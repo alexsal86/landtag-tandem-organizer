@@ -116,7 +116,7 @@ export function useEventPlanningData() {
   const [showPlanningArchive, setShowPlanningArchive] = useState(false);
 
   // ── View preferences ──
-  const [eventPlanningView, setEventPlanningView] = useState<'card' | 'table'>('card');
+  const [eventPlanningView, setEventPlanningView] = useState<'card' | 'table'>('table');
   const [appointmentPreparationView, setAppointmentPreparationView] = useState<'card' | 'table'>('card');
 
   const { defaultCollaborators } = usePlanningPreferences();
@@ -344,7 +344,7 @@ export function useEventPlanningData() {
       if (memberError) { debugConsole.error("Error fetching memberships:", memberError); return; }
       if (!memberships || memberships.length === 0) { setAllProfiles([]); return; }
       const userIds = memberships.map((m: Record<string, any>) => m.user_id);
-      const { data: profiles, error: profileError } = await supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", userIds);
+      const { data: profiles, error: profileError } = await supabase.from("profiles").select("user_id, display_name, avatar_url, badge_color").in("user_id", userIds);
       if (profileError) { debugConsole.error("Error fetching profiles:", profileError); return; }
       setAllProfiles(profiles || []);
     } catch (error) { handleAppError(error, { context: 'fetchAllProfiles' }); }

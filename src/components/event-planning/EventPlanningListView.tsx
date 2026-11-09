@@ -1,4 +1,4 @@
-import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
+import { EventPlanningOverview } from "./EventPlanningOverview";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,65 +9,40 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { debugConsole } from '@/utils/debugConsole';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { UserBadge } from "@/components/ui/user-badge";
-import { getHashedColor } from "@/utils/userColors";
 import { NewItemIndicator } from "@/components/notifications/NewItemIndicator";
-import { Plus, Calendar as CalendarIcon, Clock, MapPin, Archive, Grid, List, Users, CheckCircle } from "lucide-react";
+import { Plus, Archive, Grid, List, Users } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { cn } from "@/lib/utils";
 import { PlanningDefaultCollaboratorsDialog } from "./PlanningDefaultCollaboratorsDialog";
-import { EventPlanningTable } from "./EventPlanningTable";
 import { AppointmentPreparationTable } from "./AppointmentPreparationTable";
 import type { useEventPlanningData } from "./useEventPlanningData";
-import type { Collaborator, EventPlanning } from "./types";
-import type { EventPlanningListRowModel, ProfileBadgeModel } from "@/components/planning/sharedTypes";
 
 type EventPlanningDataReturn = ReturnType<typeof useEventPlanningData>;
 
-function mapPlanningToListRowModel(
-  planning: EventPlanning,
-  collaborators: ReadonlyArray<Collaborator>,
-  allProfiles: ReadonlyArray<ProfileBadgeModel>,
-): EventPlanningListRowModel {
-  const planningCollaborators = collaborators.filter((collaborator) => collaborator.event_planning_id === planning.id);
-  const creatorProfile = allProfiles.find((profile) => profile.user_id === planning.user_id);
-
-  return {
-    planning,
-    isCompleted: planning.is_completed ?? false,
-    creatorBadgeColor: creatorProfile?.badge_color ?? null,
-    collaborators: planningCollaborators,
-  };
-}
-
 export function EventPlanningListView(data: EventPlanningDataReturn) {
   const {
-    user, plannings, collaborators, allProfiles,
     isCreateDialogOpen, setIsCreateDialogOpen,
     newPlanningTitle, setNewPlanningTitle,
     newPlanningIsPrivate, setNewPlanningIsPrivate,
     selectedTemplateId, setSelectedTemplateId,
     planningTemplates,
-    eventPlanningView, appointmentPreparationView,
+    appointmentPreparationView,
     showPlanningArchive, setShowPlanningArchive,
     archivedPlannings, showArchived, setShowArchived,
     appointmentPreparations, archivedPreparations,
     showDefaultCollaboratorsDialog, setShowDefaultCollaboratorsDialog,
-    isItemNew, setSelectedPlanning,
+    isItemNew,
     saveViewPreferences, fetchArchivedPlannings,
-    archivePlanning, togglePlanningCompleted, restorePlanning,
+    restorePlanning,
     archivePreparation, handlePreparationClick, createPlanning,
   } = data;
-
-  const { isHighlighted, highlightRef } = useNotificationHighlight();
 
   return (
     <div className="min-h-screen bg-gradient-subtle p-6">
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-3xl font-bold">Veranstaltungsplanung</h1>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3">
             <Button variant="outline" size="sm" onClick={() => setShowDefaultCollaboratorsDialog(true)}>
               <Users className="h-4 w-4 mr-2" />Standard-Mitarbeiter
             </Button>
@@ -101,10 +76,6 @@ export function EventPlanningListView(data: EventPlanningDataReturn) {
                 </div>
               </DialogContent>
             </Dialog>
-            <div className="flex items-center border rounded-lg p-1">
-              <Button variant={eventPlanningView === 'card' ? 'default' : 'ghost'} size="sm" onClick={() => saveViewPreferences('event', 'card')} className="h-8 px-2"><Grid className="h-4 w-4" /></Button>
-              <Button variant={eventPlanningView === 'table' ? 'default' : 'ghost'} size="sm" onClick={() => saveViewPreferences('event', 'table')} className="h-8 px-2"><List className="h-4 w-4" /></Button>
-            </div>
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Neue Planung</Button></DialogTrigger>
               <DialogContent>
@@ -133,104 +104,7 @@ export function EventPlanningListView(data: EventPlanningDataReturn) {
         </div>
 
         <div className="grid gap-6 xl:grid-cols-2 xl:items-start">
-          <section className="space-y-4 xl:min-w-0">
-            <div className="flex items-center justify-between gap-4">
-              <h2 className="text-2xl font-bold">Veranstaltungsplanung</h2>
-              <div className="flex items-center border rounded-lg p-1 shrink-0">
-                <Button variant={eventPlanningView === 'card' ? 'default' : 'ghost'} size="sm" onClick={() => saveViewPreferences('event', 'card')} className="h-8 px-2"><Grid className="h-4 w-4" /></Button>
-                <Button variant={eventPlanningView === 'table' ? 'default' : 'ghost'} size="sm" onClick={() => saveViewPreferences('event', 'table')} className="h-8 px-2"><List className="h-4 w-4" /></Button>
-              </div>
-            </div>
-
-            {eventPlanningView === 'card' ? (
-              <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-                {plannings.map((planning) => {
-                  const row = mapPlanningToListRowModel(planning, collaborators, allProfiles as ReadonlyArray<ProfileBadgeModel>);
-                  const creatorProfile = allProfiles.find((profile) => profile.user_id === planning.user_id) as ProfileBadgeModel | undefined;
-                  
-                  return (
-                    <Card key={planning.id} ref={highlightRef(planning.id)} className={cn("cursor-pointer hover:shadow-lg transition-shadow flex flex-col relative", row.isCompleted && "opacity-60", isHighlighted(planning.id) && "notification-highlight")} onClick={() => setSelectedPlanning(planning)}>
-                      <NewItemIndicator isVisible={isItemNew(planning.id, planning.created_at)} />
-                      <CardHeader>
-                        <CardTitle className="flex items-center justify-between gap-2">
-                          <span className={cn("truncate cursor-pointer", row.isCompleted && "line-through text-muted-foreground")}>{planning.title}</span>
-                          <div className="flex items-center gap-1">
-                            {(planning.user_id === user?.id || row.collaborators.some(c => c.user_id === user?.id && c.can_edit)) && (
-                              <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className={cn("h-7 w-7", row.isCompleted && "text-palette-green")}
-                                  onClick={(e) => { e.stopPropagation(); togglePlanningCompleted(planning.id, !row.isCompleted); }}>
-                                  <CheckCircle className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger><TooltipContent>{row.isCompleted ? "Als unerledigt markieren" : "Als erledigt markieren"}</TooltipContent></Tooltip></TooltipProvider>
-                            )}
-                            {planning.user_id === user?.id && (
-                              <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); archivePlanning(planning.id); }}>
-                                  <Archive className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger><TooltipContent>Archivieren</TooltipContent></Tooltip></TooltipProvider>
-                            )}
-                          </div>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="flex-1 space-y-3">
-                        {planning.description && <p className="text-sm text-muted-foreground line-clamp-2">{planning.description}</p>}
-                        {planning.location && <div className="flex items-center text-sm text-muted-foreground"><MapPin className="mr-2 h-3 w-3" />{planning.location}</div>}
-                        <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                          {planning.confirmed_date ? (
-                            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-palette-green/20"><CheckCircle className="h-4 w-4 text-palette-green" /></div>
-                          ) : (
-                            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-palette-amber/20"><Clock className="h-4 w-4 text-palette-amber" /></div>
-                          )}
-                        </TooltipTrigger><TooltipContent>{planning.confirmed_date ? "Bestätigt" : "In Planung"}</TooltipContent></Tooltip></TooltipProvider>
-                      </CardContent>
-                      <div className="px-6 pb-4 pt-2 border-t mt-auto">
-                        <div className="flex items-end justify-between gap-2">
-                          <div className="flex flex-col text-xs text-muted-foreground">
-                            {planning.confirmed_date ? (
-                              <>
-                                <span className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" />{format(new Date(planning.confirmed_date), "dd.MM.yyyy", { locale: de })}</span>
-                                {planning.confirmed_date.includes('T') && !planning.confirmed_date.endsWith('T00:00:00') && (
-                                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{format(new Date(planning.confirmed_date), "HH:mm", { locale: de })} Uhr</span>
-                                )}
-                              </>
-                            ) : (<span className="italic">Termin offen</span>)}
-                          </div>
-                          {row.collaborators.length > 0 && (
-                            <div className="flex flex-col items-center gap-0.5">
-                              <span className="text-[10px] text-muted-foreground">Mitarbeit</span>
-                              <div className="flex flex-wrap gap-1 justify-center">
-                                {row.collaborators.slice(0, 3).map((collab) => {
-                                  const profile = allProfiles.find(p => p.user_id === collab.user_id);
-                                  const color = (profile as ProfileBadgeModel | undefined)?.badge_color || getHashedColor(collab.user_id);
-                                  return (
-                                    <TooltipProvider key={collab.id}><Tooltip><TooltipTrigger asChild>
-                                      <span className={cn("text-xs px-2 py-0.5 rounded-full text-white", color)}>{(profile?.display_name || "?")[0]}</span>
-                                    </TooltipTrigger><TooltipContent>{profile?.display_name || "Unbekannt"}</TooltipContent></Tooltip></TooltipProvider>
-                                  );
-                                })}
-                                {row.collaborators.length > 3 && <span className="text-xs text-muted-foreground">+{row.collaborators.length - 3}</span>}
-                              </div>
-                            </div>
-                          )}
-                          <div className="flex flex-col items-end">
-                            <span className="text-[10px] text-muted-foreground mb-0.5">Verantwortlich</span>
-                            <UserBadge userId={planning.user_id} displayName={creatorProfile?.display_name || null} badgeColor={row.creatorBadgeColor} size="sm" />
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  );
-                })}
-              </div>
-            ) : (
-              <EventPlanningTable
-                plannings={plannings} allProfiles={allProfiles} collaborators={collaborators}
-                user={user} isItemNew={isItemNew} setSelectedPlanning={setSelectedPlanning}
-                togglePlanningCompleted={togglePlanningCompleted} archivePlanning={archivePlanning}
-              />
-            )}
-          </section>
+          <EventPlanningOverview {...data} />
 
           <section className="space-y-4 xl:min-w-0">
             <div className="flex items-center justify-between gap-4">
