@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import styles from "./SocialPlannerEditPanel.module.css";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CalendarDays, CheckCircle2, CheckSquare, ClipboardList, MessageSquare, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -45,6 +45,7 @@ import { notify } from "@/lib/notify";
 export interface SocialPlannerEditPanelProps {
   item: SocialPlannerItem | null;
   open: boolean;
+  scrollRequest?: number;
   users: Array<{ id: string; display_name: string }>;
   channels: Array<{ id: string; name: string; slug: string }>;
   campaigns: Array<{ id: string; name: string }>;
@@ -53,8 +54,22 @@ export interface SocialPlannerEditPanelProps {
   onSave: (itemId: string, payload: SocialPlannerDraftPayload) => Promise<void>;
 }
 
-export default function SocialPlannerEditPanel({ item, open, users, channels, campaigns, tagSuggestions, onOpenChange, onSave }: SocialPlannerEditPanelProps) {
+export default function SocialPlannerEditPanel({ item, open, scrollRequest = 0, users, channels, campaigns, tagSuggestions, onOpenChange, onSave }: SocialPlannerEditPanelProps) {
   const { user } = useAuth();
+  const panelRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!open || !item?.id) return;
+    // Wait until the lazy-loaded editor occupies its full space before scrolling.
+    const frame = window.requestAnimationFrame(() => {
+      panelRef.current?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start",
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [open, item?.id, scrollRequest]);
+
   const [selectedTemplate, setSelectedTemplate] = useState<string>("none");
   const [topic, setTopic] = useState("");
   const [tagsValue, setTagsValue] = useState<string[]>([]);
@@ -272,7 +287,7 @@ export default function SocialPlannerEditPanel({ item, open, users, channels, ca
 
   return (
     <>
-      <section className={cn(styles.editor, "rounded-2xl border bg-card text-card-foreground shadow-sm")}>
+      <section ref={panelRef} className={cn(styles.editor, "scroll-mt-4 rounded-2xl border bg-card text-card-foreground shadow-sm")}>
         <header className="flex items-start justify-between gap-3 px-6 pt-5">
           <div>
           <div className="mb-1 flex flex-wrap items-center gap-2">

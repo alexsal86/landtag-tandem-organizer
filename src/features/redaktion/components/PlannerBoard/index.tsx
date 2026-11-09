@@ -76,6 +76,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   const [sortBy, setSortBy] = useState<(typeof SORT_OPTIONS)[number]["value"]>("scheduled");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editScrollRequest, setEditScrollRequest] = useState(0);
   const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
   const [createTemplate, setCreateTemplate] = useState<string>("none");
   const [createTopicId, setCreateTopicId] = useState<string>("none");
@@ -401,7 +402,10 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
         <Kalenderansicht
           items={filteredItems}
           onUpdateSchedule={handleCalendarScheduleUpdate}
-          onEditItem={setEditingItemId}
+          onEditItem={(itemId) => {
+            setEditingItemId(itemId);
+            setEditScrollRequest((request) => request + 1);
+          }}
           onCreateAtSlot={(date) => {
             resetCreateDialog();
             setCreateScheduledDate(format(date, "yyyy-MM-dd"));
@@ -503,6 +507,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
           <SocialPlannerEditPanel
             key={editingItem.id}
             item={editingItem}
+            scrollRequest={editScrollRequest}
             open={editingItem !== null}
             users={users}
             channels={channels}
