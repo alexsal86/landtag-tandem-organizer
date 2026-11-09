@@ -1,7 +1,7 @@
 // Sammelt tägliche Egress- und Datenbankgrößen-Metriken.
 // Wird via pg_cron einmal täglich um 02:00 aufgerufen.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { requireServiceRole, forbiddenResponse } from "../_shared/security.ts";
+import { requireServiceRole, requireAuth, forbiddenResponse } from "../_shared/security.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,13 +11,20 @@ const corsHeaders = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  if (!requireServiceRole(req)) return forbiddenResponse("Service role required");
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+
+  // Erlaubt: Cron (Service-Role) oder angemeldeter Plattform-Admin (manuelles Aktualisieren).
+  if (!requireServiceRole(req)) {
+    const auth = await requireAuth(req);
+    if (!auth) return forbiddenResponse("Authentication required");
+    const { data: isSuper } = await supabase.rpc("is_superadmin", { _user_id: auth.userId });
+    if (isSuper !== true) return forbiddenResponse("Platform admin required");
+  }
 
   try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
 
     const today = new Date().toISOString().slice(0, 10);
 

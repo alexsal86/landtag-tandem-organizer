@@ -6170,12 +6170,12 @@ export type Database = {
       }
       field_permissions: {
         Row: {
-          read_mode: "mask" | "record"
           can_read: boolean
           can_write: boolean
           column_name: string
           created_at: string
           id: string
+          read_mode: string
           role: Database["public"]["Enums"]["app_role"]
           table_name: string
           tenant_id: string
@@ -6183,12 +6183,12 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
-          read_mode?: "mask" | "record"
           can_read?: boolean
           can_write?: boolean
           column_name: string
           created_at?: string
           id?: string
+          read_mode?: string
           role: Database["public"]["Enums"]["app_role"]
           table_name: string
           tenant_id: string
@@ -6196,12 +6196,12 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
-          read_mode?: "mask" | "record"
           can_read?: boolean
           can_write?: boolean
           column_name?: string
           created_at?: string
           id?: string
+          read_mode?: string
           role?: Database["public"]["Enums"]["app_role"]
           table_name?: string
           tenant_id?: string
@@ -13544,16 +13544,6 @@ export type Database = {
       }
     }
     Functions: {
-      field_read_rule: { Args: { _tenant: string; _table: string; _column: string }; Returns: string }
-      read_secured_contacts: { Args: { _tenant_id?: string; _ids?: string[] }; Returns: Database["public"]["Tables"]["contacts"]["Row"][] }
-      read_secured_letters: { Args: { _tenant_id?: string; _ids?: string[] }; Returns: Database["public"]["Tables"]["letters"]["Row"][] }
-      is_tenant_action_allowed: { Args: { _user_id: string; _tenant_id: string; _action: string }; Returns: boolean }
-
-      bulk_update_contact_fields: { Args: { _tenant_id: string; _ids: string[]; _operation: string; _value: Json }; Returns: number }
-      undo_contact_bulk_action: { Args: { _audit_id: string }; Returns: number }
-
-      export_admin_audit_logs: { Args: { _tenant_id: string; _search?: string; _ip?: string; _as_of?: string; _before_created?: string; _before_id?: string }; Returns: Json }
-
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined
@@ -13600,6 +13590,15 @@ export type Database = {
       }
       auto_archive_completed_preparations: { Args: never; Returns: undefined }
       auto_update_poll_status: { Args: never; Returns: undefined }
+      bulk_update_contact_fields: {
+        Args: {
+          _ids: string[]
+          _operation: string
+          _tenant_id: string
+          _value: Json
+        }
+        Returns: number
+      }
       calendar_sync_slot: {
         Args: {
           _interval: number
@@ -13661,6 +13660,167 @@ export type Database = {
         Args: { _appointment_id: string }
         Returns: undefined
       }
+      contacts_secured:
+        | {
+            Args: {
+              _row: Database["public"]["Tables"]["appointment_contacts"]["Row"]
+            }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.contacts_secured(_row => appointments), public.contacts_secured(_row => appointment_contacts), public.contacts_secured(_row => contacts), public.contacts_secured(_row => distribution_list_members), public.contacts_secured(_row => contact_activities), public.contacts_secured(_row => document_contacts), public.contacts_secured(_row => funding_participants), public.contacts_secured(_row => case_file_contacts), public.contacts_secured(_row => contact_topics), public.contacts_secured(_row => case_items), public.contacts_secured(_row => contact_briefing_memory), public.contacts_secured(_row => facts). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+            SetofOptions: {
+              from: "appointment_contacts"
+              to: "contacts"
+              isOneToOne: true
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: { _row: Database["public"]["Tables"]["appointments"]["Row"] }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.contacts_secured(_row => appointments), public.contacts_secured(_row => appointment_contacts), public.contacts_secured(_row => contacts), public.contacts_secured(_row => distribution_list_members), public.contacts_secured(_row => contact_activities), public.contacts_secured(_row => document_contacts), public.contacts_secured(_row => funding_participants), public.contacts_secured(_row => case_file_contacts), public.contacts_secured(_row => contact_topics), public.contacts_secured(_row => case_items), public.contacts_secured(_row => contact_briefing_memory), public.contacts_secured(_row => facts). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+            SetofOptions: {
+              from: "appointments"
+              to: "contacts"
+              isOneToOne: true
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: {
+              _row: Database["public"]["Tables"]["case_file_contacts"]["Row"]
+            }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.contacts_secured(_row => appointments), public.contacts_secured(_row => appointment_contacts), public.contacts_secured(_row => contacts), public.contacts_secured(_row => distribution_list_members), public.contacts_secured(_row => contact_activities), public.contacts_secured(_row => document_contacts), public.contacts_secured(_row => funding_participants), public.contacts_secured(_row => case_file_contacts), public.contacts_secured(_row => contact_topics), public.contacts_secured(_row => case_items), public.contacts_secured(_row => contact_briefing_memory), public.contacts_secured(_row => facts). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+            SetofOptions: {
+              from: "case_file_contacts"
+              to: "contacts"
+              isOneToOne: true
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: { _row: Database["public"]["Tables"]["case_items"]["Row"] }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.contacts_secured(_row => appointments), public.contacts_secured(_row => appointment_contacts), public.contacts_secured(_row => contacts), public.contacts_secured(_row => distribution_list_members), public.contacts_secured(_row => contact_activities), public.contacts_secured(_row => document_contacts), public.contacts_secured(_row => funding_participants), public.contacts_secured(_row => case_file_contacts), public.contacts_secured(_row => contact_topics), public.contacts_secured(_row => case_items), public.contacts_secured(_row => contact_briefing_memory), public.contacts_secured(_row => facts). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+            SetofOptions: {
+              from: "case_items"
+              to: "contacts"
+              isOneToOne: true
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: {
+              _row: Database["public"]["Tables"]["contact_activities"]["Row"]
+            }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.contacts_secured(_row => appointments), public.contacts_secured(_row => appointment_contacts), public.contacts_secured(_row => contacts), public.contacts_secured(_row => distribution_list_members), public.contacts_secured(_row => contact_activities), public.contacts_secured(_row => document_contacts), public.contacts_secured(_row => funding_participants), public.contacts_secured(_row => case_file_contacts), public.contacts_secured(_row => contact_topics), public.contacts_secured(_row => case_items), public.contacts_secured(_row => contact_briefing_memory), public.contacts_secured(_row => facts). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+            SetofOptions: {
+              from: "contact_activities"
+              to: "contacts"
+              isOneToOne: true
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: {
+              _row: Database["public"]["Tables"]["contact_briefing_memory"]["Row"]
+            }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.contacts_secured(_row => appointments), public.contacts_secured(_row => appointment_contacts), public.contacts_secured(_row => contacts), public.contacts_secured(_row => distribution_list_members), public.contacts_secured(_row => contact_activities), public.contacts_secured(_row => document_contacts), public.contacts_secured(_row => funding_participants), public.contacts_secured(_row => case_file_contacts), public.contacts_secured(_row => contact_topics), public.contacts_secured(_row => case_items), public.contacts_secured(_row => contact_briefing_memory), public.contacts_secured(_row => facts). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+            SetofOptions: {
+              from: "contact_briefing_memory"
+              to: "contacts"
+              isOneToOne: true
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: {
+              _row: Database["public"]["Tables"]["contact_topics"]["Row"]
+            }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.contacts_secured(_row => appointments), public.contacts_secured(_row => appointment_contacts), public.contacts_secured(_row => contacts), public.contacts_secured(_row => distribution_list_members), public.contacts_secured(_row => contact_activities), public.contacts_secured(_row => document_contacts), public.contacts_secured(_row => funding_participants), public.contacts_secured(_row => case_file_contacts), public.contacts_secured(_row => contact_topics), public.contacts_secured(_row => case_items), public.contacts_secured(_row => contact_briefing_memory), public.contacts_secured(_row => facts). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+            SetofOptions: {
+              from: "contact_topics"
+              to: "contacts"
+              isOneToOne: true
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: { _row: Database["public"]["Tables"]["contacts"]["Row"] }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.contacts_secured(_row => appointments), public.contacts_secured(_row => appointment_contacts), public.contacts_secured(_row => contacts), public.contacts_secured(_row => distribution_list_members), public.contacts_secured(_row => contact_activities), public.contacts_secured(_row => document_contacts), public.contacts_secured(_row => funding_participants), public.contacts_secured(_row => case_file_contacts), public.contacts_secured(_row => contact_topics), public.contacts_secured(_row => case_items), public.contacts_secured(_row => contact_briefing_memory), public.contacts_secured(_row => facts). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+            SetofOptions: {
+              from: "contacts"
+              to: "contacts"
+              isOneToOne: true
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: {
+              _row: Database["public"]["Tables"]["distribution_list_members"]["Row"]
+            }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.contacts_secured(_row => appointments), public.contacts_secured(_row => appointment_contacts), public.contacts_secured(_row => contacts), public.contacts_secured(_row => distribution_list_members), public.contacts_secured(_row => contact_activities), public.contacts_secured(_row => document_contacts), public.contacts_secured(_row => funding_participants), public.contacts_secured(_row => case_file_contacts), public.contacts_secured(_row => contact_topics), public.contacts_secured(_row => case_items), public.contacts_secured(_row => contact_briefing_memory), public.contacts_secured(_row => facts). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+            SetofOptions: {
+              from: "distribution_list_members"
+              to: "contacts"
+              isOneToOne: true
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: {
+              _row: Database["public"]["Tables"]["document_contacts"]["Row"]
+            }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.contacts_secured(_row => appointments), public.contacts_secured(_row => appointment_contacts), public.contacts_secured(_row => contacts), public.contacts_secured(_row => distribution_list_members), public.contacts_secured(_row => contact_activities), public.contacts_secured(_row => document_contacts), public.contacts_secured(_row => funding_participants), public.contacts_secured(_row => case_file_contacts), public.contacts_secured(_row => contact_topics), public.contacts_secured(_row => case_items), public.contacts_secured(_row => contact_briefing_memory), public.contacts_secured(_row => facts). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+            SetofOptions: {
+              from: "document_contacts"
+              to: "contacts"
+              isOneToOne: true
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: { _row: Database["public"]["Tables"]["facts"]["Row"] }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.contacts_secured(_row => appointments), public.contacts_secured(_row => appointment_contacts), public.contacts_secured(_row => contacts), public.contacts_secured(_row => distribution_list_members), public.contacts_secured(_row => contact_activities), public.contacts_secured(_row => document_contacts), public.contacts_secured(_row => funding_participants), public.contacts_secured(_row => case_file_contacts), public.contacts_secured(_row => contact_topics), public.contacts_secured(_row => case_items), public.contacts_secured(_row => contact_briefing_memory), public.contacts_secured(_row => facts). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+            SetofOptions: {
+              from: "facts"
+              to: "contacts"
+              isOneToOne: true
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: {
+              _row: Database["public"]["Tables"]["funding_participants"]["Row"]
+            }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.contacts_secured(_row => appointments), public.contacts_secured(_row => appointment_contacts), public.contacts_secured(_row => contacts), public.contacts_secured(_row => distribution_list_members), public.contacts_secured(_row => contact_activities), public.contacts_secured(_row => document_contacts), public.contacts_secured(_row => funding_participants), public.contacts_secured(_row => case_file_contacts), public.contacts_secured(_row => contact_topics), public.contacts_secured(_row => case_items), public.contacts_secured(_row => contact_briefing_memory), public.contacts_secured(_row => facts). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+            SetofOptions: {
+              from: "funding_participants"
+              to: "contacts"
+              isOneToOne: true
+              isSetofReturn: true
+            }
+          }
       create_appointment_poll_with_details: {
         Args: {
           p_deadline?: string
@@ -13786,6 +13946,25 @@ export type Database = {
         Returns: Json
       }
       expire_carry_over_vacation: { Args: never; Returns: undefined }
+      export_admin_audit_logs: {
+        Args: {
+          _as_of?: string
+          _before_created?: string
+          _before_id?: string
+          _ip?: string
+          _search?: string
+          _tenant_id: string
+        }
+        Returns: Json
+      }
+      field_read_rule: {
+        Args: { _column: string; _table: string; _tenant: string }
+        Returns: string
+      }
+      field_row_visible: {
+        Args: { _table: string; _tenant: string }
+        Returns: boolean
+      }
       find_contact_duplicates_trgm: {
         Args: { _limit?: number; _tenant_id: string; _threshold?: number }
         Returns: {
@@ -13997,6 +14176,10 @@ export type Database = {
         Returns: boolean
       }
       is_superadmin: { Args: { _user_id: string }; Returns: boolean }
+      is_tenant_action_allowed: {
+        Args: { _action: string; _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_tenant_admin: {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
@@ -14006,6 +14189,49 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      letters_secured:
+        | {
+            Args: {
+              _row: Database["public"]["Tables"]["case_file_letters"]["Row"]
+            }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.letters_secured(_row => letter_collaborators), public.letters_secured(_row => letter_comments), public.letters_secured(_row => case_file_letters). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+            SetofOptions: {
+              from: "case_file_letters"
+              to: "letters"
+              isOneToOne: true
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: {
+              _row: Database["public"]["Tables"]["letter_collaborators"]["Row"]
+            }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.letters_secured(_row => letter_collaborators), public.letters_secured(_row => letter_comments), public.letters_secured(_row => case_file_letters). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+            SetofOptions: {
+              from: "letter_collaborators"
+              to: "letters"
+              isOneToOne: true
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: {
+              _row: Database["public"]["Tables"]["letter_comments"]["Row"]
+            }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.letters_secured(_row => letter_collaborators), public.letters_secured(_row => letter_comments), public.letters_secured(_row => case_file_letters). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+            SetofOptions: {
+              from: "letter_comments"
+              to: "letters"
+              isOneToOne: true
+              isSetofReturn: true
+            }
+          }
       list_quick_notes: {
         Args: { p_note_id?: string; p_tenant_id: string }
         Returns: Json
@@ -14026,6 +14252,20 @@ export type Database = {
           user_id_param: string
         }
         Returns: undefined
+      }
+      mask_secured_record: {
+        Args: { _row: Json; _table: string }
+        Returns: Json
+      }
+      mutate_secured_records: {
+        Args: {
+          _data?: Json
+          _ids: string[]
+          _method: string
+          _table: string
+          _upsert?: boolean
+        }
+        Returns: Json[]
       }
       next_recurrence_date: {
         Args: { _base: string; _rule: string }
@@ -14048,6 +14288,115 @@ export type Database = {
         Returns: boolean
       }
       quick_note_owned: { Args: { p_note_id: string }; Returns: boolean }
+      read_secured_contacts: {
+        Args: { _ids?: string[]; _tenant_id?: string }
+        Returns: {
+          address: string | null
+          avatar_url: string | null
+          birthday: string | null
+          business_city: string | null
+          business_country: string | null
+          business_house_number: string | null
+          business_phone: string | null
+          business_postal_code: string | null
+          business_street: string | null
+          category: string | null
+          contact_type: string | null
+          coordinates: Json | null
+          created_at: string
+          department: string | null
+          email: string | null
+          email_2: string | null
+          email_3: string | null
+          facebook: string | null
+          first_name: string | null
+          gender: string | null
+          geocoded_at: string | null
+          geocoding_source: string | null
+          id: string
+          instagram: string | null
+          is_favorite: boolean | null
+          last_contact: string | null
+          last_name: string | null
+          linkedin: string | null
+          mobile_phone: string | null
+          name: string
+          notes: string | null
+          organization: string | null
+          organization_id: string | null
+          phone: string | null
+          position: string | null
+          priority: string | null
+          role: string | null
+          tags: string[] | null
+          tenant_id: string
+          title: string | null
+          twitter: string | null
+          updated_at: string
+          user_id: string
+          website: string | null
+          xing: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "contacts"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      read_secured_letters: {
+        Args: { _ids?: string[]; _tenant_id?: string }
+        Returns: {
+          approved_at: string | null
+          approved_by: string | null
+          archived_document_id: string | null
+          attachments_list: string[] | null
+          closing_formula: string | null
+          closing_name: string | null
+          contact_id: string | null
+          content: string
+          content_html: string
+          content_nodes: Json | null
+          created_at: string
+          created_by: string
+          expected_response_date: string | null
+          id: string
+          information_block_id: string | null
+          information_block_ids: string[] | null
+          letter_date: string | null
+          recipient_address: string | null
+          recipient_name: string | null
+          reference_number: string | null
+          revision_comment: string | null
+          revision_requested_at: string | null
+          revision_requested_by: string | null
+          salutation_override: string | null
+          sender_info_id: string | null
+          sender_information_id: string | null
+          sent_at: string | null
+          sent_by: string | null
+          sent_date: string | null
+          sent_method: string | null
+          show_pagination: boolean | null
+          status: string
+          subject: string | null
+          subject_line: string | null
+          submitted_for_review_at: string | null
+          submitted_for_review_by: string | null
+          submitted_to_user: string | null
+          template_id: string | null
+          tenant_id: string
+          title: string
+          updated_at: string
+          workflow_locked: boolean | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "letters"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       reconcile_employee_meeting_requests: {
         Args: {
           p_employee_id?: string
@@ -14135,6 +14484,7 @@ export type Database = {
       snapshot_rls_coverage_internal: { Args: never; Returns: string }
       sync_birthday_appointments: { Args: never; Returns: undefined }
       sync_existing_contact_tags: { Args: never; Returns: undefined }
+      undo_contact_bulk_action: { Args: { _audit_id: string }; Returns: number }
       update_contact_usage: {
         Args: { p_contact_id: string; p_tenant_id?: string; p_user_id?: string }
         Returns: undefined
