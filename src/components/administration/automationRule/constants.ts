@@ -117,6 +117,11 @@ const DEFAULT_ACTION_INIT = {
 };
 
 export const RULE_TEMPLATES = [
+  ...[
+    { id: "annual-summer-tour", name: "Sommertour vorbereiten", description: "Jährlich am 1. April die Sommertour-Planung starten.", kind: "annual", month: "4", end: "false" },
+    { id: "monthly-office-review", name: "Monatsabschluss im Büro", description: "Am Monatsende offene Zusagen und Aufgaben prüfen.", kind: "monthly", month: "1", end: "true" },
+    { id: "quarterly-mandate-review", name: "Quartalsrückblick vorbereiten", description: "Zum Quartalsende die Mandatsarbeit auswerten.", kind: "quarterly", month: "3", end: "true" },
+  ].map(t => ({ id: t.id, name: t.name, description: t.description, module: "tasks", triggerType: "schedule", triggerField: "scheduled_date", triggerValue: "", schedule: { schedule_kind: t.kind, month: t.month, day: "1", hour: "9", month_end: t.end, timezone: "Europe/Berlin", minutes_interval: "60" }, conditions: [], actions: [{ ...DEFAULT_ACTION_INIT, type: "create_task", title: t.name, message: t.description, table: "tasks" }] })),
   {
     id: "tasks-overdue",
     name: "Überfällige Aufgaben erinnern",
@@ -301,6 +306,7 @@ export const DEFAULT_FORM: WizardForm = {
   triggerType: "record_changed",
   triggerField: "status",
   triggerValue: "",
+  schedule: { schedule_kind: "interval", month: "4", day: "1", hour: "9", month_end: "false", timezone: "Europe/Berlin", minutes_interval: "60" },
   conditionLogic: "all",
   conditions: [{ ...DEFAULT_CONDITION }],
   conditionGroup: { ...DEFAULT_CONDITION_GROUP },

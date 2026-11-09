@@ -1,5 +1,6 @@
 import type { ConditionItem, ConditionGroup, FieldType, WizardForm } from "./types";
 import { FIELD_SPEC_BY_MODULE } from "./constants";
+import { isCalendarSchedule, validateCalendarSchedule } from "@/features/automation/calendarSchedule";
 
 /** Recursively validate that all conditions in a group have non-empty values */
 export function validateConditionGroup(group: ConditionGroup): boolean {
@@ -81,6 +82,10 @@ export function collectSemanticIssues(
 ): Array<{ level: "error" | "warning"; message: string }> {
   const issues: Array<{ level: "error" | "warning"; message: string }> = [];
   const fieldSpecs = FIELD_SPEC_BY_MODULE[form.module] ?? {};
+  if (form.triggerType === "schedule" && form.schedule && isCalendarSchedule(form.schedule)) {
+    const error = validateCalendarSchedule(form.schedule);
+    if (error) issues.push({ level: "error", message: error });
+  }
 
   if (form.triggerType === "record_changed" && !form.triggerValue.trim()) {
     issues.push({ level: "error", message: "Trigger-Wert ist bei Datenänderung verpflichtend." });
