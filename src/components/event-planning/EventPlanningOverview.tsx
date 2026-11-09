@@ -1,10 +1,10 @@
 import { PlanningViewToggle } from "./PlanningViewToggle";
 import { useId, useState } from "react";
-import { Check, Clock, Archive, CheckCircle, MoreHorizontal, MapPin, Users, ChevronDown } from "lucide-react";
+import { Check, Clock, Archive, CheckCircle, MoreHorizontal, MapPin, Users, ChevronDown, CalendarDays, StickyNote, ExternalLink } from "lucide-react";
 import { format, isValid, startOfDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QuickAccessMenuItem } from "@/components/shared/QuickAccessMenuItem";
 import { NewItemIndicator } from "@/components/notifications/NewItemIndicator";
@@ -45,7 +45,7 @@ export function EventPlanningOverview({ plannings, allProfiles, collaborators, u
     return <li key={planning.id} ref={highlightRef(planning.id)} onClick={event => {
       if (event.target instanceof Element && event.target.closest("button,a,[role='menu'],[role='menuitem'],[tabindex]")) return;
       setSelectedPlanning(planning);
-    }} className={cn("relative min-w-0 cursor-pointer rounded-xl transition-[background-color,box-shadow,border-color] hover:bg-palette-green/5 hover:ring-1 hover:ring-inset hover:ring-palette-green focus-within:ring-1 focus-within:ring-inset focus-within:ring-palette-green", !listView && "border bg-background/60 p-3 hover:border-palette-green", isHighlighted(planning.id) && "notification-highlight")}>
+    }} className={cn("relative min-w-0 cursor-pointer rounded-xl transition-[background-color,box-shadow,border-color] hover:bg-palette-green/5 hover:ring-1 hover:ring-inset hover:ring-palette-green focus-within:ring-1 focus-within:ring-inset focus-within:ring-palette-green", !listView && "w-full border bg-background/60 p-3 hover:border-palette-green", isHighlighted(planning.id) && "notification-highlight")}>
       <NewItemIndicator isVisible={isItemNew(planning.id, planning.created_at)} size="sm" />
       <div className={cn("grid grid-cols-[2rem_minmax(0,1fr)_auto] items-start gap-x-2.5 gap-y-1.5 sm:grid-cols-[2.4rem_minmax(0,1fr)_auto] sm:gap-x-3", listView && "rounded-xl px-1 py-3 sm:px-2 sm:py-3.5")}>
         <button type="button" onClick={() => setSelectedPlanning(planning)} aria-label={`${planning.title} öffnen`} className={cn("row-span-2 mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full sm:h-[2.4rem] sm:w-[2.4rem]", date ? "bg-palette-green/15 text-green-800 dark:text-green-300" : "bg-palette-amber/15 text-amber-900 dark:text-amber-300")}>
@@ -55,11 +55,14 @@ export function EventPlanningOverview({ plannings, allProfiles, collaborators, u
           <button type="button" className={cn("block w-full text-left text-base font-semibold leading-snug hover:text-primary", muted && "text-muted-foreground")} onClick={() => setSelectedPlanning(planning)}>{planning.title}</button>
           <div className={cn("mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground", muted && "opacity-75")}>
             <span>{date ? "Termin bestätigt" : "Datum offen"}</span>
-            {date && <><span aria-hidden>·</span><time dateTime={planning.confirmed_date!}>{format(date, "dd.MM.yyyy", { locale: de })}</time></>}
+            {listView && date && <><span aria-hidden>·</span><time dateTime={planning.confirmed_date!}>{format(date, "dd.MM.yyyy", { locale: de })}</time></>}
             {planning.is_completed && <><span aria-hidden>·</span><span>Als erledigt erklärt</span></>}
           </div>
-          {!listView && planning.description && <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">{planning.description}</p>}
-          {!listView && planning.location && <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground"><MapPin className="h-3.5 w-3.5 shrink-0" />{planning.location}</p>}
+          {!listView && <div className="mt-3 space-y-2 text-sm text-muted-foreground">
+            <p className="flex items-start gap-2"><CalendarDays className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /><span>{date ? <time dateTime={planning.confirmed_date!}>{format(date, "dd.MM.yyyy", { locale: de })}</time> : "Datum offen"}</span></p>
+            {planning.location && <p className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /><span className="min-w-0 break-words">{planning.location}</span></p>}
+            {planning.description && <p className="flex items-start gap-2"><StickyNote className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /><span className="min-w-0 whitespace-pre-wrap break-words">{planning.description}</span></p>}
+          </div>}
 
         </div>
         <div className={cn("col-span-2 col-start-2 flex min-w-0 items-center justify-between gap-1", listView && "sm:col-span-1 sm:col-start-3 sm:row-start-1 sm:justify-end")}>
@@ -67,22 +70,25 @@ export function EventPlanningOverview({ plannings, allProfiles, collaborators, u
           <DropdownMenu>
             <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" aria-label={`Aktionen für ${planning.title}`}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => setSelectedPlanning(planning)}>Veranstaltung öffnen</DropdownMenuItem>
+              <div className="flex max-w-[min(24rem,calc(100vw-2rem))] items-start gap-2 px-2 py-2 text-sm" role="group" aria-label="Mitarbeiter">
+                <Users className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                <span className="pt-0.5 font-medium">Mitarbeiter</span>
+                <div className="flex min-w-0 flex-1 flex-wrap gap-x-3 gap-y-1">
+                  {team.length === 0 ? <span className="pt-0.5 text-muted-foreground">Keine</span> : team.map(c => {
+                    const profile = allProfiles.find(p => p.user_id === c.user_id);
+                    const name = profile?.display_name ?? c.profiles?.display_name ?? "Unbekannt";
+                    return <span key={c.user_id} className="inline-flex min-w-0 items-center gap-1.5" title={c.can_edit ? "Kann bearbeiten" : "Leserechte"}>
+                      <PlanningUserChip userId={c.user_id} name={name} color={profile?.badge_color} compact role="Mitbearbeiter" />
+                      <span className="break-words">{name}</span>
+                    </span>;
+                  })}
+                </div>
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => setSelectedPlanning(planning)}><ExternalLink className="mr-2 h-4 w-4" aria-hidden />Veranstaltung öffnen</DropdownMenuItem>
               {canEdit && <DropdownMenuItem onSelect={() => togglePlanningCompleted(planning.id, !planning.is_completed)}><CheckCircle className="mr-2 h-4 w-4" />{planning.is_completed ? "Als unerledigt markieren" : "Als erledigt erklären"}</DropdownMenuItem>}
               {planning.user_id === user?.id && <DropdownMenuItem onSelect={() => archivePlanning(planning.id)}><Archive className="mr-2 h-4 w-4" />Archivieren</DropdownMenuItem>}
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger><Users className="mr-2 h-4 w-4" />Mitarbeit ({team.length})</DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="max-h-72 max-w-72 overflow-y-auto">
-                  <DropdownMenuLabel>Mitbearbeiter</DropdownMenuLabel>
-                  {team.length === 0 ? <DropdownMenuItem disabled>Keine Mitbearbeiter</DropdownMenuItem> : team.map(c => {
-                    const profile = allProfiles.find(p => p.user_id === c.user_id);
-                    return <DropdownMenuItem key={c.user_id} className="gap-2" onSelect={event => event.preventDefault()}>
-                      <PlanningUserChip userId={c.user_id} name={profile?.display_name ?? c.profiles?.display_name} color={profile?.badge_color} compact role="Mitbearbeiter" />
-                      <span className="min-w-0"><span className="block truncate">{profile?.display_name ?? c.profiles?.display_name ?? "Unbekannt"}</span><span className="text-xs text-muted-foreground">{c.can_edit ? "Kann bearbeiten" : "Leserechte"}</span></span>
-                    </DropdownMenuItem>;
-                  })}
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
+
               <DropdownMenuSeparator />
               <QuickAccessMenuItem id={`planning-${planning.id}`} label={planning.title} icon="Calendar" route={`/eventplanning?highlight=${planning.id}`} />
             </DropdownMenuContent>
@@ -108,7 +114,7 @@ export function EventPlanningOverview({ plannings, allProfiles, collaborators, u
           {group.label}<span className="font-normal tracking-normal text-muted-foreground">({group.items.length})</span>
         </button></h3> : <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-palette-green">{group.label}</h3>}
         <div id={group.muted ? pastSectionId : undefined} hidden={group.muted && !pastExpanded}>
-          {(!group.muted || pastExpanded) && <ul className={listView ? "space-y-1" : "grid gap-3 2xl:grid-cols-2"}>{group.items.map(planning => renderEvent(planning, group.muted))}</ul>}
+          {(!group.muted || pastExpanded) && <ul className={listView ? "space-y-1" : "grid grid-cols-1 gap-3"}>{group.items.map(planning => renderEvent(planning, group.muted))}</ul>}
         </div>
       </div>;
     })}
