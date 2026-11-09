@@ -353,16 +353,8 @@ export function useEventPlanningData() {
     } finally { setLoading(false); }
   };
 
-  const fetchArchivedPlannings = async () => {
-    if (!user || !currentTenant?.id) return;
-    try {
-      const { data, error } = await supabase.from("event_plannings").select("id, user_id, title, description, location, contact_person, background_info, confirmed_date, is_private, created_at, updated_at, template_id, tenant_id, is_digital, digital_platform, digital_link, digital_access_info, is_archived, archived_at, is_completed, completed_at").eq("tenant_id", currentTenant.id).eq("is_archived", true).order("archived_at", { ascending: false });
-      if (error) throw error;
-      setArchivedPlannings([...(data ?? [])] as EventPlanning[]);
-    } catch (error) { handleAppError(error, { context: 'fetchArchivedPlannings' }); }
-  };
-
-  const fetchAllCollaborators = async (planningIds: string[]) => {
+  const fetchAllCollaborators = useCallback(async (planningIds: string[]) => {
+    if (!planningIds.length) return;
     const { data: collabs } = await supabase.from("event_planning_collaborators").select("id, event_planning_id, user_id, can_edit, created_at").in("event_planning_id", planningIds);
     if (collabs) {
       const collabsWithProfiles = await Promise.all(
@@ -371,9 +363,20 @@ export function useEventPlanningData() {
           return { ...collab, profiles: profile };
         })
       );
-      setCollaborators(collabsWithProfiles);
-    } else { setCollaborators([]); }
-  };
+      setCollaborators(previous => [...previous.filter(c => !planningIds.includes(c.event_planning_id)), ...collabsWithProfiles]);
+    } else { setCollaborators(previous => previous.filter(c => !planningIds.includes(c.event_planning_id))); }
+  }, []);
+
+  const fetchArchivedPlannings = useCallback(async () => {
+    if (!user || !currentTenant?.id) return false;
+    try {
+      const { data, error } = await supabase.from("event_plannings").select("id, user_id, title, description, location, contact_person, background_info, confirmed_date, is_private, created_at, updated_at, template_id, tenant_id, is_digital, digital_platform, digital_link, digital_access_info, is_archived, archived_at, is_completed, completed_at").eq("tenant_id", currentTenant.id).eq("is_archived", true).order("archived_at", { ascending: false });
+      if (error) throw error;
+      setArchivedPlannings([...(data ?? [])] as EventPlanning[]);
+      await fetchAllCollaborators((data ?? []).map(p => p.id));
+      return true;
+    } catch (error) { handleAppError(error, { context: 'fetchArchivedPlannings' }); return false; }
+  }, [user?.id, currentTenant?.id, fetchAllCollaborators]);
 
   const fetchAllProfiles = async () => {
     if (!currentTenant) return;

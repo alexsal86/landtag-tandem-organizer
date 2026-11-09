@@ -1,7 +1,7 @@
 import { PencilSparkles } from "@/components/icons/PencilSparkles";
 import { PlanningViewToggle } from "./PlanningViewToggle";
-import { useId, useState } from "react";
-import { Check, Clock, Archive, CheckCircle, MoreHorizontal, MapPin, Users, ChevronDown, CalendarDays, ExternalLink } from "lucide-react";
+import { useEffect, useId, useState } from "react";
+import { Check, Clock, Archive, CheckCircle, MoreHorizontal, MapPin, Users, ChevronDown, CalendarDays, ExternalLink, ArchiveRestore } from "lucide-react";
 import { format, isValid, startOfDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -15,10 +15,22 @@ import { PlanningUserChip } from "./PlanningUserChip";
 import type { useEventPlanningData } from "./useEventPlanningData";
 import type { EventPlanning } from "./types";
 
-type Props = Pick<ReturnType<typeof useEventPlanningData>, "plannings" | "allProfiles" | "collaborators" | "user" | "eventPlanningView" | "saveViewPreferences" | "isItemNew" | "setSelectedPlanning" | "togglePlanningCompleted" | "archivePlanning">;
+type Props = Pick<ReturnType<typeof useEventPlanningData>, "plannings" | "allProfiles" | "collaborators" | "user" | "eventPlanningView" | "saveViewPreferences" | "isItemNew" | "setSelectedPlanning" | "togglePlanningCompleted" | "archivePlanning" | "archivedPlannings" | "fetchArchivedPlannings" | "restorePlanning" | "showPlanningArchive" | "setShowPlanningArchive">;
 
-export function EventPlanningOverview({ plannings, allProfiles, collaborators, user, eventPlanningView, saveViewPreferences, isItemNew, setSelectedPlanning, togglePlanningCompleted, archivePlanning }: Props) {
-  const [filter, setFilter] = useState<"all" | "mine" | "open">("open");
+export function EventPlanningOverview({ plannings, allProfiles, collaborators, user, eventPlanningView, saveViewPreferences, isItemNew, setSelectedPlanning, togglePlanningCompleted, archivePlanning, archivedPlannings, fetchArchivedPlannings, restorePlanning, showPlanningArchive, setShowPlanningArchive }: Props) {
+  const [filter, setFilter] = useState<"all" | "mine" | "open" | "archive">(showPlanningArchive ? "archive" : "open");
+  const [archiveLoading, setArchiveLoading] = useState(false);
+  const [archiveError, setArchiveError] = useState(false);
+  useEffect(() => {
+    if (filter !== "archive") return;
+    let cancelled = false;
+    setArchiveLoading(true);
+    setArchiveError(false);
+    void fetchArchivedPlannings().then(success => {
+      if (!cancelled) { setArchiveError(!success); setArchiveLoading(false); }
+    });
+    return () => { cancelled = true; };
+  }, [filter, fetchArchivedPlannings]);
   const [pastExpanded, setPastExpanded] = useState(false);
   const pastSectionId = useId();
   const { isHighlighted, highlightRef } = useNotificationHighlight();
@@ -32,8 +44,8 @@ export function EventPlanningOverview({ plannings, allProfiles, collaborators, u
     const date = confirmedDate(planning);
     return Boolean(planning.is_completed || (date && date.getTime() < today));
   };
-  const visible = plannings.filter(planning => filter !== "mine" || planning.user_id === user?.id || collaborators.some(c => c.event_planning_id === planning.id && c.user_id === user?.id));
-  const groups = [
+  const visible = (filter === "archive" ? archivedPlannings : plannings).filter(planning => filter !== "mine" || planning.user_id === user?.id || collaborators.some(c => c.event_planning_id === planning.id && c.user_id === user?.id));
+  const groups = filter === "archive" ? [{ label: "Archivierte Veranstaltungen", items: visible, muted: false }] : [
     { label: "Anstehend", items: visible.filter(p => !past(p)), muted: false },
     { label: "Vergangen & abgeschlossen", items: visible.filter(past), muted: true },
   ];
@@ -48,7 +60,7 @@ export function EventPlanningOverview({ plannings, allProfiles, collaborators, u
       if (event.target instanceof Element && event.target.closest("button,a,[role='menu'],[role='menuitem'],[tabindex]")) return;
       setSelectedPlanning(planning);
     }} className={cn("relative min-w-0 cursor-pointer rounded-xl transition-[background-color,box-shadow,border-color] hover:bg-palette-green/5 hover:ring-1 hover:ring-inset hover:ring-palette-green focus-within:ring-1 focus-within:ring-inset focus-within:ring-palette-green", !listView && "w-full border bg-background/60 p-3 hover:border-palette-green", isHighlighted(planning.id) && "notification-highlight")}>
-      <NewItemIndicator isVisible={isItemNew(planning.id, planning.created_at)} size="sm" />
+      <NewItemIndicator isVisible={!planning.is_archived && isItemNew(planning.id, planning.created_at)} size="sm" />
       <div className={cn("grid grid-cols-[2rem_minmax(0,1fr)_auto] items-start gap-x-2.5 gap-y-1.5 sm:grid-cols-[2.4rem_minmax(0,1fr)_auto] sm:gap-x-3", listView && "rounded-xl px-1 py-3 sm:px-2 sm:py-3.5")}>
         <button type="button" onClick={() => setSelectedPlanning(planning)} aria-label={`${planning.title} öffnen`} className={cn("row-span-2 mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full sm:h-[2.4rem] sm:w-[2.4rem]", date ? "bg-palette-green/15 text-green-800 dark:text-green-300" : "bg-palette-amber/15 text-amber-900 dark:text-amber-300")}>
           {date ? <Check className="h-4 w-4" strokeWidth={3} aria-hidden /> : <Clock className="h-4 w-4" strokeWidth={2.75} aria-hidden />}
@@ -58,6 +70,7 @@ export function EventPlanningOverview({ plannings, allProfiles, collaborators, u
           <div className={cn("mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground", muted && "opacity-75")}>
             <span>{date ? "Termin bestätigt" : "Datum offen"}</span>
             {listView && date && <><span aria-hidden>·</span><time dateTime={planning.confirmed_date!}>{dateLabel}</time></>}
+            {planning.is_archived && <><span aria-hidden>·</span><span>Archiviert{planning.archived_at ? ` am ${format(new Date(planning.archived_at), "dd.MM.yyyy", { locale: de })}` : ""}</span></>}
             {planning.is_completed && <><span aria-hidden>·</span><span>Als erledigt erklärt</span></>}
           </div>
           {!listView && <div className={cn("mt-3 grid gap-3 text-sm text-muted-foreground", planning.description && "sm:grid-cols-2")}>
@@ -93,8 +106,8 @@ export function EventPlanningOverview({ plannings, allProfiles, collaborators, u
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => setSelectedPlanning(planning)}><ExternalLink className="mr-2 h-4 w-4" aria-hidden />Veranstaltung öffnen</DropdownMenuItem>
-              {canEdit && <DropdownMenuItem onSelect={() => togglePlanningCompleted(planning.id, !planning.is_completed)}><CheckCircle className="mr-2 h-4 w-4" />{planning.is_completed ? "Als unerledigt markieren" : "Als erledigt erklären"}</DropdownMenuItem>}
-              {planning.user_id === user?.id && <DropdownMenuItem onSelect={() => archivePlanning(planning.id)}><Archive className="mr-2 h-4 w-4" />Archivieren</DropdownMenuItem>}
+              {!planning.is_archived && canEdit && <DropdownMenuItem onSelect={() => togglePlanningCompleted(planning.id, !planning.is_completed)}><CheckCircle className="mr-2 h-4 w-4" />{planning.is_completed ? "Als unerledigt markieren" : "Als erledigt erklären"}</DropdownMenuItem>}
+              {planning.user_id === user?.id && (planning.is_archived ? <DropdownMenuItem onSelect={() => restorePlanning(planning.id)}><ArchiveRestore className="mr-2 h-4 w-4" />Wiederherstellen</DropdownMenuItem> : <DropdownMenuItem onSelect={() => archivePlanning(planning.id)}><Archive className="mr-2 h-4 w-4" />Archivieren</DropdownMenuItem>)}
 
               <DropdownMenuSeparator />
               <QuickAccessMenuItem id={`planning-${planning.id}`} label={planning.title} icon="Calendar" route={`/eventplanning?highlight=${planning.id}`} />
@@ -109,11 +122,11 @@ export function EventPlanningOverview({ plannings, allProfiles, collaborators, u
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
       <h2 className="text-2xl font-semibold tracking-tight">Veranstaltungen</h2>
       <div className="flex flex-wrap items-center gap-2">
-        <div className="inline-flex rounded-xl bg-muted/70 p-1" role="group" aria-label="Veranstaltungen filtern">{([["open", "Offen"], ["mine", "Meine"], ["all", "Alle"]] as const).map(([value, label]) => <Button key={value} size="sm" variant="ghost" aria-pressed={filter === value} className={cn("rounded-lg px-3 text-muted-foreground", filter === value && "bg-background text-foreground shadow-sm hover:bg-background")} onClick={() => { setFilter(value); setPastExpanded(value === "all"); }}>{label}</Button>)}</div>
+        <div className="inline-flex items-center rounded-xl bg-muted/70 p-1" role="group" aria-label="Veranstaltungen filtern">{([["open", "Offen"], ["mine", "Meine"], ["all", "Alle"], ["archive", "Archiv"]] as const).map(([value, label]) => <span key={value} className={cn("inline-flex", value === "archive" && "ml-1 border-l border-border pl-1")}><Button size="sm" variant="ghost" aria-pressed={filter === value} className={cn("rounded-lg px-3 text-muted-foreground", filter === value && "bg-background text-foreground shadow-sm hover:bg-background")} onClick={() => { setFilter(value); setShowPlanningArchive(value === "archive"); setPastExpanded(value === "all"); }}>{label}</Button></span>)}</div>
         <PlanningViewToggle value={eventPlanningView} onChange={view => saveViewPreferences("event", view)} label="Veranstaltungsansicht" />
       </div>
     </div>
-    {visible.length === 0 ? <p className="py-10 text-center text-sm text-muted-foreground">Keine Veranstaltungen für diesen Filter.</p> : groups.map(group => {
+    {filter === "archive" && archiveLoading ? <p className="py-10 text-center text-sm text-muted-foreground" role="status">Archiv wird geladen…</p> : filter === "archive" && archiveError ? <p className="py-10 text-center text-sm text-destructive" role="alert">Das Archiv konnte nicht geladen werden.</p> : visible.length === 0 ? <p className="py-10 text-center text-sm text-muted-foreground">{filter === "archive" ? "Keine archivierten Veranstaltungen vorhanden." : "Keine Veranstaltungen für diesen Filter."}</p> : groups.map(group => {
       if (!group.items.length) return !group.muted && filter === "open" ? <p key={group.label} className="py-5 text-sm text-muted-foreground">Keine aktuell offenen Veranstaltungen.</p> : null;
       return <div key={group.label} className="mt-4 first:mt-0">
         {group.muted ? <h3 className="mb-2"><button type="button" aria-expanded={pastExpanded} aria-controls={pastSectionId} onClick={() => setPastExpanded(value => !value)} className="flex w-full items-center gap-2 rounded-md py-1 text-left text-xs font-semibold uppercase tracking-[0.16em] text-palette-green hover:bg-palette-green/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-palette-green">

@@ -6,9 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { debugConsole } from '@/utils/debugConsole';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { NewItemIndicator } from "@/components/notifications/NewItemIndicator";
 import { Plus, Archive, Users } from "lucide-react";
@@ -28,13 +27,11 @@ export function EventPlanningListView(data: EventPlanningDataReturn) {
     selectedTemplateId, setSelectedTemplateId,
     planningTemplates,
     appointmentPreparationView,
-    showPlanningArchive, setShowPlanningArchive,
-    archivedPlannings, showArchived, setShowArchived,
+    showArchived, setShowArchived,
     appointmentPreparations, archivedPreparations,
     showDefaultCollaboratorsDialog, setShowDefaultCollaboratorsDialog,
     isItemNew,
-    saveViewPreferences, fetchArchivedPlannings,
-    restorePlanning,
+    saveViewPreferences,
     archivePreparation, handlePreparationClick, createPlanning,
   } = data;
 
@@ -47,36 +44,6 @@ export function EventPlanningListView(data: EventPlanningDataReturn) {
             <Button variant="outline" size="sm" onClick={() => setShowDefaultCollaboratorsDialog(true)}>
               <Users className="h-4 w-4 mr-2" />Standard-Mitarbeiter
             </Button>
-            <Dialog open={showPlanningArchive} onOpenChange={(open) => { setShowPlanningArchive(open); if (open) fetchArchivedPlannings().catch(err => debugConsole.error('Failed to fetch archived plannings:', err)); }}>
-              <DialogTrigger asChild>
-                <Button variant={showPlanningArchive ? "default" : "outline"} size="sm"><Archive className="h-4 w-4 mr-2" />Archiv</Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2"><Archive className="h-5 w-5" />Archivierte Veranstaltungsplanungen</DialogTitle>
-                  <DialogDescription>Hier finden Sie alle archivierten Planungen. Sie können diese wiederherstellen.</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-3 mt-4">
-                  {archivedPlannings.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <Archive className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                      <p className="text-muted-foreground text-sm">Keine archivierten Planungen vorhanden.</p>
-                    </div>
-                  ) : (
-                    archivedPlannings.map((planning) => (
-                      <div key={planning.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div>
-                          <h4 className="font-medium">{planning.title}</h4>
-                          {planning.description && <p className="text-sm text-muted-foreground line-clamp-1">{planning.description}</p>}
-                          <p className="text-xs text-muted-foreground mt-1">Erstellt: {format(new Date(planning.created_at), "dd.MM.yyyy", { locale: de })}</p>
-                        </div>
-                        <Button variant="outline" size="sm" onClick={() => restorePlanning(planning.id)}>Wiederherstellen</Button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </DialogContent>
-            </Dialog>
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Neue Planung</Button></DialogTrigger>
               <DialogContent>
