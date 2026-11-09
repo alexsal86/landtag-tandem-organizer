@@ -17,7 +17,7 @@ export interface BriefingAppointment {
 }
 
 const KEY = "appointment-briefing";
-const COLS = "id, title, start_time, location, briefing_depth, briefing_status, briefing_assignee_id, briefing_due_at, briefing_instructions";
+const COLS = "id, title, start_time, location, briefing_status, briefing_assignee_id, briefing_due_at, briefing_instructions";
 
 export function useUndecidedBriefings() {
   const { currentTenant } = useTenant();
@@ -60,12 +60,14 @@ export function useTodayApprovedBriefings(enabled = true) {
 async function fetchAppointmentBriefing(appointmentId: string, tenantId: string): Promise<BriefingAppointment> {
   const { data, error } = await supabase.from("appointments").select(COLS).eq("id", appointmentId).eq("tenant_id", tenantId).single();
   if (error) throw error;
-  let assigneeName: string | null = null;
-  if (data.briefing_assignee_id) {
-    const { data: profile } = await supabase.from("profiles").select("display_name").eq("user_id", data.briefing_assignee_id).maybeSingle();
-    assigneeName = profile?.display_name ?? null;
-  }
-  return { ...data, briefing_assignee_name: assigneeName };
+  // Depth is optional metadata: older database deployments must still show the assignment.
+  const [profileResult, depthResult] = await Promise.all([
+    data.briefing_assignee_id
+      ? supabase.from("profiles").select("display_name").eq("user_id", data.briefing_assignee_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase.from("appointments").select("briefing_depth").eq("id", appointmentId).eq("tenant_id", tenantId).single(),
+  ]);
+  return { ...data, briefing_assignee_name: profileResult.data?.display_name ?? null, briefing_depth: depthResult.data?.briefing_depth ?? "compact" };
 }
 
 export function useAppointmentBriefing(appointmentId: string | undefined) {
@@ -76,6 +78,17 @@ export function useAppointmentBriefing(appointmentId: string | undefined) {
     refetchOnMount: "always",
     queryFn: () => fetchAppointmentBriefing(appointmentId!, currentTenant!.id),
   });
+}
+
+export function briefingErrorMessage(error: unknown, fallback = "Briefing konnte nicht gespeichert werden."): string {
+  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
+    return error.message;
+  }
+  return fallback;
+}
+
+function missingRpcSignature(error: { code?: string } | null): boolean {
+  return !!error && ["PGRST202", "PGRST203", "42883"].includes(error.code ?? "");
 }
 
 export interface SetBriefingInput { appointmentId: string; decision: "none" | "assigned"; assignee?: string; due?: string; instructions?: string; depth?: "compact" | "full" }
@@ -92,17 +105,36 @@ export function useBriefingMutations() {
   const setBriefing = useMutation({
     mutationFn: async (v: SetBriefingInput) => {
       if (!currentTenant) throw new Error("Bitte ein Team wählen.");
-      const { error } = await supabase.rpc("set_appointment_briefing", {
+      let result = await supabase.rpc("set_appointment_briefing", {
         _appointment_id: v.appointmentId, _decision: v.decision,
         _assignee: v.assignee, _due: v.due, _instructions: v.instructions, _depth: v.depth,
       });
-      if (error) throw error;
+      let depthWarning: string | undefined;
+      if (missingRpcSignature(result.error)) {
+        // A signature lookup failure did not execute any mutation. Retry using the established API.
+        result = await supabase.rpc("set_appointment_briefing", {
+          _appointment_id: v.appointmentId, _decision: v.decision,
+          _assignee: v.assignee, _due: v.due, _instructions: v.instructions,
+        });
+        if (!result.error && v.decision === "assigned" && v.depth) {
+          const depthResult = await supabase.rpc("set_appointment_briefing_depth", { _appointment_id: v.appointmentId, _depth: v.depth });
+          if (depthResult.error) depthWarning = "Die Vergabe wurde gespeichert. Die Briefing-Tiefe konnte noch nicht aktualisiert werden.";
+        }
+      }
+      if (result.error) throw new Error(briefingErrorMessage(result.error));
       // Read the saved assignment back before reporting success, rather than waiting for a background refetch.
-      const saved = await fetchAppointmentBriefing(v.appointmentId, currentTenant.id);
+      let saved: BriefingAppointment;
+      try {
+        saved = await fetchAppointmentBriefing(v.appointmentId, currentTenant.id);
+      } catch {
+        await done();
+        throw new Error("Die Vergabe wurde gespeichert, aber der Status konnte nicht erneut geladen werden. Bitte die Termindetails neu öffnen.");
+      }
       qc.setQueryData([KEY, "one", currentTenant.id, v.appointmentId], saved);
       if (saved.briefing_status !== v.decision || (v.decision === "assigned" && saved.briefing_assignee_id !== v.assignee)) {
         throw new Error("Die Briefing-Vergabe konnte nicht bestätigt werden. Bitte den Status aktualisieren.");
       }
+      return { depthWarning };
     },
     onSuccess: done,
   });

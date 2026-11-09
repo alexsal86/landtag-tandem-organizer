@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useTenantUsers } from "@/hooks/useTenantUsers";
 import { notify } from "@/lib/notify";
 import { suggestBriefingDue } from "../briefing";
-import { useBriefingMutations } from "./useBriefing";
+import { briefingErrorMessage, useBriefingMutations } from "./useBriefing";
 
 interface Props { appointmentId: string; startTime: string; trigger: ReactNode; initialAssignee?: string | null; initialInstructions?: string | null; initialDue?: string | null; initialDepth?: "compact" | "full" }
 
@@ -25,10 +25,11 @@ export function BriefingRequestPopover({ appointmentId, startTime, trigger, init
   const submit = async () => {
     if (!assignee) { notify.warning("Bitte eine Person wählen."); return; }
     try {
-      await setBriefing.mutateAsync({ appointmentId, decision: "assigned", assignee, due: new Date(due).toISOString(), instructions: instructions.trim() || undefined, depth });
+      const result = await setBriefing.mutateAsync({ appointmentId, decision: "assigned", assignee, due: new Date(due).toISOString(), instructions: instructions.trim() || undefined, depth });
       notify.success(`Briefing vergeben an ${users.find(u => u.id === assignee)?.display_name ?? assignee}.`);
+      if (result.depthWarning) notify.warning(result.depthWarning);
       setOpen(false);
-    } catch (e) { notify.error(e instanceof Error ? e.message : "Briefing konnte nicht vergeben werden."); }
+    } catch (e) { notify.error(briefingErrorMessage(e, "Briefing konnte nicht vergeben werden.")); }
   };
 
   return (
@@ -43,6 +44,7 @@ export function BriefingRequestPopover({ appointmentId, startTime, trigger, init
     }}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent className="w-80 space-y-3" align="end">
+        {initialAssignee && <p className="text-caption text-muted-foreground">Bei einer Neuvergabe geht das Briefing zurück in die Zuarbeit. Die vorhandenen Inhalte bleiben erhalten.</p>}
         <div className="space-y-1">
           <label className="text-caption text-muted-foreground">Tiefe</label>
           <div className="flex rounded-md border p-0.5 text-caption">
