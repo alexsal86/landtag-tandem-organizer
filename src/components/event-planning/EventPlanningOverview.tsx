@@ -4,7 +4,7 @@ import type { useEventPlanningData } from "./useEventPlanningData";
 type Props = ReturnType<typeof useEventPlanningData>;
 
 export function EventPlanningOverview(data: Props) {
-  return <PlanningOverview
+  return <PlanningOverview<Props["plannings"][number]>
     title="Veranstaltungen"
     singular="Veranstaltung"
     plannings={data.plannings}
