@@ -1,3 +1,5 @@
+import { useLocation } from "react-router-dom";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { trackPageVisit } from "@/hooks/useRecentlyVisited";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +18,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Calendar } from "@/components/ui/calendar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DragDropContext, type DropResult } from "@hello-pangea/dnd";
-import { Plus, Calendar as CalendarIcon, Trash2, Check, X, Upload, Clock, Edit2, FileText, Download, Archive, Eye, CheckCircle, Info, Mail, Phone, Ellipsis, AlertCircle } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Trash2, Check, X, Upload, Clock, Edit2, FileText, Download, Archive, Eye, CheckCircle, Info, Mail, Phone, Ellipsis, AlertCircle, LayoutDashboard, Users, ListChecks, Files } from "lucide-react";
 import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -31,7 +33,11 @@ import type { useEventPlanningData } from "./useEventPlanningData";
 type EventPlanningDataReturn = ReturnType<typeof useEventPlanningData>;
 type ChecklistItemRefMap = Record<string, RefObject<HTMLDivElement | null>>;
 
+type PlanningDetailTab = "overview" | "guests" | "checklist" | "documents";
+
 export function EventPlanningDetailView(data: EventPlanningDataReturn) {
+  const { hash } = useLocation();
+  const [activeTab, setActiveTab] = useState<PlanningDetailTab>(hash === "#rsvp-manager" ? "guests" : "overview");
   const [copiedSpeakerContact, setCopiedSpeakerContact] = useState<string | null>(null);
   const [rsvpCounts, setRsvpCounts] = useState({ accepted: 0, tentative: 0, declined: 0, invited: 0 });
   const [hoveredChecklistItemId, setHoveredChecklistItemId] = useState<string | null>(null);
@@ -103,6 +109,10 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
       trackPageVisit(`planning-${selectedPlanning.id}`, selectedPlanning.title, 'Calendar', `/event-planning?id=${selectedPlanning.id}`);
     }
   }, [selectedPlanning?.id, selectedPlanning?.title]);
+
+  useEffect(() => {
+    setActiveTab(hash === "#rsvp-manager" ? "guests" : "overview");
+  }, [selectedPlanning?.id, hash]);
 
   if (!selectedPlanning) return null;
 
@@ -427,8 +437,22 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
           </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)] lg:items-start">
-          <div className="space-y-6 lg:min-w-0">
+        <Tabs value={activeTab} onValueChange={value => setActiveTab(value as PlanningDetailTab)} className="space-y-4">
+          <div className="overflow-x-auto pb-1">
+            <TabsList aria-label="Veranstaltungsbereiche" className="h-auto min-w-full justify-start gap-1 rounded-xl bg-muted/60 p-1 sm:min-w-0">
+              {([
+                { value: "overview", label: "Übersicht", Icon: LayoutDashboard },
+                { value: "guests", label: "Gäste & RSVP", Icon: Users },
+                { value: "checklist", label: "Checkliste & Zeitstrahl", Icon: ListChecks },
+                { value: "documents", label: "Dokumente", Icon: Files },
+              ] as const).map(({ value, label, Icon }) => <TabsTrigger key={value} value={value} className="gap-2 rounded-lg data-[state=active]:bg-palette-green data-[state=active]:text-white">
+                <Icon className="h-4 w-4 shrink-0" aria-hidden />{label}
+              </TabsTrigger>)}
+            </TabsList>
+          </div>
+          <TabsContent value="overview" forceMount className="data-[state=inactive]:hidden">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)] lg:items-start">
+              <div className="min-w-0 space-y-6">
             {/* Grunddaten */}
             <Card className="bg-card shadow-card border-border">
               <CardHeader>
@@ -536,14 +560,8 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                 </div>
               </CardContent>
             </Card>
-
-            {/* RSVP Manager */}
-            <div id="rsvp-manager" className="scroll-mt-24">
-              <EventRSVPManager eventPlanningId={selectedPlanning.id} eventTitle={selectedPlanning.title} />
-            </div>
-          </div>
-
-          <div className="space-y-6 lg:min-w-0">
+              </div>
+              <div className="min-w-0 space-y-6">
             {/* Termine */}
             <Card className="bg-card shadow-card border-border">
               <CardHeader>
@@ -759,34 +777,17 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                 </DialogContent>
               </Dialog>
             </Card>
-
-            {/* Dokumente */}
-            <Card className="bg-card shadow-card border-border">
-              <CardHeader>
-                <CardTitle className={cn(sectionTitleClassName, "flex items-center justify-between gap-3")}>
-                  <span>Dokumente</span>
-                  <Button variant="outline" size="sm" onClick={() => document.getElementById('general-file-upload')?.click()} disabled={uploading}><Upload className="mr-2 h-4 w-4" />Hochladen</Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <input id="general-file-upload" type="file" multiple className="hidden" onChange={(e) => handleGeneralFileUpload(e.target.files)} />
-                <div className="space-y-2">
-                  {generalDocuments.map((doc) => (
-                    <div key={doc.id} className="flex items-center justify-between rounded border p-2">
-                      <div className="flex items-center space-x-2"><FileText className="h-4 w-4" /><span className="text-sm">{doc.file_name}</span>{doc.file_size && <span className="text-xs text-muted-foreground">({(doc.file_size / 1024).toFixed(1)} KB)</span>}</div>
-                      <div className="flex items-center space-x-1">
-                        <Button variant="ghost" size="sm" onClick={() => downloadGeneralDocument(doc)}><Download className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="sm" onClick={() => deleteGeneralDocument(doc.id)} className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
-                      </div>
-                    </div>
-                  ))}
-                  {generalDocuments.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">Noch keine allgemeinen Dokumente hochgeladen</p>}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </div>
+          </TabsContent>
+          <TabsContent value="guests" forceMount className="data-[state=inactive]:hidden">
+            <div id="rsvp-manager" className="scroll-mt-24">
+              <EventRSVPManager eventPlanningId={selectedPlanning.id} eventTitle={selectedPlanning.title} />
+            </div>
+          </TabsContent>
+          <TabsContent value="checklist" forceMount className="data-[state=inactive]:hidden">
           <DragDropContext onDragEnd={handlePlanningDragEnd}>
-            <div className="lg:col-span-2 grid gap-6 lg:grid-cols-2">
+            <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
               {/* Checkliste */}
               <ChecklistSection
                 checklistItems={checklistItems}
@@ -851,7 +852,34 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
               />
             </div>
           </DragDropContext>
-        </div>
+          </TabsContent>
+          <TabsContent value="documents" forceMount className="data-[state=inactive]:hidden">
+            {/* Dokumente */}
+            <Card className="bg-card shadow-card border-border">
+              <CardHeader>
+                <CardTitle className={cn(sectionTitleClassName, "flex items-center justify-between gap-3")}>
+                  <span>Dokumente</span>
+                  <Button variant="outline" size="sm" onClick={() => document.getElementById('general-file-upload')?.click()} disabled={uploading}><Upload className="mr-2 h-4 w-4" />Hochladen</Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <input id="general-file-upload" type="file" multiple className="hidden" onChange={(e) => handleGeneralFileUpload(e.target.files)} />
+                <div className="space-y-2">
+                  {generalDocuments.map((doc) => (
+                    <div key={doc.id} className="flex items-center justify-between rounded border p-2">
+                      <div className="flex items-center space-x-2"><FileText className="h-4 w-4" /><span className="text-sm">{doc.file_name}</span>{doc.file_size && <span className="text-xs text-muted-foreground">({(doc.file_size / 1024).toFixed(1)} KB)</span>}</div>
+                      <div className="flex items-center space-x-1">
+                        <Button variant="ghost" size="sm" onClick={() => downloadGeneralDocument(doc)}><Download className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="sm" onClick={() => deleteGeneralDocument(doc.id)} className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                      </div>
+                    </div>
+                  ))}
+                  {generalDocuments.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">Noch keine allgemeinen Dokumente hochgeladen</p>}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Result Dialog for Subtasks */}
@@ -893,7 +921,6 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
           onSaved={() => { if (selectedPlanning) fetchEmailActions(selectedPlanning.id); }} />
       )}
 
-      {/* Default Collaborators Dialog */}
     </div>
   );
 }
