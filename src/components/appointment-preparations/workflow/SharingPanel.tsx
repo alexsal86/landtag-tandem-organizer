@@ -63,6 +63,13 @@ export function SharingPanel({ preparation, onUpdate }: Props) {
     }
   };
 
+  if (preparation.appointment_id) {
+    return <Card className="bg-card shadow-card border-border">
+      <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm"><Users className="h-4 w-4 text-primary" />Für das gesamte Team sichtbar</CardTitle></CardHeader>
+      <CardContent><p className="text-sm text-muted-foreground">Diese Vorbereitung und ihre Unterlagen sind wie der verknüpfte Termin für alle aktiven Mitglieder dieses Teams lesbar. Eine zusätzliche Freigabe einzelner Personen ist nicht nötig. Die beauftragte Person kann die Vorbereitung bearbeiten.</p></CardContent>
+    </Card>;
+  }
+
   return (
     <Card className="bg-card shadow-card border-border">
       <CardHeader className="pb-2">

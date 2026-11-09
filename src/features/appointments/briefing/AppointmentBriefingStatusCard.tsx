@@ -22,18 +22,20 @@ const VARIANT: Record<string, "secondary" | "outline" | "default"> = { undecided
 export function AppointmentBriefingStatusCard({ appointmentId, title, startTime, isDecider }: { appointmentId: string; title: string; startTime: string; isDecider: boolean }) {
   const { user } = useAuth();
   const { users } = useTenantUsers();
-  const { data } = useAppointmentBriefing(appointmentId);
+  const { data, isPending, error, refetch } = useAppointmentBriefing(appointmentId);
   const { setBriefing, advance } = useBriefingMutations();
   const [editorOpen, setEditorOpen] = useState(false);
+  const [returnNote, setReturnNote] = useState("");
   const navigate = useNavigate();
-  if (!data) return null;
+  if (isPending) return <div className="rounded-lg border p-3 text-sm" role="status">Briefing-Status wird geladen…</div>;
+  if (error || !data) return <div className="space-y-2 rounded-lg border p-3"><p className="text-sm" role="alert">Briefing-Status konnte nicht geladen werden.</p><Button size="sm" variant="outline" onClick={() => void refetch()}>Erneut laden</Button></div>;
   const goLive = async () => {
     const { data: prep } = await supabase.from("appointment_preparations").select("id").eq("appointment_id", appointmentId).eq("is_archived", false).order("created_at", { ascending: true }).limit(1).maybeSingle();
     if (!prep) { notify.error("Für diesen Termin gibt es noch kein Briefing."); return; }
     navigate(`/briefing-live?preparationId=${prep.id}&appointmentId=${appointmentId}`);
   };
   const status = asBriefingStatus(data.briefing_status);
-  const assigneeName = users.find((u) => u.id === data.briefing_assignee_id)?.display_name;
+  const assigneeName = data.briefing_assignee_name || users.find((u) => u.id === data.briefing_assignee_id)?.display_name;
   const isAssignee = data.briefing_assignee_id === user?.id;
 
   const run = async (fn: () => Promise<unknown>, ok: string) => {
@@ -47,11 +49,12 @@ export function AppointmentBriefingStatusCard({ appointmentId, title, startTime,
         <span className="flex items-center gap-2 text-label font-medium"><FileText className="h-4 w-4 text-muted-foreground" />Briefing</span>
         <Badge variant={VARIANT[status]}>{BRIEFING_STATUS_LABELS[status]}</Badge>
       </div>
-      {(status === "assigned" || status === "in_review") && (
+      {data.briefing_assignee_id && status !== "none" && (
         <p className="text-caption text-muted-foreground">
-          {assigneeName ?? "Zuarbeit"}{data.briefing_due_at && ` · Frist ${format(new Date(data.briefing_due_at), "EEE d.M. HH:mm", { locale: de })}`}
+          Vergeben an: <strong className="text-foreground">{assigneeName ?? `Person (${data.briefing_assignee_id})`}</strong>{data.briefing_due_at && ` · Frist ${format(new Date(data.briefing_due_at), "EEE d.M. HH:mm", { locale: de })}`}
         </p>
       )}
+      <p className="text-caption text-muted-foreground">Vorbereitung für das gesamte Team sichtbar.</p>
       {data.briefing_instructions && status !== "none" && <p className="text-caption">{data.briefing_instructions}</p>}
       <div className="flex flex-wrap gap-2">
         {status === "undecided" && isDecider && (
@@ -68,6 +71,7 @@ export function AppointmentBriefingStatusCard({ appointmentId, title, startTime,
         {canAdvanceBriefing(status, "submit", { isDecider, isAssignee }) && <Button size="sm" onClick={() => act("submit", "Zur Freigabe vorgelegt.")}>Zur Freigabe vorlegen</Button>}
         {canAdvanceBriefing(status, "approve", { isDecider, isAssignee }) && <Button size="sm" onClick={() => act("approve", "Briefing freigegeben.")}>Freigeben</Button>}
         {canAdvanceBriefing(status, "return", { isDecider, isAssignee }) && <div className="w-full space-y-2"><Textarea aria-label="Begründung der Rückgabe" placeholder="Was soll überarbeitet werden?" value={returnNote} onChange={e => setReturnNote(e.target.value)} /><Button disabled={!returnNote.trim() || advance.isPending} size="sm" variant="outline" onClick={() => act("return", "Zurück an Zuarbeit.")}>Zurück mit Anmerkung</Button></div>}
+        {status === "assigned" && isDecider && <BriefingRequestPopover appointmentId={appointmentId} startTime={startTime} initialAssignee={data.briefing_assignee_id} initialInstructions={data.briefing_instructions} initialDue={data.briefing_due_at} initialDepth={data.briefing_depth === "full" ? "full" : "compact"} trigger={<Button size="sm" variant="outline">Vergabe ändern</Button>} />}
         {status === "assigned" && isDecider && (
           <Button size="sm" variant="ghost" onClick={() => run(() => setBriefing.mutateAsync({ appointmentId, decision: "none" }), "Briefing abbestellt.")}>Doch kein Briefing</Button>
         )}

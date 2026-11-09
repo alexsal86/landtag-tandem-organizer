@@ -10,29 +10,37 @@ import { notify } from "@/lib/notify";
 import { suggestBriefingDue } from "../briefing";
 import { useBriefingMutations } from "./useBriefing";
 
-interface Props { appointmentId: string; startTime: string; trigger: ReactNode; initialAssignee?: string | null; initialInstructions?: string | null }
+interface Props { appointmentId: string; startTime: string; trigger: ReactNode; initialAssignee?: string | null; initialInstructions?: string | null; initialDue?: string | null; initialDepth?: "compact" | "full" }
 
 /** Small form: who, until when, what focus. Creates the briefing task. */
-export function BriefingRequestPopover({ appointmentId, startTime, trigger, initialAssignee, initialInstructions }: Props) {
-  const { users } = useTenantUsers();
+export function BriefingRequestPopover({ appointmentId, startTime, trigger, initialAssignee, initialInstructions, initialDue, initialDepth }: Props) {
+  const { users, loading: usersLoading } = useTenantUsers();
   const { setBriefing } = useBriefingMutations();
   const [open, setOpen] = useState(false);
   const [assignee, setAssignee] = useState(initialAssignee ?? "");
-  const [due, setDue] = useState(() => format(suggestBriefingDue(new Date(startTime)), "yyyy-MM-dd'T'HH:mm"));
+  const [due, setDue] = useState(() => format(initialDue ? new Date(initialDue) : suggestBriefingDue(new Date(startTime)), "yyyy-MM-dd'T'HH:mm"));
   const [instructions, setInstructions] = useState(initialInstructions ?? "");
-  const [depth, setDepth] = useState<"compact" | "full">("compact");
+  const [depth, setDepth] = useState<"compact" | "full">(initialDepth ?? "compact");
 
   const submit = async () => {
     if (!assignee) { notify.warning("Bitte eine Person wählen."); return; }
     try {
       await setBriefing.mutateAsync({ appointmentId, decision: "assigned", assignee, due: new Date(due).toISOString(), instructions: instructions.trim() || undefined, depth });
-      notify.success("Briefing vergeben – Aufgabe angelegt.");
+      notify.success(`Briefing vergeben an ${users.find(u => u.id === assignee)?.display_name ?? assignee}.`);
       setOpen(false);
     } catch (e) { notify.error(e instanceof Error ? e.message : "Briefing konnte nicht vergeben werden."); }
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={nextOpen => {
+      if (nextOpen) {
+        setAssignee(initialAssignee ?? "");
+        setInstructions(initialInstructions ?? "");
+        setDepth(initialDepth ?? "compact");
+        setDue(format(initialDue ? new Date(initialDue) : suggestBriefingDue(new Date(startTime)), "yyyy-MM-dd'T'HH:mm"));
+      }
+      setOpen(nextOpen);
+    }}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent className="w-80 space-y-3" align="end">
         <div className="space-y-1">
@@ -58,7 +66,7 @@ export function BriefingRequestPopover({ appointmentId, startTime, trigger, init
           <label className="text-caption text-muted-foreground">Auftrag / Fokus</label>
           <Textarea rows={3} value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Was soll geklärt werden?" />
         </div>
-        <Button className="w-full" onClick={submit} disabled={setBriefing.isPending}>Briefing vergeben</Button>
+        <Button className="w-full" onClick={submit} disabled={setBriefing.isPending || usersLoading || !assignee || !due}>{setBriefing.isPending ? "Wird vergeben…" : "Briefing vergeben"}</Button>
       </PopoverContent>
     </Popover>
   );

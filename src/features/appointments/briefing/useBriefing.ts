@@ -10,12 +10,14 @@ export interface BriefingAppointment {
   location: string | null;
   briefing_status: string;
   briefing_assignee_id: string | null;
+  briefing_assignee_name?: string | null;
+  briefing_depth?: string;
   briefing_due_at: string | null;
   briefing_instructions: string | null;
 }
 
 const KEY = "appointment-briefing";
-const COLS = "id, title, start_time, location, briefing_status, briefing_assignee_id, briefing_due_at, briefing_instructions";
+const COLS = "id, title, start_time, location, briefing_depth, briefing_status, briefing_assignee_id, briefing_due_at, briefing_instructions";
 
 export function useUndecidedBriefings() {
   const { currentTenant } = useTenant();
@@ -55,15 +57,24 @@ export function useTodayApprovedBriefings(enabled = true) {
   });
 }
 
+async function fetchAppointmentBriefing(appointmentId: string, tenantId: string): Promise<BriefingAppointment> {
+  const { data, error } = await supabase.from("appointments").select(COLS).eq("id", appointmentId).eq("tenant_id", tenantId).single();
+  if (error) throw error;
+  let assigneeName: string | null = null;
+  if (data.briefing_assignee_id) {
+    const { data: profile } = await supabase.from("profiles").select("display_name").eq("user_id", data.briefing_assignee_id).maybeSingle();
+    assigneeName = profile?.display_name ?? null;
+  }
+  return { ...data, briefing_assignee_name: assigneeName };
+}
+
 export function useAppointmentBriefing(appointmentId: string | undefined) {
+  const { currentTenant } = useTenant();
   return useQuery({
-    queryKey: [KEY, "one", appointmentId],
-    enabled: !!appointmentId,
-    queryFn: async () => {
-      const { data, error } = await supabase.from("appointments").select(COLS).eq("id", appointmentId!).maybeSingle();
-      if (error) throw error;
-      return data as BriefingAppointment | null;
-    },
+    queryKey: [KEY, "one", currentTenant?.id, appointmentId],
+    enabled: !!appointmentId && !!currentTenant?.id,
+    refetchOnMount: "always",
+    queryFn: () => fetchAppointmentBriefing(appointmentId!, currentTenant!.id),
   });
 }
 
@@ -71,17 +82,26 @@ export interface SetBriefingInput { appointmentId: string; decision: "none" | "a
 
 export function useBriefingMutations() {
   const qc = useQueryClient();
-  const done = () => { qc.invalidateQueries({ queryKey: [KEY] }); qc.invalidateQueries({ queryKey: ["my-work-tasks"] }); };
+  const { currentTenant } = useTenant();
+  const done = async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: [KEY] }),
+      qc.invalidateQueries({ queryKey: ["my-work-tasks"] }),
+    ]);
+  };
   const setBriefing = useMutation({
     mutationFn: async (v: SetBriefingInput) => {
+      if (!currentTenant) throw new Error("Bitte ein Team wählen.");
       const { error } = await supabase.rpc("set_appointment_briefing", {
         _appointment_id: v.appointmentId, _decision: v.decision,
-        _assignee: v.assignee, _due: v.due, _instructions: v.instructions,
+        _assignee: v.assignee, _due: v.due, _instructions: v.instructions, _depth: v.depth,
       });
       if (error) throw error;
-      if (v.decision === "assigned" && v.depth) {
-        const r = await supabase.rpc("set_appointment_briefing_depth", { _appointment_id: v.appointmentId, _depth: v.depth });
-        if (r.error) throw r.error;
+      // Read the saved assignment back before reporting success, rather than waiting for a background refetch.
+      const saved = await fetchAppointmentBriefing(v.appointmentId, currentTenant.id);
+      qc.setQueryData([KEY, "one", currentTenant.id, v.appointmentId], saved);
+      if (saved.briefing_status !== v.decision || (v.decision === "assigned" && saved.briefing_assignee_id !== v.assignee)) {
+        throw new Error("Die Briefing-Vergabe konnte nicht bestätigt werden. Bitte den Status aktualisieren.");
       }
     },
     onSuccess: done,

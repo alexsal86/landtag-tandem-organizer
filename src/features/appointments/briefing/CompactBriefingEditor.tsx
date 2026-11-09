@@ -42,13 +42,14 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
   const [saving, setSaving] = useState(false);
   const [liveNotes, setLiveNotes] = useState<string>("");
   const [status, setStatus] = useState<string | null>(null);
+  const [canEdit, setCanEdit] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
     setLoading(true); setLoadError(false);
     (async () => {
-      const { data, error } = await supabase.from("appointment_preparations").select("id, preparation_data")
+      const { data, error } = await supabase.from("appointment_preparations").select("id, preparation_data, created_by")
         .eq("appointment_id", appointmentId).eq("is_archived", false).order("created_at", { ascending: true }).limit(1).maybeSingle();
       if (cancelled) return;
       if (error) { setLoadError(true); setLoading(false); notify.error("Briefing konnte nicht geladen werden."); return; }
@@ -58,8 +59,10 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
       const v: Record<string, string> = { ...mergeLegacy(pd) };
       const [{ data: fb }, { data: appt }] = await Promise.all([
         supabase.from("appointment_feedback").select("notes").eq("appointment_id", appointmentId).maybeSingle(),
-        supabase.from("appointments").select("briefing_status").eq("id", appointmentId).maybeSingle(),
+        supabase.from("appointments").select("briefing_status,briefing_assignee_id,user_id").eq("id", appointmentId).maybeSingle(),
       ]);
+      if (cancelled) return;
+      setCanEdit(!data || data.created_by === user?.id || appt?.user_id === user?.id || appt?.briefing_assignee_id === user?.id);
       const notes = fb?.notes ?? "";
       setLiveNotes(notes);
       setStatus(appt?.briefing_status ?? null);
@@ -69,14 +72,14 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
       setExtras(EXTRA.filter((f) => v[f.key]).map((f) => f.key));
     })();
     return () => { cancelled = true; };
-  }, [open, appointmentId]);
+  }, [open, appointmentId, user?.id]);
 
   const save = async () => {
-    if (!user || !currentTenant || loading || loadError) return;
+    if (!user || !currentTenant || loading || loadError || !canEdit) return;
     setSaving(true);
     const preparation_data = saveCompact(base, values as CompactValues) as Record<string, Json>;
     const res = prepId
-      ? await supabase.from("appointment_preparations").update({ preparation_data }).eq("id", prepId)
+      ? await supabase.from("appointment_preparations").update({ preparation_data }).eq("id", prepId).select("id").single()
       : await supabase.from("appointment_preparations").insert({ appointment_id: appointmentId, tenant_id: currentTenant.id, created_by: user.id, title: `Briefing: ${title}`, status: "in_progress", preparation_data });
     setSaving(false);
     if (res.error) { notify.error(res.error.message); return; }
@@ -86,8 +89,11 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
   };
 
   const openDossier = async () => {
-    await supabase.rpc("set_appointment_briefing_depth", { _appointment_id: appointmentId, _depth: "full" });
-    navigate(`/appointment-preparation?appointmentId=${appointmentId}`);
+    if (canEdit) {
+      const { error } = await supabase.rpc("set_appointment_briefing_depth", { _appointment_id: appointmentId, _depth: "full" });
+      if (error) { notify.error(error.message); return; }
+    }
+    navigate(prepId ? `/appointment-preparation/${prepId}?view=${canEdit ? "preparation" : "briefing"}` : `/appointment-preparation?appointmentId=${appointmentId}&view=preparation`);
   };
 
   const complete = async () => {
@@ -101,7 +107,7 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
   const field = (f: { key: string; label: string; placeholder: string }) => (
     <div key={f.key} className="space-y-1">
       <label className="text-caption font-medium text-muted-foreground">{f.label}</label>
-      <Textarea rows={3} value={values[f.key] ?? ""} placeholder={f.placeholder} onChange={(e) => setValues((s) => ({ ...s, [f.key]: e.target.value }))} />
+      <Textarea readOnly={!canEdit || loading || loadError} rows={3} value={values[f.key] ?? ""} placeholder={f.placeholder} onChange={(e) => setValues((s) => ({ ...s, [f.key]: e.target.value }))} />
     </div>
   );
 
@@ -117,6 +123,7 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
             </div>
           </div>
         </DialogHeader>
+        {!loading && !canEdit && <p className="text-sm text-muted-foreground">Für das Team sichtbar · Bearbeitung durch die beauftragte Person.</p>}
         {extrasLine && <p className="rounded-md bg-muted/50 px-3 py-2 text-caption text-muted-foreground">{extrasLine}</p>}
         <div className="space-y-3">
           {CORE.map(field)}
@@ -128,10 +135,10 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
           </div>
         </div>
         <div className="flex justify-between gap-2 pt-2">
-          <Button variant="link" className="px-0" onClick={openDossier}>Zum Dossier erweitern</Button>
+          <Button variant="link" className="px-0" onClick={openDossier} disabled={loading || loadError}>{canEdit ? "Zum Dossier erweitern" : "Dossier ansehen"}</Button>
           <div className="flex gap-2">
-            {canCompleteBriefing(status, values.compact_debrief ?? "") && <Button variant="outline" onClick={complete} disabled={saving}>Nachbereitet – abschließen</Button>}
-            <Button onClick={save} disabled={saving}>Speichern</Button>
+            {canEdit && canCompleteBriefing(status, values.compact_debrief ?? "") && <Button variant="outline" onClick={complete} disabled={saving}>Nachbereitet – abschließen</Button>}
+            {canEdit && <Button onClick={save} disabled={saving || loading || loadError}>Speichern</Button>}
           </div>
         </div>
       </DialogContent>

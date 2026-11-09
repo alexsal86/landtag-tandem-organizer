@@ -14066,6 +14066,7 @@ export type Database = {
       }
       set_appointment_briefing: {
         Args: {
+          _depth?: string
           _appointment_id: string
           _assignee?: string
           _decision: string
