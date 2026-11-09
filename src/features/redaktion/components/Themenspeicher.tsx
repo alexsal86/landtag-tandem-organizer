@@ -393,7 +393,7 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
                   </div>
                 </div>
                 <div className={cn(
-                  "absolute right-2 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1 transition-opacity duration-150",
+                  "absolute right-2 top-2 flex flex-col items-center gap-1 transition-opacity duration-150",
                   compact ? "opacity-100" : "opacity-0 pointer-events-none group-hover:opacity-100 group-focus-within:opacity-100 group-hover:pointer-events-auto group-focus-within:pointer-events-auto",
                 )}>
                   <div className="relative group/icon">
