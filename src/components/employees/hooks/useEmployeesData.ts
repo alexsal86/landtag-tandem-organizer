@@ -66,7 +66,7 @@ async function fetchAdminOverview(tenantId: string): Promise<AdminOverviewRespon
     .in("user_id", overview.employees.map(employee => employee.user_id));
   if (profilesError) throw profilesError;
 
-  const colors = new Map(profiles?.map(profile => [profile.user_id, profile.badge_color]));
+  const colors = new Map<string, string | null>(profiles?.map(profile => [profile.user_id, profile.badge_color as string | null]));
   return {
     ...overview,
     employees: overview.employees.map(employee => ({ ...employee, badge_color: colors.get(employee.user_id) ?? null })),
