@@ -14,6 +14,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Menu } from "lucide-react";
 import { useAdministrationAccess } from "@/components/administration/useAdministrationAccess";
 import { resolveNavigationState } from "@/components/administration/adminNavigation";
+import { normalizeAutomationParams } from "@/components/administration/automationNavigation";
 
 const PlanningDefaultCollaboratorsSettings = lazy(() => import("@/components/administration/PlanningDefaultCollaboratorsSettings").then(module => ({ default: module.PlanningDefaultCollaboratorsSettings })));
 const GeneralSettings = lazy(() => import("@/components/admin/GeneralSettings").then(module => ({ default: module.GeneralSettings })));
@@ -26,8 +27,7 @@ const DistrictSupportManager = lazy(() => import("@/components/administration/Di
 const PartyDistrictMappingManager = lazy(() => import("@/components/administration/PartyDistrictMappingManager").then(module => ({ default: module.PartyDistrictMappingManager })));
 const CalendarSyncDebug = lazy(() => import("@/features/calendar/components/CalendarSyncDebug").then(module => ({ default: module.CalendarSyncDebug })));
 const PartyAssociationsAdmin = lazy(() => import("@/features/election-districts/components/PartyAssociationsAdmin").then(module => ({ default: module.PartyAssociationsAdmin })));
-const RSSSourceManager = lazy(() => import("@/components/administration/RSSSourceManager").then(module => ({ default: module.RSSSourceManager })));
-const RSSSettingsManager = lazy(() => import("@/components/administration/RSSSettingsManager").then(module => ({ default: module.RSSSettingsManager })));
+const RSSMonitoringManager = lazy(() => import("@/components/administration/RSSMonitoringManager").then(module => ({ default: module.RSSMonitoringManager })));
 const CalendarSyncSettings = lazy(() => import("@/components/administration/CalendarSyncSettings").then(module => ({ default: module.CalendarSyncSettings })));
 const LoginCustomization = lazy(() => import("@/components/administration/LoginCustomization").then(module => ({ default: module.LoginCustomization })));
 const UserColorManager = lazy(() => import("@/components/administration/UserColorManager").then(module => ({ default: module.UserColorManager })));
@@ -60,7 +60,6 @@ const PushNotificationTest = lazy(() => import("@/dev/PushNotificationTest").the
 const VapidKeyTest = lazy(() => import("@/dev/VapidKeyTest").then(module => ({ default: module.VapidKeyTest })));
 const DirectPushTest = lazy(() => import("@/dev/DirectPushTest").then(module => ({ default: module.DirectPushTest })));
 const AutomationRulesManager = lazy(() => import("@/components/administration/AutomationRulesManager").then(module => ({ default: module.AutomationRulesManager })));
-const WorkflowEngineManager = lazy(() => import("@/components/administration/WorkflowEngineManager").then(module => ({ default: module.WorkflowEngineManager })));
 const MeetingTemplateManager = lazy(() => import("@/components/administration/MeetingTemplateManager").then(module => ({ default: module.MeetingTemplateManager })));
 const PlanningTemplateManager = lazy(() => import("@/components/administration/PlanningTemplateManager").then(module => ({ default: module.PlanningTemplateManager })));
 const UserRolesManager = lazy(() => import("@/components/administration/UserRolesManager").then(module => ({ default: module.UserRolesManager })));
@@ -91,12 +90,13 @@ export default function Administration(): React.JSX.Element | null {
 
   useEffect(() => {
     if (checkingAdmin || !isAdmin) return;
-    const params = new URLSearchParams(location.search);
+    const params = normalizeAutomationParams(new URLSearchParams(location.search));
     const nextNavigation = resolveNavigationState(params.get("adminSection"), params.get("adminSubSection"), isSuperAdmin);
 
     if (
       params.get("adminSection") !== nextNavigation.section ||
-      params.get("adminSubSection") !== nextNavigation.subSection
+      params.get("adminSubSection") !== nextNavigation.subSection ||
+      params.toString() !== new URLSearchParams(location.search).toString()
     ) {
       params.set("adminSection", nextNavigation.section);
       if (nextNavigation.subSection) {
@@ -149,6 +149,10 @@ export default function Administration(): React.JSX.Element | null {
   const handleNavigate = (section: string, subSection?: string): void => {
     const nextNavigation = resolveNavigationState(section, subSection ?? null, isSuperAdmin);
     const params = new URLSearchParams(location.search);
+    if (activeSection !== nextNavigation.section || activeSubSection !== nextNavigation.subSection) {
+      params.delete("automationTab");
+      params.delete("rssTab");
+    }
     params.set("adminSection", nextNavigation.section);
     if (nextNavigation.subSection) {
       params.set("adminSubSection", nextNavigation.subSection);
@@ -394,13 +398,9 @@ export default function Administration(): React.JSX.Element | null {
     if (activeSection === "automation") {
       switch (activeSubSection) {
         case "rules":
-          return <div><h3 className="text-lg font-medium mb-4">No-Code Regel-Builder</h3><AutomationRulesManager /></div>;
-        case "engine":
-          return <WorkflowEngineManager />;
-        case "rss-sources":
-          return <div><h3 className="text-lg font-medium mb-4">RSS-Quellen verwalten</h3><RSSSourceManager /></div>;
-        case "rss-settings":
-          return <div><h3 className="text-lg font-medium mb-4">RSS-Einstellungen</h3><RSSSettingsManager /></div>;
+          return <AutomationRulesManager />;
+        case "rss":
+          return <RSSMonitoringManager />;
         case "annual": return <AnnualTasksView />;
         default: return null;
       }
@@ -444,7 +444,7 @@ export default function Administration(): React.JSX.Element | null {
         className="hidden md:block"
       />
 
-      <div className="flex-1 overflow-hidden">
+      <div className="min-w-0 flex-1 overflow-hidden">
         <ScrollArea className="h-full">
           <div className="p-3 md:p-6">
             <header className="mb-5 border-b pb-3">

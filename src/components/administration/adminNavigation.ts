@@ -1,4 +1,5 @@
 import { adminMenuItems } from "./AdminSidebar";
+import { resolveAutomationDestination } from "./automationNavigation";
 
 const DEFAULT_SUB_SECTION: Record<string, string> = {
   security: "general",
@@ -19,6 +20,7 @@ export const resolveNavigationState = (
   isSuperAdmin: boolean,
 ) : { section: string; subSection: string } => {
   // Preserve saved links when moving personal and financial settings.
+  if (section === "automation") subSection = resolveAutomationDestination(subSection);
   if (section === "security" && subSection === "expense") section = "finance";
   if ((section === "users" && subSection === "matrix") || (section === "content" && subSection === "archiving") || (section === "templates" && subSection === "celebrations")) section = "personal";
   const visibleSections = adminMenuItems.filter((item) => !item.superAdminOnly || isSuperAdmin);
