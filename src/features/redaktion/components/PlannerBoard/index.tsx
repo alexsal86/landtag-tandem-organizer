@@ -420,7 +420,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
             <div className="flex flex-wrap items-center gap-2">
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="relative h-11 rounded-xl px-5 text-base">
+                  <Button variant="outline" className="relative h-9 rounded-lg px-3 text-sm">
                     <Filter className="mr-1 h-4 w-4" />
                     Filter
                     {hasActiveFilters && (
@@ -489,7 +489,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
                   </Select>
                 </PopoverContent>
               </Popover>
-              <Button className="h-11 rounded-xl px-5 text-base font-semibold" onClick={() => setIsCreateDialogOpen(true)}>
+              <Button className="h-9 rounded-lg px-3 text-sm font-medium" onClick={() => setIsCreateDialogOpen(true)}>
                 <Plus className="mr-1 h-4 w-4" />
                 Neuer Inhalt
               </Button>

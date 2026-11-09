@@ -95,26 +95,26 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateA
   return (
     <div className="space-y-3">
       {/* Toolbar */}
-      <div className="space-y-5 border-b border-border px-4 pb-5 pt-4 sm:px-5 sm:pt-5">
+      <div className="-mx-6 space-y-3 border-b border-border px-6 pb-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="inline-flex rounded-2xl border bg-muted/30 p-1" role="group" aria-label="Kalenderansicht">
-            <Button type="button" variant={view === "week" ? "default" : "ghost"} aria-pressed={view === "week"} className="h-11 rounded-xl px-5 text-base" onClick={() => setView("week")}>Woche</Button>
-            <Button type="button" variant={view === "month" ? "default" : "ghost"} aria-pressed={view === "month"} className="h-11 rounded-xl px-5 text-base" onClick={() => setView("month")}>Monat</Button>
+          <div className="inline-flex rounded-xl border bg-muted/30 p-0.5" role="group" aria-label="Kalenderansicht">
+            <Button type="button" variant={view === "week" ? "default" : "ghost"} aria-pressed={view === "week"} className="h-9 rounded-lg px-3 text-sm" onClick={() => setView("week")}>Woche</Button>
+            <Button type="button" variant={view === "month" ? "default" : "ghost"} aria-pressed={view === "month"} className="h-9 rounded-lg px-3 text-sm" onClick={() => setView("month")}>Monat</Button>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <Button type="button" variant="outline" className="h-11 rounded-xl px-5 text-base" onClick={() => navigateCalendar("today")}>Heute</Button>
-            <Button type="button" variant="outline" size="icon" aria-label="Vorheriger Zeitraum" className="h-11 w-11 rounded-xl" onClick={() => navigateCalendar("prev")}>
-              <ChevronLeft className="h-5 w-5" />
+            <Button type="button" variant="outline" className="h-9 rounded-lg px-3 text-sm" onClick={() => navigateCalendar("today")}>Heute</Button>
+            <Button type="button" variant="outline" size="icon" aria-label="Vorheriger Zeitraum" className="h-9 w-9 rounded-lg" onClick={() => navigateCalendar("prev")}>
+              <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button type="button" variant="outline" size="icon" aria-label="Nächster Zeitraum" className="h-11 w-11 rounded-xl" onClick={() => navigateCalendar("next")}>
-              <ChevronRight className="h-5 w-5" />
+            <Button type="button" variant="outline" size="icon" aria-label="Nächster Zeitraum" className="h-9 w-9 rounded-lg" onClick={() => navigateCalendar("next")}>
+              <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <h4 className="text-xl font-bold text-foreground">{rangeLabel}</h4>
-            {view === "week" && <span className="rounded-full border bg-muted/30 px-3 py-1 text-sm font-semibold text-muted-foreground">KW {getISOWeek(currentDate)}</span>}
+            <h4 className="text-base font-semibold text-foreground">{rangeLabel}</h4>
+            {view === "week" && <span className="rounded-full border bg-muted/30 px-2 py-0.5 text-xs font-medium text-muted-foreground">KW {getISOWeek(currentDate)}</span>}
           </div>
           {headerActions}
         </div>
