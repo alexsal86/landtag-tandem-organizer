@@ -40,6 +40,7 @@ import { HashtagSetPicker } from "./HashtagSetPicker";
 import { MarkPublishedDialog } from "./MarkPublishedDialog";
 import { AssetLibraryDialog } from "./AssetLibraryDialog";
 import { ApprovalCommentsTab } from "./ApprovalCommentsTab";
+import { getErrorMessage } from "@/utils/errorHandler";
 import { notify } from "@/lib/notify";
 
 export interface SocialPlannerEditPanelProps {
@@ -144,7 +145,7 @@ export default function SocialPlannerEditPanel({ item, open, scrollRequest = 0, 
       selectedChannels.forEach((channelId) => {
         next[channelId] = current[channelId] || {
           channel_id: channelId,
-          caption: draftText || "",
+          caption: "",
           first_comment: "",
           media_type: "",
           asset_ids: [],
@@ -209,24 +210,16 @@ export default function SocialPlannerEditPanel({ item, open, scrollRequest = 0, 
       return;
     }
 
-    const variantErrors = selectedChannels.flatMap((channelId) => {
-      const channelSlug = channels.find((channel) => channel.id === channelId)?.slug || "";
-      return validateVariant(variantsByChannel[channelId], channelSlug).map((error) => `${channels.find((channel) => channel.id === channelId)?.name || channelId}: ${error}`);
-    });
-    if (variantErrors.length > 0) {
-      notify.error("Varianten unvollständig", { description: variantErrors[0]
-});
-      return;
-    }
-
     try {
       setIsSaving(true);
 
       // Hashtag auto-placement per channel: appended to caption OR moved to first comment
       const hashtagBlock = hashtags.length > 0 ? hashtags.map((t) => (t.startsWith("#") ? t : `#${t}`)).join(" ") : "";
       const variantsForSave: Record<string, SocialContentVariant> = {};
-      Object.entries(variantsByChannel).forEach(([channelId, variant]) => {
-        if (!variant) return;
+      selectedChannels.forEach((channelId) => {
+        const variant: SocialContentVariant = variantsByChannel[channelId] || {
+          channel_id: channelId, caption: "", first_comment: "", asset_ids: [], platform_metadata: {}, platform_status: "draft",
+        };
         const channel = channels.find((c) => c.id === channelId);
         const slug = channel?.slug || "";
         // Instagram strategy: hashtags in first comment when toggle on
@@ -246,6 +239,16 @@ export default function SocialPlannerEditPanel({ item, open, scrollRequest = 0, 
         }
         variantsForSave[channelId] = { ...variant, caption: nextCaption, first_comment: nextFirstComment };
       });
+
+      const variantErrors = selectedChannels.flatMap((channelId) => {
+        const channel = channels.find((entry) => entry.id === channelId);
+        return validateVariant(variantsForSave[channelId], channel?.slug || "", draftText)
+          .map((error) => `${channel?.name || channelId}: ${error}`);
+      });
+      if (variantErrors.length > 0) {
+        notify.error("Kanalvarianten prüfen", { description: variantErrors.join("\n") });
+        return;
+      }
 
       await onSave(item.id, {
         topic: topic.trim(),
@@ -276,8 +279,8 @@ export default function SocialPlannerEditPanel({ item, open, scrollRequest = 0, 
         content_pillar: contentPillar === "none" ? null : contentPillar,
       });
       onOpenChange(false);
-    } catch {
-      notify.error("Änderungen konnten nicht gespeichert werden");
+    } catch (error) {
+      notify.error("Änderungen konnten nicht gespeichert werden", { description: getErrorMessage(error) });
     } finally {
       setIsSaving(false);
     }
@@ -610,7 +613,14 @@ export default function SocialPlannerEditPanel({ item, open, scrollRequest = 0, 
         onOpenChange={setMarkPublishedOpen}
         onConfirm={async ({ publishedAt, perChannelLinks }) => {
           if (!item) return;
-          const nextVariants: Record<string, SocialContentVariant> = { ...variantsByChannel };
+          const nextVariants: Record<string, SocialContentVariant> = Object.fromEntries(selectedChannels.map((channelId) => {
+            const variant = variantsByChannel[channelId];
+            return [channelId, {
+              channel_id: channelId, first_comment: "", asset_ids: [], platform_metadata: {}, platform_status: "draft" as const,
+              ...variant,
+              caption: effectiveCaption(variant?.caption, draftText),
+            }];
+          }));
           Object.entries(perChannelLinks).forEach(([channelId, link]) => {
             if (nextVariants[channelId]) {
               nextVariants[channelId] = {

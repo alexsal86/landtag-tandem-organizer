@@ -1,4 +1,5 @@
 import type { SocialContentVariant, SocialPlannerItem } from "@/features/redaktion/hooks/useSocialPlannerItems";
+import { effectiveCaption } from "@/features/redaktion/utils/plannerRules";
 import { TEMPLATE_OPTIONS } from "./constants";
 import type { SocialPlannerTemplateId } from "./types";
 
@@ -18,19 +19,16 @@ export function getChannelRules(slug: string) {
   }
 }
 
-export function validateVariant(variant: SocialContentVariant | undefined, channelSlug: string): string[] {
+export function validateVariant(variant: SocialContentVariant | undefined, channelSlug: string, masterText = ""): string[] {
   const errors: string[] = [];
-  if (!variant) {
-    errors.push("Kanalvariante fehlt.");
-    return errors;
-  }
   const rules = getChannelRules(channelSlug);
-  if (rules.captionRequired && !variant.caption.trim()) errors.push("Caption ist für diesen Kanal Pflicht.");
-  if (variant.caption.length > rules.captionMax) errors.push(`Caption überschreitet das Limit (${rules.captionMax}).`);
-  if (variant.first_comment.length > rules.firstCommentMax) errors.push(`First Comment überschreitet das Limit (${rules.firstCommentMax}).`);
-  if (!variant.media_type) errors.push("Media Type ist ein Pflichtfeld.");
-  if (variant.platform_status === "published" && !variant.caption.trim()) errors.push("Veröffentlichte Variante braucht eine Caption.");
-  if (!variant.asset_ids.every((assetId) => /^[a-zA-Z0-9-_/]+$/.test(assetId))) errors.push("Asset IDs dürfen nur Buchstaben, Zahlen, '-', '_' und '/' enthalten.");
+  const caption = effectiveCaption(variant?.caption, masterText);
+  if (rules.captionRequired && !caption.trim()) errors.push("Bitte Haupttext oder einen Text für diesen Kanal eingeben.");
+  if (caption.length > rules.captionMax) errors.push(`Text überschreitet das Limit (${rules.captionMax} Zeichen).`);
+  if ((variant?.first_comment || "").length > rules.firstCommentMax) errors.push(`Erster Kommentar überschreitet das Limit (${rules.firstCommentMax} Zeichen).`);
+  if (variant?.media_type && !["image", "video", "carousel", "link", "text"].includes(variant.media_type)) errors.push("Unbekannter Medientyp.");
+  if (variant?.platform_status === "published" && !caption.trim()) errors.push("Veröffentlichte Variante braucht einen Text.");
+  if (!(variant?.asset_ids || []).every((assetId) => /^[a-zA-Z0-9-_/]+$/.test(assetId))) errors.push("Asset IDs dürfen nur Buchstaben, Zahlen, '-', '_' und '/' enthalten.");
   return errors;
 }
 

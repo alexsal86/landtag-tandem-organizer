@@ -63,7 +63,7 @@ export interface SocialContentVariant {
   channel_id: string;
   caption: string;
   first_comment: string;
-  media_type: SocialContentMediaType | "";
+  media_type?: SocialContentMediaType | "" | null;
   asset_ids: string[];
   platform_metadata: Record<string, unknown>;
   platform_status: SocialContentPlatformStatus;
@@ -304,7 +304,7 @@ export function useSocialPlannerItems() {
       recurrence_group_id?: string | null;
       recurrence_rule?: Record<string, unknown> | null;
     }) => {
-      if (!user?.id || !currentTenant?.id || !profileId) return null;
+      if (!user?.id || !currentTenant?.id || !profileId) throw new Error("Anmeldung oder aktives Team fehlt. Bitte erneut anmelden.");
 
       const uiStatus = payload.workflow_status || "ideas";
       const id = crypto.randomUUID();
@@ -366,7 +366,7 @@ export function useSocialPlannerItems() {
       if (payload.variants?.length) {
         const { error: variantError } = await supabase.from("social_content_variants").insert(
           payload.variants.map((variant) => ({
-            id: variant.id,
+            id: variant.id || crypto.randomUUID(),
             content_item_id: id,
             channel_id: variant.channel_id,
             tenant_id: currentTenant.id,
@@ -392,7 +392,7 @@ export function useSocialPlannerItems() {
     id: string,
     patch: Partial<Pick<SocialPlannerItem, "topic" | "tags" | "workflow_status" | "approval_state" | "responsible_user_id" | "format" | "content_goal" | "format_variant" | "asset_requirements" | "approval_required" | "publish_link" | "performance_notes" | "scheduled_for" | "hook" | "core_message" | "draft_text" | "cta" | "notes" | "channel_ids" | "hashtags" | "hashtags_in_comment" | "alt_text" | "image_url" | "variants" | "campaign_id" | "content_pillar" | "appointment_id" | "published_at">>,
   ) => {
-    if (!currentTenant?.id) return;
+    if (!currentTenant?.id || !user?.id || !profileId) throw new Error("Anmeldung oder aktives Team fehlt. Bitte erneut anmelden.");
 
     const dbPatch: Record<string, string | string[] | boolean | null> = {};
 
@@ -480,19 +480,12 @@ export function useSocialPlannerItems() {
     }
 
     if (typeof patch.variants !== "undefined") {
-      if (!user?.id || !profileId) return;
       const variants = Object.values(patch.variants);
-      const { error: clearError } = await supabase
-        .from("social_content_variants")
-        .delete()
-        .eq("content_item_id", id)
-        .eq("tenant_id", currentTenant.id);
-      if (clearError) throw new Error(getErrorMessage(clearError));
-
+      const existingVariants = items.find((item) => item.id === id)?.variants || {};
       if (variants.length > 0) {
         const { error: upsertError } = await supabase.from("social_content_variants").upsert(
           variants.map((variant) => ({
-            id: variant.id,
+            id: variant.id || existingVariants[variant.channel_id]?.id || crypto.randomUUID(),
             content_item_id: id,
             channel_id: variant.channel_id,
             tenant_id: currentTenant.id,
@@ -509,6 +502,16 @@ export function useSocialPlannerItems() {
           { onConflict: "content_item_id,channel_id" },
         );
         if (upsertError) throw new Error(getErrorMessage(upsertError));
+      }
+      // Never delete saved variants before a potentially failing upsert.
+      const retainedChannels = new Set(variants.map((variant) => variant.channel_id));
+      const removedChannels = Object.keys(existingVariants).filter((channelId) => !retainedChannels.has(channelId));
+      if (removedChannels.length > 0 || variants.length === 0) {
+        let deletion = supabase.from("social_content_variants").delete()
+          .eq("content_item_id", id).eq("tenant_id", currentTenant.id);
+        if (variants.length > 0) deletion = deletion.in("channel_id", removedChannels);
+        const { error: deleteError } = await deletion;
+        if (deleteError) throw new Error(getErrorMessage(deleteError));
       }
     }
 

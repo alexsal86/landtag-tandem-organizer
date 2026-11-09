@@ -31,6 +31,7 @@ import {
 } from "./constants";
 import type { PlannerFormatFilter, SocialPlannerDraftPayload } from "./types";
 import { inferFormatType } from "./utils";
+import { getErrorMessage } from "@/utils/errorHandler";
 import { notify } from "@/lib/notify";
 
 const SocialPlannerEditPanel = lazyWithRetry(
@@ -199,8 +200,8 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
       setIsCreateDialogOpen(false);
       resetCreateDialog();
       notify.success("Inhalt angelegt");
-    } catch {
-      notify.error("Inhalt konnte nicht angelegt werden");
+    } catch (error) {
+      notify.error("Inhalt konnte nicht angelegt werden", { description: getErrorMessage(error) });
     } finally {
       setIsCreatingDraft(false);
     }
@@ -235,8 +236,8 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
       });
       if (!created?.id) throw new Error("topic-drop-create-failed");
       notify.success(`Eingeplant am ${format(scheduledFor, "dd.MM.yyyy 'um' HH:mm")}`);
-    } catch {
-      notify.error("Thema konnte nicht eingeplant werden. Bitte erneut versuchen.");
+    } catch (error) {
+      notify.error("Thema konnte nicht eingeplant werden. Bitte erneut versuchen.", { description: getErrorMessage(error) });
     } finally {
       pendingTopicDrops.current.delete(dropKey);
     }
@@ -251,8 +252,8 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
       setDeleteItemId(null);
       notify.success("Beitrag gelöscht", { description: "Der Social-Media-Entwurf wurde aus dem Planner entfernt." 
 });
-    } catch {
-      notify.error("Beitrag konnte nicht gelöscht werden");
+    } catch (error) {
+      notify.error("Beitrag konnte nicht gelöscht werden", { description: getErrorMessage(error) });
     }
   }, [deleteItem, deleteItemId, editingItemId, toast]);
 
@@ -270,8 +271,8 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   const handleCalendarScheduleUpdate = useCallback(async (itemId: string, isoDate: string) => {
     try {
       await updateItem(itemId, { scheduled_for: isoDate } as Parameters<typeof updateItem>[1]);
-    } catch {
-      notify.error("Zeitpunkt konnte nicht geändert werden");
+    } catch (error) {
+      notify.error("Zeitpunkt konnte nicht geändert werden", { description: getErrorMessage(error) });
     }
   }, [updateItem, toast]);
 

@@ -122,7 +122,7 @@ export function ComposerSection(props: Props) {
             {channels.map((c) => {
               const selected = selectedChannels.includes(c.id);
               const active = c.id === activeChannelId && selected;
-              const errors = selected ? validateVariant(variants[c.id], c.slug).length : 0;
+              const errors = selected ? validateVariant(variants[c.id], c.slug, masterText).length : 0;
               return (
                 <button
                   key={c.id}
@@ -191,7 +191,7 @@ export function ComposerSection(props: Props) {
                   <Textarea rows={2} value={variant?.first_comment || ""} onChange={(e) => patchVariant({ first_comment: e.target.value })} className="bg-background" />
                 </div>
               )}
-              {validateVariant(variant, activeSlug).map((error) => (
+              {validateVariant(variant, activeSlug, masterText).map((error) => (
                 <p key={error} className="text-xs text-destructive">{error}</p>
               ))}
               <details className="group rounded-md border bg-background px-2 py-1.5">
@@ -203,7 +203,7 @@ export function ComposerSection(props: Props) {
                     <Select value={variant?.media_type || "none"} onValueChange={(v) => patchVariant({ media_type: v === "none" ? "" : v as SocialContentMediaType })}>
                       <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Medium" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">Medium wählen</SelectItem>
+                        <SelectItem value="none">Medientyp optional</SelectItem>
                         {VARIANT_MEDIA_TYPES.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
                       </SelectContent>
                     </Select>

@@ -3,6 +3,7 @@ import { canTransitionStatus } from "@/components/letters/types";
 import { canDecide } from "@/features/appointment-requests/logic";
 import { isOnResubmission, MINISTRY_RESPONSE_DAYS, withAutoDeadline, type TriageItem } from "@/features/cases/items/ball";
 import { computeCropRect, isCrowdedDay, parseTopicDrop, rescheduleToDay } from "@/features/redaktion/utils/plannerRules";
+import { validateVariant } from "@/features/redaktion/components/PlannerBoard/utils";
 import type { TestScenario } from "../types";
 
 export const workflowRulesScenario: TestScenario = {
@@ -70,6 +71,9 @@ export const workflowRulesScenario: TestScenario = {
         const topicDrop = parseTopicDrop(JSON.stringify({ topicId: "idea-one", time: "10:00" }), new Date(2026, 10, 11));
         const customDrop = parseTopicDrop(JSON.stringify({ topicId: "idea-one", time: "14:30" }), new Date(2026, 10, 11));
         const checks = {
+          masterTextAccepted: ["instagram", "facebook", "linkedin", "x"].every((slug) => validateVariant(undefined, slug, "Ein gemeinsamer Haupttext.").length === 0),
+          channelLimitApplied: validateVariant(undefined, "x", "x".repeat(281)).length > 0,
+          emptyTextRejected: validateVariant(undefined, "instagram", "").length > 0,
           topicDrop: topicDrop?.topicId === "idea-one" && topicDrop.scheduledFor.getDate() === 11 && topicDrop.scheduledFor.getHours() === 10,
           customDrop: customDrop?.scheduledFor.getHours() === 14 && customDrop.scheduledFor.getMinutes() === 30,
           invalidDrop: parseTopicDrop('{"topicId":"idea-one","time":"25:00"}', new Date()) === null && parseTopicDrop("invalid", new Date()) === null,

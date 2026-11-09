@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { SocialContentVariant, SocialPlannerItem } from "@/features/redaktion/hooks/useSocialPlannerItems";
+import { getErrorMessage } from "@/utils/errorHandler";
 import { notify } from "@/lib/notify";
 
 interface MarkPublishedDialogProps {
@@ -50,8 +51,8 @@ export function MarkPublishedDialog({ item, channels, open, onOpenChange, onConf
       });
       notify.success("Als veröffentlicht markiert");
       onOpenChange(false);
-    } catch {
-      notify.error("Fehler beim Markieren");
+    } catch (error) {
+      notify.error("Fehler beim Markieren", { description: getErrorMessage(error) });
     } finally {
       setSaving(false);
     }
