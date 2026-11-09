@@ -103,6 +103,7 @@ export type Database = {
           completed_by: string | null
           created_at: string | null
           id: string
+          linked_task_id: string | null
           notes: string | null
           year: number
         }
@@ -112,6 +113,7 @@ export type Database = {
           completed_by?: string | null
           created_at?: string | null
           id?: string
+          linked_task_id?: string | null
           notes?: string | null
           year: number
         }
@@ -121,6 +123,7 @@ export type Database = {
           completed_by?: string | null
           created_at?: string | null
           id?: string
+          linked_task_id?: string | null
           notes?: string | null
           year?: number
         }
@@ -130,6 +133,13 @@ export type Database = {
             columns: ["annual_task_id"]
             isOneToOne: false
             referencedRelation: "annual_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "annual_task_completions_linked_task_id_fkey"
+            columns: ["linked_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
         ]
@@ -14482,6 +14492,10 @@ export type Database = {
       }
       snapshot_rls_coverage: { Args: never; Returns: string }
       snapshot_rls_coverage_internal: { Args: never; Returns: string }
+      spawn_annual_task_to_stafette: {
+        Args: { _annual_task_id: string; _assignee?: string; _year: number }
+        Returns: string
+      }
       sync_birthday_appointments: { Args: never; Returns: undefined }
       sync_existing_contact_tags: { Args: never; Returns: undefined }
       undo_contact_bulk_action: { Args: { _audit_id: string }; Returns: number }
