@@ -11,6 +11,9 @@ import { asBriefingStatus, BRIEFING_STATUS_LABELS, canAdvanceBriefing, type Brie
 import { useAppointmentBriefing, useBriefingMutations } from "./useBriefing";
 import { BriefingRequestPopover } from "./BriefingRequestPopover";
 import { CompactBriefingEditor } from "./CompactBriefingEditor";
+import { canGoLive } from "./briefingModel";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 const VARIANT: Record<string, "secondary" | "outline" | "default"> = { undecided: "outline", none: "secondary", assigned: "default", in_review: "default", approved: "secondary", completed: "secondary" };
 
@@ -21,7 +24,13 @@ export function AppointmentBriefingStatusCard({ appointmentId, title, startTime,
   const { data } = useAppointmentBriefing(appointmentId);
   const { setBriefing, advance } = useBriefingMutations();
   const [editorOpen, setEditorOpen] = useState(false);
+  const navigate = useNavigate();
   if (!data) return null;
+  const goLive = async () => {
+    const { data: prep } = await supabase.from("appointment_preparations").select("id").eq("appointment_id", appointmentId).eq("is_archived", false).order("created_at", { ascending: true }).limit(1).maybeSingle();
+    if (!prep) { notify.error("Für diesen Termin gibt es noch kein Briefing."); return; }
+    navigate(`/briefing-live?preparationId=${prep.id}&appointmentId=${appointmentId}`);
+  };
   const status = asBriefingStatus(data.briefing_status);
   const assigneeName = users.find((u) => u.id === data.briefing_assignee_id)?.display_name;
   const isAssignee = data.briefing_assignee_id === user?.id;
@@ -54,6 +63,7 @@ export function AppointmentBriefingStatusCard({ appointmentId, title, startTime,
           <BriefingRequestPopover appointmentId={appointmentId} startTime={startTime} trigger={<Button size="sm" variant="ghost">Doch Briefing anfordern</Button>} />
         )}
         {status !== "undecided" && status !== "none" && <Button size="sm" variant="outline" onClick={() => setEditorOpen(true)}>Briefing öffnen</Button>}
+        {canGoLive({ briefing_status: status, start_time: startTime }) && <Button size="sm" onClick={goLive}>Live starten</Button>}
         {canAdvanceBriefing(status, "submit", { isDecider, isAssignee }) && <Button size="sm" onClick={() => act("submit", "Zur Freigabe vorgelegt.")}>Zur Freigabe vorlegen</Button>}
         {canAdvanceBriefing(status, "approve", { isDecider, isAssignee }) && <Button size="sm" onClick={() => act("approve", "Briefing freigegeben.")}>Freigeben</Button>}
         {canAdvanceBriefing(status, "return", { isDecider, isAssignee }) && <Button size="sm" variant="outline" onClick={() => act("return", "Zurück an Zuarbeit.")}>Zurück mit Anmerkung</Button>}
