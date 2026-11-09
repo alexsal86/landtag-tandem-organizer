@@ -74,6 +74,7 @@ import { logAuditEvent, AuditActions } from "@/hooks/useAuditLog";
 import { useAutomationAdminMutations, useAutomationMembershipRole, useAutomationPauseState, useAutomationRules, useAutomationRunSteps, useAutomationRuns } from "./hooks/useAutomationAdminData";
 import type { AutomationRuleRecordView as RuleRow, AutomationRunRecordView as RunRow } from "./automationShared";
 import { notify } from "@/lib/notify";
+import { isCalendarSchedule, nextCalendarOccurrence, validateCalendarSchedule } from "@/features/automation/calendarSchedule";
 
 const WorkflowEngineManager = lazy(() => import("./WorkflowEngineManager").then(module => ({ default: module.WorkflowEngineManager })));
 
@@ -200,6 +201,7 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
   // --- Feature: Next scheduled run time ---
   const getNextRunTime = (rule: RuleRow): Date | null => {
     if (rule.trigger_type !== "schedule") return null;
+    if (isCalendarSchedule(rule.trigger_config)) return nextCalendarOccurrence(rule.trigger_config, new Date());
     const interval = Number(rule.trigger_config?.minutes_interval);
     if (!interval || interval <= 0) return null;
     const ruleRuns = runs.filter((r: Record<string, any>) => r.rule_id === rule.id && !r.dry_run);
@@ -256,6 +258,7 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
       triggerType: template.triggerType,
       triggerField: template.triggerField,
       triggerValue: template.triggerValue,
+      schedule: "schedule" in template ? { ...template.schedule } : DEFAULT_FORM.schedule,
       conditionLogic: "all",
       conditions,
       conditionGroup: { logic: "all", conditions, groups: [] },
@@ -302,6 +305,7 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
       triggerType: rule.trigger_type,
       triggerField: (rule.trigger_config?.field as string) || "status",
       triggerValue: (rule.trigger_config?.value as string) || "",
+      schedule: { schedule_kind: rule.trigger_config.schedule_kind || "interval", month: rule.trigger_config.month || "4", day: rule.trigger_config.day || "1", hour: rule.trigger_config.hour || "9", month_end: rule.trigger_config.month_end || "false", timezone: rule.trigger_config.timezone || "Europe/Berlin", minutes_interval: rule.trigger_config.minutes_interval || "60" },
       conditionLogic,
       conditions: flatConditions,
       conditionGroup,
@@ -334,6 +338,11 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
     }
 
     const conditionsPayload = serializeConditionGroup(form.conditionGroup);
+    if (form.triggerType === "schedule" && form.schedule) {
+      const error = isCalendarSchedule(form.schedule) ? validateCalendarSchedule(form.schedule)
+        : !Number.isFinite(Number(form.schedule.minutes_interval)) || Number(form.schedule.minutes_interval) < 60 ? "Das Intervall muss mindestens 60 Minuten betragen." : null;
+      if (error) { notify.error(error); return; }
+    }
 
     const payload = {
       tenant_id: currentTenant.id,
@@ -341,7 +350,7 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
       description: form.description.trim() || null,
       module: form.module,
       trigger_type: form.triggerType as RuleRow["trigger_type"],
-      trigger_config: { field: form.triggerField, value: sanitizeTriggerValue(form.triggerType, form.triggerValue) },
+      trigger_config: { field: form.triggerField, value: sanitizeTriggerValue(form.triggerType, form.triggerValue), ...(form.triggerType === "schedule" ? form.schedule : {}) },
       conditions: conditionsPayload,
       actions: form.actions.map((a) => ({
         type: a.type,
@@ -349,6 +358,7 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
           target_user_id: a.targetUserId,
           title: a.title,
           message: a.message,
+          description: a.message,
           priority: a.taskPriority,
           category: a.taskCategory,
           due_date: a.taskDueDate,

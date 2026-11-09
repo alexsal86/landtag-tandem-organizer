@@ -44,6 +44,8 @@ import type {
   FieldSpec,
   WizardForm,
 } from "./automationRule/types";
+import { CalendarScheduleFields } from "./automationRule/CalendarScheduleFields";
+import { isCalendarSchedule, validateCalendarSchedule } from "@/features/automation/calendarSchedule";
 
 // Re-exports for backwards compatibility with external consumers
 export {
@@ -621,8 +623,10 @@ export function AutomationRuleWizard({
   const stepValid = useMemo(() => {
     switch (currentStep) {
       case 0:
+        if (form.triggerType === "schedule" && form.schedule && isCalendarSchedule(form.schedule)) return !validateCalendarSchedule(form.schedule);
         return !!form.module && !!form.triggerType && !!form.triggerField && (form.triggerType !== "record_changed" || form.triggerValue.trim().length > 0);
       case 1:
+        if (form.triggerType === "schedule" && form.schedule && isCalendarSchedule(form.schedule) && countConditions(form.conditionGroup) === 0) return true;
         return validateConditionGroup(form.conditionGroup);
       case 2:
         return form.actions.length > 0 && form.actions.every((a) => {
@@ -659,6 +663,7 @@ export function AutomationRuleWizard({
       triggerType: template.triggerType,
       triggerField: template.triggerField,
       triggerValue: template.triggerValue,
+      schedule: "schedule" in template ? { ...template.schedule } : DEFAULT_FORM.schedule,
       conditionLogic: "all",
       conditions,
       conditionGroup: { logic: "all", conditions, groups: [] },
@@ -813,10 +818,7 @@ export function AutomationRuleWizard({
             </div>
 
             {form.triggerType === "schedule" && (
-              <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-                <Clock className="inline h-4 w-4 mr-1" />
-                Zeitgesteuerte Regeln werden automatisch alle 5 Minuten vom Scheduler geprüft.
-              </div>
+              <CalendarScheduleFields form={form} onChange={schedule => setForm(prev => ({ ...prev, schedule }))} />
             )}
 
             {form.triggerType === "manual" && (
@@ -843,7 +845,7 @@ export function AutomationRuleWizard({
               </div>
             )}
 
-            <div className="space-y-2">
+            {!(form.triggerType === "schedule" && form.schedule && isCalendarSchedule(form.schedule)) && <><div className="space-y-2">
               <Label>Trigger-Feld</Label>
               <Select
                 value={form.triggerField}
@@ -869,7 +871,7 @@ export function AutomationRuleWizard({
                 onChange={(e) => setForm((prev) => ({ ...prev, triggerValue: sanitizeTriggerValue(prev.triggerType, e.target.value) }))}
                 placeholder={form.triggerType === "record_changed" ? "z. B. overdue" : "z. B. 90_days"}
               />
-            </div>
+            </div></>}
           </div>
         )}
 
@@ -889,6 +891,7 @@ export function AutomationRuleWizard({
               fieldOptions={fieldOptions}
               depth={0}
             />
+            {form.triggerType === "schedule" && form.schedule && isCalendarSchedule(form.schedule) && <Button variant="outline" onClick={() => updateConditionGroup({ logic: "all", conditions: [], groups: [] })}>Ohne zusätzliche Bedingungen</Button>}
           </div>
         )}
 

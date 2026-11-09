@@ -6,6 +6,7 @@ import { isOnResubmission, MINISTRY_RESPONSE_DAYS, withAutoDeadline, type Triage
 import { computeCropRect, isCrowdedDay, parseTopicDrop, rescheduleToDay } from "@/features/redaktion/utils/plannerRules";
 import { validateVariant } from "@/features/redaktion/components/PlannerBoard/utils";
 import type { TestScenario } from "../types";
+import { calendarOccurrence, nextCalendarOccurrence, scheduleRunKey } from "@/features/automation/calendarSchedule";
 
 export const workflowRulesScenario: TestScenario = {
   id: "workflow-rules", title: "Geschäftsregeln (Freigabe, Rollen, Fristen)",
@@ -14,6 +15,21 @@ export const workflowRulesScenario: TestScenario = {
   checks: ["Erlaubte und verbotene Brief-Statuswechsel", "Entscheiderrollen", "Ministeriumsfrist und Wiedervorlage"],
   limitations: ["Berechtigungen der Datenbank werden separat in den Zugriffstests geprüft."],
   steps: [
+    {
+      id: "calendar-automation", label: "Stichtage: Jahresdatum, Monatsende, Quartal und doppelte Ausführung", kind: "logic",
+      run: async () => {
+        const config = { schedule_kind: "annual", month: "4", day: "1", hour: "9", month_end: "false", timezone: "Europe/Berlin" };
+        const checks = {
+          before: calendarOccurrence(config, new Date("2026-04-01T06:00:00Z")) === null,
+          due: calendarOccurrence(config, new Date("2026-04-01T07:00:00Z")) === "2026-04-01",
+          next: nextCalendarOccurrence(config, new Date("2026-03-01T00:00:00Z"))?.toISOString() === "2026-04-01T07:00:00.000Z",
+          monthEnd: calendarOccurrence({ ...config, schedule_kind: "monthly", month_end: "true" }, new Date("2028-02-29T08:00:00Z")) === "2028-02-29",
+          quarter: calendarOccurrence({ ...config, schedule_kind: "quarterly", month_end: "true" }, new Date("2026-06-30T07:00:00Z")) === "2026-06-30",
+          sameSlot: scheduleRunKey("a", "2026-04-01") === "a-calendar-2026-04-01",
+        };
+        return { ok: Object.values(checks).every(Boolean), message: "Stichtagsregeln geprüft.", details: checks };
+      },
+    },
     {
       id: "automation-hub-links", label: "Automatisierung: alte Workflow- und RSS-Links bleiben erreichbar", kind: "logic",
       run: async () => {
