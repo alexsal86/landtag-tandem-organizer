@@ -1,5 +1,7 @@
-import { toast } from "@/hooks/use-toast";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { format } from "date-fns";
+import { de } from "date-fns/locale";
+import styles from "./SocialPlannerEditPanel.module.css";
+import { useCallback, useEffect, useState } from "react";
 import { CalendarDays, CheckCircle2, CheckSquare, ClipboardList, MessageSquare, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -85,7 +87,7 @@ export default function SocialPlannerEditPanel({ item, open, users, channels, ca
   const [isSaving, setIsSaving] = useState(false);
   const [markPublishedOpen, setMarkPublishedOpen] = useState(false);
   const [assetLibraryOpen, setAssetLibraryOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"content" | "approval">("content");
+  const [activeTab, setActiveTab] = useState<"content" | "approval" | "briefing">("content");
   const [cropSource, setCropSource] = useState<File | string | null>(null);
 
   useEffect(() => {
@@ -264,42 +266,47 @@ export default function SocialPlannerEditPanel({ item, open, users, channels, ca
     } finally {
       setIsSaving(false);
     }
-  }, [item, topic, tagsValue, selectedChannels, formatValue, contentGoal, formatVariant, assetRequirements, approvalRequired, publishLink, performanceNotes, hookValue, coreMessage, draftText, ctaValue, notesValue, responsibleUserId, scheduledDate, approvalState, workflowStatus, hashtags, hashtagsInComment, altText, imageUrl, variantsByChannel, campaignId, contentPillar, channels, toast, onSave, onOpenChange]);
+  }, [item, topic, tagsValue, selectedChannels, formatValue, contentGoal, formatVariant, assetRequirements, approvalRequired, publishLink, performanceNotes, hookValue, coreMessage, draftText, ctaValue, notesValue, responsibleUserId, scheduledDate, approvalState, workflowStatus, hashtags, hashtagsInComment, altText, imageUrl, variantsByChannel, campaignId, contentPillar, channels, onSave, onOpenChange]);
 
   if (!open || !item) return null;
 
   return (
     <>
-      <section className="space-y-4 rounded-lg border bg-card p-4 shadow-sm xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto">
-        <header className="flex items-start justify-between gap-3">
+      <section className={cn(styles.editor, "rounded-2xl border bg-card text-card-foreground shadow-sm")}>
+        <header className="flex items-start justify-between gap-3 px-6 pt-5">
           <div>
-          <h2 className="text-lg font-semibold">Beitrag bearbeiten</h2>
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-semibold">Beitrag bearbeiten</h2>
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{STATUS_COLUMNS.find((status) => status.id === workflowStatus)?.title}</span>
+            {scheduledDate && <span className="rounded-full border bg-muted/40 px-2 py-0.5 text-xs text-muted-foreground">{format(new Date(scheduledDate), "EEE, d. MMM", { locale: de })}</span>}
+          </div>
           <p className="text-sm text-muted-foreground">
             Pflege Inhalte, Kanäle, Briefing und Veröffentlichungsstatus direkt im Social Planner.
           </p>
           </div>
-          <Button type="button" variant="ghost" size="icon" aria-label="Bearbeitung schließen" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-xl bg-muted/50" aria-label="Bearbeitung schließen" onClick={() => onOpenChange(false)} disabled={isSaving}>
             <X className="h-4 w-4" />
           </Button>
         </header>
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "content" | "approval")}>
-          <TabsList className="grid w-full grid-cols-2">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "content" | "approval" | "briefing")}>
+          <TabsList className={styles.tabs}>
             <TabsTrigger value="content">Inhalt</TabsTrigger>
             <TabsTrigger value="approval">
               <MessageSquare className="h-3.5 w-3.5 mr-1" /> Freigabe
             </TabsTrigger>
+            <TabsTrigger value="briefing">Briefing</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="content" className="space-y-4 mt-4">
+          <TabsContent value="content" className="m-0 space-y-5 px-6 py-5">
           <div className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2 md:col-span-2">
+            <div className={styles.topicRow}>
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="edit-topic">Thema</Label>
               <Input id="edit-topic" value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="Thema des Beitrags" />
             </div>
 
-            <div className="space-y-2 md:col-span-2">
+            <div className="min-w-0 space-y-2">
               <Label>Vorlage</Label>
               <Select value={selectedTemplate} onValueChange={handleTemplateChange}>
                 <SelectTrigger><SelectValue placeholder="Vorlage anwenden" /></SelectTrigger>
@@ -312,7 +319,8 @@ export default function SocialPlannerEditPanel({ item, open, users, channels, ca
               </Select>
             </div>
 
-            <div className="md:col-span-2">
+            </div>
+            <div>
               <ComposerSection
                 channels={channels}
                 masterText={draftText}
@@ -347,6 +355,10 @@ export default function SocialPlannerEditPanel({ item, open, users, channels, ca
                 Interne Labels zur Organisation – nicht öffentlich sichtbar.
               </p>
             </div>
+          </div>
+          </TabsContent>
+          <TabsContent value="briefing" className="m-0 space-y-4 px-6 py-5">
+            <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Kampagne</Label>
               <Select value={campaignId} onValueChange={setCampaignId}>
@@ -367,8 +379,7 @@ export default function SocialPlannerEditPanel({ item, open, users, channels, ca
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
+            </div>
           <BriefingGroup title="Wofür ist der Beitrag?" description="Lege Nutzen, Aufhänger und Ziel des Beitrags fest." icon={ClipboardList}>
             <div className="space-y-2">
               <Label>Beitragsziel</Label>
@@ -485,7 +496,9 @@ export default function SocialPlannerEditPanel({ item, open, users, channels, ca
               <Textarea id="edit-notes" rows={4} value={notesValue} onChange={(event) => setNotesValue(event.target.value)} placeholder="Interne Hinweise, Freigabekommentare oder To-dos" />
             </div>
           </BriefingGroup>
+          </TabsContent>
 
+          <TabsContent value="approval" className="m-0 space-y-4 px-6 py-5">
           <BriefingGroup title="Was fehlt noch bis zur Veröffentlichung?" description="Behalte Freigabe, Termin, Link und spätere Learnings gemeinsam im Blick." icon={CalendarDays}>
             <div className="flex items-center justify-between gap-4 rounded-md border p-3 md:col-span-2">
               <div>
@@ -547,10 +560,6 @@ export default function SocialPlannerEditPanel({ item, open, users, channels, ca
               <Textarea id="edit-performance-notes" rows={3} value={performanceNotes} onChange={(event) => setPerformanceNotes(event.target.value)} placeholder="z. B. starke Reichweite bei Carousel, CTA im ersten Slide gut funktioniert" />
             </div>
           </BriefingGroup>
-          </div>
-          </TabsContent>
-
-          <TabsContent value="approval" className="mt-4">
             <ApprovalCommentsTab
               contentItemId={item?.id ?? null}
               responsibleUserId={responsibleUserId === "none" ? null : responsibleUserId}
@@ -559,7 +568,7 @@ export default function SocialPlannerEditPanel({ item, open, users, channels, ca
           </TabsContent>
         </Tabs>
 
-        <div className="sticky bottom-0 flex flex-wrap justify-end gap-2 border-t bg-card py-3">
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t bg-card px-6 py-3.5">
           <Button
             type="button"
             variant="outline"

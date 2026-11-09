@@ -1,3 +1,7 @@
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { briefingFactLines } from "./briefingFacts";
+import { normalizeBriefingData } from "@/hooks/useAppointmentPreparation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -133,7 +137,17 @@ function ConversationPartnerList({
 
 
 export function AppointmentBriefingView({ preparation, appointmentInfo, compact }: AppointmentBriefingViewProps) {
-  const d = preparation.preparation_data;
+  const d = normalizeBriefingData(preparation.preparation_data);
+  const factIds = (d.structured_facts ?? []).flatMap(f => f.fact_id ? [f.fact_id] : []).sort();
+  const { data: libraryFacts = [] } = useQuery({
+    queryKey: ["briefing-facts", preparation.tenant_id, factIds],
+    enabled: factIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("facts").select("id,text,source").eq("tenant_id", preparation.tenant_id).in("id", factIds);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
   const conversationPartners = getConversationPartnersFromPreparationData(d);
   const companions = d.companions ?? [];
   const program = d.program ?? [];
@@ -141,7 +155,7 @@ export function AppointmentBriefingView({ preparation, appointmentInfo, compact 
   const keyTopicItems = d.key_topic_items ?? [];
   const talkingPointItems = d.talking_point_items ?? [];
 
-  const peopleContextLines = [d.audience, d.facts_figures].filter(Boolean) as string[];
+  const peopleContextLines = [d.audience, d.facts_figures, ...briefingFactLines(d, libraryFacts)].filter(Boolean) as string[];
   const importantTopicLines = getImportantTopicLines(d);
 
   // Build Q&A lines: prefer structured pairs, fallback to free text
@@ -158,6 +172,7 @@ export function AppointmentBriefingView({ preparation, appointmentInfo, compact 
   const additionalContextLines = [
     ...splitPreparationTextToList(d.position_statements),
     ...splitPreparationTextToList(d.objectives),
+    ...splitPreparationTextToList(d.materials_needed).map(line => `Unterlage: ${line}`),
     ...qaLines,
   ];
   const briefingNotes = getBriefingNotes(preparation);

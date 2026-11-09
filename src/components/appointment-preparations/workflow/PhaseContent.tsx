@@ -1,3 +1,6 @@
+import { AppointmentBriefingStatusCard } from "@/features/appointments/briefing/AppointmentBriefingStatusCard";
+import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
+import { canDecide } from "@/features/appointment-requests/logic";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppointmentPreparationDataTab } from "../AppointmentPreparationDataTab";
 import { AppointmentPreparationChecklistTab } from "../AppointmentPreparationChecklistTab";
@@ -58,6 +61,7 @@ const PHASE_VISIBILITY: Partial<Record<PhaseId, PreparationVisibleSections>> = {
 
 export function PhaseContent({ phase, preparation, appointmentDetails, onUpdate, onOpenAppointmentDetails }: PhaseContentProps) {
   const meta = PHASE_TITLES[phase];
+  const { role } = useResolvedUserRole();
 
   return (
     <div className="space-y-4">
@@ -117,10 +121,12 @@ export function PhaseContent({ phase, preparation, appointmentDetails, onUpdate,
             onOpenAppointmentDetails={onOpenAppointmentDetails}
             visibleSections={PHASE_VISIBILITY.freigabe}
           />
-          <AppointmentPreparationDetailsTab preparation={preparation} onUpdate={onUpdate} />
+          {appointmentDetails && <AppointmentBriefingStatusCard appointmentId={appointmentDetails.id} title={appointmentDetails.title} startTime={appointmentDetails.start_time} isDecider={canDecide(role)} />}
+          <AppointmentPreparationDetailsTab preparation={preparation} onUpdate={onUpdate} onOpenAppointment={onOpenAppointmentDetails} />
         </>
       )}
 
+      {phase !== "nachbereitung" && <Card><CardHeader><CardTitle>Unterlagen</CardTitle></CardHeader><CardContent><AppointmentPreparationFileUpload preparationId={preparation.id} tenantId={preparation.tenant_id} /></CardContent></Card>}
       {phase === "nachbereitung" && (
         <>
           <DebriefPanel

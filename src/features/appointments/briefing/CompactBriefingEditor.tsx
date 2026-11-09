@@ -1,3 +1,5 @@
+import { normalizeBriefingData, type AppointmentPreparation } from "@/hooks/useAppointmentPreparation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -12,21 +14,25 @@ import { canCompleteBriefing, dossierExtrasLine, mergeLegacy, saveCompact, type 
 
 const CORE = [
   { key: "compact_partners", label: "Gesprächspartner", placeholder: "Wer sitzt uns gegenüber? Name, Funktion" },
-  { key: "compact_goal", label: "Anlass & Ziel", placeholder: "Wer will was von wem? 2–3 Sätze" },
-  { key: "compact_positions", label: "Unsere Position", placeholder: "Ein Stichpunkt pro Zeile" },
-  { key: "compact_documents", label: "Unterlagen", placeholder: "Links, Akten, Dokumente" },
+  { key: "visit_reason_details", label: "Anlass & Ziel", placeholder: "Wer will was von wem? 2–3 Sätze" },
+  { key: "position_statements", label: "Unsere Position", placeholder: "Ein Stichpunkt pro Zeile" },
+  { key: "talking_points", label: "Talking Points", placeholder: "Ein Gesprächspunkt pro Zeile" },
+  { key: "materials_needed", label: "Unterlagen", placeholder: "Links, Akten, Dokumente" },
 ] as const;
 const EXTRA = [
-  { key: "compact_qa", label: "Kritische Fragen & Antworten", placeholder: "Frage → Antwort" },
-  { key: "compact_facts", label: "Fakten & Zitate", placeholder: "Zahlen, Zitate, Quellen" },
-  { key: "compact_debrief", label: "Nachbereitung", placeholder: "Was wurde vereinbart?" },
+  { key: "questions_answers", label: "Kritische Fragen & Antworten", placeholder: "Frage → Antwort" },
+  { key: "facts_figures", label: "Fakten & Zitate", placeholder: "Zahlen, Zitate, Quellen" },
+  { key: "debrief_summary", label: "Nachbereitung", placeholder: "Was wurde vereinbart?" },
 ] as const;
 
 interface Props { open: boolean; onOpenChange: (o: boolean) => void; appointmentId: string; title: string }
 
-/** One-pager briefing stored in appointment_preparations.preparation_data (compact_* keys). */
+/** Compact editor for the same canonical fields used by the full preparation and PDF. */
 export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title }: Props) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const { currentTenant } = useTenant();
   const navigate = useNavigate();
   const [prepId, setPrepId] = useState<string | null>(null);
@@ -39,9 +45,13 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
 
   useEffect(() => {
     if (!open) return;
+    let cancelled = false;
+    setLoading(true); setLoadError(false);
     (async () => {
-      const { data } = await supabase.from("appointment_preparations").select("id, preparation_data")
+      const { data, error } = await supabase.from("appointment_preparations").select("id, preparation_data")
         .eq("appointment_id", appointmentId).eq("is_archived", false).order("created_at", { ascending: true }).limit(1).maybeSingle();
+      if (cancelled) return;
+      if (error) { setLoadError(true); setLoading(false); notify.error("Briefing konnte nicht geladen werden."); return; }
       const pd = (data?.preparation_data && typeof data.preparation_data === "object" && !Array.isArray(data.preparation_data) ? data.preparation_data : {}) as Record<string, Json>;
       setPrepId(data?.id ?? null);
       setBase(pd);
@@ -55,12 +65,14 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
       setStatus(appt?.briefing_status ?? null);
       if (!v.compact_debrief && notes) v.compact_debrief = notes;
       setValues(v);
+      setLoading(false);
       setExtras(EXTRA.filter((f) => v[f.key]).map((f) => f.key));
     })();
+    return () => { cancelled = true; };
   }, [open, appointmentId]);
 
   const save = async () => {
-    if (!user || !currentTenant) return;
+    if (!user || !currentTenant || loading || loadError) return;
     setSaving(true);
     const preparation_data = saveCompact(base, values as CompactValues) as Record<string, Json>;
     const res = prepId
@@ -68,6 +80,7 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
       : await supabase.from("appointment_preparations").insert({ appointment_id: appointmentId, tenant_id: currentTenant.id, created_by: user.id, title: `Briefing: ${title}`, status: "in_progress", preparation_data });
     setSaving(false);
     if (res.error) { notify.error(res.error.message); return; }
+    void queryClient.invalidateQueries({ queryKey: ["appointment-briefing"] });
     notify.success("Briefing gespeichert.");
     onOpenChange(false);
   };

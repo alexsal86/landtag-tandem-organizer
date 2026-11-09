@@ -1,3 +1,4 @@
+import styles from "./SocialPlannerEditPanel.module.css";
 import type { Dispatch, SetStateAction } from "react";
 import { Check, ChevronDown, Crop, Image as ImageIcon, RotateCcw, Scissors, Send, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -70,28 +71,29 @@ export function ComposerSection(props: Props) {
   };
 
   return (
-    <div className="@container rounded-lg border bg-muted/20 p-3">
-      <div className="grid gap-4 @3xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,0.9fr)]">
+    <div className={styles.composer}>
+      <div className="min-w-0 space-y-5">
         {/* 1 — Master */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <Label htmlFor="composer-master" className="section-label">1 · Master-Text</Label>
+            <Label htmlFor="composer-master" className={styles.stepLabel}>1 · Master-Text</Label>
             <CharCounter text={masterText} limit={masterLimit} />
           </div>
           <Textarea
             id="composer-master"
-            rows={9}
+            rows={5}
             value={masterText}
             onChange={(e) => setMasterText(e.target.value)}
             placeholder="Kernbotschaft einmal schreiben – die Kanäle übernehmen den Text automatisch."
-            className="bg-background"
+            className="min-h-32 bg-muted/30"
           />
+          <p className="text-xs text-muted-foreground">Gilt als Basis für alle Kanäle</p>
           <div className="space-y-2">
             <Label className="text-caption text-muted-foreground">Bild</Label>
             {imageUrl ? (
-              <div className="group relative inline-block">
-                <img src={imageUrl} alt="Beitragsbild" className="max-h-36 rounded-md border object-contain" />
-                <div className="mt-1 flex gap-1">
+              <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-muted/30 p-3">
+                <img src={imageUrl} alt="Beitragsbild" className="h-16 w-24 rounded-lg object-cover" />
+                <div className="flex flex-wrap gap-1">
                   <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={onCropExisting}>
                     <Crop className="mr-1 h-3 w-3" />Zuschneiden
                   </Button>
@@ -115,7 +117,7 @@ export function ComposerSection(props: Props) {
 
         {/* 2 — Channels */}
         <div className="space-y-3">
-          <Label className="section-label">2 · Kanäle anpassen</Label>
+          <Label className={styles.stepLabel}>2 · Kanäle anpassen</Label>
           <div className="flex flex-wrap gap-1.5">
             {channels.map((c) => {
               const selected = selectedChannels.includes(c.id);
@@ -146,21 +148,29 @@ export function ComposerSection(props: Props) {
           {selectedChannels.length === 0 || !activeChannel ? (
             <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">Wähle mindestens einen Kanal.</p>
           ) : (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-caption text-muted-foreground">
+            <div className="space-y-3 rounded-xl border bg-muted/30 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className={cn("rounded-full px-2 py-1 text-xs font-medium", isCustom ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary")}>
                   {isCustom ? `Eigener Text für ${activeChannel.name}` : `Übernimmt Master-Text`}
                 </span>
                 <CharCounter text={shownCaption} limit={rules.captionMax} />
               </div>
               <Textarea
-                rows={7}
+                rows={4}
                 value={variant?.caption || ""}
                 placeholder={masterText || "Text für diesen Kanal"}
                 onChange={(e) => patchVariant({ caption: e.target.value })}
                 className="bg-background"
                 aria-label={`Text für ${activeChannel.name}`}
               />
+              {rules.captionMax && (
+                <div className="h-1 overflow-hidden rounded-full bg-border" aria-hidden="true">
+                  <div
+                    className={cn("h-full rounded-full", shownCaption.length > rules.captionMax ? "bg-destructive" : "bg-primary")}
+                    style={{ width: `${Math.min(100, shownCaption.length / rules.captionMax * 100)}%` }}
+                  />
+                </div>
+              )}
               <div className="flex flex-wrap gap-1">
                 <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => patchVariant({ caption: masterText })}>
                   <RotateCcw className="mr-1 h-3 w-3" />Master übernehmen
@@ -211,11 +221,13 @@ export function ComposerSection(props: Props) {
           )}
         </div>
 
+      </div>
         {/* 3 — Preview */}
-        <div className="space-y-3">
-          <Label className="section-label">3 · Vorschau</Label>
+        <div className={styles.preview}>
+          <Label className={styles.stepLabel}>3 · Vorschau</Label>
           {activeChannel ? (
-            <ChannelPreview
+            <div className="rounded-[28px] border bg-muted/30 p-2.5">
+              <ChannelPreview
               channelSlug={activeSlug}
               channelName={activeChannel.name}
               caption={shownCaption}
@@ -223,12 +235,12 @@ export function ComposerSection(props: Props) {
               hashtags={hashtags}
               hashtagsInComment={hashtagsInComment}
               imageUrl={imageUrl}
-            />
+              />
+            </div>
           ) : (
             <p className="text-sm text-muted-foreground">Vorschau erscheint nach Kanalwahl.</p>
           )}
         </div>
-      </div>
     </div>
   );
 }

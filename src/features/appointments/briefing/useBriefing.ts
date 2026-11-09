@@ -87,8 +87,8 @@ export function useBriefingMutations() {
     onSuccess: done,
   });
   const advance = useMutation({
-    mutationFn: async (v: { appointmentId: string; action: BriefingAction }) => {
-      const { error } = await supabase.rpc("advance_appointment_briefing", { _appointment_id: v.appointmentId, _action: v.action });
+    mutationFn: async (v: { appointmentId: string; action: BriefingAction; note?: string }) => {
+      const { error } = await supabase.rpc("advance_appointment_briefing", { _appointment_id: v.appointmentId, _action: v.action, _note: v.note });
       if (error) throw error;
     },
     onSuccess: done,

@@ -1,0 +1,87 @@
+.editor {
+  container-type: inline-size;
+}
+
+.editor :is(input, textarea, [role="combobox"]) {
+  border-radius: 10px;
+  background-color: hsl(var(--muted) / 0.3);
+}
+
+.editor label,
+.stepLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted-foreground));
+}
+
+.stepLabel {
+  text-transform: uppercase;
+}
+
+.tabs {
+  display: flex;
+  justify-content: flex-start;
+  gap: 4px;
+  height: auto;
+  margin-top: 14px;
+  padding: 0 24px;
+  border-bottom: 1px solid hsl(var(--border));
+  border-radius: 0;
+  background: transparent;
+}
+
+.tabs [role="tab"] {
+  padding: 10px 14px;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.tabs [role="tab"][data-state="active"] {
+  border-color: hsl(var(--primary));
+  background: transparent;
+  color: hsl(var(--primary));
+}
+
+.topicRow,
+.composer {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.preview {
+  min-width: 0;
+  width: 100%;
+  max-width: 270px;
+  margin-inline: auto;
+}
+
+.preview > label {
+  display: block;
+  margin-bottom: 12px;
+}
+
+.preview > div {
+  overflow-wrap: anywhere;
+}
+
+@container (min-width: 440px) {
+  .topicRow {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    gap: 14px;
+  }
+}
+
+@container (min-width: 580px) {
+  .composer {
+    grid-template-columns: minmax(0, 1fr) minmax(230px, 270px);
+  }
+
+  .preview {
+    position: sticky;
+    top: 12px;
+    align-self: start;
+  }
+}

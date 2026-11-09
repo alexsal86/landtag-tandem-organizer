@@ -2,6 +2,7 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { FileText } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
@@ -38,7 +39,7 @@ export function AppointmentBriefingStatusCard({ appointmentId, title, startTime,
   const run = async (fn: () => Promise<unknown>, ok: string) => {
     try { await fn(); notify.success(ok); } catch (e) { notify.error(e instanceof Error ? e.message : "Aktion fehlgeschlagen."); }
   };
-  const act = (action: BriefingAction, ok: string) => run(() => advance.mutateAsync({ appointmentId, action }), ok);
+  const act = (action: BriefingAction, ok: string) => run(() => advance.mutateAsync({ appointmentId, action, note: action === "return" ? returnNote.trim() : undefined }), ok);
 
   return (
     <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
@@ -66,7 +67,7 @@ export function AppointmentBriefingStatusCard({ appointmentId, title, startTime,
         {canGoLive({ briefing_status: status, start_time: startTime }) && <Button size="sm" onClick={goLive}>Live starten</Button>}
         {canAdvanceBriefing(status, "submit", { isDecider, isAssignee }) && <Button size="sm" onClick={() => act("submit", "Zur Freigabe vorgelegt.")}>Zur Freigabe vorlegen</Button>}
         {canAdvanceBriefing(status, "approve", { isDecider, isAssignee }) && <Button size="sm" onClick={() => act("approve", "Briefing freigegeben.")}>Freigeben</Button>}
-        {canAdvanceBriefing(status, "return", { isDecider, isAssignee }) && <Button size="sm" variant="outline" onClick={() => act("return", "Zurück an Zuarbeit.")}>Zurück mit Anmerkung</Button>}
+        {canAdvanceBriefing(status, "return", { isDecider, isAssignee }) && <div className="w-full space-y-2"><Textarea aria-label="Begründung der Rückgabe" placeholder="Was soll überarbeitet werden?" value={returnNote} onChange={e => setReturnNote(e.target.value)} /><Button disabled={!returnNote.trim() || advance.isPending} size="sm" variant="outline" onClick={() => act("return", "Zurück an Zuarbeit.")}>Zurück mit Anmerkung</Button></div>}
         {status === "assigned" && isDecider && (
           <Button size="sm" variant="ghost" onClick={() => run(() => setBriefing.mutateAsync({ appointmentId, decision: "none" }), "Briefing abbestellt.")}>Doch kein Briefing</Button>
         )}

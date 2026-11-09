@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,6 +18,13 @@ export interface AppointmentPreparation {
   is_archived: boolean;
   archived_at?: string | null;
   preparation_data: {
+    compact_partners?: string;
+    compact_goal?: string;
+    compact_positions?: string;
+    compact_documents?: string;
+    compact_qa?: string;
+    compact_facts?: string;
+    compact_debrief?: string;
     objectives?: string;
     key_topics?: string;
     talking_points?: string;
@@ -97,8 +105,10 @@ export interface AppointmentPreparation {
       assignee?: string;
       due_date?: string;
       task_created?: boolean;
+      task_id?: string;
     }>;
     debrief_followup_scheduled?: boolean;
+    debrief_followup_task_id?: string;
     // Strukturierte Fakten mit Zuordnung zu Partner/Thema
     structured_facts?: Array<{
       id: string;
@@ -115,6 +125,24 @@ export interface AppointmentPreparation {
     completed: boolean;
   }>;
   shared_with?: string[];
+}
+
+
+export function normalizeBriefingData(data: AppointmentPreparation['preparation_data']): AppointmentPreparation['preparation_data'] {
+  const d = { ...data };
+  d.visit_reason_details ??= d.compact_goal;
+  d.position_statements ??= d.compact_positions;
+  d.materials_needed ??= d.compact_documents;
+  d.questions_answers ??= d.compact_qa;
+  d.facts_figures ??= d.compact_facts;
+  d.debrief_summary ??= d.compact_debrief;
+  if (!d.conversation_partners?.length && d.compact_partners?.trim()) {
+    d.conversation_partners = d.compact_partners.split('\n').filter(x => x.trim()).map((name, i) => ({ id: `compact-${i}`, name }));
+  }
+  if (d.talking_point_items?.length) d.talking_points = d.talking_point_items.map(p => p.point).filter(Boolean).join("\n");
+  if (d.key_topic_items?.length) d.key_topics = d.key_topic_items.map(t => [t.topic, t.background].filter(Boolean).join(": ")).join("\n");
+  if (d.qa_pairs?.length) d.questions_answers = d.qa_pairs.map(q => `${q.question} → ${q.answer}`).join("\n");
+  return d;
 }
 
 
@@ -215,6 +243,7 @@ interface AppointmentPreparationRow {
 export type AutosaveStatus = "idle" | "saving" | "saved" | "error";
 
 export function useAppointmentPreparation(preparationId: string | undefined) {
+  const queryClient = useQueryClient();
   const [preparation, setPreparation] = useState<AppointmentPreparation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -260,7 +289,7 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
           updated_at: row.updated_at,
           is_archived: row.is_archived,
           archived_at: row.archived_at,
-          preparation_data: normalizePreparationData(row.preparation_data),
+          preparation_data: normalizePreparationData(row.preparation_data ?? {}),
           checklist_items: row.checklist_items ?? [],
           shared_with: row.shared_with ?? [],
         });
@@ -275,6 +304,7 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
 
   const updatePreparation = async (updates: Partial<AppointmentPreparation>) => {
     if (!preparationId || !user) return;
+    if (Object.keys(updates).length === 0) { await fetchPreparation(); return; }
 
     try {
       setSaveStatus("saving");
@@ -292,6 +322,7 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
         .eq('id', preparationId);
 
       if (updateError) throw updateError;
+      void queryClient.invalidateQueries({ queryKey: ["appointment-briefing"] });
       setSaveStatus("saved");
       setLastSavedAt(new Date());
     } catch (err) {
