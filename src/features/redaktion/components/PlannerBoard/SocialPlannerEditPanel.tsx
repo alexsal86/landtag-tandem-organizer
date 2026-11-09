@@ -616,8 +616,7 @@ export default function SocialPlannerEditPanel({ item, open, scrollRequest = 0, 
           const nextVariants: Record<string, SocialContentVariant> = Object.fromEntries(selectedChannels.map((channelId) => {
             const variant = variantsByChannel[channelId];
             return [channelId, {
-              channel_id: channelId, first_comment: "", asset_ids: [], platform_metadata: {}, platform_status: "draft" as const,
-              ...variant,
+              ...(variant ?? { channel_id: channelId, first_comment: "", asset_ids: [], platform_metadata: {}, platform_status: "draft" as const }),
               caption: effectiveCaption(variant?.caption, draftText),
             }];
           }));

@@ -3,6 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
+import { useTenantProfiles } from "@/hooks/useTenantProfiles";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { annualDueDay, annualTaskStatus, canDelegateAnnualTask } from "../annualTaskRules";
+import { describeError } from "@/features/selftest/verify";
 import {
   Card,
   CardContent,
@@ -61,6 +68,7 @@ interface AnnualTaskCompletion {
   completed_at: string | null;
   completed_by: string | null;
   notes: string | null;
+  linked_task_id: string | null;
 }
 
 interface AnnualTaskWithStatus extends AnnualTask {
@@ -131,6 +139,13 @@ const FUNCTION_DESCRIPTIONS: Record<string, { title: string; actions: string[] }
 export function AnnualTasksView() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { isAdmin } = useResolvedUserRole();
+  const { data: profiles } = useTenantProfiles();
+  const [delegatingTask, setDelegatingTask] = useState<AnnualTaskWithStatus | null>(null);
+  const [assignee, setAssignee] = useState("office");
+  const [delegating, setDelegating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState<AnnualTaskWithStatus[]>([]);
   const [selectedTask, setSelectedTask] = useState<AnnualTaskWithStatus | null>(null);
@@ -143,11 +158,10 @@ export function AnnualTasksView() {
   const [generatingPreviousStats, setGeneratingPreviousStats] = useState(false);
 
   const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth() + 1;
 
   useEffect(() => {
     loadTasks();
-  }, [currentTenant]);
+  }, [currentTenant?.id]);
 
   useEffect(() => {
     if (selectedTask) {
@@ -166,13 +180,13 @@ export function AnnualTasksView() {
     try {
       const { data: tasksData, error: tasksError } = await supabase
         .from("annual_tasks")
-        .select("*")
+        .select("id,title,description,category,due_month,due_day,is_system_task,auto_execute,execute_function")
         .eq("tenant_id", currentTenant.id)
         .order("due_month", { ascending: true });
 
       if (tasksError) throw tasksError;
 
-      const taskIds = (tasksData || []).map((t: Record<string, any>) => t.id);
+      const taskIds = (tasksData || []).map(t => t.id);
       if (taskIds.length === 0) {
         setTasks([]);
         setLoading(false);
@@ -181,7 +195,7 @@ export function AnnualTasksView() {
 
       const { data: completionsData, error: completionsError } = await supabase
         .from("annual_task_completions")
-        .select("*")
+        .select("id,annual_task_id,year,completed_at,completed_by,notes,linked_task_id")
         .in("annual_task_id", taskIds)
         .eq("year", currentYear);
 
@@ -195,15 +209,7 @@ export function AnnualTasksView() {
 
       const tasksWithStatus: AnnualTaskWithStatus[] = ((tasksData || []) as AnnualTask[]).map((task) => {
         const completion = completionMap.get(task.id);
-        let status: AnnualTaskWithStatus['status'] = 'upcoming';
-
-        if (completion?.completed_at) {
-          status = 'completed';
-        } else if (task.due_month < currentMonth) {
-          status = 'overdue';
-        } else if (task.due_month === currentMonth) {
-          status = 'due';
-        }
+        const status = annualTaskStatus(task, currentYear, completion?.completed_at);
 
         return { ...task, completion, status };
       });
@@ -211,8 +217,31 @@ export function AnnualTasksView() {
       setTasks(tasksWithStatus);
     } catch (error) {
       debugConsole.error("Error loading annual tasks:", error);
+      notify.error("Jahresaufgaben konnten nicht geladen werden", { description: describeError(error) });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelegate = async () => {
+    if (!delegatingTask || !currentTenant || !isAdmin) return;
+    setDelegating(true);
+    try {
+      const { data, error } = await supabase.rpc("spawn_annual_task_to_stafette", {
+        _annual_task_id: delegatingTask.id,
+        _year: currentYear,
+        ...(assignee !== "office" ? { _assignee: assignee } : {}),
+      });
+      if (error) throw error;
+      if (!data) throw new Error("Keine verknüpfte Aufgabe zurückgegeben");
+      await queryClient.invalidateQueries({ queryKey: ["my-work-tasks"] });
+      setDelegatingTask(null);
+      await loadTasks();
+      notify.success("Jahresaufgabe ins Büro übergeben");
+    } catch (error) {
+      notify.error("Übergabe fehlgeschlagen", { description: describeError(error) });
+    } finally {
+      setDelegating(false);
     }
   };
 
@@ -248,7 +277,7 @@ export function AnnualTasksView() {
   };
 
   const handleMarkComplete = async () => {
-    if (!selectedTask || !user || !currentTenant) return;
+    if (!selectedTask || !user || !currentTenant || selectedTask.completion?.linked_task_id) return;
     setCompleting(true);
     setExecutionResult(null);
 
@@ -280,7 +309,8 @@ export function AnnualTasksView() {
         await supabase
           .from("annual_tasks")
           .update({ auto_execute: enableAutoExecute })
-          .eq("id", selectedTask.id);
+          .eq("id", selectedTask.id)
+          .eq("tenant_id", currentTenant.id);
       }
 
       // Mark task as completed
@@ -523,6 +553,7 @@ export function AnnualTasksView() {
                           {CATEGORY_LABELS[task.category] || task.category}
                         </Badge>
                         {getStatusBadge(task.status)}
+                        {task.completion?.linked_task_id && task.status !== "completed" && <Badge variant="outline">Im Büro</Badge>}
                         {task.auto_execute && (
                           <Badge variant="outline" className="gap-1">
                             <Zap className="h-3 w-3" />
@@ -551,7 +582,18 @@ export function AnnualTasksView() {
                         </p>
                       )}
                     </div>
-                    {task.status !== 'completed' && (
+                    <div className="flex shrink-0 flex-col gap-2">
+                    {task.completion?.linked_task_id && (
+                      <Button variant="outline" size="sm" onClick={() => navigate(`/tasks?id=${task.completion?.linked_task_id}`)}>
+                        Büroaufgabe öffnen
+                      </Button>
+                    )}
+                    {isAdmin && canDelegateAnnualTask(task, task.completion) && (
+                      <Button variant="outline" size="sm" onClick={() => { setAssignee("office"); setDelegatingTask(task); }}>
+                        Ins Büro geben
+                      </Button>
+                    )}
+                    {task.status !== 'completed' && !task.completion?.linked_task_id && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -560,6 +602,7 @@ export function AnnualTasksView() {
                         {task.execute_function ? "Ausführen" : "Erledigen"}
                       </Button>
                     )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -567,6 +610,30 @@ export function AnnualTasksView() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!delegatingTask} onOpenChange={(open) => { if (!open && !delegating) setDelegatingTask(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Jahresaufgabe ins Büro geben</DialogTitle>
+            <DialogDescription>{delegatingTask?.title} · {currentYear}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label>Zuständig</Label>
+            <Select value={assignee} onValueChange={setAssignee} disabled={delegating}>
+              <SelectTrigger aria-label="Zuständige Person"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="office">Büroleitung (automatisch)</SelectItem>
+                {profiles.map(profile => <SelectItem key={profile.user_id} value={profile.user_id}>{profile.display_name || "Teammitglied"}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <p className="text-caption text-muted-foreground">Frist: {delegatingTask ? format(new Date(`${annualDueDay(delegatingTask, currentYear)}T12:00:00`), "dd.MM.yyyy") : ""}</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" disabled={delegating} onClick={() => setDelegatingTask(null)}>Abbrechen</Button>
+            <Button disabled={delegating} onClick={() => void handleDelegate()}>{delegating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Ins Büro geben</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Enhanced Completion Dialog */}
       <Dialog open={!!selectedTask} onOpenChange={(open) => {

@@ -1,4 +1,5 @@
 import { adminControlsScenario } from './scenarios/admin-controls';
+import { annualTaskStafetteScenario } from './scenarios/annual-task-stafette';
 import type { TestScenario } from "./types";
 import { meetingLifecycleScenario } from "./scenarios/meeting-lifecycle";
 import { taskLifecycleScenario } from "./scenarios/task-lifecycle";
@@ -20,6 +21,7 @@ import { jourFixePlatformIntegrationScenario } from './scenarios/jour-fixe-platf
 
 export const SELFTEST_SCENARIOS: TestScenario[] = [
   adminControlsScenario,
+  annualTaskStafetteScenario,
   workflowRulesScenario,
   accessBoundariesScenario,
   meetingLifecycleScenario,
