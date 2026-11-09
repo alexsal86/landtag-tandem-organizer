@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { StandaloneDecisionCreator } from '@/components/task-decisions/StandaloneDecisionCreator';
+import { useCaseItems } from '@/features/cases/items/hooks/useCaseItems';
 import { followUpTaskFromLive } from '@/features/appointments/briefing/briefingModel';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -82,6 +84,13 @@ export default function BriefingLivePage() {
   const [taskDueDate, setTaskDueDate] = useState('');
   const [createdTasks, setCreatedTasks] = useState<CreatedTask[]>([]);
   const [taskSaving, setTaskSaving] = useState(false);
+  const { createCaseItem } = useCaseItems();
+  const [decisionOpen, setDecisionOpen] = useState(false);
+  const handleCreateCase = async () => {
+    if (!taskTitle.trim()) { notify.error('Fehler', { description: 'Bitte einen Titel eingeben.' }); return; }
+    const item = await createCaseItem({ source_channel: 'in_person', subject: taskTitle.trim(), summary: taskDescription || `Aus Termin: ${appointmentInfo?.title || preparation?.title || ''}`, owner_user_id: user?.id ?? null });
+    if (item) { notify.success('Vorgang angelegt'); setTaskTitle(''); setTaskDescription(''); }
+  };
 
   // Feedback completed state
   const [feedbackCompleted, setFeedbackCompleted] = useState(false);
@@ -413,6 +422,15 @@ export default function BriefingLivePage() {
             )}
             Aufgabe erstellen
           </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="ghost" onClick={handleCreateCase}>Als Vorgang anlegen</Button>
+            <Button variant="ghost" onClick={() => { if (!taskTitle.trim()) { notify.error('Fehler', { description: 'Bitte einen Titel eingeben.' }); return; } setDecisionOpen(true); }}>Entscheidung anfordern</Button>
+          </div>
+          {decisionOpen && (
+            <StandaloneDecisionCreator isOpen={decisionOpen} onOpenChange={setDecisionOpen}
+              defaultTitle={taskTitle} defaultDescription={taskDescription || `Aus Termin: ${appointmentInfo?.title || preparation?.title || ''}`}
+              onDecisionCreated={() => { setDecisionOpen(false); setTaskTitle(''); setTaskDescription(''); }} />
+          )}
 
           {/* Created tasks list */}
           {createdTasks.length > 0 && (

@@ -67,7 +67,7 @@ export function useAppointmentBriefing(appointmentId: string | undefined) {
   });
 }
 
-export interface SetBriefingInput { appointmentId: string; decision: "none" | "assigned"; assignee?: string; due?: string; instructions?: string }
+export interface SetBriefingInput { appointmentId: string; decision: "none" | "assigned"; assignee?: string; due?: string; instructions?: string; depth?: "compact" | "full" }
 
 export function useBriefingMutations() {
   const qc = useQueryClient();
@@ -79,6 +79,10 @@ export function useBriefingMutations() {
         _assignee: v.assignee, _due: v.due, _instructions: v.instructions,
       });
       if (error) throw error;
+      if (v.decision === "assigned" && v.depth) {
+        const r = await supabase.rpc("set_appointment_briefing_depth", { _appointment_id: v.appointmentId, _depth: v.depth });
+        if (r.error) throw r.error;
+      }
     },
     onSuccess: done,
   });

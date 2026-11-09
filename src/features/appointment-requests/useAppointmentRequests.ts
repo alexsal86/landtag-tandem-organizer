@@ -109,12 +109,16 @@ export function useAppointmentRequestMutations() {
   });
 
   const decide = useMutation({
-    mutationFn: async (v: { id: string; decision: "accepted" | "declined"; briefing?: "none" | "assigned"; assignee?: string; due?: string; instructions?: string }) => {
-      const { error } = await supabase.rpc("decide_appointment_request", {
+    mutationFn: async (v: { id: string; decision: "accepted" | "declined"; briefing?: "none" | "assigned"; assignee?: string; due?: string; instructions?: string; depth?: "compact" | "full" }) => {
+      const { data: apptId, error } = await supabase.rpc("decide_appointment_request", {
         _request_id: v.id, _decision: v.decision, _briefing: v.briefing,
         _briefing_assignee: v.assignee, _briefing_due: v.due, _briefing_instructions: v.instructions,
       });
       if (error) throw error;
+      if (apptId && v.briefing === "assigned" && v.depth) {
+        const r = await supabase.rpc("set_appointment_briefing_depth", { _appointment_id: apptId, _depth: v.depth });
+        if (r.error) throw r.error;
+      }
     },
     onSuccess: invalidate,
   });
