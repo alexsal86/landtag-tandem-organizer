@@ -4,7 +4,7 @@
 .sidebar { --topic-height-constrained: 0; grid-area: topics; min-width: 0; border: 1px solid hsl(var(--border)); border-radius: var(--radius); background: hsl(var(--card)); }
 .editor { grid-area: editor; min-width: 0; }
 @container (min-width: 1000px) {
-  .layout { grid-template-areas: "calendar topics" "editor editor"; grid-template-columns: minmax(0, 1fr) 320px; }
+  .layout { grid-template-areas: "calendar topics" "editor editor"; grid-template-columns: minmax(0, 1fr) clamp(360px, 30cqi, 420px); }
   .sidebar { --topic-height-constrained: 1; position: relative; align-self: stretch; min-height: 0; }
   .sidebar > section { position: absolute; inset: 0; }
 }

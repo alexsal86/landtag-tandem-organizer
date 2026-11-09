@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
-import { ChevronLeft, ChevronRight, Filter, GripVertical, Lightbulb, Pencil, PlusCircle, Settings2, Trash2, TriangleAlert } from "lucide-react";
+import { ChevronLeft, ChevronRight, Filter, GripVertical, Lightbulb, MoreHorizontal, Pencil, Star, PlusCircle, Settings2, TriangleAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useCurrentProfileId } from "@/hooks/useCurrentProfileId";
 import { getErrorMessage } from "@/utils/errorHandler";
-import { TopicBacklogEntry, TopicEditorialStatus, useTopicBacklog } from "@/features/redaktion/hooks/useTopicBacklog";
-import { Badge } from "@/components/ui/badge";
+import { TopicBacklogEntry, useTopicBacklog } from "@/features/redaktion/hooks/useTopicBacklog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -36,14 +37,6 @@ const TEMPLATES: TemplateDefinition[] = [
   { key: "recap_post", label: "Rückblick-Post", format: "Rückblick-Post", formatVariant: "recap_post", cta: "Feedback in die Kommentare", draftIntro: "Ergebnis, Wirkung und Learnings zusammenfassen." },
 ];
 
-const STATUS_META: Record<TopicEditorialStatus, { label: string; variant: "secondary" | "outline" | "default" }> = {
-  idea: { label: "Idee", variant: "secondary" },
-  planning: { label: "in Planung", variant: "outline" },
-  production: { label: "in Produktion", variant: "default" },
-  published: { label: "veröffentlicht", variant: "default" },
-  repurpose: { label: "wiederverwenden", variant: "secondary" },
-};
-
 interface Props {
   compact?: boolean;
   onContentCreated?: () => void;
@@ -70,10 +63,7 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
   const [newTopicTitle, setNewTopicTitle] = useState("");
   const [newTopicDescription, setNewTopicDescription] = useState("");
   const [newTopicTags, setNewTopicTags] = useState("");
-  const [newTopicStatus, setNewTopicStatus] = useState<TopicEditorialStatus>("idea");
-  const [newTopicPriority, setNewTopicPriority] = useState("1");
-  const [newTopicCampaignId, setNewTopicCampaignId] = useState<string>("none");
-  const [newTopicContentPillar, setNewTopicContentPillar] = useState<string>("none");
+  const [newTopicImportant, setNewTopicImportant] = useState(false);
   const [campaignFilter, setCampaignFilter] = useState<string>("all");
   const [pillarFilter, setPillarFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"priority" | "campaign_phase">("priority");
@@ -91,10 +81,7 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
     setNewTopicTitle(editingTopic.topic);
     setNewTopicDescription(editingTopic.short_description || "");
     setNewTopicTags((editingTopic.tags || []).join(", "));
-    setNewTopicStatus(editingTopic.status);
-    setNewTopicPriority(String(editingTopic.priority || 1));
-    setNewTopicCampaignId(editingTopic.campaign_id || "none");
-    setNewTopicContentPillar(editingTopic.content_pillar || "none");
+    setNewTopicImportant(editingTopic.priority > 1);
     setIsCreateTopicDialogOpen(true);
   }, [editingTopic]);
 
@@ -209,10 +196,7 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
     setNewTopicTitle("");
     setNewTopicDescription("");
     setNewTopicTags("");
-    setNewTopicStatus("idea");
-    setNewTopicPriority("1");
-    setNewTopicCampaignId("none");
-    setNewTopicContentPillar("none");
+    setNewTopicImportant(false);
     setEditingTopic(null);
   };
 
@@ -224,18 +208,16 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
       .split(",")
       .map((entry) => entry.trim())
       .filter(Boolean);
-    const parsedPriority = Number.parseInt(newTopicPriority, 10);
 
     try {
       if (editingTopic) {
         await updateTopic(editingTopic.id, {
           topic: newTopicTitle.trim(),
           tags: parsedTags,
-          status: newTopicStatus,
-          priority: Number.isNaN(parsedPriority) ? editingTopic.priority : parsedPriority,
+          priority: newTopicImportant === (editingTopic.priority > 1)
+            ? editingTopic.priority
+            : newTopicImportant ? 2 : 1,
           short_description: newTopicDescription.trim() || null,
-          campaign_id: newTopicCampaignId === "none" ? null : newTopicCampaignId,
-          content_pillar: newTopicContentPillar === "none" ? null : newTopicContentPillar,
         });
 
         notify.success("Aktualisiert", { description: "Thema wurde im Themenspeicher aktualisiert." 
@@ -244,11 +226,9 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
         await createBacklogTopic({
           topic: newTopicTitle.trim(),
           tags: parsedTags,
-          status: newTopicStatus,
-          priority: Number.isNaN(parsedPriority) ? 1 : parsedPriority,
+          status: "idea",
+          priority: newTopicImportant ? 2 : 1,
           short_description: newTopicDescription.trim() || null,
-          campaign_id: newTopicCampaignId === "none" ? null : newTopicCampaignId,
-          content_pillar: newTopicContentPillar === "none" ? null : newTopicContentPillar,
         });
 
         notify.success("Erstellt", { description: "Neues Thema wurde im Themenspeicher angelegt." 
@@ -282,6 +262,10 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
         resetDialogState();
       }
       setDeleteTopicCandidate(null);
+      if (editingTopic?.id === deleteTopicCandidate.id) {
+        setIsCreateTopicDialogOpen(false);
+        resetTopicForm();
+      }
       onContentCreated?.();
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -388,7 +372,6 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
       ) : (
         <div className="space-y-2">
           {visibleTopics.map((topic) => {
-            const statusMeta = STATUS_META[topic.status] ?? STATUS_META.idea;
             return (
               <div
                 key={topic.id}
@@ -404,11 +387,7 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-1 min-w-0">
                     <div className={cn(compact ? "flex flex-wrap gap-1 max-h-12 overflow-hidden" : "flex flex-wrap items-center gap-2")}>
-                      <p className={cn("flex items-center gap-1 text-sm font-medium", compact && "w-full min-w-0")}><GripVertical className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" /><span className={compact ? "truncate" : ""}>{topic.topic}</span></p>
-                      <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
-                      {topic.linked_content_count > 0 && <Badge variant="outline">{topic.linked_content_count} Beiträge</Badge>}
-                      {topic.campaign_name && <Badge variant="outline">{topic.campaign_name}</Badge>}
-                      {topic.content_pillar && <Badge variant="secondary">{topic.content_pillar}</Badge>}
+                      <p className={cn("flex items-center gap-1 text-sm font-medium", compact && "w-full min-w-0")}><GripVertical className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" /><span className={compact ? "truncate" : ""}>{topic.topic}</span>{topic.priority > 1 && <Star className="h-3.5 w-3.5 shrink-0 text-primary" aria-label="Wichtig" />}</p>
                     </div>
                     {topic.short_description && <p className={cn("text-xs text-muted-foreground", compact && "line-clamp-1")}>{topic.short_description}</p>}
                   </div>
@@ -435,15 +414,7 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
                       In Planner
                     </span>
                   </div>
-                  <div className="relative group/icon">
-                    <Button size="icon" variant="ghost" className={cn(compact ? "h-7 w-7" : "h-8 w-8", "text-destructive hover:text-destructive")} onClick={() => setDeleteTopicCandidate(topic)}>
-                      <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">Löschen</span>
-                    </Button>
-                    <span className="pointer-events-none absolute right-full top-1/2 mr-2 -translate-y-1/2 whitespace-nowrap rounded bg-popover px-2 py-1 text-[11px] text-popover-foreground shadow opacity-0 transition-opacity group-hover/icon:opacity-100">
-                      Löschen
-                    </span>
-                  </div>
+
                 </div>
               </div>
             );
@@ -538,7 +509,7 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
           <DialogHeader>
             <DialogTitle>{editingTopic ? "Thema bearbeiten" : "Neues Thema im Themenspeicher"}</DialogTitle>
             <DialogDescription>
-              {editingTopic ? "Pflege Titel, Beschreibung, Priorität und Status direkt im Themenspeicher." : "Erstelle ein neues Thema, das anschließend in der Redaktionsplanung genutzt werden kann."}
+              {editingTopic ? "Pflege Titel, Beschreibung und markiere das Thema bei Bedarf als wichtig." : "Erstelle ein neues Thema, das anschließend in der Redaktionsplanung genutzt werden kann."}
             </DialogDescription>
           </DialogHeader>
 
@@ -573,58 +544,21 @@ export function Themenspeicher({ onContentCreated, compact = false }: Props) {
               />
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <Label>Status</Label>
-                <Select value={newTopicStatus} onValueChange={(value) => setNewTopicStatus(value as TopicEditorialStatus)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(STATUS_META).map(([value, meta]) => (
-                      <SelectItem key={value} value={value}>{meta.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="new-topic-priority">Priorität</Label>
-                <Input
-                  id="new-topic-priority"
-                  type="number"
-                  min="0"
-                  value={newTopicPriority}
-                  onChange={(event) => setNewTopicPriority(event.target.value)}
-                  placeholder="1"
-                />
-              </div>
-              <div>
-                <Label>Kampagne</Label>
-                <Select value={newTopicCampaignId} onValueChange={setNewTopicCampaignId}>
-                  <SelectTrigger><SelectValue placeholder="Kampagne (optional)" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Keine Kampagne</SelectItem>
-                    {campaigns.map((campaign) => (
-                      <SelectItem key={campaign.id} value={campaign.id}>{campaign.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Content-Pillar</Label>
-                <Select value={newTopicContentPillar} onValueChange={setNewTopicContentPillar}>
-                  <SelectTrigger><SelectValue placeholder="Pillar (optional)" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nicht festgelegt</SelectItem>
-                    <SelectItem value="informieren">Informieren</SelectItem>
-                    <SelectItem value="mobilisieren">Mobilisieren</SelectItem>
-                    <SelectItem value="service">Service</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="flex items-center gap-3 rounded-md border p-3">
+              <Checkbox id="new-topic-important" checked={newTopicImportant} onCheckedChange={(checked) => setNewTopicImportant(checked === true)} />
+              <Label htmlFor="new-topic-important" className="flex cursor-pointer items-center gap-2"><Star className="h-4 w-4" />Wichtig</Label>
             </div>
           </div>
 
           <DialogFooter>
+            {editingTopic && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" className="mr-auto text-muted-foreground" aria-label="Weitere Themenaktionen"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onSelect={() => setDeleteTopicCandidate(editingTopic)}>Thema löschen…</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             <Button variant="outline" onClick={() => setIsCreateTopicDialogOpen(false)}>Abbrechen</Button>
             <Button onClick={() => void saveTopic()} disabled={isSubmitting || !newTopicTitle.trim()}>
               {editingTopic ? "Änderungen speichern" : "Thema erstellen"}
