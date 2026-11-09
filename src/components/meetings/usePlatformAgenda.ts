@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
-import { agendaHorizon, criticalTaskReason } from './platformAgendaRules';
+import { agendaHorizon, criticalTaskReason, pastAppointmentReview } from './platformAgendaRules';
 import type { PlatformAgendaType } from './systemAgendaRegistry';
 
 export interface PlatformAgendaEntry {
@@ -90,6 +90,23 @@ export async function loadPlatformAgenda(type: PlatformAgendaType, tenantId: str
       if (reason) critical.push({ id: task.id, title: task.title, date: task.next_action_due || task.due_date, status: reason, ownerId: task.ball_assignee_id, path: `/tasks?highlight=${task.id}` });
     }
     return critical.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  }
+  if (type === 'past_appointments') {
+    const end = agendaHorizon(date, 0).start;
+    const start = agendaHorizon(new Date(new Date(date).getTime() - 7 * 86_400_000), 0).start;
+    const { data, error } = await supabase.from('appointments').select('id, title, start_time, location, user_id')
+      .eq('tenant_id', tenantId).gte('start_time', start).lt('start_time', end).order('start_time', { ascending: false }).limit(100);
+    if (error) throw error;
+    const ids = (data ?? []).map(row => row.id);
+    const feedback = ids.length ? await supabase.from('appointment_feedback').select('appointment_id, feedback_status, notes, has_tasks')
+      .eq('tenant_id', tenantId).in('appointment_id', ids).limit(500) : { data: [], error: null };
+    if (feedback.error) throw feedback.error;
+    return (data ?? []).map(row => {
+      const fb = feedback.data?.find(entry => entry.appointment_id === row.id);
+      const review = pastAppointmentReview(fb);
+      return { id: row.id, title: row.title, date: row.start_time, detail: [row.location, fb?.notes?.trim().slice(0, 140)].filter(Boolean).join(' · ') || undefined,
+        status: review.status, ownerId: row.user_id, path: `/calendar?date=${row.start_time.slice(0, 10)}&event=${row.id}`, content: fb?.notes };
+    });
   }
   return [];
 }
