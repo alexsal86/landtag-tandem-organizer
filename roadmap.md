@@ -30,7 +30,9 @@
 - [x] Phase 2: Regeln/Workflows und RSS-Navigation zusammenführen
 - [x] Phase 2: Alte Links und Selbsttest absichern — 22 gezielte Tests bestanden
 - [ ] Phase 2: Gemeinsame Reiter angemeldet durchklicken — externe Supabase-Testsitzung nicht verfügbar
-- [ ] Phase 3: Jährliche, monatliche und quartalsweise Stichtage samt Monatsende im Regel-Builder ergänzen
-- [ ] Phase 3: Terminberechnung, doppelte Ausführung, Vorlagen und Selbsttest absichern
-- [ ] Phase 3: Sichere stündliche Zeitsteuerung ausrollen und prüfen
+- [x] Phase 3: Jährliche, monatliche und quartalsweise Stichtage samt Monatsende im Regel-Builder ergänzen
+- [x] Phase 3: Terminberechnung, doppelte Ausführung, Vorlagen und Selbsttest absichern — 10 gezielte Tests und 2 Edge-Tests bestanden
+- [x] Phase 3: Sichere stündliche Zeitsteuerung ausrollen und prüfen — signiert 200, ohne Signatur 403
+- [ ] Phase 3: Regel mit Anmeldung speichern und erzeugte Aufgabe in der App prüfen — externe Supabase-Testsitzung fehlt
+- [ ] Älteren Dispatcher-Test prüfen — gültige Testvorlage wird durch vorhandene zyklische Aktionsreferenzen abgelehnt
 - [ ] Angemeldeten Jahresaufgaben-Gesamtablauf prüfen — externe Supabase-Testsitzung fehlt

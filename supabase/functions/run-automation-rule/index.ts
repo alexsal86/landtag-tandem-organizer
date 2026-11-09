@@ -678,9 +678,11 @@ serve(withSafeHandler("run-automation-rule", async (req) => {
           assigned_to: assignedTo || null,
           ...(isInternalCall && sourcePayload.source === "scheduled" ? {
             ball_owner: "office",
+            ball_assignee_id: assignedTo.includes(",") ? rule.created_by : assignedTo || rule.created_by,
+            next_action: title,
             source_type: "automation_rule",
             source_id: rule.id,
-            timeline: [{ id: crypto.randomUUID(), at: new Date().toISOString(), type: "created", text: `Stichtagsregel: ${rule.name}`, actor: rule.created_by }],
+            timeline: [{ id: crypto.randomUUID(), at: new Date().toISOString(), type: "system", text: `Stichtagsregel: ${rule.name}` }],
           } : {}),
         };
 

@@ -19,8 +19,8 @@ export function validateCalendarSchedule(config: ScheduleConfig): string | null 
   const hour = Number(config.hour);
   const day = Number(config.day);
   const month = Number(config.month);
-  if (!Number.isInteger(hour) || hour < 0 || hour > 23 || !config.hour?.trim()) return "Uhrzeit muss zwischen 0 und 23 liegen.";
-  if (!Number.isInteger(day) || day < 1 || day > 31 || !config.day?.trim()) return "Tag muss zwischen 1 und 31 liegen.";
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23 || typeof config.hour !== "string" || !config.hour.trim()) return "Uhrzeit muss zwischen 0 und 23 liegen.";
+  if (!Number.isInteger(day) || day < 1 || day > 31 || typeof config.day !== "string" || !config.day.trim()) return "Tag muss zwischen 1 und 31 liegen.";
   if (config.schedule_kind === "annual") {
     if (!Number.isInteger(month) || month < 1 || month > 12) return "Monat muss zwischen 1 und 12 liegen.";
     if (config.month_end !== "true" && day > new Date(Date.UTC(2024, month, 0)).getUTCDate()) return "Dieser Tag existiert in dem Monat nicht.";
@@ -57,16 +57,15 @@ export function calendarOccurrence(config: ScheduleConfig, now: Date): string | 
 }
 
 function berlinInstant(year: number, month: number, day: number, hour: number): Date {
-  // Fixed-point conversion handles CET/CEST; missing 02:00 resolves at 03:00.
+  // Berlin is UTC+1/+2. Earliest matching instant handles the repeated hour.
   const wall = Date.UTC(year, month - 1, day, hour);
-  let utc = wall;
-  for (let i = 0; i < 4; i++) {
-    const local = localParts(new Date(utc));
-    const delta = wall - Date.UTC(local.year, local.month - 1, local.day, local.hour);
-    if (delta === 0) return new Date(utc);
-    utc += delta;
+  for (const offset of [2, 1]) {
+    const candidate = new Date(wall - offset * 3600000);
+    const local = localParts(candidate);
+    if (local.year === year && local.month === month && local.day === day && local.hour === hour) return candidate;
   }
-  return new Date(Math.max(utc, utc + 3600000));
+  // Missing spring 02:00 becomes 03:00 CEST (01:00 UTC).
+  return new Date(wall - 3600000);
 }
 
 export function nextCalendarOccurrence(config: ScheduleConfig, now: Date): Date | null {
