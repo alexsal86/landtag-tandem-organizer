@@ -636,7 +636,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                 <CardTitle className={cn(sectionTitleClassName, "flex items-center justify-between gap-3")}>
                   <span>Ansprechperson</span>
                   <Dialog open={isContactDialogOpen} onOpenChange={setIsContactDialogOpen}>
-                    <DialogTrigger asChild><Button variant="outline" size="sm"><Plus className="mr-2 h-4 w-4" />Ansprechperson</Button></DialogTrigger>
+                    <DialogTrigger asChild><Button variant="outline" size="icon" className="shrink-0 rounded-xl" aria-label="Ansprechperson hinzufügen"><Plus className="h-5 w-5" /></Button></DialogTrigger>
                     <DialogContent>
                       <DialogHeader><DialogTitle>Ansprechperson hinzufügen</DialogTitle></DialogHeader>
                       <div className="space-y-4">
@@ -660,13 +660,29 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
               </CardHeader>
               <CardContent>
                 {contacts.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="space-y-6">
                     {contacts.map((contact) => (
-                      <div key={contact.id} className="flex items-center justify-between rounded-md border p-3">
-                        <div><p className="font-medium">{contact.name}</p><div className="text-sm text-muted-foreground">{contact.email && <p>📧 {contact.email}</p>}{contact.phone && <p>📞 {contact.phone}</p>}</div></div>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => { setEditingContact(contact); setIsEditContactDialogOpen(true); }}><Edit2 className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="sm" onClick={() => removeContact(contact.id)}><X className="h-4 w-4" /></Button>
+                      <div key={contact.id} className="flex flex-wrap items-center gap-4">
+                        <Avatar className="h-16 w-16 aspect-square flex-none">
+                          <AvatarFallback className="bg-primary/5 text-xl font-semibold text-primary">
+                            {contact.name.trim().split(/\s+/).filter(Boolean).map((part) => part[0]).filter((_, index, parts) => index === 0 || index === parts.length - 1).join('').toLocaleUpperCase('de-DE') || '?'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1 basis-24">
+                          <p className="break-words text-lg font-semibold leading-snug">{contact.name}</p>
+                          {contact.email && <a href={`mailto:${contact.email}`} className="mt-1 block break-words text-sm text-muted-foreground hover:text-foreground">{contact.email}</a>}
+                          {contact.phone && <a href={`tel:${contact.phone}`} className="mt-1 block break-words text-sm text-muted-foreground hover:text-foreground">{contact.phone}</a>}
+                        </div>
+                        <div className="ml-auto flex shrink-0 items-center gap-1">
+                          {contact.email && <Button asChild variant="ghost" size="icon"><a href={`mailto:${contact.email}`} aria-label={`E-Mail an ${contact.name}`}><Mail className="h-4 w-4" /></a></Button>}
+                          {contact.phone && <Button asChild variant="ghost" size="icon"><a href={`tel:${contact.phone}`} aria-label={`${contact.name} anrufen`}><Phone className="h-4 w-4" /></a></Button>}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label={`Aktionen für ${contact.name}`}><Ellipsis className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onSelect={() => { setEditingContact(contact); setIsEditContactDialogOpen(true); }}><Edit2 className="mr-2 h-4 w-4" />Bearbeiten</DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive" onSelect={() => removeContact(contact.id)}><Trash2 className="mr-2 h-4 w-4" />Entfernen</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                     ))}
