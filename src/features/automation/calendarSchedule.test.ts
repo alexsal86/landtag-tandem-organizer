@@ -38,4 +38,8 @@ describe("calendar automation schedules", () => {
     expect(nextCalendarOccurrence(annual, new Date("2026-03-31T23:00:00Z"))?.toISOString()).toBe("2026-04-01T07:00:00.000Z");
     expect(nextCalendarOccurrence({ ...annual, month: "12" }, new Date("2026-11-01T00:00:00Z"))?.toISOString()).toBe("2026-12-01T08:00:00.000Z");
   });
+  it("moves the missing spring 02:00 to 03:00 and uses the first autumn 02:00", () => {
+    expect(nextCalendarOccurrence({ ...annual, month: "3", day: "29", hour: "2" }, new Date("2026-03-28T00:00:00Z"))?.toISOString()).toBe("2026-03-29T01:00:00.000Z");
+    expect(nextCalendarOccurrence({ ...annual, month: "10", day: "25", hour: "2" }, new Date("2026-10-24T00:00:00Z"))?.toISOString()).toBe("2026-10-25T00:00:00.000Z");
+  });
 });

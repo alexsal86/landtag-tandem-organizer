@@ -15,7 +15,7 @@ export function CalendarScheduleFields({ form, onChange }: { form: WizardForm; o
   const error = calendar ? validateCalendarSchedule(schedule) : null;
   return <div className="space-y-sm">
     <Label>Wiederholung</Label>
-    <Select value={schedule.schedule_kind} onValueChange={value => update({ schedule_kind: value })}>
+    <Select value={schedule.schedule_kind} onValueChange={value => update({ schedule_kind: value, ...(value === "quarterly" ? { month_end: "true" } : {}) })}>
       <SelectTrigger aria-label="Wiederholung"><SelectValue /></SelectTrigger>
       <SelectContent>{[["interval", "Minutenintervall"], ["annual", "Jährlicher Stichtag"], ["monthly", "Monatlich"], ["quarterly", "Quartalsende"]].map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent>
     </Select>
