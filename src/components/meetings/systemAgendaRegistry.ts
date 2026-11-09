@@ -1,5 +1,5 @@
 import { PencilSparkles } from "@/components/icons/PencilSparkles";
-import { CalendarDays, ListTodo, Heart, Scale, Briefcase, CalendarClock, Megaphone, Users, CalendarCheck, FileCheck, Radar } from 'lucide-react';
+import { CalendarDays, ListTodo, Heart, Scale, Briefcase, CalendarClock, Megaphone, Users, CalendarCheck, FileCheck, Radar, History } from 'lucide-react';
 import type { SystemAgendaType } from './types';
 
 export const SYSTEM_AGENDA_OPTIONS = [
@@ -15,9 +15,10 @@ export const SYSTEM_AGENDA_OPTIONS = [
   { type: 'event_plannings', label: 'Veranstaltungsplanung', Icon: CalendarCheck },
   { type: 'letters_for_signature', label: 'Briefe zur Freigabe', Icon: FileCheck },
   { type: 'critical_radar', label: 'Fristen & Stafetten-Radar', Icon: Radar },
+  { type: 'past_appointments', label: 'Termin-Rückschau (7 Tage)', Icon: History },
 ] satisfies { type: SystemAgendaType; label: string; Icon: typeof CalendarDays }[];
 
-export const PLATFORM_AGENDA_TYPES = ['appointment_requests', 'redaktion', 'leave_requests', 'event_plannings', 'letters_for_signature', 'critical_radar'] as const;
+export const PLATFORM_AGENDA_TYPES = ['appointment_requests', 'redaktion', 'leave_requests', 'event_plannings', 'letters_for_signature', 'critical_radar', 'past_appointments'] as const;
 export type PlatformAgendaType = typeof PLATFORM_AGENDA_TYPES[number];
 export const isPlatformAgendaType = (type?: string | null): type is PlatformAgendaType =>
   PLATFORM_AGENDA_TYPES.some(value => value === type);

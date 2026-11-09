@@ -36,3 +36,9 @@ describe('Jour-fixe source rules', () => {
     expect(end.getHours()).toBe(23);
   });
 });
+import { pastAppointmentReview } from './platformAgendaRules';
+describe('pastAppointmentReview', () => {
+  it('flags missing notes', () => expect(pastAppointmentReview(null)).toEqual({ status: 'Nachbereitung fehlt', open: true }));
+  it('flags notes not completed', () => expect(pastAppointmentReview({ feedback_status: 'pending', notes: 'x', has_tasks: false }).open).toBe(true));
+  it('done with tasks', () => expect(pastAppointmentReview({ feedback_status: 'completed', notes: 'x', has_tasks: true })).toEqual({ status: 'Nachbereitet · Folgeaufgaben', open: false }));
+});

@@ -1,5 +1,5 @@
 import { PencilSparkles } from "@/components/icons/PencilSparkles";
-import { Briefcase, Calendar, CheckSquare, Clock, Home, Lightbulb, MessageSquare, Users, Vote } from "lucide-react";
+import { Briefcase, Calendar, CheckSquare, Clock, Home, Lightbulb, Users, Vote } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { UserRole } from "@/components/my-work/tabVisibility";
 import { canViewTab } from "@/components/my-work/tabVisibility";
@@ -50,7 +50,6 @@ export const MY_WORK_TABS: MyWorkTabConfig[] = [
   { value: "jourFixe", label: "Jour fixe & Planungen", icon: Calendar, countKey: "jourFixe" },
   { value: "redaktion", label: "Redaktion", icon: Lightbulb },
   { value: "time", label: "Meine Zeit", icon: Clock, employeeOnly: true },
-  { value: "feedbackfeed", label: "Rückmeldungen", icon: MessageSquare, countKey: "feedbackFeed" },
   // Team-Tab: nur Rollen mit Führungs-/Koordinationsverantwortung sehen aggregierte Mitarbeiterdaten.
   { value: "team", label: "Team", icon: Users, countKey: "team", badgeVariant: "destructive", teamLeadsOnly: true },
 ];
@@ -62,7 +61,7 @@ export const LEGACY_TAB_MAP: Record<string, TabValue> = {
   plannings: "jourFixe",
 };
 
-export const MY_WORK_ALLOWED_TABS = new Set<TabValue>(MY_WORK_TABS.map((tab) => tab.value));
+export const MY_WORK_ALLOWED_TABS = new Set<TabValue>([...MY_WORK_TABS.map((tab) => tab.value), "feedbackfeed"]); // Rückmeldungen: kein Reiter mehr, alte Links bleiben erreichbar
 
 export const MY_WORK_TAB_VISIT_CONTEXTS: Record<TabValue, string[]> = {
   dashboard: [],
