@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { addDays, format } from "date-fns";
 import { useNavigate, useSearchParams, useLocation, useParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -46,6 +46,16 @@ interface ItemActionDto {
   checklist_item_id: string;
   action_type: 'email' | 'social_planner' | 'rsvp' | 'social_media';
   [key: string]: unknown;
+}
+
+// Read linked calendar dates as the current source for both detail and overview.
+async function resolveLinkedPlanningDates(dates: EventPlanningDate[]): Promise<EventPlanningDate[]> {
+  const ids = [...new Set(dates.map(d => d.appointment_id).filter((id): id is string => !!id))];
+  if (!ids.length) return dates;
+  const { data, error } = await supabase.from("appointments").select("id,start_time").in("id", ids);
+  if (error) throw error;
+  const starts = new Map((data ?? []).map(a => [a.id, a.start_time]));
+  return dates.map(date => ({ ...date, date_time: (date.appointment_id && starts.get(date.appointment_id)) || date.date_time }));
 }
 
 export function useEventPlanningData() {
@@ -124,7 +134,12 @@ export function useEventPlanningData() {
   // ── Fetch details (needed by sub-hooks) ──
   const fetchPlanningDetails = useCallback(async (planningId: string) => {
     const { data: dates } = await supabase.from("event_planning_dates").select("id, event_planning_id, date_time, is_confirmed, appointment_id, created_at").eq("event_planning_id", planningId).order("date_time");
-    setPlanningDates(dates || []);
+    try {
+      setPlanningDates(await resolveLinkedPlanningDates(dates || []));
+    } catch (error) {
+      setPlanningDates(dates || []);
+      handleAppError(error, { context: 'fetchPlanningDetails.dates' });
+    }
 
     const { data: items } = await supabase.from("event_planning_checklist_items").select("id, event_planning_id, title, is_completed, order_index, created_at, updated_at, sub_items, type, relative_due_days, color").eq("event_planning_id", planningId).order("order_index", { ascending: true });
     const transformedItems = (items || []).map((item: Record<string, any>) => ({
@@ -264,6 +279,20 @@ export function useEventPlanningData() {
     }
   }, [selectedPlanning]);
 
+  const previousSelection = useRef<string | null>(null);
+  useEffect(() => {
+    const wasEditing = previousSelection.current !== null;
+    previousSelection.current = selectedPlanning?.id ?? null;
+    if (wasEditing && !selectedPlanning && user && currentTenant) void fetchPlannings();
+  }, [selectedPlanning?.id, user?.id, currentTenant?.id]);
+
+  useEffect(() => {
+    if (!user || !currentTenant || selectedPlanning) return;
+    const refresh = () => { void fetchPlannings(); };
+    window.addEventListener("focus", refresh);
+    return () => window.removeEventListener("focus", refresh);
+  }, [selectedPlanning?.id, user?.id, currentTenant?.id]);
+
   // ── View preferences ──
   const loadViewPreferences = () => {
     const eventView = localStorage.getItem('eventPlanningView') as 'card' | 'table' | null;
@@ -301,8 +330,17 @@ export function useEventPlanningData() {
 });
         return;
       }
-      const sortedData = [...((data ?? []) as ReadonlyArray<EventPlanning>)].sort((a, b) => {
-        if ((a.is_completed || false) !== (b.is_completed || false)) return a.is_completed ? 1 : -1;
+      const planningIds = (data ?? []).map(p => p.id);
+      const confirmedDates = new Map<string, string>();
+      if (planningIds.length) {
+        const { data: dates, error: datesError } = await supabase.from("event_planning_dates")
+          .select("id,event_planning_id,date_time,is_confirmed,appointment_id")
+          .in("event_planning_id", planningIds).eq("is_confirmed", true);
+        if (datesError) throw datesError;
+        for (const date of await resolveLinkedPlanningDates(dates ?? [])) confirmedDates.set(date.event_planning_id, date.date_time);
+      }
+      const sortedData = (data ?? []).map(planning => ({ ...planning, confirmed_date: confirmedDates.get(planning.id) ?? planning.confirmed_date })).sort((a, b) => {
+        if (!!a.is_completed !== !!b.is_completed) return a.is_completed ? 1 : -1;
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
       setPlannings(sortedData);
@@ -692,13 +730,21 @@ export function useEventPlanningData() {
     }
   };
 
+  const persistConfirmedPlanningDate = async (planningId: string, dateTime: string): Promise<boolean> => {
+    const { error } = await supabase.from("event_plannings").update({ confirmed_date: dateTime }).eq("id", planningId).select("id").single();
+    if (error) { notify.error("Termin konnte nicht gespeichert werden", { description: error.message }); return false; }
+    setSelectedPlanning(previous => previous?.id === planningId ? { ...previous, confirmed_date: dateTime } : previous);
+    setPlannings(previous => previous.map(p => p.id === planningId ? { ...p, confirmed_date: dateTime } : p));
+    return true;
+  };
+
   const confirmDate = async (dateId: string) => {
     if (!selectedPlanning) return;
     await supabase.from("event_planning_dates").update({ is_confirmed: false }).eq("event_planning_id", selectedPlanning.id);
     const { data, error } = await supabase.from("event_planning_dates").update({ is_confirmed: true }).eq("id", dateId).select().single();
     if (error) { notify.error("Fehler", { description: "Termin konnte nicht bestätigt werden."
 }); return; }
-    await updatePlanningField("confirmed_date", data.date_time);
+    if (!(await persistConfirmedPlanningDate(selectedPlanning.id, data.date_time))) return;
     await syncRelativeTimelineAssignments(selectedPlanning.id, data.date_time);
     const confirmedDate = planningDates.find(d => d.id === dateId);
     if (confirmedDate?.appointment_id) {
@@ -722,9 +768,10 @@ export function useEventPlanningData() {
     const dateToUpdate = planningDates.find(d => d.id === dateId);
     if (dateToUpdate?.appointment_id) {
       const newDate = new Date(newDateTime);
-      await supabase.from("appointments").update({ start_time: newDate.toISOString(), end_time: new Date(newDate.getTime() + 2 * 60 * 60 * 1000).toISOString() }).eq("id", dateToUpdate.appointment_id);
+      const { error: appointmentError } = await supabase.from("appointments").update({ start_time: newDate.toISOString(), end_time: new Date(newDate.getTime() + 2 * 60 * 60 * 1000).toISOString() }).eq("id", dateToUpdate.appointment_id).select("id").single();
+      if (appointmentError) { notify.error("Kalendertermin konnte nicht aktualisiert werden", { description: appointmentError.message }); return; }
     }
-    await updatePlanningField("confirmed_date", newDateTime);
+    if (!(await persistConfirmedPlanningDate(selectedPlanning.id, newDateTime))) return;
     await syncRelativeTimelineAssignments(selectedPlanning.id, newDateTime);
     fetchPlanningDetails(selectedPlanning.id);
     notify.success("Erfolg", { description: "Termin wurde aktualisiert." 
