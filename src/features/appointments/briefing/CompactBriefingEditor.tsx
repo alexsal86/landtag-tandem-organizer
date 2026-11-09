@@ -1,4 +1,3 @@
-import { normalizeBriefingData, type AppointmentPreparation } from "@/hooks/useAppointmentPreparation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -14,21 +13,29 @@ import { canCompleteBriefing, dossierExtrasLine, mergeLegacy, saveCompact, type 
 
 const CORE = [
   { key: "compact_partners", label: "Gesprächspartner", placeholder: "Wer sitzt uns gegenüber? Name, Funktion" },
-  { key: "visit_reason_details", label: "Anlass & Ziel", placeholder: "Wer will was von wem? 2–3 Sätze" },
-  { key: "position_statements", label: "Unsere Position", placeholder: "Ein Stichpunkt pro Zeile" },
-  { key: "talking_points", label: "Talking Points", placeholder: "Ein Gesprächspunkt pro Zeile" },
-  { key: "materials_needed", label: "Unterlagen", placeholder: "Links, Akten, Dokumente" },
+  { key: "compact_goal", label: "Anlass & Ziel", placeholder: "Wer will was von wem? 2–3 Sätze" },
+  { key: "compact_positions", label: "Unsere Position", placeholder: "Ein Stichpunkt pro Zeile" },
+  { key: "compact_documents", label: "Unterlagen", placeholder: "Links, Akten, Dokumente" },
 ] as const;
 const EXTRA = [
-  { key: "questions_answers", label: "Kritische Fragen & Antworten", placeholder: "Frage → Antwort" },
-  { key: "facts_figures", label: "Fakten & Zitate", placeholder: "Zahlen, Zitate, Quellen" },
-  { key: "debrief_summary", label: "Nachbereitung", placeholder: "Was wurde vereinbart?" },
+  { key: "compact_qa", label: "Kritische Fragen & Antworten", placeholder: "Frage → Antwort" },
+  { key: "compact_facts", label: "Fakten & Zitate", placeholder: "Zahlen, Zitate, Quellen" },
+  { key: "compact_debrief", label: "Nachbereitung", placeholder: "Was wurde vereinbart?" },
 ] as const;
 
-interface Props { open: boolean; onOpenChange: (o: boolean) => void; appointmentId: string; title: string }
+interface Props {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  appointmentId: string;
+  title: string;
+  preparationId?: string;
+  embedded?: boolean;
+  onSaved?: () => Promise<void>;
+  onShowFull?: () => void;
+}
 
 /** Compact editor for the same canonical fields used by the full preparation and PDF. */
-export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title }: Props) {
+export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title, preparationId, embedded = false, onSaved, onShowFull }: Props) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
@@ -49,8 +56,9 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
     let cancelled = false;
     setLoading(true); setLoadError(false);
     (async () => {
-      const { data, error } = await supabase.from("appointment_preparations").select("id, preparation_data, created_by")
-        .eq("appointment_id", appointmentId).eq("is_archived", false).order("created_at", { ascending: true }).limit(1).maybeSingle();
+      let query = supabase.from("appointment_preparations").select("id, preparation_data, created_by").eq("appointment_id", appointmentId).eq("is_archived", false);
+      if (preparationId) query = query.eq("id", preparationId);
+      const { data, error } = await query.order("created_at", { ascending: true }).limit(1).maybeSingle();
       if (cancelled) return;
       if (error) { setLoadError(true); setLoading(false); notify.error("Briefing konnte nicht geladen werden."); return; }
       const pd = (data?.preparation_data && typeof data.preparation_data === "object" && !Array.isArray(data.preparation_data) ? data.preparation_data : {}) as Record<string, Json>;
@@ -72,23 +80,35 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
       setExtras(EXTRA.filter((f) => v[f.key]).map((f) => f.key));
     })();
     return () => { cancelled = true; };
-  }, [open, appointmentId, user?.id]);
+  }, [open, appointmentId, preparationId, user?.id]);
 
-  const save = async () => {
-    if (!user || !currentTenant || loading || loadError || !canEdit) return;
+  const save = async (close = true): Promise<boolean> => {
+    if (!user || !currentTenant || loading || loadError || !canEdit || saving) return false;
     setSaving(true);
-    const preparation_data = saveCompact(base, values as CompactValues) as Record<string, Json>;
-    const res = prepId
-      ? await supabase.from("appointment_preparations").update({ preparation_data }).eq("id", prepId).select("id").single()
-      : await supabase.from("appointment_preparations").insert({ appointment_id: appointmentId, tenant_id: currentTenant.id, created_by: user.id, title: `Briefing: ${title}`, status: "in_progress", preparation_data });
-    setSaving(false);
-    if (res.error) { notify.error(res.error.message); return; }
-    void queryClient.invalidateQueries({ queryKey: ["appointment-briefing"] });
-    notify.success("Briefing gespeichert.");
-    onOpenChange(false);
+    try {
+      const preparation_data = saveCompact(base, values as CompactValues) as Record<string, Json>;
+      const res = prepId
+        ? await supabase.from("appointment_preparations").update({ preparation_data }).eq("id", prepId).select("id").single()
+        : await supabase.from("appointment_preparations").insert({ appointment_id: appointmentId, tenant_id: currentTenant.id, created_by: user.id, title: `Briefing: ${title}`, status: "in_progress", preparation_data }).select("id").single();
+      if (res.error) { notify.error(res.error.message); return false; }
+      setPrepId(res.data.id);
+      setBase(preparation_data);
+      void queryClient.invalidateQueries({ queryKey: ["appointment-briefing"] });
+      if (onSaved) await onSaved();
+      notify.success("Briefing gespeichert.");
+      if (close && !embedded) onOpenChange(false);
+      return true;
+    } catch {
+      notify.error("Briefing konnte nicht gespeichert werden.");
+      return false;
+    } finally {
+      setSaving(false);
+    }
   };
 
   const openDossier = async () => {
+    if (canEdit && !(await save(false))) return;
+    if (onShowFull) { onShowFull(); return; }
     if (canEdit) {
       const { error } = await supabase.rpc("set_appointment_briefing_depth", { _appointment_id: appointmentId, _depth: "full" });
       if (error) { notify.error(error.message); return; }
@@ -97,7 +117,7 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
   };
 
   const complete = async () => {
-    await save();
+    if (!(await save(false))) return;
     const { error } = await supabase.rpc("complete_appointment_briefing", { _appointment_id: appointmentId });
     if (error) { notify.error(error.message); return; }
     notify.success("Briefing abgeschlossen.");
@@ -111,18 +131,24 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
     </div>
   );
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between gap-2 pr-6">
-            <DialogTitle>Briefing: {title}</DialogTitle>
-            <div className="flex rounded-md border p-0.5 text-caption">
-              <span className="rounded-sm bg-muted px-2 py-0.5 font-medium">Kompakt</span>
-              <button type="button" className="px-2 py-0.5 text-muted-foreground hover:text-foreground" onClick={openDossier}>Dossier</button>
-            </div>
-          </div>
-        </DialogHeader>
+  const heading = embedded ? (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <h2 className="text-lg font-semibold">Terminvorbereitung</h2>
+      <div className="inline-flex rounded-md border p-1" role="group" aria-label="Briefing-Ansicht">
+        <Button size="sm" variant="default" aria-pressed={true}>Kurzbriefing</Button>
+        <Button size="sm" variant="ghost" aria-pressed={false} disabled={saving || loading || loadError} onClick={() => void openDossier()}>Langbriefing</Button>
+      </div>
+    </div>
+  ) : (
+    <DialogHeader>
+      <div className="flex items-center justify-between gap-2 pr-6">
+        <DialogTitle>Briefing: {title}</DialogTitle>
+        <Button size="sm" variant="ghost" disabled={saving || loading || loadError} onClick={() => void openDossier()}>Langbriefing</Button>
+      </div>
+    </DialogHeader>
+  );
+  const content = <>
+    {heading}
         {!loading && !canEdit && <p className="text-sm text-muted-foreground">Für das Team sichtbar · Bearbeitung durch die beauftragte Person.</p>}
         {extrasLine && <p className="rounded-md bg-muted/50 px-3 py-2 text-caption text-muted-foreground">{extrasLine}</p>}
         <div className="space-y-3">
@@ -135,13 +161,17 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
           </div>
         </div>
         <div className="flex justify-between gap-2 pt-2">
-          <Button variant="link" className="px-0" onClick={openDossier} disabled={loading || loadError}>{canEdit ? "Zum Dossier erweitern" : "Dossier ansehen"}</Button>
+          <Button variant="link" className="px-0" onClick={openDossier} disabled={saving || loading || loadError}>{canEdit ? "Zum Dossier erweitern" : "Dossier ansehen"}</Button>
           <div className="flex gap-2">
             {canEdit && canCompleteBriefing(status, values.compact_debrief ?? "") && <Button variant="outline" onClick={complete} disabled={saving}>Nachbereitet – abschließen</Button>}
-            {canEdit && <Button onClick={save} disabled={saving || loading || loadError}>Speichern</Button>}
+            {canEdit && <Button onClick={() => void save()} disabled={saving || loading || loadError}>Speichern</Button>}
           </div>
         </div>
-      </DialogContent>
+  </>;
+
+  return embedded ? <div className="mt-4 space-y-4 rounded-lg border bg-card p-4">{content}</div> : (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">{content}</DialogContent>
     </Dialog>
   );
 }

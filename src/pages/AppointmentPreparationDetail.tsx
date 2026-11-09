@@ -1,3 +1,4 @@
+import { CompactBriefingEditor } from "@/features/appointments/briefing/CompactBriefingEditor";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { useAppointmentBriefing } from "@/features/appointments/briefing/useBriefing";
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -50,6 +51,15 @@ export default function AppointmentPreparationDetail() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { role } = useResolvedUserRole();
   const view = searchParams.get("view");
+  const compactEditing = searchParams.get("depth") === "compact";
+  const setEditingDepth = (depth: "compact" | "full") => {
+    setSearchParams(previous => {
+      const next = new URLSearchParams(previous);
+      next.set("view", "preparation");
+      next.set("depth", depth);
+      return next;
+    });
+  };
   const briefingMode = view === "briefing" || (view !== "preparation" && role === "abgeordneter");
   const setView = (view: "preparation" | "briefing") => {
     setSearchParams(previous => {
@@ -383,7 +393,26 @@ export default function AppointmentPreparationDetail() {
               } : null}
             />
           </div>
+        ) : compactEditing && preparation.appointment_id ? (
+          <CompactBriefingEditor
+            open
+            embedded
+            appointmentId={preparation.appointment_id}
+            preparationId={preparation.id}
+            title={appointmentInfo?.title ?? preparation.title}
+            onOpenChange={() => {}}
+            onSaved={() => updatePreparation({})}
+            onShowFull={() => setEditingDepth("full")}
+          />
         ) : (
+          <>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">Terminvorbereitung</h2>
+            <div className="inline-flex rounded-md border p-1" role="group" aria-label="Briefing-Ansicht">
+              <Button size="sm" variant="ghost" aria-pressed={false} disabled={saveStatus === "saving" || !preparation.appointment_id} onClick={() => setEditingDepth("compact")}>Kurzbriefing</Button>
+              <Button size="sm" variant="default" aria-pressed={true}>Langbriefing</Button>
+            </div>
+          </div>
           <WorkflowWorkspace
             preparation={preparation}
             appointmentInfo={appointmentInfo}
@@ -396,6 +425,7 @@ export default function AppointmentPreparationDetail() {
             onToggleFocus={() => setFocusMode((v) => !v)}
             onShowShortcutsHelp={() => setShortcutsHelpOpen(true)}
           />
+          </>
         )}
         <KeyboardShortcutsHelp open={shortcutsHelpOpen} onOpenChange={setShortcutsHelpOpen} />
       </div>

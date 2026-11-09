@@ -16,15 +16,15 @@ const arr = (v: unknown): Record<string, unknown>[] => (Array.isArray(v) ? v.fil
 /** Summarise full dossier fields as compact text (used when compact field is empty). */
 export function fullToCompact(pd: PrepData): CompactValues {
   const partners = arr(pd.conversation_partners).map((p) => [str(p.name), str(p.role)].filter(Boolean).join(", ")).filter(Boolean);
-  const talking = arr(pd.talking_point_items).map((t) => str(t.text) || str(t.title)).filter(Boolean);
+  const talking = arr(pd.talking_point_items).map((t) => str(t.point) || str(t.text) || str(t.title)).filter(Boolean);
   const qa = arr(pd.qa_pairs).map((q) => `${str(q.question)} → ${str(q.answer)}`).filter((l) => l !== " → ");
   return {
     compact_partners: partners.join("\n"),
     compact_goal: [str(pd.objectives), str(pd.visit_reason_details)].filter(Boolean).join("\n"),
-    compact_positions: talking.length ? talking.join("\n") : [str(pd.position_statements), str(pd.talking_points)].filter(Boolean).join("\n"),
+    compact_positions: [str(pd.position_statements), talking.length ? talking.join("\n") : str(pd.talking_points)].filter(Boolean).join("\n"),
     compact_documents: str(pd.materials_needed),
-    compact_qa: qa.join("\n"),
-    compact_facts: str(pd.key_topics),
+    compact_qa: qa.length ? qa.join("\n") : str(pd.questions_answers),
+    compact_facts: str(pd.facts_figures) || str(pd.key_topics),
     compact_debrief: [str(pd.debrief_summary), str(pd.debrief_outcomes)].filter(Boolean).join("\n"),
   };
 }
@@ -38,13 +38,13 @@ export function compactToFull(c: Partial<CompactValues>, existing: PrepData = {}
   };
   if (c.compact_partners && empty("conversation_partners"))
     out.conversation_partners = lines(c.compact_partners).map((l) => { const [name, ...role] = l.split(","); return { id: `c-${name.trim()}`, name: name.trim(), role: role.join(",").trim() }; });
-  if (c.compact_goal && empty("objectives")) out.objectives = c.compact_goal;
+  if (c.compact_goal && empty("objectives") && empty("visit_reason_details")) out.visit_reason_details = c.compact_goal;
   if (c.compact_positions && empty("talking_point_items"))
-    out.talking_point_items = lines(c.compact_positions).map((text, i) => ({ id: `c-${i}`, text }));
+    out.talking_point_items = lines(c.compact_positions).map((text, i) => ({ id: `c-${i}`, point: text, text, background: "" }));
   if (c.compact_documents && empty("materials_needed")) out.materials_needed = c.compact_documents;
   if (c.compact_qa && empty("qa_pairs"))
     out.qa_pairs = lines(c.compact_qa).map((l, i) => { const [q, a = ""] = l.split(/\s*(?:→|->)\s*/); return { id: `c-${i}`, question: q, answer: a }; });
-  if (c.compact_facts && empty("key_topics")) out.key_topics = c.compact_facts;
+  if (c.compact_facts && empty("facts_figures") && empty("key_topics")) out.facts_figures = c.compact_facts;
   if (c.compact_debrief && empty("debrief_summary")) out.debrief_summary = c.compact_debrief;
   return out;
 }
@@ -59,7 +59,44 @@ export function mergeLegacy(pd: PrepData): CompactValues {
 
 /** Build the payload to save from the compact editor: compact values + synced dossier fields. */
 export function saveCompact(pd: PrepData, c: CompactValues): PrepData {
-  return { ...pd, ...c, ...compactToFull(c, pd) };
+  const previous = mergeLegacy(pd);
+  const out: PrepData = { ...pd, ...c, ...compactToFull(c, pd) };
+  // Explicit edits in the short view update the corresponding dossier fields.
+  // Unchanged fields keep their richer metadata and structured items.
+  if (c.compact_partners !== previous.compact_partners) {
+    const existing = arr(pd.conversation_partners);
+    out.conversation_partners = lines(c.compact_partners).map((line, i) => {
+      const [name, ...role] = line.split(",");
+      return { ...existing[i], id: existing[i]?.id ?? `c-${i}`, name: name.trim(), role: role.join(",").trim() };
+    });
+  }
+  if (c.compact_goal !== previous.compact_goal) {
+    out.visit_reason_details = c.compact_goal;
+    out.objectives = "";
+  }
+  if (c.compact_positions !== previous.compact_positions) {
+    const existing = arr(pd.talking_point_items);
+    out.talking_point_items = lines(c.compact_positions).map((point, i) => ({ ...existing[i], id: existing[i]?.id ?? `c-${i}`, point, text: point }));
+    out.talking_points = c.compact_positions;
+    out.position_statements = "";
+  }
+  if (c.compact_documents !== previous.compact_documents) out.materials_needed = c.compact_documents;
+  if (c.compact_qa !== previous.compact_qa) {
+    const existing = arr(pd.qa_pairs);
+    out.qa_pairs = lines(c.compact_qa).map((line, i) => {
+      const [question, ...answer] = line.split(/\s*(?:→|->)\s*/);
+      return { ...existing[i], id: existing[i]?.id ?? `c-${i}`, question, answer: answer.join(" → ") };
+    });
+    out.questions_answers = c.compact_qa;
+  }
+  if (c.compact_facts !== previous.compact_facts) out.facts_figures = c.compact_facts;
+  if (c.compact_debrief !== previous.compact_debrief) {
+    out.debrief_summary = c.compact_debrief;
+    out.debrief_outcomes = "";
+  }
+  // Canonical fields are the source of truth after saving; compact_* remains a legacy input only.
+  for (const key of COMPACT_KEYS) delete out[key];
+  return out;
 }
 
 /** Short line of dossier-only extras shown in the one-pager, e.g. "Ablauf: 14:00 Begrüßung · …". */
