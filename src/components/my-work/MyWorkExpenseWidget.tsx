@@ -41,6 +41,7 @@ export function MyWorkExpenseWidget({ userRole }: Props) {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [monthTotal, setMonthTotal] = useState(0);
   const [budgetAmount, setBudgetAmount] = useState(0);
   const [topCategories, setTopCategories] = useState<{ name: string; color: string | null; total: number }[]>([]);
@@ -62,78 +63,90 @@ export function MyWorkExpenseWidget({ userRole }: Props) {
   const loadData = async () => {
     if (!user || !currentTenant) return;
     setLoading(true);
+    setLoadError(false);
 
-    const now = new Date();
-    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-    const monthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()}`;
+    try {
+      const now = new Date();
+      const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+      const monthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()}`;
 
-    const [expensesRes, budgetRes, categoriesRes, recentRes] = await Promise.all([
-      supabase
-        .from("expenses")
-        .select("amount, category_id")
-        .eq("tenant_id", currentTenant.id)
-        .gte("expense_date", monthStart)
-        .lte("expense_date", monthEnd),
-      supabase
-        .from("expense_budgets")
-        .select("budget_amount")
-        .eq("tenant_id", currentTenant.id)
-        .eq("year", now.getFullYear())
-        .eq("month", now.getMonth() + 1)
-        .maybeSingle(),
-      supabase
-        .from("expense_categories")
-        .select("id, name, color")
-        .eq("tenant_id", currentTenant.id)
-        .eq("is_active", true)
-        .order("order_index"),
-      supabase
-        .from("expenses")
-        .select("id, amount, description, expense_date, category_id")
-        .eq("tenant_id", currentTenant.id)
-        .order("expense_date", { ascending: false })
-        .limit(5),
-    ]);
+      const [expensesRes, budgetRes, categoriesRes, recentRes] = await Promise.all([
+        supabase
+          .from("expenses")
+          .select("amount, category_id")
+          .eq("tenant_id", currentTenant.id)
+          .gte("expense_date", monthStart)
+          .lte("expense_date", monthEnd),
+        supabase
+          .from("expense_budgets")
+          .select("budget_amount")
+          .eq("tenant_id", currentTenant.id)
+          .eq("year", now.getFullYear())
+          .eq("month", now.getMonth() + 1)
+          .maybeSingle(),
+        supabase
+          .from("expense_categories")
+          .select("id, name, color")
+          .eq("tenant_id", currentTenant.id)
+          .eq("is_active", true)
+          .order("order_index"),
+        supabase
+          .from("expenses")
+          .select("id, amount, description, expense_date, category_id")
+          .eq("tenant_id", currentTenant.id)
+          .gte("expense_date", monthStart)
+          .lte("expense_date", monthEnd)
+          .order("expense_date", { ascending: false })
+          .limit(5),
+      ]);
 
-    const cats = categoriesRes.data || [];
-    setCategories(cats);
-    type CatLite = { id: string; name: string; color: string | null };
-    const catMap = new Map<string, CatLite>((cats as CatLite[]).map((c) => [c.id, c]));
+      for (const result of [expensesRes, budgetRes, categoriesRes, recentRes]) {
+        if (result.error) throw result.error;
+      }
 
-    // Monthly total & top categories
-    const expenses = expensesRes.data || [];
-    const total = expenses.reduce((sum: Record<string, any>, e: Record<string, any>) => sum + e.amount, 0);
-    setMonthTotal(total);
-    setBudgetAmount(budgetRes.data?.budget_amount || 0);
+      const cats = categoriesRes.data || [];
+      setCategories(cats);
+      type CatLite = { id: string; name: string; color: string | null };
+      const catMap = new Map<string, CatLite>((cats as CatLite[]).map((c) => [c.id, c]));
 
-    // Aggregate by category
-    const catTotals: Record<string, number> = {};
-    expenses.forEach((e: Record<string, any>) => {
-      catTotals[e.category_id] = (catTotals[e.category_id] || 0) + e.amount;
-    });
-    const sorted = Object.entries(catTotals)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 3)
-      .map(([catId, catTotal]) => ({
-        name: catMap.get(catId)?.name || "Unbekannt",
-        color: catMap.get(catId)?.color || null,
-        total: catTotal,
-      }));
-    setTopCategories(sorted);
+      // Monthly total & top categories
+      const expenses = expensesRes.data || [];
+      const total = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+      setMonthTotal(total);
+      setBudgetAmount(budgetRes.data?.budget_amount || 0);
 
-    // Recent expenses
-    setRecentExpenses(
-      (recentRes.data || []).map((e: Record<string, any>) => ({
-        id: e.id,
-        amount: e.amount,
-        description: e.description,
-        expense_date: e.expense_date,
-        category_name: catMap.get(e.category_id)?.name || "–",
-        category_color: catMap.get(e.category_id)?.color || null,
-      }))
-    );
+      // Aggregate by category
+      const catTotals: Record<string, number> = {};
+      expenses.forEach((e: Record<string, any>) => {
+        catTotals[e.category_id] = (catTotals[e.category_id] || 0) + e.amount;
+      });
+      const sorted = Object.entries(catTotals)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 3)
+        .map(([catId, catTotal]) => ({
+          name: catMap.get(catId)?.name || "Unbekannt",
+          color: catMap.get(catId)?.color || null,
+          total: catTotal,
+        }));
+      setTopCategories(sorted);
 
-    setLoading(false);
+      // Recent expenses
+      setRecentExpenses(
+        (recentRes.data || []).map((e: Record<string, any>) => ({
+          id: e.id,
+          amount: e.amount,
+          description: e.description,
+          expense_date: e.expense_date,
+          category_name: catMap.get(e.category_id)?.name || "–",
+          category_color: catMap.get(e.category_id)?.color || null,
+        }))
+      );
+
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -169,6 +182,16 @@ export function MyWorkExpenseWidget({ userRole }: Props) {
       <div className="space-y-2">
         <div className="h-6 bg-muted animate-pulse rounded" />
         <div className="h-20 bg-muted animate-pulse rounded" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div role="alert" className="space-y-3 rounded-xl border bg-card p-5">
+        <h3 className="text-lg font-semibold">Kosten</h3>
+        <p className="text-sm text-destructive">Die Kostendaten konnten nicht geladen werden.</p>
+        <Button variant="outline" size="sm" onClick={() => void loadData()}>Erneut laden</Button>
       </div>
     );
   }
@@ -250,10 +273,12 @@ export function MyWorkExpenseWidget({ userRole }: Props) {
         )}
       </div>
 
+      {recentExpenses.length === 0 && <p className="px-5 pb-5 text-sm text-muted-foreground">Keine Ausgaben im {monthName}.</p>}
+
       {/* Recent expenses */}
       {recentExpenses.length > 0 && (
         <div className="divide-y">
-          <p className="px-5 pb-2 text-sm text-muted-foreground">Zuletzt erfasst{monthTotal === 0 ? ` (keine Ausgabe im ${format(new Date(), "MMMM", { locale: de })})` : ""}</p>
+          <p className="px-5 pb-2 text-sm text-muted-foreground">Zuletzt erfasst · {monthName}</p>
           {recentExpenses.map((exp) => (
             <div key={exp.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm hover:bg-muted/50">
               <div className="flex items-center gap-2 min-w-0">

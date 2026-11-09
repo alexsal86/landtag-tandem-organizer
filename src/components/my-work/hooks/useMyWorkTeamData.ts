@@ -50,7 +50,7 @@ interface RawTeamMember {
   weeklyWorkedMinutes: number;
   weeklyTargetMinutes: number;
   lastTimeEntryDate: string | null;
-  daysWithoutEntry: number;
+  daysWithoutEntry: number | null;
 }
 
 export interface TeamTabAccessRule {
@@ -67,7 +67,7 @@ export interface TeamWorkStatusViewModel {
   indicatorVariant: WorkIndicatorVariant;
   indicatorLabel: string;
   lastTimeEntryDate: string | null;
-  daysWithoutEntry: number;
+  daysWithoutEntry: number | null;
   needsAttention: boolean;
 }
 
@@ -118,7 +118,6 @@ export const TEAM_TAB_ACCESS_RULES: TeamTabAccessRule[] = [
 
 const TEAM_TAB_VISIBLE_ROLES = new Set<TeamViewerRole>(TEAM_TAB_ACCESS_RULES.map(({ role }) => role));
 const TEAM_MEMBER_ROLES = new Set<TeamViewerRole>(["mitarbeiter", "praktikant", "bueroleitung"]);
-const NO_TIME_ENTRY_BUSINESS_DAYS = 999;
 const TIME_ENTRY_ATTENTION_THRESHOLD_DAYS = 3;
 const EMPTY_OVERVIEW: TeamOverviewMetrics = {
   totalMembers: 0,
@@ -127,8 +126,8 @@ const EMPTY_OVERVIEW: TeamOverviewMetrics = {
   membersWithoutRecentEntries: 0,
 };
 
-export function calculateBusinessDaysSince(lastDate: string | null, today = new Date()): number {
-  if (!lastDate) return NO_TIME_ENTRY_BUSINESS_DAYS;
+export function calculateBusinessDaysSince(lastDate: string | null, today = new Date()): number | null {
+  if (!lastDate) return null;
 
   const last = new Date(lastDate);
   let count = 0;
@@ -222,13 +221,13 @@ function buildTeamWorkStatus(workedMinutes: number, targetMinutes: number, lastT
   const daysWithoutEntry = calculateBusinessDaysSince(lastTimeEntryDate, today);
 
   return {
-    workedHoursLabel: (workedMinutes / 60).toFixed(1).replace(".", ","),
-    targetHoursLabel: (targetMinutes / 60).toFixed(0),
+    workedHoursLabel: (workedMinutes / 60).toLocaleString("de-DE", { maximumFractionDigits: 1 }),
+    targetHoursLabel: (targetMinutes / 60).toLocaleString("de-DE", { maximumFractionDigits: 1 }),
     indicatorVariant: indicator.variant,
     indicatorLabel: indicator.label,
     lastTimeEntryDate,
     daysWithoutEntry,
-    needsAttention: daysWithoutEntry > TIME_ENTRY_ATTENTION_THRESHOLD_DAYS,
+    needsAttention: daysWithoutEntry === null || daysWithoutEntry > TIME_ENTRY_ATTENTION_THRESHOLD_DAYS,
   };
 }
 
@@ -421,13 +420,18 @@ export function useMyWorkTeamData(): UseMyWorkTeamDataResult {
       .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "time_entries", filter: `tenant_id=eq.${currentTenant.id}` }, scheduleReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "employee_meeting_requests", filter: `tenant_id=eq.${currentTenant.id}` }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "employee_settings" }, (payload) => {
+        const changed = payload.new as { user_id?: string };
+        const previous = payload.old as { user_id?: string };
+        if (effectiveData.teamMembers.some(member => member.userId === (changed.user_id ?? previous.user_id))) scheduleReload();
+      })
       .subscribe();
 
     return () => {
       if (timeout) clearTimeout(timeout);
       supabase.removeChannel(channel);
     };
-  }, [currentTenant?.id, effectiveData.canViewTeam, queryClient, queryKey, user?.id]);
+  }, [currentTenant?.id, effectiveData.canViewTeam, effectiveData.teamMembers, queryClient, queryKey, user?.id]);
 
   const reload = useCallback(() => refetch(), [refetch]);
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, AlertTriangle, AlertCircle, Info, CheckCircle, Trash2, Edit, Eye, EyeOff, Archive, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,7 +35,11 @@ export function TeamAnnouncementsManager({ compact = false }: { compact?: boolea
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [selectedAnnouncementId, setSelectedAnnouncementId] = useState<string | null>(null);
 
-  const now = new Date();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Separate active and archived announcements
   const activeAnnouncements = announcements.filter(a => {
@@ -91,6 +95,7 @@ export function TeamAnnouncementsManager({ compact = false }: { compact?: boolea
                   Geplant
                 </Badge>
               )}
+              {!announcement.is_active && <Badge variant="outline" className="text-xs">Deaktiviert</Badge>}
               {isExpired && (
                 <Badge variant="outline" className="text-xs">
                   Abgelaufen
@@ -134,7 +139,7 @@ export function TeamAnnouncementsManager({ compact = false }: { compact?: boolea
 
           {/* Actions */}
           <div className="flex items-center gap-2 pt-2 border-t">
-            <Button
+            {!isExpired ? <Button
               variant="outline"
               size="sm"
               onClick={() => handleToggleActive(announcement)}
@@ -150,7 +155,7 @@ export function TeamAnnouncementsManager({ compact = false }: { compact?: boolea
                   Aktivieren
                 </>
               )}
-            </Button>
+            </Button> : <p className="text-xs text-muted-foreground">Abgelaufen – für eine erneute Veröffentlichung eine neue Mitteilung erstellen.</p>}
             <Button
               variant="outline"
               size="sm"

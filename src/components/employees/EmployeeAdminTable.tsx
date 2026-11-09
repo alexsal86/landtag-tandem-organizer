@@ -62,7 +62,7 @@ function EmployeeHistoryPopover({ userId }: { userId: string }) {
                 return (
                   <div key={h.id} className={`flex justify-between items-start border-b pb-2 ${isCurrent ? 'bg-accent/30 -mx-2 px-2 rounded' : ''}`}>
                     <div className="space-y-0.5">
-                      <div className="font-medium text-sm">{h.hours_per_week}h/Woche ({percentage}%)</div>
+                      <div className="font-medium text-sm">{h.hours_per_week.toLocaleString("de-DE")} h/Woche ({percentage}%)</div>
                       <div className="text-xs text-muted-foreground">
                         {format(new Date(h.valid_from), "dd.MM.yyyy", { locale: de })} - {h.valid_until ? format(new Date(h.valid_until), "dd.MM.yyyy", { locale: de }) : "heute"}
                       </div>

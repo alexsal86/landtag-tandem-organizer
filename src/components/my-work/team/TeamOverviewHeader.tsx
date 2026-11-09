@@ -18,7 +18,7 @@ const items = [
   },
   {
     key: "overdueMeetings",
-    label: "Gespräche fällig",
+    label: "Überfällige Gespräche",
     icon: CalendarClock,
   },
   {

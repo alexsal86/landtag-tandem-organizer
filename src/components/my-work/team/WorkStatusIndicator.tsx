@@ -34,6 +34,7 @@ export function WorkStatusIndicator({ workStatus }: WorkStatusIndicatorProps) {
         <p className="text-muted-foreground">
           {workStatus.indicatorLabel} (Stand: {todayLabel})
         </p>
+        {workStatus.daysWithoutEntry === null && <p>Noch kein Zeiteintrag</p>}
         {workStatus.lastTimeEntryDate && (
           <p className="text-muted-foreground">
             Letzter Eintrag: {format(new Date(workStatus.lastTimeEntryDate), "dd.MM.yyyy", { locale: de })}

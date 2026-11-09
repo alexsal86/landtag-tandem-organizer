@@ -44,6 +44,7 @@ export function TeamMemberRow({ member, onOpenEmployeeArea }: TeamMemberRowProps
       </div>
       <div className="space-y-1 text-sm">
         <p className="text-xs text-muted-foreground md:hidden">Mitarbeitergespräch</p>
+        {!member.lastMeetingDate && <Badge variant="outline" className="border-palette-amber/30 bg-palette-amber/10 text-palette-amber">Erstgespräch offen</Badge>}
         {member.meetingStatus && (
           <Badge variant="secondary" className={cn("border-0", member.meetingStatus.variant === "destructive" && "bg-destructive/10 text-destructive")}>
             {member.meetingStatus.label}
@@ -53,7 +54,7 @@ export function TeamMemberRow({ member, onOpenEmployeeArea }: TeamMemberRowProps
         {member.nextMeetingDue && (
           <p className="text-muted-foreground">{member.meetingStatus?.variant === "destructive" ? "Fällig war" : "Fällig am"} {format(new Date(member.nextMeetingDue), "dd.MM.yyyy")}</p>
         )}
-        {member.openMeetingRequests > 0 && <Badge variant="destructive">{member.openMeetingRequests} offene Anfrage{member.openMeetingRequests > 1 ? "n" : ""}</Badge>}
+        {member.openMeetingRequests > 0 && <Badge variant="outline" className="border-palette-blue/30 bg-palette-blue/10 text-palette-blue">{member.openMeetingRequests} offene Anfrage{member.openMeetingRequests > 1 ? "n" : ""}</Badge>}
       </div>
       <div className="min-w-0 space-y-2">
         <p className="text-xs text-muted-foreground md:hidden">Zeiterfassung (diese Woche)</p>
@@ -63,7 +64,7 @@ export function TeamMemberRow({ member, onOpenEmployeeArea }: TeamMemberRowProps
         </div>
         {member.workStatus.needsAttention && (
           <span className="inline-block rounded-full bg-palette-amber/10 px-2 py-0.5 text-xs font-medium text-palette-amber">
-            {member.workStatus.lastTimeEntryDate ? `Kein Eintrag seit ${member.workStatus.daysWithoutEntry} Werktagen` : "Noch kein Zeiteintrag"}
+            {member.workStatus.daysWithoutEntry !== null ? `Kein Eintrag seit ${member.workStatus.daysWithoutEntry} Werktagen` : "Noch kein Zeiteintrag"}
           </span>
         )}
       </div>

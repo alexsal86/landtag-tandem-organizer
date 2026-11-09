@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import { Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { TeamAnnouncementsManager } from "@/components/announcements/TeamAnnouncementsManager";
@@ -9,7 +8,7 @@ import { MyWorkEmptyState } from "@/components/my-work/MyWorkEmptyState";
 
 export function MyWorkTeamTab() {
   const navigate = useNavigate();
-  const { loading, canViewTeam, userRole, teamMembers, reload } = useMyWorkTeamData();
+  const { loading, canViewTeam, userRole, teamMembers } = useMyWorkTeamData();
 
   if (loading) {
     return (
@@ -70,7 +69,7 @@ export function MyWorkTeamTab() {
                 <TeamMemberRow
                   key={member.userId}
                   member={member}
-                  onOpenEmployeeArea={() => navigate("/employee")}
+                  onOpenEmployeeArea={() => navigate(`/employee?employee=${encodeURIComponent(member.userId)}`)}
                 />
               ))}
           </div>
@@ -79,7 +78,6 @@ export function MyWorkTeamTab() {
       <aside className="min-w-0 space-y-5">
         <TeamAnnouncementsManager compact />
         <MyWorkExpenseWidget userRole={userRole} />
-        <Button variant="ghost" size="sm" onClick={reload}>Teamdaten aktualisieren</Button>
       </aside>
     </div>
   );
