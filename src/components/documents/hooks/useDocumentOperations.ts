@@ -354,7 +354,8 @@ export function useDocumentOperations({
     setSourceLetterForTask(letter);
     setTaskDialogMode(mode);
     setTaskTitle(letter.title?.trim() || "Aufgabe aus Brief");
-    setTaskDescription(letter.content?.trim() || "");
+    const { data: full } = letter.id ? await supabase.from("letters").select("content").eq("id", letter.id).maybeSingle() : { data: null };
+    setTaskDescription((full?.content ?? letter.content ?? "").trim());
     setParentTaskId("none");
 
     if (mode === "subtask" && currentTenant) {

@@ -279,7 +279,8 @@ export const useTeamFeedbackFeed = (filters?: TeamFeedbackFeedFilters) => {
     enabled: !!currentTenant?.id && !!user?.id,
     // Geplantes Refetching als Sicherheitsnetz für Kontextänderungen, die zwischen Subscribe/Unsubscribe
     // oder durch breit abonnierte Fremd-Events sonst kurzzeitig liegen bleiben könnten.
-    refetchInterval: 60_000,
+    refetchInterval: 5 * 60_000,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
 };

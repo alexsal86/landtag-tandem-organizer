@@ -13,8 +13,8 @@ export function useCaseWorkflow(itemId: string | null) {
   const query = useQuery({
     queryKey: ["case-workflow", tenantId, itemId],
     enabled: !!tenantId && !!itemId,
-    staleTime: 0,
-    refetchInterval: 15_000,
+    // Realtime hält die Daten aktuell; kein Dauer-Polling mehr (Egress).
+    staleTime: 60_000,
     queryFn: async () => {
       const [caseResult, requestResult, decisionResult, historyResult, taskJournalResult, taskResult] = await Promise.all([
         supabase.from("case_items").select("meeting_id, pending_for_jour_fixe").eq("tenant_id", tenantId!).eq("id", itemId!).single(),

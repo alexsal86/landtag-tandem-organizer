@@ -234,7 +234,7 @@ export function DocumentsView() {
   const currentFolderSubfolders = data.folders.filter(f => f.parent_folder_id === currentFolder);
 
   const filteredLetters = data.letters.filter(letter => {
-    const matchesSearch = letter.title.toLowerCase().includes(searchTerm.toLowerCase()) || letter.content.toLowerCase().includes(searchTerm.toLowerCase()) || letter.recipient_name?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = letter.title.toLowerCase().includes(searchTerm.toLowerCase()) || (letter.subject ?? '').toLowerCase().includes(searchTerm.toLowerCase()) || letter.recipient_name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === "all" || letter.status === filterStatus;
     const isActiveStatus = ['draft', 'review', 'approved'].includes(letter.status);
     const isArchivedStatus = ['sent', 'archived'].includes(letter.status);
