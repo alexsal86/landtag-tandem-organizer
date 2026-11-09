@@ -105,7 +105,7 @@ export async function loadPlatformAgenda(type: PlatformAgendaType, tenantId: str
       const fb = feedback.data?.find(entry => entry.appointment_id === row.id);
       const review = pastAppointmentReview(fb);
       return { id: row.id, title: row.title, date: row.start_time, detail: [row.location, fb?.notes?.trim().slice(0, 140)].filter(Boolean).join(' · ') || undefined,
-        status: review.status, ownerId: row.user_id, path: `/calendar?appointment=${row.id}`, content: fb?.notes };
+        status: review.status, ownerId: row.user_id, path: `/calendar?date=${row.start_time.slice(0, 10)}&event=${row.id}`, content: fb?.notes };
     });
   }
   return [];
