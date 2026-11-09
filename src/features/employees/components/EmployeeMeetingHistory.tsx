@@ -89,7 +89,8 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
         .select("user_id, display_name, avatar_url, badge_color")
         .in("user_id", Array.from(userIds));
 
-      const profileMap = new Map(profiles?.map((profile) => [profile.user_id, profile]) || []);
+      type P = { user_id: string; display_name: string | null; avatar_url: string | null; badge_color: string | null };
+      const profileMap = new Map<string, P>((profiles as P[] | null)?.map((profile) => [profile.user_id, profile]) || []);
 
       // Fetch action items counts
       const meetingIds = meetingsData?.map((m) => m.id) || [];
