@@ -1,17 +1,15 @@
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { TeamAnnouncementsManager } from "@/components/announcements/TeamAnnouncementsManager";
 import { MyWorkExpenseWidget } from "@/components/my-work/MyWorkExpenseWidget";
 import { TEAM_TAB_ACCESS_RULES, useMyWorkTeamData } from "@/components/my-work/hooks/useMyWorkTeamData";
 import { TeamMemberRow } from "@/components/my-work/team/TeamMemberRow";
-import { TeamOverviewHeader } from "@/components/my-work/team/TeamOverviewHeader";
 import { MyWorkEmptyState } from "@/components/my-work/MyWorkEmptyState";
 
 export function MyWorkTeamTab() {
   const navigate = useNavigate();
-  const { loading, canViewTeam, userRole, teamMembers, overview, reload } = useMyWorkTeamData();
+  const { loading, canViewTeam, userRole, teamMembers, reload } = useMyWorkTeamData();
 
   if (loading) {
     return (
@@ -38,32 +36,25 @@ export function MyWorkTeamTab() {
   }
 
   return (
-    <div className="space-y-6 p-4">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
-        <div className="min-w-0">
-          <TeamAnnouncementsManager />
-        </div>
-        <div className="min-w-0 space-y-4">
-          <MyWorkExpenseWidget userRole={userRole} />
-          <Button variant="outline" size="sm" onClick={reload}>
-            Teamdaten aktualisieren
-          </Button>
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        <div className="space-y-1">
-          <h3 className="text-lg font-semibold">Teammitglieder</h3>
-          <p className="text-sm text-muted-foreground">
-            Überblick über Gesprächsbedarf, offene Meeting-Anfragen und aktuelle Zeiterfassung.
-          </p>
+    <div className="grid grid-cols-1 items-start gap-5 p-4 xl:grid-cols-[minmax(0,1.9fr)_minmax(340px,1fr)]">
+      <section className="min-w-0 overflow-hidden rounded-xl border bg-card">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b p-5">
+          <div>
+            <h3 className="text-lg font-semibold">Teammitglieder</h3>
+            <p className="text-sm text-muted-foreground">
+              {teamMembers.length} von {teamMembers.length} angezeigt · sortiert nach Dringlichkeit
+            </p>
+          </div>
           <p className="text-xs text-muted-foreground">
-            Sichtbar für {TEAM_TAB_ACCESS_RULES.map((rule) => rule.label).join(" und ")}, da diese Rollen
-            Teamgespräche koordinieren und Statushinweise priorisieren müssen.
+            Sichtbar für {TEAM_TAB_ACCESS_RULES.map((rule) => rule.label).join(" und ")}
           </p>
         </div>
-
-        <TeamOverviewHeader overview={overview} />
+        <div className="hidden grid-cols-[1.15fr_0.9fr_1fr_auto] gap-4 border-b bg-muted/50 px-5 py-3 text-xs uppercase tracking-wide text-muted-foreground md:grid">
+          <span>Person</span>
+          <span>Mitarbeitergespräch</span>
+          <span>Zeiterfassung (diese Woche)</span>
+          <span className="w-24" />
+        </div>
 
         {teamMembers.length === 0 ? (
           <MyWorkEmptyState
@@ -74,8 +65,7 @@ export function MyWorkTeamTab() {
             onAction={() => navigate("/employee")}
           />
         ) : (
-          <ScrollArea className="max-h-[32rem] pr-3">
-            <div className="space-y-2">
+          <div className="divide-y">
               {teamMembers.map((member) => (
                 <TeamMemberRow
                   key={member.userId}
@@ -83,10 +73,14 @@ export function MyWorkTeamTab() {
                   onOpenEmployeeArea={() => navigate("/employee")}
                 />
               ))}
-            </div>
-          </ScrollArea>
+          </div>
         )}
-      </div>
+      </section>
+      <aside className="min-w-0 space-y-5">
+        <TeamAnnouncementsManager compact />
+        <MyWorkExpenseWidget userRole={userRole} />
+        <Button variant="ghost" size="sm" onClick={reload}>Teamdaten aktualisieren</Button>
+      </aside>
     </div>
   );
 }

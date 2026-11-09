@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
-import { Receipt, Plus, ExternalLink, TrendingUp, Wallet, AlertTriangle } from "lucide-react";
+import { Receipt, Plus, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -177,11 +177,11 @@ export function MyWorkExpenseWidget({ userRole }: Props) {
   const monthName = format(new Date(), "MMMM yyyy", { locale: de });
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
+    <div className="overflow-hidden rounded-xl border bg-card">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b p-5">
         <h3 className="text-lg font-semibold flex items-center gap-2">
           <Receipt className="h-5 w-5" />
-          Kosten-Überblick
+          Kosten · {monthName}
         </h3>
         <div className="flex gap-1">
           <Button variant="outline" size="sm" onClick={() => setDialogOpen(true)}>
@@ -201,34 +201,23 @@ export function MyWorkExpenseWidget({ userRole }: Props) {
         </div>
       </div>
 
-      {/* Monthly budget progress */}
-      <div className="p-3 rounded-lg border bg-card space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <div className="rounded-md bg-muted/40 p-2">
-            <p className="text-xs text-muted-foreground">Monat</p>
-            <p className="text-sm font-medium">{monthName}</p>
+      <div className="space-y-4 p-5">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-lg bg-muted/60 p-4">
+            <p className="text-sm text-muted-foreground">Ausgaben</p>
+            <p className="mt-1 text-2xl font-semibold">{monthTotal.toLocaleString("de-DE", { style: "currency", currency: "EUR" })}</p>
           </div>
-          <div className="rounded-md bg-muted/40 p-2">
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <Wallet className="h-3 w-3" />
-              Ausgaben
-            </p>
-            <p className="text-sm font-semibold">
-              {monthTotal.toLocaleString("de-DE", { style: "currency", currency: "EUR" })}
-            </p>
-          </div>
-          <div className="rounded-md bg-muted/40 p-2">
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              {budgetAmount > 0 ? <TrendingUp className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
-              Status
-            </p>
-            <p className="text-sm font-medium">
-              {budgetAmount > 0
-                ? `${Math.round(budgetPercent)}% vom Budget`
-                : "Kein Budget hinterlegt"}
-            </p>
+          <div className="rounded-lg bg-muted/60 p-4">
+            <p className="text-sm text-muted-foreground">Budget</p>
+            <p className="mt-1 text-2xl font-semibold">{budgetAmount > 0 ? budgetAmount.toLocaleString("de-DE", { style: "currency", currency: "EUR" }) : "–"}</p>
           </div>
         </div>
+        {budgetAmount <= 0 && (
+          <div className="flex items-center justify-between gap-3 rounded-lg bg-palette-amber/10 p-4 text-sm text-palette-amber">
+            <p>Für diesen Monat ist kein Budget hinterlegt.</p>
+            {userRole === "bueroleitung" && <button className="font-semibold underline" onClick={() => navigate("/admin?section=security&sub=expense")}>Budget festlegen</button>}
+          </div>
+        )}
 
         {budgetAmount > 0 && (
           <>
@@ -263,20 +252,20 @@ export function MyWorkExpenseWidget({ userRole }: Props) {
 
       {/* Recent expenses */}
       {recentExpenses.length > 0 && (
-        <div className="space-y-1">
-          <p className="text-xs text-muted-foreground font-medium">Letzte Ausgaben</p>
+        <div className="divide-y">
+          <p className="px-5 pb-2 text-sm text-muted-foreground">Zuletzt erfasst{monthTotal === 0 ? ` (keine Ausgabe im ${format(new Date(), "MMMM", { locale: de })})` : ""}</p>
           {recentExpenses.map((exp) => (
-            <div key={exp.id} className="flex items-center justify-between text-sm py-1 px-2 rounded hover:bg-muted/50">
+            <div key={exp.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm hover:bg-muted/50">
               <div className="flex items-center gap-2 min-w-0">
                 <span
                   className="w-2 h-2 rounded-full flex-shrink-0"
                   style={{ backgroundColor: exp.category_color || "hsl(var(--muted-foreground))" }}
                 />
-                <span className="truncate">{exp.description || exp.category_name}</span>
+                <span className="truncate">{exp.description || `Ohne Beschreibung (${exp.category_name})`}</span>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <span className="text-xs text-muted-foreground">
-                  {format(new Date(exp.expense_date), "dd.MM.", { locale: de })}
+                  {format(new Date(exp.expense_date), "dd.MM.yyyy", { locale: de })}
                 </span>
                 <span className="font-medium">
                   {exp.amount.toLocaleString("de-DE", { style: "currency", currency: "EUR" })}

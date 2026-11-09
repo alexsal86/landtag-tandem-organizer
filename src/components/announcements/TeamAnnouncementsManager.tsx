@@ -29,7 +29,7 @@ const priorityConfig = {
   success: { label: "Erfolg", icon: CheckCircle, color: "bg-palette-green", textColor: "text-palette-green" },
 };
 
-export function TeamAnnouncementsManager() {
+export function TeamAnnouncementsManager({ compact = false }: { compact?: boolean }) {
   const { announcements, updateAnnouncement, deleteAnnouncement, loading } = useTeamAnnouncements();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -177,21 +177,19 @@ export function TeamAnnouncementsManager() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className={cn("space-y-4", compact && "overflow-hidden rounded-xl border bg-card pb-4")}>
+      <div className={cn("flex items-center justify-between gap-3", compact && "border-b p-5")}>
         <div>
           <h3 className="text-lg font-semibold">Team-Mitteilungen</h3>
-          <p className="text-sm text-muted-foreground">
-            Globale Nachrichten für alle Teammitglieder
-          </p>
+          {!compact && <p className="text-sm text-muted-foreground">Globale Nachrichten für alle Teammitglieder</p>}
         </div>
-        <Button onClick={() => setCreateDialogOpen(true)}>
+        <Button variant={compact ? "outline" : "default"} onClick={() => setCreateDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          Neue Mitteilung
+          {compact ? "Neu" : "Neue Mitteilung"}
         </Button>
       </div>
 
-      <Tabs defaultValue="active" className="w-full">
+      <Tabs defaultValue="active" className={cn("w-full", compact && "px-5")}>
         <TabsList>
           <TabsTrigger value="active" className="gap-2">
             <Eye className="h-4 w-4" />
@@ -205,22 +203,16 @@ export function TeamAnnouncementsManager() {
 
         <TabsContent value="active" className="mt-4">
           {activeAnnouncements.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center">
-                <Info className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                <p className="text-muted-foreground">Keine aktiven Mitteilungen</p>
-                <Button 
-                  variant="outline" 
-                  className="mt-4"
-                  onClick={() => setCreateDialogOpen(true)}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Erste Mitteilung erstellen
-                </Button>
-              </CardContent>
-            </Card>
+            <div className={cn("py-8 text-center", !compact && "rounded-lg border")}>
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                <Info className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <p className="text-muted-foreground">Keine aktiven Mitteilungen</p>
+              <p className="mt-1 text-sm text-muted-foreground">Neue Mitteilungen erscheinen bei allen Teammitgliedern.</p>
+              {!compact && <Button variant="outline" className="mt-4" onClick={() => setCreateDialogOpen(true)}><Plus className="mr-2 h-4 w-4" />Erste Mitteilung erstellen</Button>}
+            </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className={cn("grid gap-4", !compact && "md:grid-cols-2")}>
               {activeAnnouncements.map(a => renderAnnouncementCard(a, false))}
             </div>
           )}
@@ -235,7 +227,7 @@ export function TeamAnnouncementsManager() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className={cn("grid gap-4", !compact && "md:grid-cols-2")}>
               {archivedAnnouncements.map(a => renderAnnouncementCard(a, true))}
             </div>
           )}

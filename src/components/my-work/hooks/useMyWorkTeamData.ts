@@ -13,6 +13,7 @@ interface TeamProfileRow {
   user_id: string;
   display_name: string | null;
   avatar_url: string | null;
+  badge_color?: string | null;
 }
 
 interface TeamSettingsRow {
@@ -41,6 +42,7 @@ interface RawTeamMember {
   userId: string;
   displayName: string;
   avatarUrl: string | null;
+  badgeColor?: string | null;
   hoursPerWeek: number;
   lastMeetingDate: string | null;
   nextMeetingDue: string | null;
@@ -290,6 +292,7 @@ function mapTeamMembers(
       userId,
       displayName,
       avatarUrl: profile?.avatar_url ?? null,
+      badgeColor: profile?.badge_color ?? null,
       hoursPerWeek,
       lastMeetingDate,
       nextMeetingDue,
@@ -347,7 +350,7 @@ async function fetchMyWorkTeamData(userId: string, tenantId: string): Promise<Us
   const today = format(new Date(), "yyyy-MM-dd");
 
   const [profilesResult, settingsResult, requestsResult, timeEntriesResult, latestEntriesResult] = await Promise.all([
-    supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", employeeIds),
+    supabase.from("profiles").select("user_id, display_name, avatar_url, badge_color").in("user_id", employeeIds),
     supabase.from("employee_settings").select("user_id, hours_per_week, last_meeting_date, meeting_interval_months").in("user_id", employeeIds),
     supabase.from("employee_meeting_requests").select("employee_id").eq("status", "pending").in("employee_id", employeeIds),
     supabase.from("time_entries").select("user_id, minutes, work_date").in("user_id", employeeIds).gte("work_date", weekStart).lte("work_date", today),
