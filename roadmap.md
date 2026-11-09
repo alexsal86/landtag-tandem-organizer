@@ -30,5 +30,7 @@
 - [x] Phase 2: Regeln/Workflows und RSS-Navigation zusammenführen
 - [x] Phase 2: Alte Links und Selbsttest absichern — 22 gezielte Tests bestanden
 - [ ] Phase 2: Gemeinsame Reiter angemeldet durchklicken — externe Supabase-Testsitzung nicht verfügbar
-- [ ] Phase 3: Kalendarische Stichtage im Regel-Builder und Scheduler ergänzen
+- [ ] Phase 3: Jährliche, monatliche und quartalsweise Stichtage samt Monatsende im Regel-Builder ergänzen
+- [ ] Phase 3: Terminberechnung, doppelte Ausführung, Vorlagen und Selbsttest absichern
+- [ ] Phase 3: Sichere stündliche Zeitsteuerung ausrollen und prüfen
 - [ ] Angemeldeten Jahresaufgaben-Gesamtablauf prüfen — externe Supabase-Testsitzung fehlt
