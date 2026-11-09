@@ -96,6 +96,7 @@ export const adminMenuItems: AdminMenuItem[] = [
     icon: Users2,
     children: [
       { id: "status", label: "Status", icon: Activity },
+      { id: "planning-collaborators", label: "Standard-Mitarbeiter", icon: UserCheck },
       { id: "usercolors", label: "Benutzerfarben", icon: Palette, superAdminOnly: true },
       { id: "matrix", label: "Matrix-Chat", icon: MessageSquare },
       { id: "office-social-media", label: "Büro-Social-Media", icon: Globe2 },

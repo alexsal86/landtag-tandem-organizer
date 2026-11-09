@@ -10,10 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { NewItemIndicator } from "@/components/notifications/NewItemIndicator";
-import { Plus, Archive, Users } from "lucide-react";
+import { Plus, Archive } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { PlanningDefaultCollaboratorsDialog } from "./PlanningDefaultCollaboratorsDialog";
 import { AppointmentPreparationTable } from "./AppointmentPreparationTable";
 import type { useEventPlanningData } from "./useEventPlanningData";
 
@@ -29,7 +28,6 @@ export function EventPlanningListView(data: EventPlanningDataReturn) {
     appointmentPreparationView,
     showArchived, setShowArchived,
     appointmentPreparations, archivedPreparations,
-    showDefaultCollaboratorsDialog, setShowDefaultCollaboratorsDialog,
     isItemNew,
     saveViewPreferences,
     archivePreparation, handlePreparationClick, createPlanning,
@@ -41,9 +39,6 @@ export function EventPlanningListView(data: EventPlanningDataReturn) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-3xl font-bold">Veranstaltungsplanung</h1>
           <div className="flex flex-wrap items-center gap-3">
-            <Button variant="outline" size="sm" onClick={() => setShowDefaultCollaboratorsDialog(true)}>
-              <Users className="h-4 w-4 mr-2" />Standard-Mitarbeiter
-            </Button>
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Neue Planung</Button></DialogTrigger>
               <DialogContent>
@@ -163,7 +158,6 @@ export function EventPlanningListView(data: EventPlanningDataReturn) {
         </div>
       </div>
 
-      <PlanningDefaultCollaboratorsDialog open={showDefaultCollaboratorsDialog} onOpenChange={setShowDefaultCollaboratorsDialog} />
     </div>
   );
 }

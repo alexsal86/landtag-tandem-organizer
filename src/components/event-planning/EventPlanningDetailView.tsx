@@ -24,7 +24,6 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { ChecklistSection } from "./ChecklistSection";
 import { ChecklistItemEmailDialog } from "./ChecklistItemEmailDialog";
-import { PlanningDefaultCollaboratorsDialog } from "./PlanningDefaultCollaboratorsDialog";
 import { EventRSVPManager } from "../events/EventRSVPManager";
 import { PlanningTimelineSection } from "./PlanningTimelineSection";
 import type { useEventPlanningData } from "./useEventPlanningData";
@@ -80,7 +79,6 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
     completingSubtask, setCompletingSubtask,
     completionResult, setCompletionResult,
     isManageCollaboratorsOpen, setIsManageCollaboratorsOpen,
-    showDefaultCollaboratorsDialog, setShowDefaultCollaboratorsDialog,
     updatePlanningField, deletePlanning,
     addPlanningDate, confirmDate, updateConfirmedDate,
     toggleChecklistItem, updateChecklistItemTitle, updateChecklistItemColor, addChecklistItem, deleteChecklistItem,
@@ -896,7 +894,6 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
       )}
 
       {/* Default Collaborators Dialog */}
-      <PlanningDefaultCollaboratorsDialog open={showDefaultCollaboratorsDialog} onOpenChange={setShowDefaultCollaboratorsDialog} />
     </div>
   );
 }

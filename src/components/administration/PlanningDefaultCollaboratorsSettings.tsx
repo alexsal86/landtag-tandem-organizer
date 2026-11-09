@@ -1,12 +1,6 @@
 import { useState, useEffect } from "react";
 import { debugConsole } from "@/utils/debugConsole";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -32,15 +26,7 @@ interface TeamMember {
   avatar_url: string | null;
 }
 
-interface PlanningDefaultCollaboratorsDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
-
-export const PlanningDefaultCollaboratorsDialog = ({
-  open,
-  onOpenChange,
-}: PlanningDefaultCollaboratorsDialogProps) => {
+export function PlanningDefaultCollaboratorsSettings() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { defaultCollaborators, loading, addCollaborator, removeCollaborator, updatePermission } =
@@ -50,10 +36,10 @@ export const PlanningDefaultCollaboratorsDialog = ({
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    if (open) {
-      loadTeamMembers();
-    }
-  }, [open, currentTenant?.id]);
+    setTeamMembers([]);
+    setSearchTerm("");
+    void loadTeamMembers();
+  }, [user?.id, currentTenant?.id]);
 
   const loadTeamMembers = async () => {
     if (!currentTenant?.id || !user) return;
@@ -140,19 +126,18 @@ export const PlanningDefaultCollaboratorsDialog = ({
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+    <Card className="max-w-3xl">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
             Standard-Mitarbeiter
-          </DialogTitle>
-          <DialogDescription>
-            Diese Mitarbeiter werden bei neuen Planungen automatisch hinzugefügt.
-          </DialogDescription>
-        </DialogHeader>
+          </CardTitle>
+          <CardDescription>
+            Diese Mitarbeiter werden deinen neuen Veranstaltungsplanungen automatisch hinzugefügt. Änderungen werden sofort gespeichert.
+          </CardDescription>
+        </CardHeader>
 
-        <div className="space-y-4">
+        <CardContent className="space-y-4">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -245,8 +230,7 @@ export const PlanningDefaultCollaboratorsDialog = ({
               </span>
             </div>
           )}
-        </div>
-      </DialogContent>
-    </Dialog>
+        </CardContent>
+    </Card>
   );
 };

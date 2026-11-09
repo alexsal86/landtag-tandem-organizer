@@ -1,3 +1,4 @@
+import { PlanningDefaultCollaboratorsSettings } from "@/components/administration/PlanningDefaultCollaboratorsSettings";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
@@ -268,6 +269,7 @@ export default function Administration(): React.JSX.Element | null {
     if (activeSection === "users") {
       switch (activeSubSection) {
         case "status": return <StatusAdminSettings />;
+        case "planning-collaborators": return <PlanningDefaultCollaboratorsSettings />;
         case "usercolors":
           if (!isSuperAdmin) return null;
           return <UserColorManager />;

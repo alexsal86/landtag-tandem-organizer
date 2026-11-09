@@ -90,7 +90,6 @@ export function useEventPlanningData() {
   const [isEditContactDialogOpen, setIsEditContactDialogOpen] = useState(false);
   const [isEditSpeakerDialogOpen, setIsEditSpeakerDialogOpen] = useState(false);
   const [isManageCollaboratorsOpen, setIsManageCollaboratorsOpen] = useState(false);
-  const [showDefaultCollaboratorsDialog, setShowDefaultCollaboratorsDialog] = useState(false);
 
   // ── Form state ──
   const [newPlanningTitle, setNewPlanningTitle] = useState("");
@@ -1029,7 +1028,6 @@ export function useEventPlanningData() {
     archivedPlannings, showPlanningArchive, setShowPlanningArchive,
     eventPlanningView, appointmentPreparationView,
     isManageCollaboratorsOpen, setIsManageCollaboratorsOpen,
-    showDefaultCollaboratorsDialog, setShowDefaultCollaboratorsDialog,
     // Functions
     saveViewPreferences, fetchArchivedPlannings,
     archivePlanning, togglePlanningCompleted, restorePlanning,
