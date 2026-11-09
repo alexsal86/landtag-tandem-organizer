@@ -4,19 +4,26 @@
 
 .editor :is(input, textarea, [role="combobox"]) {
   border-radius: 10px;
-  background-color: hsl(var(--muted) / 0.3);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  transition: border-color 150ms, box-shadow 150ms;
 }
 
 .editor label,
 .stepLabel {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  color: hsl(var(--muted-foreground));
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: normal;
+  text-transform: none;
+  color: hsl(var(--foreground));
 }
 
-.stepLabel {
-  text-transform: uppercase;
+.editor :is(input, textarea, [role="combobox"]):hover {
+  border-color: hsl(var(--primary) / 0.4);
+}
+
+.editor :is(input, textarea, [role="combobox"]):focus-visible {
+  border-color: hsl(var(--primary));
 }
 
 .tabs {
@@ -54,7 +61,7 @@
 .preview {
   min-width: 0;
   width: 100%;
-  max-width: 270px;
+  max-width: 405px;
   margin-inline: auto;
 }
 
@@ -74,14 +81,51 @@
   }
 }
 
-@container (min-width: 580px) {
+@container (min-width: 850px) {
   .composer {
-    grid-template-columns: minmax(0, 1fr) minmax(230px, 270px);
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 405px);
   }
 
   .preview {
     position: sticky;
     top: 12px;
     align-self: start;
+  }
+}
+
+.preview > div > div {
+  width: 100%;
+  max-width: none;
+}
+
+.preview :global(.text-xs) {
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.preview :global(.text-sm) {
+  font-size: 1.125rem;
+  line-height: 1.5;
+}
+
+.internalTags :global(.bg-secondary) {
+  background-color: hsl(142 65% 94%);
+  border-color: hsl(142 45% 78%);
+  color: hsl(142 70% 26%);
+}
+
+:global(.dark) .internalTags :global(.bg-secondary) {
+  background-color: hsl(142 40% 16%);
+  border-color: hsl(142 35% 30%);
+  color: hsl(142 60% 75%);
+}
+
+@container (max-width: 440px) {
+  .preview :global(.text-xs) {
+    font-size: 0.875rem;
+  }
+
+  .preview :global(.text-sm) {
+    font-size: 1rem;
   }
 }

@@ -365,6 +365,7 @@ export default function SocialPlannerEditPanel({ item, open, scrollRequest = 0, 
             <div className="space-y-2 md:col-span-2">
               <Label>Interne Tags</Label>
               <TagInput
+                className={styles.internalTags}
                 tags={tagsValue}
                 onTagsChange={setTagsValue}
                 placeholder="Tag hinzufügen (Enter oder Komma)…"

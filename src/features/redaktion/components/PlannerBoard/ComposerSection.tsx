@@ -76,7 +76,7 @@ export function ComposerSection(props: Props) {
         {/* 1 — Master */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <Label htmlFor="composer-master" className={styles.stepLabel}>1 · Master-Text</Label>
+            <Label htmlFor="composer-master" className={styles.stepLabel}>1 · Mastertext</Label>
             <CharCounter text={masterText} limit={masterLimit} />
           </div>
           <Textarea
@@ -85,7 +85,7 @@ export function ComposerSection(props: Props) {
             value={masterText}
             onChange={(e) => setMasterText(e.target.value)}
             placeholder="Kernbotschaft einmal schreiben – die Kanäle übernehmen den Text automatisch."
-            className="min-h-32 bg-muted/30"
+            className="min-h-32 bg-background"
           />
           <p className="text-xs text-muted-foreground">Gilt als Basis für alle Kanäle</p>
           <div className="space-y-2">
