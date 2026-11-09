@@ -1,5 +1,6 @@
+import { PlanningViewToggle } from "./PlanningViewToggle";
 import { useState } from "react";
-import { Check, Clock, Archive, CheckCircle, MoreHorizontal, Grid2X2, List, MapPin, Users } from "lucide-react";
+import { Check, Clock, Archive, CheckCircle, MoreHorizontal, MapPin, Users } from "lucide-react";
 import { format, isValid, startOfDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -91,10 +92,7 @@ export function EventPlanningOverview({ plannings, allProfiles, collaborators, u
       <h2 className="text-2xl font-semibold tracking-tight">Veranstaltungen</h2>
       <div className="flex flex-wrap items-center gap-2">
         <div className="inline-flex rounded-xl bg-muted/70 p-1" role="group" aria-label="Veranstaltungen filtern">{([["all", "Alle"], ["mine", "Meine"], ["open", "Offen"]] as const).map(([value, label]) => <Button key={value} size="sm" variant="ghost" aria-pressed={filter === value} className={cn("rounded-lg px-3 text-muted-foreground", filter === value && "bg-background text-foreground shadow-sm hover:bg-background")} onClick={() => setFilter(value)}>{label}</Button>)}</div>
-        <div className="inline-flex rounded-xl border p-1" role="group" aria-label="Veranstaltungsansicht">
-          <Button size="icon" variant={listView ? "ghost" : "secondary"} className="h-8 w-8" title="Kartenansicht" aria-label="Kartenansicht" aria-pressed={!listView} onClick={() => saveViewPreferences("event", "card")}><Grid2X2 className="h-4 w-4" /></Button>
-          <Button size="icon" variant={listView ? "secondary" : "ghost"} className="h-8 w-8" title="Listenansicht" aria-label="Listenansicht" aria-pressed={listView} onClick={() => saveViewPreferences("event", "table")}><List className="h-4 w-4" /></Button>
-        </div>
+        <PlanningViewToggle value={eventPlanningView} onChange={view => saveViewPreferences("event", view)} label="Veranstaltungsansicht" />
       </div>
     </div>
     {visible.length === 0 ? <p className="py-10 text-center text-sm text-muted-foreground">Keine Veranstaltungen für diesen Filter.</p> : groups.map(group => group.items.length > 0 && <div key={group.label} className="mt-4 first:mt-0">

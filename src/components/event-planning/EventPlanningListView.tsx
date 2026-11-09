@@ -1,3 +1,4 @@
+import { PlanningViewToggle } from "./PlanningViewToggle";
 import { EventPlanningOverview } from "./EventPlanningOverview";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { debugConsole } from '@/utils/debugConsole';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { NewItemIndicator } from "@/components/notifications/NewItemIndicator";
-import { Plus, Archive, Grid, List, Users } from "lucide-react";
+import { Plus, Archive, Users } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { PlanningDefaultCollaboratorsDialog } from "./PlanningDefaultCollaboratorsDialog";
@@ -110,10 +111,7 @@ export function EventPlanningListView(data: EventPlanningDataReturn) {
             <div className="flex items-center justify-between gap-4">
               <h2 className="text-2xl font-bold">Terminplanungen</h2>
               <div className="flex flex-wrap items-center justify-end gap-4">
-                <div className="flex items-center border rounded-lg p-1">
-                  <Button variant={appointmentPreparationView === 'card' ? 'default' : 'ghost'} size="sm" onClick={() => saveViewPreferences('appointment', 'card')} className="h-8 px-2"><Grid className="h-4 w-4" /></Button>
-                  <Button variant={appointmentPreparationView === 'table' ? 'default' : 'ghost'} size="sm" onClick={() => saveViewPreferences('appointment', 'table')} className="h-8 px-2"><List className="h-4 w-4" /></Button>
-                </div>
+                <PlanningViewToggle value={appointmentPreparationView} onChange={view => saveViewPreferences("appointment", view)} label="Terminplanungsansicht" />
                 <div className="flex items-center gap-2">
                   <Button variant={showArchived ? "outline" : "default"} onClick={() => setShowArchived(false)}>Aktive ({appointmentPreparations.length})</Button>
                   <Button variant={showArchived ? "default" : "outline"} onClick={() => setShowArchived(true)}><Archive className="mr-2 h-4 w-4" />Archiv ({archivedPreparations.length})</Button>
