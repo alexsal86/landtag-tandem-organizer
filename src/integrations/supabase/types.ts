@@ -14,12 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      appointment_preparation_history: {
-        Row: { id: string; preparation_id: string; tenant_id: string; actor_id: string | null; changed_at: string; changed_fields: string[] }
-        Insert: { id?: string; preparation_id: string; tenant_id: string; actor_id?: string | null; changed_at?: string; changed_fields: string[] }
-        Update: { changed_fields?: string[] }
-        Relationships: []
-      }
       action_permissions: {
         Row: {
           action_key: string
@@ -1534,42 +1528,42 @@ export type Database = {
       }
       calendar_sync_settings: {
         Row: {
+          claimed_at: string | null
+          claimed_slot: string | null
           created_at: string | null
           id: string
           is_enabled: boolean
-          sync_interval_hours: number
-          timezone: string
           last_success_slot: string | null
-          claimed_slot: string | null
-          claimed_at: string | null
+          sync_interval_hours: number
           sync_time: string
           tenant_id: string
+          timezone: string
           updated_at: string | null
         }
         Insert: {
+          claimed_at?: string | null
+          claimed_slot?: string | null
           created_at?: string | null
           id?: string
           is_enabled?: boolean
-          sync_interval_hours?: number
-          timezone?: string
           last_success_slot?: string | null
-          claimed_slot?: string | null
-          claimed_at?: string | null
+          sync_interval_hours?: number
           sync_time?: string
           tenant_id: string
+          timezone?: string
           updated_at?: string | null
         }
         Update: {
+          claimed_at?: string | null
+          claimed_slot?: string | null
           created_at?: string | null
           id?: string
           is_enabled?: boolean
-          sync_interval_hours?: number
-          timezone?: string
           last_success_slot?: string | null
-          claimed_slot?: string | null
-          claimed_at?: string | null
+          sync_interval_hours?: number
           sync_time?: string
           tenant_id?: string
+          timezone?: string
           updated_at?: string | null
         }
         Relationships: [
@@ -3394,7 +3388,6 @@ export type Database = {
       }
       decision_email_templates: {
         Row: {
-          details_block_template: string | null
           closing: string
           created_at: string
           greeting: string
@@ -3408,7 +3401,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          details_block_template?: string | null
           closing?: string
           created_at?: string
           greeting?: string
@@ -3422,7 +3414,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          details_block_template?: string | null
           closing?: string
           created_at?: string
           greeting?: string
@@ -13550,18 +13541,6 @@ export type Database = {
       }
     }
     Functions: {
-      calendar_sync_slot: { Args: { _now: string; _time: string; _interval: number; _timezone: string }; Returns: string }
-
-      get_admin_tenant_health: { Args: Record<PropertyKey, never>; Returns: Json }
-      set_admin_user_colors: { Args: { _tenant_id: string; _updates: Json }; Returns: undefined }
-
-      reorder_admin_items: { Args: { _table: string; _tenant_id: string; _ids: string[] }; Returns: undefined }
-      search_admin_audit_logs: { Args: { _tenant_id: string; _search?: string; _ip?: string; _offset?: number; _limit?: number }; Returns: Json }
-
-      replace_user_role: {
-        Args: { _tenant_id: string; _user_id: string; _role: string | null }
-        Returns: undefined
-      }
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined
@@ -13572,12 +13551,8 @@ export type Database = {
         Args: { _reply?: string; _task_id: string }
         Returns: undefined
       }
-      create_preparation_followup: {
-        Args: { _preparation_id: string; _point_id?: string }
-        Returns: string
-      }
       advance_appointment_briefing: {
-        Args: { _action: string; _appointment_id: string; _note?: string }
+        Args: { _action: string; _appointment_id: string }
         Returns: undefined
       }
       approve_gdpr_delete: {
@@ -13612,6 +13587,15 @@ export type Database = {
       }
       auto_archive_completed_preparations: { Args: never; Returns: undefined }
       auto_update_poll_status: { Args: never; Returns: undefined }
+      calendar_sync_slot: {
+        Args: {
+          _interval: number
+          _now: string
+          _time: string
+          _timezone: string
+        }
+        Returns: string
+      }
       can_access_decision: {
         Args: { p_decision_id: string; p_user_id: string }
         Returns: boolean
@@ -13656,6 +13640,7 @@ export type Database = {
         Args: { p_decision_id: string }
         Returns: undefined
       }
+      claim_calendar_sync: { Args: { _setting_id: string }; Returns: string }
       cleanup_bulk_action_audit: { Args: never; Returns: number }
       cleanup_edge_function_cache: { Args: never; Returns: number }
       cleanup_workflow_runs: { Args: never; Returns: number }
@@ -13801,6 +13786,10 @@ export type Database = {
           match_score: number
         }[]
       }
+      finish_calendar_sync: {
+        Args: { _setting_id: string; _slot: string; _success: boolean }
+        Returns: undefined
+      }
       generate_current_year_stats: {
         Args: { p_tenant_id: string }
         Returns: Json
@@ -13822,6 +13811,7 @@ export type Database = {
           start_date: string
         }[]
       }
+      get_admin_tenant_health: { Args: never; Returns: Json }
       get_authored_messages: {
         Args: { author_id_param: string }
         Returns: {
@@ -14059,6 +14049,14 @@ export type Database = {
           updated_request_id: string
         }[]
       }
+      reorder_admin_items: {
+        Args: { _ids: string[]; _table: string; _tenant_id: string }
+        Returns: undefined
+      }
+      replace_user_role: {
+        Args: { _role: string; _tenant_id: string; _user_id: string }
+        Returns: undefined
+      }
       run_data_lint: {
         Args: { _tenant_id: string }
         Returns: {
@@ -14081,6 +14079,16 @@ export type Database = {
         }
         Returns: Json
       }
+      search_admin_audit_logs: {
+        Args: {
+          _ip?: string
+          _limit?: number
+          _offset?: number
+          _search?: string
+          _tenant_id: string
+        }
+        Returns: Json
+      }
       send_message: {
         Args: {
           author_id_param: string
@@ -14091,12 +14099,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      set_admin_user_colors: {
+        Args: { _tenant_id: string; _updates: Json }
+        Returns: undefined
+      }
       set_appointment_briefing: {
         Args: {
-          _depth?: string
           _appointment_id: string
           _assignee?: string
           _decision: string
+          _depth?: string
           _due?: string
           _instructions?: string
         }
