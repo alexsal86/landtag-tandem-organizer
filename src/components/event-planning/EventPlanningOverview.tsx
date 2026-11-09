@@ -1,6 +1,6 @@
 import { PlanningViewToggle } from "./PlanningViewToggle";
-import { useState } from "react";
-import { Check, Clock, Archive, CheckCircle, MoreHorizontal, MapPin, Users } from "lucide-react";
+import { useId, useState } from "react";
+import { Check, Clock, Archive, CheckCircle, MoreHorizontal, MapPin, Users, ChevronDown } from "lucide-react";
 import { format, isValid, startOfDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,9 @@ import type { EventPlanning } from "./types";
 type Props = Pick<ReturnType<typeof useEventPlanningData>, "plannings" | "allProfiles" | "collaborators" | "user" | "eventPlanningView" | "saveViewPreferences" | "isItemNew" | "setSelectedPlanning" | "togglePlanningCompleted" | "archivePlanning">;
 
 export function EventPlanningOverview({ plannings, allProfiles, collaborators, user, eventPlanningView, saveViewPreferences, isItemNew, setSelectedPlanning, togglePlanningCompleted, archivePlanning }: Props) {
-  const [filter, setFilter] = useState<"all" | "mine" | "open">("all");
+  const [filter, setFilter] = useState<"all" | "mine" | "open">("open");
+  const [pastExpanded, setPastExpanded] = useState(false);
+  const pastSectionId = useId();
   const { isHighlighted, highlightRef } = useNotificationHighlight();
   const listView = eventPlanningView === "table";
   const today = startOfDay(new Date()).getTime();
@@ -29,7 +31,7 @@ export function EventPlanningOverview({ plannings, allProfiles, collaborators, u
     const date = confirmedDate(planning);
     return Boolean(planning.is_completed || (date && date.getTime() < today));
   };
-  const visible = plannings.filter(planning => filter === "all" || (filter === "open" ? !past(planning) : planning.user_id === user?.id || collaborators.some(c => c.event_planning_id === planning.id && c.user_id === user?.id)));
+  const visible = plannings.filter(planning => filter !== "mine" || planning.user_id === user?.id || collaborators.some(c => c.event_planning_id === planning.id && c.user_id === user?.id));
   const groups = [
     { label: "Anstehend", items: visible.filter(p => !past(p)), muted: false },
     { label: "Vergangen & abgeschlossen", items: visible.filter(past), muted: true },
@@ -94,13 +96,21 @@ export function EventPlanningOverview({ plannings, allProfiles, collaborators, u
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
       <h2 className="text-2xl font-semibold tracking-tight">Veranstaltungen</h2>
       <div className="flex flex-wrap items-center gap-2">
-        <div className="inline-flex rounded-xl bg-muted/70 p-1" role="group" aria-label="Veranstaltungen filtern">{([["all", "Alle"], ["mine", "Meine"], ["open", "Offen"]] as const).map(([value, label]) => <Button key={value} size="sm" variant="ghost" aria-pressed={filter === value} className={cn("rounded-lg px-3 text-muted-foreground", filter === value && "bg-background text-foreground shadow-sm hover:bg-background")} onClick={() => setFilter(value)}>{label}</Button>)}</div>
+        <div className="inline-flex rounded-xl bg-muted/70 p-1" role="group" aria-label="Veranstaltungen filtern">{([["open", "Offen"], ["mine", "Meine"], ["all", "Alle"]] as const).map(([value, label]) => <Button key={value} size="sm" variant="ghost" aria-pressed={filter === value} className={cn("rounded-lg px-3 text-muted-foreground", filter === value && "bg-background text-foreground shadow-sm hover:bg-background")} onClick={() => { setFilter(value); setPastExpanded(value === "all"); }}>{label}</Button>)}</div>
         <PlanningViewToggle value={eventPlanningView} onChange={view => saveViewPreferences("event", view)} label="Veranstaltungsansicht" />
       </div>
     </div>
-    {visible.length === 0 ? <p className="py-10 text-center text-sm text-muted-foreground">Keine Veranstaltungen für diesen Filter.</p> : groups.map(group => group.items.length > 0 && <div key={group.label} className="mt-4 first:mt-0">
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-palette-green">{group.label}</h3>
-      <ul className={listView ? "space-y-1" : "grid gap-3 2xl:grid-cols-2"}>{group.items.map(planning => renderEvent(planning, group.muted))}</ul>
-    </div>)}
+    {visible.length === 0 ? <p className="py-10 text-center text-sm text-muted-foreground">Keine Veranstaltungen für diesen Filter.</p> : groups.map(group => {
+      if (!group.items.length) return !group.muted && filter === "open" ? <p key={group.label} className="py-5 text-sm text-muted-foreground">Keine aktuell offenen Veranstaltungen.</p> : null;
+      return <div key={group.label} className="mt-4 first:mt-0">
+        {group.muted ? <h3 className="mb-2"><button type="button" aria-expanded={pastExpanded} aria-controls={pastSectionId} onClick={() => setPastExpanded(value => !value)} className="flex w-full items-center gap-2 rounded-md py-1 text-left text-xs font-semibold uppercase tracking-[0.16em] text-palette-green hover:bg-palette-green/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-palette-green">
+          <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform", !pastExpanded && "-rotate-90")} aria-hidden />
+          {group.label}<span className="font-normal tracking-normal text-muted-foreground">({group.items.length})</span>
+        </button></h3> : <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-palette-green">{group.label}</h3>}
+        <div id={group.muted ? pastSectionId : undefined} hidden={group.muted && !pastExpanded}>
+          {(!group.muted || pastExpanded) && <ul className={listView ? "space-y-1" : "grid gap-3 2xl:grid-cols-2"}>{group.items.map(planning => renderEvent(planning, group.muted))}</ul>}
+        </div>
+      </div>;
+    })}
   </section></TooltipProvider>;
 }
