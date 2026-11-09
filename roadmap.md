@@ -1,9 +1,12 @@
 # Roadmap Aufgaben
 
 # Dependency security
-- [ ] Update affected direct dependencies and refresh transitive resolutions in both lockfiles.
-- [ ] Verify advisory version floors, run relevant tests, and check the preview build.
-- [ ] Report dependencies blocked by licensing or unavailable compatible patched releases.
+- [x] Update affected direct dependencies and refresh transitive resolutions in both lockfiles.
+- [x] Verify advisory version floors, run relevant tests, and check the preview build.
+- [x] Report dependencies blocked by licensing or unavailable compatible patched releases.
+- [ ] Resolve expo/expo-router security constraints — coordinated mobile SDK upgrade required.
+- [ ] Resolve xlsx advisories — existing licensing restriction requires an approved replacement or licensing decision.
+- [ ] Resolve additional low-severity deepmerge/elliptic advisories — incompatible upstream constraints or no patched release.
 
 - [x] Anstupsen (Rules, RPCs, UI, Tests, Selftest)
 - [x] Erinnerung mit freier Uhrzeit
