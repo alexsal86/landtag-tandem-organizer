@@ -85,15 +85,7 @@ export const PlannerPostCard = memo(function PlannerPostCard({ item, onClick }: 
             </div>
           )}
         </div>
-        <div className="flex items-center gap-1">
-          <Badge
-            className="h-4 px-1.5 text-[9px] leading-none"
-            style={{ backgroundColor: STATUS_COLORS[item.workflow_status], color: "white", border: "none" }}
-          >
-            {STATUS_LABELS[item.workflow_status] || item.workflow_status}
-          </Badge>
-          {time && <span className="text-[10px] text-muted-foreground">{time}</span>}
-        </div>
+        {time && <span className="text-[10px] text-muted-foreground">{time}</span>}
       </div>
 
       {/* Image thumbnail */}
@@ -117,12 +109,15 @@ export const PlannerPostCard = memo(function PlannerPostCard({ item, onClick }: 
         <p className="text-muted-foreground line-clamp-2 leading-snug">{item.draft_text}</p>
       )}
 
-      {/* Approval badge */}
-      {item.approval_state === "approved" && (
-        <Badge className="h-4 px-1.5 text-[9px]" style={{ backgroundColor: "hsl(142 70% 45%)", color: "white", border: "none" }}>
-          ✓ Freigegeben
-        </Badge>
-      )}
+      {/* Status and responsible person below the post content. */}
+      <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-[10px] leading-snug text-muted-foreground">
+        <span className="inline-flex items-center gap-1">
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: STATUS_COLORS[item.workflow_status] }} aria-hidden="true" />
+          {STATUS_LABELS[item.workflow_status] || item.workflow_status}
+        </span>
+        <span aria-hidden="true">·</span>
+        <span className="min-w-0 break-words">{item.responsible_user_name || (item.responsible_user_id ? "Zugewiesen" : "Nicht zugewiesen")}</span>
+      </div>
     </div>
   );
 });

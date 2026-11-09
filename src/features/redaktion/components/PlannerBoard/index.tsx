@@ -93,6 +93,7 @@ export function PlannerBoard({ specialDays = [], topicSidebar }: PlannerBoardPro
 
   const filteredItems = useMemo(() => {
     const search = tagSearch.trim().toLowerCase();
+    const userNames = new Map(users.map((user) => [user.id, user.display_name]));
 
     return items
       .filter((item) => {
@@ -111,6 +112,7 @@ export function PlannerBoard({ specialDays = [], topicSidebar }: PlannerBoardPro
           item.format_variant?.toLowerCase().includes(search)
         );
       })
+      .map((item) => ({ ...item, responsible_user_name: item.responsible_user_id ? userNames.get(item.responsible_user_id) || null : null }))
       .sort((a, b) => {
         if (sortBy === "topic") return a.topic.localeCompare(b.topic);
         if (sortBy === "status") return a.workflow_status.localeCompare(b.workflow_status);
@@ -131,7 +133,7 @@ export function PlannerBoard({ specialDays = [], topicSidebar }: PlannerBoardPro
         const bTime = b.scheduled_for ? new Date(b.scheduled_for).getTime() : Number.MAX_SAFE_INTEGER;
         return aTime - bTime;
       });
-  }, [items, channelFilter, ownerFilter, statusFilter, formatFilter, campaignFilter, pillarFilter, tagSearch, sortBy]);
+  }, [items, channelFilter, ownerFilter, statusFilter, formatFilter, campaignFilter, pillarFilter, tagSearch, sortBy, users]);
 
   const handleSaveItem = useCallback(async (itemId: string, payload: SocialPlannerDraftPayload) => {
     await updateItem(itemId, payload);

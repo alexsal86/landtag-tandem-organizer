@@ -36,6 +36,7 @@ export interface SocialPlannerItem {
   cta: string | null;
   notes: string | null;
   responsible_user_id: string | null;
+  responsible_user_name?: string | null;
   scheduled_for: string | null;
   hashtags: string[];
   hashtags_in_comment: boolean;
