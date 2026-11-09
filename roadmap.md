@@ -1,5 +1,10 @@
 # Roadmap Aufgaben
 
+# Dependency security
+- [ ] Update affected direct dependencies and refresh transitive resolutions in both lockfiles.
+- [ ] Verify advisory version floors, run relevant tests, and check the preview build.
+- [ ] Report dependencies blocked by licensing or unavailable compatible patched releases.
+
 - [x] Anstupsen (Rules, RPCs, UI, Tests, Selftest)
 - [x] Erinnerung mit freier Uhrzeit
 - [x] Erinnerung ohne geöffnete App (stündliche Benachrichtigung)
