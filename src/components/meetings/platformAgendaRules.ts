@@ -14,7 +14,8 @@ export function criticalTaskReason(task: { status: string; nudge_count: number |
 }
 
 /** Ampel für die Termin-Rückschau: Nachbereitung fehlt / Notizen ohne Folgeaufgaben / erledigt. */
-export function pastAppointmentReview(feedback: { feedback_status: string; notes: string | null; has_tasks: boolean | null } | null | undefined) {
+export function pastAppointmentReview(feedback: { feedback_status: string; notes: string | null; has_tasks: boolean | null } | null | undefined, openPromises = 0) {
+  if (openPromises > 0) return { status: `${openPromises} offene ${openPromises === 1 ? 'Zusage' : 'Zusagen'}`, open: true };
   if (!feedback || !feedback.notes?.trim()) return { status: 'Nachbereitung fehlt', open: true };
   if (feedback.feedback_status !== 'completed') return { status: 'Notizen da · nicht abgeschlossen', open: true };
   return { status: feedback.has_tasks ? 'Nachbereitet · Folgeaufgaben' : 'Nachbereitet', open: false };

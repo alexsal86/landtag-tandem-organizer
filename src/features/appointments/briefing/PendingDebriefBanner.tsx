@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import { useAuth } from "@/hooks/useAuth";
 import { notify } from "@/lib/notify";
 import { needsQuickDebrief, quickDebriefNotes } from "./debriefActions";
 
@@ -13,6 +14,7 @@ export function PendingDebriefBanner() {
   const { currentTenant } = useTenant();
   const tenantId = currentTenant?.id;
   const qc = useQueryClient();
+  const { user } = useAuth();
   const [openId, setOpenId] = useState<string | null>(null);
   const [result, setResult] = useState("");
   const [next, setNext] = useState("");
@@ -43,7 +45,7 @@ export function PendingDebriefBanner() {
     setSaving(true);
     const { error } = current.feedback
       ? await supabase.from("appointment_feedback").update({ notes }).eq("id", current.feedback.id)
-      : { error: new Error("Für diesen Termin ist noch keine Rückmeldung angelegt.") };
+      : await supabase.from("appointment_feedback").insert({ appointment_id: current.id, user_id: user!.id, tenant_id: tenantId!, event_type: "appointment", feedback_status: "pending", notes });
     setSaving(false);
     if (error) return notify.error(error.message);
     setOpenId(null); setResult(""); setNext("");
