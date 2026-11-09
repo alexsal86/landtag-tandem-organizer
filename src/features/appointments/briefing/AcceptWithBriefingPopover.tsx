@@ -13,7 +13,7 @@ import { suggestBriefingDue } from "../briefing";
 export type AcceptBriefingChoice =
   | { briefing: undefined }
   | { briefing: "none" }
-  | { briefing: "assigned"; assignee: string; due: string; instructions?: string };
+  | { briefing: "assigned"; assignee: string; due: string; instructions?: string; depth?: "compact" | "full" };
 
 interface Props { start: Date; trigger: ReactNode; disabled?: boolean; onAccept: (c: AcceptBriefingChoice) => Promise<void> | void }
 
@@ -25,11 +25,12 @@ export function AcceptWithBriefingPopover({ start, trigger, disabled, onAccept }
   const [assignee, setAssignee] = useState("");
   const [due, setDue] = useState(() => format(suggestBriefingDue(start), "yyyy-MM-dd'T'HH:mm"));
   const [instructions, setInstructions] = useState("");
+  const [depth, setDepth] = useState<"compact" | "full">("compact");
 
   const submit = async () => {
     if (mode === "assigned") {
       if (!assignee) return;
-      await onAccept({ briefing: "assigned", assignee, due: new Date(due).toISOString(), instructions: instructions.trim() || undefined });
+      await onAccept({ briefing: "assigned", assignee, due: new Date(due).toISOString(), instructions: instructions.trim() || undefined, depth });
     } else {
       await onAccept(mode === "none" ? { briefing: "none" } : { briefing: undefined });
     }
@@ -48,6 +49,11 @@ export function AcceptWithBriefingPopover({ start, trigger, disabled, onAccept }
         </RadioGroup>
         {mode === "assigned" && (
           <div className="space-y-2">
+            <div className="flex rounded-md border p-0.5 text-caption">
+              {(["compact", "full"] as const).map((d) => (
+                <button key={d} type="button" onClick={() => setDepth(d)} className={`flex-1 rounded-sm px-2 py-1 ${depth === d ? "bg-muted font-medium" : "text-muted-foreground"}`}>{d === "compact" ? "Kurz" : "Umfassend"}</button>
+              ))}
+            </div>
             <Select value={assignee} onValueChange={setAssignee}>
               <SelectTrigger><SelectValue placeholder="Person wählen" /></SelectTrigger>
               <SelectContent>{users.map((u) => <SelectItem key={u.id} value={u.id}>{u.display_name}</SelectItem>)}</SelectContent>

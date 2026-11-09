@@ -960,6 +960,7 @@ export type Database = {
       appointments: {
         Row: {
           briefing_assignee_id: string | null
+          briefing_depth: string
           briefing_due_at: string | null
           briefing_instructions: string | null
           briefing_status: string
@@ -996,6 +997,7 @@ export type Database = {
         }
         Insert: {
           briefing_assignee_id?: string | null
+          briefing_depth?: string
           briefing_due_at?: string | null
           briefing_instructions?: string | null
           briefing_status?: string
@@ -1032,6 +1034,7 @@ export type Database = {
         }
         Update: {
           briefing_assignee_id?: string | null
+          briefing_depth?: string
           briefing_due_at?: string | null
           briefing_instructions?: string | null
           briefing_status?: string
@@ -13629,6 +13632,10 @@ export type Database = {
       cleanup_bulk_action_audit: { Args: never; Returns: number }
       cleanup_edge_function_cache: { Args: never; Returns: number }
       cleanup_workflow_runs: { Args: never; Returns: number }
+      complete_appointment_briefing: {
+        Args: { _appointment_id: string }
+        Returns: undefined
+      }
       create_appointment_poll_with_details: {
         Args: {
           p_deadline?: string
@@ -13636,6 +13643,18 @@ export type Database = {
           p_participants?: Json
           p_time_slots?: Json
           p_title: string
+        }
+        Returns: string
+      }
+      create_briefing_follow_up_task: {
+        Args: {
+          _appointment_id: string
+          _assignee?: string
+          _description?: string
+          _due?: string
+          _feedback_id?: string
+          _priority?: string
+          _title: string
         }
         Returns: string
       }
@@ -13837,14 +13856,6 @@ export type Database = {
       get_globally_shared_user_ids: {
         Args: { _user_id: string }
         Returns: string[]
-      }
-      get_latest_employee_meetings: {
-        Args: { p_employee_ids: string[] }
-        Returns: {
-          employee_id: string
-          meeting_id: string
-          meeting_date: string
-        }[]
       }
       get_my_work_counts: {
         Args: { p_include_team?: boolean; p_user_id: string }
@@ -14062,6 +14073,10 @@ export type Database = {
           _instructions?: string
         }
         Returns: string
+      }
+      set_appointment_briefing_depth: {
+        Args: { _appointment_id: string; _depth: string }
+        Returns: undefined
       }
       snapshot_rls_coverage: { Args: never; Returns: string }
       snapshot_rls_coverage_internal: { Args: never; Returns: string }

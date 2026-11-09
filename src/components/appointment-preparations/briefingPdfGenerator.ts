@@ -1,6 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
-import { briefingFactLines } from "./briefingFacts";
-import { normalizeBriefingData } from "@/hooks/useAppointmentPreparation";
+import { compactToFull, mergeLegacy, type PrepData } from "@/features/appointments/briefing/briefingModel";
 import jsPDF from "jspdf";
 import "svg2pdf.js";
 import {
@@ -846,7 +844,9 @@ export async function generateBriefingPdf({
 }: BriefingPdfOptions): Promise<void> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const headerFont = await registerBriefingFonts(doc);
-  const d = normalizeBriefingData(preparation.preparation_data);
+  // Compact-only briefings: fill dossier fields from the one-pager so both depths print.
+  const raw = preparation.preparation_data as unknown as PrepData;
+  const d = { ...raw, ...compactToFull(mergeLegacy(raw), raw) } as typeof preparation.preparation_data;
   const topY = 14; // Y for new pages
 
   // ── Header ──────────────────────────────────────────────────────────────────

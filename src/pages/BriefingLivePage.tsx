@@ -1,6 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { StandaloneDecisionCreator } from '@/components/task-decisions/StandaloneDecisionCreator';
+import { useCaseItems } from '@/features/cases/items/hooks/useCaseItems';
+import { followUpTaskFromLive } from '@/features/appointments/briefing/briefingModel';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
@@ -81,6 +84,13 @@ export default function BriefingLivePage() {
   const [taskDueDate, setTaskDueDate] = useState('');
   const [createdTasks, setCreatedTasks] = useState<CreatedTask[]>([]);
   const [taskSaving, setTaskSaving] = useState(false);
+  const { createCaseItem } = useCaseItems();
+  const [decisionOpen, setDecisionOpen] = useState(false);
+  const handleCreateCase = async () => {
+    if (!taskTitle.trim()) { notify.error('Fehler', { description: 'Bitte einen Titel eingeben.' }); return; }
+    const item = await createCaseItem({ source_channel: 'in_person', subject: taskTitle.trim(), summary: taskDescription || `Aus Termin: ${appointmentInfo?.title || preparation?.title || ''}`, owner_user_id: user?.id ?? null });
+    if (item) { notify.success('Vorgang angelegt'); setTaskTitle(''); setTaskDescription(''); }
+  };
 
   // Feedback completed state
   const [feedbackCompleted, setFeedbackCompleted] = useState(false);
@@ -177,27 +187,13 @@ export default function BriefingLivePage() {
     try {
       const feedbackId = await ensureFeedbackCompleted();
 
-      const { data: created, error } = await supabase.from('tasks').insert({
-        title: taskTitle,
-        description: taskDescription || `Follow-up zu Termin: ${appointmentInfo?.title || preparation?.title || ''}`,
-        category: 'personal',
-        user_id: user.id,
-        tenant_id: currentTenant.id,
-        due_date: taskDueDate || null,
-        status: 'todo',
-        priority: taskPriority,
-        source_type: feedbackId ? 'appointment_feedback' : null,
-        source_id: feedbackId,
-      }).select('id').single();
-
+      const appointmentIdForTask = searchParams.get('appointmentId');
+      if (!appointmentIdForTask) throw new Error('Kein Termin verknüpft');
+      const args = followUpTaskFromLive(appointmentIdForTask, { title: taskTitle, description: taskDescription, due: taskDueDate || null, priority: taskPriority }, feedbackId);
+      if (!args) return;
+      const { data: createdId, error } = await supabase.rpc('create_briefing_follow_up_task', args);
       if (error) throw error;
-
-      if (feedbackId) {
-        await supabase.from('appointment_feedback').update({
-          has_tasks: true,
-          updated_at: new Date().toISOString(),
-        }).eq('id', feedbackId);
-      }
+      const created = { id: createdId as string };
 
       setCreatedTasks(prev => [...prev, {
         id: created.id,
@@ -227,7 +223,8 @@ export default function BriefingLivePage() {
       await ensureFeedbackCompleted();
       setFeedbackCompleted(true);
       queryClient.invalidateQueries({ queryKey: ['appointment-feedback-appointments'] });
-      notify.success('Termin als erledigt markiert');
+      notify.success('Live beendet – jetzt nachbereiten', { description: 'Deine Notizen stehen schon in der Nachbereitung.' });
+      if (preparation?.id) navigate(`/appointment-preparation/${preparation.id}`);
     } catch (err) {
       debugConsole.error('Error marking completed:', err);
       notify.error('Fehler');
@@ -425,6 +422,15 @@ export default function BriefingLivePage() {
             )}
             Aufgabe erstellen
           </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="ghost" onClick={handleCreateCase}>Als Vorgang anlegen</Button>
+            <Button variant="ghost" onClick={() => { if (!taskTitle.trim()) { notify.error('Fehler', { description: 'Bitte einen Titel eingeben.' }); return; } setDecisionOpen(true); }}>Entscheidung anfordern</Button>
+          </div>
+          {decisionOpen && (
+            <StandaloneDecisionCreator isOpen={decisionOpen} onOpenChange={setDecisionOpen}
+              defaultTitle={taskTitle} defaultDescription={taskDescription || `Aus Termin: ${appointmentInfo?.title || preparation?.title || ''}`}
+              onDecisionCreated={() => { setDecisionOpen(false); setTaskTitle(''); setTaskDescription(''); }} />
+          )}
 
           {/* Created tasks list */}
           {createdTasks.length > 0 && (

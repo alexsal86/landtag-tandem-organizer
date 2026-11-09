@@ -1,3 +1,4 @@
+import { canCompleteBriefing, canGoLive, followUpTaskFromLive, mergeLegacy, saveCompact } from "@/features/appointments/briefing/briefingModel";
 import { supabase } from "@/integrations/supabase/client";
 import { showsInDailyBriefing, canAdvanceBriefing, needsBriefingDecision, suggestBriefingDue } from "@/features/appointments/briefing";
 import type { TestScenario } from "../types";
@@ -33,6 +34,22 @@ export const appointmentBriefingLifecycleScenario: TestScenario = {
           showsInDailyBriefing({ briefing_status: "approved", start_time: new Date().toISOString() }),
           !showsInDailyBriefing({ briefing_status: "in_review", start_time: new Date().toISOString() }),
           needsBriefingDecision({ briefing_status: "undecided", start_time: new Date(Date.now() + 86400_000).toISOString() }),
+        ];
+        return { ok: checks.every(Boolean), message: `${checks.filter(Boolean).length}/${checks.length} Regeln bestanden.` };
+      },
+    },
+    {
+      id: "model", label: "Regeln: Kurz/Dossier-Umrechnung, Live nur am Termintag, Folgeaufgabe, Abschluss", kind: "logic",
+      run: async () => {
+        const saved = saveCompact({}, { ...mergeLegacy({}), compact_positions: "Radweg" });
+        const today = new Date(); today.setHours(23, 0, 0, 0);
+        const checks = [
+          Array.isArray(saved.talking_point_items) && (saved.talking_point_items as unknown[]).length === 1,
+          mergeLegacy({ objectives: "Ziel" }).compact_goal === "Ziel",
+          canGoLive({ briefing_status: "approved", start_time: today.toISOString() }),
+          !canGoLive({ briefing_status: "assigned", start_time: today.toISOString() }),
+          followUpTaskFromLive("a", { title: " " }) === null,
+          canCompleteBriefing("approved", "Ergebnis") && !canCompleteBriefing("approved", ""),
         ];
         return { ok: checks.every(Boolean), message: `${checks.filter(Boolean).length}/${checks.length} Regeln bestanden.` };
       },

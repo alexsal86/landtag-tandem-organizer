@@ -20,11 +20,12 @@ export function BriefingRequestPopover({ appointmentId, startTime, trigger, init
   const [assignee, setAssignee] = useState(initialAssignee ?? "");
   const [due, setDue] = useState(() => format(suggestBriefingDue(new Date(startTime)), "yyyy-MM-dd'T'HH:mm"));
   const [instructions, setInstructions] = useState(initialInstructions ?? "");
+  const [depth, setDepth] = useState<"compact" | "full">("compact");
 
   const submit = async () => {
     if (!assignee) { notify.warning("Bitte eine Person wählen."); return; }
     try {
-      await setBriefing.mutateAsync({ appointmentId, decision: "assigned", assignee, due: new Date(due).toISOString(), instructions: instructions.trim() || undefined });
+      await setBriefing.mutateAsync({ appointmentId, decision: "assigned", assignee, due: new Date(due).toISOString(), instructions: instructions.trim() || undefined, depth });
       notify.success("Briefing vergeben – Aufgabe angelegt.");
       setOpen(false);
     } catch (e) { notify.error(e instanceof Error ? e.message : "Briefing konnte nicht vergeben werden."); }
@@ -34,6 +35,14 @@ export function BriefingRequestPopover({ appointmentId, startTime, trigger, init
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent className="w-80 space-y-3" align="end">
+        <div className="space-y-1">
+          <label className="text-caption text-muted-foreground">Tiefe</label>
+          <div className="flex rounded-md border p-0.5 text-caption">
+              {(["compact", "full"] as const).map((d) => (
+                <button key={d} type="button" onClick={() => setDepth(d)} className={`flex-1 rounded-sm px-2 py-1 ${depth === d ? "bg-muted font-medium" : "text-muted-foreground"}`}>{d === "compact" ? "Kurz" : "Umfassend"}</button>
+              ))}
+            </div>
+        </div>
         <div className="space-y-1">
           <label className="text-caption text-muted-foreground">Wer übernimmt?</label>
           <Select value={assignee} onValueChange={setAssignee}>

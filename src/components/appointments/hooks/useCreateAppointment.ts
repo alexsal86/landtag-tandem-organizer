@@ -1,3 +1,4 @@
+import { suggestBriefingDue } from "@/features/appointments/briefing";
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -163,6 +164,24 @@ export function useCreateAppointment(open: boolean, onOpenChange: (open: boolean
     if (!isAllDay && timeValue) form.setValue("end_time", formatTimeForInput(addHours(new Date(`2000-01-01T${timeValue}`), 1)));
   };
 
+  const [briefingChoice, setBriefingChoice] = useState<"later" | "none" | "compact" | "full">("later");
+  const [briefingAssignee, setBriefingAssignee] = useState("");
+  const [briefingDue, setBriefingDue] = useState("");
+
+  const applyBriefingChoice = async (appointmentId: string, startIso: string) => {
+    if (briefingChoice === "later") return;
+    if (briefingChoice === "none") {
+      const r = await supabase.rpc("set_appointment_briefing", { _appointment_id: appointmentId, _decision: "none" });
+      if (r.error) notify.warning("Briefing-Entscheidung nicht gespeichert", { description: r.error.message });
+      return;
+    }
+    if (!briefingAssignee) { notify.warning("Briefing nicht vergeben", { description: "Keine Person gewählt." }); return; }
+    const due = briefingDue ? new Date(briefingDue).toISOString() : suggestBriefingDue(new Date(startIso)).toISOString();
+    const r = await supabase.rpc("set_appointment_briefing", { _appointment_id: appointmentId, _decision: "assigned", _assignee: briefingAssignee, _due: due });
+    if (r.error) { notify.warning("Briefing nicht vergeben", { description: r.error.message }); return; }
+    await supabase.rpc("set_appointment_briefing_depth", { _appointment_id: appointmentId, _depth: briefingChoice });
+  };
+
   const onSubmit = async (values: AppointmentFormValues) => {
     if (!user || !currentTenant) {
       if (!currentTenant) notify.error("Fehler", { description: "Kein Tenant ausgewählt."
@@ -176,6 +195,7 @@ export function useCreateAppointment(open: boolean, onOpenChange: (open: boolean
       const { data: appointment, error } = await supabase.from('appointments').insert([payload]).select().single();
       if (error) throw error;
 
+      if (appointment) await applyBriefingChoice(appointment.id, appointment.start_time);
       if (selectedTopicIds.length > 0 && appointment) await saveAppointmentTopics(appointment.id, selectedTopicIds);
       if (selectedContacts.length > 0 && appointment) {
         await supabase.from('appointment_contacts').insert(selectedContacts.map((contact) => ({ appointment_id: appointment.id, contact_id: contact.id, role: 'participant' })));
@@ -210,6 +230,7 @@ export function useCreateAppointment(open: boolean, onOpenChange: (open: boolean
     uploadedFiles, appointmentGuests, selectedTopicIds,
     setShowPollCreator, setShowAdvancedOptions, setUploadedFiles, setAppointmentGuests, setSelectedTopicIds,
     setSelectedContacts,
+    briefingChoice, setBriefingChoice, briefingAssignee, setBriefingAssignee, briefingDue, setBriefingDue,
     handleAllDayChange, handleStartTimeChange, handleLocationDetection, onSubmit,
     addContact: (contact: AppointmentContactRef) => { if (!selectedContacts.find((selectedContact) => selectedContact.id === contact.id)) setSelectedContacts([...selectedContacts, contact]); },
     removeContact: (id: string) => setSelectedContacts(selectedContacts.filter(c => c.id !== id)),

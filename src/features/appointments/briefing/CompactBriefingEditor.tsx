@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { notify } from "@/lib/notify";
 import type { Json } from "@/integrations/supabase/types";
+import { canCompleteBriefing, dossierExtrasLine, mergeLegacy, saveCompact, type CompactValues } from "./briefingModel";
 
 const CORE = [
   { key: "compact_partners", label: "Gesprächspartner", placeholder: "Wer sitzt uns gegenüber? Name, Funktion" },
@@ -39,6 +40,8 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
   const [values, setValues] = useState<Record<string, string>>({});
   const [extras, setExtras] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [liveNotes, setLiveNotes] = useState<string>("");
+  const [status, setStatus] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -51,13 +54,16 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
       if (error) { setLoadError(true); setLoading(false); notify.error("Briefing konnte nicht geladen werden."); return; }
       const pd = (data?.preparation_data && typeof data.preparation_data === "object" && !Array.isArray(data.preparation_data) ? data.preparation_data : {}) as Record<string, Json>;
       setPrepId(data?.id ?? null);
-      const canonical = normalizeBriefingData(pd as AppointmentPreparation["preparation_data"]);
-      setBase(canonical as Record<string, Json>);
-      const v: Record<string, string> = {};
-      for (const f of [...CORE, ...EXTRA]) v[f.key] = typeof canonical[f.key as keyof typeof canonical] === "string" ? String(canonical[f.key as keyof typeof canonical]) : "";
-      v.compact_partners = (canonical.conversation_partners ?? []).map(p => p.name).join("\n");
-      v.position_statements = canonical.position_statements ?? "";
-      v.questions_answers = canonical.questions_answers || (canonical.qa_pairs ?? []).map(q => `${q.question} → ${q.answer}`).join("\n");
+      setBase(pd);
+      const v: Record<string, string> = { ...mergeLegacy(pd) };
+      const [{ data: fb }, { data: appt }] = await Promise.all([
+        supabase.from("appointment_feedback").select("notes").eq("appointment_id", appointmentId).maybeSingle(),
+        supabase.from("appointments").select("briefing_status").eq("id", appointmentId).maybeSingle(),
+      ]);
+      const notes = fb?.notes ?? "";
+      setLiveNotes(notes);
+      setStatus(appt?.briefing_status ?? null);
+      if (!v.compact_debrief && notes) v.compact_debrief = notes;
       setValues(v);
       setLoading(false);
       setExtras(EXTRA.filter((f) => v[f.key]).map((f) => f.key));
@@ -68,26 +74,7 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
   const save = async () => {
     if (!user || !currentTenant || loading || loadError) return;
     setSaving(true);
-    const { compact_partners, ...fields } = values;
-    const canonicalBase = { ...base };
-    for (const key of Object.keys(canonicalBase)) if (key.startsWith("compact_")) delete canonicalBase[key];
-    const previous = (base.conversation_partners ?? []) as unknown as Array<{id: string; name: string}>;
-    const canonical = normalizeBriefingData(base as AppointmentPreparation["preparation_data"]);
-    const talkingPoints = fields.talking_points === canonical.talking_points
-      ? canonical.talking_point_items ?? []
-      : (fields.talking_points ?? "").split("\n").filter(p => p.trim()).map(point => ({ id: crypto.randomUUID(), point, background: "" }));
-    const qaPairs = fields.questions_answers === canonical.questions_answers
-      ? canonical.qa_pairs ?? []
-      : (fields.questions_answers ?? "").split("\n").filter(q => q.trim()).map(line => {
-          const [question, ...answer] = line.split("→");
-          return { id: crypto.randomUUID(), question: question.trim(), answer: answer.join("→").trim() };
-        });
-    const preparation_data = {
-      ...canonicalBase, ...fields,
-      talking_point_items: talkingPoints,
-      qa_pairs: qaPairs,
-      conversation_partners: (compact_partners ?? "").split("\n").filter(n => n.trim()).map((name, i) => ({ ...previous[i], id: previous[i]?.id ?? crypto.randomUUID(), name })),
-    };
+    const preparation_data = saveCompact(base, values as CompactValues) as Record<string, Json>;
     const res = prepId
       ? await supabase.from("appointment_preparations").update({ preparation_data }).eq("id", prepId)
       : await supabase.from("appointment_preparations").insert({ appointment_id: appointmentId, tenant_id: currentTenant.id, created_by: user.id, title: `Briefing: ${title}`, status: "in_progress", preparation_data });
@@ -97,6 +84,19 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
     notify.success("Briefing gespeichert.");
     onOpenChange(false);
   };
+
+  const openDossier = async () => {
+    await supabase.rpc("set_appointment_briefing_depth", { _appointment_id: appointmentId, _depth: "full" });
+    navigate(`/appointment-preparation?appointmentId=${appointmentId}`);
+  };
+
+  const complete = async () => {
+    await save();
+    const { error } = await supabase.rpc("complete_appointment_briefing", { _appointment_id: appointmentId });
+    if (error) { notify.error(error.message); return; }
+    notify.success("Briefing abgeschlossen.");
+  };
+  const extrasLine = dossierExtrasLine(base);
 
   const field = (f: { key: string; label: string; placeholder: string }) => (
     <div key={f.key} className="space-y-1">
@@ -108,7 +108,16 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-        <DialogHeader><DialogTitle>Briefing: {title}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <div className="flex items-center justify-between gap-2 pr-6">
+            <DialogTitle>Briefing: {title}</DialogTitle>
+            <div className="flex rounded-md border p-0.5 text-caption">
+              <span className="rounded-sm bg-muted px-2 py-0.5 font-medium">Kompakt</span>
+              <button type="button" className="px-2 py-0.5 text-muted-foreground hover:text-foreground" onClick={openDossier}>Dossier</button>
+            </div>
+          </div>
+        </DialogHeader>
+        {extrasLine && <p className="rounded-md bg-muted/50 px-3 py-2 text-caption text-muted-foreground">{extrasLine}</p>}
         <div className="space-y-3">
           {CORE.map(field)}
           {EXTRA.filter((f) => extras.includes(f.key)).map(field)}
@@ -119,8 +128,11 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
           </div>
         </div>
         <div className="flex justify-between gap-2 pt-2">
-          <Button variant="link" className="px-0" onClick={() => navigate(prepId ? `/appointment-preparation/${prepId}` : `/appointment-preparation?appointmentId=${appointmentId}&title=${encodeURIComponent(title)}`)}>Ausführliche Ansicht</Button>
-          <Button onClick={save} disabled={saving || loading || loadError}>Speichern</Button>
+          <Button variant="link" className="px-0" onClick={openDossier}>Zum Dossier erweitern</Button>
+          <div className="flex gap-2">
+            {canCompleteBriefing(status, values.compact_debrief ?? "") && <Button variant="outline" onClick={complete} disabled={saving}>Nachbereitet – abschließen</Button>}
+            <Button onClick={save} disabled={saving}>Speichern</Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

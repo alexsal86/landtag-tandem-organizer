@@ -50,7 +50,7 @@ export function EmployeeYearlyStatsView({ isOpen, onClose }: EmployeeYearlyStats
         .order("year", { ascending: false });
 
       if (data) {
-        const years = [...new Set(data.map((d) => d.year))];
+        const years = Array.from(new Set<number>(data.map((d) => Number(d.year))));
         setAvailableYears(years);
         if (years.length > 0) {
           setSelectedYear(current => years.includes(current) ? current : years[0]);
