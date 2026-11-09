@@ -1,3 +1,4 @@
+import type { Json } from "@/integrations/supabase/types";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { EmptyState, LoadingState } from '@/components/ui-patterns';
@@ -97,7 +98,13 @@ export function WorkflowEngineManager() {
     ]);
     if (defRes.error) notify.error("Fehler", { description: defRes.error.message
 });
-    setDefs((defRes.data ?? []) as WorkflowDef[]);
+    if (runRes.error) notify.error("Historie nicht verfügbar", { description: runRes.error.message });
+    setDefs((defRes.data ?? []).map(row => ({
+      ...row,
+      trigger_config: row.trigger_config && typeof row.trigger_config === 'object' && !Array.isArray(row.trigger_config) ? row.trigger_config : {},
+      conditions: Array.isArray(row.conditions) ? row.conditions as unknown as Condition[] : [],
+      actions: Array.isArray(row.actions) ? row.actions as unknown as Action[] : [],
+    })));
     setRuns((runRes.data ?? []) as RunRow[]);
     setLoading(false);
   }, [currentTenant?.id, toast]);
@@ -111,9 +118,9 @@ export function WorkflowEngineManager() {
       name: editing.name,
       description: editing.description,
       trigger_type: editing.trigger_type,
-      trigger_config: editing.trigger_config,
-      conditions: editing.conditions,
-      actions: editing.actions,
+      trigger_config: JSON.parse(JSON.stringify(editing.trigger_config)) as Json,
+      conditions: JSON.parse(JSON.stringify(editing.conditions)) as Json,
+      actions: JSON.parse(JSON.stringify(editing.actions)) as Json,
       is_active: editing.is_active,
       created_by: user?.id,
     };
@@ -142,7 +149,8 @@ export function WorkflowEngineManager() {
   };
 
   const toggleActive = async (def: WorkflowDef) => {
-    await supabase.from("workflow_definitions").update({ is_active: !def.is_active }).eq("id", def.id);
+    const { error } = await supabase.from("workflow_definitions").update({ is_active: !def.is_active }).eq("id", def.id);
+    if (error) { notify.error("Status konnte nicht gespeichert werden"); return; }
     void load();
   };
 

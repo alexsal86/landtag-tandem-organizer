@@ -1,3 +1,4 @@
+import { Input } from "@/components/ui/input";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -81,7 +82,7 @@ export const adminMenuItems: AdminMenuItem[] = [
     icon: Shield,
     children: [
       { id: "general", label: "Allgemein", icon: Settings },
-      { id: "expense", label: "Verwaltung", icon: CreditCard },
+
       { id: "auditlogs", label: "Audit-Logs", icon: History },
       { id: "permissions", label: "Berechtigungen", icon: Shield },
       { id: "security-cockpit", label: "Security-Cockpit", icon: ShieldAlert, superAdminOnly: true },
@@ -98,7 +99,7 @@ export const adminMenuItems: AdminMenuItem[] = [
       { id: "status", label: "Status", icon: Activity },
       { id: "planning-collaborators", label: "Standard-Mitarbeiter", icon: UserCheck },
       { id: "usercolors", label: "Benutzerfarben", icon: Palette, superAdminOnly: true },
-      { id: "matrix", label: "Matrix-Chat", icon: MessageSquare },
+
       { id: "office-social-media", label: "Büro-Social-Media", icon: Globe2 },
       { id: "vacation-checklist", label: "Urlaubs-Checkliste", icon: ClipboardCheck },
       { id: "onboarding", label: "Büro-Onboarding", icon: Sparkles },
@@ -125,7 +126,7 @@ export const adminMenuItems: AdminMenuItem[] = [
       { id: "tasks", label: "Aufgaben", icon: CheckSquare },
       { id: "todos", label: "ToDos", icon: ListTodo },
       { id: "decisions", label: "Entscheidungen", icon: Gavel },
-      { id: "archiving", label: "Archivierung", icon: Archive },
+
       { id: "documents", label: "Dokumenttypen", icon: File },
       { id: "casefiles", label: "Fallakten-Typen", icon: Briefcase },
       { id: "data-quality", label: "Datenqualität", icon: ClipboardCheck },
@@ -147,7 +148,7 @@ export const adminMenuItems: AdminMenuItem[] = [
       { id: "plannings", label: "Planungs-Templates", icon: Layout },
       { id: "emails", label: "E-Mail-Vorlagen", icon: Newspaper },
       { id: "event-emails", label: "Veranstaltungs-Mails", icon: Mail },
-      { id: "celebrations", label: "Erfolgsanimation", icon: Sparkles },
+
     ],
   },
   {
@@ -182,6 +183,16 @@ export const adminMenuItems: AdminMenuItem[] = [
       { id: "motivational-messages", label: "Motivationssprüche", icon: PanelTop },
     ],
   },
+  { id: "finance", label: "Kosten & Budget", icon: CreditCard, children: [
+    { id: "expense", label: "Kostenmanagement", icon: CreditCard },
+  ] },
+  { id: "personal", label: "Persönliche Einstellungen", icon: Users2, children: [
+    { id: "matrix", label: "Meine Matrix-Verbindung", icon: MessageSquare },
+    { id: "archiving", label: "Meine Archivierungsregeln", icon: Archive },
+    { id: "celebrations", label: "Meine Erfolgsanimation", icon: Sparkles },
+  ] },
+
+
 ];
 
 export function AdminSidebar({
@@ -192,6 +203,7 @@ export function AdminSidebar({
   annualTasksBadge,
   className,
 }: AdminSidebarProps) {
+  const [search, setSearch] = useState("");
   const [openSections, setOpenSections] = useState<string[]>([activeSection]);
 
   useEffect(() => {
@@ -225,22 +237,28 @@ export function AdminSidebar({
   };
 
   // Filter top-level items by superAdminOnly
-  const visibleMenuItems = adminMenuItems.filter(
-    (item) => !item.superAdminOnly || isSuperAdmin
-  );
+  const needle = search.trim().toLocaleLowerCase("de");
+  const visibleMenuItems = adminMenuItems
+    .filter(item => !item.superAdminOnly || isSuperAdmin)
+    .map(item => ({ ...item, children: item.children?.filter(child =>
+      (!child.superAdminOnly || isSuperAdmin) && (!needle || `${item.label} ${child.label}`.toLocaleLowerCase("de").includes(needle)),
+    ) }))
+    .filter(item => !needle || (item.children?.length ?? 0) > 0);
+
 
   return (
     <div className={cn("w-64 border-r bg-muted/30 h-full min-h-0", className)}>
       <div className="p-4 border-b">
         <h2 className="font-semibold text-lg">Administration</h2>
-        <p className="text-xs text-muted-foreground">Systemkonfiguration</p>
+        <p className="text-xs text-muted-foreground">Büro- und Plattformkonfiguration</p>
+        <Input className="mt-3" aria-label="Administration durchsuchen" placeholder="Unterpunkt suchen…" value={search} onChange={event => setSearch(event.target.value)} />
       </div>
       <ScrollArea className="h-[calc(100dvh-180px)] h-[calc(100svh-180px)]">
         <div className="p-2 space-y-1">
           {visibleMenuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeSection === item.id;
-            const isOpen = openSections.includes(item.id);
+            const isOpen = Boolean(needle) || openSections.includes(item.id);
             const hasChildren = item.children && item.children.length > 0;
             const visibleChildren = item.children?.filter(
               (c) => !c.superAdminOnly || isSuperAdmin

@@ -22,7 +22,7 @@ export interface MeetingTemplateRecord {
   description: string | null;
   template_items: MeetingTemplateItem[] | null;
   is_default?: boolean;
-  default_participants?: Record<string, unknown>[];
+  default_participants?: string[];
   default_recurrence?: Record<string, unknown> | null;
   auto_create_count?: number;
   default_visibility?: string;

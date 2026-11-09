@@ -4,4 +4,3 @@ export function getAdministrationAccess(tenantRole: string | null, platformAdmin
     isSuperAdmin: platformAdmin,
   };
 }
-

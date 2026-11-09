@@ -12,6 +12,45 @@ export const accessBoundariesScenario: TestScenario = {
   limitations: ["Getestet wird die aktuelle Rolle. Für die vollständige Rollenmatrix mit beiden Testkonten ausführen.", "Lesetrennung zweier existierender Büros erfordert eine separate Testumgebung mit zwei Konten."],
   steps: [
     {
+      id: "admin-sort-guard", label: "Konfigurationssortierung: Rollenprüfung und Tabellen-Whitelist", kind: "workflow",
+      run: async ctx => {
+        const [platform, office] = await Promise.all([
+          supabase.rpc("is_superadmin", { _user_id: ctx.userId }),
+          supabase.rpc("is_tenant_admin", { _user_id: ctx.userId, _tenant_id: ctx.tenantId }),
+        ]);
+        if (platform.error || office.error) return { ok: false, message: describeError(platform.error ?? office.error) };
+        const globalSort = await supabase.rpc("reorder_admin_items", { _tenant_id: ctx.tenantId, _table: "task_statuses", _ids: [] });
+        if (platform.data ? Boolean(globalSort.error) : globalSort.error?.code !== "42501") return { ok: false, message: "Globale Stammdaten erfordern Plattformrechte.", details: globalSort.error };
+        const result = await supabase.rpc("reorder_admin_items", { _tenant_id: ctx.tenantId, _table: "__selftest_forbidden__", _ids: [] });
+        const expectedCode = platform.data || office.data ? "22023" : "42501";
+        return { ok: result.error?.code === expectedCode, message: result.error?.code === expectedCode ? "Unzulässige Sortierung vor Schreibzugriff abgewiesen." : "Sortiersperre fehlt.", details: result.error };
+      },
+    },
+    {
+      id: "calendar-schedule", label: "Kalenderplan: Minuten, Sommerzeit und Wiederholungsstunde", kind: "workflow",
+      run: async () => {
+        const cases = [
+          ["2026-11-09T05:00:00Z", "2026-11-08 06:30:00"],
+          ["2026-11-09T05:30:00Z", "2026-11-09 06:30:00"],
+          ["2026-07-09T04:30:00Z", "2026-07-09 06:30:00"],
+          ["2026-10-25T01:35:00Z", "2026-10-24 06:30:00"],
+        ];
+        for (const [now, expected] of cases) {
+          const result = await supabase.rpc("calendar_sync_slot", { _now: now, _time: "06:30", _interval: 24, _timezone: "Europe/Berlin" });
+          if (result.error || result.data?.replace("T", " ").slice(0, 19) !== expected) return { ok: false, message: "Kalenderplan weicht ab.", details: { now, expected, actual: result.data, error: result.error } };
+        }
+        return { ok: true, message: "Minuten und Zeitzonen des Kalenderplans korrekt." };
+      },
+    },
+    {
+      id: "office-default-template", label: "Meeting-Standardvorlage ist pro Büro eindeutig", kind: "workflow",
+      run: async ctx => {
+        const result = await supabase.from("meeting_templates").select("id").eq("tenant_id", ctx.tenantId).eq("is_default", true);
+        if (result.error) return { ok: false, message: describeError(result.error) };
+        return { ok: (result.data?.length ?? 0) <= 1, message: `${result.data?.length ?? 0} Standardvorlagen im aktuellen Büro.` };
+      },
+    },
+    {
       id: "admin-role-guard", label: "Globale Rollenänderung: Plattformrecht und gültige Rolle erforderlich", kind: "workflow",
       run: async (ctx) => {
         const platform = await supabase.rpc("is_superadmin", { _user_id: ctx.userId });

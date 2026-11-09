@@ -38,14 +38,14 @@ function useTenantFeatureFlagsMap() {
 
 export function useTenantFeatureFlag(key: string): { enabled: boolean; isLoading: boolean } {
   const { data, isLoading } = useTenantFeatureFlagsMap();
-  if (isLoading || !data) return { enabled: true, isLoading };
+  if (isLoading || !data) return { enabled: false, isLoading };
   const entry = data.get(key);
   return { enabled: entry ? entry.enabled : true, isLoading: false };
 }
 
 export function useTenantFeatureFlagWithConfig<T = Record<string, unknown>>(key: string) {
   const { data, isLoading } = useTenantFeatureFlagsMap();
-  if (isLoading || !data) return { enabled: true, config: {} as T, isLoading };
+  if (isLoading || !data) return { enabled: false, config: {} as T, isLoading };
   const entry = data.get(key);
   return {
     enabled: entry ? entry.enabled : true,

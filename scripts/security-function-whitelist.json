@@ -25,18 +25,6 @@
       "reason": "Legacy implementation; remediation tracked separately."
     },
     {
-      "functionName": "ics-validation",
-      "rule": "drift-missing-config",
-      "reviewer": "@security-reviewer",
-      "reason": "Legacy implementation; remediation tracked separately."
-    },
-    {
-      "functionName": "ics-validation",
-      "rule": "drift-missing-matrix",
-      "reviewer": "@security-reviewer",
-      "reason": "Legacy implementation; remediation tracked separately."
-    },
-    {
       "functionName": "import-administrative-boundaries",
       "rule": "drift-missing-config",
       "reviewer": "@security-reviewer",
@@ -260,12 +248,6 @@
     },
     {
       "functionName": "global-logout",
-      "rule": "wildcard-cors",
-      "reviewer": "@security-reviewer",
-      "reason": "Legacy implementation; remediation tracked separately."
-    },
-    {
-      "functionName": "ics-validation",
       "rule": "wildcard-cors",
       "reviewer": "@security-reviewer",
       "reason": "Legacy implementation; remediation tracked separately."

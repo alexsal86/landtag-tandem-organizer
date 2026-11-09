@@ -172,22 +172,17 @@ export function RSSSourceManager() {
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
 
-    // Update order_index
-    const updates = items.map((item, index) => ({
-      id: item.id,
-      order_index: index,
-    }));
-
     setSources(items);
 
-    // Update in database
-    for (const update of updates) {
-      await supabase
-        .from("rss_sources")
-        .update({ order_index: update.order_index })
-        .eq("id", update.id);
+    if (!currentTenant?.id) return;
+    const { error } = await supabase.rpc("reorder_admin_items", {
+      _table: "rss_sources", _tenant_id: currentTenant.id, _ids: items.map(item => item.id),
+    });
+    if (error) {
+      notify.error("Reihenfolge konnte nicht gespeichert werden");
+      await loadSources();
+      return;
     }
-
     notify.success("Reihenfolge aktualisiert");
   };
 
@@ -211,7 +206,7 @@ export function RSSSourceManager() {
         notify.error("Die URL scheint kein gültiger RSS-Feed zu sein");
       }
     } catch (error: unknown) {
-      notify.error(`Fehler beim Testen: ${error instanceof Error ? error.message : String(error)}`);
+      notify.error("Feed-Test im Browser nicht möglich", { description: "Der Feed kann durch CORS blockiert sein. Dies bedeutet nicht, dass die Quelle ungültig ist." });
     } finally {
       setTestingUrl(false);
     }

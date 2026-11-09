@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { Save, RotateCcw, Eye, Mail } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useTenant } from '@/hooks/useTenant';
 import { notify } from "@/lib/notify";
 
 interface NewsEmailTemplate {
@@ -20,6 +21,7 @@ interface NewsEmailTemplate {
 }
 
 export const NewsEmailTemplateManager: React.FC = () => {
+  const { currentTenant } = useTenant();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [template, setTemplate] = useState<NewsEmailTemplate>({
@@ -34,28 +36,16 @@ export const NewsEmailTemplateManager: React.FC = () => {
 
   useEffect(() => {
     loadTemplate();
-  }, []);
+  }, [currentTenant?.id]);
 
   const loadTemplate = async () => {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: memberships } = await supabase
-        .from('user_tenant_memberships')
-        .select('tenant_id')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .limit(1)
-        .single();
-
-      if (!memberships?.tenant_id) return;
-
+      if (!currentTenant?.id) return;
       const { data, error } = await supabase
         .from('news_email_templates')
         .select('id, subject, greeting, introduction, closing, signature')
-        .eq('tenant_id', memberships.tenant_id)
+        .eq('tenant_id', currentTenant.id)
         .limit(1)
         .single();
 
@@ -77,19 +67,7 @@ export const NewsEmailTemplateManager: React.FC = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      const { data: memberships } = await supabase
-        .from('user_tenant_memberships')
-        .select('tenant_id')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .limit(1)
-        .single();
-
-      if (!memberships?.tenant_id) throw new Error('No tenant found');
-
+      if (!currentTenant?.id) throw new Error('Kein Büro ausgewählt');
       if (template.id) {
         // Update existing
         const { error } = await supabase
@@ -101,7 +79,7 @@ export const NewsEmailTemplateManager: React.FC = () => {
             closing: template.closing,
             signature: template.signature
           })
-          .eq('id', template.id);
+          .eq('id', template.id).eq('tenant_id', currentTenant.id);
 
         if (error) throw error;
       } else {
@@ -109,7 +87,7 @@ export const NewsEmailTemplateManager: React.FC = () => {
         const { data, error } = await supabase
           .from('news_email_templates')
           .insert([{
-            tenant_id: memberships.tenant_id,
+            tenant_id: currentTenant.id,
             subject: template.subject,
             greeting: template.greeting,
             introduction: template.introduction,

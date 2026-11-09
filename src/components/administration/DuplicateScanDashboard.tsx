@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,15 +28,19 @@ export function DuplicateScanDashboard() {
   const [rows, setRows] = useState<DupRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [threshold, setThreshold] = useState(0.6);
+  const [scanThreshold, setScanThreshold] = useState(0.6);
+  const sequence = useRef(0);
 
   const scan = useCallback(async () => {
     if (!currentTenant?.id) return;
+    const request = ++sequence.current;
     setLoading(true);
     const { data, error } = await supabase.rpc("find_contact_duplicates_trgm", {
       _tenant_id: currentTenant.id,
-      _threshold: threshold,
+      _threshold: scanThreshold,
       _limit: 200,
     });
+    if (request !== sequence.current) return;
     setLoading(false);
     if (error) {
       notify.error("Fehler", { description: error.message
@@ -44,9 +48,9 @@ export function DuplicateScanDashboard() {
       return;
     }
     setRows((data ?? []) as DupRow[]);
-  }, [currentTenant?.id, threshold, toast]);
+  }, [currentTenant?.id, scanThreshold, toast]);
 
-  useEffect(() => { void scan(); }, [scan]);
+  useEffect(() => { void scan(); return () => { sequence.current += 1; }; }, [scan]);
 
   return (
     <Card>
@@ -58,7 +62,7 @@ export function DuplicateScanDashboard() {
           </CardTitle>
           <CardDescription>
             Server-seitige Trigramm-Suche. Schwellwert: <strong>{Math.round(threshold * 100)}%</strong>
-            {" · "}<strong>{rows.length}</strong> Paare gefunden.
+            {" · "}<strong>{rows.length}</strong> Paare gefunden (maximal 200).
           </CardDescription>
         </div>
         <Button onClick={scan} disabled={loading} size="sm">
@@ -72,6 +76,7 @@ export function DuplicateScanDashboard() {
           <Slider
             value={[threshold]}
             onValueChange={(v) => setThreshold(v[0])}
+            onValueCommit={(v) => setScanThreshold(v[0])}
             min={0.4}
             max={0.95}
             step={0.05}

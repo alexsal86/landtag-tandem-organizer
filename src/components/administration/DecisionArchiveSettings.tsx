@@ -73,6 +73,10 @@ export const DecisionArchiveSettings = () => {
   const handleSave = async () => {
     if (!currentTenant) return;
     
+    const values = [autoArchiveDays, autoDeleteDays].filter(Boolean);
+    if (values.some(value => !Number.isInteger(Number(value)) || Number(value) < 1 || Number(value) > 3650)) {
+      notify.error('Bitte ganze Tageszahlen zwischen 1 und 3650 eingeben.'); return;
+    }
     try {
       setSaving(true);
       const { data: { user } } = await supabase.auth.getUser();

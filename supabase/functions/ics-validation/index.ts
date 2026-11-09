@@ -2,11 +2,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { buildExternalFeedErrorMessage, parseICSForValidation } from './ics-validation.utils.ts'
 
-import { withSafeHandler, requireAuth, unauthorizedResponse } from "../_shared/security.ts";
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { getCorsHeaders, withSafeHandler, requireAuth, unauthorizedResponse } from "../_shared/security.ts";
+
 
 interface ValidationResult {
   icsEventCount: number;
@@ -23,6 +20,7 @@ interface ValidationResult {
 }
 
 export const handler = async (req: Request) => {
+  const corsHeaders = getCorsHeaders(req);
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -60,8 +58,16 @@ export const handler = async (req: Request) => {
       throw new Error(`Failed to fetch calendar config: ${configError.message}`);
     }
 
-    console.log(`📊 Calendar: ${calendarConfig.name}`);
-    console.log(`🔗 ICS URL: ${calendarConfig.ics_url}`);
+    const { data: membership, error: membershipError } = await supabase
+      .from('user_tenant_memberships').select('role')
+      .eq('user_id', auth.userId).eq('tenant_id', calendarConfig.tenant_id)
+      .eq('is_active', true).maybeSingle();
+    const { data: platformAdmin, error: platformError } = await supabase.rpc('is_superadmin', { _user_id: auth.userId });
+    if (membershipError || platformError || (!platformAdmin && !['abgeordneter', 'bueroleitung'].includes(membership?.role ?? ''))) {
+      return new Response(JSON.stringify({ error: 'Keine Berechtigung für diesen Kalender' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Download ICS content
     console.log('📥 Fetching ICS content...');

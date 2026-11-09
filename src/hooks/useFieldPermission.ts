@@ -44,7 +44,7 @@ export function useFieldPermission(
   const { data, isLoading } = useFieldPermissionsMap();
 
   if (isLoading || roleLoading || !data) {
-    return { canRead: true, canWrite: true, isLoading: true };
+    return { canRead: false, canWrite: false, isLoading: isLoading || roleLoading };
   }
   if (!role) return { canRead: false, canWrite: false, isLoading: false };
 

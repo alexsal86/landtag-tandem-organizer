@@ -33,7 +33,7 @@ export function useActionPermission(actionKey: string): { allowed: boolean; isLo
     },
   });
 
-  if (isLoading || roleLoading || !data) return { allowed: true, isLoading: true };
+  if (isLoading || roleLoading || !data) return { allowed: false, isLoading: isLoading || roleLoading };
   const allowedRoles = data.get(actionKey);
   if (!allowedRoles) return { allowed: true, isLoading: false };
   if (!role) return { allowed: false, isLoading: false };

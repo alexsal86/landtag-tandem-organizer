@@ -2,6 +2,8 @@ import { adminMenuItems } from "./AdminSidebar";
 
 const DEFAULT_SUB_SECTION: Record<string, string> = {
   security: "general",
+  personal: "matrix",
+  finance: "expense",
   users: "status",
   calendar: "config",
   content: "topics",
@@ -16,6 +18,9 @@ export const resolveNavigationState = (
   subSection: string | null,
   isSuperAdmin: boolean,
 ) : { section: string; subSection: string } => {
+  // Preserve saved links when moving personal and financial settings.
+  if (section === "security" && subSection === "expense") section = "finance";
+  if ((section === "users" && subSection === "matrix") || (section === "content" && subSection === "archiving") || (section === "templates" && subSection === "celebrations")) section = "personal";
   const visibleSections = adminMenuItems.filter((item) => !item.superAdminOnly || isSuperAdmin);
   const fallbackSection = visibleSections[0]?.id ?? "security";
   const matchedSection = visibleSections.find((item) => item.id === section) ??
@@ -31,4 +36,3 @@ export const resolveNavigationState = (
 
   return { section: nextSection, subSection: nextSubSection };
 };
-

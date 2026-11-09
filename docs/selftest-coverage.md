@@ -4,7 +4,7 @@ _Auto-generiert mit `npm run update:selftest-coverage`._
 
 Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
 
-Von 267 Tabellen haben 29 ein registriertes Szenario. 82 sind als Ausbau offen, 156 ausgenommen und 0 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
+Von 268 Tabellen haben 29 ein registriertes Szenario. 83 sind als Ausbau offen, 156 ausgenommen und 0 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
@@ -46,6 +46,7 @@ Von 267 Tabellen haben 29 ein registriertes Szenario. 82 sind als Ausbau offen, 
 | `appointment_locations` | Ausgenommen (nicht geprüft) | — |
 | `appointment_polls` | Ausgenommen (nicht geprüft) | — |
 | `appointment_preparation_documents` | Ausgenommen (nicht geprüft) | — |
+| `appointment_preparation_history` | Ausstehend | — |
 | `appointment_preparation_templates` | Ausgenommen (nicht geprüft) | — |
 | `appointment_preparations` | Szenario vorhanden | appointment-lifecycle |
 | `appointment_requests` | Szenario vorhanden | access-boundaries, appointment-request-lifecycle, case-item-lifecycle |

@@ -32,6 +32,11 @@ afterEach(cleanup);
 const loaded = () => waitFor(() => expect(screen.queryByText("Berechtigungen werden geladen…")).not.toBeInTheDocument());
 
 describe("permission persistence", () => {
+  it("marks the rules as a preview rather than promising effective access control", async () => {
+    render(<PermissionsManager />);
+    await loaded();
+    expect(screen.getByText(/kein verlässlicher Zugriffsschutz/)).toBeInTheDocument();
+  });
   it("shows a load failure instead of editable default permissions", async () => {
     mock.readError = true;
     render(<PermissionsManager />);

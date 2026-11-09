@@ -91,18 +91,16 @@ export const EventEmailTemplateManager: React.FC = () => {
 
       if (error) throw error;
 
-      if (data && data.length > 0) {
-        setTemplates(prev => {
-          const next = { ...prev };
-          for (const row of data) {
-            const type = row.type as TemplateType;
-            if (TEMPLATE_TYPES.includes(type)) {
-              next[type] = { id: row.id, subject: row.subject ?? '', body: row.body ?? '' };
-            }
-          }
-          return next;
-        });
+      const next: Record<TemplateType, TemplateState> = {
+        invitation: { id: null, ...DEFAULTS.invitation },
+        reminder: { id: null, ...DEFAULTS.reminder },
+        note: { id: null, ...DEFAULTS.note },
+      };
+      for (const row of data ?? []) {
+        const type = row.type as TemplateType;
+        if (TEMPLATE_TYPES.includes(type)) next[type] = { id: row.id, subject: row.subject ?? '', body: row.body ?? '' };
       }
+      setTemplates(next);
     } catch (error) {
       debugConsole.error('Error loading event email templates:', error);
       notify.error('Fehler beim Laden der Vorlagen');

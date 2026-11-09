@@ -181,6 +181,8 @@ export const IGNORED_TABLES: string[] = [
 
 /** Bekannte Lücken. Diese Tabellen zählen ausdrücklich NICHT als getestet. */
 export const DEFERRED_TABLES: string[] = [
+  // Audit history needs a dedicated preparation lifecycle assertion; not covered by the admin tests.
+  "appointment_preparation_history",
   // Sicherheits-, Onboarding- und Automationsabläufe benötigen eigene Szenarien.
   "action_permissions", "field_permissions", "superadmin_users", "gdpr_requests",
   "contact_briefing_memory", "facts", "tenant_onboarding_checklist_items",

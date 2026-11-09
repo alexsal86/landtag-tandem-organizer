@@ -150,30 +150,40 @@ serve(withSafeHandler("manage-tenant-user", async (req) => {
         await logAdminAction(supabaseAdmin, user.id, user.email, 'platform_admin.list_all_users');
 
         // Get all users from auth
-        const { data: authUsers, error: usersError } = await supabaseAdmin.auth.admin.listUsers();
-        if (usersError) throw usersError;
-
-        // Get all profiles
-        const { data: profiles } = await supabaseAdmin
-          .from('profiles')
-          .select('user_id, display_name, avatar_url');
-
-        // Get all memberships with tenant info
-        const { data: memberships } = await supabaseAdmin
-          .from('user_tenant_memberships')
-          .select(`
-            user_id,
-            tenant_id,
-            role,
-            is_active,
-            tenants:tenant_id (id, name)
-          `)
-          .eq('is_active', true);
+        const allAuthUsers = [];
+        for (let page = 1; ; page++) {
+          const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 500 });
+          if (error) throw error;
+          allAuthUsers.push(...data.users);
+          if (data.users.length < 500) break;
+        }
+        const readAll = async (table: string, columns: string, activeOnly = false) => {
+          const rows = [];
+          for (let offset = 0; ; offset += 500) {
+            let query = supabaseAdmin.from(table).select(columns).order('id').range(offset, offset + 499);
+            if (activeOnly) query = query.eq('is_active', true);
+            const { data, error } = await query;
+            if (error) throw error;
+            rows.push(...(data ?? []));
+            if (!data || data.length < 500) break;
+          }
+          return rows;
+        };
+        const [profiles, memberships] = await Promise.all([
+          readAll('profiles', 'user_id, display_name, avatar_url'),
+          readAll('user_tenant_memberships', 'user_id, tenant_id, role, is_active, tenants:tenant_id (id, name)', true),
+        ]);
+        const profileMap = new Map(profiles.map(profile => [profile.user_id, profile]));
+        const membershipMap = new Map<string, typeof memberships>();
+        for (const membership of memberships) {
+          const list = membershipMap.get(membership.user_id) ?? [];
+          list.push(membership); membershipMap.set(membership.user_id, list);
+        }
 
         // Build user list with tenant info
-        const users = authUsers.users.map(authUser => {
-          const profile = profiles?.find(p => p.user_id === authUser.id);
-          const userMemberships = memberships?.filter(m => m.user_id === authUser.id) || [];
+        const users = allAuthUsers.map(authUser => {
+          const profile = profileMap.get(authUser.id);
+          const userMemberships = membershipMap.get(authUser.id) ?? [];
 
           return {
             id: authUser.id,

@@ -1,67 +1,12 @@
-import { PlanningDefaultCollaboratorsSettings } from "@/components/administration/PlanningDefaultCollaboratorsSettings";
-import { useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { GeneralSettings } from "@/components/admin/GeneralSettings";
-import { ExpenseManagement } from "@/features/expenses/components/ExpenseManagement";
-import { StatusAdminSettings } from "@/components/status/StatusAdminSettings";
 import { Button } from "@/components/ui/button";
 import { Clock, MapPin, Building } from "lucide-react";
-import { DecisionEmailTemplates } from "@/components/task-decisions/DecisionEmailTemplates";
-import { DefaultGuestsAdmin } from "@/features/appointments/components/DefaultGuestsAdmin";
-import AppointmentPreparationTemplateAdmin from "@/features/appointments/components/AppointmentPreparationTemplateAdmin";
-import { DistrictSupportManager } from "@/components/administration/DistrictSupportManager";
-import { PartyDistrictMappingManager } from "@/components/administration/PartyDistrictMappingManager";
-import { CalendarSyncDebug } from "@/features/calendar/components/CalendarSyncDebug";
-import { PartyAssociationsAdmin } from "@/features/election-districts/components/PartyAssociationsAdmin";
-import { RSSSourceManager } from "@/components/administration/RSSSourceManager";
-import { RSSSettingsManager } from "@/components/administration/RSSSettingsManager";
-import { CalendarSyncSettings } from "@/components/administration/CalendarSyncSettings";
-import { LoginCustomization } from "@/components/administration/LoginCustomization";
-import { UserColorManager } from "@/components/administration/UserColorManager";
-import { DecisionArchiveSettings } from "@/components/administration/DecisionArchiveSettings";
-import { MatrixSettings } from "@/components/admin/MatrixSettings";
-import { VacationChecklistAdmin } from "@/components/administration/VacationChecklistAdmin";
-import { NewsEmailTemplateManager } from "@/components/administration/NewsEmailTemplateManager";
-import { EventEmailTemplateManager } from "@/components/administration/EventEmailTemplateManager";
-import { AuditLogViewer } from "@/components/administration/AuditLogViewer";
-import { PermissionsManager } from "@/components/administration/PermissionsManager";
-import { TopicSettings } from "@/components/administration/TopicSettings";
-import { ConfigurableTypeSettings } from "@/components/administration/ConfigurableTypeSettings";
-import { AnnualTasksView } from "@/features/timetracking/components/AnnualTasksView";
-import LetterTemplateManager from "@/features/letters/components/LetterTemplateManager";
 import { AdminSidebar, adminMenuItems } from "@/components/administration/AdminSidebar";
-import { LetterOccasionManager } from "@/components/administration/LetterOccasionManager";
-import { PressTemplateManager } from "@/components/administration/PressTemplateManager";
-import { PressOccasionManager } from "@/components/administration/PressOccasionManager";
-import { SuperadminTenantManagement } from "@/components/administration/SuperadminTenantManagement";
-import { GeoDataImport } from "@/components/administration/GeoDataImport";
-import { MapLayerAdmin } from "@/components/administration/MapLayerAdmin";
-import { MyWorkSystemOverview } from "@/components/administration/MyWorkSystemOverview";
-import { OnboardingSlidesManager } from "@/components/administration/OnboardingSlidesManager";
-import { DashboardHintSettings } from "@/components/administration/DashboardHintSettings";
-import { MotivationalMessagesOverview } from "@/components/administration/MotivationalMessagesOverview";
-import { StakeholderNetworkTagSettings } from "@/components/administration/StakeholderNetworkTagSettings";
-import { DataLintDashboard } from "@/components/administration/DataLintDashboard";
-import { DuplicateScanDashboard } from "@/components/administration/DuplicateScanDashboard";
-import { BulkActionAuditViewer } from "@/components/administration/BulkActionAuditViewer";
-import { PushNotificationTest } from "@/dev/PushNotificationTest";
-import { VapidKeyTest } from "@/dev/VapidKeyTest";
-import { DirectPushTest } from "@/dev/DirectPushTest";
-import { AutomationRulesManager } from "@/components/administration/AutomationRulesManager";
-import { WorkflowEngineManager } from "@/components/administration/WorkflowEngineManager";
-import { MeetingTemplateManager } from "@/components/administration/MeetingTemplateManager";
-import { PlanningTemplateManager } from "@/components/administration/PlanningTemplateManager";
-import { UserRolesManager } from "@/components/administration/UserRolesManager";
-import { OfficeSocialMediaSettings } from "@/components/administration/OfficeSocialMediaSettings";
-import { CelebrationSettingsCard } from "@/components/administration/CelebrationSettingsCard";
-import { SelftestView } from "@/features/selftest/components/SelftestView";
-import { PerformanceDashboard } from "@/components/administration/PerformanceDashboard";
-import { SecurityCockpit } from "@/components/administration/SecurityCockpit";
-import { GdprRequestsManager } from "@/components/administration/GdprRequestsManager";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -69,6 +14,62 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Menu } from "lucide-react";
 import { useAdministrationAccess } from "@/components/administration/useAdministrationAccess";
 import { resolveNavigationState } from "@/components/administration/adminNavigation";
+
+const PlanningDefaultCollaboratorsSettings = lazy(() => import("@/components/administration/PlanningDefaultCollaboratorsSettings").then(module => ({ default: module.PlanningDefaultCollaboratorsSettings })));
+const GeneralSettings = lazy(() => import("@/components/admin/GeneralSettings").then(module => ({ default: module.GeneralSettings })));
+const ExpenseManagement = lazy(() => import("@/features/expenses/components/ExpenseManagement").then(module => ({ default: module.ExpenseManagement })));
+const StatusAdminSettings = lazy(() => import("@/components/status/StatusAdminSettings").then(module => ({ default: module.StatusAdminSettings })));
+const DecisionEmailTemplates = lazy(() => import("@/components/task-decisions/DecisionEmailTemplates").then(module => ({ default: module.DecisionEmailTemplates })));
+const DefaultGuestsAdmin = lazy(() => import("@/features/appointments/components/DefaultGuestsAdmin").then(module => ({ default: module.DefaultGuestsAdmin })));
+const AppointmentPreparationTemplateAdmin = lazy(() => import("@/features/appointments/components/AppointmentPreparationTemplateAdmin"));
+const DistrictSupportManager = lazy(() => import("@/components/administration/DistrictSupportManager").then(module => ({ default: module.DistrictSupportManager })));
+const PartyDistrictMappingManager = lazy(() => import("@/components/administration/PartyDistrictMappingManager").then(module => ({ default: module.PartyDistrictMappingManager })));
+const CalendarSyncDebug = lazy(() => import("@/features/calendar/components/CalendarSyncDebug").then(module => ({ default: module.CalendarSyncDebug })));
+const PartyAssociationsAdmin = lazy(() => import("@/features/election-districts/components/PartyAssociationsAdmin").then(module => ({ default: module.PartyAssociationsAdmin })));
+const RSSSourceManager = lazy(() => import("@/components/administration/RSSSourceManager").then(module => ({ default: module.RSSSourceManager })));
+const RSSSettingsManager = lazy(() => import("@/components/administration/RSSSettingsManager").then(module => ({ default: module.RSSSettingsManager })));
+const CalendarSyncSettings = lazy(() => import("@/components/administration/CalendarSyncSettings").then(module => ({ default: module.CalendarSyncSettings })));
+const LoginCustomization = lazy(() => import("@/components/administration/LoginCustomization").then(module => ({ default: module.LoginCustomization })));
+const UserColorManager = lazy(() => import("@/components/administration/UserColorManager").then(module => ({ default: module.UserColorManager })));
+const DecisionArchiveSettings = lazy(() => import("@/components/administration/DecisionArchiveSettings").then(module => ({ default: module.DecisionArchiveSettings })));
+const MatrixSettings = lazy(() => import("@/components/admin/MatrixSettings").then(module => ({ default: module.MatrixSettings })));
+const VacationChecklistAdmin = lazy(() => import("@/components/administration/VacationChecklistAdmin").then(module => ({ default: module.VacationChecklistAdmin })));
+const NewsEmailTemplateManager = lazy(() => import("@/components/administration/NewsEmailTemplateManager").then(module => ({ default: module.NewsEmailTemplateManager })));
+const EventEmailTemplateManager = lazy(() => import("@/components/administration/EventEmailTemplateManager").then(module => ({ default: module.EventEmailTemplateManager })));
+const AuditLogViewer = lazy(() => import("@/components/administration/AuditLogViewer").then(module => ({ default: module.AuditLogViewer })));
+const PermissionsManager = lazy(() => import("@/components/administration/PermissionsManager").then(module => ({ default: module.PermissionsManager })));
+const TopicSettings = lazy(() => import("@/components/administration/TopicSettings").then(module => ({ default: module.TopicSettings })));
+const ConfigurableTypeSettings = lazy(() => import("@/components/administration/ConfigurableTypeSettings").then(module => ({ default: module.ConfigurableTypeSettings })));
+const AnnualTasksView = lazy(() => import("@/features/timetracking/components/AnnualTasksView").then(module => ({ default: module.AnnualTasksView })));
+const LetterTemplateManager = lazy(() => import("@/features/letters/components/LetterTemplateManager"));
+const LetterOccasionManager = lazy(() => import("@/components/administration/LetterOccasionManager").then(module => ({ default: module.LetterOccasionManager })));
+const PressTemplateManager = lazy(() => import("@/components/administration/PressTemplateManager").then(module => ({ default: module.PressTemplateManager })));
+const PressOccasionManager = lazy(() => import("@/components/administration/PressOccasionManager").then(module => ({ default: module.PressOccasionManager })));
+const SuperadminTenantManagement = lazy(() => import("@/components/administration/SuperadminTenantManagement").then(module => ({ default: module.SuperadminTenantManagement })));
+const GeoDataImport = lazy(() => import("@/components/administration/GeoDataImport").then(module => ({ default: module.GeoDataImport })));
+const MapLayerAdmin = lazy(() => import("@/components/administration/MapLayerAdmin").then(module => ({ default: module.MapLayerAdmin })));
+const MyWorkSystemOverview = lazy(() => import("@/components/administration/MyWorkSystemOverview").then(module => ({ default: module.MyWorkSystemOverview })));
+const OnboardingSlidesManager = lazy(() => import("@/components/administration/OnboardingSlidesManager").then(module => ({ default: module.OnboardingSlidesManager })));
+const DashboardHintSettings = lazy(() => import("@/components/administration/DashboardHintSettings").then(module => ({ default: module.DashboardHintSettings })));
+const MotivationalMessagesOverview = lazy(() => import("@/components/administration/MotivationalMessagesOverview").then(module => ({ default: module.MotivationalMessagesOverview })));
+const StakeholderNetworkTagSettings = lazy(() => import("@/components/administration/StakeholderNetworkTagSettings").then(module => ({ default: module.StakeholderNetworkTagSettings })));
+const DataLintDashboard = lazy(() => import("@/components/administration/DataLintDashboard").then(module => ({ default: module.DataLintDashboard })));
+const DuplicateScanDashboard = lazy(() => import("@/components/administration/DuplicateScanDashboard").then(module => ({ default: module.DuplicateScanDashboard })));
+const BulkActionAuditViewer = lazy(() => import("@/components/administration/BulkActionAuditViewer").then(module => ({ default: module.BulkActionAuditViewer })));
+const PushNotificationTest = lazy(() => import("@/dev/PushNotificationTest").then(module => ({ default: module.PushNotificationTest })));
+const VapidKeyTest = lazy(() => import("@/dev/VapidKeyTest").then(module => ({ default: module.VapidKeyTest })));
+const DirectPushTest = lazy(() => import("@/dev/DirectPushTest").then(module => ({ default: module.DirectPushTest })));
+const AutomationRulesManager = lazy(() => import("@/components/administration/AutomationRulesManager").then(module => ({ default: module.AutomationRulesManager })));
+const WorkflowEngineManager = lazy(() => import("@/components/administration/WorkflowEngineManager").then(module => ({ default: module.WorkflowEngineManager })));
+const MeetingTemplateManager = lazy(() => import("@/components/administration/MeetingTemplateManager").then(module => ({ default: module.MeetingTemplateManager })));
+const PlanningTemplateManager = lazy(() => import("@/components/administration/PlanningTemplateManager").then(module => ({ default: module.PlanningTemplateManager })));
+const UserRolesManager = lazy(() => import("@/components/administration/UserRolesManager").then(module => ({ default: module.UserRolesManager })));
+const OfficeSocialMediaSettings = lazy(() => import("@/components/administration/OfficeSocialMediaSettings").then(module => ({ default: module.OfficeSocialMediaSettings })));
+const CelebrationSettingsCard = lazy(() => import("@/components/administration/CelebrationSettingsCard").then(module => ({ default: module.CelebrationSettingsCard })));
+const SelftestView = lazy(() => import("@/features/selftest/components/SelftestView").then(module => ({ default: module.SelftestView })));
+const PerformanceDashboard = lazy(() => import("@/components/administration/PerformanceDashboard").then(module => ({ default: module.PerformanceDashboard })));
+const SecurityCockpit = lazy(() => import("@/components/administration/SecurityCockpit").then(module => ({ default: module.SecurityCockpit })));
+const GdprRequestsManager = lazy(() => import("@/components/administration/GdprRequestsManager").then(module => ({ default: module.GdprRequestsManager })));
 
 export default function Administration(): React.JSX.Element | null {
   const { user, loading } = useAuth();
@@ -118,14 +119,14 @@ export default function Administration(): React.JSX.Element | null {
       const { data: tasks } = await supabase
         .from('annual_tasks')
         .select('id, due_month')
-        .or(`tenant_id.eq.${currentTenant.id},is_system_task.eq.true`);
+        .eq('tenant_id', currentTenant.id);
       
-      if (!tasks) return;
+      if (!tasks?.length) { setAnnualTasksBadge(0); return; }
       
       const { data: completions } = await supabase
         .from('annual_task_completions')
         .select('annual_task_id')
-        .eq('year', currentYear);
+        .eq('year', currentYear).in('annual_task_id', tasks.map(task => task.id)).not('completed_at', 'is', null);
       
       const completedIds = new Set((completions ?? []).map((completion) => completion.annual_task_id));
       
@@ -181,6 +182,15 @@ export default function Administration(): React.JSX.Element | null {
   }
 
   const renderContent = (): React.JSX.Element | null => {
+    if (!currentTenant && (activeSection !== "superadmin" || ["roles", "map-layers"].includes(activeSubSection)) && activeSection !== "personal") {
+      return <p role="status">Bitte wählen Sie ein Büro aus. Die Plattformverwaltung ist unter „Super-Admin · Tenants“ erreichbar.</p>;
+    }
+    if (activeSection === "finance") return <ExpenseManagement />;
+    if (activeSection === "personal") {
+      if (activeSubSection === "matrix") return <MatrixSettings />;
+      if (activeSubSection === "archiving") return <DecisionArchiveSettings />;
+      if (activeSubSection === "celebrations") return <CelebrationSettingsCard />;
+    }
     // SECTION 1: System & Sicherheit
     if (activeSection === "security") {
       switch (activeSubSection) {
@@ -247,11 +257,11 @@ export default function Administration(): React.JSX.Element | null {
           return (
             <div className="space-y-6">
               <ConfigurableTypeSettings title="Aufgaben-Kategorien" tableName="task_categories" entityName="Kategorie" hasIcon={true} hasColor={true} defaultIcon="CheckSquare" defaultColor="#3b82f6" deleteWarning="Sind Sie sicher, dass Sie diese Kategorie löschen möchten?" />
-              <ConfigurableTypeSettings title="Aufgaben-Status" tableName="task_statuses" entityName="Status" hasIcon={false} hasColor={false} deleteWarning="Sind Sie sicher, dass Sie diesen Status löschen möchten?" />
+              <ConfigurableTypeSettings readOnly={!isSuperAdmin} title="Aufgaben-Status (plattformweit)" tableName="task_statuses" entityName="Status" hasIcon={false} hasColor={false} deleteWarning="Sind Sie sicher, dass Sie diesen Status löschen möchten?" />
             </div>
           );
         case "todos":
-          return <ConfigurableTypeSettings title="ToDo-Kategorien" tableName="todo_categories" entityName="Kategorie" hasIcon={true} hasColor={true} defaultIcon="ListTodo" defaultColor="#10b981" deleteWarning="Sind Sie sicher, dass Sie diese Kategorie löschen möchten?" />;
+          return <ConfigurableTypeSettings readOnly={!isSuperAdmin} title="ToDo-Kategorien (plattformweit)" tableName="todo_categories" entityName="Kategorie" hasIcon={true} hasColor={true} defaultIcon="ListTodo" defaultColor="#10b981" deleteWarning="Sind Sie sicher, dass Sie diese Kategorie löschen möchten?" />;
         case "decisions": return <DecisionEmailTemplates />;
         case "archiving":
           return (
@@ -437,7 +447,13 @@ export default function Administration(): React.JSX.Element | null {
       <div className="flex-1 overflow-hidden">
         <ScrollArea className="h-full">
           <div className="p-3 md:p-6">
-            {renderContent()}
+            <header className="mb-5 border-b pb-3">
+              <p className="text-xs text-muted-foreground">{activeSection === "personal" ? `Persönliche Einstellung · Büro: ${currentTenant?.name ?? "Kein Büro ausgewählt"}` : `Aktuelles Büro: ${currentTenant?.name ?? "Kein Büro ausgewählt"}`}</p>
+              <p className="mt-1 text-sm font-medium">{currentSectionLabel}{currentSubSectionLabel ? ` · ${currentSubSectionLabel}` : ""}</p>
+            </header>
+            <Suspense fallback={<p role="status">Bereich wird geladen…</p>}>
+              <div key={`${currentTenant?.id ?? "platform"}:${activeSection}:${activeSubSection}`}>{renderContent()}</div>
+            </Suspense>
           </div>
         </ScrollArea>
       </div>

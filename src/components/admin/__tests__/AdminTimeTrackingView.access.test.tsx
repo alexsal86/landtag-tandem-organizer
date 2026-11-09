@@ -1,3 +1,4 @@
+import { MemoryRouter } from "react-router-dom";
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
@@ -88,7 +89,7 @@ describe("AdminTimeTrackingView access", () => {
   it("hides and blocks admin actions for non-admin users", async () => {
     authState.user = fixtures.users.employee;
 
-    render(<AdminTimeTrackingView />);
+    render(<MemoryRouter><AdminTimeTrackingView /></MemoryRouter>);
 
     await waitFor(() => {
       expect(screen.getByText("Dieser Bereich ist nur für Administratoren verfügbar.")).toBeInTheDocument();
@@ -101,7 +102,7 @@ describe("AdminTimeTrackingView access", () => {
     authState.user = fixtures.users.admin;
     tenantState.currentTenant = fixtures.tenants.b;
 
-    render(<AdminTimeTrackingView />);
+    render(<MemoryRouter><AdminTimeTrackingView /></MemoryRouter>);
 
     await waitFor(() => {
       expect(queries).toEqual(

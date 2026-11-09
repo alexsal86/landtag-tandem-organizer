@@ -1,13 +1,13 @@
 # Security Function Matrix
 
-Stand: 2026-03-20
+Stand: 2026-11-09
 
 Diese Matrix klassifiziert alle Supabase Edge Functions nach Sicherheitsmodell.
 
 ## Kategorien
 
 - **authenticated**: `verify_jwt = true` (Standard für user-getriggerte Aufrufe).
-- **internal-scheduled**: `verify_jwt = false`, Aufruf ausschließlich durch Scheduler/Cron oder internen Worker.
+- **internal-scheduled**: Aufruf ausschließlich durch Scheduler/Cron oder internen Worker mit Service-Role-Prüfung; `verify_jwt` kann zusätzlich aktiv sein.
 - **public-webhook**: `verify_jwt = false`, aber zusätzlicher Secret-/Signatur-Check erforderlich.
 - **public-readonly**: `verify_jwt = false`, bewusst öffentlich und ohne privilegierte Schreiboperationen.
 
@@ -24,7 +24,7 @@ Diese Matrix klassifiziert alle Supabase Edge Functions nach Sicherheitsmodell.
 | create-demo-users                 |       true | authenticated      | JWT erforderlich                                                                                                                                                                                          |
 | create-admin-user                 |       true | authenticated      | JWT erforderlich                                                                                                                                                                                          |
 | sync-external-calendar            |       true | authenticated      | JWT erforderlich                                                                                                                                                                                          |
-| auto-sync-calendars               |       true | authenticated      | JWT erforderlich                                                                                                                                                                                          |
+| auto-sync-calendars               |       true | internal-scheduled      | Service-Role erforderlich; atomare Kalender-Claims verhindern doppelte Ausführungen.                                                                                                                                                                                          |
 | send-decision-email               |       true | authenticated      | JWT erforderlich                                                                                                                                                                                          |
 | process-decision-response         |      false | public-webhook     | Öffentliche Gastantworten                                                                                                                                                                                 |
 | archive-letter                    |       true | authenticated      | JWT erforderlich                                                                                                                                                                                          |
@@ -65,3 +65,5 @@ Diese Matrix klassifiziert alle Supabase Edge Functions nach Sicherheitsmodell.
 2. Jede Ausnahme (`verify_jwt = false`) muss einer Kategorie zugeordnet und dokumentiert sein.
 3. `public-webhook` Endpunkte benötigen verpflichtend einen weiteren Schutz (Secret/Signatur/Allowlist).
 4. `internal-scheduled` Endpunkte dürfen nicht als allgemeine Browser-API genutzt werden.
+
+| ics-validation | true | authenticated | Aktive Büro-Adminrolle oder Plattformadministration vor Feed- und Terminzugriff erforderlich. |

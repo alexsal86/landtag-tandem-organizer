@@ -1538,6 +1538,10 @@ export type Database = {
           id: string
           is_enabled: boolean
           sync_interval_hours: number
+          timezone: string
+          last_success_slot: string | null
+          claimed_slot: string | null
+          claimed_at: string | null
           sync_time: string
           tenant_id: string
           updated_at: string | null
@@ -1547,6 +1551,10 @@ export type Database = {
           id?: string
           is_enabled?: boolean
           sync_interval_hours?: number
+          timezone?: string
+          last_success_slot?: string | null
+          claimed_slot?: string | null
+          claimed_at?: string | null
           sync_time?: string
           tenant_id: string
           updated_at?: string | null
@@ -1556,6 +1564,10 @@ export type Database = {
           id?: string
           is_enabled?: boolean
           sync_interval_hours?: number
+          timezone?: string
+          last_success_slot?: string | null
+          claimed_slot?: string | null
+          claimed_at?: string | null
           sync_time?: string
           tenant_id?: string
           updated_at?: string | null
@@ -3382,6 +3394,7 @@ export type Database = {
       }
       decision_email_templates: {
         Row: {
+          details_block_template: string | null
           closing: string
           created_at: string
           greeting: string
@@ -3395,6 +3408,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          details_block_template?: string | null
           closing?: string
           created_at?: string
           greeting?: string
@@ -3408,6 +3422,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          details_block_template?: string | null
           closing?: string
           created_at?: string
           greeting?: string
@@ -13535,6 +13550,14 @@ export type Database = {
       }
     }
     Functions: {
+      calendar_sync_slot: { Args: { _now: string; _time: string; _interval: number; _timezone: string }; Returns: string }
+
+      get_admin_tenant_health: { Args: Record<PropertyKey, never>; Returns: Json }
+      set_admin_user_colors: { Args: { _tenant_id: string; _updates: Json }; Returns: undefined }
+
+      reorder_admin_items: { Args: { _table: string; _tenant_id: string; _ids: string[] }; Returns: undefined }
+      search_admin_audit_logs: { Args: { _tenant_id: string; _search?: string; _ip?: string; _offset?: number; _limit?: number }; Returns: Json }
+
       replace_user_role: {
         Args: { _tenant_id: string; _user_id: string; _role: string | null }
         Returns: undefined

@@ -1,5 +1,7 @@
 # Prüfung des Adminbereichs – 9. November 2026
 
+**Nachfolgende Umsetzung:** [Umsetzungsstand und verbleibende Aufgaben](admin-implementation-2026-11-09.md).
+
 ## Umfang und Aussagekraft
 
 Bestandsaufnahme aller **56 sichtbaren Unterpunkte in sieben Menügruppen** anhand von `AdminSidebar.tsx`, `Administration.tsx` und den zugehörigen Komponenten, Hooks und relevanten Migrationen/Edge Functions. Vertiefte Prüfung der unten genannten Fehlerpfade. Vier Fehler wurden mit lokalem PostgreSQL beziehungsweise der tatsächlichen Zeitberechnung nachgestellt. Keine Änderungen an Produktivdaten oder am Anwendungscode während dieser erweiterten Prüfung.

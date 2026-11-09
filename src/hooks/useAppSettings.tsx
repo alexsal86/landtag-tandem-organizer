@@ -36,6 +36,12 @@ const mapAppSettings = (rows: AppSettingRow[] | null | undefined): Partial<Recor
 
 export function AppSettingsProvider({ children }: { children: ReactNode }) {
   const { currentTenant, loading: tenantLoading } = useTenant();
+  const [revision, setRevision] = useState(0);
+  useEffect(() => {
+    const refresh = () => setRevision(value => value + 1);
+    window.addEventListener("app-settings-updated", refresh);
+    return () => window.removeEventListener("app-settings-updated", refresh);
+  }, []);
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
 
   useEffect(() => {
@@ -97,7 +103,7 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
     };
 
     loadSettings();
-  }, [currentTenant?.id, tenantLoading]);
+  }, [currentTenant?.id, tenantLoading, revision]);
 
   return (
     <AppSettingsContext.Provider value={settings}>

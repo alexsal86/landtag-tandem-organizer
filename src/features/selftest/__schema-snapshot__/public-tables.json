@@ -13,6 +13,7 @@
   "appointment_locations",
   "appointment_polls",
   "appointment_preparation_documents",
+  "appointment_preparation_history",
   "appointment_preparation_templates",
   "appointment_preparations",
   "appointment_requests",

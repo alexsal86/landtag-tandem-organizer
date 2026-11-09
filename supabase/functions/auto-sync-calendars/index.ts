@@ -1,13 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
-import { withSafeHandler, requireServiceRole, forbiddenResponse } from "../_shared/security.ts";
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { getCorsHeaders, withSafeHandler, requireServiceRole, forbiddenResponse } from "../_shared/security.ts";
+
 
 serve(withSafeHandler("auto-sync-calendars", async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -24,8 +22,6 @@ serve(withSafeHandler("auto-sync-calendars", async (req) => {
     console.log('Starting automatic calendar sync...');
 
     const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinutes = now.getMinutes();
 
     // Get all tenants with sync settings enabled
     const { data: syncSettings, error: settingsError } = await supabase
@@ -42,26 +38,10 @@ serve(withSafeHandler("auto-sync-calendars", async (req) => {
     const results = [];
 
     for (const setting of syncSettings || []) {
-      // Parse the sync time (format: HH:MM:SS)
-      const [syncHour, syncMinute] = setting.sync_time.split(':').map(Number);
-
-      // Calculate how many hours have passed since the sync time today
-      let hoursSinceSync = currentHour - syncHour;
-
-      // If we're before the sync time today, calculate from yesterday
-      if (hoursSinceSync < 0) {
-        hoursSinceSync += 24;
-      }
-
-      // Check if it's time to sync based on the interval
-      const shouldSync = hoursSinceSync % setting.sync_interval_hours === 0 && currentMinutes < 5;
-
-      if (!shouldSync) {
-        console.log(`Skipping tenant ${setting.tenant_id} - not time yet (next sync in ${setting.sync_interval_hours - (hoursSinceSync % setting.sync_interval_hours)} hours)`);
-        continue;
-      }
-
-      console.log(`Syncing calendars for tenant ${setting.tenant_id}`);
+      const { data: slot, error: claimError } = await supabase.rpc('claim_calendar_sync', { _setting_id: setting.id });
+      if (claimError) throw claimError;
+      if (!slot) continue;
+      let success = true;
 
       // Get all active external calendars for this tenant
       const { data: calendars, error: calendarsError } = await supabase
@@ -78,6 +58,7 @@ serve(withSafeHandler("auto-sync-calendars", async (req) => {
           status: 'error',
           error: calendarsError.message
         });
+        await supabase.rpc('finish_calendar_sync', { _setting_id: setting.id, _slot: slot, _success: false });
         continue;
       }
 
@@ -92,14 +73,15 @@ serve(withSafeHandler("auto-sync-calendars", async (req) => {
             body: { calendar_id: calendar.id }
           });
 
-          if (syncError) {
+          if (syncError || syncResult?.status === "error") {
+            success = false;
             console.error(`Error syncing calendar ${calendar.name}:`, syncError);
             results.push({
               tenant_id: setting.tenant_id,
               calendar_id: calendar.id,
               calendar_name: calendar.name,
               status: 'error',
-              error: syncError.message
+              error: syncError?.message ?? "Sync failed"
             });
           } else {
             console.log(`Successfully synced calendar ${calendar.name}`);
@@ -112,6 +94,7 @@ serve(withSafeHandler("auto-sync-calendars", async (req) => {
             });
           }
         } catch (error) {
+          success = false;
           console.error(`Error processing calendar ${calendar.name}:`, error);
           results.push({
             tenant_id: setting.tenant_id,
@@ -122,6 +105,10 @@ serve(withSafeHandler("auto-sync-calendars", async (req) => {
           });
         }
       }
+      const { error: finishError } = await supabase.rpc('finish_calendar_sync', {
+        _setting_id: setting.id, _slot: slot, _success: success,
+      });
+      if (finishError) throw finishError;
     }
 
     console.log('Auto-sync completed:', results);

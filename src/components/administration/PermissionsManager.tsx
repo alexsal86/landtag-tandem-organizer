@@ -165,10 +165,10 @@ export function PermissionsManager() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Berechtigungen & Module</CardTitle>
+        <CardTitle>Berechtigungsregeln (Vorschau)</CardTitle>
         <CardDescription>
-          Aktiviere oder deaktiviere Module pro Tenant und steuere, welche Rollen sensible Aktionen ausführen dürfen.
-          Server-seitige Prüfung erfolgt zusätzlich über RPCs (`is_feature_enabled`, `is_action_allowed`).
+          Vorbereitung zukünftiger Modul- und Berechtigungsregeln für das aktuelle Büro.
+          Vorschau: Diese Regeln werden noch nicht in allen Funktionen durchgesetzt. Sie sind derzeit kein verlässlicher Zugriffsschutz.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -183,7 +183,7 @@ export function PermissionsManager() {
               <TabsList>
                 <TabsTrigger value="features">Module</TabsTrigger>
                 <TabsTrigger value="actions">Aktionen</TabsTrigger>
-                <TabsTrigger value="fields">Felder</TabsTrigger>
+                <TabsTrigger value="fields">Felder (Vorschau)</TabsTrigger>
               </TabsList>
 
               <TabsContent value="features" className="space-y-3 pt-4">
@@ -235,7 +235,7 @@ export function PermissionsManager() {
               <TabsContent value="fields" className="space-y-3 pt-4">
                 <p className="text-caption text-muted-foreground">
                   Pro Rolle festlegen, ob ein sensibles Feld gelesen oder geschrieben werden darf.
-                  Standard ist Vollzugriff. Lese-Verbot impliziert Schreib-Verbot.
+                  Feldschutz ist noch nicht aktiv. Diese Einstellungen allein verhindern keine Datenzugriffe. Lese-Verbot impliziert Schreib-Verbot.
                 </p>
                 {FIELD_TARGETS.map((t) => (
                   <div key={`${t.table}.${t.column}`} className="border rounded-md p-3">

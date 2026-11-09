@@ -1,3 +1,4 @@
+import { useTenant } from "@/hooks/useTenant";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
@@ -106,6 +107,7 @@ function groupTemplateItemsByPhase(items: TemplateItem[]): PhaseGroup[] {
 }
 
 export function PlanningTemplateManager() {
+  const { currentTenant } = useTenant();
 
   const [planningTemplates, setPlanningTemplates] = useState<PlanningTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<PlanningTemplate | null>(null);
@@ -118,19 +120,19 @@ export function PlanningTemplateManager() {
 
   useEffect(() => {
     void loadTemplates();
-  }, []);
+  }, [currentTenant?.id]);
 
   const selectedTemplateName = useMemo(() => selectedTemplate?.name ?? "", [selectedTemplate]);
   const phaseGroups = useMemo(() => groupTemplateItemsByPhase(templateItems), [templateItems]);
   const hasPhases = phaseGroups.some((g) => g.phaseName !== null);
 
   const loadTemplates = async () => {
-    const { data, error } = await supabase.from("planning_templates").select("*").order("name");
+    const { data, error } = await supabase.from("planning_templates").select("*").eq("tenant_id", currentTenant?.id ?? "").order("name");
     if (error) {
       debugConsole.error(error);
       return;
     }
-    setPlanningTemplates(data || []);
+    setPlanningTemplates((data ?? []).map(row => ({ ...row, template_items: Array.isArray(row.template_items) ? row.template_items as unknown as TemplateItem[] : [] })));
   };
 
   const loadTemplate = (template: PlanningTemplate) => {

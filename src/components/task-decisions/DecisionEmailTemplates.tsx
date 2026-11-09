@@ -7,13 +7,14 @@ import { debugConsole } from '@/utils/debugConsole';
 import { supabase } from "@/integrations/supabase/client";
 import { Save, RefreshCw, Copy, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useTenant } from "@/hooks/useTenant";
 import { notify } from "@/lib/notify";
 
 interface EmailTemplate {
   id: string;
   tenant_id: string;
   subject: string;
-  details_block_template?: string;
+  details_block_template?: string | null;
   greeting: string;
   introduction: string;
   instruction: string;
@@ -23,20 +24,23 @@ interface EmailTemplate {
 }
 
 export const DecisionEmailTemplates = () => {
+  const { currentTenant } = useTenant();
   const [template, setTemplate] = useState<EmailTemplate | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setSaving] = useState(false);
 
   useEffect(() => {
     loadTemplate();
-  }, []);
+  }, [currentTenant?.id]);
 
   const loadTemplate = async () => {
     try {
+      if (!currentTenant?.id) return;
       setIsLoading(true);
       const { data, error } = await supabase
         .from('decision_email_templates')
         .select('*')
+        .eq('tenant_id', currentTenant.id)
         .maybeSingle();
 
       if (error) throw error;
@@ -59,18 +63,11 @@ export const DecisionEmailTemplates = () => {
 
   const createDefaultTemplate = async () => {
     try {
-      const { data: userProfile } = await supabase
-        .from('profiles')
-        .select('tenant_id')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id ?? '')
-        .single();
-
-      if (!userProfile?.tenant_id) return;
-
+      if (!currentTenant?.id) return;
       const { data, error } = await supabase
         .from('decision_email_templates')
         .insert([{
-          tenant_id: userProfile.tenant_id,
+          tenant_id: currentTenant.id,
         }])
         .select()
         .single();
@@ -83,7 +80,7 @@ export const DecisionEmailTemplates = () => {
   };
 
   const saveTemplate = async () => {
-    if (!template) return;
+    if (!template || !currentTenant?.id || template.tenant_id !== currentTenant.id) return;
 
     try {
       setSaving(true);
@@ -105,7 +102,7 @@ export const DecisionEmailTemplates = () => {
       const { error: saveWithDetailsError } = await supabase
         .from('decision_email_templates')
         .update(payloadWithDetailsBlock)
-        .eq('id', template.id);
+        .eq('id', template.id).eq('tenant_id', currentTenant.id);
 
       if (saveWithDetailsError) {
         const isMissingDetailsColumn =
@@ -123,7 +120,7 @@ export const DecisionEmailTemplates = () => {
         const { error: fallbackError } = await supabase
           .from('decision_email_templates')
           .update(basePayload)
-          .eq('id', template.id);
+          .eq('id', template.id).eq('tenant_id', currentTenant.id);
 
         if (fallbackError) throw fallbackError;
       }

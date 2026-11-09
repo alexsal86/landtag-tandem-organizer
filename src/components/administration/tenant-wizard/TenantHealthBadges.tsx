@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { Users, FileText, Bell } from "lucide-react";
@@ -19,28 +19,17 @@ interface Props {
 }
 
 export function TenantHealthBadges({ tenantId, reloadKey }: Props): React.JSX.Element {
-  const [health, setHealth] = useState<Health | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      setLoading(true);
-      const { data, error } = await supabase.functions.invoke("manage-tenant-user", {
-        body: { action: "getTenantHealth", tenantId },
-      });
-      if (!cancelled) {
-        if (!error && data?.success) {
-          setHealth(data.health);
-        }
-        setLoading(false);
-      }
-    };
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [tenantId, reloadKey]);
+  const { data, isLoading: loading, isError } = useQuery({
+    queryKey: ["platform-tenant-health", reloadKey],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_admin_tenant_health");
+      if (error) throw error;
+      return data as unknown as Record<string, Health>;
+    },
+    staleTime: 60_000,
+  });
+  const health = data?.[tenantId];
+  if (isError) return <span role="alert" className="text-xs text-destructive">Status nicht verfügbar</span>;
 
   if (loading) {
     return <span className="text-xs text-muted-foreground">…</span>;

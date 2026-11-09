@@ -111,12 +111,9 @@ export const UserColorManager = () => {
         badge_color: AVAILABLE_COLORS[index % AVAILABLE_COLORS.length].value,
       }));
 
-      for (const update of updates) {
-        await supabase
-          .from('profiles')
-          .update({ badge_color: update.badge_color })
-          .eq('user_id', update.user_id);
-      }
+      if (!currentTenant?.id) throw new Error("Kein Büro ausgewählt");
+      const { error } = await supabase.rpc("set_admin_user_colors", { _tenant_id: currentTenant.id, _updates: updates });
+      if (error) throw error;
 
       await loadUsers();
       

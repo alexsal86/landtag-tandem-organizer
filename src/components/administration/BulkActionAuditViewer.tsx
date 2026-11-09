@@ -34,6 +34,7 @@ export function BulkActionAuditViewer() {
       .from("bulk_action_audit")
       .select("id, actor_id, action, payload, affected_count, created_at, undone_at")
       .eq("tenant_id", currentTenant.id)
+      .gte("created_at", new Date(Date.now() - 30 * 86400000).toISOString())
       .order("created_at", { ascending: false })
       .limit(200);
     setLoading(false);
@@ -55,7 +56,7 @@ export function BulkActionAuditViewer() {
           Sammelaktionen-Verlauf
         </CardTitle>
         <CardDescription>
-          Audit-Log von Sammelaktionen der letzten 30 Tage (mit Undo-Daten, falls verfügbar).
+          Audit-Log von Sammelaktionen der letzten 30 Tage (maximal 200 Einträge). Rückgängig machen ist hier noch nicht verfügbar.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -80,11 +81,7 @@ export function BulkActionAuditViewer() {
                       {formatDistanceToNow(new Date(r.created_at), { addSuffix: true, locale: de })}
                     </div>
                   </div>
-                  {!r.undone_at && (
-                    <Button size="sm" variant="ghost" disabled title="Undo via Edge Function (kommt)">
-                      <Undo2 className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
+
                 </div>
               ))}
             </div>

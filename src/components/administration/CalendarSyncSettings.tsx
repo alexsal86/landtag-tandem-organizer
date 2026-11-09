@@ -14,11 +14,14 @@ import { notify } from "@/lib/notify";
 
 export function CalendarSyncSettings() {
   const { currentTenant } = useTenant();
+  const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [settings, setSettings] = useState({
     sync_interval_hours: 24,
     sync_time: '06:00:00',
-    is_enabled: true
+    is_enabled: true,
+    timezone: "Europe/Berlin",
   });
 
   const handleEnabledChange = (checked: boolean) => {
@@ -40,10 +43,11 @@ export function CalendarSyncSettings() {
   const loadSettings = async () => {
     if (!currentTenant?.id) return;
 
+    setLoaded(false); setLoadError(false);
     try {
       const { data, error } = await supabase
         .from('calendar_sync_settings')
-        .select('id, sync_interval_hours, sync_time, is_enabled')
+        .select('id, sync_interval_hours, sync_time, is_enabled, timezone')
         .eq('tenant_id', currentTenant.id)
         .maybeSingle();
 
@@ -53,41 +57,26 @@ export function CalendarSyncSettings() {
         setSettings({
           sync_interval_hours: data.sync_interval_hours,
           sync_time: data.sync_time,
-          is_enabled: data.is_enabled
+          is_enabled: data.is_enabled,
+          timezone: data.timezone,
         });
-      } else {
-        // Create default settings if none exist
-        const { error: insertError } = await supabase
-          .from('calendar_sync_settings')
-          .insert([{
-            tenant_id: currentTenant.id,
-            sync_interval_hours: 24,
-            sync_time: '06:00:00',
-            is_enabled: true
-          }]);
-        
-        if (insertError) throw insertError;
       }
+      setLoaded(true);
     } catch (error) {
+      setLoadError(true);
       debugConsole.error('Error loading sync settings:', error);
       notify.error('Fehler beim Laden der Einstellungen');
     }
   };
 
   const handleSave = async () => {
-    if (!currentTenant?.id) return;
+    if (!currentTenant?.id || !loaded || loadError) return;
 
     setIsLoading(true);
     try {
       const { error } = await supabase
         .from('calendar_sync_settings')
-        .update({
-          sync_interval_hours: settings.sync_interval_hours,
-          sync_time: settings.sync_time,
-          is_enabled: settings.is_enabled,
-          updated_at: new Date().toISOString()
-        })
-        .eq('tenant_id', currentTenant.id);
+        .upsert({ tenant_id: currentTenant.id, ...settings }, { onConflict: 'tenant_id' });
 
       if (error) throw error;
 
@@ -112,6 +101,8 @@ export function CalendarSyncSettings() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {loadError && <p role="alert">Einstellungen konnten nicht geladen werden. Speichern ist gesperrt.</p>}
+        <p className="text-sm text-muted-foreground">Zeitzone: {settings.timezone}. Verpasste Ausführungen werden beim nächsten Lauf nachgeholt.</p>
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
             <Label htmlFor="is_enabled">Automatische Synchronisation aktivieren</Label>
@@ -166,7 +157,7 @@ export function CalendarSyncSettings() {
           </>
         )}
 
-        <Button onClick={handleSave} disabled={isLoading}>
+        <Button onClick={handleSave} disabled={isLoading || !loaded || loadError}>
           <Save className="h-4 w-4 mr-2" />
           Einstellungen speichern
         </Button>

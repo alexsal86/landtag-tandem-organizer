@@ -20,3 +20,10 @@ describe("administration access", () => {
     expect(resolveNavigationState("calendar", "invalid", false)).toEqual({ section: "calendar", subSection: "config" });
   });
 });
+
+it("keeps bookmarks valid after reorganizing personal and financial settings", () => {
+  expect(resolveNavigationState("security", "expense", false)).toEqual({ section: "finance", subSection: "expense" });
+  expect(resolveNavigationState("users", "matrix", false)).toEqual({ section: "personal", subSection: "matrix" });
+  expect(resolveNavigationState("content", "archiving", false)).toEqual({ section: "personal", subSection: "archiving" });
+  expect(resolveNavigationState("templates", "celebrations", false)).toEqual({ section: "personal", subSection: "celebrations" });
+});

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { useTenant } from "@/hooks/useTenant";
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -48,9 +49,24 @@ export function CalendarSyncDebug() {
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [syncLoading, setSyncLoading] = useState(false);
 
-  const calendarId = '3d6e2d5b-fe74-4e94-ab69-6a5b91f72803'; // MdL Salomon Calendar
+  const { currentTenant } = useTenant();
+  const [calendarId, setCalendarId] = useState('');
+  const [calendars, setCalendars] = useState<Array<{id: string; name: string}>>([]);
+  useEffect(() => {
+    let cancelled = false;
+    setCalendarId(''); setValidationResult(null); setCalendars([]);
+    if (currentTenant?.id) {
+      void supabase.from('external_calendars').select('id, name').eq('tenant_id', currentTenant.id).then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) { notify.error('Kalender konnten nicht geladen werden'); return; }
+        setCalendars(data ?? []);
+      });
+    }
+    return () => { cancelled = true; };
+  }, [currentTenant?.id]);
 
   const validateCalendar = async () => {
+    if (!calendarId) return;
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('ics-validation', {
@@ -70,6 +86,7 @@ export function CalendarSyncDebug() {
   };
 
   const forceResync = async () => {
+    if (!calendarId || !confirm('Die importierten Termine dieses Kalenders werden gelöscht und neu geladen. Fortfahren?')) return;
     setSyncLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('force-resync-calendar', {
@@ -89,10 +106,7 @@ export function CalendarSyncDebug() {
       const method = data.status === 'partial' ? notify.warning : notify.success;
       method(data.message ?? 'Kalender-Neuaufbau erfolgreich gestartet');
       
-      // Re-validate after sync
-      setTimeout(() => {
-        validateCalendar();
-      }, 2000);
+      await validateCalendar();
     } catch (error) {
       debugConsole.error('Force resync error:', error);
       notify.error('Fehler beim Neuaufbau: ' + (error as Error).message);
@@ -126,10 +140,16 @@ export function CalendarSyncDebug() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <label className="block text-sm">Kalender des aktuellen Büros
+            <select className="mt-2 block w-full rounded border bg-background p-2" value={calendarId} disabled={loading || syncLoading} onChange={event => { setCalendarId(event.target.value); setValidationResult(null); }}>
+              <option value="">Kalender auswählen</option>
+              {calendars.map(calendar => <option key={calendar.id} value={calendar.id}>{calendar.name}</option>)}
+            </select>
+          </label>
           <div className="flex gap-2">
             <Button 
               onClick={validateCalendar}
-              disabled={loading}
+              disabled={loading || syncLoading || !calendarId}
               variant="outline"
             >
               {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -138,7 +158,7 @@ export function CalendarSyncDebug() {
             
             <Button 
               onClick={forceResync}
-              disabled={syncLoading}
+              disabled={loading || syncLoading || !calendarId}
               variant="destructive"
             >
               {syncLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

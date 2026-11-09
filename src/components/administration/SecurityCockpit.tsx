@@ -121,6 +121,8 @@ export function SecurityCockpit(): JSX.Element {
     void snapshotsQuery.refetch();
   };
 
+  if (gapsQuery.isError || snapshotsQuery.isError || auditQuery.isError) return <div role="alert" className="rounded border border-destructive p-4">Daten konnten nicht geladen werden. Eine verlässliche Bewertung ist derzeit nicht möglich. Bitte laden Sie die Seite erneut.</div>;
+
   return (
     <div className="space-y-6">
       <header className="flex items-start justify-between gap-3">

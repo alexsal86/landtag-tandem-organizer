@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { supabase } from "@/integrations/supabase/client";
@@ -14,46 +14,30 @@ import { de } from "date-fns/locale";
 import Papa from "papaparse";
 
 const LIMIT = 50;
+type AuditLog = { id: string; created_at: string; ip_address: string | null; payload: unknown };
+type AuditResult = { logs: AuditLog[]; totalCount: number };
 
 export function AuditLogViewer() {
   const [offset, setOffset] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [ipFilter, setIpFilter] = useState("");
   const { currentTenant } = useTenant();
+  const [filters, setFilters] = useState({ search: "", ip: "" });
+  useEffect(() => {
+    const timer = setTimeout(() => { setFilters({ search: searchTerm, ip: ipFilter }); setOffset(0); }, 350);
+    return () => clearTimeout(timer);
+  }, [searchTerm, ipFilter]);
+  useEffect(() => { setOffset(0); }, [currentTenant?.id]);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['audit-logs', offset, searchTerm, ipFilter, currentTenant?.id],
-    queryFn: async () => {
-      if (!currentTenant?.id) {
-        return { logs: [], totalCount: 0 };
-      }
-
-      let query = supabase
-        .from('audit_log_entries')
-        .select('*', { count: 'exact' })
-        .eq('tenant_id', currentTenant.id)
-        .order('created_at', { ascending: false })
-        .range(offset, offset + LIMIT - 1);
-
-      if (ipFilter) {
-        query = query.eq('ip_address', ipFilter);
-      }
-
-      const { data, error, count } = await query;
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['audit-logs', offset, filters, currentTenant?.id],
+    queryFn: async (): Promise<AuditResult> => {
+      if (!currentTenant?.id) return { logs: [], totalCount: 0 };
+      const { data, error } = await supabase.rpc('search_admin_audit_logs', {
+        _tenant_id: currentTenant.id, _search: filters.search, _ip: filters.ip, _offset: offset, _limit: LIMIT,
+      });
       if (error) throw error;
-
-      // Client-side filtering for payload search
-      let filteredData = data || [];
-      if (searchTerm && filteredData.length > 0) {
-        filteredData = filteredData.filter((log: Record<string, any>) => 
-          JSON.stringify(log.payload).toLowerCase().includes(searchTerm.toLowerCase())
-        );
-      }
-
-      return { 
-        logs: filteredData, 
-        totalCount: count || 0 
-      };
+      return data as unknown as AuditResult;
     },
     enabled: !!currentTenant?.id,
   });
@@ -61,14 +45,14 @@ export function AuditLogViewer() {
   const handleExport = () => {
     if (!data?.logs) return;
 
-    const csv = data.logs.map((log: Record<string, any>) => ({
+    const csv = data.logs.map((log: AuditLog) => ({
       Zeitstempel: format(new Date(log.created_at), 'dd.MM.yyyy HH:mm:ss', { locale: de }),
       'IP-Adresse': log.ip_address || 'N/A',
       Aktion: (log.payload as Record<string, unknown>)?.action as string || 'Unbekannt',
       Details: JSON.stringify(log.payload),
     }));
 
-    const csvContent = Papa.unparse(csv);
+    const csvContent = Papa.unparse(csv, { escapeFormulae: true });
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -93,7 +77,7 @@ export function AuditLogViewer() {
       <CardHeader>
         <CardTitle>Audit-Logs</CardTitle>
         <CardDescription>
-          Systemweite Aktivitätsprotokolle und Sicherheitsereignisse
+          Aktivitätsprotokolle und Sicherheitsereignisse des aktuellen Büros
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -116,13 +100,13 @@ export function AuditLogViewer() {
               onChange={(e) => setIpFilter(e.target.value)}
             />
           </div>
-          <Button onClick={handleExport} variant="outline">
+          <Button onClick={handleExport} disabled={isError || isLoading || !data?.logs.length} variant="outline">
             <Download className="h-4 w-4 mr-2" />
-            Export CSV
+            Aktuelle Seite als CSV
           </Button>
         </div>
 
-        {isLoading ? (
+        {isError ? <div role="alert">Audit-Logs konnten nicht geladen werden. <Button onClick={() => void refetch()}>Erneut versuchen</Button></div> : isLoading ? (
           <div className="text-center py-8 text-muted-foreground">Lade Logs...</div>
         ) : (
           <>
@@ -138,7 +122,7 @@ export function AuditLogViewer() {
                 </TableHeader>
                 <TableBody>
                   {data?.logs && data.logs.length > 0 ? (
-                    data.logs.map((log: Record<string, any>) => (
+                    data.logs.map((log: AuditLog) => (
                       <TableRow key={log.id}>
                         <TableCell className="font-mono text-xs">
                           {format(new Date(log.created_at), 'dd.MM.yyyy HH:mm:ss', { locale: de })}
@@ -183,7 +167,7 @@ export function AuditLogViewer() {
 
             <div className="flex justify-between items-center mt-4">
               <span className="text-sm text-muted-foreground">
-                Zeige {offset + 1} bis {Math.min(offset + LIMIT, data?.totalCount || 0)} von {data?.totalCount || 0}
+                Zeige {data?.totalCount ? offset + 1 : 0} bis {Math.min(offset + LIMIT, data?.totalCount || 0)} von {data?.totalCount || 0}
               </span>
               <div className="flex gap-2">
                 <Button 

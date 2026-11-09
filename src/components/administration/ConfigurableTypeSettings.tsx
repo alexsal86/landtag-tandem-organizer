@@ -1,3 +1,4 @@
+import type { Database } from "@/integrations/supabase/types";
 import { useState, useEffect } from "react";
 import { debugConsole } from '@/utils/debugConsole';
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +28,7 @@ type ConfigurableType = {
 };
 
 interface ConfigurableTypeSettingsProps {
+  readOnly?: boolean;
   title: string;
   tableName: 'task_categories' | 'todo_categories' | 'case_file_types' | 'document_categories' | 'appointment_categories' | 'appointment_statuses' | 'appointment_locations' | 'task_statuses' | 'case_file_processing_statuses';
   entityName: string;
@@ -53,6 +55,7 @@ const isTenantScopedTable = (tableName: ConfigurableTypeSettingsProps['tableName
   TENANT_SCOPED_TABLES.includes(tableName as (typeof TENANT_SCOPED_TABLES)[number]);
 
 export function ConfigurableTypeSettings({
+  readOnly = false,
   title,
   tableName,
   entityName,
@@ -84,7 +87,7 @@ export function ConfigurableTypeSettings({
         if (!currentTenant?.id) {
           throw new Error('Kein aktiver Mandant ausgewählt.');
         }
-        query = query.eq('tenant_id', currentTenant.id);
+        query = query.filter('tenant_id', 'eq', currentTenant.id);
       }
 
       const { data, error } = await query;
@@ -120,8 +123,10 @@ export function ConfigurableTypeSettings({
     setItems(updatedItems);
 
     try {
-      const reorderPayload = updatedItems.map((item) => ({ id: item.id, order_index: item.order_index }));
-      const { error } = await supabase.from(tableName).upsert(reorderPayload as never[], { onConflict: 'id' });
+      if (!currentTenant?.id) throw new Error('Kein Büro ausgewählt');
+      const { error } = await supabase.rpc('reorder_admin_items', {
+        _table: tableName, _tenant_id: currentTenant.id, _ids: updatedItems.map(item => item.id),
+      });
       if (error) throw error;
       notify.success("Erfolg", { description: "Reihenfolge wurde gespeichert." 
 });
@@ -157,7 +162,7 @@ export function ConfigurableTypeSettings({
         insertData.icon = newItem.icon || defaultIcon;
       }
 
-      const { error } = await supabase.from(tableName).insert(insertData);
+      const { error } = await supabase.from(tableName as "task_categories").insert(insertData as Database["public"]["Tables"]["task_categories"]["Insert"]);
       if (error) throw error;
 
       await loadItems();
@@ -197,7 +202,7 @@ export function ConfigurableTypeSettings({
         updateData.icon = editingItem.icon || null;
       }
 
-      const { error } = await supabase.from(tableName).update(updateData).eq('id', editingItem.id);
+      const { error } = await supabase.from(tableName as "task_categories").update(updateData as Database["public"]["Tables"]["task_categories"]["Update"]).eq('id', editingItem.id);
       
       if (error) {
         // Rollback on error
@@ -278,6 +283,7 @@ export function ConfigurableTypeSettings({
         <CardTitle className="flex items-center justify-between">
           {title}
           <Button
+            disabled={readOnly}
             onClick={() => setNewItem({ label: '', color: defaultColor, icon: defaultIcon })}
             size="sm"
             className="ml-2"
@@ -288,6 +294,8 @@ export function ConfigurableTypeSettings({
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {readOnly && <p className="mb-3 text-sm text-muted-foreground">Plattformweite Stammdaten. Änderungen erfordern Plattformrechte.</p>}
+        <fieldset disabled={readOnly}>
         <DragDropContext onDragEnd={handleDragEnd}>
           <Droppable droppableId={`${tableName}-list`}>
             {(provided) => (
@@ -362,7 +370,7 @@ export function ConfigurableTypeSettings({
                     )}
 
                     {items.map((item, index) => (
-                      <Draggable key={item.id} draggableId={item.id} index={index}>
+                      <Draggable key={item.id} draggableId={item.id} index={index} isDragDisabled={readOnly}>
                         {(provided) => (
                           <TableRow
                             ref={provided.innerRef}
@@ -521,6 +529,7 @@ export function ConfigurableTypeSettings({
             )}
           </Droppable>
         </DragDropContext>
+        </fieldset>
       </CardContent>
     </Card>
   );

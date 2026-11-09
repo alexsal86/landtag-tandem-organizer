@@ -304,10 +304,11 @@ export function LoginCustomization() {
               <div className="space-y-0.5">
                 <Label>Passwort-Reset aktivieren</Label>
                 <p className="text-sm text-muted-foreground">
-                  Benutzer können ihr Passwort zurücksetzen
+                  Vorschau – diese Option ist noch nicht mit dem Login verbunden.
                 </p>
               </div>
               <Switch
+                disabled
                 checked={customization.password_reset_enabled}
                 onCheckedChange={(checked) => 
                   setCustomization({ ...customization, password_reset_enabled: checked })

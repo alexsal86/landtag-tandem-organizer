@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "source": "src/integrations/supabase/types.ts",
   "counts": {
-    "total": 267,
+    "total": 268,
     "scenario": 29,
-    "deferred": 82,
+    "deferred": 83,
     "excluded": 156,
     "missing": 0
   },
@@ -831,6 +831,11 @@
     {
       "table": "appointment_preparation_documents",
       "status": "excluded",
+      "scenarios": []
+    },
+    {
+      "table": "appointment_preparation_history",
+      "status": "deferred",
       "scenarios": []
     },
     {

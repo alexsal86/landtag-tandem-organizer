@@ -193,9 +193,7 @@ export function GeneralSettings() {
       
 });
 
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+      window.dispatchEvent(new Event('app-settings-updated'));
     } catch (error) {
       debugConsole.error('Error saving settings:', error);
       notify.error("Fehler", { 

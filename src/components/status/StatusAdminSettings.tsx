@@ -44,14 +44,14 @@ export const StatusAdminSettings: React.FC = () => {
 
   useEffect(() => {
     loadStatusOptions();
-  }, []);
+  }, [currentTenant?.id]);
 
   const loadStatusOptions = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('admin_status_options')
       .select('id, name, emoji, color, sort_order, is_active, created_at, updated_at')
-      .order('sort_order');
+      .eq('tenant_id', currentTenant?.id ?? '').order('sort_order');
 
     if (error) {
       debugConsole.error('Error loading status options:', error);

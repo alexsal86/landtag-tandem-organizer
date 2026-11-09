@@ -1,3 +1,5 @@
+import type { Json, Database } from "@/integrations/supabase/types";
+import { useTenant } from "@/hooks/useTenant";
 import { SYSTEM_AGENDA_OPTIONS, systemAgendaOption } from "@/components/meetings/systemAgendaRegistry";
 import type { SystemAgendaType } from "@/components/meetings/types";
 import { useState, useEffect } from "react";
@@ -25,7 +27,19 @@ import {
 } from "@/components/administration/agendaSystemStyles";
 import { notify } from "@/lib/notify";
 
+
+const normalizeMeetingTemplate = (row: Database["public"]["Tables"]["meeting_templates"]["Row"]): MeetingTemplateRecord => ({
+  ...row,
+  template_items: Array.isArray(row.template_items) ? row.template_items.filter(item => item && typeof item === "object" && "title" in item && typeof item.title === "string") as unknown as MeetingTemplateItem[] : [],
+  is_default: row.is_default ?? false,
+  default_participants: row.default_participants ?? [],
+  default_recurrence: row.default_recurrence && typeof row.default_recurrence === "object" && !Array.isArray(row.default_recurrence) ? row.default_recurrence : null,
+  auto_create_count: row.auto_create_count ?? 3,
+  default_visibility: row.default_visibility ?? 'private',
+});
+
 export function MeetingTemplateManager() {
+  const { currentTenant } = useTenant();
   const { user } = useAuth();
 
   const [meetingTemplates, setMeetingTemplates] = useState<MeetingTemplateRecord[]>([]);
@@ -40,11 +54,11 @@ export function MeetingTemplateManager() {
 
   useEffect(() => {
     loadTemplates();
-  }, []);
+  }, [currentTenant?.id]);
 
   const loadTemplates = async () => {
-    const { data, error } = await supabase.from('meeting_templates').select('*').order('name');
-    if (!error) setMeetingTemplates(data || []);
+    const { data, error } = await supabase.from('meeting_templates').select('*').eq('tenant_id', currentTenant?.id ?? '').order('name');
+    if (!error) setMeetingTemplates((data ?? []).map(normalizeMeetingTemplate));
   };
 
   const loadTemplate = (template: MeetingTemplateRecord) => {
@@ -53,17 +67,17 @@ export function MeetingTemplateManager() {
   };
 
   const createNewMeetingTemplate = async () => {
-    if (!user) return;
+    if (!user || !currentTenant?.id) return;
     try {
       const newName = `Neues Template ${meetingTemplates.length + 1}`;
       const { data, error } = await supabase
         .from('meeting_templates')
-        .insert([{ name: newName, description: '', template_items: [], default_participants: [], default_recurrence: null, auto_create_count: 3, is_default: false, user_id: user.id }])
+        .insert([{ tenant_id: currentTenant!.id, name: newName, description: '', template_items: [], default_participants: [], default_recurrence: null, auto_create_count: 3, is_default: false, user_id: user.id }])
         .select()
         .single();
       if (error) throw error;
-      setMeetingTemplates([...meetingTemplates, data as MeetingTemplateRecord]);
-      loadTemplate(data as MeetingTemplateRecord);
+      setMeetingTemplates([...meetingTemplates, normalizeMeetingTemplate(data)]);
+      loadTemplate(normalizeMeetingTemplate(data));
       setEditingTemplateName({ id: data.id, value: data.name });
       notify.success("Template erstellt", { description: "Neues Meeting-Template wurde angelegt." 
 });
@@ -77,7 +91,7 @@ export function MeetingTemplateManager() {
   const saveTemplateItems = async (items: MeetingTemplateItem[] = templateItems, retryCount = 0): Promise<boolean> => {
     if (!selectedTemplate) return false;
     try {
-      const { error } = await supabase.from('meeting_templates').update({ template_items: items }).eq('id', selectedTemplate.id);
+      const { error } = await supabase.from('meeting_templates').update({ template_items: items as unknown as Json }).eq('id', selectedTemplate.id);
       if (error) throw error;
       return true;
     } catch (error: unknown) {
@@ -245,7 +259,7 @@ export function MeetingTemplateManager() {
     saveTemplateItems(newItems);
   };
 
-  const updateTemplateItem = (index: number, field: string, value: string) => {
+  const updateTemplateItem = (index: number, field: "title", value: string) => {
     const newItems = [...templateItems];
     newItems[index][field] = value;
     setTemplateItems(newItems);
@@ -386,14 +400,15 @@ export function MeetingTemplateManager() {
                       compact
                       onSave={async (participants, recurrence, autoCreateCount, visibility) => {
                         try {
-                          const normalizedParticipants = participants as unknown as Record<string, unknown>[];
+                          const normalizedParticipants = participants.map(participant => participant.user_id);
                           const normalizedRecurrence = recurrence as unknown as Record<string, unknown> | null;
-                          await supabase.from('meeting_templates').update({
+                          const { error } = await supabase.from('meeting_templates').update({
                             default_participants: normalizedParticipants,
-                            default_recurrence: normalizedRecurrence,
+                            default_recurrence: normalizedRecurrence as Json,
                             auto_create_count: autoCreateCount || 3,
                             default_visibility: visibility || 'private'
                           }).eq('id', selectedTemplate.id);
+                          if (error) throw error;
                           setSelectedTemplate({ ...selectedTemplate, default_participants: normalizedParticipants, default_recurrence: normalizedRecurrence, auto_create_count: autoCreateCount, default_visibility: visibility });
                         } catch { notify.error("Fehler", { description: "Speichern fehlgeschlagen."
 }); }
