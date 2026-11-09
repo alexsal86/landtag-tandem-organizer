@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useMatrixUnread } from '@/contexts/MatrixUnreadContext';
 import * as sdk from 'matrix-js-sdk';
-import { CryptoEvent } from 'matrix-js-sdk';
+import { CryptoEvent } from 'matrix-js-sdk/lib/crypto-api';
 import { VerificationPhase, type Verifier } from 'matrix-js-sdk/lib/crypto-api/verification';
 import { decodeRecoveryKey } from 'matrix-js-sdk/lib/crypto-api/recovery-key';
 import { useAuth } from '@/hooks/useAuth';
@@ -588,7 +588,6 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
     const mc = clientRef.current;
     if (mc) {
       for (const { event, handler } of listenersRef.current) {
-        // @ts-expect-error matrix-js-sdk event union type mismatch
         try { mc.removeListener(event, handler); } catch {}
       }
       listenersRef.current = [];
