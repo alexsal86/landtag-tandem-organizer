@@ -1,6 +1,7 @@
+import { PencilSparkles } from "@/components/icons/PencilSparkles";
 import { PlanningViewToggle } from "./PlanningViewToggle";
 import { useId, useState } from "react";
-import { Check, Clock, Archive, CheckCircle, MoreHorizontal, MapPin, Users, ChevronDown, CalendarDays, StickyNote, ExternalLink } from "lucide-react";
+import { Check, Clock, Archive, CheckCircle, MoreHorizontal, MapPin, Users, ChevronDown, CalendarDays, ExternalLink } from "lucide-react";
 import { format, isValid, startOfDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,7 @@ export function EventPlanningOverview({ plannings, allProfiles, collaborators, u
     const team = collaborators.filter(c => c.event_planning_id === planning.id && c.user_id !== planning.user_id);
     const canEdit = planning.user_id === user?.id || team.some(c => c.user_id === user?.id && c.can_edit);
     const date = confirmedDate(planning);
+    const dateLabel = date ? format(date, planning.confirmed_date?.includes("T") ? "dd.MM.yyyy · HH:mm 'Uhr'" : "dd.MM.yyyy", { locale: de }) : "Datum offen";
     return <li key={planning.id} ref={highlightRef(planning.id)} onClick={event => {
       if (event.target instanceof Element && event.target.closest("button,a,[role='menu'],[role='menuitem'],[tabindex]")) return;
       setSelectedPlanning(planning);
@@ -55,18 +57,23 @@ export function EventPlanningOverview({ plannings, allProfiles, collaborators, u
           <button type="button" className={cn("block w-full text-left text-base font-semibold leading-snug hover:text-primary", muted && "text-muted-foreground")} onClick={() => setSelectedPlanning(planning)}>{planning.title}</button>
           <div className={cn("mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground", muted && "opacity-75")}>
             <span>{date ? "Termin bestätigt" : "Datum offen"}</span>
-            {listView && date && <><span aria-hidden>·</span><time dateTime={planning.confirmed_date!}>{format(date, "dd.MM.yyyy", { locale: de })}</time></>}
+            {listView && date && <><span aria-hidden>·</span><time dateTime={planning.confirmed_date!}>{dateLabel}</time></>}
             {planning.is_completed && <><span aria-hidden>·</span><span>Als erledigt erklärt</span></>}
           </div>
-          {!listView && <div className="mt-3 space-y-2 text-sm text-muted-foreground">
-            <p className="flex items-start gap-2"><CalendarDays className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /><span>{date ? <time dateTime={planning.confirmed_date!}>{format(date, "dd.MM.yyyy", { locale: de })}</time> : "Datum offen"}</span></p>
-            {planning.location && <p className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /><span className="min-w-0 break-words">{planning.location}</span></p>}
-            {planning.description && <p className="flex items-start gap-2"><StickyNote className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /><span className="min-w-0 whitespace-pre-wrap break-words">{planning.description}</span></p>}
+          {!listView && <div className={cn("mt-3 grid gap-3 text-sm text-muted-foreground", planning.description && "sm:grid-cols-2")}>
+            <div className="min-w-0 space-y-2">
+              <p className="flex items-start gap-2"><CalendarDays className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /><span>{date ? <time dateTime={planning.confirmed_date!}>{dateLabel}</time> : "Datum offen"}</span></p>
+              {planning.location && <p className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /><span className="min-w-0 break-words">{planning.location}</span></p>}
+            </div>
+            {planning.description && <p className="flex min-w-0 items-start gap-2"><PencilSparkles className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /><span className="min-w-0 whitespace-pre-wrap break-words">{planning.description}</span></p>}
           </div>}
 
         </div>
-        <div className={cn("col-span-2 col-start-2 flex min-w-0 items-center justify-between gap-1", listView && "sm:col-span-1 sm:col-start-3 sm:row-start-1 sm:justify-end")}>
-          <PlanningUserChip userId={planning.user_id} name={owner?.display_name ?? planning.creator?.display_name} color={owner?.badge_color} />
+        <div className={cn("col-span-2 col-start-2 flex min-w-0 items-center justify-end gap-2", !listView && "mt-2 border-t border-border/50 pt-2", listView && "sm:col-span-1 sm:col-start-3 sm:row-start-1 sm:justify-end")}>
+          <div className="flex min-w-0 items-center gap-2">
+            {!listView && <span className="text-xs text-muted-foreground">Verantwortlich</span>}
+            <PlanningUserChip userId={planning.user_id} name={owner?.display_name ?? planning.creator?.display_name} color={owner?.badge_color} />
+          </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" aria-label={`Aktionen für ${planning.title}`}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
             <DropdownMenuContent align="end">
