@@ -1,5 +1,5 @@
 import * as sdk from 'matrix-js-sdk';
-import { CryptoEvent } from 'matrix-js-sdk';
+import { CryptoEvent } from 'matrix-js-sdk/lib/crypto-api';
 import { VerificationPhase, type Verifier } from 'matrix-js-sdk/lib/crypto-api/verification';
 import type { MatrixCreateRoomOptions, MatrixMessage, MatrixReactionSummary, MatrixReplyPreview } from '@/types/matrix';
 
