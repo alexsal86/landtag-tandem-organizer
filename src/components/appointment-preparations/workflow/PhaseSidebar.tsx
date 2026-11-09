@@ -13,7 +13,7 @@ export function PhaseSidebar({ phases, activePhase, onSelect, blockers }: PhaseS
   return (
     <aside className="space-y-6">
       <div>
-        <p className="section-label mb-3 text-muted-foreground">Vorbereitungs-Phasen</p>
+        <p className="section-label mb-3 break-words text-muted-foreground">Vorbereitungs-Phasen</p>
         <ul className="space-y-1">
           {phases.map((phase, idx) => {
             const isActive = phase.id === activePhase;
@@ -43,11 +43,11 @@ export function PhaseSidebar({ phases, activePhase, onSelect, blockers }: PhaseS
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className={cn("text-sm font-medium leading-tight", isActive && "text-foreground")}>
+                    <div className={cn("text-sm font-medium leading-tight break-words", isActive && "text-foreground")}>
                       {idx + 1}. {phase.label}
                     </div>
                     {phase.countLabel ? (
-                      <div className="text-xs text-muted-foreground mt-0.5 tabular-nums">
+                      <div className="text-xs text-muted-foreground mt-0.5 tabular-nums break-words">
                         {phase.countLabel}
                       </div>
                     ) : (

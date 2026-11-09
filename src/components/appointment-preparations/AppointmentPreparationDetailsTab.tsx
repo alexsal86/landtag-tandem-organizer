@@ -1,3 +1,8 @@
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { notify } from "@/lib/notify";
+import { useState } from "react";
+import { generateBriefingPdf } from "./briefingPdfGenerator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -6,14 +11,29 @@ import { AppointmentPreparation } from "@/hooks/useAppointmentPreparation";
 
 interface AppointmentPreparationDetailsTabProps {
   preparation: AppointmentPreparation;
+  onOpenAppointment?: () => void;
   onUpdate: (updates: Partial<AppointmentPreparation>) => Promise<void>;
 }
 
 export function AppointmentPreparationDetailsTab({ 
   preparation, 
-  onUpdate 
+  onOpenAppointment
 }: AppointmentPreparationDetailsTabProps) {
 
+  const [showHistory, setShowHistory] = useState(false);
+  const { data: history = [], isLoading: historyLoading, error: historyError } = useQuery({
+    queryKey: ["preparation-history", preparation.id, preparation.updated_at],
+    enabled: showHistory,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("appointment_preparation_history").select("id,changed_at,actor_id,changed_fields").eq("preparation_id", preparation.id).order("changed_at", { ascending: false }).limit(50);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const downloadJson = () => {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(preparation, null, 2)], { type: "application/json" }));
+    const a = document.createElement("a"); a.href = url; a.download = `Vorbereitung_${preparation.id}.json`; a.click(); URL.revokeObjectURL(url);
+  };
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('de-DE');
   };
@@ -118,7 +138,7 @@ export function AppointmentPreparationDetailsTab({
                     ID: {preparation.appointment_id}
                   </p>
                 </div>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={onOpenAppointment} disabled={!onOpenAppointment}>
                   <ExternalLinkIcon className="h-4 w-4 mr-2" />
                   Termin öffnen
                 </Button>
@@ -173,21 +193,27 @@ export function AppointmentPreparationDetailsTab({
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            <Button variant="outline" className="w-full justify-start">
+            <Button variant="outline" className="w-full justify-start" onClick={() => { void generateBriefingPdf({ preparation }).catch(() => notify.error("PDF konnte nicht erstellt werden.")); }}>
               <DownloadIcon className="h-4 w-4 mr-2" />
               Als PDF exportieren
             </Button>
             
-            <Button variant="outline" className="w-full justify-start">
+            <Button variant="outline" className="w-full justify-start" onClick={downloadJson}>
               <ExternalLinkIcon className="h-4 w-4 mr-2" />
               Daten als JSON herunterladen
             </Button>
             
-            <Button variant="outline" className="w-full justify-start">
+            <Button variant="outline" className="w-full justify-start" onClick={() => setShowHistory(v => !v)}>
               <InfoIcon className="h-4 w-4 mr-2" />
-              Audit-Log anzeigen
+              Bearbeitungsverlauf anzeigen
             </Button>
           </div>
+          {showHistory && <div className="mt-3 space-y-2 text-sm">
+            {historyLoading && <p>Verlauf wird geladen…</p>}
+            {historyError && <p>Verlauf konnte nicht geladen werden.</p>}
+            {!historyLoading && !historyError && history.length === 0 && <p>Noch keine Änderungen seit Einführung des Verlaufs erfasst.</p>}
+            {history.map(entry => <div key={entry.id} className="rounded border p-2"><p>{formatDate(entry.changed_at)}</p><p>Geändert: {entry.changed_fields.join(", ")}</p><p className="text-xs text-muted-foreground">Bearbeiter: {entry.actor_id ?? "System"}</p></div>)}
+          </div>}
         </CardContent>
       </Card>
     </div>

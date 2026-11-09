@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+import { useTenantUsers } from "@/hooks/useTenantUsers";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,16 +27,20 @@ interface OpenPoint {
   assignee?: string;
   due_date?: string;
   task_created?: boolean;
+  task_id?: string;
 }
 
 export function DebriefPanel({ preparation, appointmentId, onUpdate }: DebriefPanelProps) {
   const { user } = useAuth();
+  const { users } = useTenantUsers();
+  const [creating, setCreating] = useState<string | null>(null);
   const data = preparation.preparation_data ?? {};
   const [summary, setSummary] = useState(data.debrief_summary ?? "");
   const [outcomes, setOutcomes] = useState(data.debrief_outcomes ?? "");
   const [mood, setMood] = useState<Mood | undefined>(data.debrief_mood);
   const [openPoints, setOpenPoints] = useState<OpenPoint[]>(data.debrief_open_points ?? []);
   const [followupScheduled, setFollowupScheduled] = useState(data.debrief_followup_scheduled ?? false);
+  const [followupTaskId, setFollowupTaskId] = useState(data.debrief_followup_task_id);
   const [saving, setSaving] = useState(false);
 
   const persist = async (overrides: Partial<typeof data> = {}) => {
@@ -45,6 +51,7 @@ export function DebriefPanel({ preparation, appointmentId, onUpdate }: DebriefPa
       debrief_mood: mood,
       debrief_open_points: openPoints,
       debrief_followup_scheduled: followupScheduled,
+      debrief_followup_task_id: followupTaskId,
       ...overrides,
     };
     await onUpdate({ preparation_data: next });
@@ -53,67 +60,50 @@ export function DebriefPanel({ preparation, appointmentId, onUpdate }: DebriefPa
   const addPoint = () => {
     const next = [...openPoints, { id: crypto.randomUUID(), text: "" }];
     setOpenPoints(next);
+    void persist({ debrief_open_points: next });
   };
   const updatePoint = (id: string, patch: Partial<OpenPoint>) => {
     setOpenPoints((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
   };
   const removePoint = (id: string) => {
-    setOpenPoints((prev) => prev.filter((p) => p.id !== id));
+    const next = openPoints.filter(p => p.id !== id);
+    setOpenPoints(next);
+    void persist({ debrief_open_points: next });
   };
 
   const createTaskFromPoint = async (point: OpenPoint) => {
-    if (!user || !point.text.trim()) return;
+    if (!user || !point.text.trim() || creating || point.task_id) return;
+    setCreating(point.id);
     try {
-      const { error } = await supabase.from("tasks").insert({
-        title: point.text.slice(0, 200),
-        description: `Aus Nachbereitung: ${preparation.title}`,
-        tenant_id: preparation.tenant_id,
-        user_id: user.id,
-        assigned_to: user.id,
-        due_date: point.due_date ? new Date(point.due_date).toISOString() : null,
-        status: "open",
-        priority: "medium",
-        source_type: "appointment_preparation",
-        source_id: preparation.id,
-      });
+      await persist();
+      const { data: taskId, error } = await supabase.rpc("create_preparation_followup", { _preparation_id: preparation.id, _point_id: point.id });
       if (error) throw error;
-
-      updatePoint(point.id, { task_created: true });
-      const next = openPoints.map((p) => (p.id === point.id ? { ...p, task_created: true } : p));
-      await persist({ debrief_open_points: next });
+      const next = openPoints.map(p => p.id === point.id ? { ...p, task_created: true, task_id: taskId } : p);
+      setOpenPoints(next);
+      await onUpdate({});
       notify.success("Aufgabe erstellt");
     } catch (e) {
       notify.error("Fehler", { description: "Aufgabe konnte nicht erstellt werden."
 });
-    }
+    } finally { setCreating(null); }
   };
 
   const scheduleFollowupReminder = async () => {
     if (!user) return;
     try {
-      const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + 28);
-
-      const { error } = await supabase.from("tasks").insert({
-        title: `Erfolgs-Check: ${preparation.title}`,
-        description: "Hat das vereinbarte Ergebnis stattgefunden? (Auto-Reminder 4 Wochen nach Termin)",
-        tenant_id: preparation.tenant_id,
-        user_id: user.id,
-        assigned_to: user.id,
-        due_date: dueDate.toISOString(),
-        status: "open",
-        priority: "low",
-        source_type: "appointment_preparation",
-        source_id: preparation.id,
-      });
+      if (creating) return;
+      setCreating("followup");
+      await persist();
+      const { data: taskId, error } = await supabase.rpc("create_preparation_followup", { _preparation_id: preparation.id });
       if (error) throw error;
       setFollowupScheduled(true);
-      await persist({ debrief_followup_scheduled: true });
-      notify.success("Erfolgs-Check in 4 Wochen geplant");
+      setFollowupTaskId(taskId);
+      await onUpdate({});
+      notify.success("Erfolgs-Check vier Wochen nach Termin geplant");
     } catch (e) {
       notify.error("Fehler", { description: "Reminder konnte nicht erstellt werden."
 });
-    }
+    } finally { setCreating(null); }
   };
 
   const saveAll = async () => {
@@ -208,12 +198,13 @@ export function DebriefPanel({ preparation, appointmentId, onUpdate }: DebriefPa
                     onBlur={() => persist()}
                     className="w-44"
                   />
-                  {point.task_created ? (
+                  <select aria-label="Verantwortliche Person" value={point.assignee ?? user?.id ?? ""} onChange={e => { updatePoint(point.id, { assignee: e.target.value }); void persist({ debrief_open_points: openPoints.map(p => p.id === point.id ? { ...p, assignee: e.target.value } : p) }); }}><option value="">Person wählen</option>{users.map(u => <option key={u.id} value={u.id}>{u.display_name}</option>)}</select>
+                  {point.task_id ? (<Link to={`/tasks?highlight=${point.task_id}`}>Aufgabe öffnen</Link>) : point.task_created ? (
                     <span className="text-xs inline-flex items-center px-2 py-1 rounded bg-palette-green/10 text-palette-green">
                       ✓ Aufgabe erstellt
                     </span>
                   ) : (
-                    <Button size="sm" variant="outline" onClick={() => createTaskFromPoint(point)}>
+                    <Button size="sm" variant="outline" disabled={!!creating} onClick={() => createTaskFromPoint(point)}>
                       Aufgabe erstellen
                     </Button>
                   )}
@@ -239,10 +230,10 @@ export function DebriefPanel({ preparation, appointmentId, onUpdate }: DebriefPa
         </CardHeader>
         <CardContent>
           {followupScheduled ? (
-            <p className="text-sm text-palette-green">✓ Reminder in 4 Wochen ist geplant.</p>
+            <p className="text-sm text-palette-green">✓ Erfolgs-Check vier Wochen nach Termin ist geplant.</p>
           ) : (
-            <Button variant="outline" size="sm" onClick={scheduleFollowupReminder}>
-              In 4 Wochen erinnern: „Hat das stattgefunden?"
+            <Button disabled={!!creating || !appointmentId} variant="outline" size="sm" onClick={scheduleFollowupReminder}>
+              Vier Wochen nach Termin erinnern: „Hat das stattgefunden?"
             </Button>
           )}
         </CardContent>

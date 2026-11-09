@@ -1,3 +1,6 @@
+import { supabase } from "@/integrations/supabase/client";
+import { briefingFactLines } from "./briefingFacts";
+import { normalizeBriefingData } from "@/hooks/useAppointmentPreparation";
 import jsPDF from "jspdf";
 import "svg2pdf.js";
 import {
@@ -843,7 +846,7 @@ export async function generateBriefingPdf({
 }: BriefingPdfOptions): Promise<void> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const headerFont = await registerBriefingFonts(doc);
-  const d = preparation.preparation_data;
+  const d = normalizeBriefingData(preparation.preparation_data);
   const topY = 14; // Y for new pages
 
   // ── Header ──────────────────────────────────────────────────────────────────
@@ -878,10 +881,16 @@ export async function generateBriefingPdf({
   const bgLines: string[] = [];
   if (d.audience) bgLines.push(d.audience);
   if (d.facts_figures) bgLines.push(...splitLines(d.facts_figures));
+  const factIds = (d.structured_facts ?? []).flatMap(f => f.fact_id ? [f.fact_id] : []);
+  const { data: libraryFacts, error: factsError } = factIds.length ? await supabase.from("facts").select("id,text,source").eq("tenant_id", preparation.tenant_id).in("id", factIds) : { data: [], error: null };
+  if (factsError) throw factsError;
+  bgLines.push(...briefingFactLines(d, libraryFacts ?? []));
   addCardBulletSection(doc, MARGIN, LEFT_W, "Hintergrund", bgLines, leftY, topY);
 
   // 7. Kritische Fragen
   addCardTextSection(doc, MARGIN, LEFT_W, "Kritische Fragen & Antworten", d.questions_answers, leftY, topY);
+
+  addCardTextSection(doc, MARGIN, LEFT_W, "Unterlagen", d.materials_needed, leftY, topY);
 
   // 8. Weitere Notizen
   const briefingNotes = getBriefingNotes(preparation);

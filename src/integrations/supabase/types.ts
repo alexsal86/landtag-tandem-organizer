@@ -14,6 +14,12 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointment_preparation_history: {
+        Row: { id: string; preparation_id: string; tenant_id: string; actor_id: string | null; changed_at: string; changed_fields: string[] }
+        Insert: { id?: string; preparation_id: string; tenant_id: string; actor_id?: string | null; changed_at?: string; changed_fields: string[] }
+        Update: { changed_fields?: string[] }
+        Relationships: []
+      }
       action_permissions: {
         Row: {
           action_key: string
@@ -13536,8 +13542,12 @@ export type Database = {
         Args: { _reply?: string; _task_id: string }
         Returns: undefined
       }
+      create_preparation_followup: {
+        Args: { _preparation_id: string; _point_id?: string }
+        Returns: string
+      }
       advance_appointment_briefing: {
-        Args: { _action: string; _appointment_id: string }
+        Args: { _action: string; _appointment_id: string; _note?: string }
         Returns: undefined
       }
       approve_gdpr_delete: {

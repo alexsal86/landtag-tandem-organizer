@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
+import { useAppointmentBriefing } from "@/features/appointments/briefing/useBriefing";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Calendar, Clock, MapPin, ExternalLink, Notebook, Download, ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -45,14 +47,24 @@ export default function AppointmentPreparationDetail() {
   const { id, subId } = useParams();
   const preparationId = id ?? subId;
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { role } = useResolvedUserRole();
+  const view = searchParams.get("view");
+  const briefingMode = view === "briefing" || (view !== "preparation" && role === "abgeordneter");
+  const setView = (view: "preparation" | "briefing") => {
+    setSearchParams(previous => {
+      const next = new URLSearchParams(previous);
+      next.set("view", view);
+      return next;
+    });
+  };
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const [selectedPhase, setSelectedPhase] = useState<PhaseId | null>(null);
-  const [briefingMode, setBriefingMode] = useState(false);
+  const creationStarted = useRef<string | null>(null);
+  const [creationError, setCreationError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [appointmentInfo, setAppointmentInfo] = useState<AppointmentPreparationAppointmentDetails | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
   const [showAppointmentSidebar, setShowAppointmentSidebar] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [responsiblePerson, setResponsiblePerson] = useState<{ display_name: string | null; avatar_url: string | null } | null>(null);
@@ -73,24 +85,6 @@ export default function AppointmentPreparationDetail() {
   } = useAppointmentPreparation(preparationId);
   const [focusMode, setFocusMode] = useState(false);
   const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
-
-  // Fetch user role to determine default tab
-  useEffect(() => {
-    if (!user) return;
-    const fetchRole = async () => {
-      const { data } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      const role = data?.role || null;
-      setUserRole(role);
-      if (role === 'abgeordneter') {
-        setBriefingMode(true);
-      }
-    };
-    fetchRole();
-  }, [user]);
 
   const fetchAppointmentInfo = useCallback(async (appointmentId: string) => {
     try {
@@ -138,19 +132,27 @@ export default function AppointmentPreparationDetail() {
   // Create new preparation if we have URL parameters but no ID
   useEffect(() => {
     const createNewPreparation = async () => {
-      if (!preparationId && appointmentId && title && !isCreating && user && currentTenant) {
+      if (!preparationId && appointmentId && !isCreating && user && currentTenant) {
+        if (creationStarted.current === appointmentId) return;
+        creationStarted.current = appointmentId;
         setIsCreating(true);
         try {
+          const { data: existing, error: lookupError } = await supabase.from('appointment_preparations').select('id').eq('appointment_id', appointmentId).eq('is_archived', false).order('created_at').limit(1).maybeSingle();
+          if (lookupError) throw lookupError;
+          if (existing) { navigate(`/appointment-preparation/${existing.id}`, { replace: true }); return; }
+          const { data: appointment, error: appointmentError } = await supabase.from('appointments').select('title').eq('id', appointmentId).single();
+          if (appointmentError) throw appointmentError;
+          const resolvedTitle = title || appointment.title;
           const { data, error } = await supabase
             .from('appointment_preparations')
             .insert([{
-              title: `Terminplanung: ${title}`,
+              title: `Terminplanung: ${resolvedTitle}`,
               appointment_id: appointmentId,
               tenant_id: currentTenant.id,
               created_by: user.id,
               status: 'draft',
               preparation_data: {
-                contact_name: title.includes('@') ? title : '',
+                contact_name: resolvedTitle.includes('@') ? resolvedTitle : '',
                 event_type: 'Termin',
                 ...(location && { contact_info: location }),
                 ...(date && time && {
@@ -170,6 +172,7 @@ export default function AppointmentPreparationDetail() {
           if (error) throw error;
           navigate(`/appointment-preparation/${data.id}`, { replace: true });
         } catch (error) {
+          setCreationError('Terminvorbereitung konnte nicht geöffnet oder angelegt werden.');
           debugConsole.error('Error creating preparation:', error);
           notify.error("Fehler", {
             description: "Terminplanung konnte nicht erstellt werden."
@@ -181,6 +184,8 @@ export default function AppointmentPreparationDetail() {
     };
     createNewPreparation();
   }, [preparationId, appointmentId, title, date, time, location, isCreating, user, currentTenant, navigate, toast]);
+
+  if (creationError) return <div className="p-6"><p>{creationError}</p><Button onClick={() => navigate(-1)}>Zurück</Button></div>;
 
   if (loading || isCreating) {
     return (
@@ -364,7 +369,7 @@ export default function AppointmentPreparationDetail() {
           <div className="mt-4">
             <div className="mb-3 flex items-center justify-between">
               <p className="section-label text-muted-foreground">Briefing-Ansicht</p>
-              <Button variant="ghost" size="sm" onClick={() => setBriefingMode(false)}>
+              <Button variant="ghost" size="sm" onClick={() => setView("preparation")}>
                 Zur Vorbereitung
               </Button>
             </div>
@@ -386,7 +391,7 @@ export default function AppointmentPreparationDetail() {
             onOpenAppointmentDetails={() => setShowAppointmentSidebar(true)}
             selectedPhase={selectedPhase}
             setSelectedPhase={setSelectedPhase}
-            onShowBriefing={() => setBriefingMode(true)}
+            onShowBriefing={() => setView("briefing")}
             focusMode={focusMode}
             onToggleFocus={() => setFocusMode((v) => !v)}
             onShowShortcutsHelp={() => setShortcutsHelpOpen(true)}
@@ -444,7 +449,8 @@ function WorkflowWorkspace({
   onToggleFocus,
   onShowShortcutsHelp,
 }: WorkflowWorkspaceProps) {
-  const { phases, activePhase, blockers } = usePhaseStatus(preparation, selectedPhase);
+  const { data: briefing } = useAppointmentBriefing(preparation.appointment_id ?? undefined);
+  const { phases, activePhase, blockers } = usePhaseStatus(preparation, selectedPhase, briefing?.briefing_status);
   const currentIdx = phases.findIndex((p) => p.id === activePhase);
   const nextPhase = phases[currentIdx + 1];
   const prevPhase = phases[currentIdx - 1];
@@ -473,9 +479,9 @@ function WorkflowWorkspace({
         </div>
       </div>
 
-      <div className={`grid grid-cols-1 gap-6 ${focusMode ? 'lg:grid-cols-10' : 'lg:grid-cols-12'}`}>
+      <div className={`grid grid-cols-1 gap-6 ${focusMode ? 'lg:grid-cols-[minmax(0,6fr)_minmax(0,4fr)]' : 'lg:grid-cols-[minmax(0,1.8fr)_minmax(0,7.2fr)_minmax(0,3fr)]'}`}>
         {!focusMode && (
-          <div className="lg:col-span-3 lg:sticky lg:top-4 lg:self-start">
+          <div className="min-w-0 lg:sticky lg:top-4 lg:self-start">
             <PhaseSidebar
               phases={phases}
               activePhase={activePhase}
@@ -485,7 +491,7 @@ function WorkflowWorkspace({
           </div>
         )}
 
-        <div className={focusMode ? 'lg:col-span-6' : 'lg:col-span-6'}>
+        <div className="min-w-0">
           <PhaseContent
             phase={activePhase}
             preparation={preparation}
@@ -496,14 +502,14 @@ function WorkflowWorkspace({
           {nextPhase && (
             <div className="mt-6 flex justify-end">
               <Button variant="default" size="sm" onClick={() => setSelectedPhase(nextPhase.id)}>
-                Phase abschließen
+                Weiter zur nächsten Phase
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
           )}
         </div>
 
-        <div className={`hidden lg:block lg:sticky lg:top-4 lg:self-start ${focusMode ? 'lg:col-span-4' : 'lg:col-span-3'}`}>
+        <div className="hidden min-w-0 lg:block lg:sticky lg:top-4 lg:self-start">
           <LiveBriefingPane
             preparation={preparation}
             appointmentInfo={appointmentInfo ? {
