@@ -41,7 +41,7 @@ export function AppointmentPreparationTable({
           const StatusIcon = config.icon;
           
           return (
-            <TableRow key={preparation.id} className="cursor-pointer hover:bg-muted/50 relative" onClick={() => handlePreparationClick(preparation)}>
+            <TableRow key={preparation.id} className="relative cursor-pointer transition-[background-color,box-shadow] hover:bg-palette-green/5 hover:ring-1 hover:ring-inset hover:ring-palette-green focus-within:bg-palette-green/5 focus-within:ring-1 focus-within:ring-inset focus-within:ring-palette-green" onClick={() => handlePreparationClick(preparation)}>
               <TableCell className="w-10">
                 <div className={`flex items-center justify-center w-6 h-6 rounded-full ${config.bg}`}>
                   <StatusIcon className={`h-4 w-4 ${config.color}`} />

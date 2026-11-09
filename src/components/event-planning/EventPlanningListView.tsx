@@ -126,7 +126,7 @@ export function EventPlanningListView(data: EventPlanningDataReturn) {
                     <div className="col-span-full text-center py-8 text-muted-foreground">Keine aktiven Terminplanungen vorhanden</div>
                   ) : (
                     appointmentPreparations.map((preparation) => (
-                      <Card key={preparation.id} className="cursor-pointer hover:shadow-md transition-shadow relative" onClick={() => handlePreparationClick(preparation)}>
+                      <Card key={preparation.id} className="relative cursor-pointer transition-[background-color,box-shadow,border-color] hover:border-palette-green hover:bg-palette-green/5 hover:ring-1 hover:ring-inset hover:ring-palette-green focus-within:border-palette-green focus-within:ring-1 focus-within:ring-inset focus-within:ring-palette-green" onClick={() => handlePreparationClick(preparation)}>
                         <NewItemIndicator isVisible={isItemNew(preparation.id, preparation.created_at)} />
                         <CardHeader>
                           <CardTitle className="flex items-center justify-between">
@@ -168,7 +168,7 @@ export function EventPlanningListView(data: EventPlanningDataReturn) {
                     <div className="col-span-full text-center py-8 text-muted-foreground">Keine archivierten Terminplanungen vorhanden</div>
                   ) : (
                     archivedPreparations.map((preparation) => (
-                      <Card key={preparation.id} className="cursor-pointer opacity-75 hover:opacity-100 hover:shadow-md transition-all" onClick={() => handlePreparationClick(preparation)}>
+                      <Card key={preparation.id} className="cursor-pointer opacity-75 transition-[background-color,box-shadow,border-color,opacity] hover:opacity-100 hover:border-palette-green hover:bg-palette-green/5 hover:ring-1 hover:ring-inset hover:ring-palette-green focus-within:border-palette-green focus-within:ring-1 focus-within:ring-inset focus-within:ring-palette-green" onClick={() => handlePreparationClick(preparation)}>
                         <CardHeader>
                           <CardTitle className="flex items-center justify-between">
                             <span className="truncate">{preparation.title}</span>

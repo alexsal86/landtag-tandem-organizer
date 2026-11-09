@@ -40,7 +40,10 @@ export function EventPlanningOverview({ plannings, allProfiles, collaborators, u
     const team = collaborators.filter(c => c.event_planning_id === planning.id && c.user_id !== planning.user_id);
     const canEdit = planning.user_id === user?.id || team.some(c => c.user_id === user?.id && c.can_edit);
     const date = confirmedDate(planning);
-    return <li key={planning.id} ref={highlightRef(planning.id)} className={cn("relative min-w-0", !listView && "rounded-xl border bg-background/60 p-3", isHighlighted(planning.id) && "notification-highlight")}>
+    return <li key={planning.id} ref={highlightRef(planning.id)} onClick={event => {
+      if (event.target instanceof Element && event.target.closest("button,a,[role='menu'],[role='menuitem'],[tabindex]")) return;
+      setSelectedPlanning(planning);
+    }} className={cn("relative min-w-0 cursor-pointer rounded-xl transition-[background-color,box-shadow,border-color] hover:bg-palette-green/5 hover:ring-1 hover:ring-inset hover:ring-palette-green focus-within:ring-1 focus-within:ring-inset focus-within:ring-palette-green", !listView && "border bg-background/60 p-3 hover:border-palette-green", isHighlighted(planning.id) && "notification-highlight")}>
       <NewItemIndicator isVisible={isItemNew(planning.id, planning.created_at)} size="sm" />
       <div className={cn("grid grid-cols-[2rem_minmax(0,1fr)_auto] items-start gap-x-2.5 gap-y-1.5 sm:grid-cols-[2.4rem_minmax(0,1fr)_auto] sm:gap-x-3", listView && "rounded-xl px-1 py-3 sm:px-2 sm:py-3.5")}>
         <button type="button" onClick={() => setSelectedPlanning(planning)} aria-label={`${planning.title} öffnen`} className={cn("row-span-2 mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full sm:h-[2.4rem] sm:w-[2.4rem]", date ? "bg-palette-green/15 text-green-800 dark:text-green-300" : "bg-palette-amber/15 text-amber-900 dark:text-amber-300")}>
