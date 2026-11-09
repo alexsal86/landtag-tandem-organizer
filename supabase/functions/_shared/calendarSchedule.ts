@@ -57,16 +57,15 @@ export function calendarOccurrence(config: ScheduleConfig, now: Date): string | 
 }
 
 function berlinInstant(year: number, month: number, day: number, hour: number): Date {
-  // Fixed-point conversion handles CET/CEST; missing 02:00 resolves at 03:00.
+  // Berlin is UTC+1/+2. Earliest matching instant handles the repeated hour.
   const wall = Date.UTC(year, month - 1, day, hour);
-  let utc = wall;
-  for (let i = 0; i < 4; i++) {
-    const local = localParts(new Date(utc));
-    const delta = wall - Date.UTC(local.year, local.month - 1, local.day, local.hour);
-    if (delta === 0) return new Date(utc);
-    utc += delta;
+  for (const offset of [2, 1]) {
+    const candidate = new Date(wall - offset * 3600000);
+    const local = localParts(candidate);
+    if (local.year === year && local.month === month && local.day === day && local.hour === hour) return candidate;
   }
-  return new Date(Math.max(utc, utc + 3600000));
+  // Missing spring 02:00 becomes 03:00 CEST (01:00 UTC).
+  return new Date(wall - 3600000);
 }
 
 export function nextCalendarOccurrence(config: ScheduleConfig, now: Date): Date | null {
