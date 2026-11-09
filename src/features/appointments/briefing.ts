@@ -1,5 +1,5 @@
 // Pure rules for appointment briefings (decide need → assign → review → approve).
-export type BriefingStatus = "undecided" | "none" | "assigned" | "in_review" | "approved";
+export type BriefingStatus = "undecided" | "none" | "assigned" | "in_review" | "approved" | "completed";
 export type BriefingAction = "submit" | "approve" | "return";
 
 export const BRIEFING_STATUS_LABELS: Record<BriefingStatus, string> = {
@@ -8,6 +8,7 @@ export const BRIEFING_STATUS_LABELS: Record<BriefingStatus, string> = {
   assigned: "In Zuarbeit",
   in_review: "Zur Freigabe",
   approved: "Freigegeben",
+  completed: "Abgeschlossen",
 };
 
 const TRANSITIONS: Record<BriefingAction, { from: BriefingStatus; to: BriefingStatus; deciderOnly: boolean }> = {

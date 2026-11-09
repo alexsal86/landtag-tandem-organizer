@@ -12,7 +12,7 @@ import { useAppointmentBriefing, useBriefingMutations } from "./useBriefing";
 import { BriefingRequestPopover } from "./BriefingRequestPopover";
 import { CompactBriefingEditor } from "./CompactBriefingEditor";
 
-const VARIANT: Record<string, "secondary" | "outline" | "default"> = { undecided: "outline", none: "secondary", assigned: "default", in_review: "default", approved: "secondary" };
+const VARIANT: Record<string, "secondary" | "outline" | "default"> = { undecided: "outline", none: "secondary", assigned: "default", in_review: "default", approved: "secondary", completed: "secondary" };
 
 /** Briefing tile in the appointment sidebar. Server enforces roles; UI hides decider buttons optimistically. */
 export function AppointmentBriefingStatusCard({ appointmentId, title, startTime, isDecider }: { appointmentId: string; title: string; startTime: string; isDecider: boolean }) {
