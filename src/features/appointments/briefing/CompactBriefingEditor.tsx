@@ -1,5 +1,7 @@
+import { useAppointmentBriefing } from "./useBriefing";
+import { useBriefingEditorView } from "./useBriefingEditorView";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -9,7 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { notify } from "@/lib/notify";
 import type { Json } from "@/integrations/supabase/types";
-import { canCompleteBriefing, dossierExtrasLine, mergeLegacy, saveCompact, type CompactValues } from "./briefingModel";
+import { briefingDepthLabel, canCompleteBriefing, dossierExtrasLine, mergeLegacy, saveCompact, type CompactValues } from "./briefingModel";
 
 const CORE = [
   { key: "compact_partners", label: "Gesprächspartner", placeholder: "Wer sitzt uns gegenüber? Name, Funktion" },
@@ -38,6 +40,10 @@ interface Props {
 export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title, preparationId, embedded = false, onSaved, onShowFull }: Props) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { rememberView } = useBriefingEditorView();
+  const savedPreparationId = useRef<string | null>(null);
+  const { data: briefingAssignment } = useAppointmentBriefing(appointmentId);
+  const requestedDepth = briefingAssignment?.briefing_depth;
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const { currentTenant } = useTenant();
@@ -47,6 +53,7 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
   const [values, setValues] = useState<Record<string, string>>({});
   const [extras, setExtras] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [liveNotes, setLiveNotes] = useState<string>("");
   const [status, setStatus] = useState<string | null>(null);
   const [canEdit, setCanEdit] = useState(false);
@@ -63,6 +70,7 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
       if (error) { setLoadError(true); setLoading(false); notify.error("Briefing konnte nicht geladen werden."); return; }
       const pd = (data?.preparation_data && typeof data.preparation_data === "object" && !Array.isArray(data.preparation_data) ? data.preparation_data : {}) as Record<string, Json>;
       setPrepId(data?.id ?? null);
+      savedPreparationId.current = data?.id ?? null;
       setBase(pd);
       const v: Record<string, string> = { ...mergeLegacy(pd) };
       const [{ data: fb }, { data: appt }] = await Promise.all([
@@ -76,6 +84,7 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
       setStatus(appt?.briefing_status ?? null);
       if (!v.compact_debrief && notes) v.compact_debrief = notes;
       setValues(v);
+      setDirty(false);
       setLoading(false);
       setExtras(EXTRA.filter((f) => v[f.key]).map((f) => f.key));
     })();
@@ -84,6 +93,11 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
 
   const save = async (close = true): Promise<boolean> => {
     if (!user || !currentTenant || loading || loadError || !canEdit || saving) return false;
+    if (!dirty && prepId) {
+      rememberView(prepId, "compact");
+      if (close && !embedded) onOpenChange(false);
+      return true;
+    }
     setSaving(true);
     try {
       const preparation_data = saveCompact(base, values as CompactValues) as Record<string, Json>;
@@ -92,7 +106,10 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
         : await supabase.from("appointment_preparations").insert({ appointment_id: appointmentId, tenant_id: currentTenant.id, created_by: user.id, title: `Briefing: ${title}`, status: "in_progress", preparation_data }).select("id").single();
       if (res.error) { notify.error(res.error.message); return false; }
       setPrepId(res.data.id);
+      savedPreparationId.current = res.data.id;
+      rememberView(res.data.id, "compact");
       setBase(preparation_data);
+      setDirty(false);
       void queryClient.invalidateQueries({ queryKey: ["appointment-briefing"] });
       if (onSaved) await onSaved();
       notify.success("Briefing gespeichert.");
@@ -107,13 +124,11 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
   };
 
   const openDossier = async () => {
-    if (canEdit && !(await save(false))) return;
+    if (canEdit && dirty && !(await save(false))) return;
+    const targetId = savedPreparationId.current ?? prepId;
+    if (targetId) rememberView(targetId, "full");
     if (onShowFull) { onShowFull(); return; }
-    if (canEdit) {
-      const { error } = await supabase.rpc("set_appointment_briefing_depth", { _appointment_id: appointmentId, _depth: "full" });
-      if (error) { notify.error(error.message); return; }
-    }
-    navigate(prepId ? `/appointment-preparation/${prepId}?view=${canEdit ? "preparation" : "briefing"}` : `/appointment-preparation?appointmentId=${appointmentId}&view=preparation`);
+    navigate(targetId ? `/appointment-preparation/${targetId}?view=${canEdit ? "preparation" : "briefing"}&depth=full` : `/appointment-preparation?appointmentId=${appointmentId}&view=preparation&depth=full`);
   };
 
   const complete = async () => {
@@ -127,7 +142,7 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
   const field = (f: { key: string; label: string; placeholder: string }) => (
     <div key={f.key} className="space-y-1">
       <label className="text-caption font-medium text-muted-foreground">{f.label}</label>
-      <Textarea readOnly={!canEdit || loading || loadError} rows={3} value={values[f.key] ?? ""} placeholder={f.placeholder} onChange={(e) => setValues((s) => ({ ...s, [f.key]: e.target.value }))} />
+      <Textarea readOnly={!canEdit || loading || loadError} rows={3} value={values[f.key] ?? ""} placeholder={f.placeholder} onChange={(e) => { setDirty(true); setValues((s) => ({ ...s, [f.key]: e.target.value })); }} />
     </div>
   );
 
@@ -149,6 +164,7 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
   );
   const content = <>
     {heading}
+    {!embedded && <div className="rounded-md bg-muted/50 px-3 py-2 text-sm"><p className="font-medium">Beauftragtes Briefing: {loading ? "Wird geladen…" : status === "none" ? "Kein Briefing beauftragt" : status === "undecided" ? "Noch nicht beauftragt" : briefingDepthLabel(requestedDepth)}</p><p className="mt-1 text-xs text-muted-foreground">Der Ansichtswechsel ändert den Auftrag nicht.</p></div>}
         {!loading && !canEdit && <p className="text-sm text-muted-foreground">Für das Team sichtbar · Bearbeitung durch die beauftragte Person.</p>}
         {extrasLine && <p className="rounded-md bg-muted/50 px-3 py-2 text-caption text-muted-foreground">{extrasLine}</p>}
         <div className="space-y-3">

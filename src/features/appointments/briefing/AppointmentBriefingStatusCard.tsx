@@ -1,3 +1,4 @@
+import { useBriefingEditorView } from "./useBriefingEditorView";
 import { useState } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -12,7 +13,7 @@ import { asBriefingStatus, BRIEFING_STATUS_LABELS, canAdvanceBriefing, type Brie
 import { briefingErrorMessage, useAppointmentBriefing, useBriefingMutations } from "./useBriefing";
 import { BriefingRequestPopover } from "./BriefingRequestPopover";
 import { CompactBriefingEditor } from "./CompactBriefingEditor";
-import { canGoLive } from "./briefingModel";
+import { briefingDepthLabel, canGoLive } from "./briefingModel";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -25,6 +26,8 @@ export function AppointmentBriefingStatusCard({ appointmentId, title, startTime,
   const { data, isPending, error, refetch } = useAppointmentBriefing(appointmentId);
   const { setBriefing, advance } = useBriefingMutations();
   const [editorOpen, setEditorOpen] = useState(false);
+  const [opening, setOpening] = useState(false);
+  const { getView } = useBriefingEditorView();
   const [returnNote, setReturnNote] = useState("");
   const navigate = useNavigate();
   if (isPending) return <div className="rounded-lg border p-3 text-sm" role="status">Briefing-Status wird geladen…</div>;
@@ -37,6 +40,25 @@ export function AppointmentBriefingStatusCard({ appointmentId, title, startTime,
   const status = asBriefingStatus(data.briefing_status);
   const assigneeName = data.briefing_assignee_name || users.find((u) => u.id === data.briefing_assignee_id)?.display_name;
   const isAssignee = data.briefing_assignee_id === user?.id;
+
+  const openBriefing = async () => {
+    if (opening) return;
+    setOpening(true);
+    try {
+      const { data: prep, error } = await supabase.from("appointment_preparations").select("id,created_by").eq("appointment_id", appointmentId).eq("is_archived", false).order("created_at").limit(1).maybeSingle();
+      if (error) throw error;
+      const depth = getView(prep?.id) ?? data.briefing_depth ?? "compact";
+      if (depth === "full" && prep) {
+        navigate(`/appointment-preparation/${prep.id}?view=${isDecider || isAssignee || prep.created_by === user?.id ? "preparation" : "briefing"}&depth=full`);
+      } else {
+        setEditorOpen(true);
+      }
+    } catch (error) {
+      notify.error(briefingErrorMessage(error, "Briefing konnte nicht geöffnet werden."));
+    } finally {
+      setOpening(false);
+    }
+  };
 
   const run = async (fn: () => Promise<unknown>, ok: string) => {
     try { await fn(); notify.success(ok); } catch (e) { notify.error(briefingErrorMessage(e, "Aktion fehlgeschlagen.")); }
@@ -54,6 +76,7 @@ export function AppointmentBriefingStatusCard({ appointmentId, title, startTime,
           Vergeben an: <strong className="text-foreground">{assigneeName ?? `Person (${data.briefing_assignee_id})`}</strong>{data.briefing_due_at && ` · Frist ${format(new Date(data.briefing_due_at), "EEE d.M. HH:mm", { locale: de })}`}
         </p>
       )}
+      {status !== "none" && status !== "undecided" && <p className="text-caption text-muted-foreground">Beauftragtes Briefing: <strong className="text-foreground">{briefingDepthLabel(data.briefing_depth)}</strong></p>}
       {error && <p className="text-caption text-destructive" role="alert">Der Status konnte nicht aktualisiert werden. <button type="button" className="underline" onClick={() => void refetch()}>Erneut laden</button></p>}
       {!data.briefing_assignee_id && <p className="text-caption text-muted-foreground">{status === "none" ? "Für diesen Termin ist kein Briefing beauftragt." : "Das Briefing ist noch nicht vergeben."}</p>}
       <p className="text-caption text-muted-foreground">Vorbereitung für das gesamte Team sichtbar.</p>
@@ -68,7 +91,7 @@ export function AppointmentBriefingStatusCard({ appointmentId, title, startTime,
         {status === "none" && isDecider && (
           <BriefingRequestPopover appointmentId={appointmentId} startTime={startTime} trigger={<Button size="sm" variant="ghost">Doch Briefing anfordern</Button>} />
         )}
-        {status !== "undecided" && status !== "none" && <Button size="sm" variant="outline" onClick={() => setEditorOpen(true)}>Briefing öffnen</Button>}
+        {status !== "undecided" && status !== "none" && <Button size="sm" variant="outline" disabled={opening} onClick={() => void openBriefing()}>Briefing öffnen</Button>}
         {canGoLive({ briefing_status: status, start_time: startTime }) && <Button size="sm" onClick={goLive}>Live starten</Button>}
         {canAdvanceBriefing(status, "submit", { isDecider, isAssignee }) && <Button size="sm" onClick={() => act("submit", "Zur Freigabe vorgelegt.")}>Zur Freigabe vorlegen</Button>}
         {canAdvanceBriefing(status, "approve", { isDecider, isAssignee }) && <Button size="sm" onClick={() => act("approve", "Briefing freigegeben.")}>Freigeben</Button>}

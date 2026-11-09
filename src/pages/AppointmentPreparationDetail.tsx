@@ -1,3 +1,5 @@
+import { useBriefingEditorView } from "@/features/appointments/briefing/useBriefingEditorView";
+import { briefingDepthLabel } from "@/features/appointments/briefing/briefingModel";
 import { CompactBriefingEditor } from "@/features/appointments/briefing/CompactBriefingEditor";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { useAppointmentBriefing } from "@/features/appointments/briefing/useBriefing";
@@ -51,8 +53,9 @@ export default function AppointmentPreparationDetail() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { role } = useResolvedUserRole();
   const view = searchParams.get("view");
-  const compactEditing = searchParams.get("depth") === "compact";
+  const { getView, rememberView } = useBriefingEditorView();
   const setEditingDepth = (depth: "compact" | "full") => {
+    if (preparationId) rememberView(preparationId, depth);
     setSearchParams(previous => {
       const next = new URLSearchParams(previous);
       next.set("view", "preparation");
@@ -93,6 +96,13 @@ export default function AppointmentPreparationDetail() {
     saveStatus,
     lastSavedAt,
   } = useAppointmentPreparation(preparationId);
+  const { data: briefingAssignment, isPending: assignmentPending } = useAppointmentBriefing(preparation?.appointment_id ?? undefined);
+  const urlDepth = searchParams.get("depth");
+  const editingDepth = urlDepth === "compact" || urlDepth === "full"
+    ? urlDepth
+    : getView(preparationId) ?? briefingAssignment?.briefing_depth ?? "full";
+  const compactEditing = editingDepth === "compact";
+
   const [focusMode, setFocusMode] = useState(false);
   const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
 
@@ -374,6 +384,12 @@ export default function AppointmentPreparationDetail() {
           </div>
         </Card>
 
+        {preparation.appointment_id && <div className="mb-4 rounded-lg border bg-muted/30 px-4 py-3">
+          <p className="text-sm font-medium">Beauftragtes Briefing: {assignmentPending ? "Wird geladen…" : briefingAssignment?.briefing_status === "none" ? "Kein Briefing beauftragt" : briefingAssignment?.briefing_status === "undecided" ? "Noch nicht beauftragt" : briefingDepthLabel(briefingAssignment?.briefing_depth)}</p>
+          {briefingAssignment?.briefing_instructions && <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">Auftrag: {briefingAssignment.briefing_instructions}</p>}
+          <p className="mt-1 text-xs text-muted-foreground">Kurz- und Langansicht sind deine persönliche Bearbeitungsansicht. Ein Wechsel ändert den Auftrag nicht.</p>
+        </div>}
+
         {/* Workflow Workspace */}
         {briefingMode ? (
           <div className="mt-4">
@@ -393,6 +409,8 @@ export default function AppointmentPreparationDetail() {
               } : null}
             />
           </div>
+        ) : assignmentPending && preparation.appointment_id && urlDepth !== "compact" && urlDepth !== "full" && !getView(preparationId) ? (
+          <p className="py-6 text-sm text-muted-foreground" role="status">Briefing-Ansicht wird geladen…</p>
         ) : compactEditing && preparation.appointment_id ? (
           <CompactBriefingEditor
             open

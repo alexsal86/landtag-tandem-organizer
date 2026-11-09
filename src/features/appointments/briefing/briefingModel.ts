@@ -3,6 +3,9 @@
 import { asBriefingStatus } from "../briefing";
 
 export type BriefingDepth = "compact" | "full";
+export function briefingDepthLabel(depth: string | null | undefined): string {
+  return depth === "compact" ? "Kurzbriefing" : depth === "full" ? "Langbriefing" : "Umfang nicht hinterlegt";
+}
 export type PrepData = Record<string, unknown>;
 
 export const COMPACT_KEYS = ["compact_partners", "compact_goal", "compact_positions", "compact_documents", "compact_qa", "compact_facts", "compact_debrief"] as const;

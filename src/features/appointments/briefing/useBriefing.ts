@@ -67,7 +67,7 @@ async function fetchAppointmentBriefing(appointmentId: string, tenantId: string)
       : Promise.resolve({ data: null }),
     supabase.from("appointments").select("briefing_depth").eq("id", appointmentId).eq("tenant_id", tenantId).single(),
   ]);
-  return { ...data, briefing_assignee_name: profileResult.data?.display_name ?? null, briefing_depth: depthResult.data?.briefing_depth ?? "compact" };
+  return { ...data, briefing_assignee_name: profileResult.data?.display_name ?? null, briefing_depth: depthResult.data?.briefing_depth };
 }
 
 export function useAppointmentBriefing(appointmentId: string | undefined) {
