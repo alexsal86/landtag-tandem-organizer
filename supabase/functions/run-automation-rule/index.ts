@@ -248,7 +248,7 @@ serve(withSafeHandler("run-automation-rule", async (req) => {
 
     const { data: rule, error: ruleError } = await supabaseAdmin
       .from("automation_rules")
-      .select("id, tenant_id, name, conditions, actions, enabled")
+      .select("id, tenant_id, name, conditions, actions, enabled, created_by")
       .eq("id", ruleId)
       .maybeSingle();
 
@@ -323,7 +323,7 @@ serve(withSafeHandler("run-automation-rule", async (req) => {
       rule_id: rule.id,
       tenant_id: rule.tenant_id,
       status: "running",
-      trigger_source: "manual",
+      trigger_source: isInternalCall && sourcePayload.source === "scheduled" ? "schedule" : "manual",
       dry_run: dryRun,
       idempotency_key: idempotencyKey ?? null,
       input_payload: sourcePayload,
@@ -333,11 +333,18 @@ serve(withSafeHandler("run-automation-rule", async (req) => {
       max_retries: 3,
     };
 
-    const { data: run, error: runError } = await supabaseAdmin
+    const runId = crypto.randomUUID();
+    const { error: runError } = await supabaseAdmin
       .from("automation_rule_runs")
-      .insert(runInsert)
-      .select("id")
-      .single();
+      .insert({ ...runInsert, id: runId });
+    const run = { id: runId };
+
+    // The unique index claims the slot atomically, including concurrent requests.
+    if (runError?.code === "23505" && idempotencyKey) {
+      const { data: claimed } = await supabaseAdmin.from("automation_rule_runs").select("id,status")
+        .eq("tenant_id", rule.tenant_id).eq("rule_id", rule.id).eq("idempotency_key", idempotencyKey).maybeSingle();
+      if (claimed) return new Response(JSON.stringify({ reused: true, runId: claimed.id, status: claimed.status }), { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+    }
 
     if (runError || !run) {
       return new Response(JSON.stringify({ error: runError?.message ?? "Could not create run" }), {
@@ -665,10 +672,16 @@ serve(withSafeHandler("run-automation-rule", async (req) => {
           priority,
           category,
           due_date: dueDate ? new Date(dueDate).toISOString() : null,
-          user_id: user?.id ?? null,
+          user_id: user?.id ?? rule.created_by,
           status: "todo",
           tenant_id: rule.tenant_id,
           assigned_to: assignedTo || null,
+          ...(isInternalCall && sourcePayload.source === "scheduled" ? {
+            ball_owner: "office",
+            source_type: "automation_rule",
+            source_id: rule.id,
+            timeline: [{ id: crypto.randomUUID(), at: new Date().toISOString(), type: "created", text: `Stichtagsregel: ${rule.name}`, actor: rule.created_by }],
+          } : {}),
         };
 
         const { error: taskError } = await supabaseAdmin.from("tasks").insert(taskInsert);
