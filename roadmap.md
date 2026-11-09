@@ -15,3 +15,10 @@
 - [x] Regeln, Archivierungstests und Selbsttest ergänzen
 - [ ] Angemeldeten Gesamtablauf und Datenbank-Selbsttest prüfen — keine verwaltete Testsitzung für externes Supabase verfügbar
 - Beide Jour-Fixe-Ansichten bleiben getrennt.
+
+# Automatisierungs-Hub
+- [ ] Phase 1: Jahresaufgaben atomar ins Stafetten-System übergeben und Abschluss synchronisieren
+- [ ] Phase 1: Regeln, Datenbank-Verknüpfung und Selbsttests absichern
+- [ ] Phase 2: Regeln/Workflows und RSS-Navigation zusammenführen
+- [ ] Phase 3: Kalendarische Stichtage im Regel-Builder und Scheduler ergänzen
+- [ ] Angemeldeten Jahresaufgaben-Gesamtablauf prüfen — externe Supabase-Testsitzung fehlt
