@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from "xlsx";
 import { debugConsole } from '@/utils/debugConsole';
 import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 interface DecisionAttachmentPreviewDialogProps {
   open: boolean;
@@ -63,7 +64,7 @@ function PdfPreview({ url, fileName }: { url: string; fileName: string }) {
     const render = async () => {
       try {
         const pdfjsLib = await import("pdfjs-dist");
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
         const pdf = await pdfjsLib.getDocument({ url }).promise;
         const page = await pdf.getPage(1);
         const viewport = page.getViewport({ scale: 1.5 });

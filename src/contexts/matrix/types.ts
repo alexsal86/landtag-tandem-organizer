@@ -1,5 +1,5 @@
 import * as sdk from 'matrix-js-sdk';
-import { CryptoEvent } from 'matrix-js-sdk/lib/crypto-api';
+import type { EmittedEvents } from 'matrix-js-sdk/lib/client';
 import { VerificationPhase, type Verifier } from 'matrix-js-sdk/lib/crypto-api/verification';
 import type { MatrixCreateRoomOptions, MatrixMessage, MatrixReactionSummary, MatrixReplyPreview } from '@/types/matrix';
 
@@ -101,11 +101,7 @@ export interface MatrixSasData {
   cancel: () => void;
 }
 
-export type MatrixClientEventName = (typeof sdk.ClientEvent)[keyof typeof sdk.ClientEvent]
-  | (typeof sdk.RoomEvent)[keyof typeof sdk.RoomEvent]
-  | (typeof sdk.RoomMemberEvent)[keyof typeof sdk.RoomMemberEvent]
-  | (typeof sdk.MatrixEventEvent)[keyof typeof sdk.MatrixEventEvent]
-  | (typeof CryptoEvent)[keyof typeof CryptoEvent];
+export type MatrixClientEventName = EmittedEvents;
 
 export interface MatrixEventListener {
   event: MatrixClientEventName;
