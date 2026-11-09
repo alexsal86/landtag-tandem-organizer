@@ -1,4 +1,7 @@
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { automationTabFromParams } from "./automationNavigation";
 import type { Json } from "@/integrations/supabase/types";
 import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { useAuth } from "@/hooks/useAuth";
@@ -8,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/components/ui/use-toast";
 import { AlertTriangle, Clock, Copy, Download, Loader2, Pause, Play, Plus, ShieldAlert, Trash2, Upload, Zap } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -73,7 +75,35 @@ import { useAutomationAdminMutations, useAutomationMembershipRole, useAutomation
 import type { AutomationRuleRecordView as RuleRow, AutomationRunRecordView as RunRow } from "./automationShared";
 import { notify } from "@/lib/notify";
 
+const WorkflowEngineManager = lazy(() => import("./WorkflowEngineManager").then(module => ({ default: module.WorkflowEngineManager })));
+
 export function AutomationRulesManager() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const tab = automationTabFromParams(new URLSearchParams(location.search));
+  const changeTab = (value: string) => {
+    const params = new URLSearchParams(location.search);
+    params.set("automationTab", value === "history" || value === "dispatcher" ? value : "rules");
+    navigate({ pathname: location.pathname, search: params.toString() });
+  };
+
+  return (
+    <Tabs value={tab} onValueChange={changeTab} className="min-w-0 space-y-md">
+      <TabsList aria-label="Regeln und Workflows" className="h-auto max-w-full flex-wrap justify-start">
+        <TabsTrigger value="rules">Regeln</TabsTrigger>
+        <TabsTrigger value="history">Ausführungshistorie</TabsTrigger>
+        <TabsTrigger value="dispatcher">Dispatcher</TabsTrigger>
+      </TabsList>
+      <TabsContent value="rules"><AutomationRulesContent view="rules" onShowHistory={() => changeTab("history")} /></TabsContent>
+      <TabsContent value="history"><AutomationRulesContent view="history" onShowHistory={() => changeTab("history")} /></TabsContent>
+      <TabsContent value="dispatcher">
+        <Suspense fallback={<LoadingState variant="list" rows={3} />}><WorkflowEngineManager /></Suspense>
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "history"; onShowHistory: () => void }) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
 
@@ -538,7 +568,7 @@ export function AutomationRulesManager() {
               variant="outline"
               size="sm"
               className="ml-4 border-destructive text-destructive hover:bg-destructive/10"
-              onClick={() => setRunStatusFilter("failed")}
+              onClick={() => { setRunStatusFilter("failed"); onShowHistory(); }}
             >
               Fehler anzeigen
             </Button>
@@ -563,13 +593,13 @@ export function AutomationRulesManager() {
       />
 
       {/* Template Gallery */}
-      <AutomationTemplateGallery onUseTemplate={useTemplate} />
+      {view === "rules" && <AutomationTemplateGallery onUseTemplate={useTemplate} />}
 
       {/* Error Dashboard */}
-      <AutomationErrorDashboard onRetrigger={refreshAll} />
+      {view === "history" && <AutomationErrorDashboard onRetrigger={refreshAll} />}
 
       {/* Rules list */}
-      <Card>
+      {view === "rules" && <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -691,10 +721,10 @@ export function AutomationRulesManager() {
             })
           )}
         </CardContent>
-      </Card>
+      </Card>}
 
       {/* Run history */}
-      <Card>
+      {view === "history" && <Card>
         <CardHeader>
           <div className="space-y-3">
             <CardTitle>Run-Historie (inkl. Dry-Run)</CardTitle>
@@ -813,7 +843,7 @@ export function AutomationRulesManager() {
             ))
           )}
         </CardContent>
-      </Card>
+      </Card>}
 
       {/* Version History Dialog */}
       {versionsRuleId && (

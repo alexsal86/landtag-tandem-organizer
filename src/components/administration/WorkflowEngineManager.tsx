@@ -13,8 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { toast } from "@/hooks/use-toast";
-import { Workflow, Plus, Play, Trash2, Edit, History, X } from "lucide-react";
+import { Workflow, Plus, Play, Trash2, Edit, History, X, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { notify } from "@/lib/notify";
 
@@ -91,7 +90,7 @@ export function WorkflowEngineManager() {
     setLoading(true);
     const [defRes, runRes] = await Promise.all([
       supabase.from("workflow_definitions")
-        .select("*").eq("tenant_id", currentTenant.id).order("created_at", { ascending: false }),
+        .select("id, tenant_id, name, description, trigger_type, trigger_config, conditions, actions, is_active, created_at").eq("tenant_id", currentTenant.id).order("created_at", { ascending: false }),
       supabase.from("workflow_runs")
         .select("id, workflow_id, trigger_type, status, is_dry_run, started_at, finished_at, error")
         .eq("tenant_id", currentTenant.id).order("started_at", { ascending: false }).limit(100),
@@ -107,7 +106,7 @@ export function WorkflowEngineManager() {
     })));
     setRuns((runRes.data ?? []) as RunRow[]);
     setLoading(false);
-  }, [currentTenant?.id, toast]);
+  }, [currentTenant?.id]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -180,13 +179,14 @@ export function WorkflowEngineManager() {
       <CardHeader className="flex flex-row items-start justify-between gap-4">
         <div>
           <CardTitle className="flex items-center gap-2">
-            <Workflow className="h-5 w-5" /> Workflow-Engine
+            <Workflow className="h-5 w-5" /> Dispatcher
           </CardTitle>
           <CardDescription>
-            Trigger → Bedingungen → Aktionen. {defs.length} Definitionen, {runs.length} Runs.
+            {defs.length} Workflows · {runs.length} letzte Ausführungen
           </CardDescription>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="ghost" onClick={() => void load()} aria-label="Dispatcher aktualisieren" title="Aktualisieren"><RefreshCw className="h-4 w-4" /></Button>
           <Button size="sm" variant="outline" onClick={() => setShowHistory(true)}>
             <History className="h-4 w-4 mr-2" /> Verlauf
           </Button>
@@ -254,6 +254,7 @@ export function WorkflowEngineManager() {
                     {r.is_dry_run && <Badge variant="outline">Dry-Run</Badge>}
                     <span className="flex-1 truncate">{def?.name ?? r.workflow_id} · {r.trigger_type}</span>
                     <span className="text-xs text-muted-foreground">{new Date(r.started_at).toLocaleString("de-DE")}</span>
+                    {r.error && <p className="basis-full break-words text-xs text-destructive">{r.error}</p>}
                   </div>
                 );
               })}

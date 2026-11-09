@@ -1,4 +1,5 @@
 import { getAdministrationAccess } from "@/components/administration/access";
+import { automationTabFromParams, normalizeAutomationParams, rssTabFromParams } from "@/components/administration/automationNavigation";
 import { canTransitionStatus } from "@/components/letters/types";
 import { canDecide } from "@/features/appointment-requests/logic";
 import { isOnResubmission, MINISTRY_RESPONSE_DAYS, withAutoDeadline, type TriageItem } from "@/features/cases/items/ball";
@@ -13,6 +14,18 @@ export const workflowRulesScenario: TestScenario = {
   checks: ["Erlaubte und verbotene Brief-Statuswechsel", "Entscheiderrollen", "Ministeriumsfrist und Wiedervorlage"],
   limitations: ["Berechtigungen der Datenbank werden separat in den Zugriffstests geprüft."],
   steps: [
+    {
+      id: "automation-hub-links", label: "Automatisierung: alte Workflow- und RSS-Links bleiben erreichbar", kind: "logic",
+      run: async () => {
+        const engine = normalizeAutomationParams(new URLSearchParams("adminSection=automation&adminSubSection=engine"));
+        const sources = normalizeAutomationParams(new URLSearchParams("adminSection=automation&adminSubSection=rss-sources"));
+        const settings = normalizeAutomationParams(new URLSearchParams("adminSection=automation&adminSubSection=rss-settings"));
+        const ok = engine.get("adminSubSection") === "rules" && automationTabFromParams(engine) === "dispatcher"
+          && sources.get("adminSubSection") === "rss" && rssTabFromParams(sources) === "sources"
+          && settings.get("adminSubSection") === "rss" && rssTabFromParams(settings) === "settings";
+        return { ok, message: ok ? "Alle drei alten Automatisierungslinks bleiben erreichbar." : "Ein alter Automatisierungslink führt zum falschen Bereich." };
+      },
+    },
     {
       id: "administration-access", label: "Administration: Büro- und Plattformrechte bleiben getrennt", kind: "logic",
       run: async () => {
