@@ -103,7 +103,7 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
       const preparation_data = saveCompact(base, values as CompactValues) as Record<string, Json>;
       const res = prepId
         ? await supabase.from("appointment_preparations").update({ preparation_data }).eq("id", prepId).select("id").single()
-        : await supabase.from("appointment_preparations").insert({ appointment_id: appointmentId, tenant_id: currentTenant.id, created_by: user.id, title: `Briefing: ${title}`, status: "in_progress", preparation_data }).select("id").single();
+        : await supabase.from("appointment_preparations").insert({ appointment_id: appointmentId, tenant_id: currentTenant.id, created_by: user.id, title, status: "in_progress", preparation_data }).select("id").single();
       if (res.error) { notify.error(res.error.message); return false; }
       setPrepId(res.data.id);
       savedPreparationId.current = res.data.id;

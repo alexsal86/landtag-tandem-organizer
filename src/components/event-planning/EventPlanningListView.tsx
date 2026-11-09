@@ -1,19 +1,12 @@
-import { PlanningViewToggle } from "./PlanningViewToggle";
+import { AppointmentPreparationOverview } from "./AppointmentPreparationOverview";
 import { EventPlanningOverview } from "./EventPlanningOverview";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { NewItemIndicator } from "@/components/notifications/NewItemIndicator";
-import { Plus, Archive } from "lucide-react";
-import { format } from "date-fns";
-import { de } from "date-fns/locale";
-import { AppointmentPreparationTable } from "./AppointmentPreparationTable";
+import { Plus } from "lucide-react";
 import type { useEventPlanningData } from "./useEventPlanningData";
 
 type EventPlanningDataReturn = ReturnType<typeof useEventPlanningData>;
@@ -25,12 +18,7 @@ export function EventPlanningListView(data: EventPlanningDataReturn) {
     newPlanningIsPrivate, setNewPlanningIsPrivate,
     selectedTemplateId, setSelectedTemplateId,
     planningTemplates,
-    appointmentPreparationView,
-    showArchived, setShowArchived,
-    appointmentPreparations, archivedPreparations,
-    isItemNew,
-    saveViewPreferences,
-    archivePreparation, handlePreparationClick, createPlanning,
+    createPlanning,
   } = data;
 
   return (
@@ -69,95 +57,9 @@ export function EventPlanningListView(data: EventPlanningDataReturn) {
         <div className="grid gap-6 xl:grid-cols-2 xl:items-start">
           <EventPlanningOverview {...data} />
 
-          <section className="space-y-4 xl:min-w-0">
-            <div className="flex items-center justify-between gap-4">
-              <h2 className="text-2xl font-bold">Terminplanungen</h2>
-              <div className="flex flex-wrap items-center justify-end gap-4">
-                <PlanningViewToggle value={appointmentPreparationView} onChange={view => saveViewPreferences("appointment", view)} label="Terminplanungsansicht" />
-                <div className="flex items-center gap-2">
-                  <Button variant={showArchived ? "outline" : "default"} onClick={() => setShowArchived(false)}>Aktive ({appointmentPreparations.length})</Button>
-                  <Button variant={showArchived ? "default" : "outline"} onClick={() => setShowArchived(true)}><Archive className="mr-2 h-4 w-4" />Archiv ({archivedPreparations.length})</Button>
-                </div>
-              </div>
-            </div>
-
-            {!showArchived && (
-              appointmentPreparationView === 'card' ? (
-                <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-                  {appointmentPreparations.length === 0 ? (
-                    <div className="col-span-full text-center py-8 text-muted-foreground">Keine aktiven Terminplanungen vorhanden</div>
-                  ) : (
-                    appointmentPreparations.map((preparation) => (
-                      <Card key={preparation.id} className="relative cursor-pointer transition-[background-color,box-shadow,border-color] hover:border-palette-green hover:bg-palette-green/5 hover:ring-1 hover:ring-inset hover:ring-palette-green focus-within:border-palette-green focus-within:ring-1 focus-within:ring-inset focus-within:ring-palette-green" onClick={() => handlePreparationClick(preparation)}>
-                        <NewItemIndicator isVisible={isItemNew(preparation.id, preparation.created_at)} />
-                        <CardHeader>
-                          <CardTitle className="flex items-center justify-between">
-                            <span className="truncate cursor-pointer" onClick={() => handlePreparationClick(preparation)}>{preparation.title}</span>
-                            <div className="flex items-center gap-2">
-                              <Badge variant={preparation.status === 'completed' ? 'default' : preparation.status === 'in_progress' ? 'secondary' : 'outline'}>
-                                {preparation.status === 'completed' ? 'Abgeschlossen' : preparation.status === 'in_progress' ? 'In Bearbeitung' : 'Entwurf'}
-                              </Badge>
-                              <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); archivePreparation(preparation.id); }}>
-                                  <Archive className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger><TooltipContent>Archivieren</TooltipContent></Tooltip></TooltipProvider>
-                            </div>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3" onClick={() => handlePreparationClick(preparation)}>
-                          {preparation.notes && <p className="text-sm text-muted-foreground line-clamp-2">{preparation.notes}</p>}
-                          <p className="text-sm text-muted-foreground">Erstellt am {format(new Date(preparation.created_at), "dd.MM.yyyy", { locale: de })}</p>
-                          {preparation.updated_at !== preparation.created_at && <p className="text-xs text-muted-foreground">Zuletzt bearbeitet am {format(new Date(preparation.updated_at), "dd.MM.yyyy HH:mm", { locale: de })}</p>}
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
-                </div>
-              ) : (
-                appointmentPreparations.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">Keine aktiven Terminplanungen vorhanden</div>
-                ) : (
-                  <AppointmentPreparationTable preparations={appointmentPreparations} isItemNew={isItemNew} handlePreparationClick={handlePreparationClick} archivePreparation={archivePreparation} />
-                )
-              )
-            )}
-
-            {showArchived && (
-              appointmentPreparationView === 'card' ? (
-                <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-                  {archivedPreparations.length === 0 ? (
-                    <div className="col-span-full text-center py-8 text-muted-foreground">Keine archivierten Terminplanungen vorhanden</div>
-                  ) : (
-                    archivedPreparations.map((preparation) => (
-                      <Card key={preparation.id} className="cursor-pointer opacity-75 transition-[background-color,box-shadow,border-color,opacity] hover:opacity-100 hover:border-palette-green hover:bg-palette-green/5 hover:ring-1 hover:ring-inset hover:ring-palette-green focus-within:border-palette-green focus-within:ring-1 focus-within:ring-inset focus-within:ring-palette-green" onClick={() => handlePreparationClick(preparation)}>
-                        <CardHeader>
-                          <CardTitle className="flex items-center justify-between">
-                            <span className="truncate">{preparation.title}</span>
-                            <Badge variant="secondary">Archiviert</Badge>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                          {preparation.notes && <p className="text-sm text-muted-foreground line-clamp-2">{preparation.notes}</p>}
-                          <p className="text-sm text-muted-foreground">Erstellt am {format(new Date(preparation.created_at), "dd.MM.yyyy", { locale: de })}</p>
-                          {preparation.archived_at && <p className="text-xs text-muted-foreground">Archiviert am {format(new Date(preparation.archived_at), "dd.MM.yyyy HH:mm", { locale: de })}</p>}
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
-                </div>
-              ) : (
-                archivedPreparations.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">Keine archivierten Terminplanungen vorhanden</div>
-                ) : (
-                  <AppointmentPreparationTable preparations={archivedPreparations} isArchived isItemNew={isItemNew} handlePreparationClick={handlePreparationClick} archivePreparation={archivePreparation} />
-                )
-              )
-            )}
-          </section>
+          <AppointmentPreparationOverview {...data} />
         </div>
       </div>
-
     </div>
   );
 }

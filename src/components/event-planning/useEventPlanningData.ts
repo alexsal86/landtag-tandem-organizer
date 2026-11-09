@@ -126,7 +126,7 @@ export function useEventPlanningData() {
 
   // ── View preferences ──
   const [eventPlanningView, setEventPlanningView] = useState<'card' | 'table'>('table');
-  const [appointmentPreparationView, setAppointmentPreparationView] = useState<'card' | 'table'>('card');
+  const [appointmentPreparationView, setAppointmentPreparationView] = useState<'card' | 'table'>('table');
 
   const { defaultCollaborators } = usePlanningPreferences();
 
@@ -287,7 +287,7 @@ export function useEventPlanningData() {
 
   useEffect(() => {
     if (!user || !currentTenant || selectedPlanning) return;
-    const refresh = () => { void fetchPlannings(); };
+    const refresh = () => { void Promise.all([fetchPlannings(), fetchAppointmentPreparations()]); };
     window.addEventListener("focus", refresh);
     return () => window.removeEventListener("focus", refresh);
   }, [selectedPlanning?.id, user?.id, currentTenant?.id]);
@@ -397,40 +397,32 @@ export function useEventPlanningData() {
     setAvailableContacts((data ?? []) as ReadonlyArray<ContactOptionDto>);
   };
 
-  const fetchAppointmentPreparations = async () => {
-    if (!user) return;
+  const fetchAppointmentPreparations = useCallback(async (): Promise<boolean> => {
+    if (!user || !currentTenant) return false;
     try {
-      const { data: activeData, error: activeError } = await supabase.from("appointment_preparations").select("id, appointment_id, title, status, is_archived, archived_at, created_at, updated_at, created_by, tenant_id, template_id, notes, checklist_items").eq("is_archived", false).order("created_at", { ascending: false });
-      if (activeError) debugConsole.error("Error fetching active preparations:", activeError);
-
-      const { data: archivedData, error: archivedError } = await supabase.from("appointment_preparations").select("id, appointment_id, title, status, is_archived, archived_at, created_at, updated_at, created_by, tenant_id, template_id, notes, checklist_items").eq("is_archived", true).order("archived_at", { ascending: false });
-      if (archivedError) debugConsole.error("Error fetching archived preparations:", archivedError);
-
-      // Sync titles with current appointment titles
-      const allPreps = [...(activeData || []), ...(archivedData || [])];
-      const appointmentIds = allPreps.map(p => p.appointment_id).filter(Boolean) as string[];
-      if (appointmentIds.length > 0) {
-        const { data: appointments } = await supabase
-          .from("appointments")
-          .select("id, title")
-          .in("id", appointmentIds);
-        if (appointments) {
-          const titleMap = new Map(appointments.map((a: Record<string, any>) => [a.id, a.title]));
-          const updateTitle = <T extends { appointment_id?: string | null; title?: string | null }>(prep: T): T => {
-            const apptTitle = prep.appointment_id ? titleMap.get(prep.appointment_id) : null;
-            if (apptTitle) return { ...prep, title: `Terminplanung: ${apptTitle}` };
-            return prep;
-          };
-          setAppointmentPreparations((activeData || []).map(updateTitle));
-          setArchivedPreparations((archivedData || []).map(updateTitle));
-          return;
-        }
-      }
-
-      setAppointmentPreparations(activeData || []);
-      setArchivedPreparations(archivedData || []);
-    } catch (error) { handleAppError(error, { context: 'fetchAppointmentPreparations' }); }
-  };
+      const { data, error } = await supabase.from("appointment_preparations")
+        .select("id,appointment_id,title,status,is_archived,archived_at,created_at,updated_at,created_by,tenant_id,template_id,notes,checklist_items,preparation_data,shared_with")
+        .eq("tenant_id", currentTenant.id).order("created_at", { ascending: false });
+      if (error) throw error;
+      const preparations = (data ?? []) as unknown as AppointmentPreparation[];
+      const appointmentIds = [...new Set(preparations.flatMap(p => p.appointment_id ? [p.appointment_id] : []))];
+      const appointments = appointmentIds.length ? await supabase.from("appointments")
+        .select("id,title,start_time,location,status,user_id,briefing_status,briefing_assignee_id")
+        .eq("tenant_id", currentTenant.id).in("id", appointmentIds) : { data: [], error: null };
+      if (appointments.error) throw appointments.error;
+      const byId = new Map((appointments.data ?? []).map(a => [a.id, a]));
+      const normalized = preparations.map(preparation => {
+        const appointment = preparation.appointment_id ? byId.get(preparation.appointment_id) ?? null : null;
+        return { ...preparation, appointment, title: appointment?.title ?? preparation.title.replace(/^Termin(?:planung|vorbereitung)\s*:\s*/i, "") };
+      });
+      setAppointmentPreparations(normalized.filter(p => !p.is_archived));
+      setArchivedPreparations(normalized.filter(p => p.is_archived).sort((a,b) => (b.archived_at ?? "").localeCompare(a.archived_at ?? "")));
+      return true;
+    } catch (error) {
+      handleAppError(error, { context: 'fetchAppointmentPreparations' });
+      return false;
+    }
+  }, [user?.id, currentTenant?.id]);
 
   const fetchEmailActions = async (planningId: string) => {
     const { data: items } = await supabase.from("event_planning_checklist_items").select("id").eq("event_planning_id", planningId);
@@ -684,6 +676,17 @@ export function useEventPlanningData() {
 });
       fetchAppointmentPreparations();
     } catch (error) { handleAppError(error, { context: 'archivePreparation', toast: { fn: toast, title: 'Fehler', description: 'Terminplanung konnte nicht archiviert werden.' } }); }
+  };
+
+  const restorePreparation = async (preparationId: string) => {
+    try {
+      const { error } = await supabase.from("appointment_preparations").update({ is_archived: false, archived_at: null }).eq("id", preparationId).select("id").single();
+      if (error) throw error;
+      await fetchAppointmentPreparations();
+      notify.success("Terminplanung wiederhergestellt");
+    } catch (error) {
+      handleAppError(error, { context: 'restorePreparation', toast: { fn: toast, title: 'Fehler', description: 'Terminplanung konnte nicht wiederhergestellt werden.' } });
+    }
   };
 
   const handlePreparationClick = (preparation: AppointmentPreparation) => {
@@ -1029,9 +1032,9 @@ export function useEventPlanningData() {
     eventPlanningView, appointmentPreparationView,
     isManageCollaboratorsOpen, setIsManageCollaboratorsOpen,
     // Functions
-    saveViewPreferences, fetchArchivedPlannings,
+    saveViewPreferences, fetchArchivedPlannings, fetchAppointmentPreparations,
     archivePlanning, togglePlanningCompleted, restorePlanning,
-    archivePreparation, handlePreparationClick,
+    archivePreparation, restorePreparation, handlePreparationClick,
     updatePlanningField, createPlanning, deletePlanning,
     addPlanningDate, confirmDate, updateConfirmedDate,
     toggleChecklistItem: checklist.toggleChecklistItem,

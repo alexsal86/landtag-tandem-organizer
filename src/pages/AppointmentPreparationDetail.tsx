@@ -166,7 +166,7 @@ export default function AppointmentPreparationDetail() {
           const { data, error } = await supabase
             .from('appointment_preparations')
             .insert([{
-              title: `Terminplanung: ${resolvedTitle}`,
+              title: resolvedTitle,
               appointment_id: appointmentId,
               tenant_id: currentTenant.id,
               created_by: user.id,

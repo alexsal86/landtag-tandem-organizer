@@ -182,6 +182,17 @@ export interface Profile {
 export interface AppointmentPreparation {
   id: string;
   title: string;
+  shared_with?: string[];
+  appointment?: {
+    id: string;
+    title: string;
+    start_time: string;
+    location: string | null;
+    status: string | null;
+    user_id: string;
+    briefing_status: string;
+    briefing_assignee_id: string | null;
+  } | null;
   appointment_id?: string | null;
   status: EventPayloadStatus;
   notes?: string | null;
