@@ -72,12 +72,13 @@ const LettersView: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('letters')
-        .select('id, title, content, content_html, recipient_name, recipient_address, contact_id, template_id, sender_info_id, information_block_ids, status, sent_date, sent_method, expected_response_date, created_by, created_at, updated_at, tenant_id')
+        .select('id, title, recipient_name, recipient_address, contact_id, template_id, sender_info_id, information_block_ids, status, sent_date, sent_method, expected_response_date, created_by, created_at, updated_at, tenant_id')
         .eq('tenant_id', currentTenant.id)
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
-      setLetters((data as Letter[] | null) ?? []);
+      // Ohne Brieftext laden (Egress); Text wird beim Öffnen nachgeladen.
+      setLetters(((data ?? []).map((row) => ({ ...row, content: '', content_html: '' }))) as Letter[]);
     } catch (error) {
       debugConsole.error('Error fetching letters:', error);
       notify.error("Fehler", {
@@ -91,8 +92,7 @@ const LettersView: React.FC = () => {
   const filteredLetters = letters.filter(letter => {
     const matchesSearch = 
       letter.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      letter.recipient_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      letter.content.toLowerCase().includes(searchTerm.toLowerCase());
+      letter.recipient_name?.toLowerCase().includes(searchTerm.toLowerCase()) ;
     
     const matchesStatus = statusFilter === 'all' || letter.status === statusFilter;
     
@@ -129,8 +129,9 @@ const LettersView: React.FC = () => {
     setIsEditorOpen(true);
   };
 
-  const handleEditLetter = (letter: Letter) => {
-    setSelectedLetter(letter);
+  const handleEditLetter = async (letter: Letter) => {
+    const { data: full } = await supabase.from('letters').select('content, content_html').eq('id', letter.id).maybeSingle();
+    setSelectedLetter(full ? { ...letter, content: full.content ?? '', content_html: full.content_html ?? '' } : letter);
     setIsEditorOpen(true);
   };
 
@@ -139,7 +140,8 @@ const LettersView: React.FC = () => {
     setTaskDialogMode(mode);
     const initialTitle = letter.title?.trim() || `Aufgabe aus Brief vom ${new Date(letter.updated_at).toLocaleDateString('de-DE')}`;
     setTaskTitle(initialTitle);
-    setTaskDescription(letter.content?.trim() || '');
+    const { data: full } = await supabase.from('letters').select('content').eq('id', letter.id).maybeSingle();
+    setTaskDescription((full?.content ?? '').trim());
     setParentTaskId('none');
 
     if (mode === 'subtask' && currentTenant) {
@@ -426,7 +428,7 @@ const LettersView: React.FC = () => {
                   
                   {/* Content Preview */}
                   <p className="text-sm text-muted-foreground line-clamp-3">
-                    {letter.content || 'Kein Inhalt vorhanden'}
+                    {letter.recipient_name ? `An: ${letter.recipient_name}` : 'Kein Empfänger hinterlegt'}
                   </p>
                   
                   {/* Actions */}
