@@ -247,7 +247,7 @@ export function WorkflowEngineManager() {
               {runs.map(r => {
                 const def = defs.find(d => d.id === r.workflow_id);
                 return (
-                  <div key={r.id} className="flex items-center gap-3 p-2 border rounded-md text-sm">
+                  <div key={r.id} className="flex flex-wrap items-center gap-3 p-2 border rounded-md text-sm">
                     <Badge variant={r.status === "success" ? "default" : r.status === "failed" ? "destructive" : "secondary"}>
                       {r.status}
                     </Badge>

@@ -19,7 +19,8 @@
 # Automatisierungs-Hub
 - [x] Phase 1: Jahresaufgaben atomar ins Stafetten-System übergeben und Abschluss synchronisieren
 - [x] Phase 1: Regeln, Datenbank-Verknüpfung und Selbsttests absichern
-- [ ] Phase 2: Regeln/Workflows und RSS-Navigation zusammenführen
-- [ ] Phase 2: Alte Links, gemeinsame Reiter und Selbsttest prüfen
+- [x] Phase 2: Regeln/Workflows und RSS-Navigation zusammenführen
+- [x] Phase 2: Alte Links und Selbsttest absichern — 22 gezielte Tests bestanden
+- [ ] Phase 2: Gemeinsame Reiter angemeldet durchklicken — externe Supabase-Testsitzung nicht verfügbar
 - [ ] Phase 3: Kalendarische Stichtage im Regel-Builder und Scheduler ergänzen
 - [ ] Angemeldeten Jahresaufgaben-Gesamtablauf prüfen — externe Supabase-Testsitzung fehlt
