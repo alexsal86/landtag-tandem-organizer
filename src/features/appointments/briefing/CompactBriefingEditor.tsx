@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { notify } from "@/lib/notify";
 import type { Json } from "@/integrations/supabase/types";
+import { DebriefQuickActions } from "./DebriefQuickActions";
 import { briefingDepthLabel, canCompleteBriefing, dossierExtrasLine, mergeLegacy, saveCompact, type CompactValues } from "./briefingModel";
 
 const CORE = [
@@ -176,6 +177,7 @@ export function CompactBriefingEditor({ open, onOpenChange, appointmentId, title
             ))}
           </div>
         </div>
+        {canEdit && !!values.compact_debrief?.trim() && <DebriefQuickActions appointmentId={appointmentId} title={title} debrief={values.compact_debrief} preparationId={preparationId} />}
         <div className="flex justify-between gap-2 pt-2">
           <Button variant="link" className="px-0" onClick={openDossier} disabled={saving || loading || loadError}>{canEdit ? "Zum Dossier erweitern" : "Dossier ansehen"}</Button>
           <div className="flex gap-2">
