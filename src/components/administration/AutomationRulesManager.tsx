@@ -92,12 +92,15 @@ export function AutomationRulesManager() {
 
   return (
     <Tabs value={tab} onValueChange={changeTab} className="min-w-0 space-y-md">
-      <TabsList aria-label="Regeln und Workflows" className="h-auto max-w-full flex-wrap justify-start">
-        <TabsTrigger value="rules">Regeln</TabsTrigger>
-        <TabsTrigger value="annual">Jahresroutinen</TabsTrigger>
-        <TabsTrigger value="history">Ausführungshistorie</TabsTrigger>
-        <TabsTrigger value="dispatcher">Dispatcher</TabsTrigger>
-      </TabsList>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <TabsList aria-label="Regeln und Workflows" className="h-auto max-w-full flex-wrap justify-start">
+          <TabsTrigger value="rules">Regeln</TabsTrigger>
+          <TabsTrigger value="annual">Jahresroutinen</TabsTrigger>
+          <TabsTrigger value="history">Ausführungshistorie</TabsTrigger>
+          <TabsTrigger value="dispatcher">Dispatcher</TabsTrigger>
+        </TabsList>
+        <AutomationKillSwitch />
+      </div>
       <TabsContent value="rules"><AutomationRulesContent view="rules" onShowHistory={() => changeTab("history")} /></TabsContent>
       <TabsContent value="history"><AutomationRulesContent view="history" onShowHistory={() => changeTab("history")} /></TabsContent>
       <TabsContent value="annual"><AutomationRulesContent view="annual" onShowHistory={() => changeTab("history")} /></TabsContent>
@@ -105,6 +108,54 @@ export function AutomationRulesManager() {
         <Suspense fallback={<LoadingState variant="list" rows={3} />}><WorkflowEngineManager /></Suspense>
       </TabsContent>
     </Tabs>
+  );
+}
+
+function AutomationKillSwitch() {
+  const { user } = useAuth();
+  const { currentTenant } = useTenant();
+  const tenantId = currentTenant?.id;
+  const { data: userRole } = useAutomationMembershipRole(tenantId, user?.id);
+  const { data: automationsPaused = false, isLoading, error } = useAutomationPauseState(tenantId);
+  const { togglePause } = useAutomationAdminMutations(tenantId, user?.id);
+  const canEdit = userRole === "abgeordneter" || userRole === "bueroleitung";
+
+  const toggleAutomationsPaused = async () => {
+    if (!tenantId) return;
+    const newVal = !automationsPaused;
+
+    try {
+      await togglePause.mutateAsync(newVal);
+      notify.success(newVal ? "Alle Automations pausiert" : "Automations reaktiviert");
+      logAuditEvent({
+        action: AuditActions.SETTINGS_CHANGED,
+        details: { type: "automation_kill_switch", paused: newVal, tenant_id: tenantId },
+      });
+    } catch (error) {
+      notify.error("Fehler", {
+        description: error instanceof Error ? error.message : "Automations konnten nicht umgeschaltet werden."
+      });
+    }
+  };
+
+  return (
+    <div
+      className="flex w-fit shrink-0 items-center gap-2 rounded-lg border px-3 py-2"
+      title={error ? "Status konnte nicht geladen werden." : automationsPaused
+        ? "Alle Regeln sind aktuell pausiert – keine automatischen Ausführungen."
+        : "Automations sind aktiv und werden planmäßig ausgeführt."}
+    >
+      <Pause className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+      <label htmlFor="automation-kill-switch" className="text-sm font-medium">Kill-Switch</label>
+      {automationsPaused && <Badge variant="destructive">Pausiert</Badge>}
+      <Switch
+        id="automation-kill-switch"
+        checked={automationsPaused}
+        onCheckedChange={toggleAutomationsPaused}
+        disabled={isLoading || !!error || togglePause.isPending || !canEdit || !tenantId}
+        aria-label="Alle Automations pausieren"
+      />
+    </div>
   );
 }
 
@@ -129,15 +180,14 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
 
   const tenantId = currentTenant?.id;
   const { data: userRole } = useAutomationMembershipRole(tenantId, user?.id);
-  const { data: automationsPaused = false, isLoading: pauseLoading, error: pauseError } = useAutomationPauseState(tenantId);
+  const { isLoading: pauseLoading, error: pauseError } = useAutomationPauseState(tenantId);
   const { data: rules = [], isLoading: rulesLoading, error: rulesError } = useAutomationRules(tenantId);
   const { data: runs = [], isLoading: runsLoading, error: runsError } = useAutomationRuns(tenantId);
   const { data: expandedRunSteps = [], isLoading: runStepsLoading, isError: runStepsError, error: runStepsQueryError, refetch: refetchRunSteps } = useAutomationRunSteps(expandedRunId || undefined);
-  const { togglePause, upsertRule: upsertRuleMutation, deleteRule: deleteRuleMutation, toggleRuleEnabled: toggleRuleEnabledMutation, runRule, refreshAll } = useAutomationAdminMutations(tenantId, user?.id);
+  const { upsertRule: upsertRuleMutation, deleteRule: deleteRuleMutation, toggleRuleEnabled: toggleRuleEnabledMutation, runRule, refreshAll } = useAutomationAdminMutations(tenantId, user?.id);
 
   const loading = pauseLoading || rulesLoading || runsLoading;
   const saving = upsertRuleMutation.isPending;
-  const togglingPause = togglePause.isPending;
 
   const isAdmin = userRole === "abgeordneter" || userRole === "bueroleitung";
   const canEdit = isAdmin;
@@ -219,24 +269,6 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
     startEdit(rule);
     setEditingRuleId(null);
     setForm((prev) => ({ ...prev, name: `${prev.name} (Kopie)`, actions: prev.actions.map(action => action.type === "run_annual_routine" ? { ...action, annualTaskId: "", systemFunction: "" } : action) }));
-  };
-
-  const toggleAutomationsPaused = async () => {
-    if (!tenantId) return;
-    const newVal = !automationsPaused;
-
-    try {
-      await togglePause.mutateAsync(newVal);
-      notify.success(newVal ? "Alle Automations pausiert" : "Automations reaktiviert");
-      logAuditEvent({
-        action: AuditActions.SETTINGS_CHANGED,
-        details: { type: "automation_kill_switch", paused: newVal, tenant_id: tenantId },
-      });
-    } catch (error) {
-      notify.error("Fehler", {
-        description: error instanceof Error ? error.message : "Automations konnten nicht umgeschaltet werden."
-});
-    }
   };
 
   const resetForm = () => {
@@ -572,32 +604,6 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
           </AlertDescription>
         </Alert>
       )}
-
-      {/* Kill-Switch */}
-      <Card>
-        <CardContent className="flex items-center justify-between py-4">
-          <div className="flex items-center gap-3">
-            <Pause className="h-5 w-5 text-muted-foreground" />
-            <div>
-              <p className="font-medium text-sm">Kill-Switch: Alle Automations pausieren</p>
-              <p className="text-xs text-muted-foreground">
-                {automationsPaused
-                  ? "Alle Regeln sind aktuell pausiert – keine automatischen Ausführungen."
-                  : "Automations sind aktiv und werden planmäßig ausgeführt."}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {automationsPaused && <Badge variant="destructive">Pausiert</Badge>}
-            <Switch
-              checked={automationsPaused}
-              onCheckedChange={toggleAutomationsPaused}
-              disabled={togglingPause || !canEdit}
-              aria-label="Automations pausieren"
-            />
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Failed runs alert banner */}
       {failedRunCount > 0 && (
