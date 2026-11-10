@@ -267,10 +267,10 @@ export function AdminSidebar({
               return (
                 <Button
                   key={item.id}
-                  variant={isActive ? "secondary" : "ghost"}
+                  variant="ghost"
                   className={cn(
                     "w-full justify-start gap-2 h-10",
-                    isActive && "bg-secondary font-medium"
+                    isActive && "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground font-medium"
                   )}
                   onClick={() => handleClick(item)}
                 >
@@ -288,10 +288,10 @@ export function AdminSidebar({
               >
                 <CollapsibleTrigger asChild>
                   <Button
-                    variant={isActive ? "secondary" : "ghost"}
+                    variant="ghost"
                     className={cn(
                       "w-full justify-start gap-2 h-10",
-                      isActive && "bg-secondary/50"
+                      isActive && "bg-primary/15 text-foreground hover:bg-primary/20"
                     )}
                   >
                     <Icon className="h-4 w-4" />
@@ -320,11 +320,11 @@ export function AdminSidebar({
                     return (
                       <Button
                         key={subItem.id}
-                        variant={isSubActive ? "secondary" : "ghost"}
+                        variant="ghost"
                         size="sm"
                         className={cn(
                           "w-full justify-start gap-2 h-9 text-sm",
-                          isSubActive && "bg-secondary font-medium"
+                          isSubActive && "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground font-medium"
                         )}
                         onClick={() => handleClick(item, subItem)}
                       >
