@@ -33,10 +33,19 @@ await context.addInitScript(({user})=>{
  localStorage.setItem('sb-wawofclbehbkebjivdte-auth-token',JSON.stringify({access_token:`eyJhbGciOiJIUzI1NiJ9.${payload}.synthetic`,refresh_token:'synthetic',token_type:'bearer',expires_in:3600,expires_at:Math.floor(Date.now()/1000)+3600,user}));
 }, {user});
 const errors: string[]=[];page.on('pageerror',err=>errors.push(err.message));
+const assertAdminFillsContent = async () => {
+ const layout = await page.getByTestId('administration-layout').boundingBox();
+ const main = await page.locator('#main-content').boundingBox();
+ assert.ok(layout && main);
+ assert.ok(Math.abs(layout.y-main.y) <= 1, 'Admin starts at the content top');
+ assert.ok(Math.abs(layout.y+layout.height-main.y-main.height) <= 1, 'Admin fills the available height without a bottom strip');
+ assert.ok(layout.x+layout.width <= page.viewportSize()!.width+1, 'Admin fits the viewport width');
+};
 try{
  await page.goto('/administration?adminSection=superadmin&adminSubSection=tenants');
  await page.getByRole('textbox',{name:'Administration durchsuchen'}).waitFor({timeout:60000});
  assert.ok(page.url().includes('adminSection=superadmin'),'Deep link survives async checks');
+ await assertAdminFillsContent();
  const search=page.getByRole('textbox',{name:'Administration durchsuchen'});
  await search.fill('Audit');
  await page.getByRole('button',{name:'Audit-Logs',exact:true}).click();
@@ -55,6 +64,7 @@ try{
  assert.ok(await page.getByRole('option', { name: 'Datensatz sperren', exact: true }).count());
  await page.setViewportSize({width:390,height:844});
  await page.goto('/administration?adminSection=security&adminSubSection=general');
+ await assertAdminFillsContent();
  await page.getByRole('button',{name:'System & Sicherheit · Allgemein'}).click();
  await page.getByRole('textbox',{name:'Administration durchsuchen'}).waitFor();
  await page.getByRole('textbox',{name:'Administration durchsuchen'}).fill('Kosten');

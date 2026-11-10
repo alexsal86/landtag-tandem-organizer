@@ -245,13 +245,13 @@ export function AdminSidebar({
 
 
   return (
-    <div className={cn("w-64 border-r bg-muted/30 h-full min-h-0", className)}>
+    <div className={cn("flex h-full min-h-0 w-64 shrink-0 flex-col border-r bg-muted/30", className)}>
       <div className="p-4 border-b">
         <h2 className="font-semibold text-lg">Administration</h2>
         <p className="text-xs text-muted-foreground">Büro- und Plattformkonfiguration</p>
         <Input className="mt-3" aria-label="Administration durchsuchen" placeholder="Unterpunkt suchen…" value={search} onChange={event => setSearch(event.target.value)} />
       </div>
-      <ScrollArea className="h-[calc(100dvh-180px)] h-[calc(100svh-180px)]">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="p-2 space-y-1">
           {visibleMenuItems.map((item) => {
             const Icon = item.icon;

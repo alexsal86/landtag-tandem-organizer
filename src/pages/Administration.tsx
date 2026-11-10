@@ -411,7 +411,7 @@ export default function Administration(): React.JSX.Element | null {
   };
 
   return (
-    <div className="flex h-app-headerless flex-col md:flex-row">
+    <div data-testid="administration-layout" className="flex h-full min-h-0 flex-col overflow-hidden bg-background md:flex-row">
       <div className="border-b bg-background p-3 md:hidden px-safe">
         <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
           <SheetTrigger asChild>
@@ -442,10 +442,10 @@ export default function Administration(): React.JSX.Element | null {
         onNavigate={handleNavigate}
         isSuperAdmin={isSuperAdmin}
         annualTasksBadge={annualTasksBadge}
-        className="hidden md:block"
+        className="hidden md:flex"
       />
 
-      <div className="min-w-0 flex-1 overflow-hidden">
+      <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
         <ScrollArea className="h-full">
           <div className="p-3 md:p-6">
             <header className="mb-5 border-b pb-3">
