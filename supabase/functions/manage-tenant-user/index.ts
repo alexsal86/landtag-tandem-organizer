@@ -158,13 +158,13 @@ serve(withSafeHandler("manage-tenant-user", async (req) => {
           if (data.users.length < 500) break;
         }
         const readAll = async (table: string, columns: string, activeOnly = false) => {
-          const rows = [];
+          const rows: Record<string, any>[] = [];
           for (let offset = 0; ; offset += 500) {
             let query = supabaseAdmin.from(table).select(columns).order('id').range(offset, offset + 499);
             if (activeOnly) query = query.eq('is_active', true);
             const { data, error } = await query;
             if (error) throw error;
-            rows.push(...(data ?? []));
+            rows.push(...((data ?? []) as unknown as Record<string, any>[]));
             if (!data || data.length < 500) break;
           }
           return rows;
@@ -608,7 +608,7 @@ serve(withSafeHandler("manage-tenant-user", async (req) => {
             errors: [],
           };
         } else {
-          report = await seedStandardData(supabaseAdmin, tenantId, {
+          report = await seedStandardData(supabaseAdmin as unknown as Parameters<typeof seedStandardData>[0], tenantId, {
             appName,
             appSubtitle,
           });

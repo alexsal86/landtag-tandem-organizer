@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildExternalFeedErrorMessage, parseICSDate, parseICSForValidation } from './ics-validation.utils';
+import { buildExternalFeedErrorMessage, parseICSDate, parseICSForValidation } from './ics-validation.utils.ts';
 
 describe('ics-validation utils', () => {
   it('parst YYYYMMDD und YYYYMMDDTHHMMSS Datumsformate', () => {
