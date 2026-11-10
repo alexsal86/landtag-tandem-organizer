@@ -1,3 +1,4 @@
+import { berlinCalendar, matchesRoutineFilter } from '@/features/automation/annualRoutinePresentation';
 import { supabase } from "@/integrations/supabase/client";
 import { annualDueDay, annualTaskStatus, canDelegateAnnualTask } from "@/features/timetracking/annualTaskRules";
 import { describeError } from "../verify";
@@ -14,6 +15,16 @@ export const annualTaskStafetteScenario: TestScenario = {
   checks: ["Exakte Stichtage", "System-Routinen nicht delegierbar", "Eine Aufgabe pro Jahr", "Abschluss und Wiederöffnung synchron", "Direkter Jahresabschluss gesperrt"],
   limitations: ["Die automatische Ausführung am tatsächlichen Stichtag und Personaländerungen werden nicht durch diesen Selbsttest ausgelöst."],
   steps: [
+    {
+      id: "annual-overview", label: "Jahresübersicht: Statusfilter und Berliner Tagesgrenze", kind: "logic",
+      run: async () => {
+        const date = berlinCalendar(new Date("2026-12-31T23:30:00Z"));
+        const ok = date.year === 2027 && date.month === 1 && date.day === 1
+          && matchesRoutineFilter("overdue", "open") && !matchesRoutineFilter("completed", "open")
+          && matchesRoutineFilter("completed", "done") && !matchesRoutineFilter("upcoming", "done");
+        return { ok, message: ok ? "Statusfilter und Berliner Kalenderdatum korrekt." : "Jahresübersicht weicht ab." };
+      },
+    },
     {
       id: "unified-routine", label: "Jahresroutine im gemeinsamen Regel-Assistenten prüfen", kind: "logic",
       run: async () => {

@@ -622,7 +622,7 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
         runningDryRun={runningRuleId !== null}
       />
 
-      {view === "annual" && <AnnualRoutinesOverview rules={rules} onEdit={startEdit} onRun={rule => void triggerRunNow(rule)} onNew={openNewWizard} canEdit={canEdit} runningRuleId={runningRuleId} />}
+      {view === "annual" && <AnnualRoutinesOverview rules={rules} onEdit={startEdit} onRun={rule => void triggerRunNow(rule)} onNew={month => { openNewWizard(); if (month) setForm(previous => previous.schedule ? ({ ...previous, schedule: { ...previous.schedule, month: String(month) } }) : previous); }} canEdit={canEdit} runningRuleId={runningRuleId} />}
 
       {/* Template Gallery */}
       {view === "rules" && <AutomationTemplateGallery onUseTemplate={useTemplate} />}

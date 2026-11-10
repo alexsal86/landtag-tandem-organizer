@@ -4,7 +4,7 @@ _Auto-generiert mit `npm run update:selftest-coverage`._
 
 Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
 
-Von 268 Tabellen haben 29 ein registriertes Szenario. 83 sind als Ausbau offen, 156 ausgenommen und 0 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
+Von 267 Tabellen haben 31 ein registriertes Szenario. 80 sind als Ausbau offen, 156 ausgenommen und 0 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
@@ -12,6 +12,7 @@ Von 268 Tabellen haben 29 ein registriertes Szenario. 83 sind als Ausbau offen, 
 |---|---|---|
 | `access-boundaries` | Zugriffsschutz (Bürogrenzen und Entscheiderrolle) | appointment_requests |
 | `admin-controls` | Adminregeln: Feldschutz, Aktionen, Export, Rücknahme und Feeds | Keine (reine Regeln) |
+| `annual-task-stafette` | Jahresaufgabe → Büroaufgabe → Jahresabschluss | annual_tasks, annual_task_completions, tasks |
 | `appointment-briefing-lifecycle` | Briefing-Lifecycle (vergeben → Aufgabe → vorlegen → freigeben) | appointments, tasks |
 | `appointment-lifecycle` | Termin-Lifecycle (Kalender + Briefing + Feedback) | appointments, appointment_preparations, appointment_feedback |
 | `appointment-request-lifecycle` | Terminanfragen-Lifecycle (Eingang → Sperre → Entscheidung → Termin) | appointment_requests, appointments |
@@ -35,8 +36,8 @@ Von 268 Tabellen haben 29 ein registriertes Szenario. 83 sind als Ausbau offen, 
 |---|---|---|
 | `action_permissions` | Ausstehend | — |
 | `admin_status_options` | Ausgenommen (nicht geprüft) | — |
-| `annual_task_completions` | Ausstehend | — |
-| `annual_tasks` | Ausstehend | — |
+| `annual_task_completions` | Szenario vorhanden | annual-task-stafette |
+| `annual_tasks` | Szenario vorhanden | annual-task-stafette |
 | `app_settings` | Ausgenommen (nicht geprüft) | — |
 | `appointment_categories` | Ausgenommen (nicht geprüft) | — |
 | `appointment_contacts` | Ausgenommen (nicht geprüft) | — |
@@ -47,7 +48,6 @@ Von 268 Tabellen haben 29 ein registriertes Szenario. 83 sind als Ausbau offen, 
 | `appointment_locations` | Ausgenommen (nicht geprüft) | — |
 | `appointment_polls` | Ausgenommen (nicht geprüft) | — |
 | `appointment_preparation_documents` | Ausgenommen (nicht geprüft) | — |
-| `appointment_preparation_history` | Ausstehend | — |
 | `appointment_preparation_templates` | Ausgenommen (nicht geprüft) | — |
 | `appointment_preparations` | Szenario vorhanden | appointment-lifecycle |
 | `appointment_requests` | Szenario vorhanden | access-boundaries, appointment-request-lifecycle, case-item-lifecycle |
@@ -266,7 +266,7 @@ Von 268 Tabellen haben 29 ein registriertes Szenario. 83 sind als Ausbau offen, 
 | `task_snoozes` | Ausgenommen (nicht geprüft) | — |
 | `task_statuses` | Ausgenommen (nicht geprüft) | — |
 | `task_topics` | Ausgenommen (nicht geprüft) | — |
-| `tasks` | Szenario vorhanden | appointment-briefing-lifecycle, case-item-lifecycle, jour-fixe-platform-integration, letter-lifecycle, meeting-lifecycle, quick-note-lifecycle, task-lifecycle |
+| `tasks` | Szenario vorhanden | annual-task-stafette, appointment-briefing-lifecycle, case-item-lifecycle, jour-fixe-platform-integration, letter-lifecycle, meeting-lifecycle, quick-note-lifecycle, task-lifecycle |
 | `team_announcement_dismissals` | Ausgenommen (nicht geprüft) | — |
 | `team_announcements` | Ausstehend | — |
 | `team_dashboard_members` | Ausgenommen (nicht geprüft) | — |

@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "source": "src/integrations/supabase/types.ts",
   "counts": {
-    "total": 268,
-    "scenario": 29,
-    "deferred": 83,
+    "total": 267,
+    "scenario": 31,
+    "deferred": 80,
     "excluded": 156,
     "missing": 0
   },
@@ -30,6 +30,21 @@
         "permissions",
         "contacts",
         "audit"
+      ],
+      "writes": [],
+      "registered": true
+    },
+    {
+      "id": "annual-task-stafette",
+      "title": "Jahresaufgabe → Büroaufgabe → Jahresabschluss",
+      "touches": [
+        "annual_tasks",
+        "annual_task_completions",
+        "tasks"
+      ],
+      "features": [
+        "tasks",
+        "automation"
       ],
       "writes": [],
       "registered": true
@@ -785,13 +800,17 @@
     },
     {
       "table": "annual_task_completions",
-      "status": "deferred",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "annual-task-stafette"
+      ]
     },
     {
       "table": "annual_tasks",
-      "status": "deferred",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "annual-task-stafette"
+      ]
     },
     {
       "table": "app_settings",
@@ -843,11 +862,6 @@
     {
       "table": "appointment_preparation_documents",
       "status": "excluded",
-      "scenarios": []
-    },
-    {
-      "table": "appointment_preparation_history",
-      "status": "deferred",
       "scenarios": []
     },
     {
@@ -2012,6 +2026,7 @@
       "table": "tasks",
       "status": "scenario",
       "scenarios": [
+        "annual-task-stafette",
         "appointment-briefing-lifecycle",
         "case-item-lifecycle",
         "jour-fixe-platform-integration",
