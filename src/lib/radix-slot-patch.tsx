@@ -43,7 +43,23 @@ function useComposedRefs<T>(...refs: (React.Ref<T> | undefined)[]): React.RefCal
 
 // ---- Slot implementation ----
 
-const SLOTTABLE_IDENTIFIER = Symbol("radix.slottable");
+const SLOTTABLE_IDENTIFIER = Symbol.for("radix.slottable");
+
+type SlottableProps = { children?: React.ReactNode | ((child: React.ReactNode) => React.ReactNode); child?: React.ReactNode };
+
+function renderSlottable(props: SlottableProps): React.ReactNode {
+  if ("child" in props && typeof props.children === "function") return props.children(props.child);
+  return props.children as React.ReactNode;
+}
+
+function slottableElement(props: SlottableProps): React.ReactNode {
+  if ("child" in props && typeof props.children === "function") {
+    const child = props.child;
+    if (!React.isValidElement<SlotLikeProps>(child)) return null;
+    return React.cloneElement(child, undefined, props.children(child.props.children));
+  }
+  return props.children as React.ReactNode;
+}
 
 function isSlottable(child: React.ReactNode): child is React.ReactElement<SlotLikeProps> {
   if (!React.isValidElement(child)) return false;
@@ -134,7 +150,7 @@ const Slot = React.forwardRef<unknown, SlotLikeProps>((props, forwardedRef) => {
   const slottable = childrenArray.find(isSlottable);
 
   if (slottable && React.isValidElement<SlotLikeProps>(slottable)) {
-    const newElement = slottable.props.children;
+    const newElement = slottableElement(slottable.props as SlottableProps);
     const newChildren = childrenArray.map((child) => {
       if (child === slottable) {
         if (React.Children.count(newElement) > 1) return React.Children.only(null);
@@ -159,8 +175,8 @@ const Slot = React.forwardRef<unknown, SlotLikeProps>((props, forwardedRef) => {
 Slot.displayName = "Slot";
 
 // Slottable
-const Slottable = ({ children }: { children: React.ReactNode }) => {
-  return jsx(Fragment, { children });
+const Slottable = (props: SlottableProps) => {
+  return jsx(Fragment, { children: renderSlottable(props) });
 };
 (Slottable as RadixTaggedComponent).__radixId = SLOTTABLE_IDENTIFIER;
 Slottable.displayName = "Slottable";
@@ -174,8 +190,8 @@ function createSlot(ownerName: string) {
 }
 
 function createSlottable(ownerName: string) {
-  const S = ({ children }: { children: React.ReactNode }) => {
-    return jsx(Fragment, { children });
+  const S = (props: SlottableProps) => {
+    return jsx(Fragment, { children: renderSlottable(props) });
   };
   S.displayName = `${ownerName}.Slottable`;
   (S as RadixTaggedComponent).__radixId = SLOTTABLE_IDENTIFIER;
