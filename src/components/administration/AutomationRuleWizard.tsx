@@ -709,9 +709,12 @@ export function AutomationRuleWizard({
               <div key={step.label} className="flex items-center gap-1 flex-1">
                 <button
                   type="button"
-                  onClick={() => i <= currentStep && setCurrentStep(i)}
+                  onClick={() => setCurrentStep(i)}
+                  disabled={!editingRuleId && i > currentStep}
+                  aria-label={step.label}
+                  aria-current={isActive ? "step" : undefined}
                   className={cn(
-                    "flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-colors w-full",
+                    "flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-colors w-full disabled:cursor-not-allowed",
                     isActive && "bg-primary text-primary-foreground",
                     isDone && "bg-primary/10 text-primary",
                     !isActive && !isDone && "text-muted-foreground"
