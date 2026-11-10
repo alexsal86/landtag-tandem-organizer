@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TenantUserSelect } from "../TenantUserSelect";
 import { SYSTEM_ROUTINES } from "@/features/automation/annualRoutines";
+import { RoutineStepsEditor } from "./RoutineStepsEditor";
 import { ROUTINE_CATEGORIES } from "./constants";
 import type { ActionItem } from "./types";
 
@@ -24,7 +25,7 @@ export function AnnualRoutineFields({ action, onChange }: { action: ActionItem; 
       <p className="text-xs text-muted-foreground">Der jährliche Zeitplan startet die Planung. Der Abschluss kann später liegen, auch im Folgejahr. Änderungen gelten für neu gestartete Pakete.</p>
       <div className="grid grid-cols-2 gap-3"><div><Label htmlFor={`routine-end-month-${action.annualTaskId||'new'}`}>Abschlussmonat</Label><Input id={`routine-end-month-${action.annualTaskId||'new'}`} type="number" min={1} max={12} value={action.routineDeadlineMonth||''} onChange={event=>onChange({routineDeadlineMonth:event.target.value,routineConfirmedYear:''})} /></div>
       <div><Label htmlFor={`routine-end-day-${action.annualTaskId||'new'}`}>Abschlusstag</Label><Input id={`routine-end-day-${action.annualTaskId||'new'}`} type="number" min={1} max={31} value={action.routineDeadlineDay||''} onChange={event=>onChange({routineDeadlineDay:event.target.value,routineConfirmedYear:''})} /></div></div>
-      <div><Label htmlFor={`routine-steps-${action.annualTaskId||'new'}`}>Arbeitsschritte</Label><Textarea id={`routine-steps-${action.annualTaskId||'new'}`} rows={6} value={action.routineSteps||''} onChange={event=>onChange({routineSteps:event.target.value})} placeholder="14 | Druck bestellen" /><p className="mt-1 text-xs text-muted-foreground">Pro Zeile: Tage vor Abschluss | Arbeitsschritt. Die Frist liegt frühestens am Planungsbeginn. Ohne Abschlussdatum und Schritte bleibt es eine einzelne Büroaufgabe.</p></div>
+      <RoutineStepsEditor value={action.routineSteps || ""} onChange={routineSteps => onChange({ routineSteps, routineConfirmedYear: "" })} />
       <div className="flex items-center justify-between gap-3"><Label htmlFor={`routine-confirm-required-${action.annualTaskId||'new'}`}>Termine jährlich bestätigen</Label><Switch id={`routine-confirm-required-${action.annualTaskId||'new'}`} checked={Boolean(action.routineRequiresConfirmation)} onCheckedChange={checked=>onChange({routineRequiresConfirmation:checked,routineConfirmedYear:''})} /></div>
       {action.routineRequiresConfirmation && <label className="flex items-start gap-2 text-sm"><input className="mt-1" type="checkbox" checked={action.routineConfirmedYear===new Intl.DateTimeFormat('en',{timeZone:'Europe/Berlin',year:'numeric'}).format(new Date())} onChange={event=>onChange({routineConfirmedYear:event.target.checked?new Intl.DateTimeFormat('en',{timeZone:'Europe/Berlin',year:'numeric'}).format(new Date()):''})} />Ich habe Planungsbeginn und Abschluss mit dem tatsächlichen Zeitplan dieses Jahres abgeglichen. Ohne Bestätigung wartet die Ausführung.</label>}
     </div>}
