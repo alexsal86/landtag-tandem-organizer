@@ -25,6 +25,7 @@ export interface NotificationTypeInfo {
 
 export interface NotificationData extends UnknownRecord {
   type?: string | null;
+  question_id?: string | null;
   task_id?: string | null;
   taskId?: string | null;
   decision_id?: string | null;

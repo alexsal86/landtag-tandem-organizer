@@ -73,3 +73,7 @@ export function knowledgeUrlState(params: URLSearchParams): { view: KnowledgeVie
   const assignee = rawAssignee === 'unassigned' || /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(rawAssignee) ? rawAssignee : '';
   return { view, filters: { status, assignee, sort: params.get('sortierung') === 'oldest' ? 'oldest' : 'updated' } };
 }
+
+export function knowledgeQuestionPath(id: string | null | undefined): string {
+  return id ? `/knowledge?frage=${encodeURIComponent(id)}` : '/knowledge';
+}

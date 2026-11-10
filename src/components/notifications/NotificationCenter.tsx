@@ -79,6 +79,10 @@ const getNotificationIcon = (type: string): LucideIcon => {
     case 'document_mention':
     case 'news_shared_internal':
       return FileText;
+    case 'knowledge_qa_assigned':
+    case 'knowledge_qa_answered':
+    case 'knowledge_qa_due':
+    case 'knowledge_qa_review_requested':
     case 'knowledge_document_created':
       return BookOpen;
     case 'meeting_created':

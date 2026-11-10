@@ -47,7 +47,7 @@ const CATEGORY_META: Record<string, { label: string; icon: string; order: number
   calendar: { label: 'Termine & Kalender', icon: '📅', order: 4 },
   messages: { label: 'Nachrichten', icon: '💬', order: 5 },
   documents: { label: 'Dokumente & Briefe', icon: '📄', order: 6 },
-  knowledge: { label: 'Wissen', icon: '📚', order: 7 },
+  knowledge: { label: 'Wissen: Fragen und Antworten', icon: '📚', order: 7 },
   meetings: { label: 'Jour fixe', icon: '🤝', order: 8 },
   employee: { label: 'Mitarbeiter', icon: '👥', order: 9 },
   time: { label: 'Zeiterfassung', icon: '⏰', order: 10 },

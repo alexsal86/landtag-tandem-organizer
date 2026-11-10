@@ -1,3 +1,4 @@
+import { knowledgeQuestionPath } from '@/features/knowledge/logic';
 import type { Notification, NotificationData } from '@/hooks/useNotifications';
 import { isLetterNotificationType } from '@/utils/letterNotificationTypes';
 
@@ -69,6 +70,11 @@ export const buildDeepLinkPath = (notification: Notification): string => {
         ? buildHighlightPath('/documents?tab=press', documentId)
         : buildHighlightPath('/documents?tab=letters', documentId);
     }
+    case 'knowledge_qa_assigned':
+    case 'knowledge_qa_answered':
+    case 'knowledge_qa_due':
+    case 'knowledge_qa_review_requested':
+      return knowledgeQuestionPath(data.question_id);
     case 'knowledge_document_created':
       return buildHighlightPath('/knowledge', getNotificationDataId(data, 'document_id'));
 

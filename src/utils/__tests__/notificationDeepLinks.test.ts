@@ -85,3 +85,7 @@ describe('buildDeepLinkPath', () => {
     expect(path).toBe('/tasks?highlight=t1&feedback_id=fb1');
   });
 });
+
+it.each(['knowledge_qa_assigned','knowledge_qa_answered','knowledge_qa_due','knowledge_qa_review_requested'])('opens the question from %s', name => {
+  expect(buildDeepLinkPath(makeNotification({ notification_types: { name, label: name }, data: { question_id: 'question-id' } }))).toBe('/knowledge?frage=question-id');
+});

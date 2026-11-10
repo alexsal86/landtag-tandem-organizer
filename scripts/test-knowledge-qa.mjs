@@ -35,6 +35,9 @@ try {
     CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$ SELECT current_setting('test.role',true) $$;
     CREATE TYPE app_role AS ENUM ('abgeordneter','bueroleitung','mitarbeiter','praktikant');
     CREATE TABLE tenants(id uuid PRIMARY KEY);
+    CREATE TABLE notification_types(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),tenant_id uuid,name text,label text,description text,category text,is_active boolean,UNIQUE(tenant_id,name));
+    CREATE TABLE user_notification_settings(user_id uuid,notification_type_id uuid,is_enabled boolean,push_enabled boolean,UNIQUE(user_id,notification_type_id));
+    CREATE TABLE notifications(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),tenant_id uuid,user_id uuid,notification_type_id uuid,title text,message text,data jsonb,priority text);
     CREATE TABLE user_tenant_memberships(tenant_id uuid,user_id uuid,role app_role,is_active boolean);
     CREATE TABLE action_permissions(tenant_id uuid,action_key text,allowed_roles app_role[]);
     CREATE FUNCTION is_superadmin(uuid) RETURNS boolean LANGUAGE sql AS $$ SELECT false $$;
@@ -68,7 +71,7 @@ try {
   `);
   const actions = await readFile(new URL('../supabase/migrations/20261109142000_enforce_admin_actions.sql', import.meta.url), 'utf8');
   await db.exec(actions.slice(actions.indexOf('CREATE OR REPLACE FUNCTION public.is_tenant_action_allowed'), actions.indexOf('CREATE OR REPLACE FUNCTION public.enforce_configured_action')));
-  for (const file of ['20261110180000_knowledge_qa_core.sql', '20261110180100_knowledge_qa_search.sql', '20261110180200_knowledge_qa_storage.sql', '20261110180300_knowledge_legacy_access.sql', '20261111100000_knowledge_list_payload.sql', '20261111100100_knowledge_keyset.sql', '20261111100200_knowledge_search.sql', '20261111100300_knowledge_views_filters.sql']) {
+  for (const file of ['20261110180000_knowledge_qa_core.sql', '20261110180100_knowledge_qa_search.sql', '20261110180200_knowledge_qa_storage.sql', '20261110180300_knowledge_legacy_access.sql', '20261111100000_knowledge_list_payload.sql', '20261111100100_knowledge_keyset.sql', '20261111100200_knowledge_search.sql', '20261111100300_knowledge_views_filters.sql', '20261111100400_knowledge_notifications.sql']) {
     await db.exec(await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
   }
   // Re-running additive migrations must preserve functions and data.
@@ -193,6 +196,34 @@ try {
   await owner();
   assert.equal((await read('SELECT count(*)::int AS count FROM knowledge_documents'))[0].count, 2, 'Legacy rows preserved');
   assert.equal((await read("SELECT public FROM storage.buckets WHERE id='knowledge-attachments'"))[0].public, false);
+  const notificationBefore=(await read('SELECT count(*)::int AS n FROM notifications'))[0].n;
+  await db.exec("DELETE FROM action_permissions");
+  await actor(alice);
+  let notificationQuestion=await create(officeA,'Benachrichtigungen testen',clara);
+  await actor(clara);
+  notificationQuestion=await save(notificationQuestion,'Die Antwort ist da.');
+  await actor(alice);
+  notificationQuestion=await review(notificationQuestion,false);
+  await owner();
+  assert.equal((await read('SELECT count(*)::int AS n FROM notifications'))[0].n,notificationBefore+3);
+  const assignedNotification=(await read("SELECT n.* FROM notifications n JOIN notification_types t ON t.id=n.notification_type_id WHERE t.name='knowledge_qa_assigned' AND n.data->>'question_id'=$1",[notificationQuestion.id]))[0];
+  assert.equal(assignedNotification.user_id,clara);
+  await read("SELECT knowledge_qa_notify($1,$2,'knowledge_qa_assigned',$3,$4,$5)",[officeA,clara,assignedNotification.data.event_key,notificationQuestion.id,notificationQuestion.title]);
+  assert.equal((await read('SELECT count(*)::int AS n FROM notifications'))[0].n,notificationBefore+3,'Event replay is deduplicated');
+  await db.query("UPDATE knowledge_questions SET review_due_at='2000-01-01',revision=revision+1 WHERE id=$1",[notificationQuestion.id]);
+  await read('SELECT dispatch_due_knowledge_reviews()');
+  const dueCount=(await read("SELECT count(*)::int AS n FROM notifications n JOIN notification_types t ON t.id=n.notification_type_id WHERE t.name='knowledge_qa_due'"))[0].n;
+  await read('SELECT dispatch_due_knowledge_reviews()');
+  assert.equal((await read("SELECT count(*)::int AS n FROM notifications n JOIN notification_types t ON t.id=n.notification_type_id WHERE t.name='knowledge_qa_due'"))[0].n,dueCount);
+  assert.ok(dueCount>0);
+  await db.query("UPDATE user_notification_settings SET is_enabled=false WHERE user_id=$1",[clara]);
+  const disabledBefore=(await read('SELECT count(*)::int AS n FROM notifications'))[0].n;
+  await actor(alice); await create(officeA,'Stummgeschaltet',clara); await owner();
+  assert.equal((await read('SELECT count(*)::int AS n FROM notifications'))[0].n,disabledBefore,'User preference is honored');
+  await actor(bob);
+  await denied(read('SELECT dispatch_due_knowledge_reviews()'));
+  await denied(read("SELECT knowledge_qa_notify($1,$2,'knowledge_qa_assigned','forged',$3,'forged')",[officeA,bob,notificationQuestion.id]));
+  await owner();
   await db.query(`INSERT INTO knowledge_questions(tenant_id,title,description,created_by,updated_by,answer_content,answer_text,answered_at,updated_at)
     SELECT $1,'Referenzfrage '||i,'Kontext für Lasttest',$2,$2,$3::jsonb,'Allgemeine Antwort',now(),now()-make_interval(secs=>i)
     FROM generate_series(1,2000) i`, [officeA,alice,JSON.stringify(content('Allgemeine Antwort'))]);
