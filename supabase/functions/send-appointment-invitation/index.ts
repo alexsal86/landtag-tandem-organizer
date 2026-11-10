@@ -325,7 +325,7 @@ const handler = async (req: Request): Promise<Response> => {
             emailResults.push({ guestId: guest.id, success: false, error: errorMessage });
           }
         } else {
-          console.log("Email sent successfully to:", guest.email, "ID:", emailResponse.data?.id);
+          console.log("Invitation email sent, ID:", emailResponse.data?.id);
           emailResults.push({ guestId: guest.id, success: true, messageId: emailResponse.data?.id });
 
           // Update guest status and invitation timestamp
