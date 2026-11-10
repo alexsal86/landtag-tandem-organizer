@@ -31,6 +31,8 @@
 - Beide Jour-Fixe-Ansichten bleiben getrennt.
 
 # Automatisierungs-Hub
+- [ ] Jahresroutinen tief in Regel-Assistent, Zeitsteuerung und Verlauf integrieren; bestehende Abschlüsse erhalten.
+- [ ] Jahresübersicht, sichere Systemaktionen und Regressionstests ergänzen.
 - [x] Phase 1: Jahresaufgaben atomar ins Stafetten-System übergeben und Abschluss synchronisieren
 - [x] Phase 1: Regeln, Datenbank-Verknüpfung und Selbsttests absichern
 - [x] Phase 2: Regeln/Workflows und RSS-Navigation zusammenführen
