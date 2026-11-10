@@ -56,16 +56,17 @@ serve(withSafeHandler("automation-webhook", async (req) => {
       });
     }
 
-    // Verify webhook secret if configured on the rule
-    const expectedSecret = rule.trigger_config?.webhook_secret;
-    if (expectedSecret) {
-      const providedSecret = req.headers.get("x-webhook-secret") ?? url.searchParams.get("secret");
-      if (providedSecret !== expectedSecret) {
-        return new Response(JSON.stringify({ error: "Invalid webhook secret" }), {
-          status: 403,
-          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-        });
-      }
+    // A webhook secret is mandatory: rules without one can never be triggered
+    // externally, otherwise anyone knowing a rule ID could run it.
+    const expectedSecret = typeof rule.trigger_config?.webhook_secret === "string"
+      ? rule.trigger_config.webhook_secret
+      : "";
+    const providedSecret = req.headers.get("x-webhook-secret") ?? "";
+    if (expectedSecret.length < 16 || providedSecret !== expectedSecret) {
+      return new Response(JSON.stringify({ error: "Invalid webhook secret" }), {
+        status: 403,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      });
     }
 
     // Kill-Switch check

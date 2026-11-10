@@ -840,6 +840,9 @@ export function AutomationRuleWizard({
                     <code className="text-xs break-all select-all">
                       {`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/automation-webhook?ruleId=${editingRuleId}`}
                     </code>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Aufrufe benötigen das Webhook-Geheimnis der Regel (mind. 16 Zeichen) im Header <code>x-webhook-secret</code>; Regeln ohne Geheimnis werden abgelehnt.
+                    </p>
                   </div>
                 )}
               </div>
