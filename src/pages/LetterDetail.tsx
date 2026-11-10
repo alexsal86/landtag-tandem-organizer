@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
-import { ThemeProvider } from 'next-themes';
 import LetterEditor from '@/features/letters/components/LetterEditor';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
@@ -141,7 +140,7 @@ const LetterDetail = () => {
   };
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <>
       <div className="flex min-h-screen w-full bg-background overflow-hidden">
         <div className="hidden md:block sticky top-0 h-screen z-30">
           <AppNavigation activeSection={activeSection} onSectionChange={handleSectionChange} />
@@ -172,7 +171,7 @@ const LetterDetail = () => {
           </main>
         </div>
       </div>
-    </ThemeProvider>
+    </>
   );
 };
 

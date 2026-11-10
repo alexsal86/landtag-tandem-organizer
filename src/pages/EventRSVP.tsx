@@ -249,7 +249,7 @@ export default function EventRSVP() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-muted/30 to-white px-4 py-4 sm:px-6 sm:py-8">
+    <div className="min-h-screen bg-gradient-to-b from-muted/30 to-background px-4 py-4 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-2xl space-y-4">
         <Alert>
           <Info className="h-4 w-4" />
@@ -276,7 +276,7 @@ export default function EventRSVP() {
           </AlertDescription>
         </Alert>
         <Card className="overflow-hidden border-border shadow-lg shadow-slate-200/50">
-          <CardHeader className="space-y-4 bg-white p-5 sm:p-8">
+          <CardHeader className="space-y-4 bg-card p-5 sm:p-8">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-2">
                 <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
@@ -360,7 +360,7 @@ export default function EventRSVP() {
                   </Badge>
                 </div>
                 {comment.trim() && (
-                  <div className="rounded-xl bg-white/80 p-4">
+                  <div className="rounded-xl bg-card/80 p-4">
                     <p className="flex items-center gap-2 text-sm font-medium text-foreground/80">
                       <MessageSquare className="h-4 w-4" /> Ihr Kommentar
                     </p>
@@ -394,7 +394,7 @@ export default function EventRSVP() {
                     onChange={(event) => setComment(event.target.value)}
                     placeholder="Optional: Hinweise zur Teilnahme, Begleitperson oder Anreise"
                     rows={4}
-                    className="resize-none rounded-2xl border-border bg-white text-base shadow-sm"
+                    className="resize-none rounded-2xl border-border bg-card text-base shadow-sm"
                   />
                 </div>
 

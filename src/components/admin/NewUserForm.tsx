@@ -110,7 +110,7 @@ export const NewUserForm: React.FC<NewUserFormProps> = ({ onSuccess }) => {
                 <Input 
                   value={createdUser.email} 
                   readOnly 
-                  className="bg-white text-sm"
+                  className="bg-background text-foreground text-sm"
                 />
                 <Button
                   type="button"
@@ -130,7 +130,7 @@ export const NewUserForm: React.FC<NewUserFormProps> = ({ onSuccess }) => {
                   type={showPassword ? 'text' : 'password'}
                   value={createdUser.password} 
                   readOnly 
-                  className="bg-white text-sm font-mono"
+                  className="bg-background text-foreground text-sm font-mono"
                 />
                 <Button
                   type="button"

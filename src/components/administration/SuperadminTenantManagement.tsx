@@ -754,7 +754,7 @@ export function SuperadminTenantManagement(): React.JSX.Element {
                         Bitte notieren Sie das generierte Passwort:
                       </p>
                       <div className="flex items-center gap-2">
-                        <code className="flex-1 p-2 bg-white rounded border font-mono">
+                        <code className="flex-1 p-2 bg-background text-foreground rounded border font-mono">
                           {createdUserPassword}
                         </code>
                         <Button variant="outline" size="sm" onClick={copyPassword}>

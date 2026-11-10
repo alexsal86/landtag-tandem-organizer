@@ -407,7 +407,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   };
 
     return (
-    <div className={`din5008-letter bg-white ${className}`} style={{ 
+    <div className={`din5008-letter bg-white text-black ${className}`} style={{
       minHeight: '297mm', 
       width: '210mm', 
       margin: '0 auto',
@@ -430,7 +430,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         >
           {template.header_layout_type === 'structured' && template.header_text_elements ? (
             <div 
-              className="relative bg-white w-full h-full overflow-hidden"
+              className="relative bg-white text-black w-full h-full overflow-hidden"
               style={{ 
                 width: '100%',
                 height: '100%',

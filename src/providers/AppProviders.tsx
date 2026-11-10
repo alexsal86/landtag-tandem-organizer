@@ -1,5 +1,6 @@
 import { QuickNotesRuntime } from "@/features/quick-notes/useQuickNotesData";
 import type { PropsWithChildren } from "react";
+import { ThemeProvider } from "next-themes";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/hooks/useAuth";
 import { TenantProvider } from "@/hooks/useTenant";
@@ -20,19 +21,21 @@ const queryClient = new QueryClient({
 });
 
 export const AppProviders = ({ children }: PropsWithChildren): React.JSX.Element => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TenantProvider>
-        <QuickNotesRuntime />
-        <AppSettingsProvider>
-          <NotificationProvider>
-            <TooltipProvider>
-              <AppHeadManager />
-              {children}
-            </TooltipProvider>
-          </NotificationProvider>
-        </AppSettingsProvider>
-      </TenantProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+  <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TenantProvider>
+          <QuickNotesRuntime />
+          <AppSettingsProvider>
+            <NotificationProvider>
+              <TooltipProvider>
+                <AppHeadManager />
+                {children}
+              </TooltipProvider>
+            </NotificationProvider>
+          </AppSettingsProvider>
+        </TenantProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  </ThemeProvider>
 );

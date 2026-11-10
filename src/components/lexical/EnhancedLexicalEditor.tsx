@@ -273,10 +273,10 @@ export default function EnhancedLexicalEditor({
               contentEditable={
                 <ContentEditable
                   className={bare ? 'editor-input min-h-[40mm] focus:outline-none max-w-none' : [
-                    'editor-input min-h-[300px] focus:outline-none resize-none max-w-none bg-white',
+                    'editor-input min-h-[300px] focus:outline-none resize-none max-w-none',
                     matchLetterPreview
-                      ? 'mx-auto'
-                      : 'p-4 prose prose-sm dark:bg-card',
+                      ? 'mx-auto bg-white text-black'
+                      : 'p-4 prose prose-sm bg-background text-foreground dark:bg-card',
                   ].join(' ')}
                   style={bare ? { fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', color: 'inherit' } : matchLetterPreview ? {
                     width: '210mm',

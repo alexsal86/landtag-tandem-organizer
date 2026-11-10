@@ -1,7 +1,6 @@
 import React, { useState, useEffect, Suspense, useMemo, useCallback, startTransition } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
-import { ThemeProvider } from "next-themes";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { AppNavigation, getNavigationGroups } from "@/components/navigation/AppNavigation";
@@ -262,7 +261,7 @@ const Index = (): React.JSX.Element => {
   };
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <>
       {/* Global Announcement Banner - above everything */}
       <GlobalAnnouncementBanner />
       
@@ -339,7 +338,7 @@ const Index = (): React.JSX.Element => {
           onOpenChange={handleCreateAppointmentDialogChange}
         />
       </div>
-    </ThemeProvider>
+    </>
   );
 };
 
