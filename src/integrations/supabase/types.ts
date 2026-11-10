@@ -10029,6 +10029,140 @@ export type Database = {
           },
         ]
       }
+      routine_package_runs: {
+        Row: {
+          annual_task_id: string
+          created_at: string
+          finish_day: string
+          id: string
+          rule_id: string | null
+          start_day: string
+          task_id: string
+          tenant_id: string
+          year: number
+        }
+        Insert: {
+          annual_task_id: string
+          created_at?: string
+          finish_day: string
+          id?: string
+          rule_id?: string | null
+          start_day: string
+          task_id: string
+          tenant_id: string
+          year: number
+        }
+        Update: {
+          annual_task_id?: string
+          created_at?: string
+          finish_day?: string
+          id?: string
+          rule_id?: string | null
+          start_day?: string
+          task_id?: string
+          tenant_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routine_package_runs_annual_task_id_fkey"
+            columns: ["annual_task_id"]
+            isOneToOne: false
+            referencedRelation: "annual_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "routine_package_runs_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "automation_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "routine_package_runs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: true
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "routine_package_runs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      routine_package_steps: {
+        Row: {
+          approval_id: string | null
+          approver_id: string | null
+          assignee_id: string
+          attempts: number
+          completed_at: string | null
+          due_day: string
+          entity_id: string | null
+          error_message: string | null
+          id: string
+          kind: string
+          position: number
+          release: string
+          run_id: string
+          status: string
+          title: string
+        }
+        Insert: {
+          approval_id?: string | null
+          approver_id?: string | null
+          assignee_id: string
+          attempts?: number
+          completed_at?: string | null
+          due_day: string
+          entity_id?: string | null
+          error_message?: string | null
+          id?: string
+          kind: string
+          position: number
+          release: string
+          run_id: string
+          status?: string
+          title: string
+        }
+        Update: {
+          approval_id?: string | null
+          approver_id?: string | null
+          assignee_id?: string
+          attempts?: number
+          completed_at?: string | null
+          due_day?: string
+          entity_id?: string | null
+          error_message?: string | null
+          id?: string
+          kind?: string
+          position?: number
+          release?: string
+          run_id?: string
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routine_package_steps_approval_id_fkey"
+            columns: ["approval_id"]
+            isOneToOne: false
+            referencedRelation: "task_decisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "routine_package_steps_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "routine_package_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rss_cache: {
         Row: {
           cache_key: string
@@ -13564,13 +13698,6 @@ export type Database = {
       }
     }
     Functions: {
-      reassign_routine_step: { Args: { _step_id: string; _assignee_id: string; _approver_id?: string }; Returns: undefined }
-      office_routine_step_settings: { Args: { _payload: Json; _tenant_id: string }; Returns: Json }
-      get_routine_packages: { Args: { _rule_ids: string[] }; Returns: Json }
-      refresh_routine_package: { Args: { _run_id: string; _retry_step_id?: string }; Returns: undefined }
-      update_waiting_routine_steps: { Args: { _run_id: string }; Returns: number }
-      office_routine_step_kinds: { Args: { _payload: Json }; Returns: Json }
-      office_routine_deadline: { Args: { _payload: Json; _start: string }; Returns: string }
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined
@@ -14106,6 +14233,7 @@ export type Database = {
         Args: { p_contexts?: string[]; p_user_id: string }
         Returns: Json
       }
+      get_routine_packages: { Args: { _rule_ids: string[] }; Returns: Json }
       get_shared_note_ids: { Args: { _user_id: string }; Returns: string[] }
       get_table_size_metrics: {
         Args: never
@@ -14306,6 +14434,23 @@ export type Database = {
         Args: { _note?: string; _task_id: string }
         Returns: undefined
       }
+      office_routine_deadline: {
+        Args: { _payload: Json; _start: string }
+        Returns: string
+      }
+      office_routine_step_kinds: { Args: { _payload: Json }; Returns: Json }
+      office_routine_step_settings: {
+        Args: { _payload: Json; _tenant_id: string }
+        Returns: Json
+      }
+      office_routine_steps: {
+        Args: { _text: string }
+        Returns: {
+          days_before: number
+          description: string
+          step_index: number
+        }[]
+      }
       parse_task_assignee_ids: {
         Args: { p_assigned_to: string }
         Returns: string[]
@@ -14428,6 +14573,10 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      reassign_routine_step: {
+        Args: { _approver_id?: string; _assignee_id: string; _step_id: string }
+        Returns: undefined
+      }
       reconcile_employee_meeting_requests: {
         Args: {
           p_employee_id?: string
@@ -14441,6 +14590,10 @@ export type Database = {
           linked_meeting_id: string
           updated_request_id: string
         }[]
+      }
+      refresh_routine_package: {
+        Args: { _retry_step_id?: string; _run_id: string }
+        Returns: undefined
       }
       reorder_admin_items: {
         Args: { _ids: string[]; _table: string; _tenant_id: string }
@@ -14523,6 +14676,10 @@ export type Database = {
       update_contact_usage: {
         Args: { p_contact_id: string; p_tenant_id?: string; p_user_id?: string }
         Returns: undefined
+      }
+      update_waiting_routine_steps: {
+        Args: { _run_id: string }
+        Returns: number
       }
       user_belongs_to_tenant: { Args: { _tenant_id: string }; Returns: boolean }
       user_can_access_case_item: {
