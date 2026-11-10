@@ -117,6 +117,7 @@ export function useAutomationAdminMutations(tenantId?: string, userId?: string) 
       queryClient.invalidateQueries({ queryKey: automationKeys.runs(tenantId) }),
       queryClient.invalidateQueries({ queryKey: automationKeys.pauseState(tenantId) }),
       queryClient.invalidateQueries({ queryKey: ["annual-routines", tenantId] }),
+      queryClient.invalidateQueries({ queryKey: ["routine-packages", tenantId] }),
       queryClient.invalidateQueries({ queryKey: ["my-work-tasks"] }),
     ]);
   };
@@ -145,6 +146,11 @@ export function useAutomationAdminMutations(tenantId?: string, userId?: string) 
         if (action.type !== "run_annual_routine" || !action.payload?.routine_step_kinds) continue;
         const probe = await supabase.rpc("office_routine_step_kinds", { _payload: action.payload });
         if (probe.error) throw new Error("Die Schritttypen konnten im Backend nicht bestätigt werden. Bitte die Plattform aktualisieren und die Auswahl prüfen, bevor diese Routine gespeichert wird.");
+      }
+      for (const action of payload.actions) {
+        if (action.type !== "run_annual_routine" || !action.payload?.routine_step_settings) continue;
+        const probe = await supabase.rpc("office_routine_step_settings", { _payload: action.payload, _tenant_id: tenantId });
+        if (probe.error) throw new Error(`Der Ablauf konnte im Backend nicht bestätigt werden. ${probe.error.message}`);
       }
       const query = editingRuleId
         ? supabase.from("automation_rules").update(toAutomationRuleUpdate(payload)).eq("id", editingRuleId).eq("tenant_id", tenantId)
@@ -194,6 +200,7 @@ export function useAutomationAdminMutations(tenantId?: string, userId?: string) 
       if (data?.status === "failed" || data?.error) throw new Error(data.error || "Ausführung fehlgeschlagen; siehe Verlauf.");
     },
     onSuccess: async (_, variables) => {
+      await Promise.all([queryClient.invalidateQueries({ queryKey: ["annual-routines"] }), queryClient.invalidateQueries({ queryKey: ["routine-packages"] })]);
       notify.success(variables.dryRun ? "Dry-Run erstellt" : "Regel ausgeführt", {
         description: variables.dryRun ? "Ausführung wurde in der Historie protokolliert." : "Die Ausführung wurde protokolliert."
 });

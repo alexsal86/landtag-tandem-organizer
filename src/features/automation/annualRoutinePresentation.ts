@@ -6,6 +6,7 @@ import { annualDueDay, annualTaskStatus } from '@/features/timetracking/annualTa
 export type RoutineFilter = 'all' | 'open' | 'done';
 export interface RoutineRecord {
   due_month: number; due_day: number | null; automation_rule_id: string | null;
+  snapshot?: { start: string; finish: string };
   completion?: { completed_at: string | null; linked_task_id: string | null };
 }
 export function berlinCalendar(now = new Date()) {
@@ -19,14 +20,14 @@ export function presentAnnualRoutines(rules: AutomationRuleRecordView[], records
   const byRule = new Map(records.map(record => [record.automation_rule_id, record]));
   return rules.filter(rule => annualRoutineAction(rule)).map(rule => {
     const record = byRule.get(rule.id);
-    const month = routineMonth(rule);
+    const month = record?.snapshot ? Number(record.snapshot.start.slice(5,7)) : routineMonth(rule);
     const deadline = record ?? { due_month: month ?? 0, due_day: rule.trigger_config.month_end === 'true' ? null : Number(rule.trigger_config.day) };
     let due: string | null = null;
     let start: string | null = null;
     let status: ReturnType<typeof annualTaskStatus> = record?.completion?.completed_at ? 'completed' : 'upcoming';
     try {
-      start = annualDueDay(deadline, today.year);
-      due = officeRoutineDeadline(annualRoutineAction(rule)?.payload,start);
+      start = record?.snapshot?.start ?? annualDueDay(deadline, today.year);
+      due = record?.snapshot?.finish ?? officeRoutineDeadline(annualRoutineAction(rule)?.payload,start);
       const [year,month,day]=due.split('-').map(Number);
       status = annualTaskStatus({due_month:month,due_day:day},year,record?.completion?.completed_at,localToday);
     } catch { /* An invalid schedule stays visible and editable. */ }

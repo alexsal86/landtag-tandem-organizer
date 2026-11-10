@@ -5,6 +5,8 @@ import { canDecide } from "@/features/appointment-requests/logic";
 import { isOnResubmission, MINISTRY_RESPONSE_DAYS, withAutoDeadline, type TriageItem } from "@/features/cases/items/ball";
 import { computeCropRect, isCrowdedDay, parseTopicDrop, rescheduleToDay } from "@/features/redaktion/utils/plannerRules";
 import { validateVariant } from "@/features/redaktion/components/PlannerBoard/utils";
+import { defaultStepSetting, previewRoutine, readStepSettings, validateRoutineWorkflow } from "@/features/automation/routineWorkflow";
+import { routineEntityLink, routineStepLabel } from "@/features/automation/routinePackages";
 import { routineStepKinds, validateOfficeRoutine } from "@/features/automation/officeRoutineTemplates";
 import type { TestScenario } from "../types";
 import { calendarOccurrence, nextCalendarOccurrence, scheduleRunKey } from "@/features/automation/calendarSchedule";
@@ -16,6 +18,26 @@ export const workflowRulesScenario: TestScenario = {
   checks: ["Erlaubte und verbotene Brief-Statuswechsel", "Entscheiderrollen", "Ministeriumsfrist und Wiedervorlage"],
   limitations: ["Berechtigungen der Datenbank werden separat in den Zugriffstests geprüft."],
   steps: [
+    {
+      id: "routine-dependencies-preview", label: "Routinen: Freigaben, Abhängigkeiten und Jahreswechsel bleiben nachvollziehbar", kind: "logic",
+      run: async () => {
+        const fields = { routineDeadlineMonth: "1", routineDeadlineDay: "10", routineSteps: "0 | Versand\n70 | Liste bereinigen", routineStepKinds: '["task","case"]' };
+        const plan = previewRoutine(fields, { month: "11", day: "1", month_end: "false" }, 2026);
+        const sequential = { ...fields, routineSteps: "70 | Liste bereinigen\n0 | Versand", routineStepSettings: JSON.stringify([defaultStepSetting(), { ...defaultStepSetting(), release: "after_previous" }]) };
+        const checks = {
+          yearBoundary: plan.finish === "2027-01-10",
+          pairedSort: plan.steps[0].title === "Liste bereinigen" && plan.steps[0].kind === "case",
+          inheritedDefaults: readStepSettings(undefined, 2).every(step => step.release === "package_start" && !step.assignee),
+          validDependency: validateRoutineWorkflow(sequential) === null,
+          firstCannotWait: validateRoutineWorkflow({ ...sequential, routineStepSettings: JSON.stringify([{ ...defaultStepSetting(), release: "after_previous" }, defaultStepSetting()]) }) !== null,
+          explicitApproval: validateRoutineWorkflow({ ...sequential, routineStepSettings: JSON.stringify([defaultStepSetting(), { ...defaultStepSetting(), release: "after_approval" }]) }) !== null,
+          blockedLabel: routineStepLabel({ status: "blocked", release: "after_approval" }) === "Angehalten",
+          caseLink: routineEntityLink("jour_fixe", "case-id", "parent") === "/vorgaenge/case-id",
+          subtaskLink: routineEntityLink("subtask", "child", "parent").endsWith("highlight=parent"),
+        };
+        return { ok: Object.values(checks).every(Boolean), message: "Abhängigkeiten und Vorschau verwenden dieselben Paketdaten.", details: checks };
+      },
+    },
     {
       id: "routine-step-types", label: "Routinen: Schritttypen bleiben vollständig und abwärtskompatibel", kind: "logic",
       run: async () => {

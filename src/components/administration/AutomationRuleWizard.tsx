@@ -45,6 +45,8 @@ import type {
   FieldSpec,
   WizardForm,
 } from "./automationRule/types";
+import { validateAnnualRoutine } from "@/features/automation/annualRoutines";
+import { RoutinePreview } from "./automationRule/RoutinePreview";
 import { AnnualRoutineFields } from "./automationRule/AnnualRoutineFields";
 import { CalendarScheduleFields } from "./automationRule/CalendarScheduleFields";
 import { isCalendarSchedule, validateCalendarSchedule } from "@/features/automation/calendarSchedule";
@@ -649,12 +651,12 @@ export function AutomationRuleWizard({
         });
       case 3: {
         const hasErrors = semanticIssues.some((issue) => issue.level === "error");
-        return !samplePayloadParseError && !hasErrors;
+        return !samplePayloadParseError && !hasErrors && !validateAnnualRoutine(form.triggerType, form.schedule, form.actions);
       }
       default:
         return true;
     }
-  }, [currentStep, form]);
+  }, [currentStep, form, semanticIssues, samplePayloadParseError]);
 
   const applyTemplate = (templateId: string) => {
     const template = RULE_TEMPLATES.find((t) => t.id === templateId);
@@ -672,7 +674,7 @@ export function AutomationRuleWizard({
       conditionLogic: "all",
       conditions,
       conditionGroup: { logic: "all", conditions, groups: [] },
-      actions: template.actions.map((a) => ({ ...a, routineStepKinds: "" })),
+      actions: template.actions.map((a) => ({ ...a, routineStepKinds: "", routineStepSettings: "" })),
       enabled: true,
       samplePayload: "",
     }));
@@ -699,6 +701,8 @@ export function AutomationRuleWizard({
         <DialogHeader>
           <DialogTitle>{editingRuleId ? "Regel bearbeiten" : "Neue Regel erstellen"}</DialogTitle>
         </DialogHeader>
+
+        {editingRuleId && form.actions.some(action => action.type === "run_annual_routine") && <p className="rounded-md bg-muted p-3 text-xs text-muted-foreground">Du bearbeitest die Vorlage für neue Pakete. Laufende Pakete behalten ihren Ablauf. Wartende Schritte lassen sich nach dem Speichern in der Jahresübersicht gezielt aktualisieren.</p>}
 
         {/* Stepper */}
         <div className="flex items-center gap-1 mb-2">
@@ -976,6 +980,7 @@ export function AutomationRuleWizard({
         {/* Step 4: Simulation */}
         {currentStep === 3 && (
           <div className="space-y-4 py-2">
+            <RoutinePreview form={form} />
             <div className="space-y-1">
               <p className="text-sm font-medium">Simulation / Dry-Run</p>
               <p className="text-xs text-muted-foreground">Füge einen Beispieldatensatz als JSON ein, um Bedingungs-Matches und Aktionen in der Vorschau zu prüfen.</p>

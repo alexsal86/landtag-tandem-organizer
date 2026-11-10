@@ -1,3 +1,4 @@
+import { validateRoutineWorkflow } from './routineWorkflow';
 import { validateOfficeRoutine, type OfficeRoutineFields } from './officeRoutineTemplates';
 import type { AutomationRuleRecordView } from "@/components/administration/automationShared";
 
@@ -26,5 +27,5 @@ export function validateAnnualRoutine(triggerType: string, schedule: { schedule_
   const routine = routines[0];
   if (routine.systemFunction && !SYSTEM_ROUTINES.some(item => item.value === routine.systemFunction)) return "Unbekannte Systemaktion.";
   if (routine.taskAssignees && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(routine.taskAssignees)) return "Eine zuständige Person auswählen.";
-  return validateOfficeRoutine(routine);
+  return validateOfficeRoutine(routine) || validateRoutineWorkflow(routine);
 }

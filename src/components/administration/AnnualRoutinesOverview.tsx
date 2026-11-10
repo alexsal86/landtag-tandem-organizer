@@ -1,3 +1,5 @@
+import { RoutinePackageProgress } from './RoutinePackageProgress';
+import type { RoutinePackage } from '@/features/automation/routinePackages';
 import { OfficeRoutineTemplates } from './OfficeRoutineTemplates';
 import { annualRoutineAction } from '@/features/automation/annualRoutines';
 import { routineConfirmationMissing } from '@/features/automation/officeRoutineTemplates';
@@ -50,6 +52,20 @@ export function AnnualRoutinesOverview({ rules, onEdit, onRun, onNew, canEdit, r
       return annual.data.map(item => ({ ...item, completion: byId.get(item.id) }));
     },
   });
+  const ruleIds = rules.map(rule => rule.id).sort();
+  const packagesQuery = useQuery({
+    queryKey: ['routine-packages', currentTenant?.id, ruleIds],
+    enabled: Boolean(currentTenant?.id) && canEdit && ruleIds.length > 0,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const result = await supabase.rpc('get_routine_packages', { _rule_ids: ruleIds });
+      if (result.error) throw result.error;
+      if (!Array.isArray(result.data)) throw new Error('Ungültiger Ablaufstatus.');
+      return result.data as unknown as RoutinePackage[];
+    },
+  });
+  const packages = packagesQuery.data ?? [];
   useEffect(() => {
     if (jumpMonth === null) return;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -58,7 +74,10 @@ export function AnnualRoutinesOverview({ rules, onEdit, onRun, onNew, canEdit, r
   }, [jumpMonth, showEmpty]);
   if (isLoading) return <LoadingState variant="list" rows={3} />;
   if (error) return <ErrorState title="Jahresstatus konnte nicht geladen werden" onRetry={() => void refetch()} />;
-  const routines = presentAnnualRoutines(rules, records, now);
+  const routines = presentAnnualRoutines(rules, records.map(record => {
+    const pkg = packages.find(item => item.rule_id === record.automation_rule_id && item.year === year);
+    return { ...record, ...(pkg ? { snapshot: { start: pkg.start_day, finish: pkg.finish_day } } : {}) };
+  }), now);
   const visible = routines.filter(item => matchesRoutineFilter(item.status, filter));
   const overdue = routines.filter(item => item.status === 'overdue').length;
   const completed = routines.filter(item => item.status === 'completed').length;
@@ -74,7 +93,7 @@ export function AnnualRoutinesOverview({ rules, onEdit, onRun, onNew, canEdit, r
     const hour = Number(rule.trigger_config.hour);
     const clock = rule.trigger_type === 'schedule' && rule.trigger_config.hour !== undefined && Number.isInteger(hour) && hour >= 0 && hour <= 23 ? `, ${String(hour).padStart(2, '0')}:00 Uhr` : '';
     return <article key={rule.id} className={`${styles.card} ${tone(status)}`} aria-label={rule.name}>
-      <div>
+      <div className="min-w-0 flex-1">
         <h4 className={styles.title}>{rule.name}</h4>
         {rule.description && <p className={styles.description}>{rule.description}</p>}
         <div className={styles.meta}>
@@ -86,6 +105,8 @@ export function AnnualRoutinesOverview({ rules, onEdit, onRun, onNew, canEdit, r
           {confirmationMissing && <span className="font-semibold text-amber-700 dark:text-amber-300">Termin für {year} bestätigen</span>}
           {linkedTask && status !== 'completed' && <span>Im Büro · in Bearbeitung</span>}
         </div>
+        {packages.filter(pkg => pkg.rule_id === rule.id && pkg.year === year).map(pkg => <RoutinePackageProgress key={pkg.id} pkg={pkg} canEdit={canEdit} />)}
+        {linkedTask && !packagesQuery.isLoading && !packagesQuery.error && canEdit && !packages.some(pkg => pkg.task_id === linkedTask) && <p className="mt-2 text-xs text-muted-foreground">Dieses Paket wurde vor der Ablaufverfolgung gestartet. Seine bestehenden Einträge bleiben erhalten; die detaillierte Fortschrittsanzeige gilt für neu gestartete Pakete.</p>}
       </div>
       <div className={styles.actions}>
         {linkedTask ? <Button variant="outline" size="sm" onClick={() => navigate(`/mywork?tab=tasks&highlight=${linkedTask}`)}>Aufgabe öffnen</Button> : status !== 'completed' && <Button variant={status === 'overdue' ? 'default' : 'outline'} size="sm" disabled={!canEdit || !rule.enabled || !due || confirmationMissing || runningRuleId !== null} onClick={() => system ? setConfirmRule(rule) : onRun(rule)}>
@@ -101,7 +122,13 @@ export function AnnualRoutinesOverview({ rules, onEdit, onRun, onNew, canEdit, r
       <div><h2>Jahresroutinen {year}</h2><p className={styles.subtitle}>Wiederkehrende Aufgaben und Systemaktionen im Jahreslauf</p></div>
       <Button className="rounded-xl" onClick={() => onNew()} disabled={!canEdit}><Plus aria-hidden="true" className="mr-2 h-4 w-4" />Neue Jahresroutine</Button>
     </div>
+    {packagesQuery.error && <div role="status" className="mb-3 rounded-lg border p-3 text-sm">Der detaillierte Ablaufstatus ist noch nicht verfügbar. Bitte die neue Workflow-Migration einspielen oder erneut laden. <Button size="sm" variant="outline" onClick={() => void packagesQuery.refetch()}>Erneut laden</Button></div>}
     {onUseTemplate && <OfficeRoutineTemplates rules={rules} onUse={onUseTemplate} onEdit={onEdit} canEdit={canEdit} />}
+    {packages.some(pkg => pkg.year < year && pkg.steps.some(step => step.status !== 'completed')) && <section className="mb-5 rounded-lg border p-4" aria-label="Offene Pakete aus Vorjahren">
+      <h3 className="font-medium">Offene Pakete aus Vorjahren</h3>
+      <p className="text-xs text-muted-foreground">Diese Abläufe laufen unabhängig von der neuen Jahresvorlage weiter.</p>
+      {packages.filter(pkg => pkg.year < year && pkg.steps.some(step => step.status !== 'completed')).map(pkg => <div key={pkg.id} className="mt-3"><p className="text-sm font-medium">{rules.find(rule => rule.id === pkg.rule_id)?.name ?? 'Jahresroutine'}</p><RoutinePackageProgress pkg={pkg} canEdit={canEdit} /></div>)}
+    </section>}
     <section className={styles.band} aria-label="Jahresübersicht">
       <div className={styles.stats} aria-live="polite"><div><b className={styles.late}>{overdue}</b><span>überfällig</span></div><div><b>{upcoming}</b><span>anstehend</span></div><div><b className={styles.done}>{completed}</b><span>erledigt</span></div></div>
       <nav className={styles.rail} aria-label="Monat auswählen">{MONTHS.map((month, index) => {

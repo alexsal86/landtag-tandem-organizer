@@ -19,7 +19,7 @@ export const OFFICE_ROUTINE_TEMPLATES: OfficeRoutineTemplate[] = [
 ];
 export interface OfficeRoutineFields {
   officeTemplateId?: string; routineDeadlineMonth?: string; routineDeadlineDay?: string;
-  routineStepKinds?: string; routineSteps?: string; routineRequiresConfirmation?: boolean; routineConfirmedYear?: string;
+  routineStepSettings?: string; routineStepKinds?: string; routineSteps?: string; routineRequiresConfirmation?: boolean; routineConfirmedYear?: string;
 }
 export function parseRoutineSteps(value: string) {
   const lines=value.split('\n').map(line=>line.trim()).filter(Boolean);

@@ -13564,6 +13564,11 @@ export type Database = {
       }
     }
     Functions: {
+      reassign_routine_step: { Args: { _step_id: string; _assignee_id: string; _approver_id?: string }; Returns: undefined }
+      office_routine_step_settings: { Args: { _payload: Json; _tenant_id: string }; Returns: Json }
+      get_routine_packages: { Args: { _rule_ids: string[] }; Returns: Json }
+      refresh_routine_package: { Args: { _run_id: string; _retry_step_id?: string }; Returns: undefined }
+      update_waiting_routine_steps: { Args: { _run_id: string }; Returns: number }
       office_routine_step_kinds: { Args: { _payload: Json }; Returns: Json }
       office_routine_deadline: { Args: { _payload: Json; _start: string }; Returns: string }
       _briefing_task_event: {
