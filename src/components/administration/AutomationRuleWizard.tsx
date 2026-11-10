@@ -42,7 +42,10 @@ import type {
 } from "./automationRule/types";
 import styles from "./automationRule/RuleEditor.module.css";
 import { RuleEditorSummary } from "./automationRule/RuleEditorSummary";
-import { editorFormSnapshot, editorSample, editorStepErrors, evaluateEditorSample, parseEditorSample } from "./automationRule/editorModel";
+import { editorFormSnapshot, editorSample, evaluateEditorSample, parseEditorSample } from "./automationRule/editorModel";
+import { FieldIssue, RuleValidationContext, ruleFieldAttributes, useRuleValidation } from "./automationRule/RuleValidationContext";
+import { validateRuleEditor, type RuleIssue } from "./automationRule/ruleValidation";
+import { automationFieldType } from "@/features/automation/conditions";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { RoutinePreview } from "./automationRule/RoutinePreview";
@@ -91,8 +94,12 @@ function ConditionCard({
   onChange,
   onRemove,
   canRemove,
+  path,
+  module,
 }: {
   condition: ConditionItem;
+  path: string;
+  module: string;
   index: number;
   fieldOptions: Array<{ value: string; label: string }>;
   onChange: (index: number, patch: Partial<ConditionItem>) => void;
@@ -100,10 +107,12 @@ function ConditionCard({
   canRemove: boolean;
 }) {
   const id = useId();
+  const { field } = useRuleValidation();
+  const type = automationFieldType(module,condition.field);
   return <div className={styles.condition}>
-    <div className={styles.field}><Label htmlFor={`${id}-field`}>Feld</Label><Select value={condition.field} onValueChange={field => onChange(index, { field })}><SelectTrigger id={`${id}-field`}><SelectValue /></SelectTrigger><SelectContent>{fieldOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div>
-    <div className={styles.field}><Label htmlFor={`${id}-operator`}>Operator</Label><Select value={condition.operator} onValueChange={operator => onChange(index, { operator })}><SelectTrigger id={`${id}-operator`}><SelectValue /></SelectTrigger><SelectContent>{CONDITION_OPERATORS.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div>
-    <div className={styles.field}><Label htmlFor={`${id}-value`}>Wert</Label><Input id={`${id}-value`} value={condition.value} onChange={event => onChange(index, { value: event.target.value })} placeholder="z. B. high" /></div>
+    <div className={styles.field}><Label htmlFor={`${id}-field`}>Feld</Label><Select value={condition.field} onValueChange={field => onChange(index,{ field })}><SelectTrigger id={`${id}-field`} {...field(`${path}.field`)}><SelectValue /></SelectTrigger><SelectContent>{fieldOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select><FieldIssue name={`${path}.field`} /></div>
+    <div className={styles.field}><Label htmlFor={`${id}-operator`}>Operator</Label><Select value={condition.operator} onValueChange={operator => onChange(index,{ operator })}><SelectTrigger id={`${id}-operator`} {...field(`${path}.operator`)}><SelectValue /></SelectTrigger><SelectContent>{CONDITION_OPERATORS.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select><FieldIssue name={`${path}.operator`} /></div>
+    <div className={styles.field}><Label htmlFor={`${id}-value`}>Wert</Label><Input id={`${id}-value`} {...field(`${path}.value`,type === 'date' ? `${id}-date-help` : undefined)} value={condition.value} onChange={event => onChange(index,{ value:event.target.value })} placeholder={type === 'date' ? '2026-11-10' : 'z. B. high'} /><FieldIssue name={`${path}.value`} />{type === 'date' && <p id={`${id}-date-help`} className="text-xs text-muted-foreground">Datum: JJJJ-MM-TT (Berliner Kalendertag). Für eine genaue Uhrzeit einen ISO-Zeitstempel mit Zeitzone verwenden.</p>}</div>
     {canRemove ? <EditorIconButton label={`Bedingung ${index + 1} entfernen`} onClick={() => onRemove(index)} /> : <span />}
   </div>;
 }
@@ -127,6 +136,8 @@ function ActionCard({
   onRemove: (index: number) => void;
   canRemove: boolean;
 }) {
+  const validation = useRuleValidation();
+  const field = (name: string) => validation.field(`actions.${index}.${name}`);
   const isNotification = action.type === "create_notification" || action.type === "send_push_notification";
   const isStatus = action.type === "update_record_status";
   const isTask = action.type === "create_task";
@@ -163,7 +174,7 @@ function ActionCard({
       <div className="space-y-1">
         <Label className="text-xs">Aktionstyp</Label>
         <Select disabled={Boolean(action.annualTaskId && action.systemFunction)} value={action.type} onValueChange={(v) => onChange(index, { type: v })}>
-          <SelectTrigger className="h-8 text-xs">
+          <SelectTrigger {...field("type")} className="h-8 text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -173,29 +184,33 @@ function ActionCard({
             ))}
           </SelectContent>
         </Select>
+        <FieldIssue name={`actions.${index}.type`} />
       </div>
 
       {!ACTION_TYPES.some(option => option.value === action.type) && <p className="text-sm text-muted-foreground">Diese Systemaktion hat zusätzliche Parameter. Sie bleiben beim Speichern unverändert erhalten, solange du den Aktionstyp beibehältst.</p>}
-      {action.type === "run_annual_routine" && <AnnualRoutineFields action={action} form={form} onChange={patch => onChange(index, patch)} />}
+      {action.type === "run_annual_routine" && <AnnualRoutineFields prefix={`actions.${index}`} action={action} form={form} onChange={patch => onChange(index, patch)} />}
 
       {isNotification && (
         <div className="space-y-3">
           <div className="space-y-1">
             <Label className="text-xs">Empfänger:in *</Label>
-            <TenantUserSelect
+            <TenantUserSelect validationField={`actions.${index}.targetUserId`}
               value={action.targetUserId}
               onValueChange={(v) => onChange(index, { targetUserId: v })}
               placeholder="Empfänger:in auswählen…"
             />
+            <FieldIssue name={`actions.${index}.targetUserId`} />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <Label className="text-xs">Titel</Label>
-              <Input className="h-8 text-xs" value={action.title} onChange={(e) => onChange(index, { title: e.target.value })} placeholder="Titel der Benachrichtigung" />
+              <Input {...field("title")} className="h-8 text-xs" value={action.title} onChange={(e) => onChange(index, { title: e.target.value })} placeholder="Titel der Benachrichtigung" />
+              <FieldIssue name={`actions.${index}.title`} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Nachricht</Label>
-              <Input className="h-8 text-xs" value={action.message} onChange={(e) => onChange(index, { message: e.target.value })} placeholder="Optional" />
+              <Input {...field("message")} className="h-8 text-xs" value={action.message} onChange={(e) => onChange(index, { message: e.target.value })} placeholder="Optional" />
+              <FieldIssue name={`actions.${index}.message`} />
             </div>
           </div>
         </div>
@@ -206,21 +221,24 @@ function ActionCard({
           <div className="space-y-1">
             <Label className="text-xs">Tabelle</Label>
             <Select value={action.table} onValueChange={(v) => onChange(index, { table: v })}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger {...field("table")} className="h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {STATUS_TABLE_OPTIONS.map((t) => (
                   <SelectItem key={t} value={t}>{t}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+        <FieldIssue name={`actions.${index}.table`} />
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Datensatz-ID *</Label>
-            <Input className="h-8 text-xs" value={action.recordId} onChange={(e) => onChange(index, { recordId: e.target.value })} placeholder="record_id" />
+            <Input {...field("recordId")} className="h-8 text-xs" value={action.recordId} onChange={(e) => onChange(index, { recordId: e.target.value })} placeholder="record_id" />
+              <FieldIssue name={`actions.${index}.recordId`} />
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Zielstatus *</Label>
-            <Input className="h-8 text-xs" value={action.status} onChange={(e) => onChange(index, { status: e.target.value })} placeholder="status" />
+            <Input {...field("status")} className="h-8 text-xs" value={action.status} onChange={(e) => onChange(index, { status: e.target.value })} placeholder="status" />
+              <FieldIssue name={`actions.${index}.status`} />
           </div>
         </div>
       )}
@@ -229,41 +247,47 @@ function ActionCard({
         <div className="space-y-3">
           <div className="space-y-1">
             <Label className="text-xs">Aufgaben-Titel *</Label>
-            <Input className="h-8 text-xs" value={action.title} onChange={(e) => onChange(index, { title: e.target.value })} placeholder="Titel der zu erstellenden Aufgabe" />
+            <Input {...field("title")} className="h-8 text-xs" value={action.title} onChange={(e) => onChange(index, { title: e.target.value })} placeholder="Titel der zu erstellenden Aufgabe" />
+              <FieldIssue name={`actions.${index}.title`} />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <Label className="text-xs">Priorität</Label>
               <Select value={action.taskPriority} onValueChange={(v) => onChange(index, { taskPriority: v })}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectTrigger {...field("taskPriority")} className="h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {TASK_PRIORITY_OPTIONS.map((p) => (
                     <SelectItem key={p} value={p}>{p}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+        <FieldIssue name={`actions.${index}.taskPriority`} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Kategorie</Label>
-              <Input className="h-8 text-xs" value={action.taskCategory} onChange={(e) => onChange(index, { taskCategory: e.target.value })} placeholder="personal" />
+              <Input {...field("taskCategory")} className="h-8 text-xs" value={action.taskCategory} onChange={(e) => onChange(index, { taskCategory: e.target.value })} placeholder="personal" />
+              <FieldIssue name={`actions.${index}.taskCategory`} />
             </div>
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Beschreibung</Label>
-            <Input className="h-8 text-xs" value={action.message} onChange={(e) => onChange(index, { message: e.target.value })} placeholder="Optional" />
+            <Input {...field("message")} className="h-8 text-xs" value={action.message} onChange={(e) => onChange(index, { message: e.target.value })} placeholder="Optional" />
+              <FieldIssue name={`actions.${index}.message`} />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <Label className="text-xs">Fällig am</Label>
-              <Input className="h-8 text-xs" value={action.taskDueDate} onChange={(e) => onChange(index, { taskDueDate: e.target.value })} placeholder="2026-03-01" />
+              <Input {...field("taskDueDate")} className="h-8 text-xs" value={action.taskDueDate} onChange={(e) => onChange(index, { taskDueDate: e.target.value })} placeholder="2026-03-01" />
+              <FieldIssue name={`actions.${index}.taskDueDate`} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Zuweisen an</Label>
-              <TenantUserSelect
+              <TenantUserSelect validationField={`actions.${index}.taskAssignees`}
                 value={action.taskAssignees}
                 onValueChange={(v) => onChange(index, { taskAssignees: v })}
                 placeholder="Nutzer:in zuweisen…"
               />
+            <FieldIssue name={`actions.${index}.taskAssignees`} />
             </div>
           </div>
         </div>
@@ -274,10 +298,10 @@ function ActionCard({
           <div className="space-y-1">
             <Label className="text-xs">E-Mail-Template *</Label>
             {emailTemplates.length === 0 ? (
-              <p className="text-xs text-muted-foreground italic">Keine aktiven Templates vorhanden. Erstelle Templates unter E-Mail → Vorlagen.</p>
+              <p tabIndex={-1} {...field("emailTemplateId")} className="text-xs text-muted-foreground italic">Keine aktiven Templates vorhanden. Erstelle Templates unter E-Mail → Vorlagen.</p>
             ) : (
               <Select value={action.emailTemplateId} onValueChange={(v) => onChange(index, { emailTemplateId: v })}>
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger {...field("emailTemplateId")} className="h-8 text-xs">
                   <SelectValue placeholder="Template wählen…" />
                 </SelectTrigger>
                 <SelectContent>
@@ -289,15 +313,18 @@ function ActionCard({
                 </SelectContent>
               </Select>
             )}
+            <FieldIssue name={`actions.${index}.emailTemplateId`} />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <Label className="text-xs">Empfänger-E-Mail *</Label>
-              <Input className="h-8 text-xs" value={action.emailRecipient} onChange={(e) => onChange(index, { emailRecipient: e.target.value })} placeholder="empfaenger@example.com" />
+              <Input {...field("emailRecipient")} className="h-8 text-xs" value={action.emailRecipient} onChange={(e) => onChange(index, { emailRecipient: e.target.value })} placeholder="empfaenger@example.com" />
+              <FieldIssue name={`actions.${index}.emailRecipient`} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Empfänger-Name</Label>
-              <Input className="h-8 text-xs" value={action.emailRecipientName} onChange={(e) => onChange(index, { emailRecipientName: e.target.value })} placeholder="Optional" />
+              <Input {...field("emailRecipientName")} className="h-8 text-xs" value={action.emailRecipientName} onChange={(e) => onChange(index, { emailRecipientName: e.target.value })} placeholder="Optional" />
+              <FieldIssue name={`actions.${index}.emailRecipientName`} />
             </div>
           </div>
         </div>
@@ -307,30 +334,34 @@ function ActionCard({
         <div className="space-y-3">
           <div className="space-y-1">
             <Label className="text-xs">Freigebende Person *</Label>
-            <TenantUserSelect
+            <TenantUserSelect validationField={`actions.${index}.targetUserId`}
               value={action.targetUserId}
               onValueChange={(v) => onChange(index, { targetUserId: v })}
               placeholder="Freigebende Person auswählen…"
             />
+            <FieldIssue name={`actions.${index}.targetUserId`} />
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="space-y-1">
               <Label className="text-xs">Freigaberegel</Label>
               <Select value={action.approvalPolicy} onValueChange={(v) => onChange(index, { approvalPolicy: v })}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectTrigger {...field("approvalPolicy")} className="h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="single">Einzelne Freigabe</SelectItem>
                   <SelectItem value="four_eyes">4-Augen</SelectItem>
                 </SelectContent>
               </Select>
+        <FieldIssue name={`actions.${index}.approvalPolicy`} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Mindestzahl Freigaben</Label>
-              <Input className="h-8 text-xs" value={action.approvalMinimumApprovers} onChange={(e) => onChange(index, { approvalMinimumApprovers: e.target.value })} />
+              <Input {...field("approvalMinimumApprovers")} className="h-8 text-xs" value={action.approvalMinimumApprovers} onChange={(e) => onChange(index, { approvalMinimumApprovers: e.target.value })} />
+              <FieldIssue name={`actions.${index}.approvalMinimumApprovers`} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Frist in Stunden</Label>
-              <Input className="h-8 text-xs" value={action.approvalDueInHours} onChange={(e) => onChange(index, { approvalDueInHours: e.target.value })} />
+              <Input {...field("approvalDueInHours")} className="h-8 text-xs" value={action.approvalDueInHours} onChange={(e) => onChange(index, { approvalDueInHours: e.target.value })} />
+              <FieldIssue name={`actions.${index}.approvalDueInHours`} />
             </div>
           </div>
         </div>
@@ -348,7 +379,11 @@ function ConditionGroupEditor({
   fieldOptions,
   depth = 0,
   canRemove = false,
+  path = "conditionGroup",
+  module,
 }: {
+  path?: string;
+  module: string;
   group: ConditionGroup;
   onChange: (updated: ConditionGroup) => void;
   onRemove?: () => void;
@@ -356,6 +391,7 @@ function ConditionGroupEditor({
   depth?: number;
   canRemove?: boolean;
 }) {
+  const { field } = useRuleValidation();
   const updateCondition = (index: number, patch: Partial<ConditionItem>) => {
     const next = [...group.conditions];
     next[index] = { ...next[index], ...patch };
@@ -398,7 +434,7 @@ function ConditionGroupEditor({
   const bgColor = depth === 0 ? "" : group.logic === "all" ? "bg-primary/5" : "bg-accent/10";
 
   return (
-    <div className={cn(styles.conditionGroup, "space-y-2", borderColor, bgColor)}>
+    <div tabIndex={-1} {...field(path)} className={cn(styles.conditionGroup, "space-y-2", borderColor, bgColor)}><FieldIssue name={path} />
       <div className={styles.conditionTools}>
         <div className="flex flex-wrap items-center gap-2">
           {/* Logic toggle */}
@@ -464,6 +500,7 @@ function ConditionGroupEditor({
           )}
           <ConditionCard
             condition={condition}
+            path={`${path}.conditions.${i}`} module={module}
             index={i}
             fieldOptions={fieldOptions}
             onChange={updateCondition}
@@ -484,7 +521,7 @@ function ConditionGroupEditor({
             </div>
           )}
           <ConditionGroupEditor
-            group={sub}
+            group={sub} path={`${path}.groups.${i}`} module={module}
             onChange={(updated) => updateSubGroup(i, updated)}
             onRemove={() => removeSubGroup(i)}
             fieldOptions={fieldOptions}
@@ -548,7 +585,9 @@ export function AutomationRuleWizard({
   const samplePayloadParseError = sample.error;
   const semanticIssues = useMemo(() => collectSemanticIssues(form, parsedSamplePayload), [form, parsedSamplePayload]);
   const simulation = useMemo(() => evaluateEditorSample(form, parsedSamplePayload), [form, parsedSamplePayload]);
-  const errors = useMemo(() => editorStepErrors(form), [form]);
+  const issues = useMemo(() => validateRuleEditor(form),[form]);
+  const errors = [0,1,2,3].map(step => issues.filter(issue => issue.step === step && issue.level === "error").map(issue => issue.message));
+  const field = (name: string,describedBy?: string) => ruleFieldAttributes(issues,name,describedBy);
   const canSave = errors.slice(0, 3).every(step => step.length === 0);
   const initialForm = useRef("");
   const wasOpen = useRef(false);
@@ -619,7 +658,17 @@ export function AutomationRuleWizard({
     onOpenChange(val);
   };
 
-  return <TooltipProvider delayDuration={200}>
+  const goToIssue = (issue: RuleIssue) => {
+    goToStep(issue.step);
+    requestAnimationFrame(() => {
+      const target = scrollBody.current?.querySelector<HTMLElement>(`[data-rule-field="${issue.field}"]`);
+      if (!target) return;
+      let ancestor: HTMLElement | null = target.parentElement;
+      while (ancestor && ancestor !== scrollBody.current) { if (ancestor instanceof HTMLDetailsElement) ancestor.open = true; ancestor = ancestor.parentElement; }
+      target.scrollIntoView({ block:"center" }); target.focus({ preventScroll:true });
+    });
+  };
+  return <RuleValidationContext.Provider value={issues}><TooltipProvider delayDuration={200}>
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className={styles.dialog} onPointerDownOutside={event => event.preventDefault()}>
         <DialogHeader className={styles.header}>
@@ -665,19 +714,21 @@ export function AutomationRuleWizard({
             </div>
             <div className="space-y-2">
               <Label htmlFor="rule-editor-name">Regelname *</Label>
-              <Input id="rule-editor-name"
+              <Input {...field("name")} id="rule-editor-name"
                 value={form.name}
                 onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
                 placeholder="z. B. Überfällige Aufgaben erinnern"
               />
+              <FieldIssue name="name" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="rule-editor-description">Beschreibung</Label>
-              <Input id="rule-editor-description"
+              <Input {...field("description")} id="rule-editor-description"
                 value={form.description}
                 onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
                 placeholder="Kurz erklären, wann und warum die Regel läuft"
               />
+              <FieldIssue name="description" />
             </div>
             <div className={styles.grid2}>
             <div className="space-y-2">
@@ -686,7 +737,7 @@ export function AutomationRuleWizard({
                 value={form.module}
                 onValueChange={module => setForm(previous => ({ ...previous, module, triggerField: (FIELD_OPTIONS_BY_MODULE[module] ?? []).some(field => field.value === previous.triggerField) ? previous.triggerField : FIELD_OPTIONS_BY_MODULE[module]?.[0]?.value || "status" }))}
               >
-                <SelectTrigger id="rule-editor-module">
+                <SelectTrigger {...field("module")} id="rule-editor-module">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -697,11 +748,12 @@ export function AutomationRuleWizard({
                   ))}
                 </SelectContent>
               </Select>
+              <FieldIssue name="module" />
             </div>
             <div className={styles.field}><Label>Status</Label><div className={`${styles.box} ${styles.row} !p-2`}><Label htmlFor="rule-editor-enabled">Regel ist aktiv</Label><Switch id="rule-editor-enabled" checked={form.enabled} onCheckedChange={enabled => setForm(previous => ({ ...previous, enabled }))} /></div></div>
             </div>
-            <fieldset className="space-y-2">
-              <legend className="mb-2 text-sm font-semibold">Auslöser</legend>
+            <fieldset tabIndex={-1} {...field("triggerType")} className="space-y-2">
+              <FieldIssue name="triggerType" /><legend className="mb-2 text-sm font-semibold">Auslöser</legend>
               <div className={styles.triggerOptions}>{[
                 { value: "schedule", label: "Zeitgesteuert", description: "Läuft zu festen Terminen", icon: Clock },
                 { value: "manual", label: "Manuell", description: "Startet auf Knopfdruck", icon: Hand },
@@ -732,17 +784,16 @@ export function AutomationRuleWizard({
                 <div className="space-y-2">
                   <Label htmlFor="webhook-secret">Webhook-Geheimnis *</Label>
                   <Input
-                    id="webhook-secret"
+                    id="webhook-secret" {...field("webhookSecret","webhook-secret-help")}
                     type="password"
                     autoComplete="new-password"
                     value={form.webhookSecret ?? ""}
                     onChange={(e) => setForm((prev) => ({ ...prev, webhookSecret: e.target.value }))}
                     minLength={16}
                     required
-                    aria-describedby="webhook-secret-help"
-                    aria-invalid={(form.webhookSecret ?? "").length < 16}
                     placeholder="Mindestens 16 Zeichen"
                   />
+                  <FieldIssue name="webhookSecret" />
                   <p id="webhook-secret-help" className="text-xs text-muted-foreground">
                     Mindestens 16 Zeichen. Bei jedem Aufruf als Header <code>x-webhook-secret</code> mitschicken, nicht in der URL.
                     Änderungen müssen auch im aufrufenden Dienst übernommen werden.
@@ -768,7 +819,7 @@ export function AutomationRuleWizard({
                 value={form.triggerField}
                 onValueChange={(v) => setForm((prev) => ({ ...prev, triggerField: v }))}
               >
-                <SelectTrigger id="rule-editor-trigger-field">
+                <SelectTrigger {...field("triggerField")} id="rule-editor-trigger-field">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -779,15 +830,17 @@ export function AutomationRuleWizard({
                   ))}
                 </SelectContent>
               </Select>
+              <FieldIssue name="triggerField" />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="rule-editor-trigger-value">Trigger-Wert {form.triggerType === "record_changed" ? "*" : ""}</Label>
-              <Input id="rule-editor-trigger-value"
+              <Input {...field("triggerValue")} id="rule-editor-trigger-value"
                 value={form.triggerValue}
                 onChange={(e) => setForm((prev) => ({ ...prev, triggerValue: sanitizeTriggerValue(prev.triggerType, e.target.value) }))}
                 placeholder={form.triggerType === "record_changed" ? "z. B. overdue" : "z. B. 90_days"}
               />
+              <FieldIssue name="triggerValue" />
             </div></div>}
           </section>
         )}
@@ -796,12 +849,12 @@ export function AutomationRuleWizard({
           <h2 tabIndex={-1}>Unter welchen Bedingungen?</h2>
           <p className={styles.lead}>Verknüpfe Bedingungen mit UND/ODER und verschachtelten Gruppen. Ohne zusätzliche Bedingungen genügt der Auslöser.</p>
           <div className={`${styles.box} ${styles.row}`}><div><p className="text-sm font-semibold">Ohne zusätzliche Bedingungen ausführen</p><p className={styles.hint}>Der Auslöser genügt. Beim Zurückschalten bleiben deine Eingaben erhalten.</p></div><Switch checked={withoutConditions} onCheckedChange={toggleConditions} aria-label="Ohne zusätzliche Bedingungen ausführen" /></div>
-          {!withoutConditions && <ConditionGroupEditor group={form.conditionGroup} onChange={updateConditionGroup} fieldOptions={fieldOptions} depth={0} />}
+          {!withoutConditions && <ConditionGroupEditor module={form.module} group={form.conditionGroup} onChange={updateConditionGroup} fieldOptions={fieldOptions} depth={0} />}
         </section>}
 
         {/* Step 3: Aktionen / Approvals */}
         {currentStep === 2 && (
-          <section className={styles.panel} aria-label="Aktionen und Freigaben konfigurieren">
+          <section tabIndex={-1} {...field("actions")} className={styles.panel} aria-label="Aktionen und Freigaben konfigurieren"><FieldIssue name="actions" />
             <div className={styles.row}><div><h2 tabIndex={-1}>Was passiert dann?</h2><p className={styles.hint}>Aktionen werden der Reihe nach verarbeitet. Schritte eines Aufgabenpakets folgen ihren eigenen Startbedingungen.</p></div><Button type="button" variant="outline" size="sm" onClick={addAction} className="gap-1"><Plus className="h-4 w-4" aria-hidden="true" />Aktion hinzufügen</Button></div>
 
             {form.actions.map((action, i) => (
@@ -829,14 +882,14 @@ export function AutomationRuleWizard({
 
             <div className="space-y-2">
               <Label htmlFor="rule-editor-sample">Beispieldatensatz (JSON)</Label>
-              <textarea id="rule-editor-sample" aria-invalid={!!samplePayloadParseError}
+              <textarea id="rule-editor-sample" {...field("samplePayload")}
                 className="w-full min-h-36 rounded-md border bg-background px-3 py-2 text-xs font-mono"
                 value={form.samplePayload}
                 onChange={(e) => setForm((prev) => ({ ...prev, samplePayload: e.target.value }))}
                 placeholder='{"status":"open","priority":"high"}'
               />
               <Button type="button" variant="link" size="sm" className="px-0" onClick={() => setForm(previous => ({ ...previous, samplePayload: editorSample(previous) }))}>Beispiel aus dieser Regel einfügen</Button>
-              {samplePayloadParseError && <p className="text-xs text-destructive">{samplePayloadParseError} Das blockiert nur die Simulation; die Regel kannst du weiterhin speichern.</p>}
+              <FieldIssue name="samplePayload" />{samplePayloadParseError && <p className="text-xs text-muted-foreground">Das blockiert nur die Simulation; die Regel kannst du weiterhin speichern.</p>}
             </div>
 
             <div className="rounded-md border p-3 space-y-2">
@@ -865,7 +918,7 @@ export function AutomationRuleWizard({
         )}
 
           </fieldset>
-          <RuleEditorSummary form={form} errors={errors} onStep={goToStep} />
+          <RuleEditorSummary form={form} issues={issues} onIssue={goToIssue} />
         </div>
         <footer className={styles.footer}>
           <Button type="button" variant="outline" onClick={() => setCurrentStep(step => Math.max(0, step - 1))} disabled={currentStep === 0 || saving}><ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />Zurück</Button>
@@ -879,5 +932,5 @@ export function AutomationRuleWizard({
       </DialogContent>
     </Dialog>
     <AlertDialog open={discardOpen} onOpenChange={setDiscardOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Ungespeicherte Änderungen verwerfen?</AlertDialogTitle><AlertDialogDescription>Deine Änderungen an dieser Regel sind noch nicht gespeichert. Du kannst weiter bearbeiten oder sie verwerfen.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Weiter bearbeiten</AlertDialogCancel><AlertDialogAction onClick={() => { setDiscardOpen(false); onOpenChange(false); }}>Änderungen verwerfen</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
-  </TooltipProvider>;
+  </TooltipProvider></RuleValidationContext.Provider>;
 }

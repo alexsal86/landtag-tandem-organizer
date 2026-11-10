@@ -1,5 +1,5 @@
 import { OFFICE_ROUTINE_TEMPLATES } from '@/features/automation/officeRoutineTemplates';
-import type { ActionItem, ConditionItem, ConditionGroup, FieldSpec, WizardForm } from "./types";
+import type { ActionItem, ConditionItem, ConditionGroup, WizardForm } from "./types";
 
 export const MODULE_OPTIONS = [
   { value: "tasks", label: "Aufgaben" },
@@ -79,36 +79,7 @@ export const FIELD_OPTIONS_BY_MODULE: Record<string, Array<{ value: string; labe
   ],
 };
 
-export const FIELD_SPEC_BY_MODULE: Record<string, Record<string, FieldSpec>> = {
-  tasks: {
-    status: { type: "enum", options: ["open", "in_progress", "done", "overdue"] },
-    priority: { type: "enum", options: ["low", "medium", "high", "urgent"] },
-    due_date: { type: "date" },
-  },
-  meetings: {
-    status: { type: "enum", options: ["planned", "done", "cancelled"] },
-    meeting_date: { type: "date" },
-    preparation_status: { type: "enum", options: ["none", "draft", "ready"] },
-  },
-  decisions: {
-    status: { type: "enum", options: ["draft", "accepted", "rejected"] },
-    deadline: { type: "date" },
-  },
-  knowledge: {
-    status: { type: "enum", options: ["draft", "published", "review"] },
-    updated_at: { type: "date" },
-  },
-  casefiles: {
-    status: { type: "enum", options: ["open", "in_review", "closed"] },
-    priority: { type: "enum", options: ["low", "medium", "high", "critical"] },
-    processing_status: { type: "enum", options: ["new", "processing", "blocked", "completed"] },
-  },
-  contacts: {
-    status: { type: "enum", options: ["active", "inactive", "archived"] },
-    category: { type: "string" },
-    updated_at: { type: "date" },
-  },
-};
+export { AUTOMATION_FIELD_SPECS as FIELD_SPEC_BY_MODULE } from "@/features/automation/conditions";
 
 // Used by templates before full DEFAULT_ACTION is defined
 const DEFAULT_ACTION_INIT = {

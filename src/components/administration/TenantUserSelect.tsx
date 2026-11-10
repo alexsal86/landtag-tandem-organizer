@@ -1,3 +1,4 @@
+import { useRuleValidation } from "./automationRule/RuleValidationContext";
 import React, { useState } from "react";
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTenantUsers, type TenantUser } from "@/hooks/useTenantUsers";
 
 interface TenantUserSelectProps {
+  validationField?: string;
   value: string;
   onValueChange: (userId: string) => void;
   placeholder?: string;
@@ -30,7 +32,9 @@ export const TenantUserSelect: React.FC<TenantUserSelectProps> = ({
   onValueChange,
   placeholder = "Nutzer:in auswählen…",
   label,
+  validationField,
 }) => {
+  const { field } = useRuleValidation();
   const { users, loading } = useTenantUsers();
   const [open, setOpen] = useState(false);
 
@@ -49,6 +53,7 @@ export const TenantUserSelect: React.FC<TenantUserSelectProps> = ({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
+          {...(validationField ? field(validationField) : {})}
           role="combobox"
           aria-label={selected ? `${label ?? placeholder}: ${selected.display_name}` : label ?? placeholder}
           aria-expanded={open}

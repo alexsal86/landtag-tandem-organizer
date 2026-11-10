@@ -1,10 +1,11 @@
+import type { RuleIssue } from './ruleValidation';
 import type { WizardForm } from './types';
 import { ACTION_TYPES, FIELD_OPTIONS_BY_MODULE, MODULE_OPTIONS } from './constants';
 import { countConditions } from './logic';
 import { isCalendarSchedule, nextCalendarOccurrence, validateCalendarSchedule } from '@/features/automation/calendarSchedule';
 import styles from './RuleEditor.module.css';
 
-export function RuleEditorSummary({ form, errors, onStep }: { form: WizardForm; errors: string[][]; onStep: (step: number) => void }) {
+export function RuleEditorSummary({ form, issues, onIssue }: { form: WizardForm; issues: RuleIssue[]; onIssue: (issue: RuleIssue) => void }) {
   const schedule = form.schedule;
   const conditions = countConditions(form.conditionGroup);
   const next = form.triggerType === 'schedule' && schedule && isCalendarSchedule(schedule) && !validateCalendarSchedule(schedule) ? nextCalendarOccurrence(schedule, new Date()) : null;
@@ -24,6 +25,6 @@ export function RuleEditorSummary({ form, errors, onStep }: { form: WizardForm; 
       <div><dt>Nächster Lauf</dt><dd>{!form.enabled ? 'Regel pausiert' : form.triggerType === 'manual' ? 'Beim manuellen Start' : form.triggerType === 'record_changed' || form.triggerType === 'webhook' ? 'Beim nächsten passenden Ereignis' : next ? `${date(next)} (Berlin)` : schedule?.schedule_kind === 'interval' ? 'Abhängig vom letzten Lauf' : 'Zeitplan vervollständigen'}</dd></div>
       {form.actions.some(action => action.routineRequiresConfirmation) && <div><dt>Jahresbestätigung</dt><dd>Vor der Ausführung erforderlich</dd></div>}
     </dl>
-    {errors.some(step => step.length > 0) && <div className={styles.issues}><strong>Hinweise zur Einrichtung</strong>{errors.flatMap((step, index) => step.map(message => <button type="button" key={`${index}-${message}`} onClick={() => onStep(index)}>{message}</button>))}</div>}
+    {issues.length > 0 && <div className={styles.issues}><strong>Hinweise zur Einrichtung</strong>{issues.map(issue => <button type="button" key={`${issue.field}-${issue.message}`} onClick={() => onIssue(issue)}>{issue.message}</button>)}</div>}
   </aside>;
 }

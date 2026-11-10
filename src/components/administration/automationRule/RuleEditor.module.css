@@ -69,3 +69,5 @@
 @media(max-width:820px) { .body { grid-template-columns:minmax(0,1fr); padding:16px; } .summary { position:static; } .header,.steps,.footer { padding-left:16px; padding-right:16px; } .dirty { display:none; } .grid3 { grid-template-columns:minmax(0,1fr); } }
 @media(max-width:480px) { .dialog { width:calc(100vw - 16px); max-height:96dvh; } .grid2,.triggerOptions { grid-template-columns:minmax(0,1fr); } .condition { grid-template-columns:repeat(2,minmax(0,1fr)); } .timelineRow { grid-template-columns:70px minmax(0,1fr); } .timelineRow > button { grid-column:2; justify-self:end; } .footerActions { width:100%; justify-content:flex-end; } }
 @media(prefers-reduced-motion:reduce) { .dialog * { transition:none!important; } }
+
+.panel input[aria-invalid=true],.panel textarea[aria-invalid=true],.panel button[aria-invalid=true] { border-color:hsl(var(--destructive)); }

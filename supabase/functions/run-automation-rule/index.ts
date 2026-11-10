@@ -2,21 +2,11 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.56.1";
 import { Resend } from "npm:resend@2.0.0";
 
+import { evaluateAutomationTree, type AutomationConditionGroup as ConditionGroup } from "../_shared/automationConditions.ts";
 import { withSafeHandler } from "../_shared/security.ts";
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-type Condition = {
-  field: string;
-  operator: "equals" | "not_equals" | "contains" | "gt" | "lt";
-  value: string;
-};
-
-type ConditionGroup = {
-  all?: Array<Condition | ConditionGroup>;
-  any?: Array<Condition | ConditionGroup>;
 };
 
 type Action = {
@@ -43,80 +33,6 @@ const maskSensitiveData = (value: unknown): unknown => {
     acc[key] = maskSensitiveData(entry);
     return acc;
   }, {});
-};
-
-const evaluateCondition = (source: Record<string, unknown>, condition: Condition) => {
-  const current = source[condition.field];
-  const target = condition.value;
-
-  switch (condition.operator) {
-    case "equals":
-      return String(current ?? "") === target;
-    case "not_equals":
-      return String(current ?? "") !== target;
-    case "contains":
-      return String(current ?? "").includes(target);
-    case "gt":
-      return Number(current ?? 0) > Number(target);
-    case "lt":
-      return Number(current ?? 0) < Number(target);
-    default:
-      return false;
-  }
-};
-
-const isConditionRule = (item: Condition | ConditionGroup): item is Condition => {
-  return typeof (item as Condition).field === "string";
-};
-
-const evaluateConditionTree = (
-  source: Record<string, unknown>,
-  condition: Condition | ConditionGroup,
-  path = "root"
-): { matched: boolean; evaluations: Array<Record<string, unknown>> } => {
-  if (isConditionRule(condition)) {
-    const matched = evaluateCondition(source, condition);
-    return {
-      matched,
-      evaluations: [{
-        type: "rule",
-        path,
-        field: condition.field,
-        operator: condition.operator,
-        expected: condition.value,
-        actual: source[condition.field] ?? null,
-        matched,
-      }],
-    };
-  }
-
-  const mode: "all" | "any" = condition.any?.length ? "any" : "all";
-  const children = (condition[mode] ?? []) as Array<Condition | ConditionGroup>;
-  if (children.length === 0) {
-    return {
-      matched: true,
-      evaluations: [{ type: "group", path, combinator: mode.toUpperCase(), matched: true, child_count: 0 }],
-    };
-  }
-
-  const childResults = children.map((child, index) => evaluateConditionTree(source, child, `${path}.${mode}[${index}]`));
-  const matched = mode === "any"
-    ? childResults.some((result) => result.matched)
-    : childResults.every((result) => result.matched);
-
-  return {
-    matched,
-    evaluations: [
-      {
-        type: "group",
-        path,
-        combinator: mode.toUpperCase(),
-        matched,
-        child_count: children.length,
-      },
-      ...childResults.flatMap((result) => result.evaluations),
-    ],
-  };
 };
 
 const explainDecision = (matched: boolean, evaluations: Array<Record<string, unknown>>): string => {
@@ -248,7 +164,7 @@ serve(withSafeHandler("run-automation-rule", async (req) => {
 
     const { data: rule, error: ruleError } = await supabaseAdmin
       .from("automation_rules")
-      .select("id, tenant_id, name, conditions, actions, enabled, created_by")
+      .select("id, tenant_id, name, module, conditions, actions, enabled, created_by")
       .eq("id", ruleId)
       .maybeSingle();
 
@@ -385,7 +301,7 @@ serve(withSafeHandler("run-automation-rule", async (req) => {
       },
     });
 
-    const conditionEvaluation = evaluateConditionTree(sourcePayload, conditionsBlock);
+    const conditionEvaluation = evaluateAutomationTree(sourcePayload, conditionsBlock, rule.module);
     const matches = conditionEvaluation.matched;
     const decisionExplanation = explainDecision(matches, conditionEvaluation.evaluations);
 
@@ -415,7 +331,7 @@ serve(withSafeHandler("run-automation-rule", async (req) => {
           run_id: run.id,
           workflow_version: workflowVersion,
           entity_id: entityId,
-          module: sourcePayload.module ?? "unknown",
+          module: rule.module,
           owner_id: ownerId,
           timeline: [
             triggerEvent,
@@ -905,7 +821,7 @@ serve(withSafeHandler("run-automation-rule", async (req) => {
         run_id: run.id,
         workflow_version: workflowVersion,
         entity_id: entityId,
-        module: sourcePayload.module ?? "unknown",
+        module: rule.module,
         owner_id: ownerId,
         timeline,
         explainability: {

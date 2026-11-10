@@ -8,6 +8,8 @@ import { validateVariant } from "@/features/redaktion/components/PlannerBoard/ut
 import { defaultStepSetting, previewRoutine, readStepSettings, validateRoutineWorkflow } from "@/features/automation/routineWorkflow";
 import { routineEntityLink, routineStepLabel } from "@/features/automation/routinePackages";
 import { routineStepKinds, validateOfficeRoutine } from "@/features/automation/officeRoutineTemplates";
+import { evaluateAutomationTree } from "@/features/automation/conditions";
+import { validateRuleEditor } from "@/components/administration/automationRule/ruleValidation";
 import { editorFormSnapshot, editorPlanYear, editorStepErrors, evaluateEditorSample, parseEditorSample } from "@/components/administration/automationRule/editorModel";
 import { DEFAULT_ACTION, DEFAULT_FORM } from "@/components/administration/automationRule/constants";
 import type { TestScenario } from "../types";
@@ -20,6 +22,28 @@ export const workflowRulesScenario: TestScenario = {
   checks: ["Erlaubte und verbotene Brief-Statuswechsel", "Entscheiderrollen", "Ministeriumsfrist und Wiedervorlage"],
   limitations: ["Berechtigungen der Datenbank werden separat in den Zugriffstests geprüft."],
   steps: [
+    {
+      id: "shared-condition-dates", label: "Regeln: identische Datumsauswertung für Vorschau und Server", kind: "logic",
+      run: async () => {
+        const evaluate = (actual: unknown, operator: string, value: string) => evaluateAutomationTree({ due_date: actual }, { all: [{ field: "due_date", operator, value }] }, "tasks").matched;
+        const badDate = { ...DEFAULT_FORM, name: "Datumsregel", triggerType: "manual", conditionGroup: { logic: "all" as const, conditions: [], groups: [{ logic: "all" as const, conditions: [{ field: "due_date", operator: "gt", value: "2026-02-30" }], groups: [] }] }, actions: [{ ...DEFAULT_ACTION, type: "create_task", title: "Folgeschritt" }] };
+        const checks = {
+          dateOrder: evaluate("2026-12-10", "gt", "2026-11-10"),
+          berlinDay: evaluate("2026-11-10T23:30:00Z", "gt", "2026-11-10"),
+          sameBerlinDay: evaluate("2026-11-10T22:30:00Z", "equals", "2026-11-10"),
+          equivalentInstant: evaluate("2026-07-01T08:00:00Z", "equals", "2026-07-01T10:00:00+02:00"),
+          springMidnight: evaluate("2026-03-29", "equals", "2026-03-28T23:00:00Z"),
+          autumnMidnight: evaluate("2026-10-25", "equals", "2026-10-24T22:00:00Z"),
+          rejectInvalid: !evaluate("2026-02-30", "gt", "2026-02-01"),
+          rejectMissing: !evaluate(undefined, "not_equals", "2026-11-10"),
+          rejectNaiveTime: !evaluate("2026-11-10T12:00:00", "gt", "2026-11-01"),
+          nestedFieldError: validateRuleEditor(badDate).some(issue => issue.field === "conditionGroup.groups.0.conditions.0.value" && issue.level === "error"),
+          nameFieldError: validateRuleEditor({ ...badDate, name: "" }).some(issue => issue.field === "name"),
+          sampleDoesNotBlockSaving: editorStepErrors({ ...DEFAULT_FORM, name: "JSON-Beispiel", triggerType: "manual", conditionGroup: { logic: "all", conditions: [], groups: [] }, actions: [{ ...DEFAULT_ACTION, type: "create_task", title: "Aufgabe" }], samplePayload: "{" }).slice(0,3).every(step => step.length === 0),
+        };
+        return { ok: Object.values(checks).every(Boolean), message: "Datums-, Zeitzonen- und Feldfehlerregeln verwenden dieselbe Grundlage.", details: checks };
+      },
+    },
     {
       id: "rule-editor-preview", label: "Regel-Editor: JSON, verschachtelte Vorschau und unbedingte Regeln", kind: "logic",
       run: async () => {

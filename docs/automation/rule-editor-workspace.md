@@ -57,7 +57,32 @@ interner Aktionstypen bleiben beim Speichern erhalten, solange der Aktionstyp
 nicht ausdrücklich gewechselt wird. Die lokale Enthält-Prüfung berücksichtigt
 wie der Server Groß- und Kleinschreibung.
 
-Offener Abgleich: Größer-/Kleiner-Vergleiche für Datumsfelder werden im Editor
-über Zeitstempel ausgewertet, während der Server Zahlenkonvertierung verwendet.
-Diese bestehenden Auswerter müssen vor einer verlässlichen gemeinsamen
-Datumsvergleichs-Vorschau vereinheitlicht werden.
+Der Datumsvergleich ist in `supabase/functions/_shared/automationConditions.ts`
+zentralisiert. Browser-Vorschau und `run-automation-rule` verwenden dieselbe
+Auswertung und dasselbe Feldtypregister. Ein reines Zieldatum (`JJJJ-MM-TT`)
+vergleicht Berliner Kalendertage; Zeitstempel mit `Z` oder einem expliziten Offset
+vergleichen genaue Zeitpunkte. Ein reines Ausgangsdatum wird bei einem
+Zeitstempelziel als Berliner Tagesbeginn behandelt. Ungültige oder fehlende
+Datumswerte erfüllen keine Vergleichsbedingung. Textsuche bleibt
+Groß-/Kleinschreibungs-abhängig. Unbekannte Zahlenfelder behalten die bisherige
+numerische Auswertung; bekannte Textfelder unterstützen keine Zahlenoperatoren.
+
+Die Fehlerprüfung liegt zentral in `ruleValidation.ts`. Meldungen stehen direkt
+an den betroffenen Feldern und sind über `aria-invalid`/`aria-describedby`
+zugeordnet. Links aus der Zusammenfassung öffnen den richtigen Schritt und
+geschlossene Schrittdetails, scrollen zum Feld und setzen den Eingabefokus.
+
+## Veröffentlichung dieser Erweiterung
+
+Die Frontend-Änderungen allein aktualisieren keine bereits veröffentlichte
+Serverfunktion. Zusätzlich muss die Edge Function mit dem gemeinsamen Modul
+veröffentlicht werden:
+
+```sh
+supabase functions deploy run-automation-rule --project-ref wawofclbehbkebjivdte
+```
+
+Die Supabase CLI nimmt die relativen Shared-Imports beim Deployment mit. Die
+bestehende JWT-Konfiguration bleibt unverändert. Eine neue Datenbankmigration
+ist nicht erforderlich. Im aktuellen Arbeitsumfeld ist kein Supabase-Deployment-
+Token hinterlegt; das Live-Deployment ist deshalb nicht Teil der Codeprüfung.
