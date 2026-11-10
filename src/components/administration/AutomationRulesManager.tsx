@@ -337,6 +337,8 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
 
     const actions: ActionItem[] = (rule.actions || []).map((a) => ({
       type: a.type || "create_notification",
+      originalType: a.type,
+      originalPayload: a.payload ? { ...a.payload } : undefined,
       annualTaskId: a.payload?.annual_task_id || "",
       systemFunction: a.payload?.system_function || "",
       routineCategory: a.payload?.routine_category || "admin",
@@ -433,6 +435,7 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
       actions: form.actions.map((a) => ({
         type: a.type,
         payload: {
+          ...(a.originalType === a.type ? a.originalPayload : {}),
           annual_task_id: a.annualTaskId || "",
           system_function: a.systemFunction || "",
           routine_category: a.routineCategory || "admin",

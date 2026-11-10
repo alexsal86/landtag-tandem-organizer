@@ -167,6 +167,7 @@ function ActionCard({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            {!ACTION_TYPES.some(option => option.value === action.type) && <SelectItem value={action.type}>Systemaktion ({action.type})</SelectItem>}
             {ACTION_TYPES.map((o) => (
               <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
             ))}
@@ -174,6 +175,7 @@ function ActionCard({
         </Select>
       </div>
 
+      {!ACTION_TYPES.some(option => option.value === action.type) && <p className="text-sm text-muted-foreground">Diese Systemaktion hat zusätzliche Parameter. Sie bleiben beim Speichern unverändert erhalten, solange du den Aktionstyp beibehältst.</p>}
       {action.type === "run_annual_routine" && <AnnualRoutineFields action={action} form={form} onChange={patch => onChange(index, patch)} />}
 
       {isNotification && (
@@ -547,7 +549,7 @@ export function AutomationRuleWizard({
   const semanticIssues = useMemo(() => collectSemanticIssues(form, parsedSamplePayload), [form, parsedSamplePayload]);
   const simulation = useMemo(() => evaluateEditorSample(form, parsedSamplePayload), [form, parsedSamplePayload]);
   const errors = useMemo(() => editorStepErrors(form), [form]);
-  const canSave = errors.every(step => step.length === 0);
+  const canSave = errors.slice(0, 3).every(step => step.length === 0);
   const initialForm = useRef("");
   const wasOpen = useRef(false);
   const conditionBackup = useRef<ConditionGroup | null>(null);
@@ -834,7 +836,7 @@ export function AutomationRuleWizard({
                 placeholder='{"status":"open","priority":"high"}'
               />
               <Button type="button" variant="link" size="sm" className="px-0" onClick={() => setForm(previous => ({ ...previous, samplePayload: editorSample(previous) }))}>Beispiel aus dieser Regel einfügen</Button>
-              {samplePayloadParseError && <p className="text-xs text-destructive">{samplePayloadParseError}</p>}
+              {samplePayloadParseError && <p className="text-xs text-destructive">{samplePayloadParseError} Das blockiert nur die Simulation; die Regel kannst du weiterhin speichern.</p>}
             </div>
 
             <div className="rounded-md border p-3 space-y-2">
@@ -869,7 +871,7 @@ export function AutomationRuleWizard({
           <Button type="button" variant="outline" onClick={() => setCurrentStep(step => Math.max(0, step - 1))} disabled={currentStep === 0 || saving}><ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />Zurück</Button>
           {dirty && <span className={styles.dirty} role="status"><i aria-hidden="true" />Ungespeicherte Änderungen</span>}
           <div className={styles.footerActions}>
-            {currentStep === 3 && <Button type="button" variant="outline" onClick={() => onDryRun(parsedSamplePayload ?? undefined)} disabled={!canSave || !editingRuleId || dirty || runningDryRun || saving} title={!editingRuleId || dirty ? "Zuerst speichern und die Regel erneut öffnen" : (parsedSamplePayload ? "Gespeicherte Regel mit diesem Beispieldatensatz prüfen" : "Gespeicherte Regel mit automatisch erzeugten Beispieldaten prüfen")}>{runningDryRun ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : <Play className="mr-2 h-4 w-4" aria-hidden="true" />}Dry-Run</Button>}
+            {currentStep === 3 && <Button type="button" variant="outline" onClick={() => onDryRun(parsedSamplePayload ?? undefined)} disabled={!canSave || !!samplePayloadParseError || !editingRuleId || dirty || runningDryRun || saving} title={!editingRuleId || dirty ? "Zuerst speichern und die Regel erneut öffnen" : (parsedSamplePayload ? "Gespeicherte Regel mit diesem Beispieldatensatz prüfen" : "Gespeicherte Regel mit automatisch erzeugten Beispieldaten prüfen")}>{runningDryRun ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : <Play className="mr-2 h-4 w-4" aria-hidden="true" />}Dry-Run</Button>}
             {currentStep < 3 && <Button type="button" variant="outline" onClick={() => setCurrentStep(step => Math.min(3, step + 1))} disabled={saving}>Weiter<ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></Button>}
             <Button type="button" onClick={handleSave} disabled={!canSave || saving || runningDryRun}>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="mr-2 h-4 w-4" aria-hidden="true" />}{editingRuleId ? "Speichern" : "Erstellen"}</Button>
           </div>

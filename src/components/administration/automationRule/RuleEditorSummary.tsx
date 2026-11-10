@@ -24,6 +24,6 @@ export function RuleEditorSummary({ form, errors, onStep }: { form: WizardForm; 
       <div><dt>Nächster Lauf</dt><dd>{!form.enabled ? 'Regel pausiert' : form.triggerType === 'manual' ? 'Beim manuellen Start' : form.triggerType === 'record_changed' || form.triggerType === 'webhook' ? 'Beim nächsten passenden Ereignis' : next ? `${date(next)} (Berlin)` : schedule?.schedule_kind === 'interval' ? 'Abhängig vom letzten Lauf' : 'Zeitplan vervollständigen'}</dd></div>
       {form.actions.some(action => action.routineRequiresConfirmation) && <div><dt>Jahresbestätigung</dt><dd>Vor der Ausführung erforderlich</dd></div>}
     </dl>
-    {errors.some(step => step.length > 0) && <div className={styles.issues}><strong>Noch zu ergänzen</strong>{errors.flatMap((step, index) => step.map(message => <button type="button" key={`${index}-${message}`} onClick={() => onStep(index)}>{message}</button>))}</div>}
+    {errors.some(step => step.length > 0) && <div className={styles.issues}><strong>Hinweise zur Einrichtung</strong>{errors.flatMap((step, index) => step.map(message => <button type="button" key={`${index}-${message}`} onClick={() => onStep(index)}>{message}</button>))}</div>}
   </aside>;
 }

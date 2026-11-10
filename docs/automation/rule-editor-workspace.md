@@ -48,3 +48,16 @@ Für automatische Jahresroutinen zeigen Zeitachse und Routinen-Vorschau das Jahr
 des nächsten automatischen Starts. Ein manueller Sofortstart verwendet weiterhin
 das laufende Jahr. Eine Jahresbestätigung gilt nur für das ausgewählte aktuelle
 Jahr und wird nicht stillschweigend ins Folgejahr übertragen.
+
+## Nachprüfung des Editors
+
+Ungültige JSON-Beispieldaten blockieren nur die Simulation und den Dry-Run, nicht
+das Speichern einer ansonsten gültigen Regel. Nicht dargestellte Parameter
+interner Aktionstypen bleiben beim Speichern erhalten, solange der Aktionstyp
+nicht ausdrücklich gewechselt wird. Die lokale Enthält-Prüfung berücksichtigt
+wie der Server Groß- und Kleinschreibung.
+
+Offener Abgleich: Größer-/Kleiner-Vergleiche für Datumsfelder werden im Editor
+über Zeitstempel ausgewertet, während der Server Zahlenkonvertierung verwendet.
+Diese bestehenden Auswerter müssen vor einer verlässlichen gemeinsamen
+Datumsvergleichs-Vorschau vereinheitlicht werden.

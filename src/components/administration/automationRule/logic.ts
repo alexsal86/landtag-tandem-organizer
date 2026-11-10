@@ -43,7 +43,7 @@ export function evaluateCondition(condition: ConditionItem, fieldType: FieldType
     case "not_equals":
       return sample !== condition.value;
     case "contains":
-      return sample.toLowerCase().includes(condition.value.toLowerCase());
+      return sample.includes(condition.value); // Match the case-sensitive server executor.
     case "gt": {
       const left = toComparableNumber(fieldType, sample);
       const right = toComparableNumber(fieldType, condition.value);

@@ -15,6 +15,8 @@ export type ConditionGroup = {
 };
 
 export type ActionItem = OfficeRoutineFields & {
+  originalType?: string;
+  originalPayload?: Record<string, string>;
   annualTaskId?: string;
   systemFunction?: string;
   routineCategory?: string;
