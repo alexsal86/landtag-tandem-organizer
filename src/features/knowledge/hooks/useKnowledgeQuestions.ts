@@ -132,3 +132,26 @@ export function useKnowledgeCounts() {
     },
   });
 }
+
+export function useSimilarKnowledgeQuestions(title: string) {
+  const { tenantId, userId } = useKnowledgeScope();
+  const [debounced, setDebounced] = useState(title);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(title), 300);
+    return () => clearTimeout(timer);
+  }, [title]);
+  const query = useQuery({
+    queryKey: [...knowledgeKey(userId, tenantId), 'similar', debounced],
+    enabled: Boolean(tenantId && userId && debounced.trim().length >= 4),
+    staleTime: 60_000,
+    retry: 1,
+    queryFn: async ({ signal }) => {
+      const { data, error } = await supabase.rpc('knowledge_qa_list', {
+        p_tenant: tenantId!, p_query: debounced, p_view: 'answers', p_limit: 3,
+      }).abortSignal(signal);
+      if (error) throw new Error(error.message);
+      return (data?.[0]?.items ?? []) as unknown as KnowledgeSummary[];
+    },
+  });
+  return { ...query, data: title.trim().length < 4 || title !== debounced ? [] : query.data };
+}

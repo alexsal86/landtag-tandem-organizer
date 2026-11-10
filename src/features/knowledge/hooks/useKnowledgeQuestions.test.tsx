@@ -7,7 +7,7 @@ const state = vi.hoisted(() => ({ tenant: { id: 'office-a' }, rpc: vi.fn() }));
 vi.mock('@/hooks/useTenant', () => ({ useTenant: () => ({ currentTenant: state.tenant }) }));
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'user' } }) }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: state.rpc, channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel: vi.fn() } }));
-import { useKnowledgeQuestions } from './useKnowledgeQuestions';
+import { useKnowledgeQuestions, useSimilarKnowledgeQuestions } from './useKnowledgeQuestions';
 
 it('does not display a delayed result from the previous office after switching offices', async () => {
   let finishOld!: (value: unknown) => void;
@@ -52,5 +52,21 @@ it('loads the server cursor and stops even when the last page contains twenty en
   expect(result.current.hasNextPage).toBe(false);
   expect(result.current.totalCount).toBe(21);
   expect(state.rpc).toHaveBeenLastCalledWith('knowledge_qa_list', expect.objectContaining({ p_cursor: cursor }));
+  unmount(); client.clear();
+});
+
+it('suggests at most three answered questions after the title debounce and skips short titles', async () => {
+  state.rpc.mockClear();
+  state.rpc.mockImplementation(() => ({ abortSignal: () => Promise.resolve({ data: [{ items: [{ id: 'similar' }], total_count: 1 }], error: null }) }));
+  const client = new QueryClient();
+  const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  const { result, rerender, unmount } = renderHook(({ title }) => useSimilarKnowledgeQuestions(title), { initialProps: { title: 'KA' }, wrapper });
+  expect(state.rpc).not.toHaveBeenCalled();
+  rerender({ title: 'Kleine Anfrage' });
+  expect(state.rpc).not.toHaveBeenCalled();
+  await waitFor(() => expect(result.current.data?.[0]?.id).toBe('similar'));
+  expect(state.rpc).toHaveBeenLastCalledWith('knowledge_qa_list', expect.objectContaining({ p_query: 'Kleine Anfrage', p_view: 'answers', p_limit: 3 }));
+  rerender({ title: '' });
+  expect(result.current.data).toEqual([]);
   unmount(); client.clear();
 });
