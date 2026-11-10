@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { escapeHtml, safeUrl, sanitizeEmailHtml } from "../_shared/html.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
 import { requireAppBaseUrl } from "../_shared/url.ts";
 import { createServiceRoleClient } from "../_shared/supabase.ts";
@@ -103,11 +104,11 @@ const handler = async (req: Request): Promise<Response> => {
               <h1 style="color: #333; font-size: 24px;">Terminabstimmung</h1>
               <p style="color: #666; font-size: 16px;">Hallo,</p>
               <p style="color: #666; font-size: 16px;">
-                ${creatorName} hat Sie zu einer Terminabstimmung eingeladen:
+                ${escapeHtml(creatorName)} hat Sie zu einer Terminabstimmung eingeladen:
               </p>
               <div style="background: #f8f9fa; border-left: 4px solid #3b82f6; padding: 16px; margin: 20px 0;">
-                <h3 style="margin: 0 0 8px 0; color: #333;">${pollTitle}</h3>
-                ${pollDescription ? `<p style="margin: 0; color: #666;">${pollDescription}</p>` : ''}
+                <h3 style="margin: 0 0 8px 0; color: #333;">${escapeHtml(pollTitle)}</h3>
+                ${pollDescription ? `<p style="margin: 0; color: #666;">${escapeHtml(pollDescription)}</p>` : ''}
               </div>
               <p style="color: #666; font-size: 16px;">
                 Bitte klicken Sie auf den folgenden Link, um Ihre Verfügbarkeit mitzuteilen:

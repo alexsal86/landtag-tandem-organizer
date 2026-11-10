@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { escapeHtml, safeUrl, sanitizeEmailHtml } from "../_shared/html.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
 import { requireAppBaseUrl } from "../_shared/url.ts";
 import { createServiceRoleClient } from "../_shared/supabase.ts";
@@ -96,13 +97,13 @@ const handler = async (req: Request): Promise<Response> => {
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #333; font-size: 24px;">Erinnerung: Terminabstimmung</h1>
-          <p style="color: #666; font-size: 16px;">Hallo${participant.name ? ` ${participant.name}` : ''},</p>
+          <p style="color: #666; font-size: 16px;">Hallo${participant.name ? ` ${escapeHtml(participant.name)}` : ''},</p>
           <p style="color: #666; font-size: 16px;">
-            Dies ist eine Erinnerung an die Terminabstimmung von ${creatorName}:
+            Dies ist eine Erinnerung an die Terminabstimmung von ${escapeHtml(creatorName)}:
           </p>
           <div style="background: #f8f9fa; border-left: 4px solid #3b82f6; padding: 16px; margin: 20px 0;">
-            <h3 style="margin: 0 0 8px 0; color: #333;">${poll.title}</h3>
-            ${poll.description ? `<p style="margin: 0; color: #666;">${poll.description}</p>` : ''}
+            <h3 style="margin: 0 0 8px 0; color: #333;">${escapeHtml(poll.title)}</h3>
+            ${poll.description ? `<p style="margin: 0; color: #666;">${escapeHtml(poll.description)}</p>` : ''}
           </div>
           <p style="color: #666; font-size: 16px;">
             Falls Sie noch nicht geantwortet haben, klicken Sie bitte auf den folgenden Link:

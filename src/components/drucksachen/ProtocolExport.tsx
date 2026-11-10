@@ -1,4 +1,5 @@
 import React from 'react';
+import { csvCell } from "@/lib/csvSafe";
 import { debugConsole } from '@/utils/debugConsole';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -89,11 +90,11 @@ export function ProtocolExport({ protocolId, protocolTitle }: ProtocolExportProp
       const csvContent = [
         headers.join(','),
         ...(speeches || []).map(speech => [
-          speech.page_number || '',
-          `"${(speech.speaker_name || '').replace(/"/g, '""')}"`,
-          `"${(speech.speaker_party || '').replace(/"/g, '""')}"`,
-          `"${(speech.speech_content || '').replace(/"/g, '""')}"`,
-          speech.start_time || ''
+          csvCell(speech.page_number ?? ''),
+          csvCell(speech.speaker_name),
+          csvCell(speech.speaker_party),
+          csvCell(speech.speech_content),
+          csvCell(speech.start_time)
         ].join(','))
       ].join('\n');
 

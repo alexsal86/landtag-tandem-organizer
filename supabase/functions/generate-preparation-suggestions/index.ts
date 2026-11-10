@@ -65,7 +65,7 @@ Aufgabe: ${phaseInstructions}`;
 
     const tools = [
       {
-        type: "function",
+        type: "function" as const,
         function: {
           name: "suggest_preparation",
           description: "Strukturierte Vorbereitungs-Vorschläge",

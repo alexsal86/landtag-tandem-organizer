@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { csvCell } from "@/lib/csvSafe";
 import { debugConsole } from '@/utils/debugConsole';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -220,7 +221,7 @@ export function BulkActionsToolbar({
 
     const csvContent = [
       headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
+      ...rows.map(row => row.map(cell => csvCell(cell)).join(',')),
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

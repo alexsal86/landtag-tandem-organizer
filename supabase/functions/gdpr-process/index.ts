@@ -123,12 +123,16 @@ async function runExport(admin: any, request: any) {
     const { data } = await admin.from("contacts").select("*").eq("id", contactId).eq("tenant_id", tenantId);
     contacts = data ?? [];
   } else if (email) {
-    const { data } = await admin
-      .from("contacts")
-      .select("*")
-      .eq("tenant_id", tenantId)
-      .or(`email.eq.${email},email_2.eq.${email},email_3.eq.${email}`);
-    contacts = data ?? [];
+    const normalized = String(email).trim();
+    if (!/^[^\s@,()"]+@[^\s@,()"]+\.[^\s@,()"]+$/.test(normalized) || normalized.length > 320) {
+      throw new Error("invalid subject email");
+    }
+    const seen = new Map<string, any>();
+    for (const col of ["email", "email_2", "email_3"]) {
+      const { data } = await admin.from("contacts").select("*").eq("tenant_id", tenantId).eq(col, normalized);
+      for (const c of data ?? []) seen.set(c.id, c);
+    }
+    contacts = [...seen.values()];
   }
   zip.file("contacts.json", JSON.stringify(contacts, null, 2));
   summary.contacts = contacts.length;

@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { escapeHtml, safeUrl, sanitizeEmailHtml } from "../_shared/html.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { Resend } from "npm:resend@2.0.0";
 import { requireTenantAccess } from "../_shared/tenant-access.ts";
@@ -162,14 +163,14 @@ serve(withSafeHandler("send-document-email", async (req) => {
     }
 
     // Replace variables function
-    const replaceVariables = (text: string, contactData?: any) => {
+    const replaceVariables = (text: string, contactData?: any, escape: (v: string) => string = escapeHtml) => {
       if (!contactData) return text;
 
       return text
-        .replace(/\{\{name\}\}/g, contactData.name || "")
-        .replace(/\{\{email\}\}/g, contactData.email || "")
-        .replace(/\{\{organization\}\}/g, contactData.organization || "")
-        .replace(/\{\{phone\}\}/g, contactData.phone || "");
+        .replace(/\{\{name\}\}/g, () => escape(contactData.name || ""))
+        .replace(/\{\{email\}\}/g, () => escape(contactData.email || ""))
+        .replace(/\{\{organization\}\}/g, () => escape(contactData.organization || ""))
+        .replace(/\{\{phone\}\}/g, () => escape(contactData.phone || ""));
     };
 
     // Send personalized emails
@@ -180,8 +181,8 @@ serve(withSafeHandler("send-document-email", async (req) => {
 
     for (const recipient of uniqueRecipients) {
       try {
-        const personalizedSubject = replaceVariables(subject, recipient.contact_data);
-        const personalizedBody = replaceVariables(body_html, recipient.contact_data);
+        const personalizedSubject = replaceVariables(subject, recipient.contact_data, (v) => v).replace(/[\r\n<>]/g, " ");
+        const personalizedBody = sanitizeEmailHtml(replaceVariables(body_html, recipient.contact_data));
 
         const emailPayload: Record<string, unknown> = {
           from: `${fromName} <${fromEmail}>`,
