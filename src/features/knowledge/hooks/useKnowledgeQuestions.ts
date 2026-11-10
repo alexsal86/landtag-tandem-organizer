@@ -1,0 +1,88 @@
+import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/hooks/useTenant';
+import { useAuth } from '@/hooks/useAuth';
+import { useTenantProfiles } from '@/hooks/useTenantProfiles';
+import type { Database } from '@/integrations/supabase/types';
+import type { KnowledgeView } from '../types';
+
+export const knowledgeKey = (userId?: string, tenantId?: string) => ['knowledge-qa', userId, tenantId] as const;
+export function useKnowledgeScope() {
+  const { user } = useAuth();
+  const { currentTenant } = useTenant();
+  return { userId: user?.id, tenantId: currentTenant?.id };
+}
+export function useKnowledgePeople() {
+  const profiles = useTenantProfiles();
+  const { userId, tenantId } = useKnowledgeScope();
+  const members = useQuery({
+    queryKey: [...knowledgeKey(userId, tenantId), 'active-members'], enabled: Boolean(userId && tenantId),
+    queryFn: async ({ signal }) => {
+      const { data, error } = await supabase.from('user_tenant_memberships').select('user_id')
+        .eq('tenant_id', tenantId!).eq('is_active', true).abortSignal(signal);
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+  });
+  return { ...profiles, error: profiles.error || members.error,
+    assignable: profiles.data.filter(profile => members.data?.some(member => member.user_id === profile.user_id)) };
+}
+export function useKnowledgeQuestions(query: string, view: KnowledgeView, page: number, questionId: string | null) {
+  const { userId, tenantId } = useKnowledgeScope();
+  const [debounced, setDebounced] = useState(query);
+  useEffect(() => { const timer = setTimeout(() => setDebounced(query), 300); return () => clearTimeout(timer); }, [query]);
+  const search = useQuery({
+    queryKey: [...knowledgeKey(userId, tenantId), 'search', debounced, view, page, questionId],
+    enabled: Boolean(userId && tenantId),
+    staleTime: 0, refetchInterval: 30_000, retry: 1,
+    queryFn: async ({ signal }) => {
+      const { data, error } = await supabase.rpc('search_knowledge_questions', {
+        p_tenant: tenantId!, p_query: questionId ? '' : debounced, p_view: view, p_limit: 20, p_offset: page * 20,
+        p_question: questionId ?? undefined,
+      }).abortSignal(signal);
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+  });
+  return { ...search, debouncing: debounced !== query };
+}
+type WriteName = 'knowledge_qa_create_question' | 'knowledge_qa_save_answer' | 'knowledge_qa_review' | 'knowledge_qa_set_assignee' | 'knowledge_qa_finish_attachment';
+type WriteRequest = { [Name in WriteName]: { name: Name; args: Database['public']['Functions'][Name]['Args'] } }[WriteName];
+export function useKnowledgeWrite() {
+  const client = useQueryClient();
+  const { userId, tenantId } = useKnowledgeScope();
+  return useMutation({
+    mutationFn: async (request: WriteRequest) => {
+      if (!userId || !tenantId) throw new Error('Bitte anmelden und ein Büro wählen.');
+      const { data, error } = await supabase.rpc(request.name, request.args).single();
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSettled: () => client.invalidateQueries({ queryKey: knowledgeKey(userId, tenantId) }),
+  });
+}
+export function useKnowledgeAttachments(questionId: string) {
+  const { userId, tenantId } = useKnowledgeScope();
+  return useQuery({
+    queryKey: [...knowledgeKey(userId, tenantId), 'attachments', questionId], enabled: Boolean(userId && tenantId),
+    queryFn: async ({ signal }) => {
+      const { data, error } = await supabase.from('knowledge_question_attachments').select('id,tenant_id,question_id,storage_path,file_name,file_type,file_size,uploaded_by,created_at,state')
+        .eq('tenant_id', tenantId!).eq('question_id', questionId).eq('state', 'ready').order('created_at').abortSignal(signal);
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+  });
+}
+export function useKnowledgeHistory(questionId: string, enabled: boolean) {
+  const { userId, tenantId } = useKnowledgeScope();
+  return useQuery({
+    queryKey: [...knowledgeKey(userId, tenantId), 'history', questionId], enabled: Boolean(enabled && userId && tenantId),
+    queryFn: async ({ signal }) => {
+      const { data, error } = await supabase.from('knowledge_question_events').select('id,tenant_id,question_id,revision,event_type,actor_id,created_at,snapshot')
+        .eq('tenant_id', tenantId!).eq('question_id', questionId).order('revision', { ascending: false }).limit(100).abortSignal(signal);
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+  });
+}

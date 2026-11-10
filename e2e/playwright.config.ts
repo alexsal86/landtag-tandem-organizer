@@ -20,6 +20,7 @@ export default defineConfig({
     cwd: "..", url: "http://127.0.0.1:4173", reuseExistingServer: !process.env.CI, timeout: 60_000,
   },
   projects: [
+    { name: "knowledge", testMatch: "knowledge.spec.ts", use: { trace: "off", video: "off" } },
     { name: "admin-mocked", testMatch: "admin-mocked.spec.ts", use: { trace: "off", video: "off" } },
     { name: "public", testMatch: "public.spec.ts", use: { trace: "retain-on-failure" } },
     // Keine Traces/Session-Dateien mit Anmeldung oder JWTs als CI-Artefakte speichern.

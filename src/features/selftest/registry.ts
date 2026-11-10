@@ -1,3 +1,4 @@
+import { knowledgeLifecycleScenario } from './scenarios/knowledge-lifecycle';
 import { adminControlsScenario } from './scenarios/admin-controls';
 import { annualTaskStafetteScenario } from './scenarios/annual-task-stafette';
 import type { TestScenario } from "./types";
@@ -20,6 +21,7 @@ import { accessBoundariesScenario } from "./scenarios/access-boundaries";
 import { jourFixePlatformIntegrationScenario } from './scenarios/jour-fixe-platform-integration';
 
 export const SELFTEST_SCENARIOS: TestScenario[] = [
+  knowledgeLifecycleScenario,
   adminControlsScenario,
   annualTaskStafetteScenario,
   workflowRulesScenario,

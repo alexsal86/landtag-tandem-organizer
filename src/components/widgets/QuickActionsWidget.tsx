@@ -74,7 +74,7 @@ const INTERNAL_ROUTES = [
   { value: '/eventplanning', label: 'Planungen', category: 'Hauptbereiche', icon: 'CalendarIcon' },
   { value: '/wahlkreise', label: 'Wahlkreise', category: 'Hauptbereiche', icon: 'Plus' },
   { value: '/documents', label: 'Dokumente', category: 'Hauptbereiche', icon: 'FileText' },
-  { value: '/knowledge', label: 'Wissen', category: 'Hauptbereiche', icon: 'FileText' },
+  { value: '/wissen', label: 'Wissen', category: 'Hauptbereiche', icon: 'FileText' },
   { value: '/settings', label: 'Einstellungen', category: 'Hauptbereiche', icon: 'Settings' },
   { value: '/time', label: 'Zeiterfassung', category: 'Hauptbereiche', icon: 'Clock' },
   { value: '/employee', label: 'Mitarbeiter', category: 'Hauptbereiche', icon: 'Users' },

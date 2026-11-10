@@ -72,7 +72,7 @@ export const navigationGroups: NavGroup[] = [
     subItems: [
       { id: "casefiles", label: "Fallakten", icon: Briefcase },
       { id: "documents", label: "Dokumente", icon: FileText },
-      { id: "dossiers", label: "Wissen", icon: Database },
+      { id: "wissen", label: "Wissen", icon: Database },
     ]
   },
   {

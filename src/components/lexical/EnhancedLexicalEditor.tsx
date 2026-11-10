@@ -48,6 +48,7 @@ import { CommentPlugin, CommentMarkNode } from '@/components/plugins/CommentPlug
 import { MentionsPlugin } from '@/components/plugins/MentionsPlugin';
 import { TrackChangesPlugin } from '@/components/plugins/TrackChangesPlugin';
 import { TrackChangesToolbar } from '@/components/plugins/TrackChangesToolbar';
+import { KnowledgeEditorToolbar } from '@/features/knowledge/components/KnowledgeEditorToolbar';
 
 // AutoLink matchers
 const URL_REGEX =
@@ -63,6 +64,8 @@ const MATCHERS = [
 ];
 
 interface EnhancedLexicalEditorProps {
+  /** Restricted vocabulary and controls for the shared question/answer workspace. */
+  knowledgeMode?: boolean;
   content: string;
   contentNodes?: string;
   onChange: (content: { plainText: string; nodesJson?: string; html?: string }) => void;
@@ -180,6 +183,7 @@ const editorTheme = {
 };
 
 export default function EnhancedLexicalEditor({
+  knowledgeMode = false,
   content,
   contentNodes,
   onChange,
@@ -254,6 +258,22 @@ export default function EnhancedLexicalEditor({
   const pageTypography = defaultFontFamily || 'Calibri, Carlito, "Segoe UI", Arial, sans-serif';
 
   const toolbarElement = showToolbar ? <EnhancedLexicalToolbar documentId={documentId} defaultFontSize={defaultFontSize} defaultFontFamily={defaultFontFamily || pageTypography} /> : null;
+
+  if (knowledgeMode) return (
+    <LexicalComposer initialConfig={{ ...initialConfig, namespace: 'KnowledgeAnswer', nodes: [HeadingNode, QuoteNode, ListNode, ListItemNode, LinkNode, AutoLinkNode] }}>
+      <div className={editable ? 'rounded-md border bg-background' : 'prose prose-sm dark:prose-invert max-w-none [&_a]:text-primary [&_a]:underline'}>
+        {editable && showToolbar && <KnowledgeEditorToolbar />}
+        <div className="relative">
+          <RichTextPlugin contentEditable={<ContentEditable aria-label="Antwort" role={editable ? 'textbox' : undefined} aria-multiline={editable || undefined} className={editable ? 'min-h-36 p-3 outline-none whitespace-pre-wrap' : 'outline-none whitespace-pre-wrap [&_p]:my-1'} />}
+            placeholder={editable ? <div className="pointer-events-none absolute left-3 top-3 text-sm text-muted-foreground">{placeholder}</div> : null}
+            ErrorBoundary={LexicalErrorBoundary} />
+        </div>
+        <ContentPlugin content={content} contentNodes={contentNodes} />
+        {editable && <><OnChangePlugin onChange={handleChange} /><HistoryPlugin /><ListPlugin /><LinkPlugin /><AutoLinkPlugin matchers={MATCHERS} /></>}
+        <ClickableLinkPlugin newTab />
+      </div>
+    </LexicalComposer>
+  );
 
   return (
     <div className={bare ? 'relative' : 'relative min-h-[200px] h-full border rounded-md overflow-hidden flex flex-col'}>

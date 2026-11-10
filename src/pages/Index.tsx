@@ -13,7 +13,8 @@ const CustomizableDashboard = lazyWithRetry(() => import("@/features/dashboard/c
 const CalendarView = lazyWithRetry(() => import("@/features/calendar/components/CalendarView").then(m => ({ default: m.CalendarView })));
 const ContactsView = lazyWithRetry(() => import("@/features/contacts/components/ContactsView").then(m => ({ default: m.ContactsView })));
 const DocumentsView = lazyWithRetry(() => import("@/features/documents/components/DocumentsView").then(m => ({ default: m.DocumentsView as React.ComponentType })));
-const KnowledgeBaseView = lazyWithRetry(() => import("@/features/knowledge"));
+const KnowledgeBaseView = lazyWithRetry(() => import("@/features/knowledge/components/KnowledgeBaseView"));
+const KnowledgeWorkspace = lazyWithRetry(() => import("@/features/knowledge").then(m => ({ default: m.KnowledgeWorkspace })));
 const TasksWorkspace = lazyWithRetry(() => import("@/components/my-work/MyWorkTasksTab").then(m => ({ default: m.MyWorkTasksTab })));
 const SettingsView = lazyWithRetry(() => import("@/components/admin/SettingsView").then(m => ({ default: m.SettingsView })));
 const MeetingsView = lazyWithRetry(() => import("@/features/meetings").then(m => ({ default: m.MeetingsView })));
@@ -240,7 +241,7 @@ const Index = (): React.JSX.Element => {
         if (subId === "fakten") {
           return withSectionBoundary('Fakten-Bibliothek', <FactsLibraryView />);
         }
-        return withSectionBoundary('Wissen', <DossiersMainView />);
+        return withSectionBoundary('Wissen', <KnowledgeWorkspace />);
       case "chat":
         return withSectionBoundary('Chat', <MatrixChatView />);
       case "daten":

@@ -14,6 +14,67 @@ export type Database = {
   }
   public: {
     Tables: {
+      knowledge_questions: {
+        Row: {
+          id: string
+          tenant_id: string
+          title: string
+          description: string
+          assigned_to: string | null
+          created_by: string
+          created_at: string
+          updated_by: string
+          updated_at: string
+          answer_content: Json | null
+          answer_text: string
+          answered_by: string | null
+          answered_at: string | null
+          answer_updated_at: string | null
+          revision: number
+          answer_revision: number
+          review_status: string
+          verified_by: string | null
+          verified_at: string | null
+          verified_answer_revision: number | null
+          review_due_at: string | null
+          search_vector: unknown
+        }
+        Insert: Partial<Database["public"]["Tables"]["knowledge_questions"]["Row"]> & Pick<Database["public"]["Tables"]["knowledge_questions"]["Row"], "tenant_id" | "title" | "created_by" | "updated_by">
+        Update: Partial<Database["public"]["Tables"]["knowledge_questions"]["Row"]>
+        Relationships: []
+      }
+      knowledge_question_attachments: {
+        Row: {
+          id: string
+          tenant_id: string
+          question_id: string
+          storage_path: string
+          file_name: string
+          file_type: string
+          file_size: number
+          uploaded_by: string
+          created_at: string
+          state: string
+        }
+        Insert: Partial<Database["public"]["Tables"]["knowledge_question_attachments"]["Row"]> & Pick<Database["public"]["Tables"]["knowledge_question_attachments"]["Row"], "tenant_id" | "question_id" | "storage_path" | "file_name" | "file_type" | "file_size" | "uploaded_by">
+        Update: Partial<Database["public"]["Tables"]["knowledge_question_attachments"]["Row"]>
+        Relationships: []
+      }
+      knowledge_question_events: {
+        Row: {
+          id: string
+          tenant_id: string
+          question_id: string
+          revision: number
+          event_type: string
+          actor_id: string
+          created_at: string
+          snapshot: Json
+        }
+        Insert: Partial<Database["public"]["Tables"]["knowledge_question_events"]["Row"]> & Pick<Database["public"]["Tables"]["knowledge_question_events"]["Row"], "tenant_id" | "question_id" | "revision" | "event_type" | "actor_id" | "snapshot">
+        Update: Partial<Database["public"]["Tables"]["knowledge_question_events"]["Row"]>
+        Relationships: []
+      }
       action_permissions: {
         Row: {
           action_key: string
@@ -13664,6 +13725,10 @@ export type Database = {
       }
     }
     Views: {
+      knowledge_question_cards: {
+        Row: Database["public"]["Tables"]["knowledge_questions"]["Row"] & { effective_review_status: string; server_now: string }
+        Relationships: []
+      }
       matrix_widget_feedback_admin_stats: {
         Row: {
           helpful_count: number | null
@@ -13698,6 +13763,15 @@ export type Database = {
       }
     }
     Functions: {
+      knowledge_qa_selftest: { Args: { p_tenant: string }; Returns: Json }
+      knowledge_qa_can_access: { Args: { p_tenant: string; p_action?: string }; Returns: boolean }
+      knowledge_qa_create_question: { Args: { p_tenant: string; p_title: string; p_description?: string; p_assigned_to?: string }; Returns: Database["public"]["Tables"]["knowledge_questions"]["Row"][] }
+      knowledge_qa_save_answer: { Args: { p_question: string; p_expected_revision: number; p_content: Json }; Returns: Database["public"]["Tables"]["knowledge_questions"]["Row"][] }
+      knowledge_qa_review: { Args: { p_question: string; p_expected_revision: number; p_verified: boolean; p_due_at?: string }; Returns: Database["public"]["Tables"]["knowledge_questions"]["Row"][] }
+      knowledge_qa_set_assignee: { Args: { p_question: string; p_expected_revision: number; p_assigned_to: string | null }; Returns: Database["public"]["Tables"]["knowledge_questions"]["Row"][] }
+      knowledge_qa_reserve_attachment: { Args: { p_question: string; p_name: string; p_type: string; p_size: number }; Returns: Database["public"]["Tables"]["knowledge_question_attachments"]["Row"][] }
+      knowledge_qa_finish_attachment: { Args: { p_attachment: string; p_expected_revision: number; p_remove?: boolean }; Returns: Database["public"]["Tables"]["knowledge_questions"]["Row"][] }
+      search_knowledge_questions: { Args: { p_tenant: string; p_query?: string; p_view?: string; p_limit?: number; p_offset?: number; p_question?: string }; Returns: Database["public"]["Views"]["knowledge_question_cards"]["Row"][] }
       office_routine_step_settings_v2: {
         Args: { _payload: Json; _tenant_id: string }
         Returns: Json

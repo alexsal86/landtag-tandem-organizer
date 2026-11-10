@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "test:role-smoke": "node scripts/mywork-role-smoke-test.mjs",
     "check:diagram-drift": "node scripts/check-diagram-drift.mjs",
-    "lint:knowledge": "eslint src/components/KnowledgeBaseView.tsx src/hooks/useKnowledgeDocumentTopics.tsx src/hooks/useTopics.tsx --max-warnings 0",
+    "lint:knowledge": "eslint src/features/knowledge --ignore-pattern src/features/knowledge/components/KnowledgeBaseView.tsx --max-warnings 0",
     "typecheck:baseline-global": "tsc -p tsconfig.app.json --noEmit",
     "typecheck:legacy-exceptions": "npm run typecheck:hooks-batch1 && npm run typecheck:contexts && npm run typecheck:services-features && npm run typecheck:components-batch1 && npm run typecheck:components-batch2 && npm run typecheck:components-batch3 && npm run typecheck:components-batch4 && npm run typecheck:components-toplevel && npm run typecheck:pages",
     "typecheck:batch-governed": "npm run typecheck:flow-auth-tenant && npm run typecheck:flow-calendar-sync && npm run typecheck:flow-letter-workflow && npm run typecheck:flow-notifications && npm run typecheck:flow-edge-auth-role-tenant && npm run typecheck:knowledge && npm run typecheck:auth && npm run typecheck:quicknotes && npm run typecheck:notifications && npm run typecheck:dashboard && npm run typecheck:utils && npm run typecheck:hooks-batch2 && npm run typecheck:hooks-batch3 && npm run typecheck:services-features-batch2 && npm run typecheck:services-features-batch3 && npm run typecheck:pages-batch2 && npm run typecheck:pages-batch3 && npm run typecheck:employees",
@@ -81,7 +81,8 @@
     "mobile:typecheck": "npm --prefix apps/mobile run typecheck",
     "mobile:build:apk": "npx eas build --platform android --profile preview-apk --non-interactive --project-dir apps/mobile",
     "mobile:build:aab": "npx eas build --platform android --profile production-aab --non-interactive --project-dir apps/mobile",
-    "mobile:eas:login": "npx eas login"
+    "mobile:eas:login": "npx eas login",
+    "test:knowledge:db": "node scripts/test-knowledge-qa.mjs"
   },
   "dependencies": {
     "@eslint/js": "^10.0.1",

@@ -22,6 +22,8 @@ const FEATURE_KEYS: Array<{ key: string; label: string; description: string }> =
 ];
 
 const ACTION_KEYS: Array<{ key: string; label: string }> = [
+  { key: "knowledge.write", label: "Wissensfragen stellen und Antworten bearbeiten" },
+  { key: "knowledge.verify", label: "Wissensantworten prüfen" },
   { key: "letter.send", label: "Brief versenden" },
   { key: "letter.delete", label: "Brief löschen" },
   { key: "decision.archive", label: "Entscheidung archivieren" },

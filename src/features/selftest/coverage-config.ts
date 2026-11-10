@@ -181,6 +181,9 @@ export const IGNORED_TABLES: string[] = [
 
 /** Bekannte Lücken. Diese Tabellen zählen ausdrücklich NICHT als getestet. */
 export const DEFERRED_TABLES: string[] = [
+  // Real storage HTTP access still requires an isolated Supabase instance.
+  "knowledge_question_attachments",
+  "routine_package_runs", "routine_package_steps",
   // Audit history needs a dedicated preparation lifecycle assertion; not covered by the admin tests.
   "appointment_preparation_history",
   // Sicherheits-, Onboarding- und Automationsabläufe benötigen eigene Szenarien.

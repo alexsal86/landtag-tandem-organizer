@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
 import { debugConsole } from '@/utils/debugConsole';
 import { notify } from "@/lib/notify";
@@ -98,10 +99,13 @@ export const parseKnowledgeContent = (raw: string | null | undefined): LexicalCh
 export function useKnowledgeData() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { currentTenant } = useTenant();
+  const tenantId = currentTenant?.id ?? null;
+  const latestTenant = useRef(tenantId);
+  latestTenant.current = tenantId;
 
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tenantId, setTenantId] = useState<string | null>(null);
   const [documentTopicsMap, setDocumentTopicsMap] = useState<Record<string, string[]>>({});
   const [selectedDocument, setSelectedDocument] = useState<KnowledgeDocument | null>(null);
   const [editorContent, setEditorContent] = useState<LexicalChangePayload>({ plainText: '' });
@@ -112,10 +116,10 @@ export function useKnowledgeData() {
   const fetchCreatorNames = useCallback(async (rows: KnowledgeDocumentRow[]) => {
     const ids = Array.from(new Set(rows.map(r => r.created_by).filter(Boolean)));
     if (ids.length === 0) return {} as Record<string, string>;
-    const { data, error } = await supabase.from('profiles').select('user_id, display_name').in('user_id', ids);
+    const { data, error } = await supabase.from('profiles').select('user_id, display_name').eq('tenant_id', tenantId!).in('user_id', ids);
     if (error) throw error;
     return ((data ?? []) as Array<{ user_id: string; display_name: string | null }>).reduce<Record<string, string>>((acc, p) => { acc[p.user_id] = p.display_name || 'Unbekannt'; return acc; }, {});
-  }, []);
+  }, [tenantId]);
 
   const hydrateDocuments = useCallback(async (rows: KnowledgeDocumentRow[]) => {
     const names = await fetchCreatorNames(rows);
@@ -148,13 +152,14 @@ export function useKnowledgeData() {
   }, []);
 
   const fetchDocuments = useCallback(async () => {
-    if (!user) { setLoading(false); return; }
+    if (!user || !tenantId) { setDocuments([]); setLoading(false); return; }
     try {
-      const { data, error } = await supabase.from('knowledge_documents').select('id, title, content, category, created_by, created_at, updated_at, is_published, is_locked').order('updated_at', { ascending: false });
+      const { data, error } = await supabase.from('knowledge_documents').select('id, tenant_id, title, content, category, created_by, created_at, updated_at, is_published, is_locked').eq('tenant_id', tenantId).order('updated_at', { ascending: false });
       if (error) throw error;
       const rows = (data ?? []) as KnowledgeDocumentRow[];
       if (rows.length > 0) {
         const docs = await hydrateDocuments(rows);
+        if (latestTenant.current !== tenantId) return;
         setDocuments(docs);
         await fetchAllDocumentTopics(docs.map(d => d.id));
       } else { setDocuments([]); }
@@ -163,14 +168,14 @@ export function useKnowledgeData() {
       notify.error("Fehler beim Laden der Dokumente", { description: "Die Dokumente konnten nicht geladen werden."
 });
     } finally { setLoading(false); }
-  }, [user, hydrateDocuments, fetchAllDocumentTopics, toast]);
+  }, [user, tenantId, hydrateDocuments, fetchAllDocumentTopics]);
 
   useEffect(() => { fetchDocuments(); }, [fetchDocuments]);
 
   useEffect(() => {
-    if (!user) { setTenantId(null); return; }
-    supabase.rpc('get_user_primary_tenant_id', { _user_id: user.id }).then(({ data }) => setTenantId(data));
-  }, [user]);
+    setSelectedDocument(null); setIsEditorOpen(false); setHasUnsavedChanges(false);
+    setDocuments([]); setDocumentTopicsMap({});
+  }, [tenantId]);
 
   // Realtime
   useEffect(() => {

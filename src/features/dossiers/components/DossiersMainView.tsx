@@ -1,4 +1,5 @@
-import { useState, useCallback, Suspense } from "react";
+import { useCallback, Suspense } from "react";
+import { useSearchParams } from "react-router-dom";
 import { trackPageVisit } from "@/hooks/useRecentlyVisited";
 import { InboxView } from "./InboxView";
 import { DossierListView } from "./DossierListView";
@@ -8,7 +9,7 @@ import { MeinRadarView } from "./MeinRadarView";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { Loader2 } from "lucide-react";
 
-const KnowledgeBaseView = lazyWithRetry(() => import("@/features/knowledge"));
+const KnowledgeBaseView = lazyWithRetry(() => import("@/features/knowledge/components/KnowledgeBaseView"));
 const FactsLibraryView = lazyWithRetry(() => import("@/features/facts/components/FactsLibraryView").then(m => ({ default: m.FactsLibraryView })));
 
 type DossierTab = "eingang" | "radar" | "dossiers" | "artikel" | "fakten";
@@ -22,23 +23,23 @@ const DOSSIER_TAB_LABELS: Record<DossierTab, string> = {
 };
 
 export function DossiersMainView() {
-  const [activeTab, setActiveTab] = useState<DossierTab>("eingang");
-  const [selectedDossierId, setSelectedDossierId] = useState<string | null>(null);
+  const [params, setParams] = useSearchParams();
+  const tab = params.get("tab");
+  const activeTab: DossierTab = tab && tab in DOSSIER_TAB_LABELS ? tab as DossierTab : "eingang";
+  const selectedDossierId = params.get("id") || params.get("dossier");
 
   const handleTabChange = useCallback((tab: DossierTab) => {
-    setActiveTab(tab);
-    setSelectedDossierId(null);
+    setParams({ tab });
     const label = DOSSIER_TAB_LABELS[tab];
     trackPageVisit(`dossiers-${tab}`, `Wissen › ${label}`, "Database", `/dossiers?tab=${tab}`);
-  }, []);
+  }, [setParams]);
 
   const handleSelectDossier = (id: string) => {
-    setSelectedDossierId(id);
-    setActiveTab("dossiers");
+    setParams({ tab: "dossiers", id });
   };
 
   const handleBack = () => {
-    setSelectedDossierId(null);
+    setParams({ tab: activeTab });
   };
 
   return (
@@ -52,7 +53,7 @@ export function DossiersMainView() {
 
       <div className="flex-1 overflow-auto pt-4 pl-4">
         {selectedDossierId ? (
-          <DossierDetailView dossierId={selectedDossierId} onBack={handleBack} onSelectDossier={setSelectedDossierId} />
+          <DossierDetailView dossierId={selectedDossierId} onBack={handleBack} onSelectDossier={handleSelectDossier} />
         ) : activeTab === "eingang" ? (
           <InboxView />
         ) : activeTab === "radar" ? (

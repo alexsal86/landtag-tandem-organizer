@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "source": "src/integrations/supabase/types.ts",
   "counts": {
-    "total": 267,
-    "scenario": 31,
-    "deferred": 80,
+    "total": 272,
+    "scenario": 33,
+    "deferred": 83,
     "excluded": 156,
     "missing": 0
   },
@@ -520,6 +520,20 @@
           ]
         }
       ],
+      "registered": true
+    },
+    {
+      "id": "knowledge-lifecycle",
+      "title": "Wissen: Fragen, Antworten und manuelle Prüfung",
+      "touches": [
+        "knowledge_questions",
+        "knowledge_question_events"
+      ],
+      "features": [
+        "knowledge",
+        "permissions"
+      ],
+      "writes": [],
       "registered": true
     },
     {
@@ -1495,6 +1509,25 @@
       "scenarios": []
     },
     {
+      "table": "knowledge_question_attachments",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "knowledge_question_events",
+      "status": "scenario",
+      "scenarios": [
+        "knowledge-lifecycle"
+      ]
+    },
+    {
+      "table": "knowledge_questions",
+      "status": "scenario",
+      "scenarios": [
+        "knowledge-lifecycle"
+      ]
+    },
+    {
       "table": "leave_requests",
       "status": "deferred",
       "scenarios": []
@@ -1814,6 +1847,16 @@
       "scenarios": [
         "quick-note-lifecycle"
       ]
+    },
+    {
+      "table": "routine_package_runs",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "routine_package_steps",
+      "status": "deferred",
+      "scenarios": []
     },
     {
       "table": "rss_cache",

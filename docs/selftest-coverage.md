@@ -4,7 +4,7 @@ _Auto-generiert mit `npm run update:selftest-coverage`._
 
 Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
 
-Von 267 Tabellen haben 31 ein registriertes Szenario. 80 sind als Ausbau offen, 156 ausgenommen und 0 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
+Von 272 Tabellen haben 33 ein registriertes Szenario. 83 sind als Ausbau offen, 156 ausgenommen und 0 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
@@ -23,6 +23,7 @@ Von 267 Tabellen haben 31 ein registriertes Szenario. 80 sind als Ausbau offen, 
 | `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | task_decisions, task_decision_participants |
 | `event-planning-lifecycle` | Event-Planung (komplett: Termine, Speaker, Checkliste, Timeline) | event_plannings, event_planning_dates, event_planning_speakers, event_planning_contacts, event_planning_checklist_items, event_planning_timeline_assignments |
 | `jour-fixe-platform-integration` | Jour Fixe: Plattformquellen & Stafetten-Abschluss | meetings, meeting_agenda_items, tasks, task_decisions |
+| `knowledge-lifecycle` | Wissen: Fragen, Antworten und manuelle Prüfung | knowledge_questions, knowledge_question_events |
 | `letter-lifecycle` | Brief-Lifecycle (Entwurf → Prüfung → Freigabe → Archiv und Folgeaufgabe) | letters, letter_attachments, documents, tasks |
 | `meeting-lifecycle` | Meeting-Lifecycle (vollständig + Field-Verifikation) | meetings, meeting_agenda_items, meeting_agenda_documents, meeting_participants, appointments, tasks |
 | `quick-note-lifecycle` | Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv) | quick_notes, tasks, task_decisions, task_decision_participants |
@@ -166,6 +167,9 @@ Von 267 Tabellen haben 31 ein registriertes Szenario. 80 sind als Ausbau offen, 
 | `knowledge_document_topics` | Ausgenommen (nicht geprüft) | — |
 | `knowledge_document_versions` | Ausgenommen (nicht geprüft) | — |
 | `knowledge_documents` | Ausstehend | — |
+| `knowledge_question_attachments` | Ausstehend | — |
+| `knowledge_question_events` | Szenario vorhanden | knowledge-lifecycle |
+| `knowledge_questions` | Szenario vorhanden | knowledge-lifecycle |
 | `leave_requests` | Ausstehend | — |
 | `letter_archive_settings` | Ausgenommen (nicht geprüft) | — |
 | `letter_attachments` | Szenario vorhanden | letter-lifecycle |
@@ -227,6 +231,8 @@ Von 267 Tabellen haben 31 ein registriertes Szenario. 80 sind als Ausbau offen, 
 | `quick_note_versions` | Ausgenommen (nicht geprüft) | — |
 | `quick_note_write_receipts` | Ausgenommen (nicht geprüft) | — |
 | `quick_notes` | Szenario vorhanden | quick-note-lifecycle |
+| `routine_package_runs` | Ausstehend | — |
+| `routine_package_steps` | Ausstehend | — |
 | `rss_cache` | Ausgenommen (nicht geprüft) | — |
 | `rss_settings` | Ausgenommen (nicht geprüft) | — |
 | `rss_sources` | Ausgenommen (nicht geprüft) | — |

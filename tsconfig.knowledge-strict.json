@@ -1,10 +1,18 @@
 {
   "extends": "./tsconfig.app.json",
   "compilerOptions": {
-    "noImplicitAny": true
+    "noImplicitAny": true,
+    "types": [
+      "vite/client"
+    ]
   },
   "include": [
     "src/hooks/useKnowledgeDocumentTopics.tsx",
-    "src/hooks/useTopics.tsx"
+    "src/hooks/useTopics.tsx",
+    "src/features/knowledge/**/*.ts",
+    "src/features/knowledge/**/*.tsx",
+    "src/components/knowledge/**/*.ts",
+    "src/components/knowledge/**/*.tsx",
+    "src/types/speech-recognition.d.ts"
   ]
 }
