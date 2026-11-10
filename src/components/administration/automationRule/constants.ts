@@ -306,6 +306,7 @@ export const DEFAULT_FORM: WizardForm = {
   triggerType: "record_changed",
   triggerField: "status",
   triggerValue: "",
+  webhookSecret: "",
   schedule: { schedule_kind: "interval", month: "4", day: "1", hour: "9", month_end: "false", timezone: "Europe/Berlin", minutes_interval: "60" },
   conditionLogic: "all",
   conditions: [{ ...DEFAULT_CONDITION }],

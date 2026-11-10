@@ -81,6 +81,9 @@ export function collectSemanticIssues(
   parsedSample: Record<string, unknown> | null,
 ): Array<{ level: "error" | "warning"; message: string }> {
   const issues: Array<{ level: "error" | "warning"; message: string }> = [];
+  if (form.triggerType === "webhook" && (form.webhookSecret ?? "").length < 16) {
+    issues.push({ level: "error", message: "Das Webhook-Geheimnis muss mindestens 16 Zeichen enthalten." });
+  }
   const fieldSpecs = FIELD_SPEC_BY_MODULE[form.module] ?? {};
   if (form.triggerType === "schedule" && form.schedule && isCalendarSchedule(form.schedule)) {
     const error = validateCalendarSchedule(form.schedule);

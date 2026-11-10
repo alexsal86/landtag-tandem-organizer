@@ -305,6 +305,7 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
       triggerType: rule.trigger_type,
       triggerField: (rule.trigger_config?.field as string) || "status",
       triggerValue: (rule.trigger_config?.value as string) || "",
+      webhookSecret: typeof rule.trigger_config?.webhook_secret === "string" ? rule.trigger_config.webhook_secret : "",
       schedule: { schedule_kind: rule.trigger_config.schedule_kind || "interval", month: rule.trigger_config.month || "4", day: rule.trigger_config.day || "1", hour: rule.trigger_config.hour || "9", month_end: rule.trigger_config.month_end || "false", timezone: rule.trigger_config.timezone || "Europe/Berlin", minutes_interval: rule.trigger_config.minutes_interval || "60" },
       conditionLogic,
       conditions: flatConditions,
@@ -337,6 +338,11 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
       return;
     }
 
+    if (form.triggerType === "webhook" && (form.webhookSecret ?? "").length < 16) {
+      notify.error("Webhook-Geheimnis fehlt", { description: "Bitte mindestens 16 Zeichen eingeben." });
+      return;
+    }
+
     const conditionsPayload = serializeConditionGroup(form.conditionGroup);
     if (form.triggerType === "schedule" && form.schedule) {
       const error = isCalendarSchedule(form.schedule) ? validateCalendarSchedule(form.schedule)
@@ -350,7 +356,7 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
       description: form.description.trim() || null,
       module: form.module,
       trigger_type: form.triggerType as RuleRow["trigger_type"],
-      trigger_config: { field: form.triggerField, value: sanitizeTriggerValue(form.triggerType, form.triggerValue), ...(form.triggerType === "schedule" ? form.schedule : {}) },
+      trigger_config: { field: form.triggerField, value: sanitizeTriggerValue(form.triggerType, form.triggerValue), ...(form.triggerType === "schedule" ? form.schedule : {}), ...(form.triggerType === "webhook" ? { webhook_secret: form.webhookSecret } : {}) },
       conditions: conditionsPayload,
       actions: form.actions.map((a) => ({
         type: a.type,

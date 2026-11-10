@@ -623,6 +623,7 @@ export function AutomationRuleWizard({
   const stepValid = useMemo(() => {
     switch (currentStep) {
       case 0:
+        if (form.triggerType === "webhook" && (form.webhookSecret ?? "").length < 16) return false;
         if (form.triggerType === "schedule" && form.schedule && isCalendarSchedule(form.schedule)) return !validateCalendarSchedule(form.schedule);
         return !!form.module && !!form.triggerType && !!form.triggerField && (form.triggerType !== "record_changed" || form.triggerValue.trim().length > 0);
       case 1:
@@ -834,6 +835,25 @@ export function AutomationRuleWizard({
                   <Zap className="inline h-4 w-4 mr-1" />
                   Webhook-Regeln werden durch einen externen HTTP-Aufruf ausgelöst. Nach dem Speichern wird die Webhook-URL in den Regel-Details angezeigt.
                 </p>
+                <div className="space-y-2">
+                  <Label htmlFor="webhook-secret">Webhook-Geheimnis *</Label>
+                  <Input
+                    id="webhook-secret"
+                    type="password"
+                    autoComplete="new-password"
+                    value={form.webhookSecret ?? ""}
+                    onChange={(e) => setForm((prev) => ({ ...prev, webhookSecret: e.target.value }))}
+                    minLength={16}
+                    required
+                    aria-describedby="webhook-secret-help"
+                    aria-invalid={(form.webhookSecret ?? "").length < 16}
+                    placeholder="Mindestens 16 Zeichen"
+                  />
+                  <p id="webhook-secret-help" className="text-xs text-muted-foreground">
+                    Mindestens 16 Zeichen. Bei jedem Aufruf als Header <code>x-webhook-secret</code> mitschicken, nicht in der URL.
+                    Änderungen müssen auch im aufrufenden Dienst übernommen werden.
+                  </p>
+                </div>
                 {editingRuleId && (
                   <div className="bg-muted rounded p-2">
                     <p className="text-xs font-medium mb-1">Webhook-URL:</p>

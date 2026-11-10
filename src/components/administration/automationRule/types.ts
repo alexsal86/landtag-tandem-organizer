@@ -40,6 +40,7 @@ export type WizardForm = {
   triggerType: string;
   triggerField: string;
   triggerValue: string;
+  webhookSecret?: string;
   schedule?: { schedule_kind: string; month: string; day: string; hour: string; month_end: string; timezone: string; minutes_interval: string };
   /** @deprecated kept for backward compat during migration */
   conditionLogic: "all" | "any";
