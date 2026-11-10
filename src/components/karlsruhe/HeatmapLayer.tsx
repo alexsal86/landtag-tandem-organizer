@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
-import L from 'leaflet';
+import L from '@/lib/leafletRuntime';
 import 'leaflet.heat';
 
 // Extend Leaflet types for heat layer

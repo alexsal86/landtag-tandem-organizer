@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import L from 'leaflet';
+import L from '@/lib/leafletRuntime';
 import 'leaflet/dist/leaflet.css';
 import '@/styles/leaflet-overrides.css';
 import { KarlsruheDistrict } from '@/hooks/useKarlsruheDistricts';

@@ -1,13 +1,13 @@
 import { useEffect, useRef } from 'react';
-import L from 'leaflet';
+import L from '@/lib/leafletRuntime';
 import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 import { Waypoint } from './RoutePlannerPanel';
 import type { GeoPoint } from '@/hooks/geoContracts';
 
-// Import leaflet-routing-machine after L is available
+// leafletRuntime publishes L before the legacy plugin is evaluated.
 import 'leaflet-routing-machine';
 
-// Access Routing from the global L object after import
+// The plugin augments the shared Leaflet instance.
 const LRouting = L.Routing;
 
 interface RoutingMachineProps {

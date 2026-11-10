@@ -201,6 +201,8 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       output: {
         manualChunks(id: string) {
+          // Keep global L initialization ahead of legacy plugins in this chunk.
+          if (id.endsWith('/src/lib/leafletRuntime.ts')) return 'vendor-maps';
           if (!id.includes('node_modules')) return undefined;
           // Lexical: subpath-only exports — must match by path, not bare name
           if (/node_modules\/@lexical\/yjs/.test(id)) return 'vendor-lexical-collab';
