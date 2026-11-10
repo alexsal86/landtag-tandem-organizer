@@ -31,7 +31,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { pollId, participantEmail }: ResendInvitationRequest = await req.json();
 
-    console.log("Resending poll invitation for poll:", pollId, "to:", participantEmail);
+    console.log("Resending poll invitation for poll:", pollId);
 
     // Get poll information
     const { data: poll, error: pollError } = await supabase
@@ -42,6 +42,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (pollError || !poll) {
       throw new Error('Poll not found');
+    }
+
+    // Only the poll owner may resend invitations.
+    if (poll.user_id !== auth.userId) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
     }
 
     // Get creator information
@@ -67,7 +74,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     if (!participant) {
-      console.error('Participant not found for email:', participantEmail);
+      console.error('Participant not found for poll:', pollId);
       throw new Error('Participant not found');
     }
 
@@ -79,7 +86,7 @@ const handler = async (req: Request): Promise<Response> => {
       ? `${domain}/poll-guest/${pollId}?token=${participant.token}`
       : `${domain}/calendar`;
 
-    console.log("Sending email to:", participantEmail, "with URL:", pollUrl);
+    
 
     // Send invitation email
     const emailResponse = await resend.emails.send({
@@ -133,7 +140,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    console.log("Reminder email sent successfully to:", participantEmail, "ID:", emailResponse.data?.id);
+    console.log("Reminder email sent, ID:", emailResponse.data?.id);
 
     return new Response(
       JSON.stringify({

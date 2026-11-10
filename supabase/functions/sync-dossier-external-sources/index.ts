@@ -110,6 +110,10 @@ serve(withSafeHandler("sync-dossier-external-sources", async (req) => {
   const internalSecret = req.headers.get("x-automation-secret");
   const isInternalCall = Boolean(automationSecret && automationSecret.length >= 16 && internalSecret === automationSecret);
 
+  const body = await req.json().catch(() => ({}));
+  let tenantId = typeof body.tenantId === "string" ? body.tenantId : undefined;
+  const dossierId = typeof body.dossierId === "string" ? body.dossierId : undefined;
+
   if (!isInternalCall) {
     const { requireAuth } = await import("../_shared/security.ts");
     const authed = await requireAuth(req);
@@ -119,11 +123,22 @@ serve(withSafeHandler("sync-dossier-external-sources", async (req) => {
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
       });
     }
-  }
 
-  const body = await req.json().catch(() => ({}));
-  const tenantId = typeof body.tenantId === "string" ? body.tenantId : undefined;
-  const dossierId = typeof body.dossierId === "string" ? body.dossierId : undefined;
+    // User calls are always scoped to one tenant the caller actively belongs to.
+    const { data: memberships } = await supabaseAdmin
+      .from("user_tenant_memberships")
+      .select("tenant_id")
+      .eq("user_id", authed.userId)
+      .eq("is_active", true);
+    const allowed = new Set((memberships ?? []).map((m: { tenant_id: string }) => m.tenant_id));
+    if (!tenantId && allowed.size === 1) tenantId = [...allowed][0];
+    if (!tenantId || !allowed.has(tenantId)) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      });
+    }
+  }
 
   let query = supabaseAdmin
     .from("dossier_source_watchers")

@@ -2,7 +2,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { getSyncExternalErrorResponse } from './sync-external-calendar.utils.ts'
 
-import { withSafeHandler, requireAuth, unauthorizedResponse } from "../_shared/security.ts";
+import { withSafeHandler, requireAuth, requireServiceRole, unauthorizedResponse } from "../_shared/security.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -338,8 +338,10 @@ Deno.serve(withSafeHandler("sync-external-calendar", async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const auth = await requireAuth(req);
-  if (!auth) return unauthorizedResponse();
+  // Internal schedulers call with the server credential; users must own the calendar.
+  const isInternal = requireServiceRole(req);
+  const auth = isInternal ? null : await requireAuth(req);
+  if (!isInternal && !auth) return unauthorizedResponse();
 
   try {
     const supabase = createClient(
@@ -372,8 +374,14 @@ Deno.serve(withSafeHandler("sync-external-calendar", async (req) => {
       );
     }
 
+    if (!isInternal && calendar.user_id !== auth?.userId) {
+      return new Response(
+        JSON.stringify({ error: 'Calendar not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     console.log(`📅 Calendar: ${calendar.name}`);
-    console.log(`🔗 ICS URL: ${calendar.ics_url}`);
     console.log(`📊 Config - Start: ${calendar.sync_start_date}, End: ${calendar.sync_end_date}, Max Events: ${calendar.max_events}`);
 
     // Use configurable date range with increased default limit

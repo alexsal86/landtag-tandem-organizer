@@ -62,6 +62,27 @@ serve(withSafeHandler("analyze-parliament-protocol", async (req) => {
       throw new Error('Protocol ID is required');
     }
 
+    // Caller must belong to the protocol's tenant.
+    const { data: protocolRow } = await supabaseClient
+      .from('parliament_protocols')
+      .select('tenant_id')
+      .eq('id', protocolId)
+      .maybeSingle();
+    const { data: membership } = protocolRow?.tenant_id
+      ? await supabaseClient
+          .from('user_tenant_memberships')
+          .select('tenant_id')
+          .eq('user_id', auth.userId)
+          .eq('tenant_id', protocolRow.tenant_id)
+          .eq('is_active', true)
+          .maybeSingle()
+      : { data: null };
+    if (!membership) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     console.log(`Starting database insertion for protocol: ${protocolId}`);
 
     // Update status to processing
@@ -470,14 +491,74 @@ function extractPartyFromSpeaker(speakerName: string): string | undefined {
   return undefined;
 }
 
+// Allowlisted columns per table; caller-supplied data may never set other fields
+// (e.g. protocol_id, created_at) on persisted rows.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const TIME_RE = /^\d{1,2}:\d{2}(:\d{2})?$/;
+const str = (v: unknown, max = 100000) => (typeof v === 'string' ? v.slice(0, max) : null);
+const int = (v: unknown) => (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < 1_000_000 ? v : null);
+const time = (v: unknown) => (typeof v === 'string' && TIME_RE.test(v) ? v : null);
+const uuid = (v: unknown) => (typeof v === 'string' && UUID_RE.test(v) ? v : undefined);
+const json = (v: unknown) => (v !== null && typeof v === 'object' ? v : null);
+const asRecord = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' ? v as Record<string, unknown> : {});
+
+function sanitizeAgendaItem(raw: unknown, protocolId: string) {
+  const r = asRecord(raw);
+  const row: Record<string, unknown> = {
+    protocol_id: protocolId,
+    agenda_number: str(r.agenda_number, 50),
+    title: str(r.title, 2000) ?? '',
+    description: str(r.description, 20000),
+    page_number: int(r.page_number),
+    start_time: time(r.start_time),
+    end_time: time(r.end_time),
+    item_type: str(r.item_type, 50),
+    speakers: json(r.speakers),
+    drucksachen: json(r.drucksachen),
+    subentries: json(r.subentries),
+  };
+  const id = uuid(r.id);
+  if (id) row.id = id;
+  return row;
+}
+
+function sanitizeSpeech(raw: unknown, protocolId: string) {
+  const r = asRecord(raw);
+  const row: Record<string, unknown> = {
+    protocol_id: protocolId,
+    speaker_name: str(r.speaker_name, 500) ?? '',
+    speaker_party: str(r.speaker_party, 100),
+    speaker_role: str(r.speaker_role, 200),
+    speech_content: str(r.speech_content),
+    start_time: time(r.start_time),
+    end_time: time(r.end_time),
+    page_number: int(r.page_number),
+    speech_type: str(r.speech_type, 50),
+    index: int(r.index),
+    events: json(r.events),
+    events_flat: json(r.events_flat),
+  };
+  const agendaItemId = uuid(r.agenda_item_id);
+  if (agendaItemId) row.agenda_item_id = agendaItemId;
+  return row;
+}
+
+function sanitizeSession(raw: unknown, protocolId: string) {
+  const r = asRecord(raw);
+  return {
+    protocol_id: protocolId,
+    session_type: str(r.session_type, 50) ?? 'unknown',
+    timestamp: time(r.timestamp),
+    page_number: int(r.page_number),
+    notes: str(r.notes, 5000),
+  };
+}
+
 // Save structured data to database
 async function saveStructuredData(supabase: any, protocolId: string, data: ProtocolStructure) {
   // Insert agenda items
   if (data.agenda_items.length > 0) {
-    const agendaItemsWithProtocolId = data.agenda_items.map(item => ({
-      ...item,
-      protocol_id: protocolId
-    }));
+    const agendaItemsWithProtocolId = data.agenda_items.slice(0, 5000).map(item => sanitizeAgendaItem(item, protocolId));
 
     const { error: agendaError } = await supabase
       .from('protocol_agenda_items')
@@ -490,10 +571,7 @@ async function saveStructuredData(supabase: any, protocolId: string, data: Proto
 
   // Insert speeches
   if (data.speeches.length > 0) {
-    const speechesWithProtocolId = data.speeches.map(speech => ({
-      ...speech,
-      protocol_id: protocolId
-    }));
+    const speechesWithProtocolId = data.speeches.slice(0, 20000).map(speech => sanitizeSpeech(speech, protocolId));
 
     const { error: speechesError } = await supabase
       .from('protocol_speeches')
@@ -506,10 +584,7 @@ async function saveStructuredData(supabase: any, protocolId: string, data: Proto
 
   // Insert session events
   if (data.sessions.length > 0) {
-    const sessionsWithProtocolId = data.sessions.map(session => ({
-      ...session,
-      protocol_id: protocolId
-    }));
+    const sessionsWithProtocolId = data.sessions.slice(0, 5000).map(session => sanitizeSession(session, protocolId));
 
     const { error: sessionsError } = await supabase
       .from('protocol_sessions')
