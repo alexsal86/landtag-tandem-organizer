@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { escapeHtml, safeUrl, sanitizeEmailHtml } from "../_shared/html.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
 import { requireAppBaseUrl } from "../_shared/url.ts";
 import { createServiceRoleClient } from "../_shared/supabase.ts";
@@ -248,19 +249,19 @@ const handler = async (req: Request): Promise<Response> => {
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
               <h1 style="color: #333; font-size: 24px; margin-bottom: 20px;">Termineinladung</h1>
 
-              <p style="color: #666; font-size: 16px; margin-bottom: 16px;">Hallo ${guest.name},</p>
+              <p style="color: #666; font-size: 16px; margin-bottom: 16px;">Hallo ${escapeHtml(guest.name)},</p>
 
               <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
-                ${organizerName} hat Sie zu folgendem Termin eingeladen:
+                ${escapeHtml(organizerName)} hat Sie zu folgendem Termin eingeladen:
               </p>
 
               <div style="background: #f8f9fa; border-left: 4px solid #3b82f6; padding: 16px; margin: 20px 0; border-radius: 4px;">
-                <h3 style="margin: 0 0 8px 0; color: #333; font-size: 18px;">${appointment.title}</h3>
-                ${appointment.description ? `<p style="margin: 0 0 8px 0; color: #666; font-size: 14px;">${appointment.description}</p>` : ''}
+                <h3 style="margin: 0 0 8px 0; color: #333; font-size: 18px;">${escapeHtml(appointment.title)}</h3>
+                ${appointment.description ? `<p style="margin: 0 0 8px 0; color: #666; font-size: 14px;">${escapeHtml(appointment.description)}</p>` : ''}
                 <p style="margin: 4px 0; color: #666; font-size: 14px;"><strong>Datum:</strong> ${formattedDate}</p>
                 <p style="margin: 4px 0; color: #666; font-size: 14px;"><strong>Zeit:</strong> ${formattedStartTime} - ${formattedEndTime}</p>
-                ${appointment.location ? `<p style="margin: 4px 0; color: #666; font-size: 14px;"><strong>Ort:</strong> ${appointment.location}</p>` : ''}
-                ${appointment.meeting_link ? `<p style="margin: 4px 0; color: #666; font-size: 14px;"><strong>Meeting-Link:</strong> <a href="${appointment.meeting_link}">${appointment.meeting_link}</a></p>` : ''}
+                ${appointment.location ? `<p style="margin: 4px 0; color: #666; font-size: 14px;"><strong>Ort:</strong> ${escapeHtml(appointment.location)}</p>` : ''}
+                ${appointment.meeting_link ? `<p style="margin: 4px 0; color: #666; font-size: 14px;"><strong>Meeting-Link:</strong> <a href="${safeUrl(appointment.meeting_link)}">${escapeHtml(appointment.meeting_link)}</a></p>` : ''}
               </div>
 
               <div style="background: #fff3cd; border: 1px solid #ffeeba; border-radius: 4px; padding: 12px; margin: 20px 0;">
@@ -290,7 +291,7 @@ const handler = async (req: Request): Promise<Response> => {
               </p>
 
               <p style="color: #666; font-size: 16px; font-weight: 500;">
-                ${organizerName}
+                ${escapeHtml(organizerName)}
               </p>
 
               <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">

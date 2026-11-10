@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { escapeHtml, safeUrl, sanitizeEmailHtml } from "../_shared/html.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { Resend } from "npm:resend@2.0.0";
 
@@ -131,33 +132,33 @@ serve(withSafeHandler("send-news-email", async (req: Request): Promise<Response>
       <body>
         <div class="container">
           <div class="header">
-            <h1 style="margin: 0; font-size: 24px;">📰 ${template.subject}</h1>
+            <h1 style="margin: 0; font-size: 24px;">📰 ${escapeHtml(template.subject)}</h1>
           </div>
 
           <div class="content">
-            <p>${template.greeting}</p>
-            <p>${template.introduction}</p>
+            <p>${escapeHtml(template.greeting)}</p>
+            <p>${escapeHtml(template.introduction)}</p>
 
             ${personalMessage ? `
               <div class="personal-message">
-                <strong>💬 Persönliche Nachricht von ${senderName}:</strong><br>
-                ${personalMessage.replace(/\n/g, '<br>')}
+                <strong>💬 Persönliche Nachricht von ${escapeHtml(senderName)}:</strong><br>
+                ${escapeHtml(personalMessage).replace(/\n/g, '<br>')}
               </div>
             ` : ''}
 
             <div class="article">
-              <div class="article-title">${article.title}</div>
-              <div class="article-desc">${article.description}</div>
-              <div class="article-source">Quelle: ${article.source}</div>
-              <a href="${article.link}" class="cta-button" target="_blank">Artikel lesen →</a>
+              <div class="article-title">${escapeHtml(article.title)}</div>
+              <div class="article-desc">${escapeHtml(article.description)}</div>
+              <div class="article-source">Quelle: ${escapeHtml(article.source)}</div>
+              <a href="${safeUrl(article.link)}" class="cta-button" target="_blank">Artikel lesen →</a>
             </div>
 
-            <p>${template.closing}</p>
-            <p><strong>${template.signature}</strong></p>
+            <p>${escapeHtml(template.closing)}</p>
+            <p><strong>${escapeHtml(template.signature)}</strong></p>
           </div>
 
           <div class="footer">
-            Empfohlen von ${senderName}
+            Empfohlen von ${escapeHtml(senderName)}
           </div>
         </div>
       </body>

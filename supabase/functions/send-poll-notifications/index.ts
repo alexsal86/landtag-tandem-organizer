@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { escapeHtml, safeUrl, sanitizeEmailHtml } from "../_shared/html.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.52.0";
 
@@ -84,9 +85,9 @@ const handler = async (req: Request): Promise<Response> => {
         emailSubject = `Neue Antwort bei Terminabstimmung: ${poll.title}`;
         emailHtml = `
           <h2>Neue Antwort erhalten</h2>
-          <p><strong>${respondentName}</strong> hat bei der Terminabstimmung "<strong>${poll.title}</strong>" geantwortet.</p>
+          <p><strong>${escapeHtml(respondentName)}</strong> hat bei der Terminabstimmung "<strong>${escapeHtml(poll.title)}</strong>" geantwortet.</p>
           <p>Sie können die Ergebnisse in der Übersicht einsehen.</p>
-          <p>Mit freundlichen Grüßen,<br>${creatorName}</p>
+          <p>Mit freundlichen Grüßen,<br>${escapeHtml(creatorName)}</p>
         `;
         break;
 
@@ -94,10 +95,10 @@ const handler = async (req: Request): Promise<Response> => {
         emailSubject = `Terminabstimmung aktualisiert: ${poll.title}`;
         emailHtml = `
           <h2>Terminabstimmung wurde aktualisiert</h2>
-          <p>Die Terminabstimmung "<strong>${poll.title}</strong>" wurde aktualisiert.</p>
-          ${changes ? `<p><strong>Änderungen:</strong> ${changes}</p>` : ''}
+          <p>Die Terminabstimmung "<strong>${escapeHtml(poll.title)}</strong>" wurde aktualisiert.</p>
+          ${changes ? `<p><strong>Änderungen:</strong> ${escapeHtml(changes)}</p>` : ''}
           <p>Bitte überprüfen Sie Ihre Antwort und passen Sie diese gegebenenfalls an.</p>
-          <p>Mit freundlichen Grüßen,<br>${creatorName}</p>
+          <p>Mit freundlichen Grüßen,<br>${escapeHtml(creatorName)}</p>
         `;
         break;
 
@@ -105,9 +106,9 @@ const handler = async (req: Request): Promise<Response> => {
         emailSubject = `Terminabstimmung abgesagt: ${poll.title}`;
         emailHtml = `
           <h2>Terminabstimmung wurde abgesagt</h2>
-          <p>Die Terminabstimmung "<strong>${poll.title}</strong>" wurde abgesagt.</p>
-          <p>Falls Sie Fragen haben, wenden Sie sich bitte an ${creatorName}.</p>
-          <p>Mit freundlichen Grüßen,<br>${creatorName}</p>
+          <p>Die Terminabstimmung "<strong>${escapeHtml(poll.title)}</strong>" wurde abgesagt.</p>
+          <p>Falls Sie Fragen haben, wenden Sie sich bitte an ${escapeHtml(creatorName)}.</p>
+          <p>Mit freundlichen Grüßen,<br>${escapeHtml(creatorName)}</p>
         `;
         break;
 
@@ -115,9 +116,9 @@ const handler = async (req: Request): Promise<Response> => {
         emailSubject = `Erinnerung: Terminabstimmung läuft ab - ${poll.title}`;
         emailHtml = `
           <h2>Erinnerung: Antwortfrist läuft bald ab</h2>
-          <p>Die Antwortfrist für die Terminabstimmung "<strong>${poll.title}</strong>" läuft bald ab.</p>
+          <p>Die Antwortfrist für die Terminabstimmung "<strong>${escapeHtml(poll.title)}</strong>" läuft bald ab.</p>
           <p>Bitte geben Sie Ihre Verfügbarkeit rechtzeitig bekannt.</p>
-          <p>Mit freundlichen Grüßen,<br>${creatorName}</p>
+          <p>Mit freundlichen Grüßen,<br>${escapeHtml(creatorName)}</p>
         `;
         break;
     }
