@@ -246,7 +246,7 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
 
   const openNewWizard = () => {
     resetForm();
-    if (view === "annual") setForm({ ...DEFAULT_FORM, triggerType: "schedule", triggerField: "scheduled_date", schedule: { ...DEFAULT_FORM.schedule, schedule_kind: "annual" }, conditions: [], conditionGroup: { logic: "all", conditions: [], groups: [] }, actions: [{ ...DEFAULT_ACTION, type: "run_annual_routine", routineCategory: "admin" }] });
+    if (view === "annual") setForm({ ...DEFAULT_FORM, triggerType: "schedule", triggerField: "scheduled_date", schedule: { schedule_kind: "annual", month: "4", day: "1", hour: "9", month_end: "false", timezone: "Europe/Berlin", minutes_interval: "60" }, conditions: [], conditionGroup: { logic: "all", conditions: [], groups: [] }, actions: [{ ...DEFAULT_ACTION, type: "run_annual_routine", routineCategory: "admin" }] });
     setWizardOpen(true);
   };
 
