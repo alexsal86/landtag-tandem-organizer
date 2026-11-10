@@ -87,5 +87,5 @@ describe('buildDeepLinkPath', () => {
 });
 
 it.each(['knowledge_qa_assigned','knowledge_qa_answered','knowledge_qa_due','knowledge_qa_review_requested'])('opens the question from %s', name => {
-  expect(buildDeepLinkPath(makeNotification({ notification_types: { name, label: name }, data: { question_id: 'question-id' } }))).toBe('/knowledge?frage=question-id');
+  expect(buildDeepLinkPath(makeNotification({ notification_types: { name, label: name }, data: { question_id: 'question-id' } }))).toBe('/wissen?frage=question-id');
 });

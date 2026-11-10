@@ -20,12 +20,17 @@ test('questions, answers, reviews, private attachments, search, errors and legac
     if (path.endsWith('/auth/v1/user')) data = user;
     else if (path.includes('/rpc/')) {
       const name = path.split('/').pop(); const body = request.postDataJSON() ?? {};
-      if (name === 'search_knowledge_questions') {
+      if (name === 'knowledge_qa_list') {
         if (failSearch) return json({ code: 'TEST', message: 'Test query failure' }, 500);
         const filtered = questions.filter(question => body.p_question ? question.id === body.p_question :
           (body.p_view === 'open' ? !question.answered_at : body.p_view === 'mine' || Boolean(question.answered_at)) &&
           `${question.title} ${question.answer_text}`.toLowerCase().includes(String(body.p_query ?? '').toLowerCase()));
-        data = filtered.map(question => ({ ...question, server_now: new Date().toISOString(), effective_review_status: question.review_status }));
+        data = [{ items: filtered.slice(0,body.p_limit ?? 20).map(question => {
+          const { answer_content, answer_text, ...summary } = question;
+          return { ...summary, answer_excerpt: answer_text.slice(0,200), server_now: new Date().toISOString(), effective_review_status: question.review_status };
+        }), total_count: filtered.length, next_cursor: null }];
+      } else if (name === 'knowledge_qa_counts') {
+        data = [{ answers: questions.filter(q=>q.answered_at).length, open: questions.filter(q=>!q.answered_at).length, mine: questions.length, assigned: questions.filter(q=>q.assigned_to===user.id).length, review: questions.filter(q=>q.review_status==='needs_review').length }];
       } else if (name === 'knowledge_qa_create_question') {
         const time = new Date().toISOString();
         const question: Question = { id: '77777777-7777-4777-8777-777777777777', title: body.p_title, description: body.p_description, tenant_id: tenant.id, assigned_to: body.p_assigned_to || null,
@@ -62,6 +67,10 @@ test('questions, answers, reviews, private attachments, search, errors and legac
     else if (path.endsWith('/user_onboarding_state')) data = { completed_at: '2026-01-01T00:00:00Z' };
     else if (path.endsWith('/knowledge_question_attachments')) data = attachments.filter(file => file.state === 'ready');
     else if (path.includes('/storage/v1/object/knowledge-attachments/')) data = { Key: path.split('/object/')[1], Id: 'file' };
+    else if (path.endsWith('/knowledge_question_cards')) {
+      const rows=questions.filter(q=>!url.searchParams.get('id') || url.searchParams.get('id')===`eq.${q.id}`).map(q=>({ ...q, server_now: new Date().toISOString(), effective_review_status:q.review_status }));
+      data=single ? rows[0] ?? null : rows;
+    }
     else if (path.endsWith('/knowledge_questions')) data = single ? questions[0] : questions;
     else if (path.endsWith('/knowledge_documents')) data = [];
     else if (path.includes('/functions/v1/')) data = { success: true, users: [] };
@@ -88,24 +97,27 @@ test('questions, answers, reviews, private attachments, search, errors and legac
   await expect(page.getByRole('alert')).toContainText('inzwischen geändert');
   await expect(editor).toContainText('Bitte den Antrag');
   await page.getByRole('button', { name: 'Antwort speichern', exact: true }).click();
-  await expect(page.getByText('Ungeprüft', { exact: true })).toBeVisible();
+  await expect(page.locator('div.rounded-full').getByText('Ungeprüft', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Als aktuell geprüft markieren' }).click();
   await page.getByRole('button', { name: 'Aktualität bestätigen' }).click();
   await expect(page.getByText('Geprüft', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Antwort bearbeiten' }).click();
   await editor.fill('Bitte den Antrag mit Datum an die Büroleitung senden.');
   await page.getByRole('button', { name: 'Antwort speichern', exact: true }).click();
-  await expect(page.getByText('Ungeprüft', { exact: true })).toBeVisible();
+  await expect(page.locator('div.rounded-full').getByText('Ungeprüft', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Überprüfung anfordern', exact: true }).click();
   await expect(page.getByText('Überprüfung erforderlich', { exact: true })).toBeVisible();
   await page.getByLabel('Datei anhängen', { exact: true }).setInputFiles({ name: 'ablauf.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 test') });
   await expect(page.getByText('ablauf.pdf', { exact: true })).toBeVisible();
-  await expect(page.getByText('Ungeprüft', { exact: true })).toBeVisible();
+  await expect(page.locator('div.rounded-full').getByText('Ungeprüft', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: '← Zur Übersicht' }).click();
-  await page.getByRole('button', { name: 'Antworten', exact: true }).click();
+  await page.getByRole('button', { name: /^Antworten/ }).click();
   const search = page.getByRole('textbox', { name: 'Wissen durchsuchen' });
   await search.fill('Urlaub');
   await expect(page.getByText('Bitte den Antrag mit Datum an die Büroleitung senden.', { exact: true })).toBeVisible();
+  await expect(page.locator('[contenteditable]')).toHaveCount(0);
+  await page.getByRole('button',{name:'Vollständig anzeigen',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Antwort bearbeiten'})).toBeVisible();
   await page.screenshot({ path: info.outputPath('wissen-desktop.png'), fullPage: true });
   await search.fill('Unbekannte Richtlinie');
   await page.getByRole('button', { name: 'Diese Frage stellen' }).click();

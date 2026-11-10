@@ -10,7 +10,7 @@ export const knowledgeLifecycleScenario: TestScenario = {
   limitations: ['Zwei-Büro-Isolation, FTS und Storage-Policies werden zusätzlich mit scripts/test-knowledge-qa.mjs in isoliertem PostgreSQL geprüft. Echte Storage-HTTP-Zugriffe benötigen eine Supabase-Testinstanz.'],
   steps: [
     { id: 'notification-question-link', label: 'Benachrichtigungen öffnen die konkrete Wissensfrage', kind: 'logic', run: async () => ({
-      ok: knowledgeQuestionPath('test-id') === '/knowledge?frage=test-id' && knowledgeQuestionPath(null) === '/knowledge',
+      ok: knowledgeQuestionPath('test-id') === '/wissen?frage=test-id' && knowledgeQuestionPath(null) === '/wissen',
       message: 'Zuweisung, Antwort und Prüfung führen direkt zur Frage.',
     }) },
     { id: 'filter-state', label: 'Ansichten und Filter aus URL wiederherstellen', kind: 'logic', run: async () => {

@@ -14837,7 +14837,7 @@ export type Database = {
       knowledge_qa_selftest: { Args: { p_tenant: string }; Returns: Json }
       knowledge_qa_set_assignee: {
         Args: {
-          p_assigned_to: string
+          p_assigned_to: string | null
           p_expected_revision: number
           p_question: string
         }
