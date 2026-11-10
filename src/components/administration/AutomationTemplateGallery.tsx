@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { RULE_TEMPLATES } from "./AutomationRuleWizard";
-import { EmptyState, LoadingState } from '@/components/ui-patterns';
+import { EmptyState } from '@/components/ui-patterns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { BookTemplate, Search, Zap } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { BookTemplate, ChevronDown, Search, Zap } from "lucide-react";
 
 const MODULE_LABELS: Record<string, string> = {
   tasks: "Aufgaben",
@@ -38,6 +39,7 @@ interface AutomationTemplateGalleryProps {
 }
 
 export function AutomationTemplateGallery({ onUseTemplate }: AutomationTemplateGalleryProps) {
+  const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [moduleFilter, setModuleFilter] = useState<string | null>(null);
 
@@ -57,101 +59,111 @@ export function AutomationTemplateGallery({ onUseTemplate }: AutomationTemplateG
   });
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <BookTemplate className="h-5 w-5 text-primary" />
-          <div>
-            <CardTitle>Template-Galerie</CardTitle>
-            <CardDescription>Vorgefertigte Regeln mit einem Klick übernehmen</CardDescription>
+    <Collapsible open={open} onOpenChange={setOpen} asChild>
+      <Card>
+        <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 space-y-0 py-4">
+          <div className="flex items-center gap-2">
+            <BookTemplate className="h-5 w-5 text-primary" />
+            <div>
+              <CardTitle>Template-Galerie</CardTitle>
+              <CardDescription>Vorgefertigte Regeln mit einem Klick übernehmen</CardDescription>
+            </div>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Search + filter */}
-        <div className="flex flex-col sm:flex-row gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Templates durchsuchen…"
-              className="pl-9"
-            />
-          </div>
-          <div className="flex gap-1.5 flex-wrap">
-            <Button
-              variant={moduleFilter === null ? "default" : "outline"}
-              size="sm"
-              onClick={() => setModuleFilter(null)}
-            >
-              Alle
+          <CollapsibleTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              {open ? "Einklappen" : "Templates anzeigen"}
+              <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
             </Button>
-            {modules.map((mod) => (
-              <Button
-                key={mod}
-                variant={moduleFilter === mod ? "default" : "outline"}
-                size="sm"
-                onClick={() => setModuleFilter(moduleFilter === mod ? null : mod)}
-              >
-                {MODULE_LABELS[mod] || mod}
-              </Button>
-            ))}
-          </div>
-        </div>
-
-        {/* Template grid */}
-        {filtered.length === 0 ? (
-          <EmptyState size="sm" title="Keine Templates gefunden" description="Wähle ein anderes Modul oder lege eine eigene Regel an." />
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((template) => (
-              <div
-                key={template.id}
-                className="rounded-lg border bg-card p-4 space-y-3 hover:border-primary/50 hover:shadow-sm transition-all"
-              >
-                <div className="space-y-1.5">
-                  <p className="font-medium text-sm leading-tight">{template.name}</p>
-                  <p className="text-xs text-muted-foreground line-clamp-2">
-                    {template.description}
-                  </p>
-                </div>
-
-                <div className="flex gap-1.5 flex-wrap">
-                  <Badge variant="outline" className="text-[10px]">
-                    {MODULE_LABELS[template.module] || template.module}
-                  </Badge>
-                  <Badge variant="outline" className="text-[10px]">
-                    {TRIGGER_LABELS[template.triggerType] || template.triggerType}
-                  </Badge>
-                  <Badge variant="secondary" className="text-[10px]">
-                    {template.actions.length} {template.actions.length === 1 ? "Aktion" : "Aktionen"}
-                  </Badge>
-                </div>
-
-                <div className="text-[11px] text-muted-foreground space-y-0.5">
-                  <p>
-                    <span className="font-medium">Wenn:</span> {template.triggerField} = „{template.triggerValue}"
-                  </p>
-                  <p>
-                    <span className="font-medium">Dann:</span>{" "}
-                    {template.actions.map((a) => ACTION_LABELS[a.type] || a.type).join(", ")}
-                  </p>
-                </div>
-
-                <Button
-                  size="sm"
-                  className="w-full gap-1.5"
-                  onClick={() => onUseTemplate(template.id)}
-                >
-                  <Zap className="h-3.5 w-3.5" />
-                  Als Regel übernehmen
-                </Button>
+          </CollapsibleTrigger>
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent className="space-y-4">
+            {/* Search + filter */}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Templates durchsuchen…"
+                  className="pl-9"
+                />
               </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+              <div className="flex gap-1.5 flex-wrap">
+                <Button
+                  variant={moduleFilter === null ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setModuleFilter(null)}
+                >
+                  Alle
+                </Button>
+                {modules.map((mod) => (
+                  <Button
+                    key={mod}
+                    variant={moduleFilter === mod ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setModuleFilter(moduleFilter === mod ? null : mod)}
+                  >
+                    {MODULE_LABELS[mod] || mod}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Template grid */}
+            {filtered.length === 0 ? (
+              <EmptyState size="sm" title="Keine Templates gefunden" description="Wähle ein anderes Modul oder lege eine eigene Regel an." />
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {filtered.map((template) => (
+                  <div
+                    key={template.id}
+                    className="rounded-lg border bg-card p-4 space-y-3 hover:border-primary/50 hover:shadow-sm transition-all"
+                  >
+                    <div className="space-y-1.5">
+                      <p className="font-medium text-sm leading-tight">{template.name}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-2">
+                        {template.description}
+                      </p>
+                    </div>
+
+                    <div className="flex gap-1.5 flex-wrap">
+                      <Badge variant="outline" className="text-[10px]">
+                        {MODULE_LABELS[template.module] || template.module}
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px]">
+                        {TRIGGER_LABELS[template.triggerType] || template.triggerType}
+                      </Badge>
+                      <Badge variant="secondary" className="text-[10px]">
+                        {template.actions.length} {template.actions.length === 1 ? "Aktion" : "Aktionen"}
+                      </Badge>
+                    </div>
+
+                    <div className="text-[11px] text-muted-foreground space-y-0.5">
+                      <p>
+                        <span className="font-medium">Wenn:</span> {template.triggerField} = „{template.triggerValue}"
+                      </p>
+                      <p>
+                        <span className="font-medium">Dann:</span>{" "}
+                        {template.actions.map((a) => ACTION_LABELS[a.type] || a.type).join(", ")}
+                      </p>
+                    </div>
+
+                    <Button
+                      size="sm"
+                      className="w-full gap-1.5"
+                      onClick={() => onUseTemplate(template.id)}
+                    >
+                      <Zap className="h-3.5 w-3.5" />
+                      Als Regel übernehmen
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }
