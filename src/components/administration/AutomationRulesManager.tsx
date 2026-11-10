@@ -74,6 +74,8 @@ import { logAuditEvent, AuditActions } from "@/hooks/useAuditLog";
 import { useAutomationAdminMutations, useAutomationMembershipRole, useAutomationPauseState, useAutomationRules, useAutomationRunSteps, useAutomationRuns } from "./hooks/useAutomationAdminData";
 import type { AutomationRuleRecordView as RuleRow, AutomationRunRecordView as RunRow } from "./automationShared";
 import { notify } from "@/lib/notify";
+import { AnnualRoutinesOverview } from "./AnnualRoutinesOverview";
+import { annualRoutineAction, validateAnnualRoutine } from "@/features/automation/annualRoutines";
 import { isCalendarSchedule, nextCalendarOccurrence, validateCalendarSchedule } from "@/features/automation/calendarSchedule";
 
 const WorkflowEngineManager = lazy(() => import("./WorkflowEngineManager").then(module => ({ default: module.WorkflowEngineManager })));
@@ -84,7 +86,7 @@ export function AutomationRulesManager() {
   const tab = automationTabFromParams(new URLSearchParams(location.search));
   const changeTab = (value: string) => {
     const params = new URLSearchParams(location.search);
-    params.set("automationTab", value === "history" || value === "dispatcher" ? value : "rules");
+    params.set("automationTab", value === "history" || value === "dispatcher" || value === "annual" ? value : "rules");
     navigate({ pathname: location.pathname, search: params.toString() });
   };
 
@@ -92,11 +94,13 @@ export function AutomationRulesManager() {
     <Tabs value={tab} onValueChange={changeTab} className="min-w-0 space-y-md">
       <TabsList aria-label="Regeln und Workflows" className="h-auto max-w-full flex-wrap justify-start">
         <TabsTrigger value="rules">Regeln</TabsTrigger>
+        <TabsTrigger value="annual">Jahresroutinen</TabsTrigger>
         <TabsTrigger value="history">Ausführungshistorie</TabsTrigger>
         <TabsTrigger value="dispatcher">Dispatcher</TabsTrigger>
       </TabsList>
       <TabsContent value="rules"><AutomationRulesContent view="rules" onShowHistory={() => changeTab("history")} /></TabsContent>
       <TabsContent value="history"><AutomationRulesContent view="history" onShowHistory={() => changeTab("history")} /></TabsContent>
+      <TabsContent value="annual"><AutomationRulesContent view="annual" onShowHistory={() => changeTab("history")} /></TabsContent>
       <TabsContent value="dispatcher">
         <Suspense fallback={<LoadingState variant="list" rows={3} />}><WorkflowEngineManager /></Suspense>
       </TabsContent>
@@ -104,7 +108,7 @@ export function AutomationRulesManager() {
   );
 }
 
-function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "history"; onShowHistory: () => void }) {
+function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "history" | "annual"; onShowHistory: () => void }) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
 
@@ -135,7 +139,7 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
   const saving = upsertRuleMutation.isPending;
   const togglingPause = togglePause.isPending;
 
-  const isAdmin = userRole === "abgeordneter";
+  const isAdmin = userRole === "abgeordneter" || userRole === "bueroleitung";
   const canEdit = isAdmin;
   const canToggle = isAdmin || userRole === "mitarbeiter";
 
@@ -242,6 +246,7 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
 
   const openNewWizard = () => {
     resetForm();
+    if (view === "annual") setForm({ ...DEFAULT_FORM, triggerType: "schedule", triggerField: "scheduled_date", schedule: { ...DEFAULT_FORM.schedule, schedule_kind: "annual" }, conditions: [], conditionGroup: { logic: "all", conditions: [], groups: [] }, actions: [{ ...DEFAULT_ACTION, type: "run_annual_routine", routineCategory: "admin" }] });
     setWizardOpen(true);
   };
 
@@ -278,6 +283,9 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
 
     const actions: ActionItem[] = (rule.actions || []).map((a) => ({
       type: a.type || "create_notification",
+      annualTaskId: a.payload?.annual_task_id || "",
+      systemFunction: a.payload?.system_function || "",
+      routineCategory: a.payload?.routine_category || "admin",
       targetUserId: (a.payload?.target_user_id as string) || "",
       title: (a.payload?.title as string) || "",
       message: (a.payload?.message as string) || "",
@@ -333,7 +341,7 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
     }
 
     if (!canEdit) {
-      notify.error("Keine Berechtigung", { description: "Nur Abgeordnete dürfen Regeln erstellen/ändern."
+      notify.error("Keine Berechtigung", { description: "Nur Abgeordnete und Büroleitung dürfen Regeln erstellen/ändern."
 });
       return;
     }
@@ -343,6 +351,8 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
       return;
     }
 
+    const routineError = validateAnnualRoutine(form.triggerType, form.schedule, form.actions);
+    if (routineError) { notify.error(routineError); return; }
     const conditionsPayload = serializeConditionGroup(form.conditionGroup);
     if (form.triggerType === "schedule" && form.schedule) {
       const error = isCalendarSchedule(form.schedule) ? validateCalendarSchedule(form.schedule)
@@ -356,11 +366,14 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
       description: form.description.trim() || null,
       module: form.module,
       trigger_type: form.triggerType as RuleRow["trigger_type"],
-      trigger_config: { field: form.triggerField, value: sanitizeTriggerValue(form.triggerType, form.triggerValue), ...(form.triggerType === "schedule" ? form.schedule : {}), ...(form.triggerType === "webhook" ? { webhook_secret: form.webhookSecret } : {}) },
+      trigger_config: { field: form.triggerField, value: sanitizeTriggerValue(form.triggerType, form.triggerValue), ...((form.triggerType === "schedule" || form.actions.some(a => a.type === "run_annual_routine")) ? form.schedule : {}), ...(form.triggerType === "webhook" ? { webhook_secret: form.webhookSecret } : {}) },
       conditions: conditionsPayload,
       actions: form.actions.map((a) => ({
         type: a.type,
         payload: {
+          annual_task_id: a.annualTaskId || "",
+          system_function: a.systemFunction || "",
+          routine_category: a.routineCategory || "admin",
           target_user_id: a.targetUserId,
           title: a.title,
           message: a.message,
@@ -405,11 +418,12 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
 
   const deleteRule = async (ruleId: string) => {
     if (!canEdit) {
-      notify.error("Keine Berechtigung", { description: "Nur Abgeordnete dürfen Regeln löschen."
+      notify.error("Keine Berechtigung", { description: "Nur Abgeordnete und Büroleitung dürfen Regeln löschen."
 });
       return;
     }
 
+    if (rules.some(rule => rule.id === ruleId && annualRoutineAction(rule)?.payload?.system_function)) { notify.error("System-Routinen können pausiert, aber nicht gelöscht werden."); return; }
     const ruleName = rules.find((r: Record<string, any>) => r.id === ruleId)?.name || ruleId;
     try {
       await deleteRuleMutation.mutateAsync(ruleId);
@@ -542,7 +556,7 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
           <ShieldAlert className="h-4 w-4" />
           <AlertTitle>Eingeschränkte Rechte</AlertTitle>
           <AlertDescription>
-            Du kannst Regeln aktivieren/deaktivieren, aber nur Abgeordnete dürfen Regeln erstellen, bearbeiten oder löschen.
+            Du kannst Regeln aktivieren/deaktivieren, aber nur Abgeordnete und Büroleitung dürfen Regeln erstellen, bearbeiten oder löschen.
           </AlertDescription>
         </Alert>
       )}
@@ -607,6 +621,8 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
         saving={saving}
         runningDryRun={runningRuleId !== null}
       />
+
+      {view === "annual" && <AnnualRoutinesOverview rules={rules} onEdit={startEdit} onRun={rule => void triggerRunNow(rule)} onNew={openNewWizard} canEdit={canEdit} runningRuleId={runningRuleId} />}
 
       {/* Template Gallery */}
       {view === "rules" && <AutomationTemplateGallery onUseTemplate={useTemplate} />}

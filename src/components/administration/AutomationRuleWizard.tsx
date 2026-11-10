@@ -44,6 +44,7 @@ import type {
   FieldSpec,
   WizardForm,
 } from "./automationRule/types";
+import { AnnualRoutineFields } from "./automationRule/AnnualRoutineFields";
 import { CalendarScheduleFields } from "./automationRule/CalendarScheduleFields";
 import { isCalendarSchedule, validateCalendarSchedule } from "@/features/automation/calendarSchedule";
 
@@ -190,7 +191,7 @@ function ActionCard({
         <span className="text-xs font-medium text-muted-foreground">
           Aktion {index + 1}
         </span>
-        {canRemove && (
+        {canRemove && !(action.annualTaskId && action.systemFunction) && (
           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => onRemove(index)}>
             <Trash2 className="h-3.5 w-3.5 text-destructive" />
           </Button>
@@ -199,7 +200,7 @@ function ActionCard({
 
       <div className="space-y-1">
         <Label className="text-xs">Aktionstyp</Label>
-        <Select value={action.type} onValueChange={(v) => onChange(index, { type: v })}>
+        <Select disabled={Boolean(action.annualTaskId && action.systemFunction)} value={action.type} onValueChange={(v) => onChange(index, { type: v })}>
           <SelectTrigger className="h-8 text-xs">
             <SelectValue />
           </SelectTrigger>
@@ -210,6 +211,8 @@ function ActionCard({
           </SelectContent>
         </Select>
       </div>
+
+      {action.type === "run_annual_routine" && <AnnualRoutineFields action={action} onChange={patch => onChange(index, patch)} />}
 
       {isNotification && (
         <div className="space-y-3">
@@ -627,7 +630,7 @@ export function AutomationRuleWizard({
         if (form.triggerType === "schedule" && form.schedule && isCalendarSchedule(form.schedule)) return !validateCalendarSchedule(form.schedule);
         return !!form.module && !!form.triggerType && !!form.triggerField && (form.triggerType !== "record_changed" || form.triggerValue.trim().length > 0);
       case 1:
-        if (form.triggerType === "schedule" && form.schedule && isCalendarSchedule(form.schedule) && countConditions(form.conditionGroup) === 0) return true;
+        if ((form.triggerType === "schedule" || form.actions.some(a => a.type === "run_annual_routine")) && form.schedule && isCalendarSchedule(form.schedule) && countConditions(form.conditionGroup) === 0) return true;
         return validateConditionGroup(form.conditionGroup);
       case 2:
         return form.actions.length > 0 && form.actions.every((a) => {
@@ -638,7 +641,7 @@ export function AutomationRuleWizard({
           const isApproval = a.type === "create_approval_request";
           if (isNotif) return a.targetUserId.trim().length > 0;
           if (isStat) return a.recordId.trim().length > 0 && a.status.trim().length > 0;
-          if (isTask) return a.title.trim().length > 0;
+          if (isTask || a.type === "run_annual_routine") return a.title.trim().length > 0;
           if (isEmail) return a.emailTemplateId.trim().length > 0 && a.emailRecipient.trim().length > 0;
           if (isApproval) return a.targetUserId.trim().length > 0 && Number(a.approvalMinimumApprovers) >= 1;
           return true;
@@ -764,6 +767,7 @@ export function AutomationRuleWizard({
                 placeholder="Kurz erklären, wann und warum die Regel läuft"
               />
             </div>
+            {form.triggerType === "manual" && form.actions.some(a => a.type === "run_annual_routine") && <CalendarScheduleFields value={form.schedule ?? DEFAULT_FORM.schedule} onChange={schedule => setForm(prev => ({ ...prev, schedule })) />}
             <div className="space-y-2">
               <Label>Fachdomäne/Modul</Label>
               <Select

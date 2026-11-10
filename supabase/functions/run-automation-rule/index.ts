@@ -20,7 +20,7 @@ type ConditionGroup = {
 };
 
 type Action = {
-  type: "create_notification" | "update_record_status" | "create_task" | "send_push_notification" | "send_email_template" | "create_approval_request" | "invoke_edge_function";
+  type: "create_notification" | "update_record_status" | "create_task" | "send_push_notification" | "send_email_template" | "create_approval_request" | "invoke_edge_function" | "run_annual_routine";
   payload?: Record<string, unknown>;
 };
 
@@ -641,6 +641,15 @@ serve(withSafeHandler("run-automation-rule", async (req) => {
         if (notificationError) {
           throw notificationError;
         }
+      }
+
+      if (action.type === "run_annual_routine") {
+        const annualTaskId = String(action.payload?.annual_task_id ?? "");
+        if (!/^[0-9a-f-]{36}$/i.test(annualTaskId)) throw new Error("Invalid annual routine ID");
+        const year = Number(new Intl.DateTimeFormat("en", { timeZone: "Europe/Berlin", year: "numeric" }).format(new Date()));
+        const { data: routineResult, error: routineError } = await supabaseAdmin.rpc("execute_annual_automation_routine", { _rule_id: rule.id, _annual_task_id: annualTaskId, _year: year });
+        if (routineError) throw routineError;
+        timeline.push({ type: "annual_routine", annual_task_id: annualTaskId, result: routineResult, at: new Date().toISOString() });
       }
 
       if (action.type === "create_task") {
