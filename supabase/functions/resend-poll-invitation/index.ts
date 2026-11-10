@@ -140,7 +140,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    console.log("Reminder email sent successfully to:", participantEmail, "ID:", emailResponse.data?.id);
+    console.log("Reminder email sent, ID:", emailResponse.data?.id);
 
     return new Response(
       JSON.stringify({

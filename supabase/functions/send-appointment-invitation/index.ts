@@ -108,7 +108,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("=== SEND APPOINTMENT INVITATION DEBUG ===");
     console.log("Appointment ID:", appointmentId);
-    console.log("Guest IDs:", guestIds);
+    console.log("Guest count:", guestIds?.length ?? 0);
     console.log("Send to all:", sendToAll);
     console.log("=== END DEBUG INFO ===");
 
@@ -126,6 +126,21 @@ const handler = async (req: Request): Promise<Response> => {
     if (!appointment) {
       console.error("Appointment not found:", appointmentId);
       throw new Error('Termin nicht gefunden');
+    }
+
+    // Caller must be an active member of the appointment's tenant.
+    const { data: membership } = await supabase
+      .from('user_tenant_memberships')
+      .select('tenant_id')
+      .eq('user_id', auth.userId)
+      .eq('tenant_id', appointment.tenant_id)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (!appointment.tenant_id || !membership) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
     }
 
     // Get organizer data
@@ -176,7 +191,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send invitations to each guest
     for (const guest of guests) {
       try {
-        console.log("Processing guest:", guest.name, guest.email);
+        console.log("Processing guest:", guest.id);
 
         // Format dates
         const startDate = new Date(appointment.start_time);
@@ -206,7 +221,7 @@ const handler = async (req: Request): Promise<Response> => {
         // Generate response URL with guest token
         const responseUrl = `${domain}/guest-response/${guest.invitation_token}`;
 
-        console.log("About to send email to:", guest.email, "for guest:", guest.name);
+        console.log("Sending invitation for guest:", guest.id);
 
         // Generate ICS calendar file
         const icsContent = generateICS(appointment, {
