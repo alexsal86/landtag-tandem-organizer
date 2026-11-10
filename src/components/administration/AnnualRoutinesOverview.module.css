@@ -1,4 +1,4 @@
-.overview { --routine-done: #3f8d1a; --routine-late: #c93030; --routine-soon: #9c6817; max-width: 1040px; margin-inline: auto; padding-bottom: 2rem; }
+.overview { --routine-done: #3f8d1a; --routine-late: #c93030; --routine-soon: #9c6817; width: 100%; min-width: 0; padding-bottom: 2rem; }
 :global(.dark) .overview { --routine-done: #7cd14a; --routine-late: #ff7b78; --routine-soon: #e8b64f; }
 .heading { display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:1rem; margin-bottom:1.4rem; }
 .heading h2 { font-size:1.75rem; font-weight:700; line-height:1.15; letter-spacing:-.02em; }
