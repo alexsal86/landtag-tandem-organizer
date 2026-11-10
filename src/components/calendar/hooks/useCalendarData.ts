@@ -70,10 +70,10 @@ interface EventPlanningRow {
 
 interface LeaveRequestRow {
   id: string;
+  user_id: string;
   start_date: string;
   end_date: string;
   status: string;
-  profiles: { display_name: string | null } | { display_name: string | null }[] | null;
 }
 
 interface ContactBirthdayRow {
@@ -199,7 +199,7 @@ function expandBirthdayEvents(
   return [event, ...instances];
 }
 
-async function fetchCalendarData(currentDate: Date, view: string, tenantId: string | undefined): Promise<CalendarEvent[]> {
+export async function fetchCalendarData(currentDate: Date, view: string, tenantId: string | undefined): Promise<CalendarEvent[]> {
   if (!tenantId) return [];
 
   const [startDate, endDate] = getDateRange(currentDate, view);
@@ -208,12 +208,14 @@ async function fetchCalendarData(currentDate: Date, view: string, tenantId: stri
     supabase
       .from("appointments")
       .select(APPOINTMENT_SELECT)
+      .eq('tenant_id', tenantId)
       .or(`and(start_time.lte.${endDate.toISOString()},end_time.gte.${startDate.toISOString()}),and(start_time.gte.${startDate.toISOString()},start_time.lte.${endDate.toISOString()})`)
       .is("recurrence_rule", null)
       .order("start_time", { ascending: true }),
     supabase
       .from("appointments")
       .select(APPOINTMENT_SELECT)
+      .eq('tenant_id', tenantId)
       .lte("start_time", endDate.toISOString())
       .or(`recurrence_end_date.is.null,recurrence_end_date.gte.${startDate.toISOString().split("T")[0]}`)
       .not("recurrence_rule", "is", null)
@@ -230,16 +232,29 @@ async function fetchCalendarData(currentDate: Date, view: string, tenantId: stri
   const [
     { data: categoriesData },
     { data: userData },
-    { data: leaveRequests },
+    { data: teamProfiles, error: profileError },
   ] = await Promise.all([
-    supabase.from("appointment_categories").select("id, name, color"),
+    supabase.from("appointment_categories").select("id, name, color").eq('tenant_id', tenantId),
     supabase.auth.getUser(),
     supabase
-      .from("leave_requests")
-      .select("*, profiles!leave_requests_user_id_fkey(display_name)")
-      .or(`and(start_date.lte.${endDate.toISOString().split("T")[0]},end_date.gte.${startDate.toISOString().split("T")[0]})`)
-      .in("status", ["approved", "pending"]),
+      .from("profiles")
+      .select("user_id, display_name")
+      .eq('tenant_id', tenantId),
   ]);
+
+  if (profileError) debugConsole.error('Error fetching calendar team profiles:', profileError);
+  // leave_requests has no tenant_id or profiles FK: scope by the tenant's profile user IDs.
+  const teamUserIds = (teamProfiles ?? []).map(profile => profile.user_id);
+  const namesByUserId = new Map((teamProfiles ?? []).map(profile => [profile.user_id, profile.display_name]));
+  const { data: leaveRequests, error: leaveError } = teamUserIds.length > 0
+    ? await supabase.from('leave_requests')
+        .select('id, user_id, start_date, end_date, status')
+        .in('user_id', teamUserIds)
+        .lte('start_date', endDate.toISOString().split('T')[0])
+        .gte('end_date', startDate.toISOString().split('T')[0])
+        .in('status', ['approved', 'pending'])
+    : { data: [], error: null };
+  if (leaveError) debugConsole.error('Error fetching calendar leave requests:', leaveError);
 
   const categoryMetadata = new Map<string, { id: string; color: string }>();
   (categoriesData as AppointmentCategoryRow[] | null)?.forEach((cat) => categoryMetadata.set(cat.name, { id: cat.id, color: cat.color }));
@@ -379,8 +394,7 @@ async function fetchCalendarData(currentDate: Date, view: string, tenantId: stri
     for (const leave of leaveRequests as LeaveRequestRow[]) {
       const ls = new Date(leave.start_date + "T00:00:00");
       const le = new Date(leave.end_date + "T23:59:59");
-      const profile = extractSingle(leave.profiles);
-      const name = profile?.display_name || "Mitarbeiter";
+      const name = namesByUserId.get(leave.user_id) || "Mitarbeiter";
       const isApproved = leave.status === "approved";
       formattedEvents.push({
         id: `leave-${leave.id}`,

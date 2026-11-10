@@ -1,5 +1,11 @@
 # Roadmap Aufgaben
 
+# Kalender-Reparatur
+- [ ] Administrationsparameter auf die Administrationsseite begrenzen.
+- [ ] Kalender-Abwesenheiten ohne nicht vorhandenen Fremdschlüssel laden.
+- [ ] Kalender-Navigation unabhängig von Besuchsmarkierungen öffnen und gezielt testen.
+- [ ] Angemeldeten Kalender prüfen — externe Supabase-Testsitzung nicht verfügbar.
+
 # Dependency security
 - [x] Update affected direct dependencies and refresh transitive resolutions in both lockfiles.
 - [x] Verify advisory version floors, run relevant tests, and check the preview build.

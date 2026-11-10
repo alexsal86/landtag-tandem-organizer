@@ -231,11 +231,14 @@ export function AppNavigation({
     setClickedItem(sectionId);
     setTimeout(() => setClickedItem(null), 150);
     setPendingSection(sectionId);
-    await markNavigationAsVisited(sectionId);
     onSectionChange(sectionId);
     setPendingSection(null);
     // Switch to home panel when navigating
     setActivePanel('home');
+    // Visiting bookkeeping must never delay or prevent opening a page.
+    void markNavigationAsVisited(sectionId).catch((error: unknown) => {
+      debugConsole.error('Error marking navigation as visited:', error);
+    });
     // Track recently visited
     const allPages = [...availableQuickPages];
     navigationGroups.forEach(g => {
@@ -390,7 +393,7 @@ export function AppNavigation({
         <button
           onClick={() => {
             toggleGroup(group.id);
-            if (!isActive && group.subItems) {
+            if ((!isActive || group.id === 'calendar') && group.subItems) {
               handleNavigationClick(group.subItems[0].id);
             }
           }}
