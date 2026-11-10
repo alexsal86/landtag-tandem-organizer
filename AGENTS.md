@@ -19,3 +19,4 @@
 - Short briefing, 7-phase dossier and live briefing share one preparation_data record via pure converters in src/features/appointments/briefing/briefingModel.ts; live/debrief follow-up tasks go only through create_briefing_follow_up_task so they carry stafette fields and timeline.
 - Annual routines enter tasks only through spawn_annual_task_to_stafette (public invoker wrapper, private role-checked processor); a locked annual completion ensures one task per year, and task status triggers own completion/reopening to avoid duplicate or disconnected work.
 - Automation administration uses three canonical destinations with URL-controlled, lazy-loaded tabs; legacy engine/RSS links normalize centrally so bookmarks survive without changing either execution engine.
+- Calendar leave requests are scoped through tenant profile user IDs and names are joined client-side, because the leave table has neither tenant_id nor a profiles foreign key.

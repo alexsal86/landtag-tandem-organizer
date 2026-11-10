@@ -89,7 +89,7 @@ export default function Administration(): React.JSX.Element | null {
   const [annualTasksBadge, setAnnualTasksBadge] = useState<number>(0);
 
   useEffect(() => {
-    if (checkingAdmin || !isAdmin) return;
+    if (checkingAdmin || !isAdmin || location.pathname.split('/')[1] !== 'administration') return;
     const params = normalizeAutomationParams(new URLSearchParams(location.search));
     const nextNavigation = resolveNavigationState(params.get("adminSection"), params.get("adminSubSection"), isSuperAdmin);
 
@@ -147,6 +147,7 @@ export default function Administration(): React.JSX.Element | null {
   }, [isAdmin, loadAnnualTasksBadge]);
 
   const handleNavigate = (section: string, subSection?: string): void => {
+    if (location.pathname.split('/')[1] !== 'administration') return;
     const nextNavigation = resolveNavigationState(section, subSection ?? null, isSuperAdmin);
     const params = new URLSearchParams(location.search);
     if (activeSection !== nextNavigation.section || activeSubSection !== nextNavigation.subSection) {
