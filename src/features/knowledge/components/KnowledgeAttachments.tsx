@@ -40,7 +40,7 @@ export function KnowledgeAttachments({ question, canWrite }: { question: Knowled
       const invalid = validateAttachment(file); if (invalid) { setError(invalid); return; }
       setBusy(true); setError(''); let reservation: KnowledgeAttachment | null = null;
       try {
-        const { data, error: failure } = await supabase.rpc('knowledge_qa_reserve_attachment', { p_question: question.id, p_name: file.name, p_type: file.type, p_size: file.size }).single();
+        const { data, error: failure } = await supabase.rpc('knowledge_qa_reserve_attachment', { p_question: question.id, p_name: file.name, p_type: file.type, p_size: file.size }).single<KnowledgeAttachment>();
         if (failure) throw new Error(failure.message); reservation = data;
         const uploaded = await supabase.storage.from('knowledge-attachments').upload(data.storage_path, file, { contentType: file.type, upsert: false });
         if (uploaded.error) throw uploaded.error;

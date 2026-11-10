@@ -5,7 +5,7 @@ import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenantProfiles } from '@/hooks/useTenantProfiles';
 import type { Database } from '@/integrations/supabase/types';
-import type { KnowledgeView } from '../types';
+import type { KnowledgeView, KnowledgeSummary, KnowledgeCard, KnowledgeQuestion } from '../types';
 
 export const knowledgeKey = (userId?: string, tenantId?: string) => ['knowledge-qa', userId, tenantId] as const;
 export function useKnowledgeScope() {
@@ -30,21 +30,30 @@ export function useKnowledgePeople() {
 }
 export function useKnowledgeQuestions(query: string, view: KnowledgeView, page: number, questionId: string | null) {
   const { userId, tenantId } = useKnowledgeScope();
+  const client = useQueryClient();
+  const detail = useKnowledgeQuestion(questionId);
+  useEffect(() => {
+    if (!tenantId || !userId) return;
+    const channel = supabase.channel(`knowledge-${userId}-${tenantId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'knowledge_questions', filter: `tenant_id=eq.${tenantId}` },
+        () => { void client.invalidateQueries({ queryKey: knowledgeKey(userId, tenantId) }); }).subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [client, tenantId, userId]);
   const [debounced, setDebounced] = useState(query);
   useEffect(() => { const timer = setTimeout(() => setDebounced(query), 300); return () => clearTimeout(timer); }, [query]);
   const search = useQuery({
     queryKey: [...knowledgeKey(userId, tenantId), 'search', debounced, view, page, questionId],
-    enabled: Boolean(userId && tenantId),
-    staleTime: 0, refetchInterval: 30_000, retry: 1,
+    enabled: Boolean(userId && tenantId && !questionId),
+    staleTime: 60_000, refetchOnWindowFocus: true, retry: 1,
     queryFn: async ({ signal }) => {
-      const { data, error } = await supabase.rpc('search_knowledge_questions', {
-        p_tenant: tenantId!, p_query: questionId ? '' : debounced, p_view: view, p_limit: 20, p_offset: page * 20,
-        p_question: questionId ?? undefined,
+      const { data, error } = await supabase.rpc('knowledge_qa_list', {
+        p_tenant: tenantId!, p_query: debounced, p_view: view, p_limit: 20, p_offset: page * 20,
       }).abortSignal(signal);
       if (error) throw new Error(error.message);
-      return data ?? [];
+      return (data?.[0]?.items ?? []) as unknown as KnowledgeSummary[];
     },
   });
+  if (questionId) return { ...detail, data: detail.data ? [{ ...detail.data, answer_excerpt: detail.data.answer_text.slice(0, 200) }] : [], debouncing: false };
   return { ...search, debouncing: debounced !== query };
 }
 type WriteName = 'knowledge_qa_create_question' | 'knowledge_qa_save_answer' | 'knowledge_qa_review' | 'knowledge_qa_set_assignee' | 'knowledge_qa_finish_attachment';
@@ -55,7 +64,7 @@ export function useKnowledgeWrite() {
   return useMutation({
     mutationFn: async (request: WriteRequest) => {
       if (!userId || !tenantId) throw new Error('Bitte anmelden und ein Büro wählen.');
-      const { data, error } = await supabase.rpc(request.name, request.args).single();
+      const { data, error } = await supabase.rpc(request.name, request.args).single<KnowledgeQuestion>();
       if (error) throw new Error(error.message);
       return data;
     },
@@ -83,6 +92,22 @@ export function useKnowledgeHistory(questionId: string, enabled: boolean) {
         .eq('tenant_id', tenantId!).eq('question_id', questionId).order('revision', { ascending: false }).limit(100).abortSignal(signal);
       if (error) throw new Error(error.message);
       return data ?? [];
+    },
+  });
+}
+
+export function useKnowledgeQuestion(id: string | null) {
+  const { userId, tenantId } = useKnowledgeScope();
+  return useQuery({
+    queryKey: [...knowledgeKey(userId, tenantId), 'detail', id],
+    enabled: Boolean(id && userId && tenantId),
+    staleTime: 60_000,
+    refetchOnWindowFocus: true,
+    queryFn: async ({ signal }) => {
+      const { data, error } = await supabase.from('knowledge_question_cards').select('*')
+        .eq('tenant_id', tenantId!).eq('id', id!).abortSignal(signal).maybeSingle();
+      if (error) throw new Error(error.message);
+      return data as KnowledgeCard | null;
     },
   });
 }

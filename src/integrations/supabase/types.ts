@@ -13987,6 +13987,11 @@ export type Database = {
       }
     }
     Functions: {
+      knowledge_qa_list: {
+        Args: { p_tenant: string; p_query?: string; p_view?: string; p_limit?: number; p_offset?: number }
+        Returns: { items: Json; total_count: number }[]
+      }
+
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined

@@ -6,8 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { answerExcerpt, answerText, asObject, effectiveReviewStatus, REVIEW_LABELS } from '../logic';
-import { useKnowledgeHistory, useKnowledgeWrite } from '../hooks/useKnowledgeQuestions';
-import type { KnowledgeCard } from '../types';
+import { useKnowledgeHistory, useKnowledgeWrite, useKnowledgeQuestion } from '../hooks/useKnowledgeQuestions';
+import type { KnowledgeCard, KnowledgeSummary } from '../types';
 import type { TenantProfileOption } from '@/hooks/useTenantProfiles';
 import { KnowledgeAnswerEditor } from './KnowledgeAnswerEditor';
 import { KnowledgeAttachments } from './KnowledgeAttachments';
@@ -15,7 +15,7 @@ import { KnowledgeAttachments } from './KnowledgeAttachments';
 const formatDate = (value: string) => new Date(value).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' });
 const EVENT_NAMES: Record<string, string> = { question_created: 'Frage gestellt', answer_changed: 'Antwort oder Anhänge geändert', verified: 'Als aktuell bestätigt', review_requested: 'Überprüfung angefordert', assignee_changed: 'Zuständigkeit geändert' };
 
-export function KnowledgeQuestionCard({ question, profiles, assignable, canWrite, canVerify, query, onOpen }: {
+function FullKnowledgeQuestionCard({ question, profiles, assignable, canWrite, canVerify, query, onOpen }: {
   question: KnowledgeCard; profiles: TenantProfileOption[]; assignable: TenantProfileOption[]; canWrite: boolean; canVerify: boolean; query: string; onOpen: () => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -94,5 +94,29 @@ export function KnowledgeQuestionCard({ question, profiles, assignable, canWrite
       {history.data?.map(event => <details key={event.id} className="rounded border p-2 text-sm"><summary className="cursor-pointer">{EVENT_NAMES[event.event_type] || 'Änderung'} · {name(event.actor_id)} · {formatDate(event.created_at)}</summary><p className="mt-2 whitespace-pre-wrap">{String(asObject(event.snapshot)?.answer_text || 'Noch keine Antwort')}</p></details>)}
       {history.data?.length === 100 && <p className="text-xs text-muted-foreground">Die letzten 100 Änderungen werden angezeigt.</p>}
     </section>}
+  </CardContent></Card>;
+}
+
+export function KnowledgeQuestionCard(props: {
+  question: KnowledgeSummary; profiles: TenantProfileOption[]; assignable: TenantProfileOption[];
+  canWrite: boolean; canVerify: boolean; query: string; onOpen: () => void; detail?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const detail = useKnowledgeQuestion(props.detail || expanded ? props.question.id : null);
+  if (props.detail || expanded) {
+    if (detail.isError) return <p role="alert">Frage konnte nicht geladen werden. <Button onClick={() => void detail.refetch()}>Erneut versuchen</Button></p>;
+    if (detail.isPending) return <p role="status">Frage wird geladen …</p>;
+    if (!detail.data) return <p>Frage nicht verfügbar.</p>;
+    return <FullKnowledgeQuestionCard {...props} question={detail.data} />;
+  }
+  const question = props.question;
+  return <Card><CardContent className="space-y-4 p-6">
+    <div className="flex flex-wrap justify-between gap-2">
+      <h2 className="text-lg font-semibold"><button onClick={props.onOpen}>{question.title}</button></h2>
+      <Badge>{question.answered_at ? REVIEW_LABELS[effectiveReviewStatus(question)] : 'Offene Frage'}</Badge>
+    </div>
+    {question.description && <p className="text-sm text-muted-foreground">{question.description}</p>}
+    <p className="whitespace-pre-wrap text-sm">{question.answered_at ? question.answer_excerpt : 'Diese Frage wartet auf eine Antwort.'}</p>
+    <Button variant="outline" onClick={() => setExpanded(true)}>Vollständig anzeigen</Button>
   </CardContent></Card>;
 }

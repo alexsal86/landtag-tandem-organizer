@@ -66,7 +66,7 @@ try {
   `);
   const actions = await readFile(new URL('../supabase/migrations/20261109142000_enforce_admin_actions.sql', import.meta.url), 'utf8');
   await db.exec(actions.slice(actions.indexOf('CREATE OR REPLACE FUNCTION public.is_tenant_action_allowed'), actions.indexOf('CREATE OR REPLACE FUNCTION public.enforce_configured_action')));
-  for (const file of ['20261110180000_knowledge_qa_core.sql', '20261110180100_knowledge_qa_search.sql', '20261110180200_knowledge_qa_storage.sql', '20261110180300_knowledge_legacy_access.sql']) {
+  for (const file of ['20261110180000_knowledge_qa_core.sql', '20261110180100_knowledge_qa_search.sql', '20261110180200_knowledge_qa_storage.sql', '20261110180300_knowledge_legacy_access.sql', '20261111100000_knowledge_list_payload.sql']) {
     await db.exec(await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
   }
   await actor(alice);
@@ -89,6 +89,11 @@ try {
   await assert.rejects(read('SELECT * FROM knowledge_qa_save_answer($1,$2,$3::jsonb)', [q.id, q.revision, JSON.stringify(malicious)]), error => error.code === '22023');
   q = await save(q, 'Urlaub wird bei der Büroleitung beantragt.');
   assert.equal((await search(officeA, 'beantragen')).length, 1, 'German verb stemming');
+  const summaryPage = (await read('SELECT * FROM knowledge_qa_list($1)', [officeA]))[0];
+  assert.equal(summaryPage.total_count, 1);
+  assert.equal(summaryPage.items[0].id, q.id);
+  assert.equal('answer_content' in summaryPage.items[0], false);
+  assert.equal('answer_text' in summaryPage.items[0], false);
   assert.equal(q.review_status, 'unverified'); assert.equal((await search(officeA, '', 'open')).length, 0);
   q = await review(q); const verifiedRevision = q.revision;
   assert.equal(q.verified_by, alice); assert.ok(q.verified_at); assert.equal(q.verified_answer_revision, q.answer_revision);

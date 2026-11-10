@@ -40,8 +40,8 @@ export const knowledgeLifecycleScenario: TestScenario = {
       message: 'Dateityp und Größe werden vor dem Upload geprüft; der Bucket erzwingt dieselben Grenzen.',
     }) },
     { id: 'foreign-office-search', label: 'Suche mit nicht zugehöriger Büro-ID liefert keine Daten', kind: 'workflow', run: async () => {
-      const result = await supabase.rpc('search_knowledge_questions', { p_tenant: crypto.randomUUID(), p_query: '', p_view: 'answers' });
-      return { ok: !result.error && result.data?.length === 0, message: result.error ? result.error.message : 'Kein Zugriff auf ein nicht zugehöriges Büro.' };
+      const result = await supabase.rpc('knowledge_qa_list', { p_tenant: crypto.randomUUID(), p_query: '', p_view: 'answers' });
+      return { ok: !result.error && result.data?.[0]?.total_count === 0, message: result.error ? result.error.message : 'Kein Zugriff auf ein nicht zugehöriges Büro.' };
     } },
   ],
 };
