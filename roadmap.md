@@ -1,9 +1,9 @@
 # Roadmap Aufgaben
 
 # Kalender-Reparatur
-- [ ] Administrationsparameter auf die Administrationsseite begrenzen.
-- [ ] Kalender-Abwesenheiten ohne nicht vorhandenen Fremdschlüssel laden.
-- [ ] Kalender-Navigation unabhängig von Besuchsmarkierungen öffnen und gezielt testen.
+- [x] Administrationsparameter auf die Administrationsseite begrenzen.
+- [x] Kalender-Abwesenheiten ohne nicht vorhandenen Fremdschlüssel laden — 6 Kalender-Tests bestanden.
+- [x] Kalender-Navigation unabhängig von Besuchsmarkierungen öffnen; Kalender-Gruppenklick öffnet Hauptkalender.
 - [ ] Angemeldeten Kalender prüfen — externe Supabase-Testsitzung nicht verfügbar.
 
 # Dependency security
