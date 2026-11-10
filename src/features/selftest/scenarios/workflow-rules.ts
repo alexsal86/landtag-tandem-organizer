@@ -5,6 +5,7 @@ import { canDecide } from "@/features/appointment-requests/logic";
 import { isOnResubmission, MINISTRY_RESPONSE_DAYS, withAutoDeadline, type TriageItem } from "@/features/cases/items/ball";
 import { computeCropRect, isCrowdedDay, parseTopicDrop, rescheduleToDay } from "@/features/redaktion/utils/plannerRules";
 import { validateVariant } from "@/features/redaktion/components/PlannerBoard/utils";
+import { routineStepKinds, validateOfficeRoutine } from "@/features/automation/officeRoutineTemplates";
 import type { TestScenario } from "../types";
 import { calendarOccurrence, nextCalendarOccurrence, scheduleRunKey } from "@/features/automation/calendarSchedule";
 
@@ -15,6 +16,21 @@ export const workflowRulesScenario: TestScenario = {
   checks: ["Erlaubte und verbotene Brief-Statuswechsel", "Entscheiderrollen", "Ministeriumsfrist und Wiedervorlage"],
   limitations: ["Berechtigungen der Datenbank werden separat in den Zugriffstests geprüft."],
   steps: [
+    {
+      id: "routine-step-types", label: "Routinen: Schritttypen bleiben vollständig und abwärtskompatibel", kind: "logic",
+      run: async () => {
+        const kinds = ["subtask", "task", "case", "decision", "jour_fixe"];
+        const fields = { routineDeadlineMonth: "12", routineDeadlineDay: "10", routineSteps: kinds.map((_, index) => `${index * 7} | Schritt ${index + 1}`).join("\n") };
+        const checks = {
+          legacy: routineStepKinds(undefined, 2).every(kind => kind === "subtask"),
+          allKinds: routineStepKinds(JSON.stringify(kinds), 5).join() === kinds.join(),
+          valid: validateOfficeRoutine({ ...fields, routineStepKinds: JSON.stringify(kinds) }) === null,
+          mismatch: validateOfficeRoutine({ ...fields, routineStepKinds: '["task"]' }) !== null,
+          unknown: validateOfficeRoutine({ ...fields, routineStepKinds: JSON.stringify([...kinds.slice(0, 4), "unknown"]) }) !== null,
+        };
+        return { ok: Object.values(checks).every(Boolean), message: "Schritttypen und Zuordnung zum Aufgabenpaket geprüft.", details: checks };
+      },
+    },
     {
       id: "calendar-automation", label: "Stichtage: Jahresdatum, Monatsende, Quartal und doppelte Ausführung", kind: "logic",
       run: async () => {

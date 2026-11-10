@@ -672,7 +672,7 @@ export function AutomationRuleWizard({
       conditionLogic: "all",
       conditions,
       conditionGroup: { logic: "all", conditions, groups: [] },
-      actions: template.actions.map((a) => ({ ...a })),
+      actions: template.actions.map((a) => ({ ...a, routineStepKinds: "" })),
       enabled: true,
       samplePayload: "",
     }));

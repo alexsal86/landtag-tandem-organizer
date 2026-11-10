@@ -13564,6 +13564,7 @@ export type Database = {
       }
     }
     Functions: {
+      office_routine_step_kinds: { Args: { _payload: Json }; Returns: Json }
       office_routine_deadline: { Args: { _payload: Json; _start: string }; Returns: string }
       _briefing_task_event: {
         Args: { _task: string; _text: string }

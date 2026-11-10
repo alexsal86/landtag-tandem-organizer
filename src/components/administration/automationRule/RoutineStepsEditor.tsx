@@ -5,21 +5,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { OFFICE_ROUTINE_TEMPLATES, parseRoutineSteps } from "@/features/automation/officeRoutineTemplates";
+import { OFFICE_ROUTINE_TEMPLATES, parseRoutineSteps, ROUTINE_STEP_KINDS, routineStepKinds } from "@/features/automation/officeRoutineTemplates";
 
 const STEP_SUGGESTIONS = [...new Set(OFFICE_ROUTINE_TEMPLATES.flatMap(template =>
   parseRoutineSteps(template.steps).map(step => step.title)
 ))];
 
-export function RoutineStepsEditor({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+export function RoutineStepsEditor({ value, kinds, onChange }: { value: string; kinds?: string; onChange: (value: string, kinds: string) => void }) {
   const id = useId();
-  const steps = value.split("\n").filter(line => line.trim()).map(line => {
+  const stepKinds = routineStepKinds(kinds, value.split("\n").filter(line => line.trim()).length);
+  const steps = value.split("\n").filter(line => line.trim()).map((line, index) => {
+    const kind = stepKinds[index];
     const separator = line.indexOf("|");
     return separator < 0
-      ? { days: "0", title: line.trim() }
-      : { days: line.slice(0, separator).trim(), title: line.slice(separator + 1).trimStart() };
+      ? { days: "0", title: line.trim(), kind }
+      : { days: line.slice(0, separator).trim(), title: line.slice(separator + 1).trimStart(), kind };
   });
-  const save = (next: typeof steps) => onChange(next.map(step => `${step.days} | ${step.title}`).join("\n"));
+  const save = (next: typeof steps) => onChange(next.map(step => `${step.days} | ${step.title}`).join("\n"), JSON.stringify(next.map(step => step.kind)));
   const update = (index: number, patch: Partial<typeof steps[number]>) =>
     save(steps.map((step, i) => i === index ? { ...step, ...patch } : step));
   const sort = () => save([...steps].sort((a, b) => Number(b.days) - Number(a.days)));
@@ -29,7 +31,7 @@ export function RoutineStepsEditor({ value, onChange }: { value: string; onChang
       <section className="space-y-3" aria-labelledby={`${id}-heading`}>
         <div>
           <h4 id={`${id}-heading`} className="text-sm font-medium">Ablauf des Aufgabenpakets</h4>
-          <p className="text-xs text-muted-foreground">Die Tage vor Abschluss bestimmen die Reihenfolge. 0 bedeutet am Abschlusstag. Die Frist liegt frühestens am Planungsbeginn.</p>
+          <p className="text-xs text-muted-foreground">Beim Start der Routine werden die gewählten Einträge mit ihren Fristen angelegt. Entscheidungen gehen an die zuständige Person des Pakets. Die Tage vor Abschluss bestimmen die Reihenfolge. 0 bedeutet am Abschlusstag. Die Frist liegt frühestens am Planungsbeginn.</p>
         </div>
         {steps.length === 0 && <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">Noch keine Arbeitsschritte. Füge den ersten Schritt hinzu oder wähle eine Vorlage.</p>}
         <ol className="space-y-0" aria-label="Arbeitsschritte bis zum Abschluss">
@@ -44,6 +46,14 @@ export function RoutineStepsEditor({ value, onChange }: { value: string; onChang
                       <Input id={`${id}-days-${index}`} type="number" min={0} max={365} step={1} className="w-24" value={step.days} onChange={event => update(index, { days: event.target.value })} onBlur={sort} />
                     </div>
                     <span className="pb-2 text-xs text-muted-foreground">{step.days === "0" ? "Am Abschlusstag" : `${step.days || "…"} Tage vorher`}</span>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor={`${id}-kind-${index}`} className="text-xs">Was soll entstehen?</Label>
+                    <Select value={step.kind} onValueChange={kind => update(index, { kind })}>
+                      <SelectTrigger id={`${id}-kind-${index}`}><SelectValue /></SelectTrigger>
+                      <SelectContent>{ROUTINE_STEP_KINDS.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+                    </Select>
+                    {step.kind === "jour_fixe" && <p className="text-xs text-muted-foreground">Wird als Vorgang für die Jour-fixe-Agenda vorgemerkt.</p>}
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor={`${id}-title-${index}`} className="text-xs">Was ist zu tun?</Label>
@@ -66,7 +76,7 @@ export function RoutineStepsEditor({ value, onChange }: { value: string; onChang
           ))}
         </ol>
         {steps.length > 0 && <div className="flex items-center gap-2 rounded-md bg-muted p-3 text-sm font-medium"><Flag className="h-4 w-4 text-primary" />Abschluss des Aufgabenpakets</div>}
-        <Button type="button" variant="outline" size="sm" disabled={steps.length >= 20} onClick={() => save([...steps, { days: "0", title: "" }])}><Plus className="mr-2 h-4 w-4" />Arbeitsschritt hinzufügen</Button>
+        <Button type="button" variant="outline" size="sm" disabled={steps.length >= 20} onClick={() => save([...steps, { days: "0", title: "", kind: "subtask" }])}><Plus className="mr-2 h-4 w-4" />Arbeitsschritt hinzufügen</Button>
         <p className="text-xs text-muted-foreground">{steps.length}/20 Arbeitsschritte. Ohne Abschlussdatum und Schritte bleibt es eine einzelne Büroaufgabe.</p>
       </section>
     </TooltipProvider>

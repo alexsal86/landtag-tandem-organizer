@@ -19,7 +19,7 @@ export const OFFICE_ROUTINE_TEMPLATES: OfficeRoutineTemplate[] = [
 ];
 export interface OfficeRoutineFields {
   officeTemplateId?: string; routineDeadlineMonth?: string; routineDeadlineDay?: string;
-  routineSteps?: string; routineRequiresConfirmation?: boolean; routineConfirmedYear?: string;
+  routineStepKinds?: string; routineSteps?: string; routineRequiresConfirmation?: boolean; routineConfirmedYear?: string;
 }
 export function parseRoutineSteps(value: string) {
   const lines=value.split('\n').map(line=>line.trim()).filter(Boolean);
@@ -34,7 +34,7 @@ export function validateOfficeRoutine(fields: OfficeRoutineFields): string | nul
   if(!fields.routineDeadlineMonth && !fields.routineDeadlineDay && !fields.routineSteps?.trim() && !fields.routineRequiresConfirmation) return null;
   const m=Number(fields.routineDeadlineMonth),d=Number(fields.routineDeadlineDay);
   if(!Number.isInteger(m)||m<1||m>12||!Number.isInteger(d)||d<1||d>31) return 'Abschlussmonat und -tag vollständig angeben.';
-  try { parseRoutineSteps(fields.routineSteps??''); } catch(error) { return (error as Error).message; }
+  try { const steps = parseRoutineSteps(fields.routineSteps??''); routineStepKinds(fields.routineStepKinds, steps.length); } catch(error) { return (error as Error).message; }
   return null;
 }
 export { routineConfirmationMissing } from '../../../supabase/functions/_shared/officeRoutinePlan';
@@ -46,4 +46,20 @@ export function officeRoutineDeadline(payload:Record<string,string>|undefined,st
   let finish=annualDueDay(fields,year);
   if(finish<start) finish=annualDueDay(fields,year+1);
   return finish;
+}
+
+export const ROUTINE_STEP_KINDS = [
+  { value: "subtask", label: "Teilaufgabe im Paket" },
+  { value: "task", label: "Eigenständige Aufgabe" },
+  { value: "case", label: "Vorgang" },
+  { value: "decision", label: "Entscheidung" },
+  { value: "jour_fixe", label: "Für Jour fixe vormerken" },
+] as const;
+export function routineStepKinds(value: string | undefined, count: number): string[] {
+  if (!value) return Array(count).fill("subtask");
+  const kinds: unknown = JSON.parse(value);
+  if (!Array.isArray(kinds) || kinds.length !== count || kinds.some(kind => !ROUTINE_STEP_KINDS.some(option => option.value === kind))) {
+    throw new Error("Für jeden Arbeitsschritt einen gültigen Aktionstyp auswählen.");
+  }
+  return kinds;
 }

@@ -23,3 +23,5 @@
 - CommonJS-only packages (e.g. react-big-calendar add-ons) are imported as namespaces and unwrapped via src/lib/cjsInterop.ts, and pre-bundled in optimizeDeps, because Vite can deliver a wrapped default export that crashes at runtime.
 
 - Seasonal office packages use officeRoutineTemplates for editable defaults and execute_annual_automation_routine for atomic parent/subtask creation; yearly date confirmation is checked by both scheduler and database, and annual completion locking prevents duplicate packages.
+
+- Typed office-package steps store routine_step_kinds aligned with routine_steps_text; editor sorting and deletion must update both together. execute_annual_automation_routine creates all targets atomically under the existing yearly completion lock. Jour-fixe steps create pending case items for the existing agenda loader; decisions invite the package assignee without casting a vote.

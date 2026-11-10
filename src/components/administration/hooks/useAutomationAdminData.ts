@@ -141,6 +141,11 @@ export function useAutomationAdminMutations(tenantId?: string, userId?: string) 
         const probe=await supabase.rpc("office_routine_deadline",{_payload:officeAction.payload??{},_start:new Date().toISOString().slice(0,10)});
         if(probe.error || typeof probe.data!=="string") throw new Error("Aufgabenpakete sind im Backend noch nicht verfügbar. Bitte die Plattform aktualisieren, bevor diese Routine gespeichert wird.");
       }
+      for (const action of payload.actions) {
+        if (action.type !== "run_annual_routine" || !action.payload?.routine_step_kinds) continue;
+        const probe = await supabase.rpc("office_routine_step_kinds", { _payload: action.payload });
+        if (probe.error) throw new Error("Die Schritttypen konnten im Backend nicht bestätigt werden. Bitte die Plattform aktualisieren und die Auswahl prüfen, bevor diese Routine gespeichert wird.");
+      }
       const query = editingRuleId
         ? supabase.from("automation_rules").update(toAutomationRuleUpdate(payload)).eq("id", editingRuleId).eq("tenant_id", tenantId)
         : supabase.from("automation_rules").insert([toAutomationRuleInsert(payload, userId)]);
