@@ -286,6 +286,12 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
       annualTaskId: a.payload?.annual_task_id || "",
       systemFunction: a.payload?.system_function || "",
       routineCategory: a.payload?.routine_category || "admin",
+      officeTemplateId: a.payload?.office_template_id || "",
+      routineDeadlineMonth: a.payload?.routine_deadline_month || "",
+      routineDeadlineDay: a.payload?.routine_deadline_day || "",
+      routineSteps: a.payload?.routine_steps_text || "",
+      routineRequiresConfirmation: a.payload?.routine_requires_confirmation === "true",
+      routineConfirmedYear: a.payload?.routine_confirmed_year || "",
       targetUserId: (a.payload?.target_user_id as string) || "",
       title: (a.payload?.title as string) || "",
       message: (a.payload?.message as string) || "",
@@ -374,6 +380,12 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
           annual_task_id: a.annualTaskId || "",
           system_function: a.systemFunction || "",
           routine_category: a.routineCategory || "admin",
+          office_template_id: a.officeTemplateId || "",
+          routine_deadline_month: a.routineDeadlineMonth || "",
+          routine_deadline_day: a.routineDeadlineDay || "",
+          routine_steps_text: a.routineSteps || "",
+          routine_requires_confirmation: String(Boolean(a.routineRequiresConfirmation)),
+          routine_confirmed_year: a.routineConfirmedYear || "",
           target_user_id: a.targetUserId,
           title: a.title,
           message: a.message,
@@ -622,7 +634,7 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
         runningDryRun={runningRuleId !== null}
       />
 
-      {view === "annual" && <AnnualRoutinesOverview rules={rules} onEdit={startEdit} onRun={rule => void triggerRunNow(rule)} onNew={month => { openNewWizard(); if (month) setForm(previous => previous.schedule ? ({ ...previous, schedule: { ...previous.schedule, month: String(month) } }) : previous); }} canEdit={canEdit} runningRuleId={runningRuleId} />}
+      {view === "annual" && <AnnualRoutinesOverview onUseTemplate={useTemplate} rules={rules} onEdit={startEdit} onRun={rule => void triggerRunNow(rule)} onNew={month => { openNewWizard(); if (month) setForm(previous => previous.schedule ? ({ ...previous, schedule: { ...previous.schedule, month: String(month) } }) : previous); }} canEdit={canEdit} runningRuleId={runningRuleId} />}
 
       {/* Template Gallery */}
       {view === "rules" && <AutomationTemplateGallery onUseTemplate={useTemplate} />}

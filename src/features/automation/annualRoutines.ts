@@ -1,3 +1,4 @@
+import { validateOfficeRoutine, type OfficeRoutineFields } from './officeRoutineTemplates';
 import type { AutomationRuleRecordView } from "@/components/administration/automationShared";
 
 export const SYSTEM_ROUTINES = [
@@ -17,7 +18,7 @@ export function routineMonth(rule: Pick<AutomationRuleRecordView, "trigger_confi
   return Number.isInteger(month) && month >= 1 && month <= 12 ? month : null;
 }
 
-export function validateAnnualRoutine(triggerType: string, schedule: { schedule_kind: string } | undefined, actions: Array<{ type: string; systemFunction?: string; taskAssignees?: string }>): string | null {
+export function validateAnnualRoutine(triggerType: string, schedule: { schedule_kind: string } | undefined, actions: Array<{ type: string; systemFunction?: string; taskAssignees?: string } & OfficeRoutineFields>): string | null {
   const routines = actions.filter(action => action.type === "run_annual_routine");
   if (!routines.length) return null;
   if (routines.length !== 1) return "Eine Jahresroutine pro Regel ist zulässig.";
@@ -25,5 +26,5 @@ export function validateAnnualRoutine(triggerType: string, schedule: { schedule_
   const routine = routines[0];
   if (routine.systemFunction && !SYSTEM_ROUTINES.some(item => item.value === routine.systemFunction)) return "Unbekannte Systemaktion.";
   if (routine.taskAssignees && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(routine.taskAssignees)) return "Eine zuständige Person auswählen.";
-  return null;
+  return validateOfficeRoutine(routine);
 }

@@ -16,6 +16,11 @@ describe('Jahresroutinen-Darstellung', () => {
     const result = presentAnnualRoutines([leap,routine('invalid','13','1')],[],new Date('2026-02-01T12:00:00Z'));
     expect(result[0].due).toBe('2026-02-28'); expect(result[1].due).toBeNull(); expect(result[1].month).toBeNull();
   });
+  it('uses the package completion date rather than the planning start for overdue status', () => {
+    const report=routine('report','11','1');report.actions[0].payload={routine_deadline_month:'1',routine_deadline_day:'31'};
+    const item=presentAnnualRoutines([report],[],new Date('2026-11-10T12:00:00Z'))[0];
+    expect(item.start).toBe('2026-11-01');expect(item.due).toBe('2027-01-31');expect(item.status).toBe('upcoming');expect(item.days).toBe(82);
+  });
   it('uses Berlin date across UTC year boundaries and DST', () => {
     expect(berlinCalendar(new Date('2026-12-31T23:30:00Z'))).toEqual({year:2027,month:1,day:1});
     expect(presentAnnualRoutines([routine('dst','3','30')],[],new Date('2026-03-28T23:30:00Z'))[0].days).toBe(1);

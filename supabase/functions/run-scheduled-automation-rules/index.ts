@@ -1,3 +1,4 @@
+import { unconfirmedOfficeRoutine } from '../_shared/officeRoutinePlan.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.56.1";
 import { requireServiceRole, corsHeaders as sharedCorsHeaders, forbiddenResponse } from "../_shared/security.ts";
 
@@ -15,6 +16,7 @@ type Rule = {
   name: string;
   trigger_config: ScheduleConfig | null;
   module: string;
+  actions: Array<{type:string;payload?:Record<string,string>}>;
 };
 
 Deno.serve(withSafeHandler("run-scheduled-automation-rules", async (req) => {
@@ -37,7 +39,7 @@ Deno.serve(withSafeHandler("run-scheduled-automation-rules", async (req) => {
 
     let query = supabase
       .from("automation_rules")
-      .select("id, tenant_id, name, module, trigger_config")
+      .select("id, tenant_id, name, module, trigger_config, actions")
       .eq("enabled", true)
       .eq("trigger_type", "schedule");
     if (options.ruleId) query = query.eq("id", options.ruleId);
@@ -68,6 +70,8 @@ Deno.serve(withSafeHandler("run-scheduled-automation-rules", async (req) => {
         skipped.push(`${rule.name}: tenant paused`);
         continue;
       }
+
+      if (unconfirmedOfficeRoutine(rule.actions ?? [], new Date(now))) { skipped.push(`${rule.name}: annual dates not confirmed`); continue; }
 
       const minutesInterval = Math.max(1, Number(rule.trigger_config?.minutes_interval ?? 60));
       const config = rule.trigger_config ?? {};

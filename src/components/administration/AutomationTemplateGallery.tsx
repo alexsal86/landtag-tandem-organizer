@@ -18,6 +18,7 @@ const MODULE_LABELS: Record<string, string> = {
 };
 
 const ACTION_LABELS: Record<string, string> = {
+  run_annual_routine: "Jahresroutine",
   create_notification: "Benachrichtigung",
   create_task: "Aufgabe erstellen",
   update_record_status: "Status ändern",

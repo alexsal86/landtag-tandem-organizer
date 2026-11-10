@@ -1,3 +1,4 @@
+import type { OfficeRoutineFields } from '@/features/automation/officeRoutineTemplates';
 export type FieldType = "string" | "number" | "date" | "boolean" | "enum";
 export type FieldSpec = { type: FieldType; options?: string[] };
 
@@ -13,7 +14,7 @@ export type ConditionGroup = {
   groups: ConditionGroup[];
 };
 
-export type ActionItem = {
+export type ActionItem = OfficeRoutineFields & {
   annualTaskId?: string;
   systemFunction?: string;
   routineCategory?: string;

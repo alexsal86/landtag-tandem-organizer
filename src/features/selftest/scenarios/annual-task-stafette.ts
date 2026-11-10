@@ -1,3 +1,4 @@
+import { OFFICE_ROUTINE_TEMPLATES,officeRoutineDeadline,parseRoutineSteps,routineConfirmationMissing } from '@/features/automation/officeRoutineTemplates';
 import { berlinCalendar, matchesRoutineFilter } from '@/features/automation/annualRoutinePresentation';
 import { supabase } from "@/integrations/supabase/client";
 import { annualDueDay, annualTaskStatus, canDelegateAnnualTask } from "@/features/timetracking/annualTaskRules";
@@ -15,6 +16,17 @@ export const annualTaskStafetteScenario: TestScenario = {
   checks: ["Exakte Stichtage", "System-Routinen nicht delegierbar", "Eine Aufgabe pro Jahr", "Abschluss und Wiederöffnung synchron", "Direkter Jahresabschluss gesperrt"],
   limitations: ["Die automatische Ausführung am tatsächlichen Stichtag und Personaländerungen werden nicht durch diesen Selbsttest ausgelöst."],
   steps: [
+    { id:"seasonal-office-backend",label:"Büropakete: Backend und Abschluss im Folgejahr",kind:"workflow",run:async()=>{
+      const result=await supabase.rpc("office_routine_deadline",{_payload:{routine_deadline_month:"1",routine_deadline_day:"31"},_start:"2026-11-01"});
+      return {ok:!result.error&&result.data==="2027-01-31",message:result.error?describeError(result.error):"Backend unterstützt den Abschluss im Folgejahr.",details:result.error};
+    } },
+    { id:"seasonal-office-packages",label:"Bürojahr: fünf Pakete, Vorlauf, Jahreswechsel und Terminbestätigung",kind:"logic",run:async()=>{
+      const ok=OFFICE_ROUTINE_TEMPLATES.length===5 && OFFICE_ROUTINE_TEMPLATES.every(t=>parseRoutineSteps(t.steps).length>=4)
+        && officeRoutineDeadline({routine_deadline_month:"1",routine_deadline_day:"31"},"2026-11-01")==="2027-01-31"
+        && routineConfirmationMissing({routine_requires_confirmation:"true",routine_confirmed_year:"2026"},2027)
+        && !routineConfirmationMissing({routine_requires_confirmation:"true",routine_confirmed_year:"2026"},2026);
+      return {ok,message:ok?"Saisonale Pakete und jährliche Terminbestätigung korrekt.":"Büropaket-Regel weicht ab."};
+    } },
     {
       id: "annual-overview", label: "Jahresübersicht: Statusfilter und Berliner Tagesgrenze", kind: "logic",
       run: async () => {

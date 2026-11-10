@@ -1,3 +1,6 @@
+import { OfficeRoutineTemplates } from './OfficeRoutineTemplates';
+import { annualRoutineAction } from '@/features/automation/annualRoutines';
+import { routineConfirmationMissing } from '@/features/automation/officeRoutineTemplates';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,10 +22,11 @@ interface Props {
   onEdit: (rule: AutomationRuleRecordView) => void;
   onRun: (rule: AutomationRuleRecordView) => void;
   onNew: (month?: number) => void;
+  onUseTemplate?: (id: string) => void;
   canEdit: boolean;
   runningRuleId: string | null;
 }
-export function AnnualRoutinesOverview({ rules, onEdit, onRun, onNew, canEdit, runningRuleId }: Props) {
+export function AnnualRoutinesOverview({ rules, onEdit, onRun, onNew, canEdit, runningRuleId, onUseTemplate }: Props) {
   const { currentTenant } = useTenant();
   const navigate = useNavigate();
   const [confirmRule, setConfirmRule] = useState<AutomationRuleRecordView | null>(null);
@@ -61,7 +65,8 @@ export function AnnualRoutinesOverview({ rules, onEdit, onRun, onNew, canEdit, r
   const upcoming = routines.length - overdue - completed;
 
   const renderCard = (item: PresentedRoutine) => {
-    const { rule, status, linkedTask, system, due, days } = item;
+    const { rule, status, linkedTask, system, due, days, start } = item;
+    const confirmationMissing = routineConfirmationMissing(annualRoutineAction(rule)?.payload, year);
     const StatusIcon = status === 'completed' ? CheckCircle2 : status === 'overdue' ? CircleAlert : Clock3;
     const KindIcon = system ? Settings2 : ListTodo;
     const ModeIcon = rule.trigger_type === 'manual' ? Hand : Zap;
@@ -74,14 +79,16 @@ export function AnnualRoutinesOverview({ rules, onEdit, onRun, onNew, canEdit, r
         {rule.description && <p className={styles.description}>{rule.description}</p>}
         <div className={styles.meta}>
           <span className={`${styles.chip} ${tone(status)}`}><StatusIcon aria-hidden="true" />{statusLabel(status)}</span>
-          <span>{due ? <><time dateTime={due}>{new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'long', timeZone: 'Europe/Berlin' }).format(new Date(`${due}T12:00:00Z`))}</time>{clock}{when && ` · ${when}`}{rule.trigger_config.month_end === 'true' && ' · Monatsende'}</> : 'Stichtag prüfen'}</span>
+          {start && start !== due && <span>Start: {new Intl.DateTimeFormat('de-DE', {day:'numeric',month:'long'}).format(new Date(`${start}T12:00:00`))}{clock}</span>}
+          <span>{due ? <>{start !== due && 'Abschluss: '}<time dateTime={due}>{new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'long', ...(start?.slice(0,4)!==due?.slice(0,4)?{year:'numeric' as const}:{}), timeZone: 'Europe/Berlin' }).format(new Date(`${due}T12:00:00Z`))}</time>{start === due && clock}{when && ` · ${when}`}{rule.trigger_config.month_end === 'true' && ' · Monatsende'}</> : 'Stichtag prüfen'}</span>
           <span><KindIcon aria-hidden="true" />{system ? 'Systemaktion' : 'Büroaufgabe'}</span>
           <span><ModeIcon aria-hidden="true" />{!rule.enabled ? 'Pausiert' : rule.trigger_type === 'manual' ? 'Manuell' : 'Automatisch'}</span>
+          {confirmationMissing && <span className="font-semibold text-amber-700 dark:text-amber-300">Termin für {year} bestätigen</span>}
           {linkedTask && status !== 'completed' && <span>Im Büro · in Bearbeitung</span>}
         </div>
       </div>
       <div className={styles.actions}>
-        {linkedTask ? <Button variant="outline" size="sm" onClick={() => navigate(`/mywork?tab=tasks&highlight=${linkedTask}`)}>Aufgabe öffnen</Button> : status !== 'completed' && <Button variant={status === 'overdue' ? 'default' : 'outline'} size="sm" disabled={!canEdit || !rule.enabled || !due || runningRuleId !== null} onClick={() => system ? setConfirmRule(rule) : onRun(rule)}>
+        {linkedTask ? <Button variant="outline" size="sm" onClick={() => navigate(`/mywork?tab=tasks&highlight=${linkedTask}`)}>Aufgabe öffnen</Button> : status !== 'completed' && <Button variant={status === 'overdue' ? 'default' : 'outline'} size="sm" disabled={!canEdit || !rule.enabled || !due || confirmationMissing || runningRuleId !== null} onClick={() => system ? setConfirmRule(rule) : onRun(rule)}>
           {runningRuleId === rule.id ? <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" /> : <Play aria-hidden="true" className="mr-2 h-4 w-4" />}{runningRuleId === rule.id ? 'Wird ausgeführt…' : 'Ausführen'}
         </Button>}
         <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" aria-label={`${rule.name} bearbeiten`} title="Bearbeiten" disabled={!canEdit} onClick={() => onEdit(rule)}><Pencil aria-hidden="true" className="h-4 w-4" /></Button>
@@ -94,6 +101,7 @@ export function AnnualRoutinesOverview({ rules, onEdit, onRun, onNew, canEdit, r
       <div><h2>Jahresroutinen {year}</h2><p className={styles.subtitle}>Wiederkehrende Aufgaben und Systemaktionen im Jahreslauf</p></div>
       <Button className="rounded-xl" onClick={() => onNew()} disabled={!canEdit}><Plus aria-hidden="true" className="mr-2 h-4 w-4" />Neue Jahresroutine</Button>
     </div>
+    {onUseTemplate && <OfficeRoutineTemplates rules={rules} onUse={onUseTemplate} onEdit={onEdit} canEdit={canEdit} />}
     <section className={styles.band} aria-label="Jahresübersicht">
       <div className={styles.stats} aria-live="polite"><div><b className={styles.late}>{overdue}</b><span>überfällig</span></div><div><b>{upcoming}</b><span>anstehend</span></div><div><b className={styles.done}>{completed}</b><span>erledigt</span></div></div>
       <nav className={styles.rail} aria-label="Monat auswählen">{MONTHS.map((month, index) => {

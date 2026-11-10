@@ -1,7 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { STALE_TIME } from "@/lib/query-cache";
-import { useToast } from "@/components/ui/use-toast";
 import {
   toAutomationRuleInsert,
   toAutomationRuleRecordView,
@@ -138,6 +136,11 @@ export function useAutomationAdminMutations(tenantId?: string, userId?: string) 
   const upsertRule = useMutation({
     mutationFn: async ({ editingRuleId, payload }: { editingRuleId: string | null; payload: AutomationRuleMutationPayload }) => {
       if (!tenantId || !userId) throw new Error("Tenant oder Benutzer fehlt.");
+      const officeAction=payload.actions.find(action=>action.type==="run_annual_routine" && (action.payload?.routine_deadline_month || action.payload?.routine_steps_text || action.payload?.routine_requires_confirmation==="true"));
+      if(officeAction){
+        const probe=await supabase.rpc("office_routine_deadline",{_payload:officeAction.payload??{},_start:new Date().toISOString().slice(0,10)});
+        if(probe.error || typeof probe.data!=="string") throw new Error("Aufgabenpakete sind im Backend noch nicht verfügbar. Bitte die Plattform aktualisieren, bevor diese Routine gespeichert wird.");
+      }
       const query = editingRuleId
         ? supabase.from("automation_rules").update(toAutomationRuleUpdate(payload)).eq("id", editingRuleId).eq("tenant_id", tenantId)
         : supabase.from("automation_rules").insert([toAutomationRuleInsert(payload, userId)]);

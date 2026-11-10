@@ -767,7 +767,7 @@ export function AutomationRuleWizard({
                 placeholder="Kurz erklären, wann und warum die Regel läuft"
               />
             </div>
-            {form.triggerType === "manual" && form.actions.some(a => a.type === "run_annual_routine") && <CalendarScheduleFields form={form} onChange={schedule => setForm(prev => ({ ...prev, schedule }))} />}
+            {form.triggerType === "manual" && form.actions.some(a => a.type === "run_annual_routine") && <CalendarScheduleFields form={form} onChange={schedule => setForm(prev => ({ ...prev, schedule, actions: prev.actions.map(action => action.routineRequiresConfirmation ? { ...action, routineConfirmedYear: "" } : action) }))} />}
             <div className="space-y-2">
               <Label>Fachdomäne/Modul</Label>
               <Select
@@ -823,7 +823,7 @@ export function AutomationRuleWizard({
             </div>
 
             {form.triggerType === "schedule" && (
-              <CalendarScheduleFields form={form} onChange={schedule => setForm(prev => ({ ...prev, schedule }))} />
+              <CalendarScheduleFields form={form} onChange={schedule => setForm(prev => ({ ...prev, schedule, actions: prev.actions.map(action => action.routineRequiresConfirmation ? { ...action, routineConfirmedYear: "" } : action) }))} />
             )}
 
             {form.triggerType === "manual" && (
@@ -930,7 +930,7 @@ export function AutomationRuleWizard({
               <p className="text-xs font-medium text-muted-foreground">Zusammenfassung</p>
               <p className="text-sm">
                 <Badge variant="outline" className="mr-1">{summaryLine.mod}</Badge>
-                Wenn <span className="font-medium">{form.triggerField}</span> = „{form.triggerValue || "—"}"
+                {form.triggerType === "manual" ? "Manuell starten" : form.triggerType === "schedule" && form.schedule && isCalendarSchedule(form.schedule) ? <>Start nach {form.schedule.schedule_kind === "annual" ? "jährlichem" : form.schedule.schedule_kind === "quarterly" ? "vierteljährlichem" : "monatlichem"} Zeitplan · {form.schedule.hour.padStart(2,"0")}:00 Uhr (Berlin)</> : <>Wenn <span className="font-medium">{form.triggerField}</span> = „{form.triggerValue || "—"}"</>}
               </p>
               <p className="text-sm text-muted-foreground">
                 {countConditions(form.conditionGroup)} Bedingung{countConditions(form.conditionGroup) !== 1 ? "en" : ""} ({form.conditionGroup.groups.length > 0 ? "verschachtelt" : form.conditionGroup.logic === "all" ? "UND" : "ODER"}) · {form.actions.length} Aktion{form.actions.length !== 1 ? "en" : ""}

@@ -8,6 +8,7 @@ import { nextCalendarOccurrence, validateCalendarSchedule } from "@/features/aut
 
 export function CalendarScheduleFields({ form, onChange }: { form: WizardForm; onChange: (schedule: NonNullable<WizardForm["schedule"]>) => void }) {
   const schedule = form.schedule ?? DEFAULT_FORM.schedule;
+  const officePackage=form.actions.some(action=>action.type==="run_annual_routine" && (action.routineDeadlineMonth || action.routineSteps));
   if (!schedule) return null;
   const update = (patch: Partial<typeof schedule>) => onChange({ ...schedule, ...patch });
   const calendar = schedule.schedule_kind !== "interval";
@@ -21,13 +22,13 @@ export function CalendarScheduleFields({ form, onChange }: { form: WizardForm; o
     </Select>
     {!calendar ? <><Label htmlFor="schedule-minutes">Intervall (Minuten)</Label><Input id="schedule-minutes" type="number" min={60} value={schedule.minutes_interval} onChange={e => update({ minutes_interval: e.target.value })} /></> : <>
       <div className="grid grid-cols-2 gap-sm">
-        {schedule.schedule_kind === "annual" && <div><Label htmlFor="schedule-month">Monat</Label><Input id="schedule-month" type="number" min={1} max={12} value={schedule.month} onChange={e => update({ month: e.target.value })} /></div>}
-        <div><Label htmlFor="schedule-day">Tag</Label><Input id="schedule-day" type="number" min={1} max={31} disabled={schedule.month_end === "true"} value={schedule.day} onChange={e => update({ day: e.target.value })} /></div>
+        {schedule.schedule_kind === "annual" && <div><Label htmlFor="schedule-month">{officePackage ? "Startmonat" : "Monat"}</Label><Input id="schedule-month" type="number" min={1} max={12} value={schedule.month} onChange={e => update({ month: e.target.value })} /></div>}
+        <div><Label htmlFor="schedule-day">{officePackage ? "Starttag" : "Tag"}</Label><Input id="schedule-day" type="number" min={1} max={31} disabled={schedule.month_end === "true"} value={schedule.day} onChange={e => update({ day: e.target.value })} /></div>
         <div><Label htmlFor="schedule-hour">Uhrzeit (Berlin)</Label><Input id="schedule-hour" type="number" min={0} max={23} value={schedule.hour} onChange={e => update({ hour: e.target.value })} /></div>
       </div>
       <div className="flex items-center justify-between"><Label htmlFor="schedule-end">Letzter Tag des Monats</Label><Switch id="schedule-end" checked={schedule.month_end === "true"} onCheckedChange={checked => update({ month_end: String(checked) })} /></div>
       {error && <p className="text-caption text-destructive">{error}</p>}
-      {next && <p className="text-caption text-muted-foreground">Nächster Stichtag: {next.toLocaleString("de-DE", { timeZone: "Europe/Berlin" })}</p>}
+      {next && <p className="text-caption text-muted-foreground">{officePackage ? "Nächster Planungsbeginn" : "Nächster Stichtag"}: {next.toLocaleString("de-DE", { timeZone: "Europe/Berlin" })}</p>}
     </>}
   </div>;
 }

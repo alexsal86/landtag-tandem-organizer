@@ -21,3 +21,5 @@
 - Automation administration uses one rules/routines/history workspace and RSS monitoring with URL-controlled tabs; legacy annual/engine/RSS links normalize centrally so bookmarks survive while annual actions share the rule executor.
 - Calendar leave requests are scoped through tenant profile user IDs and names are joined client-side, because the leave table has neither tenant_id nor a profiles foreign key.
 - CommonJS-only packages (e.g. react-big-calendar add-ons) are imported as namespaces and unwrapped via src/lib/cjsInterop.ts, and pre-bundled in optimizeDeps, because Vite can deliver a wrapped default export that crashes at runtime.
+
+- Seasonal office packages use officeRoutineTemplates for editable defaults and execute_annual_automation_routine for atomic parent/subtask creation; yearly date confirmation is checked by both scheduler and database, and annual completion locking prevents duplicate packages.

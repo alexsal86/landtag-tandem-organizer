@@ -1,3 +1,4 @@
+import { OFFICE_ROUTINE_TEMPLATES } from '@/features/automation/officeRoutineTemplates';
 import type { ActionItem, ConditionItem, ConditionGroup, FieldSpec, WizardForm } from "./types";
 
 export const MODULE_OPTIONS = [
@@ -118,14 +119,9 @@ const DEFAULT_ACTION_INIT = {
 };
 
 export const RULE_TEMPLATES = [
+  ...OFFICE_ROUTINE_TEMPLATES.map(t => ({ id:t.id,name:t.name,description:t.description,module:"tasks",triggerType:"schedule",triggerField:"scheduled_date",triggerValue:"",schedule:{schedule_kind:"annual",month:t.month,day:t.day,hour:"9",month_end:"false",timezone:"Europe/Berlin",minutes_interval:"60"},conditions:[],actions:[{...DEFAULT_ACTION_INIT,type:"run_annual_routine",title:t.name,message:t.description,officeTemplateId:t.id,routineCategory:"admin",routineDeadlineMonth:t.deadlineMonth,routineDeadlineDay:t.deadlineDay,routineSteps:t.steps,routineRequiresConfirmation:t.confirmAnnually,routineConfirmedYear:""}] })),
+  { id:"annual-privacy",name:"Datenschutz-Verzeichnis prüfen",description:"Datenschutz-Verzeichnis und Zugriffsrechte prüfen.",module:"tasks",triggerType:"schedule",triggerField:"scheduled_date",triggerValue:"",schedule:{schedule_kind:"annual",month:"3",day:"1",hour:"9",month_end:"false",timezone:"Europe/Berlin",minutes_interval:"60"},conditions:[],actions:[{...DEFAULT_ACTION_INIT,type:"run_annual_routine",title:"Datenschutz-Verzeichnis prüfen"}] },
   ...[
-    { id: "annual-mandate-report", name: "Mandatsbericht vorbereiten", month: "1", day: "31" },
-    { id: "annual-budget", name: "Haushaltsanmeldungen vorbereiten", month: "9", day: "15" },
-    { id: "annual-privacy", name: "Datenschutz-Verzeichnis prüfen", month: "3", day: "1" },
-    { id: "annual-greetings", name: "Weihnachtskartenliste vorbereiten", month: "11", day: "1" },
-  ].map(t => ({ id: t.id, name: t.name, description: "", module: "tasks", triggerType: "schedule", triggerField: "scheduled_date", triggerValue: "", schedule: { schedule_kind: "annual", month: t.month, day: t.day, hour: "9", month_end: "false", timezone: "Europe/Berlin", minutes_interval: "60" }, conditions: [], actions: [{ ...DEFAULT_ACTION_INIT, type: "run_annual_routine", title: t.name }] })),
-  ...[
-    { id: "annual-summer-tour", name: "Sommertour vorbereiten", description: "Jährlich am 1. April die Sommertour-Planung starten.", kind: "annual", month: "4", end: "false" },
     { id: "monthly-office-review", name: "Monatsabschluss im Büro", description: "Am Monatsende offene Zusagen und Aufgaben prüfen.", kind: "monthly", month: "1", end: "true" },
     { id: "quarterly-mandate-review", name: "Quartalsrückblick vorbereiten", description: "Zum Quartalsende die Mandatsarbeit auswerten.", kind: "quarterly", month: "3", end: "true" },
   ].map(t => ({ id: t.id, name: t.name, description: t.description, module: "tasks", triggerType: "schedule", triggerField: "scheduled_date", triggerValue: "", schedule: { schedule_kind: t.kind, month: t.month, day: "1", hour: "9", month_end: t.end, timezone: "Europe/Berlin", minutes_interval: "60" }, conditions: [], actions: [{ ...DEFAULT_ACTION_INIT, type: "create_task", title: t.name, message: t.description, table: "tasks" }] })),

@@ -6,6 +6,7 @@ test.use({ viewport: { width: 1400, height: 1000 }, serviceWorkers: "block" });
 test("admin deep links, search, query failures and mobile navigation", async ({ page, context }, testInfo) => {
 const user={id:'33333333-3333-4333-8333-333333333333',email:'admin@example.test',aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{display_name:'Test Admin'}};
 const tenant={id:'11111111-1111-4111-8111-111111111111',name:'Testbüro',settings:{},is_active:true,created_at:'2026-01-01T00:00:00Z'};
+let savedOfficeRule: unknown=null;
 let failAudit=false;const requests: string[]=[];
 const routineExamples = [
  { month:1,day:31,name:'Jahresrückblick erstellen',done:true,system:false },
@@ -24,13 +25,14 @@ await context.route('https://wawofclbehbkebjivdte.supabase.co/**',async route=>{
  if(path.endsWith('/auth/v1/user'))data=user;
  else if(path.includes('/rpc/')){
    const name=path.split('/').pop();
-   if(['is_superadmin','is_admin','has_role'].includes(name))data=true;
+   if(name==='office_routine_deadline')data='2026-10-15';
+   else if(['is_superadmin','is_admin','has_role'].includes(name))data=true;
    else if(name==='search_admin_audit_logs'){
      if(failAudit)return route.fulfill({status:500,contentType:'application/json',body:JSON.stringify({message:'Test query failure'})});
      data={logs:[],totalCount:0};
    }else if(name==='get_admin_tenant_health')data={};
  }
- else if(path.endsWith('/automation_rules'))data=routineRules;
+ else if(path.endsWith('/automation_rules')){if(req.method()==='POST'){const body=req.postDataJSON();savedOfficeRule=Array.isArray(body)?body[0]:body;}data=routineRules;}
  else if(path.endsWith('/annual_tasks'))data=routineExamples.map((item,i)=>({id:`annual-${i}`,due_month:item.month,due_day:item.day,automation_rule_id:`routine-${i}`}));
  else if(path.endsWith('/annual_task_completions'))data=routineExamples.flatMap((item,i)=>item.done?[{annual_task_id:`annual-${i}`,completed_at:'2026-02-01T12:00:00Z',linked_task_id:null}]:[]);
  else if(path.endsWith('/user_tenant_memberships')){
@@ -106,8 +108,32 @@ try{
  await page.screenshot({path:testInfo.outputPath('annual-routines-mobile.png'),fullPage:true});
  await annual.getByRole('article',{name:'Resturlaub verfällt'}).scrollIntoViewIfNeeded();
  await page.screenshot({path:testInfo.outputPath('annual-routines-mobile-cards.png'),fullPage:true});
+
+ await page.setViewportSize({width:1400,height:1000});
+ await annual.getByRole('region',{name:'Vorlagen fürs Bürojahr'}).getByRole('button',{name:'Vorlage übernehmen'}).first().click();
+ const wizard=page.getByRole('dialog',{name:'Neue Regel erstellen'});
+ await wizard.getByRole('button',{name:'Weiter'}).click();
+ await wizard.getByRole('button',{name:'Weiter'}).click();
+ assert.equal(await wizard.getByText(/scheduled_date/).count(),0,'Calendar summary uses office wording');
+ assert.equal(await wizard.getByLabel('Abschlussmonat',{exact:true}).inputValue(),'10');
+ assert.equal(await wizard.getByLabel('Abschlusstag',{exact:true}).inputValue(),'15');
+ assert.ok((await wizard.getByLabel('Arbeitsschritte',{exact:true}).inputValue()).includes('Bedarfe'));
+ await page.screenshot({path:testInfo.outputPath('office-routine-package-editor.png'),fullPage:true});
+ const confirmed=wizard.getByRole('checkbox',{name:/Ich habe Planungsbeginn/});
+ await confirmed.check();await wizard.getByLabel('Abschlusstag',{exact:true}).fill('16');
+ assert.equal(await confirmed.isChecked(),false,'Date changes invalidate the current confirmation');
+ await confirmed.check();await wizard.getByRole('button',{name:'Weiter'}).click();
+ await wizard.getByRole('button',{name:'Erstellen',exact:true}).click();
+ await wizard.waitFor({state:'hidden'});
+ assert.ok(savedOfficeRule,'Seasonal rule was submitted');
+ const saved=savedOfficeRule as unknown as {actions:Array<{payload:Record<string,string>}>};
+ assert.equal(saved.actions[0].payload.office_template_id,'annual-budget');
+ assert.equal(saved.actions[0].payload.routine_deadline_day,'16');
+ assert.equal(saved.actions[0].payload.routine_requires_confirmation,'true');
+ assert.ok(saved.actions[0].payload.routine_confirmed_year);
+ assert.ok(saved.actions[0].payload.routine_steps_text.includes('Änderungsanträge'));
  assert.equal(errors.length,0,'No browser JavaScript errors');
- console.log(JSON.stringify({passed:true,checks:['async platform deep link','menu search and audit route','audit RPC','visible query error','mobile navigation and finance search','annual timeline, filters and month visibility','annual light/dark and mobile layout'],pageErrors:errors}));
+ console.log(JSON.stringify({passed:true,checks:['async platform deep link','menu search and audit route','audit RPC','visible query error','mobile navigation and finance search','annual timeline, filters and month visibility','annual light/dark and mobile layout','seasonal templates and confirmed package persistence'],pageErrors:errors}));
 }catch(error){console.log((await page.locator('body').innerText()).slice(0,3000));console.log('page errors',errors);throw error;}
 
 
