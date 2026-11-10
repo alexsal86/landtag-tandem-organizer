@@ -1,7 +1,8 @@
 import React, { useMemo, useCallback, useEffect, useRef } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
 import { Calendar, dateFnsLocalizer, Views, type View, type EventProps } from 'react-big-calendar';
-import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
+import * as dragAndDropModule from 'react-big-calendar/lib/addons/dragAndDrop';
+import { resolveCjsDefault } from '@/lib/cjsInterop';
 import { format, parse, startOfWeek, getDay, isSameDay } from 'date-fns';
 import type { Locale } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -63,7 +64,10 @@ const localizer = dateFnsLocalizer({
   locales,
 });
 
-// Create DnD Calendar with drag and drop support
+// Create DnD Calendar with drag and drop support.
+// The add-on ships only as CommonJS; depending on how Vite pre-bundles it the
+// default export can arrive wrapped once or twice, so unwrap it defensively.
+const withDragAndDrop = resolveCjsDefault<typeof dragAndDropModule.default>(dragAndDropModule);
 const DnDCalendar = withDragAndDrop(Calendar);
 
 const WeekHeader = ({ date }: { date: Date }) => {
