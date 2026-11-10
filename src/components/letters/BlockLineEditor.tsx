@@ -504,7 +504,7 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
       </div>
 
       {/* Right: Preview */}
-      <div className="rounded-lg border bg-white p-4">
+      <div className="rounded-lg border bg-white text-black p-4">
         <span className="text-xs font-medium text-muted-foreground mb-2 block">Vorschau</span>
         {blockType === 'footer' ? (
           /* Footer preview: render blocks as horizontal columns */

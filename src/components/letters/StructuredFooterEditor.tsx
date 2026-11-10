@@ -648,7 +648,7 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
               const scaleY = canvasScaleY / footerHeight;
               return (
                 <div 
-                  className="border border-border bg-white relative overflow-hidden"
+                  className="border border-border bg-white text-black relative overflow-hidden"
                   style={{
                     width: `${canvasWidth}px`,
                     height: `${canvasScaleY}px`,

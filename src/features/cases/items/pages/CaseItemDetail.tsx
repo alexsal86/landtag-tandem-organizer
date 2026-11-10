@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ThemeProvider } from "next-themes";
 import { Archive, ArrowLeft, Briefcase, CalendarClock, CheckSquare, Clock3, Loader2, MessageSquareText, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -248,7 +247,7 @@ const CaseItemDetail = () => {
   };
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <>
       <div className="flex min-h-screen w-full bg-background overflow-hidden">
         <div className="hidden md:block sticky top-0 h-screen z-30">
           <AppNavigation activeSection={activeSection} onSectionChange={handleSectionChange} />
@@ -392,7 +391,7 @@ const CaseItemDetail = () => {
           </main>
         </div>
       </div>
-    </ThemeProvider>
+    </>
   );
 };
 
