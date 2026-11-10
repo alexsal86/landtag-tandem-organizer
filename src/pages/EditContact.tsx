@@ -17,7 +17,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { ThemeProvider } from "next-themes";
 import { Navigation } from "@/components/navigation/Navigation";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { ImageCropper } from "@/components/ui/ImageCropper";
@@ -250,7 +249,7 @@ export default function EditContact() {
   };
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <>
       <SidebarProvider>
         <div className="flex min-h-screen w-full bg-background">
           <Navigation
@@ -502,6 +501,6 @@ export default function EditContact() {
           onCancel={handleCropCancel}
         />
       )}
-    </ThemeProvider>
+    </>
   );
 }

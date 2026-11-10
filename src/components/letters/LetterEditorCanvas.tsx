@@ -653,7 +653,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
     const breakMarkers = pageOffsets.slice(1).map((offset, i) => ({ top: contentStartMm + offset, page: i + 2 }));
     return (
       <div
-        className="mx-auto bg-white relative"
+        className="mx-auto bg-white text-black relative"
         style={{
           width: `${PAGE_W_MM}mm`,
           minHeight: `${sheetHeightMm}mm`,
@@ -735,7 +735,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
     return (
       <div
         key={`page-${pageIndex}`}
-        className="mx-auto bg-white relative"
+        className="mx-auto bg-white text-black relative"
         style={{
           width: `${PAGE_W_MM}mm`,
           height: `${PAGE_H_MM}mm`,

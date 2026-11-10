@@ -756,7 +756,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
               onKeyDown={onPreviewKeyDown} onDragOver={(e) => e.preventDefault()} onMouseDown={interactions.onPreviewMouseDown}
               onDrop={onPreviewDrop} onMouseMove={interactions.onPreviewMouseMove} onMouseUp={interactions.onPreviewMouseUp}
               onClick={(e) => { if (e.target === e.currentTarget) clearSelection(); }}
-              className="border border-border bg-white relative outline-none" style={{ width: `${canvasPixelWidth}px`, height: `${canvasPixelHeight}px` }}>
+              className="border border-border bg-white text-black relative outline-none" style={{ width: `${canvasPixelWidth}px`, height: `${canvasPixelHeight}px` }}>
               <span className="sr-only" aria-live="polite">{ariaAnnouncement}</span>
               <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle, #e5e7eb 1px, transparent 1px)', backgroundSize: `${10 * effectiveScaleX}px ${10 * effectiveScaleY}px` }}>
               {showCenterGuides && (<><div className="absolute left-0 right-0 top-1/2 border-t border-dashed border-palette-red/80 pointer-events-none" /><div className="absolute top-0 bottom-0 left-1/2 border-l border-dashed border-palette-red/80 pointer-events-none" /></>)}
