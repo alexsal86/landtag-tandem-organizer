@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectLabel, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -24,6 +24,7 @@ import {
   FIELD_OPTIONS_BY_MODULE,
   FIELD_SPEC_BY_MODULE,
   RULE_TEMPLATES,
+  RULE_TEMPLATE_GROUPS,
   DEFAULT_ACTION,
   DEFAULT_CONDITION,
   DEFAULT_CONDITION_GROUP,
@@ -743,10 +744,17 @@ export function AutomationRuleWizard({
                   <SelectValue placeholder="Vorlage wählen…" />
                 </SelectTrigger>
                 <SelectContent>
-                  {RULE_TEMPLATES.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name}
-                    </SelectItem>
+                  {RULE_TEMPLATE_GROUPS.map(group => (
+                    <SelectGroup key={group.value}>
+                      <SelectLabel>{group.label}</SelectLabel>
+                      {group.templates.length > 0 ? group.templates.map(template => (
+                        <SelectItem key={template.id} value={template.id}>
+                          {template.name}
+                        </SelectItem>
+                      )) : (
+                        <SelectItem value={`empty-${group.value}`} disabled>Keine Vorlagen vorhanden</SelectItem>
+                      )}
+                    </SelectGroup>
                   ))}
                 </SelectContent>
               </Select>

@@ -118,6 +118,24 @@ const DEFAULT_ACTION_INIT = {
   approvalPolicy: "single", approvalDueInHours: "24", approvalMinimumApprovers: "1",
 };
 
+export const ROUTINE_CATEGORIES = [
+  { value: "admin", label: "Mandat & Büro" },
+  { value: "employee", label: "Personal" },
+  { value: "calendar", label: "Planung" },
+  { value: "system", label: "System" },
+] as const;
+
+// Display categories for template selection; these do not change the loaded rule.
+const TEMPLATE_CATEGORY_OVERRIDES: Record<string, typeof ROUTINE_CATEGORIES[number]["value"]> = {
+  "annual-summer-tour": "calendar",
+  "annual-office-planning": "calendar",
+  "annual-privacy": "system",
+  "meeting-reminder-48h": "calendar",
+  "knowledge-review": "system",
+  "knowledge-created-review-task": "system",
+  "auto-assignment": "system",
+};
+
 export const RULE_TEMPLATES = [
   ...OFFICE_ROUTINE_TEMPLATES.map(t => ({ id:t.id,name:t.name,description:t.description,module:"tasks",triggerType:"schedule",triggerField:"scheduled_date",triggerValue:"",schedule:{schedule_kind:"annual",month:t.month,day:t.day,hour:"9",month_end:"false",timezone:"Europe/Berlin",minutes_interval:"60"},conditions:[],actions:[{...DEFAULT_ACTION_INIT,type:"run_annual_routine",title:t.name,message:t.description,officeTemplateId:t.id,routineCategory:"admin",routineDeadlineMonth:t.deadlineMonth,routineDeadlineDay:t.deadlineDay,routineSteps:t.steps,routineRequiresConfirmation:t.confirmAnnually,routineConfirmedYear:""}] })),
   { id:"annual-privacy",name:"Datenschutz-Verzeichnis prüfen",description:"Datenschutz-Verzeichnis und Zugriffsrechte prüfen.",module:"tasks",triggerType:"schedule",triggerField:"scheduled_date",triggerValue:"",schedule:{schedule_kind:"annual",month:"3",day:"1",hour:"9",month_end:"false",timezone:"Europe/Berlin",minutes_interval:"60"},conditions:[],actions:[{...DEFAULT_ACTION_INIT,type:"run_annual_routine",title:"Datenschutz-Verzeichnis prüfen"}] },
@@ -269,6 +287,11 @@ export const RULE_TEMPLATES = [
     actions: [{ ...DEFAULT_ACTION_INIT, type: "create_task", title: "Auto-Zuweisung prüfen", message: "Datensatz wurde automatisch zugewiesen.", taskPriority: "high", table: "tasks" }],
   },
 ] as const;
+
+export const RULE_TEMPLATE_GROUPS = ROUTINE_CATEGORIES.map(category => ({
+  ...category,
+  templates: RULE_TEMPLATES.filter(template => (TEMPLATE_CATEGORY_OVERRIDES[template.id] ?? "admin") === category.value),
+}));
 
 export const DEFAULT_ACTION: ActionItem = {
   type: "create_notification",

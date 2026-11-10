@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TenantUserSelect } from "../TenantUserSelect";
 import { SYSTEM_ROUTINES } from "@/features/automation/annualRoutines";
+import { ROUTINE_CATEGORIES } from "./constants";
 import type { ActionItem } from "./types";
 
 export function AnnualRoutineFields({ action, onChange }: { action: ActionItem; onChange: (patch: Partial<ActionItem>) => void }) {
@@ -17,7 +18,7 @@ export function AnnualRoutineFields({ action, onChange }: { action: ActionItem; 
     </div>
     <div className="space-y-xs"><Label>Titel der Jahresaufgabe</Label><Input value={action.title} onChange={event => onChange({ title: event.target.value })} /></div>
     <div className="space-y-xs"><Label>Beschreibung</Label><Textarea value={action.message} onChange={event => onChange({ message: event.target.value })} /></div>
-    <div className="space-y-xs"><Label>Kategorie</Label><Select value={action.routineCategory || "admin"} onValueChange={routineCategory => onChange({ routineCategory })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{[{ value: "admin", label: "Mandat & Büro" }, { value: "employee", label: "Personal" }, { value: "calendar", label: "Planung" }, { value: "system", label: "System" }].map(item => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select></div>
+    <div className="space-y-xs"><Label>Kategorie</Label><Select value={action.routineCategory || "admin"} onValueChange={routineCategory => onChange({ routineCategory })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{ROUTINE_CATEGORIES.map(item => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select></div>
     {!action.systemFunction && <div className="space-y-3 rounded-lg border p-3">
       <p className="text-sm font-medium">Aufgabenpaket und Abschluss</p>
       <p className="text-xs text-muted-foreground">Der jährliche Zeitplan startet die Planung. Der Abschluss kann später liegen, auch im Folgejahr. Änderungen gelten für neu gestartete Pakete.</p>
