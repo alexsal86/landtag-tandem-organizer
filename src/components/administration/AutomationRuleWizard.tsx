@@ -767,7 +767,7 @@ export function AutomationRuleWizard({
                 placeholder="Kurz erklären, wann und warum die Regel läuft"
               />
             </div>
-            {form.triggerType === "manual" && form.actions.some(a => a.type === "run_annual_routine") && <CalendarScheduleFields value={form.schedule ?? DEFAULT_FORM.schedule} onChange={schedule => setForm(prev => ({ ...prev, schedule })) />}
+            {form.triggerType === "manual" && form.actions.some(a => a.type === "run_annual_routine") && <CalendarScheduleFields form={form} onChange={schedule => setForm(prev => ({ ...prev, schedule }))} />}
             <div className="space-y-2">
               <Label>Fachdomäne/Modul</Label>
               <Select
