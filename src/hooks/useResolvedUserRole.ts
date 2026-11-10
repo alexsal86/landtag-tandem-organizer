@@ -132,7 +132,7 @@ export function useResolvedUserRole(): ResolvedUserRoleResult {
       ...EMPTY_ROLE_FLAGS,
       ...getRoleFlags(query.data?.role ?? null),
       isAdminClaim: Boolean(query.data?.isAdminClaim),
-      hasAdminAccess: Boolean(query.data?.isAdminClaim || query.data?.isBueroleitungClaim),
+      hasAdminAccess: Boolean(query.data?.isAdminClaim || query.data?.isBueroleitungClaim || role === "abgeordneter" || role === "bueroleitung"),
       isBueroleitungClaim: Boolean(query.data?.isBueroleitungClaim),
       loading: Boolean(userId) ? query.isLoading : false,
     }),
