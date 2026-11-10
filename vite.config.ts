@@ -187,6 +187,10 @@ export default defineConfig(({ mode }) => ({
       'react/jsx-dev-runtime',
       'react',
       'react-dom',
+      // CommonJS-only add-on: pre-bundle up front so the dev server does not
+      // re-optimize mid-session and hand out a stale/wrapped default export.
+      'react-big-calendar',
+      'react-big-calendar/lib/addons/dragAndDrop',
     ],
     exclude: [
       '@matrix-org/matrix-sdk-crypto-wasm',
