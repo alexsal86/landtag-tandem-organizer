@@ -4,7 +4,7 @@ test.use({ viewport: { width: 1280, height: 960 }, serviceWorkers: 'block' });
 test('questions, answers, reviews, private attachments, search, errors and legacy access', async ({ page, context }, info) => {
   const user = { id: '33333333-3333-4333-8333-333333333333', email: 'staff@example.test', aud: 'authenticated', role: 'authenticated', app_metadata: { provider: 'email' }, user_metadata: { display_name: 'Test Mitarbeiter' } };
   const tenant = { id: '11111111-1111-4111-8111-111111111111', name: 'Testbüro', settings: {}, is_active: true, created_at: '2026-01-01T00:00:00Z' };
-  type Question = { id: string; title: string; description: string; tenant_id: string; assigned_to: string | null; created_by: string; updated_by: string; created_at: string; updated_at: string; answer_content: unknown; answer_text: string; answered_by: string | null; answered_at: string | null; answer_updated_at: string | null; revision: number; answer_revision: number; review_status: string; verified_at: string | null; verified_by: string | null; verified_answer_revision: number | null; review_due_at: string | null };
+  type Question = { id: string; title: string; description: string; tenant_id: string; assigned_to: string | null; created_by: string; updated_by: string; created_at: string; updated_at: string; answer_content: unknown; answer_text: string; answered_by: string | null; answered_at: string | null; answer_updated_at: string | null; revision: number; answer_revision: number; review_status: string; verified_at: string | null; verified_by: string | null; verified_answer_revision: number | null; review_due_at: string | null; archived_at?: string | null; merged_into?: string | null };
   const questions: Question[] = [];
   const attachments: Array<{ id: string; question_id: string; tenant_id: string; state: string; file_name: string; storage_path: string; file_type: string; file_size: number; uploaded_by: string; created_at: string }> = [];
   const requests: string[] = [];
@@ -22,9 +22,9 @@ test('questions, answers, reviews, private attachments, search, errors and legac
       const name = path.split('/').pop(); const body = request.postDataJSON() ?? {};
       if (name === 'knowledge_qa_list') {
         if (failSearch) return json({ code: 'TEST', message: 'Test query failure' }, 500);
-        const filtered = questions.filter(question => body.p_question ? question.id === body.p_question :
+        const filtered = questions.filter(question => !question.archived_at && (body.p_question ? question.id === body.p_question :
           (body.p_view === 'open' ? !question.answered_at : body.p_view === 'mine' || Boolean(question.answered_at)) &&
-          `${question.title} ${question.answer_text}`.toLowerCase().includes(String(body.p_query ?? '').toLowerCase()));
+          `${question.title} ${question.answer_text}`.toLowerCase().includes(String(body.p_query ?? '').toLowerCase())));
         data = [{ items: filtered.slice(0,body.p_limit ?? 20).map(question => {
           const { answer_content, answer_text, ...summary } = question;
           return { ...summary, answer_excerpt: answer_text.slice(0,200), server_now: new Date().toISOString(), effective_review_status: question.review_status };
@@ -33,7 +33,7 @@ test('questions, answers, reviews, private attachments, search, errors and legac
         data = [{ answers: questions.filter(q=>q.answered_at).length, open: questions.filter(q=>!q.answered_at).length, mine: questions.length, assigned: questions.filter(q=>q.assigned_to===user.id).length, review: questions.filter(q=>q.review_status==='needs_review').length }];
       } else if (name === 'knowledge_qa_create_question') {
         const time = new Date().toISOString();
-        const question: Question = { id: '77777777-7777-4777-8777-777777777777', title: body.p_title, description: body.p_description, tenant_id: tenant.id, assigned_to: body.p_assigned_to || null,
+        const question: Question = { id: `77777777-7777-4777-8777-${777777777777 + questions.length}`, title: body.p_title, description: body.p_description, tenant_id: tenant.id, assigned_to: body.p_assigned_to || null,
           created_by: user.id, updated_by: user.id, created_at: time, updated_at: time, answer_content: null, answer_text: '', answered_at: null, answered_by: null, answer_updated_at: null,
           revision: 1, answer_revision: 0, review_status: 'unverified', verified_at: null, verified_by: null, verified_answer_revision: null, review_due_at: null };
         questions.push(question); data = question;
@@ -51,6 +51,9 @@ test('questions, answers, reviews, private attachments, search, errors and legac
         } else if (name === 'knowledge_qa_review') {
           question.review_status = body.p_verified ? 'verified' : 'needs_review'; question.verified_at = body.p_verified ? new Date().toISOString() : null; question.verified_by = body.p_verified ? user.id : null;
           question.verified_answer_revision = body.p_verified ? question.answer_revision : null; question.review_due_at = body.p_due_at ?? null;
+        } else if (name === 'knowledge_qa_manage') {
+          if (body.p_action === 'edit') { question.title = body.p_title; question.description = body.p_description; }
+          else { question.archived_at = new Date().toISOString(); question.merged_into = body.p_target ?? null; }
         } else if (name === 'knowledge_qa_set_assignee') question.assigned_to = body.p_assigned_to;
         else if (name === 'knowledge_qa_finish_attachment') {
           attachments.find(file => file.id === body.p_attachment)!.state = body.p_remove ? 'removed' : 'ready';
@@ -131,6 +134,27 @@ test('questions, answers, reviews, private attachments, search, errors and legac
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: info.outputPath('wissen-mobile.png'), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.getByRole('button', { name: 'Vollständig anzeigen', exact: true }).click();
+  await page.getByRole('button', { name: 'Frage bearbeiten', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Frage', exact: true }).fill('Wie beantrage ich Urlaub im Büro?');
+  conflict = true;
+  await page.getByRole('button', { name: 'Änderungen speichern' }).click();
+  await expect(page.getByRole('alert')).toContainText('inzwischen geändert');
+  await page.getByRole('button', { name: 'Änderungen speichern' }).click();
+  await expect(page.getByRole('heading', { name: 'Wie beantrage ich Urlaub im Büro?' })).toBeVisible();
+  await page.getByRole('button', { name: 'Frage stellen', exact: true }).first().click();
+  await page.getByRole('textbox', { name: 'Frage', exact: true }).fill('Duplikat Urlaub');
+  await page.getByRole('dialog').getByRole('button', { name: 'Frage stellen', exact: true }).click();
+  await page.getByRole('button', { name: 'Als Duplikat zusammenführen' }).click();
+  await page.getByRole('textbox', { name: 'Zielantwort suchen' }).fill('Urlaub');
+  await page.getByRole('button', { name: 'Wie beantrage ich Urlaub im Büro?', exact: true }).click();
+  await page.getByRole('button', { name: 'Schließen bestätigen' }).click();
+  await expect(page.getByText('Als Duplikat geschlossen.', { exact: false })).toBeVisible();
+  await page.getByRole('link', { name: 'Zur Zielfrage' }).click();
+  await page.getByRole('button', { name: 'Archivieren / schließen' }).click();
+  await page.getByRole('button', { name: 'Schließen bestätigen' }).click();
+  await expect(page.getByText('Diese Frage ist archiviert.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Antwort bearbeiten' })).toHaveCount(0);
   await page.getByRole('link', { name: 'Bisheriger Wissensbereich' }).click();
   await expect(page.getByText('Mein Radar', { exact: true })).toBeVisible();
   await page.goto('/knowledge'); await expect(page.getByRole('heading', { name: 'Wissensdatenbank', exact: true })).toBeVisible();

@@ -48,6 +48,7 @@ function KnowledgeWorkspaceContent() {
     error: profileError,
   } = useKnowledgePeople();
   const { allowed: canWrite } = useActionPermission("knowledge.write");
+  const { allowed: canManage } = useActionPermission("knowledge.manage");
   const { allowed: canVerify } = useActionPermission("knowledge.verify");
   const navigateView = (next: KnowledgeView) => {
     updateParam("ansicht", next);
@@ -220,6 +221,7 @@ function KnowledgeWorkspaceContent() {
                 assignable={assignable}
                 canWrite={canWrite}
                 canVerify={canVerify}
+                canManage={canManage}
                 onOpen={() => setParams({ frage: question.id, ansicht: view })}
               />
             ))}

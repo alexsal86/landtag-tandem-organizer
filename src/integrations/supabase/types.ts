@@ -6932,8 +6932,17 @@ export type Database = {
           },
         ]
       }
+      knowledge_qa_notification_deliveries: {
+        Row: { event_key: string; recipient: string; created_at: string }
+        Insert: { event_key: string; recipient: string; created_at?: string }
+        Update: { event_key?: string; recipient?: string; created_at?: string }
+        Relationships: []
+      }
       knowledge_questions: {
         Row: {
+          archived_at: string | null
+          merged_into: string | null
+          title_search_vector: unknown
           answer_content: Json | null
           answer_revision: number
           answer_text: string
@@ -6958,6 +6967,9 @@ export type Database = {
           verified_by: string | null
         }
         Insert: {
+          archived_at?: string | null
+          merged_into?: string | null
+          title_search_vector?: unknown
           answer_content?: Json | null
           answer_revision?: number
           answer_text?: string
@@ -6982,6 +6994,9 @@ export type Database = {
           verified_by?: string | null
         }
         Update: {
+          archived_at?: string | null
+          merged_into?: string | null
+          title_search_vector?: unknown
           answer_content?: Json | null
           answer_revision?: number
           answer_text?: string
@@ -13866,6 +13881,9 @@ export type Database = {
     Views: {
       knowledge_question_cards: {
         Row: {
+          archived_at: string | null
+          merged_into: string | null
+          title_search_vector: unknown
           answer_content: Json | null
           answer_revision: number | null
           answer_text: string | null
@@ -13892,6 +13910,9 @@ export type Database = {
           verified_by: string | null
         }
         Insert: {
+          archived_at?: string | null
+          merged_into?: string | null
+          title_search_vector?: unknown
           answer_content?: Json | null
           answer_revision?: number | null
           answer_text?: string | null
@@ -13918,6 +13939,9 @@ export type Database = {
           verified_by?: string | null
         }
         Update: {
+          archived_at?: string | null
+          merged_into?: string | null
+          title_search_vector?: unknown
           answer_content?: Json | null
           answer_revision?: number | null
           answer_text?: string | null
@@ -13990,6 +14014,12 @@ export type Database = {
       knowledge_qa_counts: {
         Args: { p_tenant: string }
         Returns: { answers: number; open: number; mine: number; assigned: number; review: number }[]
+      }
+      knowledge_qa_notification_selftest: { Args: { p_tenant: string }; Returns: Json }
+      knowledge_qa_manage_selftest: { Args: { p_tenant: string }; Returns: Json }
+      knowledge_qa_manage: {
+        Args: { p_question: string; p_expected_revision: number; p_action: string; p_title?: string; p_description?: string; p_target?: string; p_target_revision?: number }
+        Returns: Database['public']['Tables']['knowledge_questions']['Row']
       }
       knowledge_qa_list: {
         Args: { p_tenant: string; p_query?: string; p_view?: string; p_limit?: number; p_cursor?: Json; p_status?: string; p_assignee?: string; p_sort?: string }

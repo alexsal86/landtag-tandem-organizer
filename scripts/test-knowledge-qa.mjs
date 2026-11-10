@@ -39,7 +39,7 @@ try {
     CREATE TABLE user_notification_settings(user_id uuid,notification_type_id uuid,is_enabled boolean,push_enabled boolean,UNIQUE(user_id,notification_type_id));
     CREATE TABLE notifications(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),tenant_id uuid,user_id uuid,notification_type_id uuid,title text,message text,data jsonb,priority text);
     CREATE TABLE user_tenant_memberships(tenant_id uuid,user_id uuid,role app_role,is_active boolean);
-    CREATE TABLE action_permissions(tenant_id uuid,action_key text,allowed_roles app_role[]);
+    CREATE TABLE action_permissions(tenant_id uuid,action_key text,allowed_roles app_role[],UNIQUE(tenant_id,action_key));
     CREATE FUNCTION is_superadmin(uuid) RETURNS boolean LANGUAGE sql AS $$ SELECT false $$;
     CREATE TABLE storage.buckets(id text PRIMARY KEY,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
     CREATE TABLE storage.objects(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),bucket_id text,name text,metadata jsonb);
@@ -71,12 +71,15 @@ try {
   `);
   const actions = await readFile(new URL('../supabase/migrations/20261109142000_enforce_admin_actions.sql', import.meta.url), 'utf8');
   await db.exec(actions.slice(actions.indexOf('CREATE OR REPLACE FUNCTION public.is_tenant_action_allowed'), actions.indexOf('CREATE OR REPLACE FUNCTION public.enforce_configured_action')));
-  for (const file of ['20261110180000_knowledge_qa_core.sql', '20261110180100_knowledge_qa_search.sql', '20261110180200_knowledge_qa_storage.sql', '20261110180300_knowledge_legacy_access.sql', '20261111100000_knowledge_list_payload.sql', '20261111100100_knowledge_keyset.sql', '20261111100200_knowledge_search.sql', '20261111100300_knowledge_views_filters.sql', '20261111100400_knowledge_notifications.sql']) {
-    await db.exec(await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
+  for (const file of ['20261110180000_knowledge_qa_core.sql', '20261110180100_knowledge_qa_search.sql', '20261110180200_knowledge_qa_storage.sql', '20261110180300_knowledge_legacy_access.sql', '20261111100000_knowledge_list_payload.sql', '20261111100100_knowledge_keyset.sql', '20261111100200_knowledge_search.sql', '20261111100300_knowledge_views_filters.sql', '20261111100400_knowledge_notifications.sql', '20261111100500_knowledge_manage.sql']) {
+    const migration=await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8');
+    await db.exec(migration);
+    if (file.startsWith('20261111')) await db.exec(migration);
   }
   // Re-running additive migrations must preserve functions and data.
-  await db.exec(await readFile(new URL('../supabase/migrations/20261111100300_knowledge_views_filters.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/20261111100500_knowledge_manage.sql', import.meta.url), 'utf8'));
   await actor(alice);
+  assert.equal((await read('SELECT knowledge_qa_notification_selftest($1) AS result',[officeA]))[0].result.ok,true);
   const diagnostic = (await read('SELECT knowledge_qa_selftest($1) AS result', [officeA]))[0].result;
   assert.equal(diagnostic.ok, true, JSON.stringify(diagnostic));
   assert.equal((await read('SELECT count(*)::int AS count FROM knowledge_questions'))[0].count, 0, 'Selftest rolls back all business rows');
@@ -216,6 +219,10 @@ try {
   await read('SELECT dispatch_due_knowledge_reviews()');
   assert.equal((await read("SELECT count(*)::int AS n FROM notifications n JOIN notification_types t ON t.id=n.notification_type_id WHERE t.name='knowledge_qa_due'"))[0].n,dueCount);
   assert.ok(dueCount>0);
+  await actor(alice); notificationQuestion=(await read('SELECT * FROM knowledge_questions WHERE id=$1',[notificationQuestion.id]))[0];
+  notificationQuestion=await review(notificationQuestion,false);
+  await owner(); await read('SELECT dispatch_due_knowledge_reviews()');
+  assert.equal((await read("SELECT count(*)::int AS n FROM notifications n JOIN notification_types t ON t.id=n.notification_type_id WHERE t.name='knowledge_qa_due'"))[0].n,dueCount,'Requesting another review does not replay the same due deadline');
   await db.query("UPDATE user_notification_settings SET is_enabled=false WHERE user_id=$1",[clara]);
   const disabledBefore=(await read('SELECT count(*)::int AS n FROM notifications'))[0].n;
   await actor(alice); await create(officeA,'Stummgeschaltet',clara); await owner();
@@ -224,15 +231,46 @@ try {
   await denied(read('SELECT dispatch_due_knowledge_reviews()'));
   await denied(read("SELECT knowledge_qa_notify($1,$2,'knowledge_qa_assigned','forged',$3,'forged')",[officeA,bob,notificationQuestion.id]));
   await owner();
+  // Manage is denied to ordinary staff by default, separately from write/verify.
+  await owner();
+  await db.query("INSERT INTO action_permissions VALUES($1,'knowledge.manage',ARRAY['bueroleitung']::app_role[]) ON CONFLICT(tenant_id,action_key) DO UPDATE SET allowed_roles=EXCLUDED.allowed_roles",[officeA]);
+  await actor(alice);
+  let managed=await create(officeA,'Frage pflegen');
+  await denied(read("SELECT * FROM knowledge_qa_manage($1,$2,'edit','Neu','Kontext')",[managed.id,managed.revision]));
+  await owner();
+  await db.query("UPDATE action_permissions SET allowed_roles=ARRAY['mitarbeiter']::app_role[] WHERE action_key='knowledge.manage' AND tenant_id=$1",[officeA]);
+  await actor(alice);
+  assert.equal((await read('SELECT knowledge_qa_manage_selftest($1) AS result',[officeA]))[0].result.ok,true);
+  const beforeEdit=managed;
+  managed=(await read("SELECT * FROM knowledge_qa_manage($1,$2,'edit','Neu','Kontext')",[managed.id,managed.revision]))[0];
+  assert.equal(managed.title,'Neu');
+  await stale(read("SELECT * FROM knowledge_qa_manage($1,$2,'archive')",[managed.id,beforeEdit.revision]));
+  assert.equal((await read('SELECT event_type FROM knowledge_question_events WHERE question_id=$1 ORDER BY revision DESC LIMIT 1',[managed.id]))[0].event_type,'question_edited');
+  let duplicate=await create(officeA,'Doppelte Frage');
+  await assert.rejects(read("SELECT * FROM knowledge_qa_manage($1,$2,'merge',NULL,NULL,$1,$2)",[duplicate.id,duplicate.revision]),error=>error.code==='22023');
+  await stale(read("SELECT * FROM knowledge_qa_manage($1,$2,'merge',NULL,NULL,$3,$4)",[duplicate.id,duplicate.revision,managed.id,0]));
+  await actor(bob); const foreignTarget=await create(officeB,'Fremde Zielfrage'); await actor(alice);
+  await assert.rejects(read("SELECT * FROM knowledge_qa_manage($1,$2,'merge',NULL,NULL,$3,$4)",[duplicate.id,duplicate.revision,foreignTarget.id,foreignTarget.revision]),error=>error.code==='22023');
+  duplicate=(await read("SELECT * FROM knowledge_qa_manage($1,$2,'merge',NULL,NULL,$3,$4)",[duplicate.id,duplicate.revision,managed.id,managed.revision]))[0];
+  assert.equal(duplicate.merged_into,managed.id); assert.ok(duplicate.archived_at);
+  assert.equal((await read("SELECT * FROM knowledge_qa_list($1,'Doppelte','open')",[officeA]))[0].total_count,0);
+  await assert.rejects(save(duplicate,'Keine Änderung geschlossener Fragen'),error=>error.code==='22023');
+  managed=(await read("SELECT * FROM knowledge_qa_manage($1,$2,'archive')",[managed.id,managed.revision]))[0];
+  assert.ok(managed.archived_at);
+  assert.equal((await read('SELECT count(*)::int AS n FROM knowledge_question_events WHERE question_id=$1',[managed.id]))[0].n,3);
+  await actor(bob);
+  await denied(read("SELECT * FROM knowledge_qa_manage($1,$2,'archive')",[managed.id,managed.revision]));
+  await owner();
   await db.query(`INSERT INTO knowledge_questions(tenant_id,title,description,created_by,updated_by,answer_content,answer_text,answered_at,updated_at)
     SELECT $1,'Referenzfrage '||i,'Kontext für Lasttest',$2,$2,$3::jsonb,'Allgemeine Antwort',now(),now()-make_interval(secs=>i)
     FROM generate_series(1,2000) i`, [officeA,alice,JSON.stringify(content('Allgemeine Antwort'))]);
   await db.exec('ANALYZE knowledge_questions');
   await actor(alice);
-  const browsePlan = await read("EXPLAIN (ANALYZE,BUFFERS) SELECT id,updated_at FROM knowledge_questions WHERE tenant_id=$1 AND answered_at IS NOT NULL ORDER BY updated_at DESC,id LIMIT 21", [officeA]);
-  const searchPlan = await read("EXPLAIN (ANALYZE,BUFFERS) SELECT id,(CASE WHEN title_search_vector @@ plainto_tsquery('german','urlaub') THEN 1 ELSE 0 END + ts_rank_cd(search_vector,plainto_tsquery('german','urlaub'))) AS rank FROM knowledge_questions WHERE tenant_id=$1 AND answered_at IS NOT NULL AND search_vector @@ plainto_tsquery('german','urlaub') ORDER BY rank DESC,id LIMIT 21", [officeA]);
+  const browsePlan = await read("EXPLAIN (ANALYZE,BUFFERS) SELECT id,updated_at FROM knowledge_questions WHERE tenant_id=$1 AND archived_at IS NULL AND answered_at IS NOT NULL ORDER BY updated_at DESC,id LIMIT 21", [officeA]);
+  const searchPlan = await read("EXPLAIN (ANALYZE,BUFFERS) SELECT id,(CASE WHEN title_search_vector @@ plainto_tsquery('german','urlaub') THEN 1 ELSE 0 END + ts_rank_cd(search_vector,plainto_tsquery('german','urlaub'),32)) AS rank FROM knowledge_questions WHERE tenant_id=$1 AND archived_at IS NULL AND answered_at IS NOT NULL AND search_vector @@ plainto_tsquery('german','urlaub') ORDER BY rank DESC,id LIMIT 21", [officeA]);
+  const planRows=(await read('SELECT count(*)::int AS n FROM knowledge_questions WHERE tenant_id=$1 AND answered_at IS NOT NULL AND archived_at IS NULL',[officeA]))[0].n;
   if (process.env.KNOWLEDGE_WRITE_PLANS === '1') await writeFile(new URL('../docs/wissen-query-plans.md',import.meta.url),
-    '# Wissen: gemessene Abfragepläne\n\nIsoliertes PostgreSQL (PGlite), 2.002 beantwortete Fragen, authentifizierte Rolle mit RLS. Gemessen werden die inneren Browse-/FTS-Pfade; RPC-Hülle, Gesamtzählung und Netzwerk sind nicht enthalten. Produktionspläne hängen von Datenverteilung und Statistik ab.\n\n## Browsen\n\n```text\n'+browsePlan.map(row=>row['QUERY PLAN']).join('\n')+'\n```\n\n## Suche\n\n```text\n'+searchPlan.map(row=>row['QUERY PLAN']).join('\n')+'\n```\n');
+    '# Wissen: gemessene Abfragepläne\n\nIsoliertes PostgreSQL (PGlite), '+planRows+' beantwortete Fragen, authentifizierte Rolle mit RLS. Gemessen werden die inneren Browse-/FTS-Pfade; RPC-Hülle, Gesamtzählung und Netzwerk sind nicht enthalten. Produktionspläne hängen von Datenverteilung und Statistik ab.\n\n## Browsen\n\n```text\n'+browsePlan.map(row=>row['QUERY PLAN']).join('\n')+'\n```\n\n## Suche\n\n```text\n'+searchPlan.map(row=>row['QUERY PLAN']).join('\n')+'\n```\n');
   console.log('Knowledge QA passed: two-tenant RLS, roles, validated content, German FTS/ranking, revisions, reviews, immutable audit, private storage policies and preserved legacy data.');
 } catch (error) {
   console.error(error.message, error.code ?? '', error.query ?? '', error.stack);

@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: vi.fn(async (name: string) => ({ data: name === 'knowledge_qa_selftest' ? { ok: true, checks: {} } : [{ items: [], total_count: 0 }], error: null })) } }));
+vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: vi.fn(async (name: string) => ({ data: name.endsWith('selftest') ? { ok: true, checks: {} } : [{ items: [], total_count: 0 }], error: null })) } }));
 import { knowledgeLifecycleScenario } from './knowledge-lifecycle';
 import type { TestContext } from '../types';
 

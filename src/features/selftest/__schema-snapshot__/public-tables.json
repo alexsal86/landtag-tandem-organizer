@@ -131,6 +131,7 @@
   "knowledge_document_topics",
   "knowledge_document_versions",
   "knowledge_documents",
+  "knowledge_qa_notification_deliveries",
   "knowledge_question_attachments",
   "knowledge_question_events",
   "knowledge_questions",

@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+import { ManagementPanel } from "./ManagementPanel";
 import { useMemo, useState } from "react";
 import { History, Pencil } from "lucide-react";
 import EnhancedLexicalEditor from "@/components/lexical/EnhancedLexicalEditor";
@@ -26,6 +28,7 @@ function FullKnowledgeQuestionCard({
   assignable,
   canWrite,
   canVerify,
+  canManage,
   onOpen,
 }: {
   question: KnowledgeCard;
@@ -33,6 +36,7 @@ function FullKnowledgeQuestionCard({
   assignable: TenantProfileOption[];
   canWrite: boolean;
   canVerify: boolean;
+  canManage: boolean;
   query: string;
   onOpen: () => void;
 }) {
@@ -71,6 +75,23 @@ function FullKnowledgeQuestionCard({
             {question.answered_at ? REVIEW_LABELS[status] : "Offene Frage"}
           </Badge>
         </div>
+        {question.archived_at && (
+          <p className="rounded border bg-muted p-3 text-sm">
+            {question.merged_into ? (
+              <>
+                Als Duplikat geschlossen.{" "}
+                <Link
+                  className="underline"
+                  to={`?frage=${question.merged_into}`}
+                >
+                  Zur Zielfrage
+                </Link>
+              </>
+            ) : (
+              "Diese Frage ist archiviert."
+            )}
+          </p>
+        )}
         {question.description && (
           <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground">
             {question.description}
@@ -93,7 +114,10 @@ function FullKnowledgeQuestionCard({
               contentNodes={validContent}
               onChange={() => {}}
             />
-            <KnowledgeAttachments question={question} canWrite={canWrite} />
+            <KnowledgeAttachments
+              question={question}
+              canWrite={canWrite && !question.archived_at}
+            />
           </>
         ) : (
           <p className="text-sm text-muted-foreground">
@@ -124,7 +148,7 @@ function FullKnowledgeQuestionCard({
             <span>Prüftermin: {formatDate(question.review_due_at)}</span>
           )}
         </div>
-        {canWrite ? (
+        {canWrite && !question.archived_at ? (
           <AssigneeSelect
             question={question}
             profiles={profiles}
@@ -138,7 +162,7 @@ function FullKnowledgeQuestionCard({
         )}
         {!editing && (
           <div className="flex flex-wrap gap-2">
-            {canWrite && (
+            {canWrite && !question.archived_at && (
               <Button
                 variant={question.answered_at ? "outline" : "default"}
                 size="sm"
@@ -159,8 +183,12 @@ function FullKnowledgeQuestionCard({
             </Button>
           </div>
         )}
-        {!editing && question.answered_at && canVerify && (
-          <ReviewPanel question={question} now={now} />
+        {!editing &&
+          question.answered_at &&
+          !question.archived_at &&
+          canVerify && <ReviewPanel question={question} now={now} />}
+        {!editing && !question.archived_at && canManage && (
+          <ManagementPanel question={question} />
         )}
         {historyOpen && (
           <HistoryPanel questionId={question.id} profiles={profiles} />
@@ -176,6 +204,7 @@ export function KnowledgeQuestionCard(props: {
   assignable: TenantProfileOption[];
   canWrite: boolean;
   canVerify: boolean;
+  canManage: boolean;
   query: string;
   onOpen: () => void;
   detail?: boolean;

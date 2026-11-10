@@ -5,10 +5,20 @@ import type { TestScenario } from '../types';
 export const knowledgeLifecycleScenario: TestScenario = {
   id: 'knowledge-lifecycle', title: 'Wissen: Fragen, Antworten und manuelle Prüfung',
   description: 'Prüft Eingaben und den echten Frage-Antwort-Ablauf. Testdatensätze und Verlauf werden in einer Datenbank-Untertransaktion vollständig zurückgerollt.',
-  features: ['knowledge', 'permissions'], touches: ['knowledge_questions', 'knowledge_question_events'],
+  features: ['knowledge', 'permissions'], touches: ['knowledge_questions', 'knowledge_question_events', 'knowledge_qa_notification_deliveries'],
   checks: ['Frage als einziges Pflichtfeld', 'Validierte Antwort und sichere Links', 'Drei Prüfzustände und Fälligkeit', 'Anhanggrenzen', 'Lesen außerhalb des eigenen Büros'],
   limitations: ['Zwei-Büro-Isolation, FTS und Storage-Policies werden zusätzlich mit scripts/test-knowledge-qa.mjs in isoliertem PostgreSQL geprüft. Echte Storage-HTTP-Zugriffe benötigen eine Supabase-Testinstanz.'],
   steps: [
+    { id: 'notification-delivery', label: 'Serverzustellung, Einstellungen und dauerhafte Duplikatsperre', kind: 'workflow', run: async ctx => {
+      const response = await supabase.rpc('knowledge_qa_notification_selftest', { p_tenant: ctx.tenantId });
+      const result = response.data && typeof response.data === 'object' && !Array.isArray(response.data) ? response.data : null;
+      return { ok: !response.error && result?.ok === true, message: response.error?.message || String(result?.message || 'Eigene Testbenachrichtigung geprüft und zurückgerollt.'), details: result?.checks };
+    } },
+    { id: 'manage-workflow', label: 'Pflegeberechtigung, Bearbeiten, Archiv und Duplikat mit Revisionsschutz', kind: 'workflow', run: async ctx => {
+      const response = await supabase.rpc('knowledge_qa_manage_selftest', { p_tenant: ctx.tenantId });
+      const result = response.data && typeof response.data === 'object' && !Array.isArray(response.data) ? response.data : null;
+      return { ok: !response.error && result?.ok === true, message: response.error?.message || String(result?.message || 'Pflegeablauf geprüft; Teständerungen zurückgerollt.'), details: result?.checks };
+    } },
     { id: 'notification-question-link', label: 'Benachrichtigungen öffnen die konkrete Wissensfrage', kind: 'logic', run: async () => ({
       ok: knowledgeQuestionPath('test-id') === '/wissen?frage=test-id' && knowledgeQuestionPath(null) === '/wissen',
       message: 'Zuweisung, Antwort und Prüfung führen direkt zur Frage.',

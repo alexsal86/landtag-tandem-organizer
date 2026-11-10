@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "source": "src/integrations/supabase/types.ts",
   "counts": {
-    "total": 272,
-    "scenario": 33,
+    "total": 273,
+    "scenario": 34,
     "deferred": 83,
     "excluded": 156,
     "missing": 0
@@ -527,7 +527,8 @@
       "title": "Wissen: Fragen, Antworten und manuelle Prüfung",
       "touches": [
         "knowledge_questions",
-        "knowledge_question_events"
+        "knowledge_question_events",
+        "knowledge_qa_notification_deliveries"
       ],
       "features": [
         "knowledge",
@@ -1507,6 +1508,13 @@
       "table": "knowledge_documents",
       "status": "deferred",
       "scenarios": []
+    },
+    {
+      "table": "knowledge_qa_notification_deliveries",
+      "status": "scenario",
+      "scenarios": [
+        "knowledge-lifecycle"
+      ]
     },
     {
       "table": "knowledge_question_attachments",

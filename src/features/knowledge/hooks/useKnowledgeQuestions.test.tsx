@@ -33,6 +33,7 @@ import {
   useKnowledgeQuestions,
   useSimilarKnowledgeQuestions,
   useKnowledgeHistory,
+  useKnowledgeWrite,
 } from "./useKnowledgeQuestions";
 
 it("does not display a delayed result from the previous office after switching offices", async () => {
@@ -242,4 +243,14 @@ it("loads older history by revision with a bounded extra row instead of truncati
   );
   unmount();
   client.clear();
+});
+
+it('clears an assignee with SQL null through the typed write RPC', async () => {
+  state.rpc.mockImplementation(() => ({ single: () => Promise.resolve({ data: { id: 'question' }, error: null }) }));
+  const client = new QueryClient();
+  const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  const { result, unmount } = renderHook(() => useKnowledgeWrite(), { wrapper });
+  await act(async () => { await result.current.mutateAsync({ name: 'knowledge_qa_set_assignee', args: { p_question: 'question', p_expected_revision: 3, p_assigned_to: null } }); });
+  expect(state.rpc).toHaveBeenLastCalledWith('knowledge_qa_set_assignee', expect.objectContaining({ p_assigned_to: null, p_expected_revision: 3 }));
+  unmount(); client.clear();
 });
