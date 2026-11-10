@@ -118,6 +118,8 @@ export function useAutomationAdminMutations(tenantId?: string, userId?: string) 
       queryClient.invalidateQueries({ queryKey: automationKeys.rules(tenantId) }),
       queryClient.invalidateQueries({ queryKey: automationKeys.runs(tenantId) }),
       queryClient.invalidateQueries({ queryKey: automationKeys.pauseState(tenantId) }),
+      queryClient.invalidateQueries({ queryKey: ["annual-routines", tenantId] }),
+      queryClient.invalidateQueries({ queryKey: ["my-work-tasks"] }),
     ]);
   };
 
@@ -137,7 +139,7 @@ export function useAutomationAdminMutations(tenantId?: string, userId?: string) 
     mutationFn: async ({ editingRuleId, payload }: { editingRuleId: string | null; payload: AutomationRuleMutationPayload }) => {
       if (!tenantId || !userId) throw new Error("Tenant oder Benutzer fehlt.");
       const query = editingRuleId
-        ? supabase.from("automation_rules").update(toAutomationRuleUpdate(payload)).eq("id", editingRuleId)
+        ? supabase.from("automation_rules").update(toAutomationRuleUpdate(payload)).eq("id", editingRuleId).eq("tenant_id", tenantId)
         : supabase.from("automation_rules").insert([toAutomationRuleInsert(payload, userId)]);
       const { error } = await query;
       if (error) throw error;
@@ -149,7 +151,8 @@ export function useAutomationAdminMutations(tenantId?: string, userId?: string) 
 
   const deleteRule = useMutation({
     mutationFn: async (ruleId: string) => {
-      const { error } = await supabase.from("automation_rules").delete().eq("id", ruleId);
+      if (!tenantId) throw new Error("Kein Büro ausgewählt.");
+      const { error } = await supabase.from("automation_rules").delete().eq("id", ruleId).eq("tenant_id", tenantId);
       if (error) throw error;
     },
     onSuccess: async () => {
@@ -159,7 +162,8 @@ export function useAutomationAdminMutations(tenantId?: string, userId?: string) 
 
   const toggleRuleEnabled = useMutation({
     mutationFn: async ({ ruleId, enabled }: { ruleId: string; enabled: boolean }) => {
-      const { error } = await supabase.from("automation_rules").update({ enabled }).eq("id", ruleId);
+      if (!tenantId) throw new Error("Kein Büro ausgewählt.");
+      const { error } = await supabase.from("automation_rules").update({ enabled }).eq("id", ruleId).eq("tenant_id", tenantId);
       if (error) throw error;
     },
     onSuccess: async () => {
@@ -169,7 +173,7 @@ export function useAutomationAdminMutations(tenantId?: string, userId?: string) 
 
   const runRule = useMutation({
     mutationFn: async ({ ruleId, dryRun, sourcePayload }: { ruleId: string; dryRun: boolean; sourcePayload: Record<string, string> }) => {
-      const { error } = await supabase.functions.invoke("run-automation-rule", {
+      const { data, error } = await supabase.functions.invoke("run-automation-rule", {
         body: {
           ruleId,
           dryRun,
@@ -179,6 +183,7 @@ export function useAutomationAdminMutations(tenantId?: string, userId?: string) 
       });
 
       if (error) throw error;
+      if (data?.status === "failed" || data?.error) throw new Error(data.error || "Ausführung fehlgeschlagen; siehe Verlauf.");
     },
     onSuccess: async (_, variables) => {
       notify.success(variables.dryRun ? "Dry-Run erstellt" : "Regel ausgeführt", {

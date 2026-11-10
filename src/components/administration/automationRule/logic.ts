@@ -1,4 +1,5 @@
 import type { ConditionItem, ConditionGroup, FieldType, WizardForm } from "./types";
+import { validateAnnualRoutine } from "@/features/automation/annualRoutines";
 import { FIELD_SPEC_BY_MODULE } from "./constants";
 import { isCalendarSchedule, validateCalendarSchedule } from "@/features/automation/calendarSchedule";
 
@@ -84,8 +85,10 @@ export function collectSemanticIssues(
   if (form.triggerType === "webhook" && (form.webhookSecret ?? "").length < 16) {
     issues.push({ level: "error", message: "Das Webhook-Geheimnis muss mindestens 16 Zeichen enthalten." });
   }
+  const routineError = validateAnnualRoutine(form.triggerType, form.schedule, form.actions);
+  if (routineError) issues.push({ level: "error", message: routineError });
   const fieldSpecs = FIELD_SPEC_BY_MODULE[form.module] ?? {};
-  if (form.triggerType === "schedule" && form.schedule && isCalendarSchedule(form.schedule)) {
+  if ((form.triggerType === "schedule" || form.actions.some(action => action.type === "run_annual_routine")) && form.schedule && isCalendarSchedule(form.schedule)) {
     const error = validateCalendarSchedule(form.schedule);
     if (error) issues.push({ level: "error", message: error });
   }

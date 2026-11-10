@@ -14,6 +14,9 @@ export type ConditionGroup = {
 };
 
 export type ActionItem = {
+  annualTaskId?: string;
+  systemFunction?: string;
+  routineCategory?: string;
   type: string;
   targetUserId: string;
   title: string;

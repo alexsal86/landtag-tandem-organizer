@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { annualDueDay, annualTaskStatus, canDelegateAnnualTask } from "@/features/timetracking/annualTaskRules";
 import { describeError } from "../verify";
 import type { TestScenario } from "../types";
+import { validateAnnualRoutine } from "@/features/automation/annualRoutines";
 
 export const annualTaskStafetteScenario: TestScenario = {
   id: "annual-task-stafette",
@@ -11,8 +12,19 @@ export const annualTaskStafetteScenario: TestScenario = {
   touches: ["annual_tasks", "annual_task_completions", "tasks"],
   requiredRoles: ["abgeordneter", "bueroleitung"],
   checks: ["Exakte Stichtage", "System-Routinen nicht delegierbar", "Eine Aufgabe pro Jahr", "Abschluss und Wiederöffnung synchron", "Direkter Jahresabschluss gesperrt"],
-  limitations: ["Erzeugung im Test benötigt die bestehenden Schreibrechte für Jahresaufgaben. Automatische Zeitpläne sind noch nicht Teil dieser Brücke."],
+  limitations: ["Die automatische Ausführung am tatsächlichen Stichtag und Personaländerungen werden nicht durch diesen Selbsttest ausgelöst."],
   steps: [
+    {
+      id: "unified-routine", label: "Jahresroutine im gemeinsamen Regel-Assistenten prüfen", kind: "logic",
+      run: async () => {
+        const actions = [{ type: "run_annual_routine", systemFunction: "execute_reset_vacation_days" }];
+        const ok = validateAnnualRoutine("schedule", { schedule_kind: "annual" }, actions) === null
+          && validateAnnualRoutine("manual", { schedule_kind: "annual" }, actions) === null
+          && validateAnnualRoutine("schedule", { schedule_kind: "monthly" }, actions) !== null
+          && validateAnnualRoutine("schedule", { schedule_kind: "annual" }, [...actions, ...actions]) !== null;
+        return { ok, message: ok ? "Jahreszyklus und Systemaktionen korrekt begrenzt." : "Jahresroutine-Regeln weichen ab." };
+      },
+    },
     {
       id: "rules", label: "Stichtage und System-Routinen prüfen", kind: "logic",
       run: async () => {

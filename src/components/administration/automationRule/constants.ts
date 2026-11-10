@@ -20,6 +20,7 @@ export const CONDITION_OPERATORS = [
 export const ACTION_TYPES = [
   { value: "create_notification", label: "Benachrichtigung erzeugen" },
   { value: "create_task", label: "Aufgabe erzeugen" },
+  { value: "run_annual_routine", label: "Jahresroutine ausführen" },
   { value: "create_approval_request", label: "Freigabe/Approval anfordern" },
   { value: "update_record_status", label: "Status aktualisieren" },
   { value: "send_push_notification", label: "Push senden" },
@@ -117,6 +118,12 @@ const DEFAULT_ACTION_INIT = {
 };
 
 export const RULE_TEMPLATES = [
+  ...[
+    { id: "annual-mandate-report", name: "Mandatsbericht vorbereiten", month: "1", day: "31" },
+    { id: "annual-budget", name: "Haushaltsanmeldungen vorbereiten", month: "9", day: "15" },
+    { id: "annual-privacy", name: "Datenschutz-Verzeichnis prüfen", month: "3", day: "1" },
+    { id: "annual-greetings", name: "Weihnachtskartenliste vorbereiten", month: "11", day: "1" },
+  ].map(t => ({ id: t.id, name: t.name, description: "", module: "tasks", triggerType: "schedule", triggerField: "scheduled_date", triggerValue: "", schedule: { schedule_kind: "annual", month: t.month, day: t.day, hour: "9", month_end: "false", timezone: "Europe/Berlin", minutes_interval: "60" }, conditions: [], actions: [{ ...DEFAULT_ACTION_INIT, type: "run_annual_routine", title: t.name }] })),
   ...[
     { id: "annual-summer-tour", name: "Sommertour vorbereiten", description: "Jährlich am 1. April die Sommertour-Planung starten.", kind: "annual", month: "4", end: "false" },
     { id: "monthly-office-review", name: "Monatsabschluss im Büro", description: "Am Monatsende offene Zusagen und Aufgaben prüfen.", kind: "monthly", month: "1", end: "true" },

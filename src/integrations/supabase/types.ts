@@ -147,6 +147,7 @@ export type Database = {
       annual_tasks: {
         Row: {
           auto_execute: boolean | null
+          automation_rule_id: string | null
           category: string
           created_at: string | null
           description: string | null
@@ -160,6 +161,7 @@ export type Database = {
         }
         Insert: {
           auto_execute?: boolean | null
+          automation_rule_id?: string | null
           category?: string
           created_at?: string | null
           description?: string | null
@@ -173,6 +175,7 @@ export type Database = {
         }
         Update: {
           auto_execute?: boolean | null
+          automation_rule_id?: string | null
           category?: string
           created_at?: string | null
           description?: string | null
@@ -185,6 +188,13 @@ export type Database = {
           title?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "annual_tasks_automation_rule_id_fkey"
+            columns: ["automation_rule_id"]
+            isOneToOne: false
+            referencedRelation: "automation_rules"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "annual_tasks_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -13942,6 +13952,10 @@ export type Database = {
           p_title: string
         }
         Returns: boolean
+      }
+      execute_annual_automation_routine: {
+        Args: { _annual_task_id: string; _rule_id: string; _year: number }
+        Returns: Json
       }
       execute_archive_sick_days: {
         Args: { p_tenant_id: string }

@@ -31,8 +31,8 @@ it("keeps bookmarks valid after reorganizing personal and financial settings", (
 });
 
 describe("automation hub navigation", () => {
-  it("exposes exactly the three planned workspaces", () => {
-    expect(adminMenuItems.find(item => item.id === "automation")?.children?.map(item => item.id)).toEqual(["rules", "annual", "rss"]);
+  it("integrates annual routines into the rules workspace", () => {
+    expect(adminMenuItems.find(item => item.id === "automation")?.children?.map(item => item.id)).toEqual(["rules", "rss"]);
   });
   it("preserves legacy engine links in the dispatcher tab", () => {
     const params = normalizeAutomationParams(new URLSearchParams("adminSection=automation&adminSubSection=engine&tab=dashboard"));

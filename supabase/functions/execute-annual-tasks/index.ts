@@ -36,6 +36,7 @@ Deno.serve(withSafeHandler("execute-annual-tasks", async (req) => {
       .from('annual_tasks')
       .select('id, tenant_id, title, execute_function, due_month, due_day')
       .eq('auto_execute', true)
+      .is('automation_rule_id', null)
       .not('execute_function', 'is', null)
       .eq('due_month', currentMonth);
 

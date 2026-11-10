@@ -402,7 +402,7 @@ export default function Administration(): React.JSX.Element | null {
           return <AutomationRulesManager />;
         case "rss":
           return <RSSMonitoringManager />;
-        case "annual": return <AnnualTasksView />;
+        case "annual": return <AutomationRulesManager />;
         default: return null;
       }
     }
