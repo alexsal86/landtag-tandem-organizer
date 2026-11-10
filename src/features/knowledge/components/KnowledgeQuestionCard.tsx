@@ -62,7 +62,9 @@ export function KnowledgeQuestionCard({ question, profiles, assignable, canWrite
     </div>
     {canWrite ? <div className="flex flex-wrap items-center gap-2"><Label className="text-xs text-muted-foreground" htmlFor={`assignee-${question.id}`}>Zuständig</Label><select id={`assignee-${question.id}`} className="max-w-full rounded border bg-background px-2 py-1 text-sm" value={question.assigned_to || ''} disabled={write.isPending} onChange={async event => {
       setError('');
-      try { await write.mutateAsync({ name: 'knowledge_qa_set_assignee', args: { p_question: question.id, p_expected_revision: question.revision, p_assigned_to: event.target.value || null } }); }
+      try { await write.mutateAsync({ name: 'knowledge_qa_set_assignee', args: { p_question: question.id, p_expected_revision: question.revision,
+        // @ts-expect-error Generated RPC types omit nullability; the SQL function accepts null to clear the assignee.
+        p_assigned_to: event.target.value || null } }); }
       catch (cause) { setError(cause instanceof Error ? cause.message : 'Zuständigkeit konnte nicht geändert werden.'); }
     }}><option value="">Noch nicht zugeordnet</option>{question.assigned_to && !assignable.some(profile => profile.user_id === question.assigned_to) && <option value={question.assigned_to}>{name(question.assigned_to)}</option>}{assignable.map(profile => <option key={profile.user_id} value={profile.user_id}>{profile.display_name || 'Unbekannt'}</option>)}</select></div> : !question.answered_at && question.assigned_to && <p className="text-sm">Zuständig: {name(question.assigned_to)}</p>}
     {!editing && <div className="flex flex-wrap gap-2">
