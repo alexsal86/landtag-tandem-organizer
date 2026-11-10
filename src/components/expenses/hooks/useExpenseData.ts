@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { csvCell } from "@/lib/csvSafe";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
@@ -149,7 +150,7 @@ export function useExpenseData() {
   const exportToCSV = () => {
     const headers = ['Datum', 'Beschreibung', 'Kategorie', 'Betrag', 'Hinweise'];
     const csvData = expenses.map(e => [format(new Date(e.expense_date), "dd.MM.yyyy"), e.description || '', e.category?.name || 'Unbekannt', e.amount.toFixed(2), e.notes || '']);
-    const csvContent = [headers.join(','), ...csvData.map(row => row.map(f => `"${f}"`).join(','))].join('\n');
+    const csvContent = [headers.join(','), ...csvData.map(row => row.map(f => csvCell(f)).join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a'); link.href = URL.createObjectURL(blob);
     link.download = `ausgaben-${selectedYear}-${selectedMonth.toString().padStart(2, '0')}.csv`; link.click();

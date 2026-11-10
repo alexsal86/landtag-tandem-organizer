@@ -112,10 +112,11 @@ export function DossierBriefingTab({ dossier, entries }: DossierBriefingTabProps
   };
 
   const handlePrint = () => {
-    const text = buildTextBriefing();
+    const esc = (v: string) => v.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+    const text = esc(buildTextBriefing());
     const printWindow = window.open("", "_blank");
     if (printWindow) {
-      printWindow.document.write(`<html><head><title>Briefing: ${dossier.title}</title>
+      printWindow.document.write(`<html><head><title>Briefing: ${esc(dossier.title ?? "")}</title>
         <style>body{font-family:system-ui,sans-serif;padding:40px;line-height:1.6;max-width:700px;white-space:pre-wrap;font-size:13px}
         </style></head><body>${text}</body></html>`);
       printWindow.document.close();

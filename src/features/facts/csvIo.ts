@@ -1,4 +1,5 @@
 import Papa from "papaparse";
+import { neutralizeCsvFormula } from "@/lib/csvSafe";
 import type { FactRow, FactInput } from "./types";
 import { notify } from "@/lib/notify";
 
@@ -6,9 +7,9 @@ const COLUMNS = ["text", "source", "tags", "valid_until", "is_archived"] as cons
 
 export function exportFactsToCsv(facts: FactRow[]): void {
   const rows = facts.map((f) => ({
-    text: f.text,
-    source: f.source ?? "",
-    tags: (f.tags ?? []).join("|"),
+    text: neutralizeCsvFormula(f.text),
+    source: neutralizeCsvFormula(f.source ?? ""),
+    tags: neutralizeCsvFormula((f.tags ?? []).join("|")),
     valid_until: f.valid_until ?? "",
     is_archived: f.is_archived ? "true" : "false",
   }));
