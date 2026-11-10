@@ -12,7 +12,7 @@ export const annualTaskStafetteScenario: TestScenario = {
   touches: ["annual_tasks", "annual_task_completions", "tasks"],
   requiredRoles: ["abgeordneter", "bueroleitung"],
   checks: ["Exakte Stichtage", "System-Routinen nicht delegierbar", "Eine Aufgabe pro Jahr", "Abschluss und Wiederöffnung synchron", "Direkter Jahresabschluss gesperrt"],
-  limitations: ["Erzeugung im Test benötigt die bestehenden Schreibrechte für Jahresaufgaben. Automatische Zeitpläne sind noch nicht Teil dieser Brücke."],
+  limitations: ["Die automatische Ausführung am tatsächlichen Stichtag und Personaländerungen werden nicht durch diesen Selbsttest ausgelöst."],
   steps: [
     {
       id: "unified-routine", label: "Jahresroutine im gemeinsamen Regel-Assistenten prüfen", kind: "logic",

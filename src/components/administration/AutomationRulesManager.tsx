@@ -218,7 +218,7 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
   const duplicateRule = (rule: RuleRow) => {
     startEdit(rule);
     setEditingRuleId(null);
-    setForm((prev) => ({ ...prev, name: `${prev.name} (Kopie)` }));
+    setForm((prev) => ({ ...prev, name: `${prev.name} (Kopie)`, actions: prev.actions.map(action => action.type === "run_annual_routine" ? { ...action, annualTaskId: "", systemFunction: "" } : action) }));
   };
 
   const toggleAutomationsPaused = async () => {

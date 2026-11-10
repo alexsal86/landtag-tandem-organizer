@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useNavigate } from "react-router-dom";
@@ -9,11 +10,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Pencil, Play, Plus } from "lucide-react";
 import { ErrorState, LoadingState, EmptyState } from "@/components/ui-patterns";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const MONTHS = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
 export function AnnualRoutinesOverview({ rules, onEdit, onRun, onNew, canEdit, runningRuleId }: { rules: AutomationRuleRecordView[]; onEdit: (rule: AutomationRuleRecordView) => void; onRun: (rule: AutomationRuleRecordView) => void; onNew: () => void; canEdit: boolean; runningRuleId: string | null }) {
   const { currentTenant } = useTenant();
   const navigate = useNavigate();
+  const [confirmRule, setConfirmRule] = useState<AutomationRuleRecordView | null>(null);
   const year = new Date().getFullYear();
   const { data: records = [], isLoading, error, refetch } = useQuery({
     queryKey: ["annual-routines", currentTenant?.id, year], enabled: Boolean(currentTenant?.id), staleTime: 60_000,
@@ -44,9 +47,10 @@ export function AnnualRoutinesOverview({ rules, onEdit, onRun, onNew, canEdit, r
           <p className="text-body font-medium break-words">{rule.name}</p>
           <div className="flex flex-wrap gap-xs"><Badge variant={status === "overdue" ? "destructive" : "outline"}>{status === "completed" ? "Erledigt" : linkedTask ? "In Bearbeitung" : status === "overdue" ? "Überfällig" : status === "due" ? "Heute fällig" : "Anstehend"}</Badge><Badge variant="secondary">{action?.payload?.system_function ? "Systemaktion" : "Büroaufgabe"}</Badge><Badge variant="outline">{!rule.enabled ? "Pausiert" : rule.trigger_type === "manual" ? "Manuell" : "Automatisch"}</Badge></div>
           <p className="text-caption text-muted-foreground">{rule.trigger_config.month_end === "true" ? "Monatsende" : `${rule.trigger_config.day}. ${month}`} · {rule.trigger_config.hour}:00 Uhr</p>
-          <div className="flex flex-wrap gap-xs"><Button variant="ghost" size="sm" onClick={() => onEdit(rule)} disabled={!canEdit}><Pencil className="mr-xs h-3 w-3" />Bearbeiten</Button>{linkedTask ? <Button variant="outline" size="sm" onClick={() => navigate(`/mywork?tab=tasks&highlight=${linkedTask}`)}>Aufgabe öffnen</Button> : <Button variant="outline" size="sm" disabled={!canEdit || !rule.enabled || status === "completed" || runningRuleId !== null} onClick={() => onRun(rule)}><Play className="mr-xs h-3 w-3" />Ausführen</Button>}</div>
+          <div className="flex flex-wrap gap-xs"><Button variant="ghost" size="sm" onClick={() => onEdit(rule)} disabled={!canEdit}><Pencil className="mr-xs h-3 w-3" />Bearbeiten</Button>{linkedTask ? <Button variant="outline" size="sm" onClick={() => navigate(`/mywork?tab=tasks&highlight=${linkedTask}`)}>Aufgabe öffnen</Button> : <Button variant="outline" size="sm" disabled={!canEdit || !rule.enabled || status === "completed" || runningRuleId !== null} onClick={() => action?.payload?.system_function ? setConfirmRule(rule) : onRun(rule)}><Play className="mr-xs h-3 w-3" />Ausführen</Button>}</div>
         </article>;
       })}</div>
     </section>)}</div>
+    <AlertDialog open={confirmRule !== null} onOpenChange={open => { if (!open) setConfirmRule(null); }}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{confirmRule?.name} ausführen?</AlertDialogTitle><AlertDialogDescription>Diese Systemaktion verändert die Personaldaten des Büros für {year}. Sie wird höchstens einmal pro Jahr ausgeführt.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Abbrechen</AlertDialogCancel><AlertDialogAction onClick={() => { if (confirmRule) onRun(confirmRule); setConfirmRule(null); }}>Ausführen</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
   </section>;
 }
