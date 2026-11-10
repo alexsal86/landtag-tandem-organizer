@@ -20,3 +20,4 @@
 - Annual routines enter tasks only through spawn_annual_task_to_stafette (public invoker wrapper, private role-checked processor); a locked annual completion ensures one task per year, and task status triggers own completion/reopening to avoid duplicate or disconnected work.
 - Automation administration uses three canonical destinations with URL-controlled, lazy-loaded tabs; legacy engine/RSS links normalize centrally so bookmarks survive without changing either execution engine.
 - Calendar leave requests are scoped through tenant profile user IDs and names are joined client-side, because the leave table has neither tenant_id nor a profiles foreign key.
+- CommonJS-only packages (e.g. react-big-calendar add-ons) are imported as namespaces and unwrapped via src/lib/cjsInterop.ts, and pre-bundled in optimizeDeps, because Vite can deliver a wrapped default export that crashes at runtime.
