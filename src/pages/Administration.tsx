@@ -448,9 +448,9 @@ export default function Administration(): React.JSX.Element | null {
       <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
         <ScrollArea className="h-full">
           <div className="p-3 md:p-6">
-            <header className="mb-5 border-b pb-3">
+            <header className={activeSection === "automation" && activeSubSection === "rules" ? "mx-auto mb-5 max-w-[1040px]" : "mb-5 border-b pb-3"}>
               <p className="text-xs text-muted-foreground">{activeSection === "personal" ? `Persönliche Einstellung · Büro: ${currentTenant?.name ?? "Kein Büro ausgewählt"}` : `Aktuelles Büro: ${currentTenant?.name ?? "Kein Büro ausgewählt"}`}</p>
-              <p className="mt-1 text-sm font-medium">{currentSectionLabel}{currentSubSectionLabel ? ` · ${currentSubSectionLabel}` : ""}</p>
+              {activeSection === "automation" && activeSubSection === "rules" ? <h1 className="mt-1 text-2xl font-semibold tracking-tight">Automatisierung: Regeln und Workflows</h1> : <p className="mt-1 text-sm font-medium">{currentSectionLabel}{currentSubSectionLabel ? ` · ${currentSubSectionLabel}` : ""}</p>}
             </header>
             <Suspense fallback={<p role="status">Bereich wird geladen…</p>}>
               <div key={`${currentTenant?.id ?? "platform"}:${activeSection}:${activeSubSection}`}>{renderContent()}</div>

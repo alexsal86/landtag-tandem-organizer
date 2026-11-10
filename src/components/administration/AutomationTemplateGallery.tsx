@@ -1,169 +1,52 @@
-import { useState } from "react";
-import { RULE_TEMPLATES } from "./AutomationRuleWizard";
+import { useState } from 'react';
+import { RULE_TEMPLATES } from './automationRule/constants';
 import { EmptyState } from '@/components/ui-patterns';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { BookTemplate, ChevronDown, Search, Zap } from "lucide-react";
-
-const MODULE_LABELS: Record<string, string> = {
-  tasks: "Aufgaben",
-  meetings: "Meetings",
-  decisions: "Entscheidungen",
-  knowledge: "Wissen",
-  cases: "Fallakten",
-  casefiles: "Fallakten",
-  contacts: "Kontakte",
-};
-
-const ACTION_LABELS: Record<string, string> = {
-  run_annual_routine: "Jahresroutine",
-  create_notification: "Benachrichtigung",
-  create_task: "Aufgabe erstellen",
-  update_record_status: "Status ändern",
-  send_push_notification: "Push senden",
-  send_email_template: "E-Mail senden",
-  create_approval_request: "Approval anfordern",
-};
-
-const TRIGGER_LABELS: Record<string, string> = {
-  record_changed: "Datenänderung",
-  schedule: "Zeitgesteuert",
-  manual: "Manuell",
-};
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ArrowRight, ChevronDown, LayoutGrid, Plus, Search } from 'lucide-react';
+import { ruleActionLabel, ruleModuleLabel, templateTriggerLabel } from '@/features/automation/rulePresentation';
+import styles from './AutomationRulesWorkspace.module.css';
 
 interface AutomationTemplateGalleryProps {
   onUseTemplate: (templateId: string) => void;
+  canEdit?: boolean;
 }
-
-export function AutomationTemplateGallery({ onUseTemplate }: AutomationTemplateGalleryProps) {
+export function AutomationTemplateGallery({ onUseTemplate, canEdit = true }: AutomationTemplateGalleryProps) {
   const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const [moduleFilter, setModuleFilter] = useState<string | null>(null);
-
-  const modules = [...new Set(RULE_TEMPLATES.map((t) => t.module))];
-
-  const filtered = RULE_TEMPLATES.filter((t) => {
-    if (moduleFilter && t.module !== moduleFilter) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return (
-        t.name.toLowerCase().includes(q) ||
-        t.description.toLowerCase().includes(q) ||
-        t.module.toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
-
-  return (
-    <Collapsible open={open} onOpenChange={setOpen} asChild>
-      <Card>
-        <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 space-y-0 py-4">
-          <div className="flex items-center gap-2">
-            <BookTemplate className="h-5 w-5 text-primary" />
-            <div>
-              <CardTitle>Template-Galerie</CardTitle>
-              <CardDescription>Vorgefertigte Regeln mit einem Klick übernehmen</CardDescription>
-            </div>
-          </div>
-          <CollapsibleTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2">
-              {open ? "Einklappen" : "Templates anzeigen"}
-              <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
-            </Button>
-          </CollapsibleTrigger>
-        </CardHeader>
-        <CollapsibleContent>
-          <CardContent className="space-y-4">
-            {/* Search + filter */}
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Templates durchsuchen…"
-                  className="pl-9"
-                />
-              </div>
-              <div className="flex gap-1.5 flex-wrap">
-                <Button
-                  variant={moduleFilter === null ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setModuleFilter(null)}
-                >
-                  Alle
-                </Button>
-                {modules.map((mod) => (
-                  <Button
-                    key={mod}
-                    variant={moduleFilter === mod ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setModuleFilter(moduleFilter === mod ? null : mod)}
-                  >
-                    {MODULE_LABELS[mod] || mod}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            {/* Template grid */}
-            {filtered.length === 0 ? (
-              <EmptyState size="sm" title="Keine Templates gefunden" description="Wähle ein anderes Modul oder lege eine eigene Regel an." />
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {filtered.map((template) => (
-                  <div
-                    key={template.id}
-                    className="rounded-lg border bg-card p-4 space-y-3 hover:border-primary/50 hover:shadow-sm transition-all"
-                  >
-                    <div className="space-y-1.5">
-                      <p className="font-medium text-sm leading-tight">{template.name}</p>
-                      <p className="text-xs text-muted-foreground line-clamp-2">
-                        {template.description}
-                      </p>
-                    </div>
-
-                    <div className="flex gap-1.5 flex-wrap">
-                      <Badge variant="outline" className="text-[10px]">
-                        {MODULE_LABELS[template.module] || template.module}
-                      </Badge>
-                      <Badge variant="outline" className="text-[10px]">
-                        {TRIGGER_LABELS[template.triggerType] || template.triggerType}
-                      </Badge>
-                      <Badge variant="secondary" className="text-[10px]">
-                        {template.actions.length} {template.actions.length === 1 ? "Aktion" : "Aktionen"}
-                      </Badge>
-                    </div>
-
-                    <div className="text-[11px] text-muted-foreground space-y-0.5">
-                      <p>
-                        <span className="font-medium">Wenn:</span> {template.triggerField} = „{template.triggerValue}"
-                      </p>
-                      <p>
-                        <span className="font-medium">Dann:</span>{" "}
-                        {template.actions.map((a) => ACTION_LABELS[a.type] || a.type).join(", ")}
-                      </p>
-                    </div>
-
-                    <Button
-                      size="sm"
-                      className="w-full gap-1.5"
-                      onClick={() => onUseTemplate(template.id)}
-                    >
-                      <Zap className="h-3.5 w-3.5" />
-                      Als Regel übernehmen
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </CollapsibleContent>
-      </Card>
-    </Collapsible>
+  const modules = [...new Set(RULE_TEMPLATES.map(template => template.module))];
+  const filtered = RULE_TEMPLATES.filter(template =>
+    (!moduleFilter || template.module === moduleFilter) &&
+    [template.name, template.description, ruleModuleLabel(template.module)].join(' ').toLocaleLowerCase('de-DE').includes(search.trim().toLocaleLowerCase('de-DE'))
   );
+  return <Collapsible open={open} onOpenChange={setOpen} className={styles.gallery}>
+    <CollapsibleTrigger asChild>
+      <button type="button" className={styles.galleryHead}>
+        <span className={styles.galleryIcon}><LayoutGrid className="h-4 w-4" aria-hidden="true" /></span>
+        <span className="min-w-0"><span className={styles.galleryTitle}>Template-Galerie</span><span className={styles.galleryDescription}>Vorgefertigte Regeln mit einem Klick übernehmen</span></span>
+        <ChevronDown className={`ml-auto h-4 w-4 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+      </button>
+    </CollapsibleTrigger>
+    <CollapsibleContent>
+      <div className={styles.galleryBody}>
+        <div className={styles.galleryTools}>
+          <div className={styles.search}><Search aria-hidden="true" /><Input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Templates durchsuchen" aria-label="Templates durchsuchen" /></div>
+          <div className={styles.chips} role="group" aria-label="Templates nach Modul filtern">
+            <button type="button" aria-pressed={moduleFilter === null} onClick={() => setModuleFilter(null)}>Alle</button>
+            {modules.map(module => <button type="button" key={module} aria-pressed={moduleFilter === module} onClick={() => setModuleFilter(module)}>{ruleModuleLabel(module)}</button>)}
+          </div>
+        </div>
+        {filtered.length === 0 ? <EmptyState size="sm" title="Keine Templates gefunden" description="Passe die Suche oder den Modulfilter an." /> : <div className={styles.templateGrid}>
+          {filtered.map(template => <article key={template.id} className={styles.template}>
+            <h4>{template.name}</h4>
+            <p className="line-clamp-2">{template.description}</p>
+            <div className={styles.flow}><span>Wenn {templateTriggerLabel(template)}</span><ArrowRight aria-hidden="true" /><span>{template.actions.some(action => action.type === 'run_annual_routine') ? 'Jahresroutine' : ruleActionLabel(template.actions)}</span></div>
+            <Button type="button" variant="outline" size="sm" className={`mt-1 w-full gap-2 ${styles.button}`} disabled={!canEdit} onClick={() => onUseTemplate(template.id)} aria-label={`Vorlage „${template.name}“ als Regel übernehmen`}><Plus className="h-4 w-4" aria-hidden="true" />Als Regel übernehmen</Button>
+          </article>)}
+        </div>}
+      </div>
+    </CollapsibleContent>
+  </Collapsible>;
 }

@@ -6,14 +6,13 @@ import type { Json } from "@/integrations/supabase/types";
 import { EmptyState, LoadingState } from '@/components/ui-patterns';
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Clock, Copy, Download, Loader2, Pause, Play, Plus, ShieldAlert, Trash2, Upload, Zap } from "lucide-react";
+import { AlertTriangle, Loader2, Pause, ShieldAlert } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDistanceToNow, addMinutes } from "date-fns";
 import { de } from "date-fns/locale";
 import { AutomationRuleWizard, DEFAULT_FORM, DEFAULT_ACTION, RULE_TEMPLATES, sanitizeTriggerValue, type WizardForm, type ActionItem, type ConditionItem, type ConditionGroup } from "./AutomationRuleWizard";
@@ -66,6 +65,8 @@ function flattenConditions(group: ConditionGroup): ConditionItem[] {
   }
   return result.length > 0 ? result : [{ field: "status", operator: "equals", value: "" }];
 }
+import { AutomationRulesList } from "./AutomationRulesList";
+import styles from "./AutomationRulesWorkspace.module.css";
 import { AutomationTemplateGallery } from "./AutomationTemplateGallery";
 import { AutomationRuleVersions } from "./AutomationRuleVersions";
 import { AutomationRuleExportDialog, AutomationRuleImportDialog } from "./AutomationRuleImportExport";
@@ -90,20 +91,30 @@ export function AutomationRulesManager() {
     navigate({ pathname: location.pathname, search: params.toString() });
   };
 
+  const showHistory = (ruleId?: string, status?: string) => {
+    const params = new URLSearchParams(location.search);
+    params.set("automationTab", "history");
+    if (params.get("adminSection") === "automation") params.set("adminSubSection", "rules");
+    if (ruleId) params.set("automationRuleId", ruleId); else params.delete("automationRuleId");
+    if (status) params.set("automationRunStatus", status); else params.delete("automationRunStatus");
+    navigate({ pathname: location.pathname, search: params.toString() });
+  };
+
   return (
-    <Tabs value={tab} onValueChange={changeTab} className="min-w-0 space-y-md">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <TabsList aria-label="Regeln und Workflows" className="h-auto max-w-full flex-wrap justify-start">
-          <TabsTrigger value="rules">Regeln</TabsTrigger>
-          <TabsTrigger value="annual">Jahresroutinen</TabsTrigger>
-          <TabsTrigger value="history">Ausführungshistorie</TabsTrigger>
-          <TabsTrigger value="dispatcher">Dispatcher</TabsTrigger>
+    <Tabs value={tab} onValueChange={changeTab} className={`${styles.workspace} space-y-5`}>
+      <div className={styles.head}>
+        <TabsList aria-label="Regeln und Workflows" className={styles.tabs}>
+          <TabsTrigger value="rules" className={styles.tab}>Regeln</TabsTrigger>
+          <TabsTrigger value="annual" className={styles.tab}>Jahresroutinen</TabsTrigger>
+          <TabsTrigger value="history" className={styles.tab}>Ausführungshistorie</TabsTrigger>
+          <TabsTrigger value="dispatcher" className={styles.tab}>Dispatcher</TabsTrigger>
         </TabsList>
         <AutomationKillSwitch />
       </div>
-      <TabsContent value="rules"><AutomationRulesContent view="rules" onShowHistory={() => changeTab("history")} /></TabsContent>
-      <TabsContent value="history"><AutomationRulesContent view="history" onShowHistory={() => changeTab("history")} /></TabsContent>
-      <TabsContent value="annual"><AutomationRulesContent view="annual" onShowHistory={() => changeTab("history")} /></TabsContent>
+      <AutomationStatusLine />
+      <TabsContent value="rules"><AutomationRulesContent view="rules" onShowHistory={showHistory} /></TabsContent>
+      <TabsContent value="history"><AutomationRulesContent view="history" onShowHistory={showHistory} /></TabsContent>
+      <TabsContent value="annual"><AutomationRulesContent view="annual" onShowHistory={showHistory} /></TabsContent>
       <TabsContent value="dispatcher">
         <Suspense fallback={<LoadingState variant="list" rows={3} />}><WorkflowEngineManager /></Suspense>
       </TabsContent>
@@ -140,26 +151,35 @@ function AutomationKillSwitch() {
 
   return (
     <div
-      className="flex w-fit shrink-0 items-center gap-2 rounded-lg border px-3 py-2"
+      className="flex w-fit shrink-0 items-center gap-2.5 py-1"
       title={error ? "Status konnte nicht geladen werden." : automationsPaused
         ? "Alle Regeln sind aktuell pausiert – keine automatischen Ausführungen."
-        : "Automations sind aktiv und werden planmäßig ausgeführt."}
+        : "Automationen sind aktiviert und folgen den Auslösern der aktiven Regeln."}
     >
       <Pause className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-      <label htmlFor="automation-kill-switch" className="text-sm font-medium">Kill-Switch</label>
+      <label htmlFor="automation-kill-switch" className="text-sm font-medium">Alle Automationen pausieren</label>
       {automationsPaused && <Badge variant="destructive">Pausiert</Badge>}
       <Switch
         id="automation-kill-switch"
+        className="data-[state=checked]:bg-destructive"
         checked={automationsPaused}
         onCheckedChange={toggleAutomationsPaused}
         disabled={isLoading || !!error || togglePause.isPending || !canEdit || !tenantId}
-        aria-label="Alle Automations pausieren"
+        aria-label="Alle Automationen pausieren"
       />
     </div>
   );
 }
 
-function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "history" | "annual"; onShowHistory: () => void }) {
+function AutomationStatusLine() {
+  const { currentTenant } = useTenant();
+  const { data: paused, isLoading, error } = useAutomationPauseState(currentTenant?.id);
+  if (isLoading) return <p className={styles.status} role="status"><Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />Automationsstatus wird geladen…</p>;
+  if (error || !currentTenant || paused === undefined) return <p className={styles.status} role="status"><AlertTriangle className="h-4 w-4" aria-hidden="true" />Automationsstatus ist nicht verfügbar.</p>;
+  return <p className={`${styles.status} ${paused ? styles.paused : ''}`} role="status" aria-live="polite"><span className={styles.dot} aria-hidden="true" />{paused ? 'Alle Automationen sind pausiert. Automatische Ausführungen und laufende Routinen ruhen.' : 'Automationen sind aktiviert. Aktive Regeln werden gemäß ihren Auslösern ausgeführt.'}</p>;
+}
+
+function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "history" | "annual"; onShowHistory: (ruleId?: string, status?: string) => void }) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
 
@@ -168,10 +188,12 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
   const [form, setForm] = useState<WizardForm>(DEFAULT_FORM);
   const [wizardOpen, setWizardOpen] = useState(false);
-  const [runStatusFilter, setRunStatusFilter] = useState<string>("all");
+  const location = useLocation();
+  const historyParams = new URLSearchParams(location.search);
+  const [runStatusFilter, setRunStatusFilter] = useState<string>(() => historyParams.get("automationRunStatus") || "all");
   const [runModuleFilter, setRunModuleFilter] = useState<string>("all");
   const [runOwnerFilter, setRunOwnerFilter] = useState<string>("all");
-  const [runRuleFilter, setRunRuleFilter] = useState<string>("all");
+  const [runRuleFilter, setRunRuleFilter] = useState<string>(() => historyParams.get("automationRuleId") || "all");
   const [runTimeFilter, setRunTimeFilter] = useState<string>("all");
   const [versionsRuleId, setVersionsRuleId] = useState<string | null>(null);
   const [versionsRuleName, setVersionsRuleName] = useState("");
@@ -180,7 +202,7 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
 
   const tenantId = currentTenant?.id;
   const { data: userRole } = useAutomationMembershipRole(tenantId, user?.id);
-  const { isLoading: pauseLoading, error: pauseError } = useAutomationPauseState(tenantId);
+  const { data: automationsPaused = false, isLoading: pauseLoading, error: pauseError } = useAutomationPauseState(tenantId);
   const { data: rules = [], isLoading: rulesLoading, error: rulesError } = useAutomationRules(tenantId);
   const { data: runs = [], isLoading: runsLoading, error: runsError } = useAutomationRuns(tenantId);
   const { data: expandedRunSteps = [], isLoading: runStepsLoading, isError: runStepsError, error: runStepsQueryError, refetch: refetchRunSteps } = useAutomationRunSteps(expandedRunId || undefined);
@@ -620,7 +642,7 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
               variant="outline"
               size="sm"
               className="ml-4 border-destructive text-destructive hover:bg-destructive/10"
-              onClick={() => { setRunStatusFilter("failed"); onShowHistory(); }}
+              onClick={() => { setRunStatusFilter("failed"); onShowHistory(undefined, "failed"); }}
             >
               Fehler anzeigen
             </Button>
@@ -647,179 +669,22 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
       {view === "annual" && <AnnualRoutinesOverview onUseTemplate={useTemplate} rules={rules} onEdit={startEdit} onRun={rule => void triggerRunNow(rule)} onNew={month => { openNewWizard(); if (month) setForm(previous => previous.schedule ? ({ ...previous, schedule: { ...previous.schedule, month: String(month) } }) : previous); }} canEdit={canEdit} runningRuleId={runningRuleId} />}
 
       {/* Template Gallery */}
-      {view === "rules" && <AutomationTemplateGallery onUseTemplate={useTemplate} />}
+      {view === "rules" && <AutomationTemplateGallery onUseTemplate={useTemplate} canEdit={canEdit} />}
 
       {/* Error Dashboard */}
       {view === "history" && <AutomationErrorDashboard onRetrigger={refreshAll} />}
 
-      {/* Rules list */}
-      {view === "rules" && <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Automations-Regeln</CardTitle>
-              <CardDescription>{rules.length} Regeln im Tenant</CardDescription>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setExportOpen(true)}>
-                <Download className="h-4 w-4 mr-2" /> Export
-              </Button>
-              <Button variant="outline" onClick={() => setImportOpen(true)} disabled={!canEdit}>
-                <Upload className="h-4 w-4 mr-2" /> Import
-              </Button>
-              <Button onClick={openNewWizard} disabled={!canEdit}>
-                <Plus className="h-4 w-4 mr-2" /> Neue Regel
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {rules.length === 0 ? (
-            <EmptyState size="sm" title="Noch keine Regeln" description='Lege eine neue Automationsregel an.' />
-          ) : (
-            rules.map((rule: RuleRow) => {
-              const stats = ruleStats[rule.id];
-              const successRate = stats && stats.total > 0 ? Math.round((stats.success / stats.total) * 100) : null;
-              const avgDuration = stats && stats.withDuration > 0 ? Math.round(stats.totalDurationMs / stats.withDuration / 1000) : null;
-              const nextRun = getNextRunTime(rule);
-
-              return (
-              <div key={rule.id} className="border rounded-lg p-3">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-3">
-                    <Switch
-                      checked={rule.enabled}
-                      onCheckedChange={(checked) => toggleRuleEnabled(rule, checked)}
-                      disabled={!canToggle}
-                      aria-label={`Regel ${rule.name} ${rule.enabled ? "deaktivieren" : "aktivieren"}`}
-                    />
-                    <div className="space-y-1">
-                      <p className="font-medium">{rule.name}</p>
-                      <p className="text-xs text-muted-foreground">{rule.description || "Keine Beschreibung"}</p>
-                      <div className="flex gap-2 flex-wrap">
-                        <Badge variant="outline">{rule.module}</Badge>
-                        <Badge variant="outline">{rule.trigger_type}</Badge>
-                        {rule.conditions?.any && (
-                          <Badge variant="secondary" className="text-[10px]">ODER</Badge>
-                        )}
-                        {successRate !== null && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Badge variant={successRate >= 80 ? "default" : successRate >= 50 ? "secondary" : "destructive"} className="text-[10px]">
-                                  {successRate}% Erfolg
-                                </Badge>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {stats.success}/{stats.total} Runs erfolgreich
-                                {avgDuration !== null && ` · Ø ${avgDuration}s`}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                        {nextRun && rule.enabled && (
-                          <Badge variant="outline" className="text-[10px] gap-1">
-                            <Clock className="h-3 w-3" />
-                            Nächster Run: {formatDistanceToNow(nextRun, { addSuffix: true, locale: de })}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <TooltipProvider>
-                    <div className="flex gap-2 flex-wrap">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="inline-flex" tabIndex={!canEdit ? 0 : undefined}>
-                            <Button aria-label="Regel bearbeiten" size="sm" variant="outline" onClick={() => startEdit(rule)} disabled={!canEdit}>
-                              Bearbeiten
-                            </Button>
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>Regel bearbeiten</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="inline-flex" tabIndex={!canEdit ? 0 : undefined}>
-                            <Button aria-label="Regel duplizieren" size="sm" variant="outline" onClick={() => duplicateRule(rule)} disabled={!canEdit}>
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>Regel duplizieren</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="inline-flex">
-                            <Button aria-label="Versionshistorie anzeigen"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setVersionsRuleId(rule.id);
-                                setVersionsRuleName(rule.name);
-                              }}
-                            >
-                              <Clock className="h-4 w-4" />
-                            </Button>
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>Versionshistorie anzeigen</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="inline-flex" tabIndex={runningRuleId === rule.id ? 0 : undefined}>
-                            <Button aria-label="Simulation starten (Dry-Run)"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => triggerDryRun(rule)}
-                              disabled={runningRuleId === rule.id}
-                            >
-                              {runningRuleId === rule.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Play className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>Simulation starten (Dry-Run)</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="inline-flex" tabIndex={runningRuleId === rule.id || !rule.enabled ? 0 : undefined}>
-                            <Button aria-label="Regel jetzt ausführen"
-                              size="sm"
-                              onClick={() => triggerRunNow(rule)}
-                              disabled={runningRuleId === rule.id || !rule.enabled}
-                            >
-                              <Zap className="h-4 w-4" />
-                            </Button>
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>Regel jetzt ausführen</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="inline-flex" tabIndex={!canEdit ? 0 : undefined}>
-                            <Button aria-label="Regel löschen" size="sm" variant="destructive" onClick={() => deleteRule(rule.id)} disabled={!canEdit}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>Regel löschen</TooltipContent>
-                      </Tooltip>
-                    </div>
-                  </TooltipProvider>
-                </div>
-                <p className="text-[11px] text-muted-foreground mt-2">
-                  Aktualisiert {formatDistanceToNow(new Date(rule.updated_at), { addSuffix: true, locale: de })}
-                </p>
-              </div>
-              );
-            })
-          )}
-        </CardContent>
-      </Card>}
+      {view === "rules" && <AutomationRulesList
+        rules={rules} stats={ruleStats} canEdit={canEdit} canToggle={canToggle}
+        paused={automationsPaused} pauseUnknown={!!pauseError} runningRuleId={runningRuleId}
+        toggling={toggleRuleEnabledMutation.isPending} deleting={deleteRuleMutation.isPending}
+        getNextRun={getNextRunTime} onEdit={startEdit} onDuplicate={duplicateRule}
+        onVersions={rule => { setVersionsRuleId(rule.id); setVersionsRuleName(rule.name); }}
+        onHistory={ruleId => onShowHistory(ruleId)} onDryRun={rule => void triggerDryRun(rule)}
+        onRun={rule => void triggerRunNow(rule)} onDelete={ruleId => void deleteRule(ruleId)}
+        onToggle={(rule, checked) => void toggleRuleEnabled(rule, checked)}
+        onExport={() => setExportOpen(true)} onImport={() => setImportOpen(true)} onNew={openNewWizard}
+      />}
 
       {/* Run history */}
       {view === "history" && <Card>
