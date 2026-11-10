@@ -29,6 +29,7 @@ export const TenantUserSelect: React.FC<TenantUserSelectProps> = ({
   value,
   onValueChange,
   placeholder = "Nutzer:in auswählen…",
+  label,
 }) => {
   const { users, loading } = useTenantUsers();
   const [open, setOpen] = useState(false);
@@ -49,6 +50,7 @@ export const TenantUserSelect: React.FC<TenantUserSelectProps> = ({
         <Button
           variant="outline"
           role="combobox"
+          aria-label={selected ? `${label ?? placeholder}: ${selected.display_name}` : label ?? placeholder}
           aria-expanded={open}
           className="w-full justify-between font-normal"
         >

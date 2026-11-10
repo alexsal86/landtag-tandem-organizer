@@ -51,7 +51,7 @@ function parseConditionGroup(raw: unknown): ConditionGroup {
       conditions.push({ field: c.field || "status", operator: c.operator || "equals", value: c.value || "" });
     }
   }
-  if (conditions.length === 0 && groups.length === 0) {
+  if (conditions.length === 0 && groups.length === 0 && !Array.isArray(r.all) && !Array.isArray(r.any)) {
     conditions.push({ field: "status", operator: "equals", value: "" });
   }
   return { logic, conditions, groups };
@@ -547,7 +547,7 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
     };
   };
 
-  const triggerDryRun = async (rule?: RuleRow) => {
+  const triggerDryRun = async (rule?: RuleRow, sample?: Record<string, unknown>) => {
     const targetRule = rule || (editingRuleId ? rules.find((r: Record<string, any>) => r.id === editingRuleId) : null);
     if (!currentTenant || !user || !targetRule) return;
     setRunningRuleId(targetRule.id);
@@ -556,7 +556,7 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
       await runRule.mutateAsync({
         ruleId: targetRule.id,
         dryRun: true,
-        sourcePayload: buildSourcePayloadFromRule(targetRule),
+        sourcePayload: sample ?? buildSourcePayloadFromRule(targetRule),
       });
     } catch (error) {
       notify.error("Dry-Run fehlgeschlagen", {
@@ -586,10 +586,10 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
     }
   };
 
-  const handleWizardDryRun = () => {
+  const handleWizardDryRun = (sample?: Record<string, unknown>) => {
     if (editingRuleId) {
       const rule = rules.find((r: Record<string, any>) => r.id === editingRuleId);
-      if (rule) triggerDryRun(rule);
+      if (rule) triggerDryRun(rule, sample);
     } else {
       notify.error("Regel zuerst speichern", {
         description: "Bitte erstelle die Regel zuerst, bevor du einen Dry-Run startest."

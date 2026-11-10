@@ -8,6 +8,8 @@ import { validateVariant } from "@/features/redaktion/components/PlannerBoard/ut
 import { defaultStepSetting, previewRoutine, readStepSettings, validateRoutineWorkflow } from "@/features/automation/routineWorkflow";
 import { routineEntityLink, routineStepLabel } from "@/features/automation/routinePackages";
 import { routineStepKinds, validateOfficeRoutine } from "@/features/automation/officeRoutineTemplates";
+import { editorFormSnapshot, editorPlanYear, editorStepErrors, evaluateEditorSample, parseEditorSample } from "@/components/administration/automationRule/editorModel";
+import { DEFAULT_ACTION, DEFAULT_FORM } from "@/components/administration/automationRule/constants";
 import type { TestScenario } from "../types";
 import { calendarOccurrence, nextCalendarOccurrence, scheduleRunKey } from "@/features/automation/calendarSchedule";
 
@@ -18,6 +20,28 @@ export const workflowRulesScenario: TestScenario = {
   checks: ["Erlaubte und verbotene Brief-Statuswechsel", "Entscheiderrollen", "Ministeriumsfrist und Wiedervorlage"],
   limitations: ["Berechtigungen der Datenbank werden separat in den Zugriffstests geprüft."],
   steps: [
+    {
+      id: "rule-editor-preview", label: "Regel-Editor: JSON, verschachtelte Vorschau und unbedingte Regeln", kind: "logic",
+      run: async () => {
+        const condition = (value: string) => ({ field: "status", operator: "equals", value });
+        const base = { ...DEFAULT_FORM, name: "Editor-Beispiel", triggerType: "manual", conditionGroup: { logic: "all" as const, conditions: [], groups: [] }, actions: [{ ...DEFAULT_ACTION, type: "create_task", title: "Aufgabe" }] };
+        const nested = { ...base, conditionGroup: { logic: "all" as const, conditions: [condition("open")], groups: [{ logic: "any" as const, conditions: [{ field: "priority", operator: "equals", value: "high" }, { field: "priority", operator: "equals", value: "urgent" }], groups: [] }] } };
+        const now = new Date("2026-11-10T12:00:00Z");
+        const checks = {
+          emptyRuns: evaluateEditorSample(base, {})?.runs === true,
+          emptyValid: editorStepErrors(base).every(step => step.length === 0),
+          nestedMatch: evaluateEditorSample(nested, { status: "open", priority: "urgent" })?.runs === true,
+          nestedReject: evaluateEditorSample(nested, { status: "closed", priority: "urgent" })?.runs === false,
+          fullCount: evaluateEditorSample(nested, { status: "open", priority: "urgent" })?.total === 3,
+          objectOnly: Boolean(parseEditorSample("[]").error && parseEditorSample("null").error && parseEditorSample("7").error),
+          invalidJson: Boolean(parseEditorSample("{").error),
+          sampleNotPersisted: editorFormSnapshot(base) === editorFormSnapshot({ ...base, samplePayload: '{"status":"open"}' }),
+          manualYear: editorPlanYear(base, now) === 2026,
+          automaticYear: editorPlanYear({ triggerType: "schedule", schedule: { ...DEFAULT_FORM.schedule!, schedule_kind: "annual", month: "9", day: "15", hour: "9", month_end: "false", timezone: "Europe/Berlin" } }, now) === 2027,
+        };
+        return { ok: Object.values(checks).every(Boolean), message: "Editor-Vorschau und Speichervoraussetzungen geprüft.", details: checks };
+      },
+    },
     {
       id: "routine-dependencies-preview", label: "Routinen: Freigaben, Abhängigkeiten und Jahreswechsel bleiben nachvollziehbar", kind: "logic",
       run: async () => {

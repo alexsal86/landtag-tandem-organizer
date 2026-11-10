@@ -1,3 +1,4 @@
+import { editorPlanYear } from './editorModel';
 import type { WizardForm } from './types';
 import { previewRoutine, ROUTINE_RELEASES, validateRoutineWorkflow } from '@/features/automation/routineWorkflow';
 import { ROUTINE_STEP_KINDS, validateOfficeRoutine } from '@/features/automation/officeRoutineTemplates';
@@ -7,11 +8,11 @@ const dateLabel = (date: string) => new Intl.DateTimeFormat('de-DE', { day: 'num
 export function RoutinePreview({ form }: { form: WizardForm }) {
   const { users } = useTenantUsers();
   const actions = form.actions.filter(action => action.type === 'run_annual_routine');
-  const year = Number(new Intl.DateTimeFormat('en', { timeZone: 'Europe/Berlin', year: 'numeric' }).format(new Date()));
+  const year = editorPlanYear(form);
   if (!actions.length) return null;
   return <section className="space-y-3 rounded-lg border bg-muted/30 p-4" aria-label="Vorschau der Jahresroutine">
     <h3 className="font-medium">Das wird diese Routine auslösen</h3>
-    <p className="text-xs text-muted-foreground">Planvorschau für {year}. Bei einer manuellen oder verspäteten Ausführung können Start und verbleibende Fristen bereits in der Vergangenheit liegen.</p>
+    <p className="text-xs text-muted-foreground">Planvorschau für {year}{form.triggerType === 'schedule' ? ' anhand des nächsten automatischen Starts' : ' für eine manuelle Ausführung'}. Ein manueller Sofortstart verwendet immer das laufende Jahr; Fristen können dann bereits vergangen sein.</p>
     {actions.map((action, index) => {
       if (action.systemFunction) return <p key={index} className="text-sm">Systemaktion: {action.title}. Wird höchstens einmal pro Jahr ausgeführt.</p>;
       const problem = validateOfficeRoutine(action) || validateRoutineWorkflow(action);

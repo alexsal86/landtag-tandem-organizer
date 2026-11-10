@@ -1,17 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { TenantUserSelect } from "./TenantUserSelect";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectGroup, SelectLabel, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, ArrowRight, Check, Clock, Filter, FolderPlus, Loader2, Play, Plus, Save, ShieldCheck, Trash2, TriangleAlert, WandSparkles, Zap } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Clock, Database, Hand, Webhook, Filter, FolderPlus, Loader2, Play, Plus, Save, ShieldCheck, Trash2, TriangleAlert, WandSparkles, Zap } from "lucide-react";
 
 import {
   MODULE_OPTIONS,
@@ -20,7 +19,6 @@ import {
   MODULE_TO_TABLE,
   STATUS_TABLE_OPTIONS,
   TASK_PRIORITY_OPTIONS,
-  TRIGGER_TYPES,
   FIELD_OPTIONS_BY_MODULE,
   FIELD_SPEC_BY_MODULE,
   RULE_TEMPLATES,
@@ -35,21 +33,22 @@ import {
   countConditions,
   collectSemanticIssues,
   sanitizeTriggerValue,
-  evaluateCondition,
 } from "./automationRule/logic";
 import type {
   ActionItem,
   ConditionItem,
   ConditionGroup,
-  FieldType,
-  FieldSpec,
   WizardForm,
 } from "./automationRule/types";
-import { validateAnnualRoutine } from "@/features/automation/annualRoutines";
+import styles from "./automationRule/RuleEditor.module.css";
+import { RuleEditorSummary } from "./automationRule/RuleEditorSummary";
+import { editorFormSnapshot, editorSample, editorStepErrors, evaluateEditorSample, parseEditorSample } from "./automationRule/editorModel";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { RoutinePreview } from "./automationRule/RoutinePreview";
 import { AnnualRoutineFields } from "./automationRule/AnnualRoutineFields";
 import { CalendarScheduleFields } from "./automationRule/CalendarScheduleFields";
-import { isCalendarSchedule, validateCalendarSchedule } from "@/features/automation/calendarSchedule";
+import { isCalendarSchedule } from "@/features/automation/calendarSchedule";
 
 // Re-exports for backwards compatibility with external consumers
 export {
@@ -65,10 +64,10 @@ export {
 export type { ActionItem, ConditionItem, ConditionGroup, WizardForm };
 
 const STEPS = [
-  { label: "Trigger wählen", icon: Clock },
-  { label: "Bedingungen", icon: Filter },
-  { label: "Aktionen/Approvals", icon: ShieldCheck },
-  { label: "Simulation", icon: Play },
+  { label: "Auslöser", subtitle: "Wann", icon: Clock },
+  { label: "Bedingungen", subtitle: "Wenn", icon: Filter },
+  { label: "Aktionen & Freigaben", subtitle: "Dann", icon: ShieldCheck },
+  { label: "Simulation", subtitle: "Prüfen", icon: Play },
 ] as const;
 
 interface AutomationRuleWizardProps {
@@ -77,7 +76,7 @@ interface AutomationRuleWizardProps {
   form: WizardForm;
   setForm: React.Dispatch<React.SetStateAction<WizardForm>>;
   onSave: () => Promise<void>;
-  onDryRun: () => void;
+  onDryRun: (sample?: Record<string, unknown>) => void;
   editingRuleId: string | null;
   saving: boolean;
   runningDryRun: boolean;
@@ -100,67 +99,29 @@ function ConditionCard({
   onRemove: (index: number) => void;
   canRemove: boolean;
 }) {
-  return (
-    <div className="rounded-md border bg-muted/20 p-3 space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">
-          Bedingung {index + 1}
-        </span>
-        {canRemove && (
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => onRemove(index)}>
-            <Trash2 className="h-3.5 w-3.5 text-destructive" />
-          </Button>
-        )}
-      </div>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="space-y-1">
-          <Label className="text-xs">Feld</Label>
-          <Select value={condition.field} onValueChange={(v) => onChange(index, { field: v })}>
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {fieldOptions.map((o) => (
-                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Operator</Label>
-          <Select value={condition.operator} onValueChange={(v) => onChange(index, { operator: v })}>
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CONDITION_OPERATORS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Wert</Label>
-          <Input
-            className="h-8 text-xs"
-            value={condition.value}
-            onChange={(e) => onChange(index, { value: e.target.value })}
-            placeholder="z. B. high"
-          />
-        </div>
-      </div>
-    </div>
-  );
+  const id = useId();
+  return <div className={styles.condition}>
+    <div className={styles.field}><Label htmlFor={`${id}-field`}>Feld</Label><Select value={condition.field} onValueChange={field => onChange(index, { field })}><SelectTrigger id={`${id}-field`}><SelectValue /></SelectTrigger><SelectContent>{fieldOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div>
+    <div className={styles.field}><Label htmlFor={`${id}-operator`}>Operator</Label><Select value={condition.operator} onValueChange={operator => onChange(index, { operator })}><SelectTrigger id={`${id}-operator`}><SelectValue /></SelectTrigger><SelectContent>{CONDITION_OPERATORS.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div>
+    <div className={styles.field}><Label htmlFor={`${id}-value`}>Wert</Label><Input id={`${id}-value`} value={condition.value} onChange={event => onChange(index, { value: event.target.value })} placeholder="z. B. high" /></div>
+    {canRemove ? <EditorIconButton label={`Bedingung ${index + 1} entfernen`} onClick={() => onRemove(index)} /> : <span />}
+  </div>;
+}
+
+function EditorIconButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return <Tooltip><TooltipTrigger asChild><Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-destructive" aria-label={label} onClick={onClick}><Trash2 className="h-4 w-4" aria-hidden="true" /></Button></TooltipTrigger><TooltipContent>{label}</TooltipContent></Tooltip>;
 }
 
 function ActionCard({
   action,
+  form,
   index,
   onChange,
   onRemove,
   canRemove,
 }: {
   action: ActionItem;
+  form: WizardForm;
   index: number;
   onChange: (index: number, patch: Partial<ActionItem>) => void;
   onRemove: (index: number) => void;
@@ -189,15 +150,13 @@ function ActionCard({
   }, [isEmail, currentTenant?.id]);
 
   return (
-    <div className="rounded-md border bg-muted/20 p-3 space-y-3">
-      <div className="flex items-center justify-between">
+    <div className={`${styles.actionCard} space-y-4`}>
+      <div className={styles.actionHeader}>
         <span className="text-xs font-medium text-muted-foreground">
           Aktion {index + 1}
         </span>
         {canRemove && !(action.annualTaskId && action.systemFunction) && (
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => onRemove(index)}>
-            <Trash2 className="h-3.5 w-3.5 text-destructive" />
-          </Button>
+          <EditorIconButton label={`Aktion ${index + 1} entfernen`} onClick={() => onRemove(index)} />
         )}
       </div>
 
@@ -215,7 +174,7 @@ function ActionCard({
         </Select>
       </div>
 
-      {action.type === "run_annual_routine" && <AnnualRoutineFields action={action} onChange={patch => onChange(index, patch)} />}
+      {action.type === "run_annual_routine" && <AnnualRoutineFields action={action} form={form} onChange={patch => onChange(index, patch)} />}
 
       {isNotification && (
         <div className="space-y-3">
@@ -230,7 +189,7 @@ function ActionCard({
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <Label className="text-xs">Titel</Label>
-              <Input className="h-8 text-xs" value={action.title} onChange={(e) => onChange(index, { title: e.target.value })} placeholder="Notification-Titel" />
+              <Input className="h-8 text-xs" value={action.title} onChange={(e) => onChange(index, { title: e.target.value })} placeholder="Titel der Benachrichtigung" />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Nachricht</Label>
@@ -254,7 +213,7 @@ function ActionCard({
             </Select>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Record-ID *</Label>
+            <Label className="text-xs">Datensatz-ID *</Label>
             <Input className="h-8 text-xs" value={action.recordId} onChange={(e) => onChange(index, { recordId: e.target.value })} placeholder="record_id" />
           </div>
           <div className="space-y-1">
@@ -345,7 +304,7 @@ function ActionCard({
       {isApproval && (
         <div className="space-y-3">
           <div className="space-y-1">
-            <Label className="text-xs">Approver *</Label>
+            <Label className="text-xs">Freigebende Person *</Label>
             <TenantUserSelect
               value={action.targetUserId}
               onValueChange={(v) => onChange(index, { targetUserId: v })}
@@ -354,21 +313,21 @@ function ActionCard({
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="space-y-1">
-              <Label className="text-xs">Policy</Label>
+              <Label className="text-xs">Freigaberegel</Label>
               <Select value={action.approvalPolicy} onValueChange={(v) => onChange(index, { approvalPolicy: v })}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="single">Single Approval</SelectItem>
+                  <SelectItem value="single">Einzelne Freigabe</SelectItem>
                   <SelectItem value="four_eyes">4-Augen</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Mindest-Approver</Label>
+              <Label className="text-xs">Mindestzahl Freigaben</Label>
               <Input className="h-8 text-xs" value={action.approvalMinimumApprovers} onChange={(e) => onChange(index, { approvalMinimumApprovers: e.target.value })} />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Fällig in Stunden</Label>
+              <Label className="text-xs">Frist in Stunden</Label>
               <Input className="h-8 text-xs" value={action.approvalDueInHours} onChange={(e) => onChange(index, { approvalDueInHours: e.target.value })} />
             </div>
           </div>
@@ -433,22 +392,19 @@ function ConditionGroupEditor({
     onChange({ ...group, groups: group.groups.filter((_, i) => i !== index) });
   };
 
-  const toggleLogic = () => {
-    onChange({ ...group, logic: group.logic === "all" ? "any" : "all" });
-  };
-
   const borderColor = depth === 0 ? "border-border" : group.logic === "all" ? "border-primary/30" : "border-accent/50";
   const bgColor = depth === 0 ? "" : group.logic === "all" ? "bg-primary/5" : "bg-accent/10";
 
   return (
-    <div className={cn("rounded-lg border p-3 space-y-2", borderColor, bgColor)}>
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+    <div className={cn(styles.conditionGroup, "space-y-2", borderColor, bgColor)}>
+      <div className={styles.conditionTools}>
+        <div className="flex flex-wrap items-center gap-2">
           {/* Logic toggle */}
-          <div className="flex rounded-md border overflow-hidden">
+          <div className={styles.segment} role="group" aria-label="Bedingungen verknüpfen">
             <button
               type="button"
-              onClick={toggleLogic}
+              aria-pressed={group.logic === "all"}
+              onClick={() => onChange({ ...group, logic: "all" })}
               className={cn(
                 "px-2.5 py-1 text-[11px] font-semibold transition-colors",
                 group.logic === "all"
@@ -460,7 +416,8 @@ function ConditionGroupEditor({
             </button>
             <button
               type="button"
-              onClick={toggleLogic}
+              aria-pressed={group.logic === "any"}
+              onClick={() => onChange({ ...group, logic: "any" })}
               className={cn(
                 "px-2.5 py-1 text-[11px] font-semibold transition-colors",
                 group.logic === "any"
@@ -488,9 +445,7 @@ function ConditionGroupEditor({
             <Plus className="h-3 w-3" /> Bedingung
           </Button>
           {canRemove && onRemove && (
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={onRemove}>
-              <Trash2 className="h-3.5 w-3.5 text-destructive" />
-            </Button>
+            <EditorIconButton label={`Untergruppe auf Ebene ${depth + 1} entfernen`} onClick={onRemove} />
           )}
         </div>
       </div>
@@ -511,7 +466,7 @@ function ConditionGroupEditor({
             fieldOptions={fieldOptions}
             onChange={updateCondition}
             onRemove={removeCondition}
-            canRemove={group.conditions.length + group.groups.length > 1}
+            canRemove={depth === 0 || group.conditions.length + group.groups.length > 1}
           />
         </div>
       ))}
@@ -586,81 +541,53 @@ export function AutomationRuleWizard({
     }));
   };
 
-  const parsedSamplePayload = useMemo(() => {
-    if (!form.samplePayload.trim()) return null;
-    try {
-      const parsed = JSON.parse(form.samplePayload);
-      return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
-    } catch {
-      return null;
+  const sample = useMemo(() => parseEditorSample(form.samplePayload), [form.samplePayload]);
+  const parsedSamplePayload = sample.data;
+  const samplePayloadParseError = sample.error;
+  const semanticIssues = useMemo(() => collectSemanticIssues(form, parsedSamplePayload), [form, parsedSamplePayload]);
+  const simulation = useMemo(() => evaluateEditorSample(form, parsedSamplePayload), [form, parsedSamplePayload]);
+  const errors = useMemo(() => editorStepErrors(form), [form]);
+  const canSave = errors.every(step => step.length === 0);
+  const initialForm = useRef("");
+  const wasOpen = useRef(false);
+  const conditionBackup = useRef<ConditionGroup | null>(null);
+  const scrollBody = useRef<HTMLDivElement>(null);
+  const [discardOpen, setDiscardOpen] = useState(false);
+  const [baseline, setBaseline] = useState("");
+  useEffect(() => {
+    if (open && !wasOpen.current) {
+      initialForm.current = editorFormSnapshot(form);
+      setBaseline(initialForm.current);
+      conditionBackup.current = null;
+      setCurrentStep(0);
+      setDiscardOpen(false);
     }
-  }, [form.samplePayload]);
-
-  const samplePayloadParseError = useMemo(() => {
-    if (!form.samplePayload.trim()) return null;
-    try {
-      JSON.parse(form.samplePayload);
-      return null;
-    } catch {
-      return "Testdaten sind kein gültiges JSON.";
-    }
-  }, [form.samplePayload]);
-
-  const semanticIssues = useMemo(
-    () => collectSemanticIssues(form, parsedSamplePayload),
-    [form, parsedSamplePayload],
-  );
-
-  const matchingConditionCount = useMemo(() => {
-    if (!parsedSamplePayload) return null;
-    const specs = FIELD_SPEC_BY_MODULE[form.module] ?? {};
-    const flat: ConditionItem[] = [];
-    const walk = (group: ConditionGroup) => {
-      flat.push(...group.conditions);
-      group.groups.forEach(walk);
-    };
-    walk(form.conditionGroup);
-    return flat.filter((condition) => {
-      const fieldType = specs[condition.field]?.type ?? "string";
-      return evaluateCondition(condition, fieldType, parsedSamplePayload[condition.field]);
-    }).length;
-  }, [form.conditionGroup, form.module, parsedSamplePayload]);
-
-  const stepValid = useMemo(() => {
-    switch (currentStep) {
-      case 0:
-        if (form.triggerType === "webhook" && (form.webhookSecret ?? "").length < 16) return false;
-        if (form.triggerType === "schedule" && form.schedule && isCalendarSchedule(form.schedule)) return !validateCalendarSchedule(form.schedule);
-        return !!form.module && !!form.triggerType && !!form.triggerField && (form.triggerType !== "record_changed" || form.triggerValue.trim().length > 0);
-      case 1:
-        if ((form.triggerType === "schedule" || form.actions.some(a => a.type === "run_annual_routine")) && form.schedule && isCalendarSchedule(form.schedule) && countConditions(form.conditionGroup) === 0) return true;
-        return validateConditionGroup(form.conditionGroup);
-      case 2:
-        return form.actions.length > 0 && form.actions.every((a) => {
-          const isNotif = a.type === "create_notification" || a.type === "send_push_notification";
-          const isStat = a.type === "update_record_status";
-          const isTask = a.type === "create_task";
-          const isEmail = a.type === "send_email_template";
-          const isApproval = a.type === "create_approval_request";
-          if (isNotif) return a.targetUserId.trim().length > 0;
-          if (isStat) return a.recordId.trim().length > 0 && a.status.trim().length > 0;
-          if (isTask || a.type === "run_annual_routine") return a.title.trim().length > 0;
-          if (isEmail) return a.emailTemplateId.trim().length > 0 && a.emailRecipient.trim().length > 0;
-          if (isApproval) return a.targetUserId.trim().length > 0 && Number(a.approvalMinimumApprovers) >= 1;
-          return true;
-        });
-      case 3: {
-        const hasErrors = semanticIssues.some((issue) => issue.level === "error");
-        return !samplePayloadParseError && !hasErrors && !validateAnnualRoutine(form.triggerType, form.schedule, form.actions);
-      }
-      default:
-        return true;
-    }
-  }, [currentStep, form, semanticIssues, samplePayloadParseError]);
+    wasOpen.current = open;
+  }, [open, form]);
+  const dirty = Boolean(baseline) && baseline !== editorFormSnapshot(form);
+  const goToStep = (step: number) => {
+    setCurrentStep(step);
+    if (step === currentStep) { scrollBody.current?.scrollTo({ top: 0 }); scrollBody.current?.querySelector<HTMLHeadingElement>("h2")?.focus({ preventScroll: true }); }
+  };
+  useEffect(() => { scrollBody.current?.scrollTo({ top: 0 }); scrollBody.current?.querySelector<HTMLHeadingElement>("h2")?.focus({ preventScroll: true }); }, [currentStep]);
+  useEffect(() => {
+    if (!open || !dirty) return;
+    const prevent = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", prevent);
+    return () => window.removeEventListener("beforeunload", prevent);
+  }, [open, dirty]);
+  const withoutConditions = form.conditionGroup.conditions.length === 0 && form.conditionGroup.groups.length === 0;
+  const toggleConditions = (without: boolean) => {
+    if (without) {
+      conditionBackup.current = structuredClone(form.conditionGroup);
+      updateConditionGroup({ logic: "all", conditions: [], groups: [] });
+    } else updateConditionGroup(conditionBackup.current ?? { ...DEFAULT_CONDITION_GROUP, conditions: [{ ...DEFAULT_CONDITION, field: fieldOptions[0]?.value || "status" }], groups: [] });
+  };
 
   const applyTemplate = (templateId: string) => {
     const template = RULE_TEMPLATES.find((t) => t.id === templateId);
     if (!template) return;
+    conditionBackup.current = null;
     const conditions = template.conditions.map((c) => ({ ...c }));
     setForm((prev) => ({
       ...prev,
@@ -681,70 +608,41 @@ export function AutomationRuleWizard({
   };
 
   const handleSave = async () => {
-    await onSave();
-    setCurrentStep(0);
+    if (canSave && !saving) await onSave();
   };
 
   const handleOpenChange = (val: boolean) => {
-    if (!val) setCurrentStep(0);
+    if (!val && saving) return;
+    if (!val && dirty) { setDiscardOpen(true); return; }
     onOpenChange(val);
   };
 
-  const summaryLine = useMemo(() => {
-    const mod = MODULE_OPTIONS.find((m) => m.value === form.module)?.label || form.module;
-    return { mod };
-  }, [form.module]);
-
-  return (
+  return <TooltipProvider delayDuration={200}>
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{editingRuleId ? "Regel bearbeiten" : "Neue Regel erstellen"}</DialogTitle>
+      <DialogContent className={styles.dialog} onPointerDownOutside={event => event.preventDefault()}>
+        <DialogHeader className={styles.header}>
+          <DialogTitle className={styles.title}>{editingRuleId ? "Regel bearbeiten" : "Neue Regel erstellen"}</DialogTitle>
+          <DialogDescription className={styles.subtitle}>{form.name || "Eine Regel Schritt für Schritt einrichten"}</DialogDescription>
         </DialogHeader>
-
-        {editingRuleId && form.actions.some(action => action.type === "run_annual_routine") && <p className="rounded-md bg-muted p-3 text-xs text-muted-foreground">Du bearbeitest die Vorlage für neue Pakete. Laufende Pakete behalten ihren Ablauf. Wartende Schritte lassen sich nach dem Speichern in der Jahresübersicht gezielt aktualisieren.</p>}
-
-        {/* Stepper */}
-        <div className="flex items-center gap-1 mb-2">
-          {STEPS.map((step, i) => {
-            const StepIcon = step.icon;
-            const isActive = i === currentStep;
-            const isDone = i < currentStep;
-            return (
-              <div key={step.label} className="flex items-center gap-1 flex-1">
-                <button
-                  type="button"
-                  onClick={() => setCurrentStep(i)}
-                  disabled={!editingRuleId && i > currentStep}
-                  aria-label={step.label}
-                  aria-current={isActive ? "step" : undefined}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-colors w-full disabled:cursor-not-allowed",
-                    isActive && "bg-primary text-primary-foreground",
-                    isDone && "bg-primary/10 text-primary",
-                    !isActive && !isDone && "text-muted-foreground"
-                  )}
-                >
-                  {isDone ? <Check className="h-3.5 w-3.5" /> : <StepIcon className="h-3.5 w-3.5" />}
-                  <span className="hidden sm:inline">{step.label}</span>
-                </button>
-                {i < STEPS.length - 1 && (
-                  <div className={cn("h-px w-4 shrink-0", i < currentStep ? "bg-primary" : "bg-border")} />
-                )}
-              </div>
-            );
+        <nav className={styles.steps} aria-label="Regel einrichten">
+          {STEPS.map((step, index) => {
+            const invalid = errors[index].length > 0;
+            return <button type="button" key={step.label} onClick={() => goToStep(index)} aria-current={index === currentStep ? "step" : undefined} aria-label={`${step.label}${invalid ? `: ${errors[index].length} Angabe(n) fehlen` : ""}`} className={cn(styles.step, index === currentStep && styles.active, !invalid && index < currentStep && styles.done, invalid && index !== currentStep && styles.warning)}>
+              <span className={styles.number}>{!invalid && index < currentStep ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : index + 1}</span><span><b>{step.label}</b><small>{invalid && index !== currentStep ? "Angaben ergänzen" : step.subtitle}</small></span>
+            </button>;
           })}
-        </div>
-
-        <Separator />
-
+        </nav>
+        <div className={styles.body} ref={scrollBody} aria-busy={saving || runningDryRun}>
+          <fieldset className="min-w-0" disabled={saving || runningDryRun}>
+            {editingRuleId && form.actions.some(action => action.type === "run_annual_routine") && <p className={`${styles.hint} mb-4 rounded-lg bg-muted p-3`}>Du bearbeitest die Vorlage für neue Pakete. Laufende Pakete behalten ihren Ablauf. Wartende Schritte lassen sich nach dem Speichern in der Jahresübersicht gezielt aktualisieren.</p>}
         {/* Step 1: Trigger wählen */}
         {currentStep === 0 && (
-          <div className="space-y-4 py-2">
+          <section className={styles.panel} aria-label="Auslöser konfigurieren">
+            <h2 tabIndex={-1}>Wann startet die Regel?</h2>
             <div className="space-y-2">
-              <Label>Template laden (optional)</Label>
+              <Label htmlFor="rule-editor-template">Template laden (optional)</Label>
               <Select onValueChange={applyTemplate}>
-                <SelectTrigger>
+                <SelectTrigger id="rule-editor-template">
                   <SelectValue placeholder="Vorlage wählen…" />
                 </SelectTrigger>
                 <SelectContent>
@@ -764,39 +662,29 @@ export function AutomationRuleWizard({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Regelname *</Label>
-              <Input
+              <Label htmlFor="rule-editor-name">Regelname *</Label>
+              <Input id="rule-editor-name"
                 value={form.name}
                 onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
                 placeholder="z. B. Überfällige Aufgaben erinnern"
               />
-              {form.name.length > 0 && form.name.length < 3 && (
-                <p className="text-xs text-destructive">Mindestens 3 Zeichen</p>
-              )}
             </div>
             <div className="space-y-2">
-              <Label>Beschreibung</Label>
-              <Input
+              <Label htmlFor="rule-editor-description">Beschreibung</Label>
+              <Input id="rule-editor-description"
                 value={form.description}
                 onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
                 placeholder="Kurz erklären, wann und warum die Regel läuft"
               />
             </div>
-            {form.triggerType === "manual" && form.actions.some(a => a.type === "run_annual_routine") && <CalendarScheduleFields form={form} onChange={schedule => setForm(prev => ({ ...prev, schedule, actions: prev.actions.map(action => action.routineRequiresConfirmation ? { ...action, routineConfirmedYear: "" } : action) }))} />}
+            <div className={styles.grid2}>
             <div className="space-y-2">
-              <Label>Fachdomäne/Modul</Label>
+              <Label htmlFor="rule-editor-module">Fachbereich</Label>
               <Select
                 value={form.module}
-                onValueChange={(v) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    module: v,
-                    triggerField: "status",
-                    conditions: prev.conditions.map((c) => ({ ...c, field: "status" })),
-                  }))
-                }
+                onValueChange={module => setForm(previous => ({ ...previous, module, triggerField: (FIELD_OPTIONS_BY_MODULE[module] ?? []).some(field => field.value === previous.triggerField) ? previous.triggerField : FIELD_OPTIONS_BY_MODULE[module]?.[0]?.value || "status" }))}
               >
-                <SelectTrigger>
+                <SelectTrigger id="rule-editor-module">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -808,34 +696,19 @@ export function AutomationRuleWizard({
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center justify-between rounded-md border p-3">
-              <div>
-                <p className="text-sm font-medium">Regel aktiv</p>
-                <p className="text-xs text-muted-foreground">Inaktive Regeln werden nicht ausgeführt.</p>
-              </div>
-              <Switch
-                checked={form.enabled}
-                onCheckedChange={(checked) => setForm((prev) => ({ ...prev, enabled: checked }))}
-              />
+            <div className={styles.field}><Label>Status</Label><div className={`${styles.box} ${styles.row} !p-2`}><Label htmlFor="rule-editor-enabled">Regel ist aktiv</Label><Switch id="rule-editor-enabled" checked={form.enabled} onCheckedChange={enabled => setForm(previous => ({ ...previous, enabled }))} /></div></div>
             </div>
-            <div className="space-y-2">
-              <Label>Trigger-Typ</Label>
-              <Select
-                value={form.triggerType}
-                onValueChange={(v) => setForm((prev) => ({ ...prev, triggerType: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TRIGGER_TYPES.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <fieldset className="space-y-2">
+              <legend className="mb-2 text-sm font-semibold">Auslöser</legend>
+              <div className={styles.triggerOptions}>{[
+                { value: "schedule", label: "Zeitgesteuert", description: "Läuft zu festen Terminen", icon: Clock },
+                { value: "manual", label: "Manuell", description: "Startet auf Knopfdruck", icon: Hand },
+                { value: "record_changed", label: "Datenänderung", description: "Reagiert auf Änderungen", icon: Database },
+                { value: "webhook", label: "Webhook", description: "Startet durch einen externen Aufruf", icon: Webhook },
+              ].map(option => <label key={option.value} className={styles.triggerOption}><input type="radio" name="rule-trigger" value={option.value} checked={form.triggerType === option.value} onChange={() => setForm(previous => ({ ...previous, triggerType: option.value }))} /><b><option.icon className="h-4 w-4" aria-hidden="true" />{option.label}</b><span>{option.description}</span></label>)}</div>
+            </fieldset>
+
+            {form.triggerType === "manual" && form.actions.some(a => a.type === "run_annual_routine") && <CalendarScheduleFields form={form} onChange={schedule => setForm(prev => ({ ...prev, schedule, actions: prev.actions.map(action => action.routineRequiresConfirmation ? { ...action, routineConfirmedYear: "" } : action) }))} />}
 
             {form.triggerType === "schedule" && (
               <CalendarScheduleFields form={form} onChange={schedule => setForm(prev => ({ ...prev, schedule, actions: prev.actions.map(action => action.routineRequiresConfirmation ? { ...action, routineConfirmedYear: "" } : action) }))} />
@@ -887,13 +760,13 @@ export function AutomationRuleWizard({
               </div>
             )}
 
-            {!(form.triggerType === "schedule" && form.schedule && isCalendarSchedule(form.schedule)) && <><div className="space-y-2">
-              <Label>Trigger-Feld</Label>
+            {!(form.triggerType === "schedule" && form.schedule && isCalendarSchedule(form.schedule)) && <div className={styles.grid2}><div className="space-y-2">
+              <Label htmlFor="rule-editor-trigger-field">Trigger-Feld</Label>
               <Select
                 value={form.triggerField}
                 onValueChange={(v) => setForm((prev) => ({ ...prev, triggerField: v }))}
               >
-                <SelectTrigger>
+                <SelectTrigger id="rule-editor-trigger-field">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -907,93 +780,60 @@ export function AutomationRuleWizard({
             </div>
 
             <div className="space-y-2">
-              <Label>Trigger-Wert {form.triggerType === "record_changed" ? "*" : ""}</Label>
-              <Input
+              <Label htmlFor="rule-editor-trigger-value">Trigger-Wert {form.triggerType === "record_changed" ? "*" : ""}</Label>
+              <Input id="rule-editor-trigger-value"
                 value={form.triggerValue}
                 onChange={(e) => setForm((prev) => ({ ...prev, triggerValue: sanitizeTriggerValue(prev.triggerType, e.target.value) }))}
                 placeholder={form.triggerType === "record_changed" ? "z. B. overdue" : "z. B. 90_days"}
               />
-            </div></>}
-          </div>
+            </div></div>}
+          </section>
         )}
 
-        {/* Step 2: Bedingungen */}
-        {currentStep === 1 && (
-          <div className="space-y-3 py-2">
-            <div>
-              <p className="text-sm font-medium">Bedingungen</p>
-              <p className="text-xs text-muted-foreground">
-                Erstelle Bedingungsgruppen mit UND/ODER-Verknüpfung. Verschachtele Gruppen für komplexe Logik.
-              </p>
-            </div>
-
-            <ConditionGroupEditor
-              group={form.conditionGroup}
-              onChange={updateConditionGroup}
-              fieldOptions={fieldOptions}
-              depth={0}
-            />
-            {form.triggerType === "schedule" && form.schedule && isCalendarSchedule(form.schedule) && <Button variant="outline" onClick={() => updateConditionGroup({ logic: "all", conditions: [], groups: [] })}>Ohne zusätzliche Bedingungen</Button>}
-          </div>
-        )}
+        {currentStep === 1 && <section className={styles.panel} aria-label="Bedingungen konfigurieren">
+          <h2 tabIndex={-1}>Unter welchen Bedingungen?</h2>
+          <p className={styles.lead}>Verknüpfe Bedingungen mit UND/ODER und verschachtelten Gruppen. Ohne zusätzliche Bedingungen genügt der Auslöser.</p>
+          <div className={`${styles.box} ${styles.row}`}><div><p className="text-sm font-semibold">Ohne zusätzliche Bedingungen ausführen</p><p className={styles.hint}>Der Auslöser genügt. Beim Zurückschalten bleiben deine Eingaben erhalten.</p></div><Switch checked={withoutConditions} onCheckedChange={toggleConditions} aria-label="Ohne zusätzliche Bedingungen ausführen" /></div>
+          {!withoutConditions && <ConditionGroupEditor group={form.conditionGroup} onChange={updateConditionGroup} fieldOptions={fieldOptions} depth={0} />}
+        </section>}
 
         {/* Step 3: Aktionen / Approvals */}
         {currentStep === 2 && (
-          <div className="space-y-4 py-2">
-            {/* Summary card */}
-            <div className="rounded-md border bg-muted/30 p-3 space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Zusammenfassung</p>
-              <p className="text-sm">
-                <Badge variant="outline" className="mr-1">{summaryLine.mod}</Badge>
-                {form.triggerType === "manual" ? "Manuell starten" : form.triggerType === "schedule" && form.schedule && isCalendarSchedule(form.schedule) ? <>Start nach {form.schedule.schedule_kind === "annual" ? "jährlichem" : form.schedule.schedule_kind === "quarterly" ? "vierteljährlichem" : "monatlichem"} Zeitplan · {form.schedule.hour.padStart(2,"0")}:00 Uhr (Berlin)</> : <>Wenn <span className="font-medium">{form.triggerField}</span> = „{form.triggerValue || "—"}"</>}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {countConditions(form.conditionGroup)} Bedingung{countConditions(form.conditionGroup) !== 1 ? "en" : ""} ({form.conditionGroup.groups.length > 0 ? "verschachtelt" : form.conditionGroup.logic === "all" ? "UND" : "ODER"}) · {form.actions.length} Aktion{form.actions.length !== 1 ? "en" : ""}
-              </p>
-            </div>
-
-            <Separator />
-
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Aktionen</p>
-                <p className="text-xs text-muted-foreground">Alle Aktionen werden nacheinander ausgeführt.</p>
-              </div>
-              <Button variant="outline" size="sm" onClick={addAction} className="gap-1">
-                <Plus className="h-3.5 w-3.5" /> Aktion
-              </Button>
-            </div>
+          <section className={styles.panel} aria-label="Aktionen und Freigaben konfigurieren">
+            <div className={styles.row}><div><h2 tabIndex={-1}>Was passiert dann?</h2><p className={styles.hint}>Aktionen werden der Reihe nach verarbeitet. Schritte eines Aufgabenpakets folgen ihren eigenen Startbedingungen.</p></div><Button type="button" variant="outline" size="sm" onClick={addAction} className="gap-1"><Plus className="h-4 w-4" aria-hidden="true" />Aktion hinzufügen</Button></div>
 
             {form.actions.map((action, i) => (
               <ActionCard
                 key={i}
                 action={action}
+                form={form}
                 index={i}
                 onChange={updateAction}
                 onRemove={removeAction}
                 canRemove={form.actions.length > 1}
               />
             ))}
-          </div>
+          </section>
         )}
 
         {/* Step 4: Simulation */}
         {currentStep === 3 && (
-          <div className="space-y-4 py-2">
+          <section className={styles.panel} aria-label="Regel simulieren">
             <RoutinePreview form={form} />
             <div className="space-y-1">
-              <p className="text-sm font-medium">Simulation / Dry-Run</p>
+              <h2 tabIndex={-1}>Regel testen</h2>
               <p className="text-xs text-muted-foreground">Füge einen Beispieldatensatz als JSON ein, um Bedingungs-Matches und Aktionen in der Vorschau zu prüfen.</p>
             </div>
 
             <div className="space-y-2">
-              <Label>Beispieldatensatz (JSON)</Label>
-              <textarea
+              <Label htmlFor="rule-editor-sample">Beispieldatensatz (JSON)</Label>
+              <textarea id="rule-editor-sample" aria-invalid={!!samplePayloadParseError}
                 className="w-full min-h-36 rounded-md border bg-background px-3 py-2 text-xs font-mono"
                 value={form.samplePayload}
                 onChange={(e) => setForm((prev) => ({ ...prev, samplePayload: e.target.value }))}
                 placeholder='{"status":"open","priority":"high"}'
               />
+              <Button type="button" variant="link" size="sm" className="px-0" onClick={() => setForm(previous => ({ ...previous, samplePayload: editorSample(previous) }))}>Beispiel aus dieser Regel einfügen</Button>
               {samplePayloadParseError && <p className="text-xs text-destructive">{samplePayloadParseError}</p>}
             </div>
 
@@ -1013,64 +853,29 @@ export function AutomationRuleWizard({
               )}
             </div>
 
-            <div className="rounded-md border p-3 space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Vorschau</p>
-              <p className="text-sm">
-                Bedingungen gematcht: <span className="font-medium">{matchingConditionCount ?? 0}/{countConditions(form.conditionGroup)}</span>
-              </p>
-              <p className="text-sm">Aktionen, die laufen würden: <span className="font-medium">{form.actions.length}</span></p>
+            <div className={`${styles.box} ${styles.sunk} space-y-2`} aria-live="polite">
+              <p className="text-sm font-semibold">Lokale Vorschau</p>
+              {simulation ? <><p className="text-sm">Bedingungen erfüllt: <strong>{simulation.matched} von {simulation.total}</strong></p><p className={simulation.runs ? "text-sm text-primary" : "text-sm text-destructive"}>{simulation.runs ? "Die Bedingungen sind erfüllt." : "Die Bedingungen sind nicht erfüllt."}</p><p className="text-sm">Aktionen bei erfüllten Bedingungen: <strong>{simulation.runs && canSave ? form.actions.length : 0}</strong></p></> : <p className={styles.hint}>Füge einen JSON-Beispieldatensatz ein, um die Bedingungen auszuwerten.</p>}
+              <p className={styles.hint}>Die Vorschau erzeugt keine Einträge und ersetzt keinen tatsächlichen Prüflauf. Der serverseitige Dry-Run verwendet die gespeicherte Regel und den eingegebenen Beispieldatensatz.</p>
+              {(!editingRuleId || dirty) && <p className={styles.hint}>Für den serverseitigen Dry-Run bitte zuerst speichern und die Regel erneut öffnen.</p>}
             </div>
-          </div>
+          </section>
         )}
 
-        <Separator />
-
-        {/* Navigation */}
-        <div className="flex items-center justify-between">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentStep((s) => s - 1)}
-            disabled={currentStep === 0}
-          >
-            <ArrowLeft className="h-4 w-4 mr-1" /> Zurück
-          </Button>
-
-          <div className="flex gap-2">
-            {currentStep === 3 && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onDryRun}
-                  disabled={!stepValid || runningDryRun}
-                >
-                  {runningDryRun ? (
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                  ) : (
-                    <Play className="h-4 w-4 mr-1" />
-                  )}
-                  Dry-Run
-                </Button>
-                <Button size="sm" onClick={handleSave} disabled={!stepValid || saving}>
-                  {saving ? (
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4 mr-1" />
-                  )}
-                  {editingRuleId ? "Speichern" : "Erstellen"}
-                </Button>
-              </>
-            )}
-
-            {currentStep < 3 && (
-              <Button size="sm" onClick={() => setCurrentStep((s) => s + 1)} disabled={!stepValid}>
-                Weiter <ArrowRight className="h-4 w-4 ml-1" />
-              </Button>
-            )}
-          </div>
+          </fieldset>
+          <RuleEditorSummary form={form} errors={errors} onStep={goToStep} />
         </div>
+        <footer className={styles.footer}>
+          <Button type="button" variant="outline" onClick={() => setCurrentStep(step => Math.max(0, step - 1))} disabled={currentStep === 0 || saving}><ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />Zurück</Button>
+          {dirty && <span className={styles.dirty} role="status"><i aria-hidden="true" />Ungespeicherte Änderungen</span>}
+          <div className={styles.footerActions}>
+            {currentStep === 3 && <Button type="button" variant="outline" onClick={() => onDryRun(parsedSamplePayload ?? undefined)} disabled={!canSave || !editingRuleId || dirty || runningDryRun || saving} title={!editingRuleId || dirty ? "Zuerst speichern und die Regel erneut öffnen" : (parsedSamplePayload ? "Gespeicherte Regel mit diesem Beispieldatensatz prüfen" : "Gespeicherte Regel mit automatisch erzeugten Beispieldaten prüfen")}>{runningDryRun ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : <Play className="mr-2 h-4 w-4" aria-hidden="true" />}Dry-Run</Button>}
+            {currentStep < 3 && <Button type="button" variant="outline" onClick={() => setCurrentStep(step => Math.min(3, step + 1))} disabled={saving}>Weiter<ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></Button>}
+            <Button type="button" onClick={handleSave} disabled={!canSave || saving || runningDryRun}>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="mr-2 h-4 w-4" aria-hidden="true" />}{editingRuleId ? "Speichern" : "Erstellen"}</Button>
+          </div>
+        </footer>
       </DialogContent>
     </Dialog>
-  );
+    <AlertDialog open={discardOpen} onOpenChange={setDiscardOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Ungespeicherte Änderungen verwerfen?</AlertDialogTitle><AlertDialogDescription>Deine Änderungen an dieser Regel sind noch nicht gespeichert. Du kannst weiter bearbeiten oder sie verwerfen.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Weiter bearbeiten</AlertDialogCancel><AlertDialogAction onClick={() => { setDiscardOpen(false); onOpenChange(false); }}>Änderungen verwerfen</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+  </TooltipProvider>;
 }

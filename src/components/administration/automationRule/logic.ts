@@ -67,7 +67,7 @@ function evaluateConditionGroup(group: ConditionGroup, module: string, sampleDat
   });
   const subMatches = group.groups.map((g) => evaluateConditionGroup(g, module, sampleData));
   const matches = [...selfMatches, ...subMatches];
-  if (matches.length === 0) return false;
+  if (matches.length === 0) return true; // Empty groups run unconditionally, as in the server executor.
   return group.logic === "all" ? matches.every(Boolean) : matches.some(Boolean);
 }
 

@@ -186,7 +186,7 @@ export function useAutomationAdminMutations(tenantId?: string, userId?: string) 
   });
 
   const runRule = useMutation({
-    mutationFn: async ({ ruleId, dryRun, sourcePayload }: { ruleId: string; dryRun: boolean; sourcePayload: Record<string, string> }) => {
+    mutationFn: async ({ ruleId, dryRun, sourcePayload }: { ruleId: string; dryRun: boolean; sourcePayload: Record<string, unknown> }) => {
       const { data, error } = await supabase.functions.invoke("run-automation-rule", {
         body: {
           ruleId,
