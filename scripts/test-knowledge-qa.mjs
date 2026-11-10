@@ -1,9 +1,11 @@
 // Real PostgreSQL policies/functions in an isolated PGlite database. No live data.
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { PGlite } from '../tests/database/node_modules/@electric-sql/pglite/dist/index.js';
 
-const db = new PGlite();
+const { pg_trgm } = await import('../tests/database/node_modules/@electric-sql/pglite/dist/contrib/pg_trgm.js');
+const { unaccent } = await import('../tests/database/node_modules/@electric-sql/pglite/dist/contrib/unaccent.js');
+const db = new PGlite({ extensions: { pg_trgm, unaccent } });
 const officeA = '11111111-1111-4111-8111-111111111111';
 const officeB = '22222222-2222-4222-8222-222222222222';
 const alice = '33333333-3333-4333-8333-333333333333';
@@ -28,7 +30,7 @@ const stale = operation => assert.rejects(operation, error => error.code === '40
 try {
   await db.exec(`
     CREATE ROLE authenticated; CREATE ROLE anon; CREATE ROLE service_role;
-    CREATE SCHEMA auth; CREATE SCHEMA storage;
+    CREATE SCHEMA auth; CREATE SCHEMA storage; CREATE SCHEMA extensions; GRANT USAGE ON SCHEMA extensions TO authenticated;
     CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('test.actor',true),'')::uuid $$;
     CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$ SELECT current_setting('test.role',true) $$;
     CREATE TYPE app_role AS ENUM ('abgeordneter','bueroleitung','mitarbeiter','praktikant');
@@ -66,9 +68,11 @@ try {
   `);
   const actions = await readFile(new URL('../supabase/migrations/20261109142000_enforce_admin_actions.sql', import.meta.url), 'utf8');
   await db.exec(actions.slice(actions.indexOf('CREATE OR REPLACE FUNCTION public.is_tenant_action_allowed'), actions.indexOf('CREATE OR REPLACE FUNCTION public.enforce_configured_action')));
-  for (const file of ['20261110180000_knowledge_qa_core.sql', '20261110180100_knowledge_qa_search.sql', '20261110180200_knowledge_qa_storage.sql', '20261110180300_knowledge_legacy_access.sql', '20261111100000_knowledge_list_payload.sql', '20261111100100_knowledge_keyset.sql']) {
+  for (const file of ['20261110180000_knowledge_qa_core.sql', '20261110180100_knowledge_qa_search.sql', '20261110180200_knowledge_qa_storage.sql', '20261110180300_knowledge_legacy_access.sql', '20261111100000_knowledge_list_payload.sql', '20261111100100_knowledge_keyset.sql', '20261111100200_knowledge_search.sql']) {
     await db.exec(await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
   }
+  // Re-running additive migrations must preserve functions and data.
+  await db.exec(await readFile(new URL('../supabase/migrations/20261111100200_knowledge_search.sql', import.meta.url), 'utf8'));
   await actor(alice);
   const diagnostic = (await read('SELECT knowledge_qa_selftest($1) AS result', [officeA]))[0].result;
   assert.equal(diagnostic.ok, true, JSON.stringify(diagnostic));
@@ -118,6 +122,13 @@ try {
   assert.equal((await search(officeA, 'Urlaubsanträge')).length, 1, 'German stemming');
   await search(officeA, "' | & :* , % _ (Urlaub)"); await search(officeA, 'der');
   assert.equal((await search(officeA, 'xyz-kein-treffer')).length, 0);
+  await owner();
+  await db.query('UPDATE knowledge_questions SET description=$1,revision=revision+1 WHERE id=$2', ['Ausschließlich im Kontext: Haushaltsberatung',q.id]);
+  await actor(alice);
+  assert.equal((await read('SELECT * FROM knowledge_qa_list($1,$2)', [officeA, 'Haushaltsberatung']))[0].items[0].id,q.id,'Description is searched');
+  assert.equal((await read('SELECT * FROM knowledge_qa_list($1,$2)', [officeA, 'Urlaab']))[0].items[0].id,q.id,'Typo fallback');
+  assert.equal((await read('SELECT * FROM knowledge_qa_list($1,$2)', [officeA, 'Bueroleitung']))[0].items.length,2,'Umlaut variants');
+
   await assert.rejects(search(officeA, 'a'.repeat(301)), error => error.code === '22023');
   q = (await read('SELECT * FROM knowledge_questions WHERE id=$1', [q.id]))[0];
   q = await review(q);
@@ -170,8 +181,17 @@ try {
   await owner();
   assert.equal((await read('SELECT count(*)::int AS count FROM knowledge_documents'))[0].count, 2, 'Legacy rows preserved');
   assert.equal((await read("SELECT public FROM storage.buckets WHERE id='knowledge-attachments'"))[0].public, false);
+  await db.query(`INSERT INTO knowledge_questions(tenant_id,title,description,created_by,updated_by,answer_content,answer_text,answered_at,updated_at)
+    SELECT $1,'Referenzfrage '||i,'Kontext für Lasttest',$2,$2,$3::jsonb,'Allgemeine Antwort',now(),now()-make_interval(secs=>i)
+    FROM generate_series(1,2000) i`, [officeA,alice,JSON.stringify(content('Allgemeine Antwort'))]);
+  await db.exec('ANALYZE knowledge_questions');
+  await actor(alice);
+  const browsePlan = await read("EXPLAIN (ANALYZE,BUFFERS) SELECT id,updated_at FROM knowledge_questions WHERE tenant_id=$1 AND answered_at IS NOT NULL ORDER BY updated_at DESC,id LIMIT 21", [officeA]);
+  const searchPlan = await read("EXPLAIN (ANALYZE,BUFFERS) SELECT id,(CASE WHEN title_search_vector @@ plainto_tsquery('german','urlaub') THEN 1 ELSE 0 END + ts_rank_cd(search_vector,plainto_tsquery('german','urlaub'))) AS rank FROM knowledge_questions WHERE tenant_id=$1 AND answered_at IS NOT NULL AND search_vector @@ plainto_tsquery('german','urlaub') ORDER BY rank DESC,id LIMIT 21", [officeA]);
+  if (process.env.KNOWLEDGE_WRITE_PLANS === '1') await writeFile(new URL('../docs/wissen-query-plans.md',import.meta.url),
+    '# Wissen: gemessene Abfragepläne\n\nIsoliertes PostgreSQL (PGlite), 2.002 beantwortete Fragen, authentifizierte Rolle mit RLS. Gemessen werden die inneren Browse-/FTS-Pfade; RPC-Hülle, Gesamtzählung und Netzwerk sind nicht enthalten. Produktionspläne hängen von Datenverteilung und Statistik ab.\n\n## Browsen\n\n```text\n'+browsePlan.map(row=>row['QUERY PLAN']).join('\n')+'\n```\n\n## Suche\n\n```text\n'+searchPlan.map(row=>row['QUERY PLAN']).join('\n')+'\n```\n');
   console.log('Knowledge QA passed: two-tenant RLS, roles, validated content, German FTS/ranking, revisions, reviews, immutable audit, private storage policies and preserved legacy data.');
 } catch (error) {
-  console.error(error.message, error.code ?? '', error.query ?? '', error instanceof assert.AssertionError ? error.stack : '');
+  console.error(error.message, error.code ?? '', error.query ?? '', error.stack);
   process.exitCode = 1;
 } finally { await db.close(); }
