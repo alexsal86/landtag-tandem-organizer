@@ -13698,6 +13698,10 @@ export type Database = {
       }
     }
     Functions: {
+      office_routine_step_settings_v2: {
+        Args: { _payload: Json; _tenant_id: string }
+        Returns: Json
+      }
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined

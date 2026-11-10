@@ -149,7 +149,7 @@ export function useAutomationAdminMutations(tenantId?: string, userId?: string) 
       }
       for (const action of payload.actions) {
         if (action.type !== "run_annual_routine" || !action.payload?.routine_step_settings) continue;
-        const probe = await supabase.rpc("office_routine_step_settings", { _payload: action.payload, _tenant_id: tenantId });
+        const probe = await supabase.rpc("office_routine_step_settings_v2", { _payload: action.payload, _tenant_id: tenantId });
         if (probe.error) throw new Error(`Der Ablauf konnte im Backend nicht bestätigt werden. ${probe.error.message}`);
       }
       const query = editingRuleId

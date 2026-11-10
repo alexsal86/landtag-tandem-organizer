@@ -5,7 +5,7 @@ import { canDecide } from "@/features/appointment-requests/logic";
 import { isOnResubmission, MINISTRY_RESPONSE_DAYS, withAutoDeadline, type TriageItem } from "@/features/cases/items/ball";
 import { computeCropRect, isCrowdedDay, parseTopicDrop, rescheduleToDay } from "@/features/redaktion/utils/plannerRules";
 import { validateVariant } from "@/features/redaktion/components/PlannerBoard/utils";
-import { defaultStepSetting, previewRoutine, readStepSettings, validateRoutineWorkflow } from "@/features/automation/routineWorkflow";
+import { defaultStepSetting, previewRoutine, readStepSettings, resolveRoutineDates, validateStepGraph, validateRoutineWorkflow } from "@/features/automation/routineWorkflow";
 import { routineEntityLink, routineStepLabel } from "@/features/automation/routinePackages";
 import { routineStepKinds, validateOfficeRoutine } from "@/features/automation/officeRoutineTemplates";
 import { evaluateAutomationTree } from "@/features/automation/conditions";
@@ -22,6 +22,29 @@ export const workflowRulesScenario: TestScenario = {
   checks: ["Erlaubte und verbotene Brief-Statuswechsel", "Entscheiderrollen", "Ministeriumsfrist und Wiedervorlage"],
   limitations: ["Berechtigungen der Datenbank werden separat in den Zugriffstests geprüft."],
   steps: [
+    {
+      id: "routine-relative-deadlines-deputies", label: "Routinen: relative Fristen und Abwesenheitsvertretung konfigurieren", kind: "logic",
+      run: async () => {
+        const base = defaultStepSetting();
+        const planned = [base, { ...base, deadline_basis: "previous_planned" as const, deadline_offset: 3 }];
+        const actual = [base, { ...base, deadline_basis: "previous_completed" as const, deadline_offset: 2 }];
+        const dates = resolveRoutineDates("2026-11-01", "2026-12-01", [10, 0], planned);
+        const nextPlan = [ { ...base, deadline_basis: "next_planned" as const, deadline_offset: -3 }, { ...base, release: "after_previous" as const } ];
+        const checks = {
+          previousPlanned: dates[1].due === "2026-11-24",
+          nextPlanned: resolveRoutineDates("2026-11-01", "2026-12-01", [0, 0], nextPlan)[0].due === "2026-11-28",
+          realCompletionUnknown: resolveRoutineDates("2026-11-01", "2026-12-01", [10, 0], actual)[1].due === null,
+          realCompletionKnown: resolveRoutineDates("2026-11-01", "2026-12-01", [10, 0], actual, ["2026-11-25"])[1].due === "2026-11-27",
+          nextCompletionCycle: validateStepGraph([{ ...base, deadline_basis: "next_completed" }, { ...base, release: "after_previous" }]) !== null,
+          plannedCycle: validateStepGraph([{ ...base, deadline_basis: "next_planned" }, { ...base, deadline_basis: "previous_planned" }]) !== null,
+          missingNeighbor: validateStepGraph([{ ...base, deadline_basis: "previous_planned" }]) !== null,
+          legacyDeputyEnabled: readStepSettings('[{"release":"package_start","assignee":"","approver":""}]', 1)[0].use_deputy,
+          explicitDeputyDisabled: !readStepSettings(JSON.stringify([{ ...base, use_deputy: false }]), 1)[0].use_deputy,
+          deferredLabel: routineStepLabel({ status: "waiting", release: "package_start", due_day: null }) === "Wartet auf Bezugsschritt",
+        };
+        return { ok: Object.values(checks).every(Boolean), message: "Relative Terminplanung, Kreisprüfung und Vertretungseinstellung verwenden die Editor-Regeln. Die tatsächliche Vertretungsauflösung erfolgt mandantengeprüft in der Datenbank.", details: checks };
+      },
+    },
     {
       id: "shared-condition-dates", label: "Regeln: identische Datumsauswertung für Vorschau und Server", kind: "logic",
       run: async () => {

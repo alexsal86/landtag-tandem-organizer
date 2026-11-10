@@ -1,6 +1,6 @@
 import { editorPlanYear } from './editorModel';
 import type { WizardForm } from './types';
-import { previewRoutine, ROUTINE_RELEASES, validateRoutineWorkflow } from '@/features/automation/routineWorkflow';
+import { previewRoutine, ROUTINE_DEADLINES, ROUTINE_RELEASES, validateRoutineWorkflow } from '@/features/automation/routineWorkflow';
 import { ROUTINE_STEP_KINDS, validateOfficeRoutine } from '@/features/automation/officeRoutineTemplates';
 import { useTenantUsers } from '@/hooks/useTenantUsers';
 
@@ -26,8 +26,10 @@ export function RoutinePreview({ form }: { form: WizardForm }) {
           <p>{counts.length ? counts.map(item => `${item.count} × ${item.label}`).join(' · ') : 'Eine Büroaufgabe ohne weitere Schritte.'}{plan.steps.some(step => step.release === 'after_approval') && ` · ${plan.steps.filter(step => step.release === 'after_approval').length} zusätzliche Freigabeentscheidung(en)`}</p>
           <ol className="space-y-2">{plan.steps.map((step, stepIndex) => <li key={stepIndex} className="rounded-md border bg-background p-3">
             <p className="font-medium">{stepIndex + 1}. {step.title}</p>
-            <p className="text-xs text-muted-foreground">{ROUTINE_STEP_KINDS.find(kind => kind.value === step.kind)?.label} · Frist {dateLabel(step.due)}</p>
+            <p className="text-xs text-muted-foreground">{ROUTINE_STEP_KINDS.find(kind => kind.value === step.kind)?.label} · Frist {step.due ? dateLabel(step.due) : 'entsteht nach Abschluss des Bezugsschritts'}</p>
             <p className="text-xs">Start: {ROUTINE_RELEASES.find(mode => mode.value === step.release)?.label} · Verantwortlich: {owner(step.assignee)}</p>
+            {step.deadline_basis !== 'finish' && <p className="text-xs">Bezug: {ROUTINE_DEADLINES.find(item => item.value === step.deadline_basis)?.label} · Abstand {step.deadline_offset} Kalendertage</p>}
+            {step.use_deputy && <p className="text-xs text-muted-foreground">Bei genehmigter Abwesenheit übernimmt die hinterlegte Stellvertretung.</p>}
             {step.release === 'after_previous' && <p className="text-xs">Wartet auf „{plan.steps[stepIndex - 1]?.title}“.</p>}
             {step.release === 'after_approval' && <p className="text-xs">Freigabe durch: {owner(step.approver)}. Erst Zustimmung, dann Erstellung.</p>}
             {step.clamped && <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">Der gewünschte Vorlauf liegt vor dem Paketstart. Die Frist wird auf den Starttag begrenzt.</p>}

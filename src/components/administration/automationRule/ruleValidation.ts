@@ -112,6 +112,9 @@ function validatePackage(action: ActionItem,prefix: string,add: (step: RuleIssue
     if (!/^\d{1,3}$/.test(days) || Number(days) > 365) add(2,`${step}.days`,'Bitte einen Vorlauf zwischen 0 und 365 Tagen eingeben.');
     if (!title || title.length > 500) add(2,`${step}.title`,'Bitte einen Arbeitsschritt mit 1 bis 500 Zeichen eingeben.');
     if (settings[index].release === 'after_approval' && !settings[index].approver) add(2,`${step}.approver`,'Bitte die freigebende Person auswählen.');
+    const basis = settings[index].deadline_basis;
+    if (basis.startsWith('previous_') && index === 0 || basis.startsWith('next_') && index === lines.length - 1) add(2,`${step}.deadline_basis`,'Dieser Bezugsschritt existiert an dieser Position nicht.');
+    if (!Number.isInteger(settings[index].deadline_offset) || Math.abs(settings[index].deadline_offset) > 365 || basis.endsWith('_completed') && settings[index].deadline_offset < 0) add(2,`${step}.deadline_offset`,'Bitte einen gültigen Abstand wählen: maximal 365 Tage, nach tatsächlichem Abschluss nur 0 bis 365.');
     if (settings[index].release === 'after_previous' && index === 0) add(2,`${step}.release`,'Der erste Schritt kann nicht auf einen Vorgänger warten.');
   });
   try { routineStepKinds(action.routineStepKinds,lines.length); } catch { add(2,`${prefix}.routineSteps`,'Bitte die Aktionstypen der Arbeitsschritte prüfen.'); }

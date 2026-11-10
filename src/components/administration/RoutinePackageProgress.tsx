@@ -49,11 +49,13 @@ export function RoutinePackageProgress({ pkg, canEdit }: { pkg: RoutinePackage; 
         {eligible && <Button type="button" size="sm" variant="outline" disabled={!canEdit || busy} onClick={() => setConfirmUpdate(true)}>Vorlage auf wartende Schritte anwenden</Button>}
       </div>
       <ol className="space-y-2">{pkg.steps.map(step => {
-        const late = step.status !== 'completed' && step.due_day < today;
+        const late = step.status !== 'completed' && step.due_day !== null && step.due_day < today;
         const owner = users.find(user => user.id === step.assignee_id)?.display_name ?? 'Zugewiesene Person';
         return <li key={step.id} className="space-y-1 rounded-md border p-3 text-sm">
           <div className="flex flex-wrap items-center gap-2"><span className="font-medium">{step.position + 1}. {step.title}</span><Badge variant={step.status === 'failed' || step.status === 'blocked' ? 'destructive' : 'secondary'}>{routineStepLabel(step)}</Badge>{late && <Badge variant="outline" className="text-destructive">Frist überschritten</Badge>}</div>
-          <p className="text-xs text-muted-foreground">{ROUTINE_STEP_KINDS.find(kind => kind.value === step.kind)?.label} · {owner} · Frist {new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin' }).format(new Date(`${step.due_day}T12:00:00Z`))}</p>
+          <p className="text-xs text-muted-foreground">{ROUTINE_STEP_KINDS.find(kind => kind.value === step.kind)?.label} · {owner} · Frist {step.due_day ? new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin' }).format(new Date(`${step.due_day}T12:00:00Z`)) : 'noch offen (Bezugsschritt)'}</p>
+          {step.use_deputy && step.nominal_assignee_id && step.nominal_assignee_id !== step.assignee_id && <p className="text-xs text-primary">{owner} vertritt {users.find(user => user.id === step.nominal_assignee_id)?.display_name ?? 'die ursprünglich zuständige Person'}.</p>}
+          {step.use_deputy && step.nominal_approver_id && step.nominal_approver_id !== step.approver_id && <p className="text-xs text-primary">Freigabevertretung: {users.find(user => user.id === step.approver_id)?.display_name ?? 'hinterlegte Stellvertretung'}.</p>}
           {step.error_message && <p role="status" className="text-xs text-destructive">{step.error_message}</p>}
           <div className="flex flex-wrap items-center gap-3 text-xs">
             {step.entity_id && <Link className="underline underline-offset-2" to={routineEntityLink(step.kind, step.entity_id, pkg.task_id)}>Eintrag öffnen</Link>}
@@ -61,7 +63,7 @@ export function RoutinePackageProgress({ pkg, canEdit }: { pkg: RoutinePackage; 
             {step.status === 'failed' && !step.entity_id && <Button type="button" size="sm" variant="outline" disabled={!canEdit || busy} onClick={() => refresh.mutate(step.id)}>Diesen Schritt erneut versuchen</Button>}
           </div>
           {canEdit && step.status !== 'completed' && <StepReassignment step={step} />}
-          {step.status === 'blocked' && <p className="text-xs text-muted-foreground">Eine Ablehnung wird nicht durch Wiederholen übergangen. Bitte die verknüpfte Entscheidung klären.</p>}
+          {step.status === 'blocked' && <p className="text-xs text-muted-foreground">Nach Korrektur der Abwesenheitsvertretung wird der Schritt erneut geprüft. Eine Ablehnung wird nicht durch Wiederholen übergangen. Bitte die angezeigte Ursache beziehungsweise die verknüpfte Entscheidung klären.</p>}
         </li>;
       })}</ol>
     </div>
@@ -71,12 +73,12 @@ export function RoutinePackageProgress({ pkg, canEdit }: { pkg: RoutinePackage; 
 
 function StepReassignment({ step }: { step: RoutinePackageStep }) {
   const client = useQueryClient();
-  const [assignee, setAssignee] = useState(step.assignee_id);
-  const [approver, setApprover] = useState(step.approver_id ?? '');
-  useEffect(() => { setAssignee(step.assignee_id); setApprover(step.approver_id ?? ''); }, [step.assignee_id, step.approver_id]);
+  const [assignee, setAssignee] = useState(step.nominal_assignee_id ?? step.assignee_id);
+  const [approver, setApprover] = useState(step.nominal_approver_id ?? step.approver_id ?? '');
+  useEffect(() => { setAssignee(step.nominal_assignee_id ?? step.assignee_id); setApprover(step.nominal_approver_id ?? step.approver_id ?? ''); }, [step.assignee_id, step.approver_id, step.nominal_assignee_id, step.nominal_approver_id]);
   const mutation = useMutation({
     mutationFn: async () => {
-      const result = await supabase.rpc('reassign_routine_step', { _step_id: step.id, _assignee_id: assignee, ...(approver ? { _approver_id: approver } : {}) });
+      const result = await supabase.rpc('reassign_routine_step', { _step_id: step.id, _assignee_id: assignee, ...(step.release === 'after_approval' && !step.entity_id && approver ? { _approver_id: approver } : {}) });
       if (result.error) throw result.error;
     },
     onSuccess: async () => { notify.success('Zuständigkeit für diesen Ablauf geändert'); await client.invalidateQueries({ queryKey: ['routine-packages'] }); },
@@ -85,7 +87,7 @@ function StepReassignment({ step }: { step: RoutinePackageStep }) {
   return <details className="pt-2">
     <summary className="cursor-pointer text-xs underline underline-offset-2">Zuständigkeit ändern</summary>
     <fieldset className="mt-2 space-y-2" disabled={mutation.isPending}>
-      <p className="text-xs text-muted-foreground">Ändert diesen laufenden Schritt und seinen Eintrag. Die Vorlage bleibt unverändert. Bei Entscheidungen ist das Ja der neu ausgewählten Person erforderlich.</p>
+      <p className="text-xs text-muted-foreground">Ändert diesen laufenden Schritt und seinen Eintrag. Die Vorlage bleibt unverändert. Die neue Person ist die Stammzuständigkeit; die automatische Vertretungseinstellung gilt weiterhin. Bei Entscheidungen ist das Ja der neu ausgewählten Person erforderlich.</p>
       <TenantUserSelect value={assignee} onValueChange={setAssignee} placeholder="Verantwortliche Person auswählen…" />
       {step.release === 'after_approval' && !step.entity_id && <><p className="text-xs font-medium">Freigebende Person</p><TenantUserSelect value={approver} onValueChange={setApprover} placeholder="Freigebende Person auswählen…" /></>}
       <Button type="button" size="sm" variant="outline" disabled={!assignee || mutation.isPending || (step.release === 'after_approval' && !approver)} onClick={() => mutation.mutate()}>Zuständigkeit übernehmen</Button>

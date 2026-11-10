@@ -71,3 +71,6 @@
 @media(prefers-reduced-motion:reduce) { .dialog * { transition:none!important; } }
 
 .panel input[aria-invalid=true],.panel textarea[aria-invalid=true],.panel button[aria-invalid=true] { border-color:hsl(var(--destructive)); }
+
+.stepButtons { display:flex; flex-direction:column; gap:2px; }
+@media(max-width:480px) { .stepButtons { grid-column:2; justify-self:end; flex-direction:row; } }
