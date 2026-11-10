@@ -745,8 +745,8 @@ export function AutomationRuleWizard({
                 </SelectTrigger>
                 <SelectContent>
                   {RULE_TEMPLATE_GROUPS.map(group => (
-                    <SelectGroup key={group.value}>
-                      <SelectLabel>{group.label}</SelectLabel>
+                    <SelectGroup key={group.value} className="mt-2 first:mt-0">
+                      <SelectLabel className="pl-2 text-muted-foreground">{group.label}</SelectLabel>
                       {group.templates.length > 0 ? group.templates.map(template => (
                         <SelectItem key={template.id} value={template.id}>
                           {template.name}
