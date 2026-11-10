@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { requireAuth, unauthorizedResponse } from "../_shared/security.ts";
+import { unauthorizedResponse } from "../_shared/security.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.52.0";
 
 const corsHeaders = {
@@ -26,11 +26,13 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
 
-  const auth = await requireAuth(req);
-  if (!auth) return unauthorizedResponse();
+  // Only the notifications DB trigger (server credential) may dispatch pushes;
+  // signed-in users must never choose recipients or content directly.
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const bearer = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+  if (!key || bearer !== key) return unauthorizedResponse();
   try {
     const url = Deno.env.get("SUPABASE_URL")!;
-    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const sb = createClient(url, key);
 
     const body = (await req.json()) as PushPayload;
@@ -95,8 +97,7 @@ serve(async (req) => {
     });
   } catch (e) {
     console.error("dispatch-mobile-push error", e);
-    const msg = e instanceof Error ? e.message : String(e);
-    return new Response(JSON.stringify({ error: msg }), {
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
