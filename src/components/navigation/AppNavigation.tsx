@@ -4,6 +4,7 @@ import { SHOW_RECENT_PREF_KEY } from "@/components/settings/SidebarPreferencesCa
 import { useNavPanelData } from "./appNavigation/useNavPanelData";
 import { NavDossierCapture } from "@/components/search/NavDossierCapture";
 import { useNavigate } from "react-router-dom";
+import { debugConsole } from '@/utils/debugConsole';
 import { 
   Home, 
   Shield,
