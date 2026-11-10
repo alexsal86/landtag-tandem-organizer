@@ -35,18 +35,26 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { pollId, notificationType, participantEmails, changes, respondentName }: NotificationRequest = await req.json();
 
-    console.log('Sending poll notifications:', { pollId, notificationType, participantEmails, changes });
+    console.log('Sending poll notifications:', { pollId, notificationType });
 
     // Get poll details
     const { data: poll, error: pollError } = await supabase
       .from('appointment_polls')
-      .select('title, description')
+      .select('title, description, user_id')
       .eq('id', pollId)
       .single();
 
-    if (pollError) {
-      console.error('Error fetching poll:', pollError);
-      throw pollError;
+    if (pollError || !poll) {
+      return new Response(JSON.stringify({ error: 'Poll not found' }), {
+        status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
+
+    // Only the poll owner may notify its participants.
+    if (poll.user_id !== auth.userId) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
     }
 
     // Get poll creator details
@@ -115,23 +123,26 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Send emails to specified participants or all external participants
-    let targetEmails = participantEmails;
+    // Recipients always come from the poll's stored participants; callers may
+    // only narrow the list, never add arbitrary addresses.
+    const { data: participants, error: participantsError } = await supabase
+      .from('poll_participants')
+      .select('email')
+      .eq('poll_id', pollId)
+      .eq('is_external', true);
 
-    if (!targetEmails) {
-      // Get all external participants
-      const { data: participants, error: participantsError } = await supabase
-        .from('poll_participants')
-        .select('email')
-        .eq('poll_id', pollId)
-        .eq('is_external', true);
-
-      if (participantsError) {
-        console.error('Error fetching participants:', participantsError);
-        throw participantsError;
-      }
-
-      targetEmails = participants.map(p => p.email);
+    if (participantsError) {
+      console.error('Error fetching participants:', participantsError);
+      throw participantsError;
     }
+
+    const knownEmails = (participants ?? []).map((p) => p.email).filter(Boolean) as string[];
+    const requested = Array.isArray(participantEmails)
+      ? new Set(participantEmails.map((e) => String(e).toLowerCase()))
+      : null;
+    const targetEmails = requested
+      ? knownEmails.filter((e) => requested.has(e.toLowerCase()))
+      : knownEmails;
 
     const emailPromises = targetEmails.map(async (email) => {
       try {
@@ -142,10 +153,10 @@ const handler = async (req: Request): Promise<Response> => {
           html: emailHtml,
         });
 
-        console.log(`Email sent to ${email}:`, emailResponse);
+        console.log('Poll notification sent', emailResponse?.data?.id ?? '');
         return { email, success: true, response: emailResponse };
       } catch (error) {
-        console.error(`Error sending email to ${email}:`, error);
+        console.error('Error sending poll notification:', error);
         return { email, success: false, error: 'Delivery failed' };
       }
     });
