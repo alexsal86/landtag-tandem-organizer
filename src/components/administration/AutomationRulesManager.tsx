@@ -722,46 +722,90 @@ function AutomationRulesContent({ view, onShowHistory }: { view: "rules" | "hist
                       </div>
                     </div>
                   </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <Button size="sm" variant="outline" onClick={() => startEdit(rule)} disabled={!canEdit}>
-                      Bearbeiten
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => duplicateRule(rule)} disabled={!canEdit} title="Regel duplizieren">
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setVersionsRuleId(rule.id);
-                        setVersionsRuleName(rule.name);
-                      }}
-                    >
-                      <Clock className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => triggerDryRun(rule)}
-                      disabled={runningRuleId === rule.id}
-                    >
-                      {runningRuleId === rule.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Play className="h-4 w-4" />
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => triggerRunNow(rule)}
-                      disabled={runningRuleId === rule.id || !rule.enabled}
-                    >
-                      <Zap className="h-4 w-4" />
-                    </Button>
-                    <Button size="sm" variant="destructive" onClick={() => deleteRule(rule.id)} disabled={!canEdit}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  <TooltipProvider>
+                    <div className="flex gap-2 flex-wrap">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-flex" tabIndex={!canEdit ? 0 : undefined}>
+                            <Button aria-label="Regel bearbeiten" size="sm" variant="outline" onClick={() => startEdit(rule)} disabled={!canEdit}>
+                              Bearbeiten
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>Regel bearbeiten</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-flex" tabIndex={!canEdit ? 0 : undefined}>
+                            <Button aria-label="Regel duplizieren" size="sm" variant="outline" onClick={() => duplicateRule(rule)} disabled={!canEdit}>
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>Regel duplizieren</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-flex">
+                            <Button aria-label="Versionshistorie anzeigen"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setVersionsRuleId(rule.id);
+                                setVersionsRuleName(rule.name);
+                              }}
+                            >
+                              <Clock className="h-4 w-4" />
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>Versionshistorie anzeigen</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-flex" tabIndex={runningRuleId === rule.id ? 0 : undefined}>
+                            <Button aria-label="Simulation starten (Dry-Run)"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => triggerDryRun(rule)}
+                              disabled={runningRuleId === rule.id}
+                            >
+                              {runningRuleId === rule.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Play className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>Simulation starten (Dry-Run)</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-flex" tabIndex={runningRuleId === rule.id || !rule.enabled ? 0 : undefined}>
+                            <Button aria-label="Regel jetzt ausführen"
+                              size="sm"
+                              onClick={() => triggerRunNow(rule)}
+                              disabled={runningRuleId === rule.id || !rule.enabled}
+                            >
+                              <Zap className="h-4 w-4" />
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>Regel jetzt ausführen</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-flex" tabIndex={!canEdit ? 0 : undefined}>
+                            <Button aria-label="Regel löschen" size="sm" variant="destructive" onClick={() => deleteRule(rule.id)} disabled={!canEdit}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>Regel löschen</TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </TooltipProvider>
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-2">
                   Aktualisiert {formatDistanceToNow(new Date(rule.updated_at), { addSuffix: true, locale: de })}
