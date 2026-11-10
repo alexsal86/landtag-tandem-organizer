@@ -13988,8 +13988,8 @@ export type Database = {
     }
     Functions: {
       knowledge_qa_list: {
-        Args: { p_tenant: string; p_query?: string; p_view?: string; p_limit?: number; p_offset?: number }
-        Returns: { items: Json; total_count: number }[]
+        Args: { p_tenant: string; p_query?: string; p_view?: string; p_limit?: number; p_cursor?: Json }
+        Returns: { items: Json; total_count: number; next_cursor: Json | null }[]
       }
 
       _briefing_task_event: {

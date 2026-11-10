@@ -16,7 +16,7 @@ it('does not display a delayed result from the previous office after switching o
   state.rpc.mockImplementation((_name, args) => ({ abortSignal: () => args.p_tenant === 'office-a' ? old : Promise.resolve({ data: [{ items: [{ id: 'question-b' }], total_count: 1 }], error: null }) }));
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
-  const { result, rerender, unmount } = renderHook(() => useKnowledgeQuestions('', 'answers', 0, null), { wrapper });
+  const { result, rerender, unmount } = renderHook(() => useKnowledgeQuestions('', 'answers', null), { wrapper });
   await waitFor(() => expect(state.rpc).toHaveBeenCalled());
   state.tenant = { id: 'office-b' }; rerender();
   await waitFor(() => expect(result.current.data?.[0]?.id).toBe('question-b'));
@@ -32,8 +32,25 @@ it('uses the compact list RPC with a bounded page and preserves server excerpts'
   }) }));
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
-  const { result, unmount } = renderHook(() => useKnowledgeQuestions('Antwort', 'answers', 0, null), { wrapper });
+  const { result, unmount } = renderHook(() => useKnowledgeQuestions('Antwort', 'answers', null), { wrapper });
   await waitFor(() => expect(result.current.data?.[0]?.answer_excerpt).toBe('Treffer im Antworttext'));
   expect(state.rpc).toHaveBeenLastCalledWith('knowledge_qa_list', expect.objectContaining({ p_limit: 20, p_tenant: 'office-a' }));
+  unmount(); client.clear();
+});
+
+it('loads the server cursor and stops even when the last page contains twenty entries', async () => {
+  const cursor = { id: 'last', updated_at: '2026-11-11T00:00:00Z', rank: 0 };
+  state.rpc.mockImplementation((_name, args) => ({ abortSignal: () => Promise.resolve({
+    data: [{ items: args.p_cursor ? Array.from({ length: 20 }, (_, i) => ({ id: `b-${i}` })) : [{ id: 'a' }], total_count: 21, next_cursor: args.p_cursor ? null : cursor }], error: null,
+  }) }));
+  const client = new QueryClient();
+  const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  const { result, unmount } = renderHook(() => useKnowledgeQuestions('', 'answers', null), { wrapper });
+  await waitFor(() => expect(result.current.hasNextPage).toBe(true));
+  await act(async () => { await result.current.fetchNextPage(); });
+  await waitFor(() => expect(result.current.data).toHaveLength(21));
+  expect(result.current.hasNextPage).toBe(false);
+  expect(result.current.totalCount).toBe(21);
+  expect(state.rpc).toHaveBeenLastCalledWith('knowledge_qa_list', expect.objectContaining({ p_cursor: cursor }));
   unmount(); client.clear();
 });

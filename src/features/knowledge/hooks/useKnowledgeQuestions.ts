@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenantProfiles } from '@/hooks/useTenantProfiles';
 import type { Database } from '@/integrations/supabase/types';
-import type { KnowledgeView, KnowledgeSummary, KnowledgeCard, KnowledgeQuestion } from '../types';
+import type { KnowledgeView, KnowledgeSummary, KnowledgeCard, KnowledgeQuestion, KnowledgePage } from '../types';
 
 export const knowledgeKey = (userId?: string, tenantId?: string) => ['knowledge-qa', userId, tenantId] as const;
 export function useKnowledgeScope() {
@@ -28,7 +28,7 @@ export function useKnowledgePeople() {
   return { ...profiles, error: profiles.error || members.error,
     assignable: profiles.data.filter(profile => members.data?.some(member => member.user_id === profile.user_id)) };
 }
-export function useKnowledgeQuestions(query: string, view: KnowledgeView, page: number, questionId: string | null) {
+export function useKnowledgeQuestions(query: string, view: KnowledgeView, questionId: string | null) {
   const { userId, tenantId } = useKnowledgeScope();
   const client = useQueryClient();
   const detail = useKnowledgeQuestion(questionId);
@@ -41,20 +41,27 @@ export function useKnowledgeQuestions(query: string, view: KnowledgeView, page: 
   }, [client, tenantId, userId]);
   const [debounced, setDebounced] = useState(query);
   useEffect(() => { const timer = setTimeout(() => setDebounced(query), 300); return () => clearTimeout(timer); }, [query]);
-  const search = useQuery({
-    queryKey: [...knowledgeKey(userId, tenantId), 'search', debounced, view, page, questionId],
+  const search = useInfiniteQuery({
+    queryKey: [...knowledgeKey(userId, tenantId), 'search', debounced, view, questionId],
     enabled: Boolean(userId && tenantId && !questionId),
+    initialPageParam: null as import('@/integrations/supabase/types').Json | null,
+    getNextPageParam: (last: KnowledgePage) => last.next_cursor ?? undefined,
     staleTime: 60_000, refetchOnWindowFocus: true, retry: 1,
-    queryFn: async ({ signal }) => {
+    queryFn: async ({ signal, pageParam }) => {
       const { data, error } = await supabase.rpc('knowledge_qa_list', {
-        p_tenant: tenantId!, p_query: debounced, p_view: view, p_limit: 20, p_offset: page * 20,
+        p_tenant: tenantId!, p_query: debounced, p_view: view, p_limit: 20, p_cursor: pageParam ?? undefined,
       }).abortSignal(signal);
       if (error) throw new Error(error.message);
-      return (data?.[0]?.items ?? []) as unknown as KnowledgeSummary[];
+      return { items: (data?.[0]?.items ?? []) as unknown as KnowledgeSummary[], total_count: data?.[0]?.total_count ?? 0, next_cursor: data?.[0]?.next_cursor ?? null };
     },
   });
-  if (questionId) return { ...detail, data: detail.data ? [{ ...detail.data, answer_excerpt: detail.data.answer_text.slice(0, 200) }] : [], debouncing: false };
-  return { ...search, debouncing: debounced !== query };
+  return {
+    ...search,
+    ...(questionId ? { isPending: detail.isPending, isError: detail.isError, refetch: detail.refetch } : {}),
+    data: questionId ? (detail.data ? [{ ...detail.data, answer_excerpt: detail.data.answer_text.slice(0, 200) }] : []) : search.data?.pages.flatMap(page => page.items),
+    totalCount: questionId ? (detail.data ? 1 : 0) : search.data?.pages[0]?.total_count ?? 0,
+    debouncing: !questionId && debounced !== query,
+  };
 }
 type WriteName = 'knowledge_qa_create_question' | 'knowledge_qa_save_answer' | 'knowledge_qa_review' | 'knowledge_qa_set_assignee' | 'knowledge_qa_finish_attachment';
 type WriteRequest = { [Name in WriteName]: { name: Name; args: Database['public']['Functions'][Name]['Args'] } }[WriteName];

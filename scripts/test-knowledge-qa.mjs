@@ -66,7 +66,7 @@ try {
   `);
   const actions = await readFile(new URL('../supabase/migrations/20261109142000_enforce_admin_actions.sql', import.meta.url), 'utf8');
   await db.exec(actions.slice(actions.indexOf('CREATE OR REPLACE FUNCTION public.is_tenant_action_allowed'), actions.indexOf('CREATE OR REPLACE FUNCTION public.enforce_configured_action')));
-  for (const file of ['20261110180000_knowledge_qa_core.sql', '20261110180100_knowledge_qa_search.sql', '20261110180200_knowledge_qa_storage.sql', '20261110180300_knowledge_legacy_access.sql', '20261111100000_knowledge_list_payload.sql']) {
+  for (const file of ['20261110180000_knowledge_qa_core.sql', '20261110180100_knowledge_qa_search.sql', '20261110180200_knowledge_qa_storage.sql', '20261110180300_knowledge_legacy_access.sql', '20261111100000_knowledge_list_payload.sql', '20261111100100_knowledge_keyset.sql']) {
     await db.exec(await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
   }
   await actor(alice);
@@ -133,6 +133,12 @@ try {
   assert.equal(q.review_status, 'unverified', 'Attaching invalidates confirmation');
   await denied(read("UPDATE storage.objects SET metadata='{}' WHERE name=$1", [a.storage_path]).then(rows => { if (!rows.length) throw Object.assign(new Error('no update'), { code: '42501' }); }));
   // Nonmembers cannot read metadata, content, history, search results, or files.
+  const firstPage = (await read('SELECT * FROM knowledge_qa_list($1,$2,$3,$4)', [officeA, '', 'answers', 1]))[0];
+  assert.ok(firstPage.next_cursor);
+  const secondPage = (await read('SELECT * FROM knowledge_qa_list($1,$2,$3,$4,$5)', [officeA, '', 'answers', 1, firstPage.next_cursor]))[0];
+  assert.notEqual(firstPage.items[0].id, secondPage.items[0].id);
+  assert.equal(firstPage.total_count, secondPage.total_count);
+  assert.equal(secondPage.next_cursor, null);
   await actor(bob);
   assert.equal((await search(officeA, 'Urlaub')).length, 0);
   assert.equal((await read('SELECT * FROM knowledge_questions WHERE id=$1', [q.id])).length, 0);

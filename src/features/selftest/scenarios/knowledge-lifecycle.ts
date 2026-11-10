@@ -9,6 +9,12 @@ export const knowledgeLifecycleScenario: TestScenario = {
   checks: ['Frage als einziges Pflichtfeld', 'Validierte Antwort und sichere Links', 'Drei Prüfzustände und Fälligkeit', 'Anhanggrenzen', 'Lesen außerhalb des eigenen Büros'],
   limitations: ['Zwei-Büro-Isolation, FTS und Storage-Policies werden zusätzlich mit scripts/test-knowledge-qa.mjs in isoliertem PostgreSQL geprüft. Echte Storage-HTTP-Zugriffe benötigen eine Supabase-Testinstanz.'],
   steps: [
+    { id: 'bounded-list', label: 'Kompakte Seite mit explizitem Cursor und Gesamtzahl', kind: 'workflow', run: async ctx => {
+      const { data, error } = await supabase.rpc('knowledge_qa_list', { p_tenant: ctx.tenantId, p_limit: 1 });
+      const page = data?.[0];
+      const items = Array.isArray(page?.items) ? page.items : [];
+      return { ok: !error && Boolean(page) && items.length <= 1 && items.every(item => item && typeof item === 'object' && !('answer_content' in item) && !('answer_text' in item)), message: error?.message || 'Listen-Payload bleibt begrenzt; Antworten werden bei Bedarf geladen.' };
+    } },
     { id: 'real-workflow', label: 'Echte Speicherung, Verlauf, Prüfbestätigung und Rücksetzung ohne bleibende Testdaten', kind: 'workflow', run: async ctx => {
       const response = await supabase.rpc('knowledge_qa_selftest', { p_tenant: ctx.tenantId });
       const result = response.data && typeof response.data === 'object' && !Array.isArray(response.data) ? response.data : null;
