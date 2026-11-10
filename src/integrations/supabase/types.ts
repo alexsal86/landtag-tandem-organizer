@@ -13987,8 +13987,12 @@ export type Database = {
       }
     }
     Functions: {
+      knowledge_qa_counts: {
+        Args: { p_tenant: string }
+        Returns: { answers: number; open: number; mine: number; assigned: number; review: number }[]
+      }
       knowledge_qa_list: {
-        Args: { p_tenant: string; p_query?: string; p_view?: string; p_limit?: number; p_cursor?: Json }
+        Args: { p_tenant: string; p_query?: string; p_view?: string; p_limit?: number; p_cursor?: Json; p_status?: string; p_assignee?: string; p_sort?: string }
         Returns: { items: Json; total_count: number; next_cursor: Json | null }[]
       }
 

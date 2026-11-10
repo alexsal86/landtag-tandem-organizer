@@ -5,7 +5,7 @@ import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenantProfiles } from '@/hooks/useTenantProfiles';
 import type { Database } from '@/integrations/supabase/types';
-import type { KnowledgeView, KnowledgeSummary, KnowledgeCard, KnowledgeQuestion, KnowledgePage } from '../types';
+import type { KnowledgeView, KnowledgeSummary, KnowledgeCard, KnowledgeQuestion, KnowledgePage, KnowledgeFilters } from '../types';
 
 export const knowledgeKey = (userId?: string, tenantId?: string) => ['knowledge-qa', userId, tenantId] as const;
 export function useKnowledgeScope() {
@@ -28,7 +28,7 @@ export function useKnowledgePeople() {
   return { ...profiles, error: profiles.error || members.error,
     assignable: profiles.data.filter(profile => members.data?.some(member => member.user_id === profile.user_id)) };
 }
-export function useKnowledgeQuestions(query: string, view: KnowledgeView, questionId: string | null) {
+export function useKnowledgeQuestions(query: string, view: KnowledgeView, questionId: string | null, filters: KnowledgeFilters = { status: '', assignee: '', sort: 'updated' }) {
   const { userId, tenantId } = useKnowledgeScope();
   const client = useQueryClient();
   const detail = useKnowledgeQuestion(questionId);
@@ -42,14 +42,14 @@ export function useKnowledgeQuestions(query: string, view: KnowledgeView, questi
   const [debounced, setDebounced] = useState(query);
   useEffect(() => { const timer = setTimeout(() => setDebounced(query), 300); return () => clearTimeout(timer); }, [query]);
   const search = useInfiniteQuery({
-    queryKey: [...knowledgeKey(userId, tenantId), 'search', debounced, view, questionId],
+    queryKey: [...knowledgeKey(userId, tenantId), 'search', debounced, view, questionId, filters],
     enabled: Boolean(userId && tenantId && !questionId),
     initialPageParam: null as import('@/integrations/supabase/types').Json | null,
     getNextPageParam: (last: KnowledgePage) => last.next_cursor ?? undefined,
     staleTime: 60_000, refetchOnWindowFocus: true, retry: 1,
     queryFn: async ({ signal, pageParam }) => {
       const { data, error } = await supabase.rpc('knowledge_qa_list', {
-        p_tenant: tenantId!, p_query: debounced, p_view: view, p_limit: 20, p_cursor: pageParam ?? undefined,
+        p_tenant: tenantId!, p_query: debounced, p_view: view, p_limit: 20, p_cursor: pageParam ?? undefined, p_status: filters.status, p_assignee: filters.assignee, p_sort: filters.sort,
       }).abortSignal(signal);
       if (error) throw new Error(error.message);
       return { items: (data?.[0]?.items ?? []) as unknown as KnowledgeSummary[], total_count: data?.[0]?.total_count ?? 0, next_cursor: data?.[0]?.next_cursor ?? null };
@@ -115,6 +115,20 @@ export function useKnowledgeQuestion(id: string | null) {
         .eq('tenant_id', tenantId!).eq('id', id!).abortSignal(signal).maybeSingle();
       if (error) throw new Error(error.message);
       return data as KnowledgeCard | null;
+    },
+  });
+}
+
+export function useKnowledgeCounts() {
+  const { tenantId, userId } = useKnowledgeScope();
+  return useQuery({
+    queryKey: [...knowledgeKey(userId, tenantId), 'counts'],
+    enabled: Boolean(tenantId && userId),
+    staleTime: 60_000,
+    queryFn: async ({ signal }) => {
+      const { data, error } = await supabase.rpc('knowledge_qa_counts', { p_tenant: tenantId! }).abortSignal(signal);
+      if (error) throw new Error(error.message);
+      return data?.[0];
     },
   });
 }

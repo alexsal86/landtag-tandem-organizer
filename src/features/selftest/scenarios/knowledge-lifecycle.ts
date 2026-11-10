@@ -1,4 +1,4 @@
-import { answerText, effectiveReviewStatus, parseAnswer, validateAttachment, validateQuestion } from '@/features/knowledge/logic';
+import { answerText, effectiveReviewStatus, knowledgeUrlState, parseAnswer, validateAttachment, validateQuestion } from '@/features/knowledge/logic';
 import { supabase } from '@/integrations/supabase/client';
 import type { TestScenario } from '../types';
 
@@ -9,6 +9,10 @@ export const knowledgeLifecycleScenario: TestScenario = {
   checks: ['Frage als einziges Pflichtfeld', 'Validierte Antwort und sichere Links', 'Drei Prüfzustände und Fälligkeit', 'Anhanggrenzen', 'Lesen außerhalb des eigenen Büros'],
   limitations: ['Zwei-Büro-Isolation, FTS und Storage-Policies werden zusätzlich mit scripts/test-knowledge-qa.mjs in isoliertem PostgreSQL geprüft. Echte Storage-HTTP-Zugriffe benötigen eine Supabase-Testinstanz.'],
   steps: [
+    { id: 'filter-state', label: 'Ansichten und Filter aus URL wiederherstellen', kind: 'logic', run: async () => {
+      const state = knowledgeUrlState(new URLSearchParams('ansicht=assigned&status=open&zustaendig=unassigned&sortierung=oldest'));
+      return { ok: state.view === 'assigned' && state.filters.status === 'open' && state.filters.assignee === 'unassigned' && state.filters.sort === 'oldest', message: 'Filter bleiben teilbar und werden gegen Whitelists geprüft.' };
+    } },
     { id: 'bounded-list', label: 'Kompakte Seite mit explizitem Cursor und Gesamtzahl', kind: 'workflow', run: async ctx => {
       const { data, error } = await supabase.rpc('knowledge_qa_list', { p_tenant: ctx.tenantId, p_limit: 1 });
       const page = data?.[0];

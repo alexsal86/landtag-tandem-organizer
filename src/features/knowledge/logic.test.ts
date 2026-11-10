@@ -44,3 +44,14 @@ describe('shared office knowledge rules', () => {
     expect(excerpt).toContain('Urlaub'); expect(excerpt.length).toBeLessThan(230);
   });
 });
+
+import { knowledgeUrlState } from './logic';
+it('restores only whitelisted views, filters and ordering from the URL', () => {
+  expect(knowledgeUrlState(new URLSearchParams('ansicht=assigned&status=open&zustaendig=unassigned&sortierung=oldest'))).toEqual({
+    view: 'assigned', filters: { status: 'open', assignee: 'unassigned', sort: 'oldest' },
+  });
+  expect(knowledgeUrlState(new URLSearchParams('ansicht=review')).view).toBe('review');
+  expect(knowledgeUrlState(new URLSearchParams('ansicht=bad&status=bad&zustaendig=bad&sortierung=bad'))).toEqual({
+    view: 'answers', filters: { status: '', assignee: '', sort: 'updated' },
+  });
+});

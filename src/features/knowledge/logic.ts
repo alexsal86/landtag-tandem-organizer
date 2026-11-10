@@ -1,5 +1,5 @@
 import type { Json } from '@/integrations/supabase/types';
-import type { KnowledgeQuestion, ReviewStatus } from './types';
+import type { KnowledgeQuestion, ReviewStatus, KnowledgeView, KnowledgeFilters } from './types';
 
 export const REVIEW_LABELS: Record<ReviewStatus, string> = {
   unverified: 'Ungeprüft', verified: 'Geprüft', needs_review: 'Überprüfung erforderlich',
@@ -62,4 +62,14 @@ export function answerExcerpt(text: string, query: string): string {
   const match = word ? text.toLocaleLowerCase('de').indexOf(word.toLocaleLowerCase('de')) : 0;
   const start = Math.max(0, match - 55);
   return `${start ? '… ' : ''}${text.slice(start, start + 220)}${text.length > start + 220 ? ' …' : ''}`;
+}
+
+export function knowledgeUrlState(params: URLSearchParams): { view: KnowledgeView; filters: KnowledgeFilters } {
+  const rawView = params.get('ansicht');
+  const view: KnowledgeView = rawView === 'open' || rawView === 'mine' || rawView === 'assigned' || rawView === 'review' ? rawView : 'answers';
+  const rawStatus = params.get('status');
+  const status = rawStatus === 'open' || rawStatus === 'unverified' || rawStatus === 'verified' || rawStatus === 'needs_review' ? rawStatus : '';
+  const rawAssignee = params.get('zustaendig') ?? '';
+  const assignee = rawAssignee === 'unassigned' || /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(rawAssignee) ? rawAssignee : '';
+  return { view, filters: { status, assignee, sort: params.get('sortierung') === 'oldest' ? 'oldest' : 'updated' } };
 }

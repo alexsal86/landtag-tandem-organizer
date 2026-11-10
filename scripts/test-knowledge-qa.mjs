@@ -68,11 +68,11 @@ try {
   `);
   const actions = await readFile(new URL('../supabase/migrations/20261109142000_enforce_admin_actions.sql', import.meta.url), 'utf8');
   await db.exec(actions.slice(actions.indexOf('CREATE OR REPLACE FUNCTION public.is_tenant_action_allowed'), actions.indexOf('CREATE OR REPLACE FUNCTION public.enforce_configured_action')));
-  for (const file of ['20261110180000_knowledge_qa_core.sql', '20261110180100_knowledge_qa_search.sql', '20261110180200_knowledge_qa_storage.sql', '20261110180300_knowledge_legacy_access.sql', '20261111100000_knowledge_list_payload.sql', '20261111100100_knowledge_keyset.sql', '20261111100200_knowledge_search.sql']) {
+  for (const file of ['20261110180000_knowledge_qa_core.sql', '20261110180100_knowledge_qa_search.sql', '20261110180200_knowledge_qa_storage.sql', '20261110180300_knowledge_legacy_access.sql', '20261111100000_knowledge_list_payload.sql', '20261111100100_knowledge_keyset.sql', '20261111100200_knowledge_search.sql', '20261111100300_knowledge_views_filters.sql']) {
     await db.exec(await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
   }
   // Re-running additive migrations must preserve functions and data.
-  await db.exec(await readFile(new URL('../supabase/migrations/20261111100200_knowledge_search.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/20261111100300_knowledge_views_filters.sql', import.meta.url), 'utf8'));
   await actor(alice);
   const diagnostic = (await read('SELECT knowledge_qa_selftest($1) AS result', [officeA]))[0].result;
   assert.equal(diagnostic.ok, true, JSON.stringify(diagnostic));
@@ -160,6 +160,16 @@ try {
   assert.deepEqual((await read('SELECT id FROM knowledge_documents')).map(row => row.id), [legacyB]);
   assert.equal((await read('SELECT * FROM knowledge_document_versions')).length, 1);
   assert.equal((await read('SELECT * FROM knowledge_document_snapshots')).length, 1);
+  const foreignCounts = (await read('SELECT * FROM knowledge_qa_counts($1)',[officeA]))[0];
+  assert.equal(foreignCounts.answers,0);
+  await actor(alice);
+  assert.equal((await read('SELECT * FROM knowledge_qa_counts($1)',[officeA]))[0].answers,2);
+  const unassignedPage=(await read("SELECT * FROM knowledge_qa_list($1,'','answers',20,NULL,'','unassigned','oldest')",[officeA]))[0];
+  assert.ok(unassignedPage.items.every(item=>item.assigned_to===null));
+  const assignedPage=(await read("SELECT * FROM knowledge_qa_list($1,'','assigned')",[officeA]))[0];
+  assert.ok(assignedPage.items.every(item=>item.assigned_to===alice));
+  await assert.rejects(read("SELECT * FROM knowledge_qa_list($1,'','answers',20,NULL,'invalid')",[officeA]),error=>error.code==='22023');
+  await assert.rejects(read("SELECT * FROM knowledge_qa_list($1,'','answers',20,NULL,'','not-a-uuid')",[officeA]),error=>error.code==='22023');
   await actor(inactive); assert.equal((await search(officeA)).length, 0); await denied(create(officeA, 'Inaktiv'));
   await actor(null, 'anon'); await denied(search(officeA));
   assert.equal((await read("SELECT * FROM storage.objects WHERE bucket_id='knowledge-attachments'")).length, 0);
@@ -172,6 +182,8 @@ try {
   await owner(); await db.exec(`INSERT INTO action_permissions VALUES('${officeA}','knowledge.verify','{}'),('${officeA}','knowledge.write','{}')`);
   await actor(alice); await denied(review(q)); await denied(save(q, 'Gesperrt')); await denied(create(officeA, 'Gesperrt'));
   assert.equal((await read('SELECT knowledge_qa_selftest($1) AS result', [officeA]))[0].result.checks.write_denied, true);
+  await denied(read("SELECT * FROM knowledge_qa_list($1,'','review')",[officeA]));
+  assert.equal((await read('SELECT * FROM knowledge_qa_counts($1)',[officeA]))[0].review,0);
   assert.ok((await search(officeA)).length, 'Read still works when writes are denied');
   await owner();
   await db.query('INSERT INTO knowledge_document_permissions VALUES($1,$2,$3)', [legacyA, clara, 'edit']);
