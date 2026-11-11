@@ -60,3 +60,6 @@ export const formatKnowledgeAsOfDate = (value: string) =>
     month: "short",
     year: "numeric",
   }).format(new Date(`${value}T12:00:00`));
+
+export const formatKnowledgeCalendarDate = (value: string) =>
+  new Date(value).toLocaleDateString("de-DE", { dateStyle: "medium" });

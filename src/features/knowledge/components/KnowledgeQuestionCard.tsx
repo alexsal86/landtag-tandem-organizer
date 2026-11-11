@@ -23,7 +23,10 @@ import { AssigneeSelect } from "./AssigneeSelect";
 import { ReviewPanel } from "./ReviewPanel";
 import { HistoryPanel } from "./HistoryPanel";
 import { useReviewDeadline } from "../hooks/useReviewDeadline";
-import { formatKnowledgeDate as formatDate } from "./presentation";
+import {
+  formatKnowledgeDate as formatDate,
+  formatKnowledgeCalendarDate,
+} from "./presentation";
 
 export function KnowledgeQuestionDetailContent({
   question,
@@ -57,6 +60,23 @@ export function KnowledgeQuestionDetailContent({
       return undefined;
     }
   }, [question.answer_content]);
+  const editAction =
+    !editing && canWrite && !question.archived_at ? (
+      <Button
+        ref={answerAction}
+        className={`${styles.button} ${styles.compactAction} ${question.answered_at && status === "needs_review" ? "" : styles.primaryButton}`}
+        variant={
+          question.answered_at && status === "needs_review"
+            ? "outline"
+            : "default"
+        }
+        size="sm"
+        onClick={() => setEditing(true)}
+      >
+        <Pencil className="h-3.5 w-3.5" />
+        {question.answered_at ? "Antwort bearbeiten" : "Beantworten"}
+      </Button>
+    ) : null;
   return (
     <div className="space-y-4">
       {question.archived_at && (
@@ -76,26 +96,6 @@ export function KnowledgeQuestionDetailContent({
       <section className={`${styles.slideCard} space-y-3`} aria-label="Antwort">
         <div className={styles.answerHeading}>
           <h3 className="font-medium">Antwort</h3>{" "}
-          {!editing && (
-            <div className={styles.answerActions}>
-              {canWrite && !question.archived_at && (
-                <Button
-                  ref={answerAction}
-                  className={`${styles.button} ${styles.compactAction} ${question.answered_at && status === "needs_review" ? "" : styles.primaryButton}`}
-                  variant={
-                    question.answered_at && status === "needs_review"
-                      ? "outline"
-                      : "default"
-                  }
-                  size="sm"
-                  onClick={() => setEditing(true)}
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                  {question.answered_at ? "Antwort bearbeiten" : "Beantworten"}
-                </Button>
-              )}
-            </div>
-          )}
         </div>
         {editing ? (
           <KnowledgeAnswerEditor
@@ -127,10 +127,14 @@ export function KnowledgeQuestionDetailContent({
         {question.answered_at && (
           <KnowledgeAttachments
             question={question}
+            actions={editAction}
             canWrite={canWrite && !question.archived_at && !editing}
           />
         )}
 
+        {!question.answered_at && editAction && (
+          <div className={styles.answerFooter}>{editAction}</div>
+        )}
         <KnowledgeConversationPanel question={question} />
       </section>
       <section className={`${styles.slideCard} space-y-3`} aria-label="Prüfung">
@@ -173,11 +177,19 @@ export function KnowledgeQuestionDetailContent({
                 )}
                 showAvatar={showAvatars}
               />
+              <span className={styles.createdDate}>
+                {" "}
+                ·{" "}
+                <time
+                  dateTime={question.created_at}
+                  title={formatDate(question.created_at)}
+                  tabIndex={0}
+                  aria-label={`Erstellt: ${formatDate(question.created_at)}`}
+                >
+                  {formatKnowledgeCalendarDate(question.created_at)}
+                </time>
+              </span>
             </dd>
-          </div>
-          <div>
-            <dt>Erstellt</dt>
-            <dd>{formatDate(question.created_at)}</dd>
           </div>
           <div>
             <dt>Zuständig</dt>
@@ -205,7 +217,16 @@ export function KnowledgeQuestionDetailContent({
           {question.answer_updated_at && (
             <div>
               <dt>Aktualisiert</dt>
-              <dd>{formatDate(question.answer_updated_at)}</dd>
+              <dd>
+                <time
+                  dateTime={question.answer_updated_at}
+                  title={formatDate(question.answer_updated_at)}
+                  tabIndex={0}
+                  aria-label={`Aktualisiert: ${formatDate(question.answer_updated_at)}`}
+                >
+                  {formatKnowledgeCalendarDate(question.answer_updated_at)}
+                </time>
+              </dd>
             </div>
           )}
           {question.verified_at && (

@@ -255,7 +255,7 @@
 .detailRows dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
 .detailRows dd > span { vertical-align: middle; }
 .detailRows .assignment { margin: 0; flex-wrap: nowrap; gap: 6px; }
-.detailRows .assignment > button { min-width: 0; flex: 1; }
+.detailRows .assignment > button { min-width: 0; flex: 0 1 auto; width: auto; justify-content: flex-start; gap: 6px; }
 .topicChips { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .topicChip { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; padding: 4px 8px; border-radius: 8px; background: var(--knowledge-soft); color: var(--knowledge-primary-text); font-size: 13px; }
 .topicName { min-width: 0; overflow-wrap: anywhere; text-align: left; }
@@ -303,3 +303,8 @@
 .tagEntryRow { display: flex; align-items: stretch; min-width: 0; border: 1px solid var(--knowledge-line); border-radius: 8px; }
 .theme .topicsPanel .tagSearchField { flex: 1; min-width: 0; justify-content: flex-start; text-align: left; border: 0; border-radius: 8px 0 0 8px; background: transparent; color: var(--knowledge-muted); font-size: 12px; padding: 7px 10px; box-shadow: none; }
 .theme .topicsPanel .tagAddButton { flex: none; border: 0; border-left: 1px solid var(--knowledge-line); border-radius: 0 8px 8px 0; background: transparent; color: var(--knowledge-ink); font-size: 12px; padding: 7px 10px; box-shadow: none; }
+
+.answerFooter { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 8px; }
+.answerFooter:empty { display: none; }
+.slideCard .attachments .answerFooter .attach { margin-left: 0; }
+.createdDate { color: var(--knowledge-muted); font-size: 12px; }

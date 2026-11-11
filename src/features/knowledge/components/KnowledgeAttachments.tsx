@@ -1,5 +1,5 @@
 import styles from "./KnowledgeWorkspace.module.css";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Download, Paperclip, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,9 +16,11 @@ import type { KnowledgeAttachment, KnowledgeQuestion } from "../types";
 export function KnowledgeAttachments({
   question,
   canWrite,
+  actions,
 }: {
   question: KnowledgeQuestion;
   canWrite: boolean;
+  actions?: ReactNode;
 }) {
   const query = useKnowledgeAttachments(question.id);
   const scope = useKnowledgeScope();
@@ -59,10 +61,7 @@ export function KnowledgeAttachments({
         </p>
       )}
       {query.data?.map((file) => (
-        <div
-          key={file.id}
-          className={styles.attachment}
-        >
+        <div key={file.id} className={styles.attachment}>
           <Paperclip className="h-4 w-4 shrink-0" />
           <span className="min-w-0 flex-1 break-all">{file.file_name}</span>
           <Button
@@ -116,88 +115,91 @@ export function KnowledgeAttachments({
           )}
         </div>
       ))}
-      {canWrite && (
-        <label className={styles.attach}>
-          <Paperclip className="h-4 w-4" />
-          {busy ? "Datei wird übertragen …" : "Datei anhängen"}
-          <input
-            className="sr-only"
-            aria-label="Datei anhängen"
-            type="file"
-            accept={ATTACHMENT_TYPES.join(",")}
-            disabled={busy || write.isPending}
-            onChange={async (event) => {
-              const file = event.target.files?.[0];
-              event.target.value = "";
-              if (!file) return;
-              const invalid = validateAttachment(file);
-              if (invalid) {
-                setError(invalid);
-                return;
-              }
-              setBusy(true);
-              setError("");
-              let reservation: KnowledgeAttachment | null = null;
-              try {
-                const { data, error: failure } = await supabase
-                  .rpc("knowledge_qa_reserve_attachment", {
-                    p_question: question.id,
-                    p_name: file.name,
-                    p_type: file.type,
-                    p_size: file.size,
-                  })
-                  .single();
-                if (failure) throw new Error(failure.message);
-                const reserved = data as unknown as KnowledgeAttachment;
-                reservation = reserved;
-                const uploaded = await supabase.storage
-                  .from("knowledge-attachments")
-                  .upload(reserved.storage_path, file, {
-                    contentType: file.type,
-                    upsert: false,
-                  });
-                if (uploaded.error) throw uploaded.error;
-                await write.mutateAsync({
-                  name: "knowledge_qa_finish_attachment",
-                  args: {
-                    p_attachment: reserved.id,
-                    p_expected_revision: question.revision,
-                  },
-                });
-              } catch (cause) {
-                if (reservation) {
-                  await supabase.storage
-                    .from("knowledge-attachments")
-                    .remove([reservation.storage_path]);
-                  // Cancel using the current revision if another colleague edited meanwhile.
-                  const latest = await supabase
-                    .from("knowledge_questions")
-                    .select("revision")
-                    .eq("tenant_id", scope.tenantId!)
-                    .eq("id", question.id)
-                    .maybeSingle();
-                  if (latest.data)
-                    await supabase.rpc("knowledge_qa_finish_attachment", {
-                      p_attachment: reservation.id,
-                      p_expected_revision: latest.data.revision,
-                      p_remove: true,
-                    });
+      <div className={styles.answerFooter}>
+        {canWrite && (
+          <label className={styles.attach}>
+            <Paperclip className="h-4 w-4" />
+            {busy ? "Datei wird übertragen …" : "Datei anhängen"}
+            <input
+              className="sr-only"
+              aria-label="Datei anhängen"
+              type="file"
+              accept={ATTACHMENT_TYPES.join(",")}
+              disabled={busy || write.isPending}
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (!file) return;
+                const invalid = validateAttachment(file);
+                if (invalid) {
+                  setError(invalid);
+                  return;
                 }
-                setError(
-                  cause instanceof Error
-                    ? cause.message
-                    : "Die Datei konnte nicht angehängt werden.",
-                );
-              } finally {
-                setBusy(false);
-                await client.invalidateQueries({
-                  queryKey: knowledgeKey(scope.userId, scope.tenantId),
-                });
-              }
-            }}
-          />
-        </label>
-      )}
+                setBusy(true);
+                setError("");
+                let reservation: KnowledgeAttachment | null = null;
+                try {
+                  const { data, error: failure } = await supabase
+                    .rpc("knowledge_qa_reserve_attachment", {
+                      p_question: question.id,
+                      p_name: file.name,
+                      p_type: file.type,
+                      p_size: file.size,
+                    })
+                    .single();
+                  if (failure) throw new Error(failure.message);
+                  const reserved = data as unknown as KnowledgeAttachment;
+                  reservation = reserved;
+                  const uploaded = await supabase.storage
+                    .from("knowledge-attachments")
+                    .upload(reserved.storage_path, file, {
+                      contentType: file.type,
+                      upsert: false,
+                    });
+                  if (uploaded.error) throw uploaded.error;
+                  await write.mutateAsync({
+                    name: "knowledge_qa_finish_attachment",
+                    args: {
+                      p_attachment: reserved.id,
+                      p_expected_revision: question.revision,
+                    },
+                  });
+                } catch (cause) {
+                  if (reservation) {
+                    await supabase.storage
+                      .from("knowledge-attachments")
+                      .remove([reservation.storage_path]);
+                    // Cancel using the current revision if another colleague edited meanwhile.
+                    const latest = await supabase
+                      .from("knowledge_questions")
+                      .select("revision")
+                      .eq("tenant_id", scope.tenantId!)
+                      .eq("id", question.id)
+                      .maybeSingle();
+                    if (latest.data)
+                      await supabase.rpc("knowledge_qa_finish_attachment", {
+                        p_attachment: reservation.id,
+                        p_expected_revision: latest.data.revision,
+                        p_remove: true,
+                      });
+                  }
+                  setError(
+                    cause instanceof Error
+                      ? cause.message
+                      : "Die Datei konnte nicht angehängt werden.",
+                  );
+                } finally {
+                  setBusy(false);
+                  await client.invalidateQueries({
+                    queryKey: knowledgeKey(scope.userId, scope.tenantId),
+                  });
+                }
+              }}
+            />
+          </label>
+        )}
+        {actions}
+      </div>
       {error && (
         <p role="alert" className="text-sm text-destructive">
           {error}
