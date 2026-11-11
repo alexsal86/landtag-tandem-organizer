@@ -6938,6 +6938,18 @@ export type Database = {
         Update: { event_key?: string; recipient?: string; created_at?: string }
         Relationships: []
       }
+      knowledge_tags: {
+        Row: { id: string; tenant_id: string; name: string }
+        Insert: { id?: string; tenant_id: string; name: string }
+        Update: { id?: string; tenant_id?: string; name?: string }
+        Relationships: []
+      }
+      knowledge_question_tags: {
+        Row: { tenant_id: string; question_id: string; tag_id: string }
+        Insert: { tenant_id: string; question_id: string; tag_id: string }
+        Update: { tenant_id?: string; question_id?: string; tag_id?: string }
+        Relationships: []
+      }
       knowledge_questions: {
         Row: {
           archived_at: string | null
@@ -13906,6 +13918,7 @@ export type Database = {
       }
       knowledge_question_cards: {
         Row: {
+          tags: Json | null
           created_by_person: Json | null
           assigned_to_person: Json | null
           verified_by_person: Json | null
@@ -14049,9 +14062,11 @@ export type Database = {
         Args: { p_question: string; p_expected_revision: number; p_action: string; p_title?: string; p_description?: string; p_target?: string; p_target_revision?: number }
         Returns: Database['public']['Tables']['knowledge_questions']['Row']
       }
+      knowledge_qa_set_tags: { Args: { p_question: string; p_expected_revision: number; p_names: string[] }; Returns: undefined }
+      knowledge_qa_manage_tag: { Args: { p_tag: string; p_name?: string; p_merge_into?: string }; Returns: undefined }
       knowledge_qa_list: {
-        Args: { p_tenant: string; p_query?: string; p_view?: string; p_limit?: number; p_cursor?: Json; p_status?: string; p_assignee?: string; p_sort?: string }
-        Returns: { items: Json; total_count: number; next_cursor: Json | null }[]
+        Args: { p_tenant: string; p_query?: string; p_view?: string; p_limit?: number; p_cursor?: Json; p_status?: string; p_assignee?: string; p_sort?: string; p_tag?: string; p_quick?: string }
+        Returns: { items: Json; total_count: number; next_cursor: Json | null; counts: Json; topics: Json }[]
       }
 
       _briefing_task_event: {

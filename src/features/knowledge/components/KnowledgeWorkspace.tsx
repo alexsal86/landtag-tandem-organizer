@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useActionPermission } from "@/hooks/useActionPermission";
 import {
-  useKnowledgeCounts,
   useKnowledgePeople,
   useKnowledgeQuestions,
   useKnowledgeScope,
@@ -46,7 +45,7 @@ function KnowledgeWorkspaceContent() {
   const questionId = params.get("frage");
   const { view, filters } = knowledgeUrlState(params);
   const list = useKnowledgeQuestions(search, view, null, filters);
-  const counts = useKnowledgeCounts();
+
   const updateParam = (key: string, value: string) => {
     setParams((previous) => {
       const next = new URLSearchParams(previous);
@@ -108,6 +107,10 @@ function KnowledgeWorkspaceContent() {
             />
           )}
         </div>
+        <div className="flex flex-wrap gap-2" aria-label="Schnellfilter">
+          {([['','Alle'],['open','Offen'],['assigned','Mir zugewiesen'],...(canVerify ? [['review','Prüfung fällig']] : [])] as const).map(([key,label]) => <Button key={key} variant={filters.quick === key || (!filters.quick && !key) ? 'secondary' : 'ghost'} onClick={() => updateParam('schnell',key)}>{label}</Button>)}
+        </div>
+        {list.topics.length > 0 && <nav aria-label="Häufige Themen" className="flex flex-wrap items-center gap-2"><span className="text-sm">Häufige Themen</span>{list.topics.map(tag => <Button key={tag.id} size="sm" variant={filters.tag === tag.id ? 'secondary' : 'ghost'} onClick={() => updateParam('tag', filters.tag === tag.id ? '' : tag.id)}>{tag.name} ({tag.count})</Button>)}</nav>}
         <nav className={styles.tabs} aria-label="Wissensansichten">
           {(
             [
@@ -127,7 +130,7 @@ function KnowledgeWorkspaceContent() {
             >
               {label}{" "}
               <span className={styles.tabCount}>
-                {counts.data?.[key as KnowledgeView] ?? "–"}
+                {list.counts?.[key as KnowledgeView] ?? "–"}
               </span>
             </Button>
           ))}
@@ -186,11 +189,6 @@ function KnowledgeWorkspaceContent() {
               )}
             </label>
           </div>
-        )}
-        {counts.isError && (
-          <p role="alert" className="text-sm">
-            Zähler konnten nicht geladen werden.
-          </p>
         )}
         {profileError && (
           <p role="alert" className="text-sm text-muted-foreground">

@@ -188,6 +188,8 @@ export function knowledgeUrlState(params: URLSearchParams): {
     filters: {
       status,
       assignee,
+      ...(params.has('tag') ? { tag: params.get('tag') ?? '' } : {}),
+      ...(params.has('schnell') ? { quick: params.get('schnell') ?? '' } : {}),
       sort: params.get("sortierung") === "oldest" ? "oldest" : "updated",
     },
   };

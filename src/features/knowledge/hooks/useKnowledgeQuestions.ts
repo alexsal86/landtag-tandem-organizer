@@ -116,6 +116,8 @@ export function useKnowledgeQuestions(
           p_status: filters.status,
           p_assignee: filters.assignee,
           p_sort: filters.sort,
+          p_tag: filters.tag || "",
+          p_quick: filters.quick || "",
         })
         .abortSignal(signal);
       if (error) throw new Error(error.message);
@@ -123,11 +125,15 @@ export function useKnowledgeQuestions(
         items: (data?.[0]?.items ?? []) as unknown as KnowledgeSummary[],
         total_count: data?.[0]?.total_count ?? 0,
         next_cursor: data?.[0]?.next_cursor ?? null,
+        counts: data?.[0]?.counts as unknown as KnowledgePage["counts"],
+        topics: data?.[0]?.topics as unknown as KnowledgePage["topics"],
       };
     },
   });
   return {
     ...search,
+    counts: search.data?.pages[0]?.counts,
+    topics: search.data?.pages[0]?.topics ?? [],
     ...(questionId
       ? {
           isPending: detail.isPending,
@@ -247,7 +253,7 @@ export function useKnowledgeQuestion(id: string | null) {
     queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from("knowledge_question_cards")
-        .select("id,tenant_id,title,description,assigned_to,created_by,created_at,updated_by,updated_at,answer_content,answer_text,answered_by,answered_at,answer_updated_at,revision,answer_revision,review_status,verified_by,verified_at,verified_answer_revision,review_due_at,search_vector,title_search_vector,effective_review_status,server_now,archived_at,merged_into,created_by_person,assigned_to_person,verified_by_person")
+        .select("id,tenant_id,title,description,assigned_to,created_by,created_at,updated_by,updated_at,answer_content,answer_text,answered_by,answered_at,answer_updated_at,revision,answer_revision,review_status,verified_by,verified_at,verified_answer_revision,review_due_at,search_vector,title_search_vector,effective_review_status,server_now,archived_at,merged_into,created_by_person,assigned_to_person,verified_by_person,tags")
         .eq("tenant_id", tenantId!)
         .eq("id", id!)
         .abortSignal(signal)

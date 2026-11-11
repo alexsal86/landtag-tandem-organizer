@@ -1,3 +1,4 @@
+import { KnowledgeTagsPanel } from "./KnowledgeTagsPanel";
 import styles from "./KnowledgeWorkspace.module.css";
 import { KnowledgePersonLabel } from "./KnowledgePersonAvatar";
 import { knowledgePersonForId } from "../person";
@@ -209,6 +210,7 @@ export function KnowledgeQuestionDetailContent({
           </div>
         )}
 
+        <KnowledgeTagsPanel question={question} canWrite={canWrite} canManage={canManage} />
         {!editing && !question.archived_at && canManage && (
           <ManagementPanel question={question} />
         )}

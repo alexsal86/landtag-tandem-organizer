@@ -17,6 +17,7 @@ export type KnowledgeCard = KnowledgeQuestion &
   KnowledgePersonFields & {
     effective_review_status: string | null;
     server_now: string;
+    tags?: KnowledgeTag[];
   };
 export type KnowledgeAttachment =
   Database["public"]["Tables"]["knowledge_question_attachments"]["Row"];
@@ -61,12 +62,16 @@ export interface KnowledgePage {
   items: KnowledgeSummary[];
   total_count: number;
   next_cursor: Json | null;
+  counts?: Record<KnowledgeView, number>;
+  topics?: (KnowledgeTag & { count: number })[];
 }
 
 export interface KnowledgeFilters {
   status: "" | "open" | "unverified" | "verified" | "needs_review";
   assignee: string;
   sort: "updated" | "oldest";
+  tag?: string;
+  quick?: string;
 }
 
 export interface KnowledgeTag { id: string; name: string }
