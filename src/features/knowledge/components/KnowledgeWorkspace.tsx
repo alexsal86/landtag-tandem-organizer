@@ -142,19 +142,21 @@ function KnowledgeWorkspaceContent() {
         {list.topics.length > 0 && (
           <nav
             aria-label="Häufige Themen"
-            className="flex flex-wrap items-center gap-2"
+            className={styles.frequentTopics}
           >
-            <span className="text-sm">Häufige Themen</span>
+            <span>Häufige Themen</span>
             {list.topics.map((tag) => (
               <Button
                 key={tag.id}
                 size="sm"
-                variant={filters.tag === tag.id ? "secondary" : "ghost"}
+                variant="outline"
+                className={styles.frequentTopicChip}
+                aria-pressed={filters.tag === tag.id}
                 onClick={() =>
                   updateParam("tag", filters.tag === tag.id ? "" : tag.id)
                 }
               >
-                {tag.name} ({tag.count})
+                {tag.name} <span>{tag.count}</span>
               </Button>
             ))}
           </nav>

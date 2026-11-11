@@ -39,8 +39,8 @@
 
 .content {
   width: 100%;
-  max-width: 860px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   padding: 28px 16px 64px;
 }
 
@@ -308,3 +308,7 @@
 .answerFooter:empty { display: none; }
 .slideCard .attachments .answerFooter .attach { margin-left: 0; }
 .createdDate { color: var(--knowledge-muted); font-size: 12px; }
+
+.frequentTopics { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--knowledge-muted); font-size: 12px; }
+.theme .frequentTopicChip { display: inline-flex; gap: 5px; height: auto; min-height: 28px; padding: 3px 8px; border: 1px solid var(--knowledge-line); border-radius: 7px; background: var(--knowledge-surface); color: var(--knowledge-muted); font-size: 12px; font-weight: 400; }
+.theme .frequentTopicChip:hover, .theme .frequentTopicChip[aria-pressed="true"] { border-color: var(--knowledge-muted); background: var(--knowledge-bg); color: var(--knowledge-muted); }
