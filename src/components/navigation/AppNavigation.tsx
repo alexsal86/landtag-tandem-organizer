@@ -1,3 +1,4 @@
+import { GlobalCreateMenu } from "@/components/layout/GlobalCreateMenu";
 import { useState, useEffect, useCallback, useMemo, type ElementType } from "react";
 import { useUserPreference } from "@/hooks/useUserPreference";
 import { SHOW_RECENT_PREF_KEY } from "@/components/settings/SidebarPreferencesCard";
@@ -1104,7 +1105,7 @@ export function AppNavigation({
         </div>
 
         {/* Quick Action Buttons (Panel Switchers) */}
-        <div className="flex items-center gap-1 px-3 py-3">
+        <div className="flex flex-wrap items-center gap-1 px-3 py-3">
           {/* Home */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -1190,6 +1191,7 @@ export function AppNavigation({
             <TooltipContent side="bottom" className="text-xs">Terminanfrage vormerken (⌘⇧.)</TooltipContent>
           </Tooltip>
 
+          <GlobalCreateMenu />
           {/* Search (dialog trigger, not a panel) */}
           <Tooltip>
             <TooltipTrigger asChild>

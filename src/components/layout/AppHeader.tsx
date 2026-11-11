@@ -1,3 +1,4 @@
+import { GlobalCreateMenu } from "@/components/layout/GlobalCreateMenu";
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Settings, LogOut, User, Plus, Calendar, Users, FileText, CheckSquare, ChevronRight } from 'lucide-react';
@@ -231,6 +232,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element =
 
       {/* Right: Actions with Office Info */}
       <div className="flex items-center gap-3 ml-auto">
+        <GlobalCreateMenu />
         {/* Notifications */}
         <NotificationBell />
 

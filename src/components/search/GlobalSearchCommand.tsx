@@ -1,3 +1,6 @@
+import { openKnowledgeQuestion } from "@/features/knowledge/globalQuestion";
+import { useActionPermission } from "@/hooks/useActionPermission";
+import { MessageCircleQuestion } from "lucide-react";
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -78,6 +81,7 @@ export function GlobalSearchCommand() {
   const navigate = useNavigate();
   const { currentTenant } = useTenant();
   const { user } = useAuth();
+  const { allowed: canAskKnowledge } = useActionPermission("knowledge.write");
 
   // Debounce search query to avoid firing 12 queries on every keystroke
   useEffect(() => {
@@ -542,6 +546,23 @@ export function GlobalSearchCommand() {
       )}
 
       <CommandList>
+        {canAskKnowledge && user && currentTenant && (
+          <CommandGroup heading="Aktionen" forceMount>
+            <CommandItem
+              forceMount
+              value="knowledge-question-create"
+              onSelect={() => runCommand(() => {
+                // Wait for the search dialog's closing focus restoration.
+                window.setTimeout(() => openKnowledgeQuestion(searchQuery.trim()), 250);
+              })}
+            >
+              <MessageCircleQuestion className="mr-2 h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="min-w-0 break-words">
+                {searchQuery.trim() ? `„${searchQuery.trim()}“ als Wissensfrage stellen` : "Wissensfrage stellen"}
+              </span>
+            </CommandItem>
+          </CommandGroup>
+        )}
         {isSearching && searchQuery ? (
           <div className="py-6 text-center text-sm text-muted-foreground">
             <div className="flex items-center justify-center gap-2">

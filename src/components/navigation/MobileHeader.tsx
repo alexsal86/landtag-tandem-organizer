@@ -1,3 +1,4 @@
+import { GlobalCreateMenu } from "@/components/layout/GlobalCreateMenu";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -144,6 +145,7 @@ export function MobileHeader() {
 
           {/* Right: Actions */}
           <div className="flex items-center gap-1">
+            <GlobalCreateMenu />
             {/* Search Button */}
             <Button 
               variant="ghost" 

@@ -24,10 +24,12 @@ export function AskQuestionDialog({
   initialQuestion,
   onClose,
   onCreated,
+  onReturnFocus,
 }: {
   initialQuestion: string;
   onClose: () => void;
   onCreated: (id: string) => void;
+  onReturnFocus?: () => void;
 }) {
   const [title, setTitle] = useState(initialQuestion);
   const [description, setDescription] = useState("");
@@ -44,9 +46,22 @@ export function AskQuestionDialog({
         if (!open && !write.isPending) onClose();
       }}
     >
-      <DialogContent className={`${styles.theme} ${styles.dialog}`} overlayClassName="bg-black/40">
+      <DialogContent
+        className={`${styles.theme} ${styles.dialog}`}
+        overlayClassName="bg-black/40"
+        onCloseAutoFocus={
+          onReturnFocus
+            ? (event) => {
+                event.preventDefault();
+                onReturnFocus();
+              }
+            : undefined
+        }
+      >
         <DialogHeader className={styles.dialogHeader}>
-          <DialogTitle className={styles.dialogTitle}>Frage stellen</DialogTitle>
+          <DialogTitle className={styles.dialogTitle}>
+            Frage stellen
+          </DialogTitle>
           <DialogDescription className={styles.dialogDescription}>
             Eine Frage genügt. Ein Kollege kann sie hier beantworten.
           </DialogDescription>
@@ -94,10 +109,7 @@ export function AskQuestionDialog({
             />
           </div>
           {similar.data && similar.data.length > 0 && (
-            <section
-              aria-label="Ähnliche Fragen"
-              className={styles.similar}
-            >
+            <section aria-label="Ähnliche Fragen" className={styles.similar}>
               <h3 className="text-sm font-medium">
                 Gibt es dazu schon eine Antwort?
               </h3>
@@ -105,7 +117,7 @@ export function AskQuestionDialog({
                 <Link
                   key={question.id}
                   className={styles.similarCard}
-                  to={`?frage=${question.id}`}
+                  to={`/wissen?frage=${question.id}`}
                   onClick={onClose}
                 >
                   <span className="block font-medium">{question.title}</span>
@@ -165,7 +177,10 @@ export function AskQuestionDialog({
             >
               Abbrechen
             </Button>
-            <Button className={`${styles.button} ${styles.primaryButton}`} disabled={!title.trim() || write.isPending}>
+            <Button
+              className={`${styles.button} ${styles.primaryButton}`}
+              disabled={!title.trim() || write.isPending}
+            >
               {write.isPending ? "Wird gespeichert …" : "Frage stellen"}
             </Button>
           </div>

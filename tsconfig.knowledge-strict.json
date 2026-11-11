@@ -7,6 +7,7 @@
     ]
   },
   "include": [
+    "src/components/layout/GlobalCreateMenu.tsx",
     "src/hooks/useKnowledgeDocumentTopics.tsx",
     "src/hooks/useTopics.tsx",
     "src/features/knowledge/**/*.ts",
