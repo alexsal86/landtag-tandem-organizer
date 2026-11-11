@@ -23,6 +23,7 @@ export function AssigneeSelect({
   profiles,
   assignable,
   showAvatars = true,
+  hideLabel = false,
 }: {
   question: Pick<
     KnowledgeSummary,
@@ -31,6 +32,7 @@ export function AssigneeSelect({
   profiles: TenantProfileOption[];
   assignable: TenantProfileOption[];
   showAvatars?: boolean;
+  hideLabel?: boolean;
 }) {
   const write = useKnowledgeWrite();
   const [error, setError] = useState("");
@@ -57,7 +59,12 @@ export function AssigneeSelect({
   return (
     <div className="space-y-2">
       <div className={styles.assignment}>
-        <Label htmlFor={`assignee-${question.id}`}>Zuständig</Label>
+        <Label
+          className={hideLabel ? "sr-only" : undefined}
+          htmlFor={`assignee-${question.id}`}
+        >
+          Zuständig
+        </Label>
         {showAvatars && <KnowledgePersonAvatar person={selected} />}
         <Select
           value={question.assigned_to || UNASSIGNED}

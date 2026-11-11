@@ -253,7 +253,9 @@ export function useKnowledgeQuestion(id: string | null) {
     queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from("knowledge_question_cards")
-        .select("id,tenant_id,title,description,assigned_to,created_by,created_at,updated_by,updated_at,answer_content,answer_text,answered_by,answered_at,answer_updated_at,revision,answer_revision,review_status,verified_by,verified_at,verified_answer_revision,review_due_at,search_vector,title_search_vector,effective_review_status,server_now,archived_at,merged_into,created_by_person,assigned_to_person,verified_by_person,tags")
+        .select(
+          "id,tenant_id,title,description,assigned_to,created_by,created_at,updated_by,updated_at,answer_content,answer_text,answered_by,answered_at,answer_updated_at,revision,answer_revision,review_status,verified_by,verified_at,verified_answer_revision,review_due_at,search_vector,title_search_vector,effective_review_status,server_now,archived_at,archive_reason,archived_by,merged_into,created_by_person,assigned_to_person,verified_by_person,tags",
+        )
         .eq("tenant_id", tenantId!)
         .eq("id", id!)
         .abortSignal(signal)
@@ -308,5 +310,50 @@ export function useSimilarKnowledgeQuestions(title: string) {
   return {
     ...query,
     data: title.trim().length < 4 || title !== debounced ? [] : query.data,
+  };
+}
+
+export type KnowledgeMergeTarget = Pick<
+  KnowledgeSummary,
+  "id" | "title" | "revision" | "tags"
+>;
+export function useKnowledgeMergeTargets(search: string, excludeId: string) {
+  const { userId, tenantId } = useKnowledgeScope();
+  const [term, setTerm] = useState(search);
+  useEffect(() => {
+    const timer = setTimeout(() => setTerm(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+  const result = useQuery({
+    queryKey: [
+      ...knowledgeKey(userId, tenantId),
+      "merge-targets",
+      term,
+      excludeId,
+    ],
+    enabled: Boolean(userId && tenantId && term.trim().length >= 2),
+    queryFn: async ({ signal }) => {
+      const literal = term
+        .trim()
+        .replace(/[\\%_]/g, (character) => `\\${character}`);
+      const { data, error } = await supabase
+        .from("knowledge_question_cards")
+        .select("id,title,revision,tags")
+        .eq("tenant_id", tenantId!)
+        .neq("id", excludeId)
+        .is("archived_at", null)
+        .ilike("title", `%${literal}%`)
+        .order("updated_at", { ascending: false })
+        .order("id")
+        .limit(8)
+        .abortSignal(signal);
+      if (error) throw new Error(error.message);
+      return data as unknown as KnowledgeMergeTarget[];
+    },
+  });
+  return {
+    ...result,
+    data:
+      search === term && search.trim().length >= 2 ? result.data : undefined,
   };
 }

@@ -73,9 +73,11 @@ export function KnowledgePersonLabel({
   showAvatar?: boolean;
 }) {
   return (
-    <span className="inline-flex items-center gap-1.5">
+    <span className="inline-flex min-w-0 items-center gap-1.5 align-middle">
       {showAvatar && <KnowledgePersonAvatar person={person} />}
-      <span>{knowledgePersonLabel(person)}</span>
+      <span className="min-w-0 break-words">
+        {knowledgePersonLabel(person)}
+      </span>
     </span>
   );
 }

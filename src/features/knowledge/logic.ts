@@ -188,8 +188,8 @@ export function knowledgeUrlState(params: URLSearchParams): {
     filters: {
       status,
       assignee,
-      ...(params.has('tag') ? { tag: params.get('tag') ?? '' } : {}),
-      ...(params.has('schnell') ? { quick: params.get('schnell') ?? '' } : {}),
+      ...(params.has("tag") ? { tag: params.get("tag") ?? "" } : {}),
+      ...(params.has("schnell") ? { quick: params.get("schnell") ?? "" } : {}),
       sort: params.get("sortierung") === "oldest" ? "oldest" : "updated",
     },
   };
@@ -197,4 +197,33 @@ export function knowledgeUrlState(params: URLSearchParams): {
 
 export function knowledgeQuestionPath(id: string | null | undefined): string {
   return id ? `/wissen?frage=${encodeURIComponent(id)}` : "/wissen";
+}
+
+export function validateKnowledgeTagNames(names: string[]): string | null {
+  const trimmed = names.map((name) => name.trim());
+  if (
+    trimmed.length > 5 ||
+    trimmed.some((name) => name.length < 2 || name.length > 30)
+  )
+    return "Höchstens fünf Themen mit je 2–30 Zeichen.";
+  if (
+    new Set(trimmed.map((name) => name.toLowerCase())).size !== trimmed.length
+  )
+    return "Dieses Thema ist bereits vergeben.";
+  return null;
+}
+
+export function isSafeKnowledgeSourceUrl(value: string): boolean {
+  if (value.length > 2048 || /[\s\u0000-\u001f\u007f]/u.test(value))
+    return false;
+  try {
+    const url = new URL(value);
+    return (
+      /^https?:\/\//i.test(value) &&
+      (url.protocol === "http:" || url.protocol === "https:") &&
+      Boolean(url.hostname)
+    );
+  } catch {
+    return false;
+  }
 }

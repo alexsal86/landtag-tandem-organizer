@@ -233,3 +233,45 @@
 .tagChip { display:inline-flex; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:2px 7px; border-radius:99px; background:var(--knowledge-soft); color:var(--knowledge-primary-text); }
 .theme.detailPanel { width:min(760px,100vw); max-width:760px; overflow-y:auto; height:100dvh; background:var(--knowledge-surface); color:var(--knowledge-ink); }
 @media (max-width:639px) { .rowExcerpt,.rowTags { display:none; } .questionRow { gap:8px; padding:12px 8px; } .rowDate { width:95px; white-space:normal; } .theme.detailPanel { width:100vw; max-width:100vw; border:0; padding:20px 16px; } }
+
+/* Knowledge slide: surfaces use the same variables in light and dark mode. */
+.theme.detailPanel { padding: 0; overflow-x: hidden; }
+.slideHeader {
+  position: sticky; top: 0; z-index: 10; padding: 16px 20px;
+  background: var(--knowledge-surface); border-bottom: 1px solid var(--knowledge-line);
+  display: grid; gap: 8px; min-width: 0;
+}
+.slideToolbar { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.slideToolbar button { white-space: normal; }
+.theme .slideHeader .badge { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.slideBody { padding: 20px; min-width: 0; overflow-wrap: anywhere; }
+.slideCard { min-width: 0; padding: 16px; border: 1px solid var(--knowledge-line); border-radius: 12px; background: var(--knowledge-surface); }
+.slideCard h3 { margin: 0; }
+.slideCard .actions { flex-wrap: wrap; }
+.slideCard button { max-width: 100%; white-space: normal; height: auto; min-height: 36px; }
+.detailRows { display: grid; gap: 12px; margin-top: 16px; font-size: 14px; }
+.detailRows > div { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.detailRows dt { color: var(--knowledge-muted); }
+.detailRows dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.detailRows dd > span { vertical-align: middle; }
+.detailRows .assignment { margin: 0; flex-wrap: nowrap; gap: 6px; }
+.detailRows .assignment > button { min-width: 0; flex: 1; }
+.topicChips { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.topicChip { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; padding: 4px 8px; border-radius: 8px; background: var(--knowledge-soft); color: var(--knowledge-primary-text); font-size: 13px; }
+.topicName { min-width: 0; overflow-wrap: anywhere; text-align: left; }
+.topicRemove { flex: none; font-size: 20px; line-height: 1; padding: 0 4px; }
+.tagPopover { width: min(340px, calc(100vw - 48px)); padding: 0; background: var(--knowledge-surface); }
+.sourceGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; min-width: 0; }
+.sourceField { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.sourceField label { display: block; }
+.sourceField input, .sourceField select, .sourceField textarea, .sourceField > button { width: 100%; min-width: 0; max-width: 100%; }
+.sourceFull { grid-column: 1 / -1; }
+.managementDialog { max-height: 90dvh; overflow: auto; width: calc(100vw - 32px); }
+@media (max-width: 639px) {
+  .theme.detailPanel { width: 100%; max-width: 100%; padding: 0; }
+  .slideHeader { padding: 12px; }
+  .slideBody { padding: 12px; }
+  .slideCard { padding: 12px; }
+  .sourceGrid { grid-template-columns: minmax(0, 1fr); }
+  .slideToolbar { gap: 4px; }
+}

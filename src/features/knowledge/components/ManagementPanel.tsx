@@ -1,52 +1,90 @@
-import styles from "./KnowledgeWorkspace.module.css";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type { KnowledgeCard, KnowledgeSummary } from "../types";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import type { KnowledgeCard } from "../types";
 import { validateQuestion } from "../logic";
 import {
   useKnowledgeWrite,
-  useSimilarKnowledgeQuestions,
+  useKnowledgeMergeTargets,
+  type KnowledgeMergeTarget,
 } from "../hooks/useKnowledgeQuestions";
+import styles from "./KnowledgeWorkspace.module.css";
 
-type Mode = "edit" | "archive" | "merge";
-export function ManagementPanel({ question }: { question: KnowledgeCard }) {
-  const [mode, setMode] = useState<Mode | null>(null);
-  const [revision, setRevision] = useState(question.revision);
+export type KnowledgeManagementMode = "edit" | "archive" | "merge" | "restore";
+const TITLES = {
+  edit: "Frage bearbeiten",
+  archive: "Archivieren / schließen",
+  merge: "Als Duplikat zusammenführen",
+  restore: "Frage wiederherstellen",
+};
+export const ARCHIVE_REASONS: Record<string, string> = {
+  completed: "Erledigt",
+  obsolete: "Nicht mehr relevant",
+  duplicate: "Doppelte Frage",
+  other: "Sonstiges",
+};
+// Mounted for each opening so these values remain the user's revision baseline.
+export function ManagementPanel({
+  question,
+  mode,
+  onClose,
+  onReturnFocus,
+}: {
+  question: KnowledgeCard;
+  mode: KnowledgeManagementMode;
+  onClose: () => void;
+  onReturnFocus: () => void;
+}) {
+  const [revision] = useState(question.revision);
+  const [sourceTags] = useState(question.tags ?? []);
   const [title, setTitle] = useState(question.title);
   const [description, setDescription] = useState(question.description);
+  const [reason, setReason] = useState("completed");
   const [search, setSearch] = useState("");
-  const [target, setTarget] = useState<KnowledgeSummary | null>(null);
+  const [target, setTarget] = useState<KnowledgeMergeTarget | null>(null);
   const [error, setError] = useState("");
-  const suggestions = useSimilarKnowledgeQuestions(search);
+  const suggestions = useKnowledgeMergeTargets(search, question.id);
   const write = useKnowledgeWrite();
-  const start = (next: Mode) => {
-    setMode(next);
-    setRevision(question.revision);
-    setTitle(question.title);
-    setDescription(question.description);
-    setError("");
-    setTarget(null);
-    setSearch("");
-  };
+  const tagCount = new Set(
+    [...sourceTags, ...(target?.tags ?? [])].map((tag) =>
+      tag.name.toLowerCase(),
+    ),
+  ).size;
   return (
-    <section aria-label="Frage verwalten" className={`${styles.management} space-y-3`}>
-      <div className={styles.actions}>
-        <Button className={`${styles.button} ${styles.ghostButton}`} size="sm" variant="ghost" onClick={() => start("edit")}>
-          Frage bearbeiten
-        </Button>
-        <Button className={`${styles.button} ${styles.ghostButton}`} size="sm" variant="ghost" onClick={() => start("archive")}>
-          Archivieren / schließen
-        </Button>
-        <Button className={`${styles.button} ${styles.ghostButton}`} size="sm" variant="ghost" onClick={() => start("merge")}>
-          Als Duplikat zusammenführen
-        </Button>
-      </div>
-      {mode && (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open && !write.isPending) onClose();
+      }}
+    >
+      <DialogContent
+        className={`${styles.theme} ${styles.managementDialog}`}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          onReturnFocus();
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle>{TITLES[mode]}</DialogTitle>
+          <DialogDescription>
+            {mode === "edit"
+              ? "Titel und Beschreibung ändern."
+              : mode === "restore"
+                ? "Die Frage wird wieder in den Listen angezeigt. Bereits übernommene Themen der Zielfrage bleiben erhalten."
+                : "Antwort, Anhänge und Verlauf bleiben erhalten. Die Frage kann später wiederhergestellt werden."}
+          </DialogDescription>
+        </DialogHeader>
         <form
-          className={`${styles.review} space-y-3`}
+          className="min-w-0 space-y-4"
           onSubmit={async (event) => {
             event.preventDefault();
             setError("");
@@ -55,8 +93,10 @@ export function ManagementPanel({ question }: { question: KnowledgeCard }) {
                 const invalid = validateQuestion(title, description);
                 if (invalid) throw new Error(invalid);
               }
-              if (mode === "merge" && !target)
-                throw new Error("Bitte eine Zielfrage auswählen.");
+              if (mode === "merge" && (!target || tagCount > 5))
+                throw new Error(
+                  "Bitte eine Zielfrage mit insgesamt höchstens fünf Themen wählen.",
+                );
               await write.mutateAsync({
                 name: "knowledge_qa_manage",
                 args: {
@@ -68,112 +108,142 @@ export function ManagementPanel({ question }: { question: KnowledgeCard }) {
                   p_target: mode === "merge" ? target!.id : undefined,
                   p_target_revision:
                     mode === "merge" ? target!.revision : undefined,
+                  p_reason: mode === "archive" ? reason : undefined,
                 },
               });
-              setMode(null);
+              onClose();
             } catch (cause) {
               setError(
                 cause instanceof Error
                   ? cause.message
-                  : "Die Änderung konnte nicht gespeichert werden.",
+                  : "Änderung konnte nicht gespeichert werden.",
               );
             }
           }}
         >
           {mode === "edit" && (
             <>
-              <Label htmlFor={`edit-title-${question.id}`}>Frage</Label>
-              <Input className={styles.formInput}
-                id={`edit-title-${question.id}`}
-                required
-                maxLength={300}
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-              />
-              <Label htmlFor={`edit-description-${question.id}`}>
-                Beschreibung
-              </Label>
-              <Textarea className={styles.formInput}
-                id={`edit-description-${question.id}`}
-                maxLength={10000}
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-              />
+              <div className={styles.sourceField}>
+                <Label htmlFor="knowledge-edit-title">Frage</Label>
+                <Input
+                  id="knowledge-edit-title"
+                  required
+                  maxLength={300}
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                />
+              </div>
+              <div className={styles.sourceField}>
+                <Label htmlFor="knowledge-edit-description">Beschreibung</Label>
+                <Textarea
+                  id="knowledge-edit-description"
+                  maxLength={10000}
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                />
+              </div>
             </>
           )}
           {mode === "archive" && (
-            <p className="text-sm">
-              Diese Frage schließen? Sie verschwindet aus den Listen. Antwort,
-              Anhänge und Verlauf bleiben erhalten.
-            </p>
+            <div className={styles.sourceField}>
+              <Label htmlFor="knowledge-archive-reason">Grund</Label>
+              <select
+                id="knowledge-archive-reason"
+                className={styles.select}
+                required
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+              >
+                {Object.entries(ARCHIVE_REASONS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
           {mode === "merge" && (
             <>
-              <Label htmlFor={`merge-search-${question.id}`}>
-                Zielantwort suchen
-              </Label>
-              <Input className={styles.formInput}
-                id={`merge-search-${question.id}`}
-                value={search}
-                onChange={(event) => {
-                  setSearch(event.target.value);
-                  setTarget(null);
-                }}
-                placeholder="Mindestens vier Zeichen eingeben"
-              />
-              {suggestions.data
-                ?.filter((item) => item.id !== question.id)
-                .map((item) => (
+              <div className={styles.sourceField}>
+                <Label htmlFor="knowledge-merge-search">Zielfrage suchen</Label>
+                <Input
+                  id="knowledge-merge-search"
+                  maxLength={300}
+                  placeholder="Mindestens zwei Zeichen eingeben"
+                  value={search}
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    setTarget(null);
+                  }}
+                />
+              </div>
+              <div className="space-y-2" aria-label="Zielfragen">
+                {suggestions.data?.map((item) => (
                   <Button
-                    key={item.id}
                     type="button"
+                    key={item.id}
+                    className={`${styles.button} ${styles.mergeTarget}`}
                     variant={target?.id === item.id ? "secondary" : "outline"}
-                    className={`${styles.button} ${styles.mergeTarget} ${target?.id === item.id ? styles.selectedTarget : ""}`}
+                    aria-pressed={target?.id === item.id}
                     onClick={() => setTarget(item)}
                   >
                     {item.title}
                   </Button>
                 ))}
+              </div>
+              {suggestions.isFetching && (
+                <p role="status">Zielfragen werden gesucht …</p>
+              )}
               {suggestions.isError && (
-                <p role="alert">Zielantworten konnten nicht geladen werden.</p>
+                <p role="alert">Zielfragen konnten nicht geladen werden.</p>
+              )}
+              {suggestions.data?.length === 0 && (
+                <p>Keine passende Zielfrage gefunden.</p>
               )}
               {target && (
-                <p className="text-sm">
-                  Als Duplikat schließen und auf „{target.title}“ verweisen?
-                  Beide Antworten und Verläufe bleiben erhalten.
+                <p>
+                  Auf „{target.title}“ verweisen und Themen übernehmen (
+                  {tagCount}/5).
+                </p>
+              )}
+              {target && tagCount > 5 && (
+                <p role="alert">
+                  Zusammen mehr als fünf Themen. Bitte die Themen vor dem
+                  Zusammenführen reduzieren.
                 </p>
               )}
             </>
           )}
-          {error && (
-            <p role="alert" className="text-sm text-destructive">
-              {error}
-            </p>
-          )}
-          <div className="flex gap-2">
+          {error && <p role="alert">{error}</p>}
+          <div className={styles.actions}>
             <Button
-              className={styles.button}
-              variant="outline"
-              size="sm"
-              disabled={write.isPending || (mode === "merge" && !target)}
+              type="submit"
+              disabled={
+                write.isPending ||
+                (mode === "merge" && (!target || tagCount > 5))
+              }
             >
-              {mode === "edit"
-                ? "Änderungen speichern"
-                : "Schließen bestätigen"}
+              {write.isPending
+                ? "Wird gespeichert …"
+                : mode === "edit"
+                  ? "Änderungen speichern"
+                  : mode === "restore"
+                    ? "Wiederherstellen"
+                    : mode === "merge"
+                      ? "Zusammenführen"
+                      : "Archivieren"}
             </Button>
             <Button
-              className={`${styles.button} ${styles.ghostButton}`}
-              size="sm"
               type="button"
               variant="ghost"
               disabled={write.isPending}
-              onClick={() => setMode(null)}
+              onClick={onClose}
             >
               Abbrechen
             </Button>
           </div>
         </form>
-      )}
-    </section>
+      </DialogContent>
+    </Dialog>
   );
 }

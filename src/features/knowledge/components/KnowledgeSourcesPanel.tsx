@@ -1,3 +1,12 @@
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { isSafeKnowledgeSourceUrl } from "../logic";
+import { formatKnowledgeAsOfDate } from "./presentation";
 import { useState } from "react";
 import {
   Link as LinkIcon,
@@ -5,6 +14,7 @@ import {
   Scale,
   User,
   Briefcase,
+  Ellipsis,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,11 +32,12 @@ import {
 import styles from "./KnowledgeWorkspace.module.css";
 
 const LABELS: Record<KnowledgeSourceKind, string> = {
+  law: "Rechtsgrundlage",
   link: "Link",
   document: "Dokument",
-  law: "Rechtsgrundlage",
-  person: "Person",
   case: "Fallakte",
+  person: "Person",
+  other: "Sonstiges",
 };
 const ICONS = {
   link: LinkIcon,
@@ -34,6 +45,7 @@ const ICONS = {
   law: Scale,
   person: User,
   case: Briefcase,
+  other: Ellipsis,
 };
 export function KnowledgeSourceList({
   sources,
@@ -54,11 +66,13 @@ export function KnowledgeSourceList({
             ? `/casefiles?caseFileId=${encodeURIComponent(source.case_id)}`
             : null;
         const external =
-          source.url && /^https?:\/\//i.test(source.url) ? source.url : null;
+          source.url && isSafeKnowledgeSourceUrl(source.url)
+            ? source.url
+            : null;
         return (
           <li key={source.id} className="flex items-start gap-2 text-sm">
             <Icon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-            <span>
+            <span className="min-w-0 break-words">
               {internal ? (
                 <a className="underline" href={internal}>
                   {source.title}
@@ -77,10 +91,7 @@ export function KnowledgeSourceList({
               )}
               {source.as_of && (
                 <span className="block text-xs text-muted-foreground">
-                  Stand{" "}
-                  {new Date(`${source.as_of}T12:00:00`).toLocaleDateString(
-                    "de-DE",
-                  )}
+                  Stand {formatKnowledgeAsOfDate(source.as_of)}
                 </span>
               )}
             </span>
@@ -108,7 +119,7 @@ export function KnowledgeSourcesPanel({
   const [error, setError] = useState("");
   const picker = useKnowledgeReferencePicker(kind, search);
   return (
-    <section aria-label="Quellen" className="space-y-3 border-t pt-4">
+    <section aria-label="Quellen" className={`${styles.slideCard} space-y-3`}>
       <h3 className="font-medium">Quellen</h3>
       {sources.isPending ? (
         <p>Quellen werden geladen …</p>
@@ -153,12 +164,12 @@ export function KnowledgeSourcesPanel({
               Quelle ergänzen
             </summary>
             <form
-              className="mt-3 space-y-2"
+              className={styles.sourceGrid}
               onSubmit={async (event) => {
                 event.preventDefault();
                 setError("");
                 try {
-                  if (url && !/^https?:\/\/[^\s]+$/i.test(url))
+                  if (url && !isSafeKnowledgeSourceUrl(url))
                     throw new Error("Nur http- und https-URLs sind erlaubt.");
                   await write.mutateAsync({
                     name: "knowledge_qa_add_source",
@@ -187,26 +198,38 @@ export function KnowledgeSourcesPanel({
                 }
               }}
             >
-              <Label htmlFor="source-kind">Quellentyp</Label>
-              <select
-                id="source-kind"
-                className={styles.select}
-                value={kind}
-                onChange={(event) => {
-                  setKind(event.target.value as KnowledgeSourceKind);
-                  setSelected("");
-                  setSearch("");
-                  setUrl("");
-                }}
-              >
-                {Object.entries(LABELS).map(([key, label]) => (
-                  <option key={key} value={key}>
-                    {label}
-                  </option>
-                ))}
-              </select>
+              <div className={styles.sourceField}>
+                <Label htmlFor="source-kind">Quellentyp</Label>
+                <Select
+                  value={kind}
+                  onValueChange={(value: KnowledgeSourceKind) => {
+                    setKind(value);
+                    setSelected("");
+                    setSearch("");
+                    setUrl("");
+                    setTitle("");
+                  }}
+                >
+                  <SelectTrigger id="source-kind">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className={styles.theme}>
+                    {Object.entries(LABELS).map(([key, label]) => {
+                      const Icon = ICONS[key as KnowledgeSourceKind];
+                      return (
+                        <SelectItem key={key} value={key}>
+                          <span className="inline-flex items-center gap-2">
+                            <Icon className="h-4 w-4" aria-hidden="true" />
+                            {label}
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
               {kind === "document" || kind === "case" ? (
-                <>
+                <div className={styles.sourceField}>
                   <Label htmlFor="source-search">
                     {kind === "document"
                       ? "Dokument suchen"
@@ -240,39 +263,52 @@ export function KnowledgeSourcesPanel({
                   {picker.isError && (
                     <p role="alert">Einträge konnten nicht geladen werden.</p>
                   )}
-                </>
+                </div>
               ) : (
                 <>
-                  <Label htmlFor="source-title">Titel</Label>
-                  <Input
-                    id="source-title"
-                    required
-                    maxLength={300}
-                    value={title}
-                    onChange={(event) => setTitle(event.target.value)}
-                  />
-                  <Label htmlFor="source-url">
-                    URL {kind !== "link" && "(optional)"}
-                  </Label>
-                  <Input
-                    id="source-url"
-                    type="url"
-                    required={kind === "link"}
-                    value={url}
-                    onChange={(event) => setUrl(event.target.value)}
-                  />
+                  <div className={styles.sourceField}>
+                    <Label htmlFor="source-title">Titel</Label>
+                    <Input
+                      id="source-title"
+                      required
+                      maxLength={300}
+                      value={title}
+                      onChange={(event) => setTitle(event.target.value)}
+                    />
+                  </div>
+                  <div className={`${styles.sourceField} ${styles.sourceFull}`}>
+                    <Label htmlFor="source-url">
+                      URL {kind !== "link" && "(optional)"}
+                    </Label>
+                    <Input
+                      id="source-url"
+                      type="url"
+                      maxLength={2048}
+                      required={kind === "link"}
+                      value={url}
+                      onChange={(event) => setUrl(event.target.value)}
+                    />
+                  </div>
                 </>
               )}
-              <Label htmlFor="source-date">Stand (optional)</Label>
-              <Input
-                id="source-date"
-                type="date"
-                value={asOf}
-                onChange={(event) => setAsOf(event.target.value)}
-              />
+              <div className={styles.sourceField}>
+                <Label htmlFor="source-date">Stand (optional)</Label>
+                <Input
+                  id="source-date"
+                  type="date"
+                  value={asOf}
+                  onChange={(event) => setAsOf(event.target.value)}
+                />
+              </div>
               <Button
+                className="self-end"
                 variant="outline"
-                disabled={write.isPending || (sources.data?.length ?? 0) >= 10}
+                disabled={
+                  write.isPending ||
+                  sources.isPending ||
+                  sources.isError ||
+                  (sources.data?.length ?? 0) >= 10
+                }
               >
                 Quelle speichern
               </Button>

@@ -194,3 +194,45 @@ export function useKnowledgeComments(questionId: string, enabled: boolean) {
     },
   });
 }
+
+export function useKnowledgeTagSuggestions(
+  query: string,
+  excludedNames: string[],
+  enabled: boolean,
+) {
+  const { userId, tenantId } = useKnowledgeScope();
+  const [term, setTerm] = useState(query);
+  useEffect(() => {
+    const timer = setTimeout(() => setTerm(query), 200);
+    return () => clearTimeout(timer);
+  }, [query]);
+  const result = useQuery({
+    queryKey: [
+      ...knowledgeKey(userId, tenantId),
+      "tag-suggestions",
+      term,
+      excludedNames,
+    ],
+    enabled: Boolean(enabled && userId && tenantId),
+    queryFn: async ({ signal }) => {
+      const { data, error } = await supabase
+        .rpc("knowledge_qa_tag_suggestions", {
+          p_tenant: tenantId!,
+          p_query: term,
+          p_exclude_names: excludedNames,
+        })
+        .abortSignal(signal);
+      if (error) throw new Error(error.message);
+      return {
+        items: (data?.[0]?.items ?? []) as unknown as KnowledgeTag[],
+        total: data?.[0]?.total_count ?? 0,
+        exact: data?.[0]?.exact_match ?? false,
+      };
+    },
+  });
+  return {
+    ...result,
+    data: term === query ? result.data : undefined,
+    debouncing: term !== query,
+  };
+}

@@ -7238,6 +7238,8 @@ export type Database = {
           answer_updated_at: string | null
           answered_at: string | null
           answered_by: string | null
+          archive_reason: string | null
+          archived_by: string | null
           archived_at: string | null
           assigned_to: string | null
           created_at: string
@@ -7269,6 +7271,8 @@ export type Database = {
           answer_updated_at?: string | null
           answered_at?: string | null
           answered_by?: string | null
+          archive_reason?: string | null
+          archived_by?: string | null
           archived_at?: string | null
           assigned_to?: string | null
           created_at?: string
@@ -7300,6 +7304,8 @@ export type Database = {
           answer_updated_at?: string | null
           answered_at?: string | null
           answered_by?: string | null
+          archive_reason?: string | null
+          archived_by?: string | null
           archived_at?: string | null
           assigned_to?: string | null
           created_at?: string
@@ -14238,6 +14244,8 @@ export type Database = {
           answer_updated_at: string | null
           answered_at: string | null
           answered_by: string | null
+          archive_reason: string | null
+          archived_by: string | null
           archived_at: string | null
           assigned_to: string | null
           assigned_to_person: Json | null
@@ -15106,6 +15114,8 @@ export type Database = {
           answer_updated_at: string | null
           answered_at: string | null
           answered_by: string | null
+          archive_reason: string | null
+          archived_by: string | null
           archived_at: string | null
           assigned_to: string | null
           created_at: string
@@ -15154,6 +15164,8 @@ export type Database = {
           answer_updated_at: string | null
           answered_at: string | null
           answered_by: string | null
+          archive_reason: string | null
+          archived_by: string | null
           archived_at: string | null
           assigned_to: string | null
           created_at: string
@@ -15225,9 +15237,14 @@ export type Database = {
               total_count: number
             }[]
           }
+      knowledge_qa_tag_suggestions: {
+        Args: { p_tenant: string; p_query?: string; p_exclude_names?: string[] }
+        Returns: { items: Json; total_count: number; exact_match: boolean }[]
+      }
       knowledge_qa_manage: {
         Args: {
           p_action: string
+          p_reason?: string
           p_description?: string
           p_expected_revision: number
           p_question: string
@@ -15242,6 +15259,8 @@ export type Database = {
           answer_updated_at: string | null
           answered_at: string | null
           answered_by: string | null
+          archive_reason: string | null
+          archived_by: string | null
           archived_at: string | null
           assigned_to: string | null
           created_at: string
@@ -15357,6 +15376,8 @@ export type Database = {
           answer_updated_at: string | null
           answered_at: string | null
           answered_by: string | null
+          archive_reason: string | null
+          archived_by: string | null
           archived_at: string | null
           assigned_to: string | null
           created_at: string
@@ -15401,6 +15422,8 @@ export type Database = {
           answer_updated_at: string | null
           answered_at: string | null
           answered_by: string | null
+          archive_reason: string | null
+          archived_by: string | null
           archived_at: string | null
           assigned_to: string | null
           created_at: string
@@ -15450,6 +15473,8 @@ export type Database = {
           answer_updated_at: string | null
           answered_at: string | null
           answered_by: string | null
+          archive_reason: string | null
+          archived_by: string | null
           archived_at: string | null
           assigned_to: string | null
           created_at: string
@@ -15808,6 +15833,8 @@ export type Database = {
           answer_updated_at: string | null
           answered_at: string | null
           answered_by: string | null
+          archive_reason: string | null
+          archived_by: string | null
           archived_at: string | null
           assigned_to: string | null
           assigned_to_person: Json | null
@@ -15927,7 +15954,7 @@ export type Database = {
         | "erledigt"
         | "archiviert"
       flag_visibility: "public" | "private" | "team"
-      knowledge_source_kind: "link" | "document" | "law" | "person" | "case"
+      knowledge_source_kind: "link" | "document" | "law" | "person" | "case" | "other"
       leave_status:
         | "pending"
         | "approved"
@@ -16097,7 +16124,7 @@ export const Constants = {
         "archiviert",
       ],
       flag_visibility: ["public", "private", "team"],
-      knowledge_source_kind: ["link", "document", "law", "person", "case"],
+      knowledge_source_kind: ["link", "document", "law", "person", "case", "other"],
       leave_status: [
         "pending",
         "approved",

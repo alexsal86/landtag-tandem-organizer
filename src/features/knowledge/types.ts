@@ -80,7 +80,7 @@ export interface KnowledgeTag {
 }
 
 export type KnowledgeSourceKind =
-  "link" | "document" | "law" | "person" | "case";
+  "link" | "document" | "law" | "person" | "case" | "other";
 export interface KnowledgeSource {
   id: string;
   question_id: string;

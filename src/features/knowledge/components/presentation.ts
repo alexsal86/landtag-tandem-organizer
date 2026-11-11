@@ -19,6 +19,7 @@ export const KNOWLEDGE_EVENT_NAMES: Record<string, string> = {
   comment_added: "Rückfrage",
   outdated_reported: "Als veraltet gemeldet",
   question_edited: "Frage bearbeitet",
+  question_restored: "Frage wiederhergestellt",
   question_archived: "Frage archiviert",
   question_merged: "Duplikat zusammengeführt",
   question_created: "Frage gestellt",
@@ -52,3 +53,10 @@ export function formatKnowledgeRelativeDate(
     unit,
   );
 }
+
+export const formatKnowledgeAsOfDate = (value: string) =>
+  new Intl.DateTimeFormat("de-DE", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(`${value}T12:00:00`));

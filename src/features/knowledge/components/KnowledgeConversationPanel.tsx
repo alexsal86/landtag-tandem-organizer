@@ -1,3 +1,11 @@
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -16,53 +24,17 @@ export function KnowledgeConversationPanel({
 }: {
   question: KnowledgeCard;
 }) {
-  const comments = useKnowledgeComments(question.id, !question.answered_at && !question.archived_at);
-  const following = useKnowledgeFollow(question.id);
+  const comments = useKnowledgeComments(
+    question.id,
+    !question.answered_at && !question.archived_at,
+  );
   const write = useKnowledgeExtraWrite();
   const [body, setBody] = useState("");
-  const [report, setReport] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  if (question.answered_at || question.archived_at) return null;
   return (
-    <section
-      className="space-y-3 border-t pt-4"
-      aria-label="Rückfragen und Folgen"
-    >
-      <div className="flex flex-wrap gap-2">
-        <Button
-          variant="outline"
-          aria-pressed={Boolean(following.data)}
-          disabled={write.isPending || following.isPending || following.isError}
-          onClick={async () => {
-            setError("");
-            try {
-              await write.mutateAsync({
-                name: "knowledge_qa_follow",
-                args: { p_question: question.id, p_follow: !following.data },
-              });
-            } catch (cause) {
-              setError(
-                cause instanceof Error
-                  ? cause.message
-                  : "Folgen konnte nicht geändert werden.",
-              );
-            }
-          }}
-        >
-          {following.data ? "Nicht mehr folgen" : "Frage folgen"}
-        </Button>
-        {question.answered_at && !question.archived_at && (
-          <Button
-            variant="ghost"
-            onClick={() => {
-              setReport((value) => !value);
-              setBody("");
-            }}
-          >
-            Veraltet melden
-          </Button>
-        )}
-      </div>
+    <section className="space-y-3 border-t pt-4" aria-label="Rückfragen">
       {!question.answered_at && !question.archived_at && (
         <>
           <h3 className="font-medium">Rückfragen</h3>
@@ -100,7 +72,7 @@ export function KnowledgeConversationPanel({
           )}
         </>
       )}
-      {((!question.answered_at && !question.archived_at) || report) && (
+      {!question.answered_at && !question.archived_at && (
         <form
           className="space-y-2"
           onSubmit={async (event) => {
@@ -109,9 +81,7 @@ export function KnowledgeConversationPanel({
             setMessage("");
             try {
               await write.mutateAsync({
-                name: report
-                  ? "knowledge_qa_report_outdated"
-                  : "knowledge_qa_comment",
+                name: "knowledge_qa_comment",
                 args: {
                   p_question: question.id,
                   p_expected_revision: question.revision,
@@ -119,12 +89,8 @@ export function KnowledgeConversationPanel({
                 },
               });
               setBody("");
-              setReport(false);
-              setMessage(
-                report
-                  ? "Meldung erfasst. Weitere Meldungen werden zusammengefasst."
-                  : "Rückfrage gespeichert.",
-              );
+
+              setMessage("Rückfrage gespeichert.");
             } catch (cause) {
               setError(
                 cause instanceof Error
@@ -134,23 +100,18 @@ export function KnowledgeConversationPanel({
             }
           }}
         >
-          <Label htmlFor="knowledge-conversation">
-            {report ? "Was ist veraltet? (optional)" : "Rückfrage"}
-          </Label>
+          <Label htmlFor="knowledge-conversation">Rückfrage</Label>
           <Textarea
             id="knowledge-conversation"
             maxLength={1000}
-            required={!report}
+            required
             value={body}
             onChange={(event) => setBody(event.target.value)}
           />
           <Button variant="outline" disabled={write.isPending}>
-            {report ? "Meldung absenden" : "Rückfrage senden"}
+            Rückfrage senden
           </Button>
         </form>
-      )}
-      {following.isError && (
-        <p role="alert">Folgestatus konnte nicht geladen werden.</p>
       )}
       {error && <p role="alert">{error}</p>}
       {message && (
@@ -159,5 +120,128 @@ export function KnowledgeConversationPanel({
         </p>
       )}
     </section>
+  );
+}
+
+export function KnowledgeFollowToggle({ questionId }: { questionId: string }) {
+  const following = useKnowledgeFollow(questionId);
+  const write = useKnowledgeExtraWrite();
+  const [error, setError] = useState("");
+  return (
+    <div className="min-w-0 max-w-24 break-words">
+      <Button
+        variant={following.data ? "secondary" : "ghost"}
+        size="sm"
+        aria-pressed={Boolean(following.data)}
+        disabled={write.isPending || following.isPending || following.isError}
+        onClick={async () => {
+          setError("");
+          try {
+            await write.mutateAsync({
+              name: "knowledge_qa_follow",
+              args: { p_question: questionId, p_follow: !following.data },
+            });
+          } catch (cause) {
+            setError(
+              cause instanceof Error
+                ? cause.message
+                : "Folgen konnte nicht geändert werden.",
+            );
+          }
+        }}
+      >
+        Folgen
+      </Button>
+      {following.isError && (
+        <p role="alert" className="text-xs">
+          Folgestatus nicht verfügbar.
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="text-xs">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function KnowledgeOutdatedReport({
+  question,
+}: {
+  question: KnowledgeCard;
+}) {
+  const [revision, setRevision] = useState<number | null>(null);
+  const [body, setBody] = useState("");
+  const [error, setError] = useState("");
+  const write = useKnowledgeExtraWrite();
+  return (
+    <Dialog
+      open={revision !== null}
+      onOpenChange={(open) => {
+        if (!open && !write.isPending) setRevision(null);
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setRevision(question.revision);
+            setBody("");
+            setError("");
+          }}
+        >
+          Veraltet melden
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Veraltet melden</DialogTitle>
+          <DialogDescription>
+            Die zuständigen Personen werden informiert. Mehrere Meldungen werden
+            zusammengefasst.
+          </DialogDescription>
+        </DialogHeader>
+        <form
+          className="space-y-3"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            setError("");
+            try {
+              await write.mutateAsync({
+                name: "knowledge_qa_report_outdated",
+                args: {
+                  p_question: question.id,
+                  p_expected_revision: revision!,
+                  p_body: body.trim(),
+                },
+              });
+              setRevision(null);
+            } catch (cause) {
+              setError(
+                cause instanceof Error
+                  ? cause.message
+                  : "Meldung konnte nicht gespeichert werden.",
+              );
+            }
+          }}
+        >
+          <Label htmlFor="knowledge-outdated-body">
+            Was ist veraltet? (optional)
+          </Label>
+          <Textarea
+            id="knowledge-outdated-body"
+            maxLength={1000}
+            value={body}
+            onChange={(event) => setBody(event.target.value)}
+          />
+          {error && <p role="alert">{error}</p>}
+          <Button variant="outline" disabled={write.isPending}>
+            Meldung absenden
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

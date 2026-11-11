@@ -1,4 +1,18 @@
-import { useEffect, useState } from "react";
+import { MoreHorizontal, X } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { KnowledgeFollowToggle } from "./KnowledgeConversationPanel";
+import { KnowledgeStatusBadge } from "./KnowledgeStatusBadge";
+import {
+  ManagementPanel,
+  type KnowledgeManagementMode,
+} from "./ManagementPanel";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -32,7 +46,19 @@ export function KnowledgeDetailPanel({
 }) {
   const detail = useKnowledgeQuestion(questionId);
   const [copyMessage, setCopyMessage] = useState("");
-  useEffect(() => setCopyMessage(""), [questionId]);
+  const [management, setManagement] = useState<KnowledgeManagementMode | null>(
+    null,
+  );
+  const menuTrigger = useRef<HTMLButtonElement>(null);
+  const managementOpening = useRef(false);
+  useEffect(() => {
+    setCopyMessage("");
+    setManagement(null);
+  }, [questionId]);
+  const manage = (mode: KnowledgeManagementMode) => {
+    managementOpening.current = true;
+    setManagement(mode);
+  };
   return (
     <Sheet
       open={Boolean(questionId)}
@@ -49,60 +75,137 @@ export function KnowledgeDetailPanel({
           onReturnFocus();
         }}
       >
-        <header className="mb-5 space-y-2 pr-8">
-          <SheetTitle>{detail.data?.title || "Wissensfrage"}</SheetTitle>
+        <header className={styles.slideHeader}>
+          <div className={styles.slideToolbar}>
+            <div className="min-w-0">
+              {detail.data && <KnowledgeStatusBadge question={detail.data} />}
+            </div>
+            <div className="ml-auto flex shrink-0 items-center gap-1">
+              {detail.data && (
+                <KnowledgeFollowToggle
+                  key={detail.data.id}
+                  questionId={detail.data.id}
+                />
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    ref={menuTrigger}
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Frage verwalten"
+                  >
+                    <MoreHorizontal className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  className={styles.theme}
+                  onCloseAutoFocus={(event) => {
+                    if (managementOpening.current) {
+                      event.preventDefault();
+                      managementOpening.current = false;
+                    }
+                  }}
+                >
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      void (async () => {
+                        try {
+                          await navigator.clipboard.writeText(
+                            window.location.href,
+                          );
+                          setCopyMessage("Link kopiert");
+                        } catch {
+                          setCopyMessage(
+                            "Link konnte nicht kopiert werden. Bitte die Adresse aus der Adresszeile kopieren.",
+                          );
+                        }
+                      })();
+                    }}
+                  >
+                    Link kopieren
+                  </DropdownMenuItem>
+                  {canManage && detail.data && (
+                    <>
+                      <DropdownMenuSeparator />
+                      {detail.data.archived_at ? (
+                        <DropdownMenuItem onSelect={() => manage("restore")}>
+                          Wiederherstellen
+                        </DropdownMenuItem>
+                      ) : (
+                        <>
+                          <DropdownMenuItem onSelect={() => manage("edit")}>
+                            Frage bearbeiten
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => manage("merge")}>
+                            Als Duplikat zusammenführen
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => manage("archive")}>
+                            Archivieren / schließen
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Schließen"
+                onClick={onClose}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+          <SheetTitle className="break-words">
+            {detail.data?.title || "Wissensfrage"}
+          </SheetTitle>
           <SheetDescription>
             Antwort, Quellen und Änderungen dieser Frage.
           </SheetDescription>
         </header>
-        <div className="mb-4 flex gap-2">
-          <Button
-            variant="outline"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(window.location.href);
-                setCopyMessage("Link kopiert");
-              } catch {
-                setCopyMessage(
-                  "Link konnte nicht kopiert werden. Die Adresse kann aus der Adresszeile kopiert werden.",
-                );
-              }
-            }}
-          >
-            Link kopieren
-          </Button>
-          <Button variant="ghost" onClick={onClose}>
-            Schließen
-          </Button>
+        <div className={styles.slideBody}>
+          {copyMessage && (
+            <p role="status" className="mb-3 text-sm">
+              {copyMessage}
+            </p>
+          )}
+          {detail.isPending ? (
+            <p role="status">Frage wird geladen …</p>
+          ) : detail.isError ? (
+            <p role="alert">
+              Frage konnte nicht geladen werden.{" "}
+              <button onClick={() => void detail.refetch()}>
+                Erneut versuchen
+              </button>
+            </p>
+          ) : detail.data ? (
+            <KnowledgeQuestionDetailContent
+              key={detail.data.id}
+              question={detail.data}
+              profiles={profiles}
+              assignable={assignable}
+              canWrite={canWrite}
+              canVerify={canVerify}
+              canManage={canManage}
+              query=""
+              showAvatars
+            />
+          ) : (
+            <p>Frage nicht verfügbar.</p>
+          )}
         </div>
-        {copyMessage && (
-          <p role="status" className="mb-3 text-sm">
-            {copyMessage}
-          </p>
-        )}
-        {detail.isPending ? (
-          <p role="status">Frage wird geladen …</p>
-        ) : detail.isError ? (
-          <p role="alert">
-            Frage konnte nicht geladen werden.{" "}
-            <button onClick={() => void detail.refetch()}>
-              Erneut versuchen
-            </button>
-          </p>
-        ) : detail.data ? (
-          <KnowledgeQuestionDetailContent
-            key={detail.data.id}
+        {management && detail.data && (
+          <ManagementPanel
+            key={`${detail.data.id}-${management}`}
             question={detail.data}
-            profiles={profiles}
-            assignable={assignable}
-            canWrite={canWrite}
-            canVerify={canVerify}
-            canManage={canManage}
-            query=""
-            showAvatars
+            mode={management}
+            onClose={() => setManagement(null)}
+            onReturnFocus={() => menuTrigger.current?.focus()}
           />
-        ) : (
-          <p>Frage nicht verfügbar.</p>
         )}
       </SheetContent>
     </Sheet>
