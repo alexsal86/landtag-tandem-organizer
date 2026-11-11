@@ -14402,6 +14402,10 @@ export type Database = {
         Args: { _task: string; _text: string }
         Returns: undefined
       }
+      _ensure_topic: {
+        Args: { p_label: string; p_tenant: string }
+        Returns: string
+      }
       _meeting_default_end: { Args: { _date: string }; Returns: string }
       _meeting_default_start: { Args: { _date: string }; Returns: string }
       ack_task_nudge: {
@@ -14787,6 +14791,10 @@ export type Database = {
           p_title: string
         }
         Returns: boolean
+      }
+      ensure_topic: {
+        Args: { p_label: string; p_tenant: string }
+        Returns: string
       }
       execute_annual_automation_routine: {
         Args: { _annual_task_id: string; _rule_id: string; _year: number }
@@ -15557,6 +15565,10 @@ export type Database = {
         Args: { _row: Json; _table: string }
         Returns: Json
       }
+      merge_topics: {
+        Args: { p_source: string; p_target: string }
+        Returns: undefined
+      }
       mutate_secured_records: {
         Args: {
           _data?: Json
@@ -15866,6 +15878,7 @@ export type Database = {
       }
       sync_birthday_appointments: { Args: never; Returns: undefined }
       sync_existing_contact_tags: { Args: never; Returns: undefined }
+      topic_name_from_label: { Args: { p_label: string }; Returns: string }
       undo_contact_bulk_action: { Args: { _audit_id: string }; Returns: number }
       update_contact_usage: {
         Args: { p_contact_id: string; p_tenant_id?: string; p_user_id?: string }
