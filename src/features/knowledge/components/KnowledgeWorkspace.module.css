@@ -295,3 +295,11 @@
 .slideCard .attachments .attach svg { width: 14px; height: 14px; }
 .theme .neutralAction { border: 1px solid var(--knowledge-line); background: var(--knowledge-surface); color: var(--knowledge-ink); }
 .theme .slideCard .addTopicButton { align-self: center; min-height: 32px; height: auto; padding: 4px 9px; font-size: 12px; border-radius: 8px; color: var(--knowledge-ink); border-color: var(--knowledge-line); }
+
+.topicsPanel .topicChip { padding: 3px 7px; font-size: 12px; gap: 4px; }
+.theme .topicsPanel .topicName, .theme .topicsPanel .topicRemove { min-height: 28px; }
+.tagEntry { display: grid; gap: 6px; min-width: 0; }
+.tagEntryLabel { font-size: 12px; color: var(--knowledge-muted); }
+.tagEntryRow { display: flex; align-items: stretch; min-width: 0; border: 1px solid var(--knowledge-line); border-radius: 8px; }
+.theme .topicsPanel .tagSearchField { flex: 1; min-width: 0; justify-content: flex-start; text-align: left; border: 0; border-radius: 8px 0 0 8px; background: transparent; color: var(--knowledge-muted); font-size: 12px; padding: 7px 10px; box-shadow: none; }
+.theme .topicsPanel .tagAddButton { flex: none; border: 0; border-left: 1px solid var(--knowledge-line); border-radius: 0 8px 8px 0; background: transparent; color: var(--knowledge-ink); font-size: 12px; padding: 7px 10px; box-shadow: none; }

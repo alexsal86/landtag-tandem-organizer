@@ -91,11 +91,11 @@ export function KnowledgeTagsPanel({
     }
   };
   return (
-    <section className={`${styles.slideCard} space-y-3`} aria-label="Themen">
-      <h3 className="font-medium">
-        Themen{" "}
-        <span className="text-sm text-muted-foreground">{tags.length}/5</span>
-      </h3>
+    <section
+      className={`${styles.slideCard} ${styles.topicsPanel} space-y-3`}
+      aria-label="Themen"
+    >
+      <h3 className="font-medium">Themen</h3>
       <div ref={chips} className={styles.topicChips}>
         {tags.map((tag) => (
           <span className={styles.topicChip} key={tag.id}>
@@ -130,115 +130,141 @@ export function KnowledgeTagsPanel({
             )}
           </span>
         ))}
-        {canWrite && question.answered_at && !question.archived_at && (
-          <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                ref={trigger}
-                className={styles.addTopicButton}
-                variant="outline"
-                role="combobox"
-                aria-haspopup="listbox"
-                onKeyDown={(event) => {
-                  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-                    event.preventDefault();
-                    setOpen(true);
-                  }
+      </div>
+      {canWrite && question.answered_at && !question.archived_at && (
+        <div className={styles.tagEntry}>
+          <p id={`${listId}-label`} className={styles.tagEntryLabel}>
+            Tag hinzufügen ({tags.length} von 5)
+          </p>
+          <div className={styles.tagEntryRow}>
+            <Popover open={open} onOpenChange={setOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  ref={trigger}
+                  className={styles.tagSearchField}
+                  variant="outline"
+                  role="combobox"
+                  aria-haspopup="listbox"
+                  onKeyDown={(event) => {
+                    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                      event.preventDefault();
+                      setOpen(true);
+                    }
+                  }}
+                  aria-expanded={open}
+                  aria-controls={controlledListId}
+                  aria-labelledby={`${listId}-label`}
+                  disabled={write.isPending || tags.length >= 5}
+                >
+                  {input || "Suchen oder neu anlegen"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                className={`${styles.theme} ${styles.tagPopover}`}
+                align="start"
+                onCloseAutoFocus={(event) => {
+                  event.preventDefault();
+                  if (trigger.current && !trigger.current.disabled)
+                    trigger.current.focus();
+                  else
+                    chips.current
+                      ?.querySelector<HTMLButtonElement>(
+                        "button[aria-label^='Tag ']",
+                      )
+                      ?.focus();
                 }}
-                aria-expanded={open}
-                aria-controls={controlledListId}
-                aria-label="Thema hinzufügen"
-                disabled={write.isPending || tags.length >= 5}
               >
-                {tags.length >= 5 ? "Maximal fünf Themen" : "Thema hinzufügen"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent
-              className={`${styles.theme} ${styles.tagPopover}`}
-              align="start"
-              onCloseAutoFocus={(event) => {
-                event.preventDefault();
-                if (trigger.current && !trigger.current.disabled)
-                  trigger.current.focus();
+                <Command label="Themen durchsuchen" shouldFilter={false} loop>
+                  <CommandInput
+                    value={input}
+                    onValueChange={setInput}
+                    maxLength={30}
+                    placeholder="Suchen oder neu anlegen"
+                    aria-label="Themen durchsuchen"
+                  />
+                  <CommandList ref={bindList} label="Themenvorschläge">
+                    {matches.isError ? (
+                      <p role="alert" className="p-3 text-sm">
+                        Themen konnten nicht geladen werden.
+                      </p>
+                    ) : !matches.data ? (
+                      <p role="status" className="p-3 text-sm">
+                        Themen werden geladen …
+                      </p>
+                    ) : (
+                      <CommandGroup>
+                        {visible.map((tag) => (
+                          <CommandItem
+                            key={tag.id}
+                            value={tag.id}
+                            disabled={write.isPending}
+                            onSelect={() => {
+                              setInput(tag.name);
+                              setOpen(false);
+                            }}
+                          >
+                            {tag.name}
+                          </CommandItem>
+                        ))}
+                        {canCreate && (
+                          <CommandItem
+                            value="__create__"
+                            disabled={write.isPending}
+                            onSelect={() => {
+                              setInput(input.trim());
+                              setOpen(false);
+                            }}
+                          >
+                            Neu anlegen: „{input.trim()}“
+                          </CommandItem>
+                        )}
+                        {!visible.length && !canCreate && (
+                          <p className="p-3 text-sm">
+                            Keine weiteren Themen gefunden.
+                          </p>
+                        )}
+                      </CommandGroup>
+                    )}
+                  </CommandList>
+                  {remaining > 0 && (
+                    <p className="px-3 py-2 text-xs text-muted-foreground">
+                      + {remaining} weitere – Suche verfeinern
+                    </p>
+                  )}
+                  {error && (
+                    <p role="alert" className="p-3 text-sm">
+                      {error}
+                    </p>
+                  )}
+                </Command>
+              </PopoverContent>
+            </Popover>
+            <Button
+              type="button"
+              variant="outline"
+              className={styles.tagAddButton}
+              disabled={
+                write.isPending ||
+                tags.length >= 5 ||
+                (input.length > 0 &&
+                  Boolean(
+                    validateKnowledgeTagNames([
+                      ...tags.map((tag) => tag.name),
+                      input,
+                    ]),
+                  ))
+              }
+              onClick={() => {
+                if (!input.trim()) setOpen(true);
                 else
-                  chips.current
-                    ?.querySelector<HTMLButtonElement>(
-                      "button[aria-label^='Tag ']",
-                    )
-                    ?.focus();
+                  void update([...tags.map((tag) => tag.name), input.trim()]);
               }}
             >
-              <Command label="Themen durchsuchen" shouldFilter={false} loop>
-                <CommandInput
-                  value={input}
-                  onValueChange={setInput}
-                  maxLength={30}
-                  placeholder="Thema suchen …"
-                  aria-label="Themen durchsuchen"
-                />
-                <CommandList ref={bindList} label="Themenvorschläge">
-                  {matches.isError ? (
-                    <p role="alert" className="p-3 text-sm">
-                      Themen konnten nicht geladen werden.
-                    </p>
-                  ) : !matches.data ? (
-                    <p role="status" className="p-3 text-sm">
-                      Themen werden geladen …
-                    </p>
-                  ) : (
-                    <CommandGroup>
-                      {visible.map((tag) => (
-                        <CommandItem
-                          key={tag.id}
-                          value={tag.id}
-                          disabled={write.isPending}
-                          onSelect={() =>
-                            void update([
-                              ...tags.map((item) => item.name),
-                              tag.name,
-                            ])
-                          }
-                        >
-                          {tag.name}
-                        </CommandItem>
-                      ))}
-                      {canCreate && (
-                        <CommandItem
-                          value="__create__"
-                          disabled={write.isPending}
-                          onSelect={() =>
-                            void update([
-                              ...tags.map((tag) => tag.name),
-                              input.trim(),
-                            ])
-                          }
-                        >
-                          Neu anlegen: „{input.trim()}“
-                        </CommandItem>
-                      )}
-                      {!visible.length && !canCreate && (
-                        <p className="p-3 text-sm">
-                          Keine weiteren Themen gefunden.
-                        </p>
-                      )}
-                    </CommandGroup>
-                  )}
-                </CommandList>
-                {remaining > 0 && (
-                  <p className="px-3 py-2 text-xs text-muted-foreground">
-                    + {remaining} weitere – Suche verfeinern
-                  </p>
-                )}
-                {error && (
-                  <p role="alert" className="p-3 text-sm">
-                    {error}
-                  </p>
-                )}
-              </Command>
-            </PopoverContent>
-          </Popover>
-        )}
-      </div>
+              Hinzufügen
+            </Button>
+          </div>
+        </div>
+      )}
       {error && <p role="alert">{error}</p>}
     </section>
   );
