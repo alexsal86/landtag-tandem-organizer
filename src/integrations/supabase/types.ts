@@ -6830,6 +6830,24 @@ export type Database = {
           },
         ]
       }
+      knowledge_qa_notification_deliveries: {
+        Row: {
+          created_at: string
+          event_key: string
+          recipient: string
+        }
+        Insert: {
+          created_at?: string
+          event_key: string
+          recipient: string
+        }
+        Update: {
+          created_at?: string
+          event_key?: string
+          recipient?: string
+        }
+        Relationships: []
+      }
       knowledge_question_attachments: {
         Row: {
           created_at: string
@@ -6877,6 +6895,65 @@ export type Database = {
           },
           {
             foreignKeyName: "knowledge_question_attachments_tenant_id_question_id_fkey"
+            columns: ["tenant_id", "question_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_question_summaries"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "knowledge_question_attachments_tenant_id_question_id_fkey"
+            columns: ["tenant_id", "question_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_questions"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
+      knowledge_question_comments: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          question_id: string
+          revision: number
+          tenant_id: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+          question_id: string
+          revision: number
+          tenant_id: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          question_id?: string
+          revision?: number
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_question_comments_tenant_id_question_id_fkey"
+            columns: ["tenant_id", "question_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_question_cards"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "knowledge_question_comments_tenant_id_question_id_fkey"
+            columns: ["tenant_id", "question_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_question_summaries"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "knowledge_question_comments_tenant_id_question_id_fkey"
             columns: ["tenant_id", "question_id"]
             isOneToOne: false
             referencedRelation: "knowledge_questions"
@@ -6927,75 +7004,258 @@ export type Database = {
             foreignKeyName: "knowledge_question_events_tenant_id_question_id_fkey"
             columns: ["tenant_id", "question_id"]
             isOneToOne: false
+            referencedRelation: "knowledge_question_summaries"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "knowledge_question_events_tenant_id_question_id_fkey"
+            columns: ["tenant_id", "question_id"]
+            isOneToOne: false
             referencedRelation: "knowledge_questions"
             referencedColumns: ["tenant_id", "id"]
           },
         ]
       }
-      knowledge_qa_notification_deliveries: {
-        Row: { event_key: string; recipient: string; created_at: string }
-        Insert: { event_key: string; recipient: string; created_at?: string }
-        Update: { event_key?: string; recipient?: string; created_at?: string }
-        Relationships: []
-      }
-      knowledge_tags: {
-        Row: { id: string; tenant_id: string; name: string }
-        Insert: { id?: string; tenant_id: string; name: string }
-        Update: { id?: string; tenant_id?: string; name?: string }
-        Relationships: []
-      }
-      knowledge_question_tags: {
-        Row: { tenant_id: string; question_id: string; tag_id: string }
-        Insert: { tenant_id: string; question_id: string; tag_id: string }
-        Update: { tenant_id?: string; question_id?: string; tag_id?: string }
-        Relationships: []
-      }
-      knowledge_question_sources: {
-        Row: { id: string; tenant_id: string; question_id: string; kind: 'link'|'document'|'law'|'person'|'case'; title: string; url: string|null; document_id: string|null; case_id: string|null; as_of: string|null; created_by: string; created_at: string; client_revision: number }
-        Insert: { id?: string; tenant_id: string; question_id: string; kind: 'link'|'document'|'law'|'person'|'case'; title: string; url?: string|null; document_id?: string|null; case_id?: string|null; as_of?: string|null; created_by: string; created_at?: string; client_revision: number }
-        Update: { title?: string }
-        Relationships: []
-      }
-      knowledge_question_comments: {
-        Row: { id: string; tenant_id: string; question_id: string; author_id: string; body: string; created_at: string; revision: number }
-        Insert: { id?: string; tenant_id: string; question_id: string; author_id: string; body: string; created_at?: string; revision: number }
-        Update: { body?: string }
-        Relationships: []
-      }
       knowledge_question_followers: {
-        Row: { tenant_id: string; question_id: string; user_id: string }
-        Insert: { tenant_id: string; question_id: string; user_id: string }
-        Update: { user_id?: string }
-        Relationships: []
+        Row: {
+          question_id: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          question_id: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          question_id?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_question_followers_tenant_id_question_id_fkey"
+            columns: ["tenant_id", "question_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_question_cards"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "knowledge_question_followers_tenant_id_question_id_fkey"
+            columns: ["tenant_id", "question_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_question_summaries"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "knowledge_question_followers_tenant_id_question_id_fkey"
+            columns: ["tenant_id", "question_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_questions"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
       }
       knowledge_question_outdated_reports: {
-        Row: { tenant_id: string; question_id: string; reporter_id: string; body: string|null; created_at: string }
-        Insert: { tenant_id: string; question_id: string; reporter_id: string; body?: string|null; created_at?: string }
-        Update: { body?: string|null }
-        Relationships: []
+        Row: {
+          body: string | null
+          created_at: string
+          question_id: string
+          reporter_id: string
+          tenant_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          question_id: string
+          reporter_id: string
+          tenant_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          question_id?: string
+          reporter_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_question_outdated_reports_tenant_id_question_id_fkey"
+            columns: ["tenant_id", "question_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_question_cards"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "knowledge_question_outdated_reports_tenant_id_question_id_fkey"
+            columns: ["tenant_id", "question_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_question_summaries"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "knowledge_question_outdated_reports_tenant_id_question_id_fkey"
+            columns: ["tenant_id", "question_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_questions"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
+      knowledge_question_sources: {
+        Row: {
+          as_of: string | null
+          case_id: string | null
+          client_revision: number
+          created_at: string
+          created_by: string
+          document_id: string | null
+          id: string
+          kind: Database["public"]["Enums"]["knowledge_source_kind"]
+          question_id: string
+          tenant_id: string
+          title: string
+          url: string | null
+        }
+        Insert: {
+          as_of?: string | null
+          case_id?: string | null
+          client_revision: number
+          created_at?: string
+          created_by: string
+          document_id?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["knowledge_source_kind"]
+          question_id: string
+          tenant_id: string
+          title: string
+          url?: string | null
+        }
+        Update: {
+          as_of?: string | null
+          case_id?: string | null
+          client_revision?: number
+          created_at?: string
+          created_by?: string
+          document_id?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["knowledge_source_kind"]
+          question_id?: string
+          tenant_id?: string
+          title?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_question_sources_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "case_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_question_sources_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_question_sources_tenant_id_question_id_fkey"
+            columns: ["tenant_id", "question_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_question_cards"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "knowledge_question_sources_tenant_id_question_id_fkey"
+            columns: ["tenant_id", "question_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_question_summaries"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "knowledge_question_sources_tenant_id_question_id_fkey"
+            columns: ["tenant_id", "question_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_questions"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
+      knowledge_question_tags: {
+        Row: {
+          question_id: string
+          tag_id: string
+          tenant_id: string
+        }
+        Insert: {
+          question_id: string
+          tag_id: string
+          tenant_id: string
+        }
+        Update: {
+          question_id?: string
+          tag_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_question_tags_tenant_id_question_id_fkey"
+            columns: ["tenant_id", "question_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_question_cards"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "knowledge_question_tags_tenant_id_question_id_fkey"
+            columns: ["tenant_id", "question_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_question_summaries"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "knowledge_question_tags_tenant_id_question_id_fkey"
+            columns: ["tenant_id", "question_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_questions"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "knowledge_question_tags_tenant_id_tag_id_fkey"
+            columns: ["tenant_id", "tag_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_tags"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
       }
       knowledge_questions: {
         Row: {
-          archived_at: string | null
-          merged_into: string | null
-          title_search_vector: unknown
           answer_content: Json | null
           answer_revision: number
           answer_text: string
           answer_updated_at: string | null
           answered_at: string | null
           answered_by: string | null
+          archived_at: string | null
           assigned_to: string | null
           created_at: string
           created_by: string
           description: string
           id: string
+          merged_into: string | null
+          metadata_event: string | null
+          metadata_note: string | null
+          metadata_revision: number
           review_due_at: string | null
           review_status: string
           revision: number
           search_vector: unknown
+          tag_search_text: string
           tenant_id: string
           title: string
+          title_search_vector: unknown
           updated_at: string
           updated_by: string
           verified_answer_revision: number | null
@@ -7003,26 +7263,30 @@ export type Database = {
           verified_by: string | null
         }
         Insert: {
-          archived_at?: string | null
-          merged_into?: string | null
-          title_search_vector?: unknown
           answer_content?: Json | null
           answer_revision?: number
           answer_text?: string
           answer_updated_at?: string | null
           answered_at?: string | null
           answered_by?: string | null
+          archived_at?: string | null
           assigned_to?: string | null
           created_at?: string
           created_by: string
           description?: string
           id?: string
+          merged_into?: string | null
+          metadata_event?: string | null
+          metadata_note?: string | null
+          metadata_revision?: number
           review_due_at?: string | null
           review_status?: string
           revision?: number
           search_vector?: unknown
+          tag_search_text?: string
           tenant_id: string
           title: string
+          title_search_vector?: unknown
           updated_at?: string
           updated_by: string
           verified_answer_revision?: number | null
@@ -7030,26 +7294,30 @@ export type Database = {
           verified_by?: string | null
         }
         Update: {
-          archived_at?: string | null
-          merged_into?: string | null
-          title_search_vector?: unknown
           answer_content?: Json | null
           answer_revision?: number
           answer_text?: string
           answer_updated_at?: string | null
           answered_at?: string | null
           answered_by?: string | null
+          archived_at?: string | null
           assigned_to?: string | null
           created_at?: string
           created_by?: string
           description?: string
           id?: string
+          merged_into?: string | null
+          metadata_event?: string | null
+          metadata_note?: string | null
+          metadata_revision?: number
           review_due_at?: string | null
           review_status?: string
           revision?: number
           search_vector?: unknown
+          tag_search_text?: string
           tenant_id?: string
           title?: string
+          title_search_vector?: unknown
           updated_at?: string
           updated_by?: string
           verified_answer_revision?: number | null
@@ -7058,7 +7326,54 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "knowledge_questions_merge_target"
+            columns: ["tenant_id", "merged_into"]
+            isOneToOne: false
+            referencedRelation: "knowledge_question_cards"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "knowledge_questions_merge_target"
+            columns: ["tenant_id", "merged_into"]
+            isOneToOne: false
+            referencedRelation: "knowledge_question_summaries"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "knowledge_questions_merge_target"
+            columns: ["tenant_id", "merged_into"]
+            isOneToOne: false
+            referencedRelation: "knowledge_questions"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
             foreignKeyName: "knowledge_questions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_tags: {
+        Row: {
+          id: string
+          name: string
+          tenant_id: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          tenant_id: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_tags_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -13915,126 +14230,129 @@ export type Database = {
       }
     }
     Views: {
-      knowledge_question_summaries: {
-        Row: {
-          id: string | null
-          tenant_id: string | null
-          title: string | null
-          description: string | null
-          answer_excerpt: string | null
-          answered_at: string | null
-          review_status: string | null
-          effective_review_status: string | null
-          review_due_at: string | null
-          assigned_to: string | null
-          created_by: string | null
-          created_at: string | null
-          updated_at: string | null
-          answer_updated_at: string | null
-          revision: number | null
-          server_now: string | null
-          created_by_person: Json | null
-          assigned_to_person: Json | null
-          verified_by_person: Json | null
-          verified_at: string | null
-        }
-        Relationships: Database['public']['Views']['knowledge_question_cards']['Relationships']
-      }
-      knowledge_question_comment_cards: {
-        Row: { id: string|null; tenant_id: string|null; question_id: string|null; author_id: string|null; body: string|null; created_at: string|null; revision: number|null; author_person: Json|null }
-        Relationships: []
-      }
       knowledge_question_cards: {
         Row: {
-          tags: Json | null
-          created_by_person: Json | null
-          assigned_to_person: Json | null
-          verified_by_person: Json | null
-          archived_at: string | null
-          merged_into: string | null
-          title_search_vector: unknown
           answer_content: Json | null
           answer_revision: number | null
           answer_text: string | null
           answer_updated_at: string | null
           answered_at: string | null
           answered_by: string | null
+          archived_at: string | null
           assigned_to: string | null
+          assigned_to_person: Json | null
           created_at: string | null
           created_by: string | null
+          created_by_person: Json | null
+          description: string | null
+          effective_review_status: string | null
+          id: string | null
+          merged_into: string | null
+          review_due_at: string | null
+          review_status: string | null
+          revision: number | null
+          search_vector: unknown
+          server_now: string | null
+          tags: Json | null
+          tenant_id: string | null
+          title: string | null
+          title_search_vector: unknown
+          updated_at: string | null
+          updated_by: string | null
+          verified_answer_revision: number | null
+          verified_at: string | null
+          verified_by: string | null
+          verified_by_person: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_questions_merge_target"
+            columns: ["tenant_id", "merged_into"]
+            isOneToOne: false
+            referencedRelation: "knowledge_question_cards"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "knowledge_questions_merge_target"
+            columns: ["tenant_id", "merged_into"]
+            isOneToOne: false
+            referencedRelation: "knowledge_question_summaries"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "knowledge_questions_merge_target"
+            columns: ["tenant_id", "merged_into"]
+            isOneToOne: false
+            referencedRelation: "knowledge_questions"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "knowledge_questions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_question_comment_cards: {
+        Row: {
+          author_id: string | null
+          author_person: Json | null
+          body: string | null
+          created_at: string | null
+          id: string | null
+          question_id: string | null
+          revision: number | null
+          tenant_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_question_comments_tenant_id_question_id_fkey"
+            columns: ["tenant_id", "question_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_question_cards"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "knowledge_question_comments_tenant_id_question_id_fkey"
+            columns: ["tenant_id", "question_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_question_summaries"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "knowledge_question_comments_tenant_id_question_id_fkey"
+            columns: ["tenant_id", "question_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_questions"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
+      knowledge_question_summaries: {
+        Row: {
+          answer_excerpt: string | null
+          answer_updated_at: string | null
+          answered_at: string | null
+          assigned_to: string | null
+          assigned_to_person: Json | null
+          created_at: string | null
+          created_by: string | null
+          created_by_person: Json | null
           description: string | null
           effective_review_status: string | null
           id: string | null
           review_due_at: string | null
           review_status: string | null
           revision: number | null
-          search_vector: unknown
           server_now: string | null
+          tags: Json | null
           tenant_id: string | null
           title: string | null
           updated_at: string | null
-          updated_by: string | null
-          verified_answer_revision: number | null
           verified_at: string | null
-          verified_by: string | null
-        }
-        Insert: {
-          archived_at?: string | null
-          merged_into?: string | null
-          title_search_vector?: unknown
-          answer_content?: Json | null
-          answer_revision?: number | null
-          answer_text?: string | null
-          answer_updated_at?: string | null
-          answered_at?: string | null
-          answered_by?: string | null
-          assigned_to?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          description?: string | null
-          effective_review_status?: never
-          id?: string | null
-          review_due_at?: string | null
-          review_status?: string | null
-          revision?: number | null
-          search_vector?: unknown
-          server_now?: never
-          tenant_id?: string | null
-          title?: string | null
-          updated_at?: string | null
-          updated_by?: string | null
-          verified_answer_revision?: number | null
-          verified_at?: string | null
-          verified_by?: string | null
-        }
-        Update: {
-          archived_at?: string | null
-          merged_into?: string | null
-          title_search_vector?: unknown
-          answer_content?: Json | null
-          answer_revision?: number | null
-          answer_text?: string | null
-          answer_updated_at?: string | null
-          answered_at?: string | null
-          answered_by?: string | null
-          assigned_to?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          description?: string | null
-          effective_review_status?: never
-          id?: string | null
-          review_due_at?: string | null
-          review_status?: string | null
-          revision?: number | null
-          search_vector?: unknown
-          server_now?: never
-          tenant_id?: string | null
-          title?: string | null
-          updated_at?: string | null
-          updated_by?: string | null
-          verified_answer_revision?: number | null
-          verified_at?: string | null
-          verified_by?: string | null
+          verified_by_person: Json | null
         }
         Relationships: [
           {
@@ -14080,29 +14398,6 @@ export type Database = {
       }
     }
     Functions: {
-      knowledge_qa_counts: {
-        Args: { p_tenant: string }
-        Returns: { answers: number; open: number; mine: number; assigned: number; review: number }[]
-      }
-      knowledge_qa_notification_selftest: { Args: { p_tenant: string }; Returns: Json }
-      knowledge_qa_manage_selftest: { Args: { p_tenant: string }; Returns: Json }
-      knowledge_qa_manage: {
-        Args: { p_question: string; p_expected_revision: number; p_action: string; p_title?: string; p_description?: string; p_target?: string; p_target_revision?: number }
-        Returns: Database['public']['Tables']['knowledge_questions']['Row']
-      }
-      knowledge_qa_set_tags: { Args: { p_question: string; p_expected_revision: number; p_names: string[] }; Returns: undefined }
-      knowledge_qa_manage_tag: { Args: { p_tag: string; p_name?: string; p_merge_into?: string }; Returns: undefined }
-      knowledge_qa_add_source: { Args: { p_question: string; p_expected_revision: number; p_kind: 'link'|'document'|'law'|'person'|'case'; p_title?: string; p_url?: string; p_document?: string; p_case?: string; p_as_of?: string }; Returns: undefined }
-      knowledge_qa_remove_source: { Args: { p_source: string; p_expected_revision: number }; Returns: undefined }
-      knowledge_qa_comment: { Args: { p_question: string; p_expected_revision: number; p_body: string }; Returns: undefined }
-      knowledge_qa_follow: { Args: { p_question: string; p_follow: boolean }; Returns: undefined }
-      knowledge_qa_report_outdated: { Args: { p_question: string; p_expected_revision: number; p_body?: string }; Returns: undefined }
-      knowledge_qa_tag_topics: { Args: { p_tenant: string }; Returns: { id: string; name: string; count: number }[] }
-      knowledge_qa_list: {
-        Args: { p_tenant: string; p_query?: string; p_view?: string; p_limit?: number; p_cursor?: Json; p_status?: string; p_assignee?: string; p_sort?: string; p_tag?: string; p_quick?: string }
-        Returns: { items: Json; total_count: number; next_cursor: Json | null; counts: Json; topics: Json }[]
-      }
-
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined
@@ -14469,6 +14764,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      dispatch_due_knowledge_reviews: { Args: never; Returns: number }
       dispatch_due_task_reminders: { Args: never; Returns: number }
       dispatch_workflow_trigger: {
         Args: {
@@ -14753,9 +15049,40 @@ export type Database = {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      knowledge_qa_add_source: {
+        Args: {
+          p_as_of?: string
+          p_case?: string
+          p_document?: string
+          p_expected_revision: number
+          p_kind: Database["public"]["Enums"]["knowledge_source_kind"]
+          p_question: string
+          p_title?: string
+          p_url?: string
+        }
+        Returns: undefined
+      }
       knowledge_qa_can_access: {
         Args: { p_action?: string; p_tenant: string }
         Returns: boolean
+      }
+      knowledge_qa_comment: {
+        Args: {
+          p_body: string
+          p_expected_revision: number
+          p_question: string
+        }
+        Returns: undefined
+      }
+      knowledge_qa_counts: {
+        Args: { p_tenant: string }
+        Returns: {
+          answers: number
+          assigned: number
+          mine: number
+          open: number
+          review: number
+        }[]
       }
       knowledge_qa_create_question: {
         Args: {
@@ -14771,17 +15098,24 @@ export type Database = {
           answer_updated_at: string | null
           answered_at: string | null
           answered_by: string | null
+          archived_at: string | null
           assigned_to: string | null
           created_at: string
           created_by: string
           description: string
           id: string
+          merged_into: string | null
+          metadata_event: string | null
+          metadata_note: string | null
+          metadata_revision: number
           review_due_at: string | null
           review_status: string
           revision: number
           search_vector: unknown
+          tag_search_text: string
           tenant_id: string
           title: string
+          title_search_vector: unknown
           updated_at: string
           updated_by: string
           verified_answer_revision: number | null
@@ -14812,17 +15146,24 @@ export type Database = {
           answer_updated_at: string | null
           answered_at: string | null
           answered_by: string | null
+          archived_at: string | null
           assigned_to: string | null
           created_at: string
           created_by: string
           description: string
           id: string
+          merged_into: string | null
+          metadata_event: string | null
+          metadata_note: string | null
+          metadata_revision: number
           review_due_at: string | null
           review_status: string
           revision: number
           search_vector: unknown
+          tag_search_text: string
           tenant_id: string
           title: string
+          title_search_vector: unknown
           updated_at: string
           updated_by: string
           verified_answer_revision: number | null
@@ -14836,9 +15177,137 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      knowledge_qa_follow: {
+        Args: { p_follow: boolean; p_question: string }
+        Returns: undefined
+      }
+      knowledge_qa_list:
+        | {
+            Args: {
+              p_cursor?: Json
+              p_limit?: number
+              p_query?: string
+              p_tenant: string
+              p_view?: string
+            }
+            Returns: {
+              items: Json
+              next_cursor: Json
+              total_count: number
+            }[]
+          }
+        | {
+            Args: {
+              p_assignee?: string
+              p_cursor?: Json
+              p_limit?: number
+              p_query?: string
+              p_quick?: string
+              p_sort?: string
+              p_status?: string
+              p_tag?: string
+              p_tenant: string
+              p_view?: string
+            }
+            Returns: {
+              counts: Json
+              items: Json
+              next_cursor: Json
+              topics: Json
+              total_count: number
+            }[]
+          }
+      knowledge_qa_manage: {
+        Args: {
+          p_action: string
+          p_description?: string
+          p_expected_revision: number
+          p_question: string
+          p_target?: string
+          p_target_revision?: number
+          p_title?: string
+        }
+        Returns: {
+          answer_content: Json | null
+          answer_revision: number
+          answer_text: string
+          answer_updated_at: string | null
+          answered_at: string | null
+          answered_by: string | null
+          archived_at: string | null
+          assigned_to: string | null
+          created_at: string
+          created_by: string
+          description: string
+          id: string
+          merged_into: string | null
+          metadata_event: string | null
+          metadata_note: string | null
+          metadata_revision: number
+          review_due_at: string | null
+          review_status: string
+          revision: number
+          search_vector: unknown
+          tag_search_text: string
+          tenant_id: string
+          title: string
+          title_search_vector: unknown
+          updated_at: string
+          updated_by: string
+          verified_answer_revision: number | null
+          verified_at: string | null
+          verified_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "knowledge_questions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      knowledge_qa_manage_selftest: {
+        Args: { p_tenant: string }
+        Returns: Json
+      }
+      knowledge_qa_manage_tag: {
+        Args: { p_merge_into?: string; p_name?: string; p_tag: string }
+        Returns: undefined
+      }
       knowledge_qa_node_text: {
         Args: { p_depth?: number; p_node: Json }
         Returns: string
+      }
+      knowledge_qa_normalize: { Args: { value: string }; Returns: string }
+      knowledge_qa_notification_selftest: {
+        Args: { p_tenant: string }
+        Returns: Json
+      }
+      knowledge_qa_notify: {
+        Args: {
+          p_key: string
+          p_question: string
+          p_recipient: string
+          p_tenant: string
+          p_title: string
+          p_type: string
+        }
+        Returns: undefined
+      }
+      knowledge_qa_refresh_tags: {
+        Args: { p_question: string }
+        Returns: undefined
+      }
+      knowledge_qa_remove_source: {
+        Args: { p_expected_revision: number; p_source: string }
+        Returns: undefined
+      }
+      knowledge_qa_report_outdated: {
+        Args: {
+          p_body?: string
+          p_expected_revision: number
+          p_question: string
+        }
+        Returns: undefined
       }
       knowledge_qa_reserve_attachment: {
         Args: {
@@ -14880,17 +15349,24 @@ export type Database = {
           answer_updated_at: string | null
           answered_at: string | null
           answered_by: string | null
+          archived_at: string | null
           assigned_to: string | null
           created_at: string
           created_by: string
           description: string
           id: string
+          merged_into: string | null
+          metadata_event: string | null
+          metadata_note: string | null
+          metadata_revision: number
           review_due_at: string | null
           review_status: string
           revision: number
           search_vector: unknown
+          tag_search_text: string
           tenant_id: string
           title: string
+          title_search_vector: unknown
           updated_at: string
           updated_by: string
           verified_answer_revision: number | null
@@ -14917,17 +15393,24 @@ export type Database = {
           answer_updated_at: string | null
           answered_at: string | null
           answered_by: string | null
+          archived_at: string | null
           assigned_to: string | null
           created_at: string
           created_by: string
           description: string
           id: string
+          merged_into: string | null
+          metadata_event: string | null
+          metadata_note: string | null
+          metadata_revision: number
           review_due_at: string | null
           review_status: string
           revision: number
           search_vector: unknown
+          tag_search_text: string
           tenant_id: string
           title: string
+          title_search_vector: unknown
           updated_at: string
           updated_by: string
           verified_answer_revision: number | null
@@ -14941,10 +15424,14 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      knowledge_qa_seed_notifications: {
+        Args: { p_tenant: string }
+        Returns: undefined
+      }
       knowledge_qa_selftest: { Args: { p_tenant: string }; Returns: Json }
       knowledge_qa_set_assignee: {
         Args: {
-          p_assigned_to: string | null
+          p_assigned_to: string
           p_expected_revision: number
           p_question: string
         }
@@ -14955,17 +15442,24 @@ export type Database = {
           answer_updated_at: string | null
           answered_at: string | null
           answered_by: string | null
+          archived_at: string | null
           assigned_to: string | null
           created_at: string
           created_by: string
           description: string
           id: string
+          merged_into: string | null
+          metadata_event: string | null
+          metadata_note: string | null
+          metadata_revision: number
           review_due_at: string | null
           review_status: string
           revision: number
           search_vector: unknown
+          tag_search_text: string
           tenant_id: string
           title: string
+          title_search_vector: unknown
           updated_at: string
           updated_by: string
           verified_answer_revision: number | null
@@ -14978,6 +15472,22 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      knowledge_qa_set_tags: {
+        Args: {
+          p_expected_revision: number
+          p_names: string[]
+          p_question: string
+        }
+        Returns: undefined
+      }
+      knowledge_qa_tag_topics: {
+        Args: { p_tenant: string }
+        Returns: {
+          count: number
+          id: string
+          name: string
+        }[]
       }
       letters_secured:
         | {
@@ -15286,24 +15796,31 @@ export type Database = {
           answer_updated_at: string | null
           answered_at: string | null
           answered_by: string | null
+          archived_at: string | null
           assigned_to: string | null
+          assigned_to_person: Json | null
           created_at: string | null
           created_by: string | null
+          created_by_person: Json | null
           description: string | null
           effective_review_status: string | null
           id: string | null
+          merged_into: string | null
           review_due_at: string | null
           review_status: string | null
           revision: number | null
           search_vector: unknown
           server_now: string | null
+          tags: Json | null
           tenant_id: string | null
           title: string | null
+          title_search_vector: unknown
           updated_at: string | null
           updated_by: string | null
           verified_answer_revision: number | null
           verified_at: string | null
           verified_by: string | null
+          verified_by_person: Json | null
         }[]
         SetofOptions: {
           from: "*"
@@ -15377,7 +15894,6 @@ export type Database = {
       }
     }
     Enums: {
-      knowledge_source_kind: "link" | "document" | "law" | "person" | "case"
       app_role: "abgeordneter" | "bueroleitung" | "mitarbeiter" | "praktikant"
       case_item_escalation_status: "pending" | "accepted" | "rejected"
       case_item_interaction_visibility:
@@ -15398,6 +15914,7 @@ export type Database = {
         | "erledigt"
         | "archiviert"
       flag_visibility: "public" | "private" | "team"
+      knowledge_source_kind: "link" | "document" | "law" | "person" | "case"
       leave_status:
         | "pending"
         | "approved"
@@ -15567,6 +16084,7 @@ export const Constants = {
         "archiviert",
       ],
       flag_visibility: ["public", "private", "team"],
+      knowledge_source_kind: ["link", "document", "law", "person", "case"],
       leave_status: [
         "pending",
         "approved",
