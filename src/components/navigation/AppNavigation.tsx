@@ -72,8 +72,7 @@ import { navigationGroups, getNavigationGroups, NavGroup } from "@/components/na
 import { HelpDialog } from "@/components/navigation/HelpDialog";
 import { formatDistanceToNow, format, isToday, isYesterday, isTomorrow } from "date-fns";
 import { de } from "date-fns/locale";
-import { CalendarClock, Clock } from "lucide-react";
-import { openAppointmentRequestCreate } from "@/features/appointment-requests/events";
+import { Clock } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1160,38 +1159,9 @@ export function AppNavigation({
             {activePanel !== 'appointments' && <TooltipContent side="bottom" className="text-xs">Termine</TooltipContent>}
           </Tooltip>
 
-          {/* Case Files */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setActivePanel(activePanel === 'casefiles' ? 'home' : 'casefiles')}
-                className={cn(
-                  "h-7 rounded-md flex items-center gap-1.5 px-2 transition-colors",
-                  activePanel === 'casefiles' ? "bg-[hsl(var(--nav-active-bg))] font-medium" : "hover:bg-[hsl(var(--nav-hover))]"
-                )}
-              >
-                <Briefcase className="h-4 w-4 shrink-0" />
-                {activePanel === 'casefiles' && <span className="text-xs">Akten</span>}
-              </button>
-            </TooltipTrigger>
-            {activePanel !== 'casefiles' && <TooltipContent side="bottom" className="text-xs">Fallakten</TooltipContent>}
-          </Tooltip>
-
-          {/* Quick appointment request (dialog trigger, not a panel) */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => openAppointmentRequestCreate()}
-                aria-label="Terminanfrage vormerken"
-                className="h-7 rounded-md flex items-center gap-1.5 px-2 hover:bg-[hsl(var(--nav-hover))] transition-colors ml-auto"
-              >
-                <CalendarClock className="h-4 w-4 shrink-0" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">Terminanfrage vormerken (⌘⇧.)</TooltipContent>
-          </Tooltip>
-
-          <GlobalCreateMenu />
+          <div className="ml-auto">
+            <GlobalCreateMenu />
+          </div>
           {/* Search (dialog trigger, not a panel) */}
           <Tooltip>
             <TooltipTrigger asChild>

@@ -1,5 +1,11 @@
+import { openAppointmentRequestCreate } from "@/features/appointment-requests/events";
 import { useRef } from "react";
-import { MessageCircleQuestion, FilePenLine, Plus } from "lucide-react";
+import {
+  MessageCircleQuestion,
+  FilePenLine,
+  Plus,
+  CalendarClock,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -56,6 +62,20 @@ export function GlobalCreateMenu() {
         >
           <FilePenLine className="mr-2 h-4 w-4" aria-hidden="true" />
           Schnelle Notiz
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          aria-keyshortcuts="Control+Shift+. Meta+Shift+."
+          onSelect={() => {
+            nextAction.current = () => openAppointmentRequestCreate();
+          }}
+        >
+          <CalendarClock className="mr-2 h-4 w-4" aria-hidden="true" />
+          <span className="flex flex-col">
+            <span>Terminanfrage vormerken</span>
+            <span className="text-xs text-muted-foreground">
+              Strg/⌘ + Umschalt + .
+            </span>
+          </span>
         </DropdownMenuItem>
         {allowed && (
           <DropdownMenuItem
