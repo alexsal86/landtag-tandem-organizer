@@ -27,8 +27,22 @@ export const TopicSelector: React.FC<TopicSelectorProps> = ({
   compact = false,
   placeholder = "Themen hinzufügen...",
 }) => {
-  const { topics, loading } = useTopics();
+  const { topics, loading, quickCreateTopic } = useTopics();
   const [open, setOpen] = React.useState(false);
+  const [search, setSearch] = React.useState("");
+  const [creating, setCreating] = React.useState(false);
+  const trimmed = search.trim();
+  const exactMatch = topics.some(t => t.label.toLowerCase() === trimmed.toLowerCase());
+  const canCreate = trimmed.length >= 2 && trimmed.length <= 40 && !exactMatch;
+
+  const handleCreate = async () => {
+    if (!canCreate || creating) return;
+    setCreating(true);
+    const id = await quickCreateTopic(trimmed);
+    setCreating(false);
+    if (id && !selectedTopicIds.includes(id)) onTopicsChange([...selectedTopicIds, id]);
+    setSearch("");
+  };
 
   const activeTopics = topics.filter(t => t.is_active);
   const selectedTopics = activeTopics.filter(t => selectedTopicIds.includes(t.id));
@@ -97,9 +111,9 @@ export const TopicSelector: React.FC<TopicSelectorProps> = ({
         </PopoverTrigger>
         <PopoverContent className="w-64 p-0" align="start">
           <Command>
-            <CommandInput placeholder="Thema suchen..." />
+            <CommandInput placeholder="Thema suchen oder anlegen..." value={search} onValueChange={setSearch} />
             <CommandList>
-              <CommandEmpty>Keine Themen gefunden.</CommandEmpty>
+              {!canCreate && <CommandEmpty>Keine Themen gefunden.</CommandEmpty>}
               <CommandGroup>
                 {activeTopics.map(topic => (
                   <CommandItem
@@ -121,6 +135,19 @@ export const TopicSelector: React.FC<TopicSelectorProps> = ({
                   </CommandItem>
                 ))}
               </CommandGroup>
+              {canCreate && (
+                <CommandGroup heading="Neu">
+                  <CommandItem
+                    value={`__create__${trimmed}`}
+                    onSelect={handleCreate}
+                    disabled={creating}
+                    className="gap-2 cursor-pointer"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span className="flex-1">„{trimmed}" als neues Thema anlegen</span>
+                  </CommandItem>
+                </CommandGroup>
+              )}
             </CommandList>
           </Command>
         </PopoverContent>
