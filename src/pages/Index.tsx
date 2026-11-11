@@ -12,6 +12,7 @@ const CustomizableDashboard = lazyWithRetry(() => import("@/features/dashboard/c
 const CalendarView = lazyWithRetry(() => import("@/features/calendar/components/CalendarView").then(m => ({ default: m.CalendarView })));
 const ContactsView = lazyWithRetry(() => import("@/features/contacts/components/ContactsView").then(m => ({ default: m.ContactsView })));
 const DocumentsView = lazyWithRetry(() => import("@/features/documents/components/DocumentsView").then(m => ({ default: m.DocumentsView as React.ComponentType })));
+const TopicOverview = lazyWithRetry(() => import("@/features/topics/TopicOverview").then(m => ({ default: m.TopicOverview })));
 const KnowledgeBaseView = lazyWithRetry(() => import("@/features/knowledge/components/KnowledgeBaseView"));
 const KnowledgeWorkspace = lazyWithRetry(() => import("@/features/knowledge").then(m => ({ default: m.KnowledgeWorkspace })));
 const TasksWorkspace = lazyWithRetry(() => import("@/components/my-work/MyWorkTasksTab").then(m => ({ default: m.MyWorkTasksTab })));
@@ -236,6 +237,8 @@ const Index = (): React.JSX.Element => {
         return withSectionBoundary('Vorgänge', <CaseFilesView />);
       case "dossiers":
         return withSectionBoundary('Wissen', <DossiersMainView />);
+      case "themen":
+        return withSectionBoundary('Themen', <TopicOverview />);
       case "wissen":
         if (subId === "fakten") {
           return withSectionBoundary('Fakten-Bibliothek', <FactsLibraryView />);

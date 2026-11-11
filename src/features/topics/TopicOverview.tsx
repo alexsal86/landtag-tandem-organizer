@@ -96,7 +96,7 @@ export function TopicOverview() {
             <Card key={g.key} className="p-md">
               <div className="flex items-center gap-xs">
                 <g.icon className="h-4 w-4 text-muted-foreground" />
-                <SectionHeader label={`${g.title} (${g.items.length})`} />
+                <SectionHeader title={`${g.title} (${g.items.length})`} />
               </div>
               {g.items.length === 0 ? (
                 <p className="text-caption text-muted-foreground">Noch nichts verknüpft.</p>

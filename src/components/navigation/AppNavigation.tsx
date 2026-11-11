@@ -106,6 +106,7 @@ const availableQuickPages: QuickAccessPage[] = [
   { id: "meetings", label: "Jour fixe", icon: "Calendar", route: "/meetings" },
   { id: "chat", label: "Chat", icon: "MessageSquare", route: "/chat" },
   { id: "wissen", label: "Wissen", icon: "Database", route: "/wissen" },
+  { id: "themen", label: "Themen", icon: "Tags", route: "/themen" },
 ];
 
 export function AppNavigation({ 
