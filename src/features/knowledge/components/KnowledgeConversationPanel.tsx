@@ -130,7 +130,7 @@ export function KnowledgeFollowToggle({ questionId }: { questionId: string }) {
   const write = useKnowledgeExtraWrite();
   const [error, setError] = useState("");
   return (
-    <div className="min-w-0 max-w-24 break-words">
+    <div className="min-w-0 max-w-32 break-words">
       <Button
         variant="outline"
         className={styles.headerButton}
@@ -158,7 +158,7 @@ export function KnowledgeFollowToggle({ questionId }: { questionId: string }) {
           fill={following.data ? "currentColor" : "none"}
           aria-hidden="true"
         />
-        Folgen
+        {following.data ? "Du folgst" : "Folgen"}
       </Button>
       {following.isError && (
         <p role="alert" className="text-xs">

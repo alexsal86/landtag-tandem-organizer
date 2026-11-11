@@ -283,7 +283,8 @@
   gap: 6px;
 }
 .theme .headerButton:hover { background: var(--knowledge-bg); color: var(--knowledge-ink); }
-.theme .headerButton[aria-pressed="true"] { background: var(--knowledge-soft); }
+.theme .headerButton[aria-pressed="true"] { background: var(--knowledge-soft); color: #285f18; border-color: #77a85e; }
+:global(.dark) .theme .headerButton[aria-pressed="true"] { color: #8fd05f; border-color: #618649; }
 .questionIntro { display: grid; gap: 16px; margin-bottom: 20px; min-width: 0; }
 .questionTitle { font-size: 22px; line-height: 1.35; overflow-wrap: anywhere; }
 .questionDescription { border-left: 3px solid var(--knowledge-line); background: var(--knowledge-bg); border-radius: 0 8px 8px 0; padding: 12px 16px; }
