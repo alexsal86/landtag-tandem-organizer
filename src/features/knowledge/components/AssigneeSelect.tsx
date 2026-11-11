@@ -70,6 +70,7 @@ export function AssigneeSelect({
                 args: {
                   p_question: question.id,
                   p_expected_revision: question.revision,
+                  // @ts-expect-error -- RPC accepts null to unassign; generated types omit nullability
                   p_assigned_to: value === UNASSIGNED ? null : value,
                 },
               });
