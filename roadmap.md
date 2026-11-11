@@ -45,3 +45,9 @@
 - [ ] Phase 3: Regel mit Anmeldung speichern und erzeugte Aufgabe in der App prüfen — externe Supabase-Testsitzung fehlt
 - [ ] Älteren Dispatcher-Test prüfen — gültige Testvorlage wird durch vorhandene zyklische Aktionsreferenzen abgelehnt
 - [ ] Angemeldeten Jahresaufgaben-Gesamtablauf prüfen — externe Supabase-Testsitzung fehlt
+
+# Plattformweite Themen (Option B)
+- [x] Themen beim Tippen anlegen, Zusammenführen für Büroleitung, alte Tags übernommen
+- [x] Fallakten nur noch mit Themen-Box; Wissens-Tags spiegeln Themen
+- [ ] Kontakt- und Dokumentformulare vollständig auf Themenauswahl umstellen
+- [ ] Querschnittsansicht pro Thema

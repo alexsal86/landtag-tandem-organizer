@@ -160,7 +160,7 @@ export function KnowledgeAttachments({
                 await write.mutateAsync({
                   name: "knowledge_qa_finish_attachment",
                   args: {
-                    p_attachment: data.id,
+                    p_attachment: reserved.id,
                     p_expected_revision: question.revision,
                   },
                 });
