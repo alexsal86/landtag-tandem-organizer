@@ -56,7 +56,7 @@ export type KnowledgeSummary = Pick<
   | "server_now"
   | "verified_at"
 > &
-  KnowledgePersonFields & { answer_excerpt: string };
+  KnowledgePersonFields & { answer_excerpt: string; tags?: KnowledgeTag[] };
 export interface KnowledgePage {
   items: KnowledgeSummary[];
   total_count: number;
@@ -68,3 +68,5 @@ export interface KnowledgeFilters {
   assignee: string;
   sort: "updated" | "oldest";
 }
+
+export interface KnowledgeTag { id: string; name: string }

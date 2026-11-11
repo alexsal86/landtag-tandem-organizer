@@ -8,10 +8,8 @@ import { History, Pencil } from "lucide-react";
 import EnhancedLexicalEditor from "@/components/lexical/EnhancedLexicalEditor";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { answerText, effectiveReviewStatus, REVIEW_LABELS } from "../logic";
-import { useKnowledgeQuestion } from "../hooks/useKnowledgeQuestions";
-import type { KnowledgeCard, KnowledgeSummary } from "../types";
+import type { KnowledgeCard } from "../types";
 import type { TenantProfileOption } from "@/hooks/useTenantProfiles";
 import { KnowledgeAnswerEditor } from "./KnowledgeAnswerEditor";
 import { KnowledgeAttachments } from "./KnowledgeAttachments";
@@ -25,7 +23,7 @@ import {
   knowledgePersonName,
 } from "./presentation";
 
-function FullKnowledgeQuestionCard({
+export function KnowledgeQuestionDetailContent({
   question,
   profiles,
   assignable,
@@ -33,7 +31,6 @@ function FullKnowledgeQuestionCard({
   canVerify,
   canManage,
   showAvatars,
-  onOpen,
 }: {
   question: KnowledgeCard;
   profiles: TenantProfileOption[];
@@ -43,7 +40,6 @@ function FullKnowledgeQuestionCard({
   canManage: boolean;
   query: string;
   showAvatars: boolean;
-  onOpen: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -60,14 +56,8 @@ function FullKnowledgeQuestionCard({
     }
   }, [question.answer_content]);
   return (
-    <Card className={styles.card}>
-      <CardContent className={styles.cardContent}>
+    <div className="space-y-4">
         <div className={styles.cardHeader}>
-          <h2 className={styles.cardTitle}>
-            <button className="text-left hover:underline" onClick={onOpen}>
-              {question.title}
-            </button>
-          </h2>
           <Badge
             className={`${styles.badge} ${!question.answered_at ? styles.badgeOpen : status === "verified" ? styles.badgeVerified : status === "needs_review" ? styles.badgeDue : ""}`}
             variant={
@@ -194,8 +184,8 @@ function FullKnowledgeQuestionCard({
           <div className={styles.actions}>
             {canWrite && !question.archived_at && (
               <Button
-                className={`${styles.button} ${question.answered_at ? "" : styles.primaryButton}`}
-                variant={question.answered_at ? "outline" : "default"}
+                className={`${styles.button} ${question.answered_at && status === "needs_review" ? "" : styles.primaryButton}`}
+                variant={question.answered_at && status === "needs_review" ? "outline" : "default"}
                 size="sm"
                 onClick={() => setEditing(true)}
               >
@@ -204,7 +194,7 @@ function FullKnowledgeQuestionCard({
               </Button>
             )}
             {question.answered_at && !question.archived_at && canVerify && (
-              <ReviewPanel question={question} now={now} />
+              <ReviewPanel question={question} now={now} primary={status === "needs_review"} />
             )}
             <Button
               className={`${styles.button} ${styles.ghostButton}`}
@@ -225,145 +215,7 @@ function FullKnowledgeQuestionCard({
         {historyOpen && (
           <HistoryPanel questionId={question.id} profiles={profiles} />
         )}
-      </CardContent>
-    </Card>
+    </div>
   );
 }
 
-export function KnowledgeQuestionCard(props: {
-  question: KnowledgeSummary;
-  profiles: TenantProfileOption[];
-  assignable: TenantProfileOption[];
-  canWrite: boolean;
-  canVerify: boolean;
-  canManage: boolean;
-  query: string;
-  onOpen: () => void;
-  detail?: boolean;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const detail = useKnowledgeQuestion(
-    props.detail || expanded ? props.question.id : null,
-  );
-  const now = useReviewDeadline(props.question);
-  if (props.detail || expanded) {
-    if (detail.isError)
-      return (
-        <p role="alert">
-          Frage konnte nicht geladen werden.{" "}
-          <Button
-            className={styles.button}
-            onClick={() => void detail.refetch()}
-          >
-            Erneut versuchen
-          </Button>
-        </p>
-      );
-    if (detail.isPending) return <p role="status">Frage wird geladen …</p>;
-    if (!detail.data) return <p>Frage nicht verfügbar.</p>;
-    return (
-      <FullKnowledgeQuestionCard
-        {...props}
-        question={detail.data}
-        showAvatars={Boolean(props.detail) || !props.query.trim()}
-      />
-    );
-  }
-  const question = props.question;
-  return (
-    <Card className={styles.card}>
-      <CardContent className={styles.cardContent}>
-        <div className={styles.cardHeader}>
-          <h2 className={styles.cardTitle}>
-            <button onClick={props.onOpen}>{question.title}</button>
-          </h2>
-          <Badge
-            variant="outline"
-            className={`${styles.badge} ${!question.answered_at ? styles.badgeOpen : effectiveReviewStatus(question, now) === "verified" ? styles.badgeVerified : effectiveReviewStatus(question, now) === "needs_review" ? styles.badgeDue : ""}`}
-          >
-            {question.answered_at
-              ? REVIEW_LABELS[effectiveReviewStatus(question, now)]
-              : "Offene Frage"}
-          </Badge>
-        </div>
-        {question.description && (
-          <p className={styles.description}>{question.description}</p>
-        )}
-        <div
-          className={
-            question.answered_at
-              ? `${styles.answer} ${styles.summaryAnswer}`
-              : styles.emptyAnswer
-          }
-        >
-          <p>
-            {question.answered_at
-              ? question.answer_excerpt
-              : "Diese Frage wartet auf eine Antwort."}
-          </p>{" "}
-          <Button
-            className={styles.expandLink}
-            variant="link"
-            onClick={() => setExpanded(true)}
-          >
-            Vollständig anzeigen
-          </Button>
-        </div>
-        <div className={`${styles.metadata} items-center`}>
-          <span className="inline-flex items-center gap-1.5">
-            Gefragt von{" "}
-            <KnowledgePersonLabel
-              person={knowledgePersonForId(
-                question.created_by,
-                question.created_by_person,
-                props.profiles,
-              )}
-              showAvatar={!props.query.trim()}
-            />{" "}
-            · {formatDate(question.created_at)}
-          </span>
-          {question.verified_at &&
-            effectiveReviewStatus(question, now) === "verified" && (
-              <span className="inline-flex items-center gap-1.5">
-                Bestätigt von{" "}
-                <KnowledgePersonLabel
-                  person={question.verified_by_person}
-                  showAvatar={!props.query.trim()}
-                />{" "}
-                · {formatDate(question.verified_at)}
-              </span>
-            )}
-          {question.assigned_to && (
-            <span>
-              Verantwortlich:{" "}
-              {knowledgePersonName(props.profiles, question.assigned_to)}
-            </span>
-          )}
-          {question.answer_updated_at && (
-            <span>Aktualisiert: {formatDate(question.answer_updated_at)}</span>
-          )}
-        </div>
-        {props.canWrite ? (
-          <AssigneeSelect
-            question={question}
-            profiles={props.profiles}
-            assignable={props.assignable}
-            showAvatars={!props.query.trim()}
-          />
-        ) : (
-          <p className="flex items-center gap-2 text-sm">
-            Zuständig:{" "}
-            <KnowledgePersonLabel
-              person={knowledgePersonForId(
-                question.assigned_to,
-                question.assigned_to_person,
-                props.profiles,
-              )}
-              showAvatar={!props.query.trim()}
-            />
-          </p>
-        )}
-      </CardContent>
-    </Card>
-  );
-}

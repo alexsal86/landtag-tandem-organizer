@@ -1,5 +1,5 @@
 import styles from "./KnowledgeWorkspace.module.css";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Plus, Search, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,8 @@ import {
 import { knowledgeUrlState } from "../logic";
 import type { KnowledgeView } from "../types";
 import { AskQuestionDialog } from "./AskQuestionDialog";
-import { KnowledgeQuestionCard } from "./KnowledgeQuestionCard";
+import { KnowledgeQuestionRow } from "./KnowledgeQuestionRow";
+import { KnowledgeDetailPanel } from "./KnowledgeDetailPanel";
 
 export function KnowledgeWorkspace() {
   const { tenantId, userId } = useKnowledgeScope();
@@ -28,11 +29,23 @@ export function KnowledgeWorkspace() {
 }
 function KnowledgeWorkspaceContent() {
   const [params, setParams] = useSearchParams();
+  const searchInput = useRef<HTMLInputElement>(null);
+  const returnFocus = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    const focusSearch = (event: KeyboardEvent) => {
+      const target = event.target;
+      if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey || event.defaultPrevented || params.get('frage')) return;
+      if (target instanceof Element && target.closest('input,textarea,select,[contenteditable="true"],[role="textbox"],[role="combobox"],[role="dialog"]')) return;
+      event.preventDefault(); searchInput.current?.focus();
+    };
+    document.addEventListener('keydown', focusSearch);
+    return () => document.removeEventListener('keydown', focusSearch);
+  }, [params]);
   const [search, setSearch] = useState("");
   const [asking, setAsking] = useState<string | null>(null);
   const questionId = params.get("frage");
   const { view, filters } = knowledgeUrlState(params);
-  const list = useKnowledgeQuestions(search, view, questionId, filters);
+  const list = useKnowledgeQuestions(search, view, null, filters);
   const counts = useKnowledgeCounts();
   const updateParam = (key: string, value: string) => {
     setParams((previous) => {
@@ -77,6 +90,7 @@ function KnowledgeWorkspaceContent() {
         <div className={styles.search}>
           <Search className={styles.searchIcon} />
           <Input
+            ref={searchInput}
             className={styles.searchInput}
             aria-label="Wissen durchsuchen"
             placeholder="Was möchtest du wissen?"
@@ -118,7 +132,7 @@ function KnowledgeWorkspaceContent() {
             </Button>
           ))}
         </nav>
-        {!questionId && (
+        {(
           <div className={styles.filters} aria-label="Wissen filtern">
             <label className={styles.filterLabel}>
               <span className="sr-only">Status</span>
@@ -178,17 +192,12 @@ function KnowledgeWorkspaceContent() {
             Zähler konnten nicht geladen werden.
           </p>
         )}
-        {questionId && (
-          <Button className={`${styles.button} ${styles.ghostButton} ${styles.back}`} variant="ghost" onClick={() => navigateView(view)}>
-            ← Zur Übersicht
-          </Button>
-        )}
         {profileError && (
           <p role="alert" className="text-sm text-muted-foreground">
             Mitarbeiternamen konnten nicht geladen werden.
           </p>
         )}
-        {!questionId && !list.isPending && !list.isError && !list.debouncing && (
+        {!list.isPending && !list.isError && !list.debouncing && (
           <p className={styles.count} role="status">{list.totalCount} {list.totalCount === 1 ? "Eintrag" : "Einträge"}</p>
         )}
         {list.isError ? (
@@ -212,18 +221,11 @@ function KnowledgeWorkspaceContent() {
         ) : list.data?.length ? (
           <div>
             {list.data.map((question) => (
-              <KnowledgeQuestionCard
-                key={question.id}
-                question={question}
-                detail={Boolean(questionId)}
-                query={search}
-                profiles={profiles}
-                assignable={assignable}
-                canWrite={canWrite}
-                canVerify={canVerify}
-                canManage={canManage}
-                onOpen={() => setParams({ frage: question.id, ansicht: view })}
-              />
+              <KnowledgeQuestionRow key={question.id} question={question} showAvatar={!search.trim()}
+                onOpen={element => {
+                  returnFocus.current = element;
+                  setParams(previous => { const next = new URLSearchParams(previous); next.set('frage', question.id); return next; });
+                }} />
             ))}
           </div>
         ) : (
@@ -248,14 +250,14 @@ function KnowledgeWorkspaceContent() {
                     ? "Alle bisherigen Fragen wurden beantwortet."
                     : "Eine Frage ist der Anfang. Kategorien oder Schlagwörter brauchst du nicht."}
             </p>
-            {!questionId && canWrite && (
+            {canWrite && (
               <Button className={`${styles.button} ${styles.primaryButton} mt-4`} onClick={() => setAsking(search)}>
-                {search ? "Diese Frage stellen" : "Frage stellen"}
+                {search ? `„${search}“ als Frage stellen` : "Frage stellen"}
               </Button>
             )}
           </div>
         )}
-        {!questionId && list.hasNextPage && (
+        {list.hasNextPage && (
           <div className={styles.pagination}>
             <Button
               className={styles.button}
@@ -276,6 +278,9 @@ function KnowledgeWorkspaceContent() {
             Bisheriger Wissensbereich
           </a>
         </footer>
+        <KnowledgeDetailPanel questionId={questionId} profiles={profiles} assignable={assignable} canWrite={canWrite} canVerify={canVerify} canManage={canManage}
+          onClose={() => setParams(previous => { const next = new URLSearchParams(previous); next.delete('frage'); return next; })}
+          onReturnFocus={() => { if (returnFocus.current?.isConnected) returnFocus.current.focus(); searchInput.current?.focus(); }} />
         {asking !== null && (
           <AskQuestionDialog
             initialQuestion={asking}

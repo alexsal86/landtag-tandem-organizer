@@ -9,9 +9,11 @@ import { useKnowledgeWrite } from "../hooks/useKnowledgeQuestions";
 export function ReviewPanel({
   question,
   now,
+  primary = false,
 }: {
   question: KnowledgeCard;
   now: number;
+  primary?: boolean;
 }) {
   const [baseRevision, setBaseRevision] = useState<number | null>(null);
   const [dueAt, setDueAt] = useState("");
@@ -51,8 +53,8 @@ export function ReviewPanel({
     <div className={styles.reviewControls}>
       <div className={styles.reviewTriggers}>
         <Button
-          className={styles.button}
-          variant="outline"
+          className={`${styles.button} ${primary && baseRevision === null ? styles.primaryButton : ""}`}
+          variant={primary && baseRevision === null ? "default" : "outline"}
           size="sm"
           disabled={write.isPending}
           onClick={() => {
