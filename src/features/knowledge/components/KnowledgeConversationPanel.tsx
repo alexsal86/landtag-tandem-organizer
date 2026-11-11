@@ -1,3 +1,5 @@
+import { Star, Flag } from "lucide-react";
+import styles from "./KnowledgeWorkspace.module.css";
 import {
   Dialog,
   DialogTrigger,
@@ -130,7 +132,8 @@ export function KnowledgeFollowToggle({ questionId }: { questionId: string }) {
   return (
     <div className="min-w-0 max-w-24 break-words">
       <Button
-        variant={following.data ? "secondary" : "ghost"}
+        variant="outline"
+        className={styles.headerButton}
         size="sm"
         aria-pressed={Boolean(following.data)}
         disabled={write.isPending || following.isPending || following.isError}
@@ -150,6 +153,11 @@ export function KnowledgeFollowToggle({ questionId }: { questionId: string }) {
           }
         }}
       >
+        <Star
+          className="h-4 w-4"
+          fill={following.data ? "currentColor" : "none"}
+          aria-hidden="true"
+        />
         Folgen
       </Button>
       {following.isError && (
@@ -184,7 +192,8 @@ export function KnowledgeOutdatedReport({
     >
       <DialogTrigger asChild>
         <Button
-          variant="ghost"
+          variant="outline"
+          className={`${styles.button} ${styles.neutralAction}`}
           size="sm"
           onClick={() => {
             setRevision(question.revision);
@@ -192,6 +201,7 @@ export function KnowledgeOutdatedReport({
             setError("");
           }}
         >
+          <Flag className="h-4 w-4" fill="currentColor" aria-hidden="true" />
           Veraltet melden
         </Button>
       </DialogTrigger>

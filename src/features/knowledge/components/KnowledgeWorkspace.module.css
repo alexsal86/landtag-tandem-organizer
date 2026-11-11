@@ -275,3 +275,24 @@
   .sourceGrid { grid-template-columns: minmax(0, 1fr); }
   .slideToolbar { gap: 4px; }
 }
+
+.theme .headerButton {
+  border: 1px solid var(--knowledge-line);
+  background: var(--knowledge-surface);
+  color: var(--knowledge-ink);
+  gap: 6px;
+}
+.theme .headerButton:hover { background: var(--knowledge-bg); color: var(--knowledge-ink); }
+.theme .headerButton[aria-pressed="true"] { background: var(--knowledge-soft); }
+.questionIntro { display: grid; gap: 16px; margin-bottom: 20px; min-width: 0; }
+.questionTitle { font-size: 22px; line-height: 1.35; overflow-wrap: anywhere; }
+.questionDescription { border-left: 3px solid var(--knowledge-line); background: var(--knowledge-bg); border-radius: 0 8px 8px 0; padding: 12px 16px; }
+.questionDescription h3 { font-size: 12px; font-weight: 600; color: var(--knowledge-muted); margin-bottom: 6px; }
+.questionDescription p { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--knowledge-ink); }
+.answerHeading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.answerActions { display: flex; margin-left: auto; }
+.theme .slideCard .compactAction { min-height: 30px; padding: 4px 9px; gap: 5px; border-radius: 7px; font-size: 12px; }
+.slideCard .attachments .attach { justify-self: end; margin-left: auto; min-height: 30px; padding: 4px 9px; font-size: 12px; border: 1px solid var(--knowledge-line); border-radius: 7px; color: var(--knowledge-ink); }
+.slideCard .attachments .attach svg { width: 14px; height: 14px; }
+.theme .neutralAction { border: 1px solid var(--knowledge-line); background: var(--knowledge-surface); color: var(--knowledge-ink); }
+.theme .slideCard .addTopicButton { align-self: center; min-height: 32px; height: auto; padding: 4px 9px; font-size: 12px; border-radius: 8px; color: var(--knowledge-ink); border-color: var(--knowledge-line); }

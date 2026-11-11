@@ -85,8 +85,8 @@ export function ReviewPanel({
             </Button>
           </DialogTrigger>
           <Button
-            className={`${styles.button} ${styles.ghostButton}`}
-            variant="ghost"
+            className={`${styles.button} ${styles.neutralAction}`}
+            variant="outline"
             size="sm"
             disabled={write.isPending}
             onClick={() => void review(false)}

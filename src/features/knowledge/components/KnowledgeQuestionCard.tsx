@@ -13,7 +13,7 @@ import { useMemo, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 import EnhancedLexicalEditor from "@/components/lexical/EnhancedLexicalEditor";
 import { Button } from "@/components/ui/button";
-import { answerText, effectiveReviewStatus, REVIEW_LABELS } from "../logic";
+import { answerText, effectiveReviewStatus } from "../logic";
 import type { KnowledgeCard } from "../types";
 import type { TenantProfileOption } from "@/hooks/useTenantProfiles";
 import { KnowledgeAnswerEditor } from "./KnowledgeAnswerEditor";
@@ -31,7 +31,6 @@ export function KnowledgeQuestionDetailContent({
   assignable,
   canWrite,
   canVerify,
-  canManage,
   showAvatars,
 }: {
   question: KnowledgeCard;
@@ -74,12 +73,30 @@ export function KnowledgeQuestionDetailContent({
           )}
         </p>
       )}
-      {question.description && (
-        <p className={styles.description}>{question.description}</p>
-      )}
-
       <section className={`${styles.slideCard} space-y-3`} aria-label="Antwort">
-        <h3 className="font-medium">Antwort</h3>
+        <div className={styles.answerHeading}>
+          <h3 className="font-medium">Antwort</h3>{" "}
+          {!editing && (
+            <div className={styles.answerActions}>
+              {canWrite && !question.archived_at && (
+                <Button
+                  ref={answerAction}
+                  className={`${styles.button} ${styles.compactAction} ${question.answered_at && status === "needs_review" ? "" : styles.primaryButton}`}
+                  variant={
+                    question.answered_at && status === "needs_review"
+                      ? "outline"
+                      : "default"
+                  }
+                  size="sm"
+                  onClick={() => setEditing(true)}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  {question.answered_at ? "Antwort bearbeiten" : "Beantworten"}
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
         {editing ? (
           <KnowledgeAnswerEditor
             question={question}
@@ -113,36 +130,16 @@ export function KnowledgeQuestionDetailContent({
             canWrite={canWrite && !question.archived_at && !editing}
           />
         )}
-        {!editing && (
-          <div className={styles.actions}>
-            {canWrite && !question.archived_at && (
-              <Button
-                ref={answerAction}
-                className={`${styles.button} ${question.answered_at && status === "needs_review" ? "" : styles.primaryButton}`}
-                variant={
-                  question.answered_at && status === "needs_review"
-                    ? "outline"
-                    : "default"
-                }
-                size="sm"
-                onClick={() => setEditing(true)}
-              >
-                <Pencil className="mr-2 h-4 w-4" />
-                {question.answered_at ? "Antwort bearbeiten" : "Beantworten"}
-              </Button>
-            )}
-          </div>
-        )}
 
         <KnowledgeConversationPanel question={question} />
       </section>
       <section className={`${styles.slideCard} space-y-3`} aria-label="Prüfung">
         <h3 className="font-medium">Prüfung</h3>
-        <p className="text-sm">
-          {question.answered_at
-            ? REVIEW_LABELS[status]
-            : "Nach einer Antwort kann die Aktualität geprüft werden."}
-        </p>
+        {!question.answered_at && (
+          <p className="text-sm text-muted-foreground">
+            Nach einer Antwort kann die Aktualität geprüft werden.
+          </p>
+        )}
         {!editing && question.answered_at && !question.archived_at && (
           <div className={styles.actions}>
             {canVerify && (
@@ -156,11 +153,7 @@ export function KnowledgeQuestionDetailContent({
           </div>
         )}
       </section>
-      <KnowledgeTagsPanel
-        question={question}
-        canWrite={canWrite}
-        canManage={canManage}
-      />
+      <KnowledgeTagsPanel question={question} canWrite={canWrite} />
       <KnowledgeSourcesPanel question={question} canWrite={canWrite} />
       <details
         className={styles.slideCard}

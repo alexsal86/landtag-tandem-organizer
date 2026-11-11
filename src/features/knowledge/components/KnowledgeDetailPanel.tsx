@@ -14,12 +14,7 @@ import {
 } from "./ManagementPanel";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useKnowledgeQuestion } from "../hooks/useKnowledgeQuestions";
 import { KnowledgeQuestionDetailContent } from "./KnowledgeQuestionCard";
 import type { TenantProfileOption } from "@/hooks/useTenantProfiles";
@@ -70,6 +65,7 @@ export function KnowledgeDetailPanel({
         side="right"
         className={`${styles.theme} ${styles.detailPanel}`}
         aria-modal="true"
+        aria-describedby={undefined}
         onCloseAutoFocus={(event) => {
           event.preventDefault();
           onReturnFocus();
@@ -91,7 +87,8 @@ export function KnowledgeDetailPanel({
                 <DropdownMenuTrigger asChild>
                   <Button
                     ref={menuTrigger}
-                    variant="ghost"
+                    variant="outline"
+                    className={styles.headerButton}
                     size="icon"
                     aria-label="Frage verwalten"
                   >
@@ -151,7 +148,8 @@ export function KnowledgeDetailPanel({
                 </DropdownMenuContent>
               </DropdownMenu>
               <Button
-                variant="ghost"
+                variant="outline"
+                className={styles.headerButton}
                 size="icon"
                 aria-label="Schließen"
                 onClick={onClose}
@@ -160,14 +158,19 @@ export function KnowledgeDetailPanel({
               </Button>
             </div>
           </div>
-          <SheetTitle className="break-words">
-            {detail.data?.title || "Wissensfrage"}
-          </SheetTitle>
-          <SheetDescription>
-            Antwort, Quellen und Änderungen dieser Frage.
-          </SheetDescription>
         </header>
         <div className={styles.slideBody}>
+          <section className={styles.questionIntro}>
+            <SheetTitle className={styles.questionTitle}>
+              {detail.data?.title || "Wissensfrage"}
+            </SheetTitle>
+            {detail.data?.description && (
+              <div className={styles.questionDescription}>
+                <h3>Beschreibung</h3>
+                <p>{detail.data.description}</p>
+              </div>
+            )}
+          </section>
           {copyMessage && (
             <p role="status" className="mb-3 text-sm">
               {copyMessage}

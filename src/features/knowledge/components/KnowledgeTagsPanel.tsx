@@ -11,31 +11,24 @@ import {
   CommandGroup,
 } from "@/components/ui/command";
 import { validateKnowledgeTagNames } from "../logic";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useCallback, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
-  useKnowledgeTags,
   useKnowledgeTagSuggestions,
   useKnowledgeExtraWrite,
 } from "../hooks/useKnowledgeExtras";
-import type { KnowledgeCard, KnowledgeTag } from "../types";
+import type { KnowledgeCard } from "../types";
 import { useTopics } from "@/hooks/useTopics";
 import styles from "./KnowledgeWorkspace.module.css";
 
 export function KnowledgeTagsPanel({
   question,
   canWrite,
-  canManage,
 }: {
   question: KnowledgeCard;
   canWrite: boolean;
-  canManage: boolean;
 }) {
-  const [params, setParams] = useSearchParams();
-  const suggestions = useKnowledgeTags();
   const { topics: platformTopics } = useTopics();
   const write = useKnowledgeExtraWrite();
   const navigate = useNavigate();
@@ -43,9 +36,6 @@ export function KnowledgeTagsPanel({
     platformTopics.find((t) => t.label.toLowerCase() === name.toLowerCase());
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
-  const [manage, setManage] = useState<KnowledgeTag | null>(null);
-  const [newName, setNewName] = useState("");
-  const [target, setTarget] = useState("");
   const tags = question.tags ?? [];
   const [open, setOpen] = useState(false);
   const listId = useId();
@@ -140,211 +130,115 @@ export function KnowledgeTagsPanel({
             )}
           </span>
         ))}
-      </div>
-      {!tags.length && (
-        <p className="text-sm text-muted-foreground">Keine Tags vergeben.</p>
-      )}
-      {canWrite && question.answered_at && !question.archived_at && (
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              ref={trigger}
-              variant="outline"
-              role="combobox"
-              aria-haspopup="listbox"
-              onKeyDown={(event) => {
-                if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-                  event.preventDefault();
-                  setOpen(true);
-                }
-              }}
-              aria-expanded={open}
-              aria-controls={controlledListId}
-              aria-label="Thema hinzufügen"
-              disabled={write.isPending || tags.length >= 5}
-            >
-              {tags.length >= 5 ? "Maximal fünf Themen" : "Thema hinzufügen"}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            className={`${styles.theme} ${styles.tagPopover}`}
-            align="start"
-            onCloseAutoFocus={(event) => {
-              event.preventDefault();
-              if (trigger.current && !trigger.current.disabled)
-                trigger.current.focus();
-              else
-                chips.current
-                  ?.querySelector<HTMLButtonElement>(
-                    "button[aria-label^='Tag ']",
-                  )
-                  ?.focus();
-            }}
-          >
-            <Command label="Themen durchsuchen" shouldFilter={false} loop>
-              <CommandInput
-                value={input}
-                onValueChange={setInput}
-                maxLength={30}
-                placeholder="Thema suchen …"
-                aria-label="Themen durchsuchen"
-              />
-              <CommandList ref={bindList} label="Themenvorschläge">
-                {matches.isError ? (
-                  <p role="alert" className="p-3 text-sm">
-                    Themen konnten nicht geladen werden.
-                  </p>
-                ) : !matches.data ? (
-                  <p role="status" className="p-3 text-sm">
-                    Themen werden geladen …
-                  </p>
-                ) : (
-                  <CommandGroup>
-                    {visible.map((tag) => (
-                      <CommandItem
-                        key={tag.id}
-                        value={tag.id}
-                        disabled={write.isPending}
-                        onSelect={() =>
-                          void update([
-                            ...tags.map((item) => item.name),
-                            tag.name,
-                          ])
-                        }
-                      >
-                        {tag.name}
-                      </CommandItem>
-                    ))}
-                    {canCreate && (
-                      <CommandItem
-                        value="__create__"
-                        disabled={write.isPending}
-                        onSelect={() =>
-                          void update([
-                            ...tags.map((tag) => tag.name),
-                            input.trim(),
-                          ])
-                        }
-                      >
-                        Neu anlegen: „{input.trim()}“
-                      </CommandItem>
-                    )}
-                    {!visible.length && !canCreate && (
-                      <p className="p-3 text-sm">
-                        Keine weiteren Themen gefunden.
-                      </p>
-                    )}
-                  </CommandGroup>
-                )}
-              </CommandList>
-              {remaining > 0 && (
-                <p className="px-3 py-2 text-xs text-muted-foreground">
-                  + {remaining} weitere – Suche verfeinern
-                </p>
-              )}
-              {error && (
-                <p role="alert" className="p-3 text-sm">
-                  {error}
-                </p>
-              )}
-            </Command>
-          </PopoverContent>
-        </Popover>
-      )}
-      {canManage && !question.archived_at && tags.length > 0 && (
-        <details>
-          <summary className="cursor-pointer text-sm">Themen verwalten</summary>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {tags.map((tag) => (
+        {canWrite && question.answered_at && !question.archived_at && (
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
               <Button
-                key={tag.id}
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setManage(tag);
-                  setNewName(tag.name);
-                  setTarget("");
+                ref={trigger}
+                className={styles.addTopicButton}
+                variant="outline"
+                role="combobox"
+                aria-haspopup="listbox"
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                    event.preventDefault();
+                    setOpen(true);
+                  }
                 }}
+                aria-expanded={open}
+                aria-controls={controlledListId}
+                aria-label="Thema hinzufügen"
+                disabled={write.isPending || tags.length >= 5}
               >
-                {tag.name} verwalten
+                {tags.length >= 5 ? "Maximal fünf Themen" : "Thema hinzufügen"}
               </Button>
-            ))}
-          </div>
-        </details>
-      )}
-
-      {manage && canManage && (
-        <form
-          className="space-y-2 rounded border p-3"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            setError("");
-            try {
-              await write.mutateAsync({
-                name: "knowledge_qa_manage_tag",
-                args: {
-                  p_tag: manage.id,
-                  p_name: target ? undefined : newName.trim(),
-                  p_merge_into: target || undefined,
-                },
-              });
-              if (target && params.get("tag") === manage.id)
-                setParams((previous) => {
-                  const next = new URLSearchParams(previous);
-                  next.set("tag", target);
-                  return next;
-                });
-              setManage(null);
-            } catch (cause) {
-              setError(
-                cause instanceof Error
-                  ? cause.message
-                  : "Tag konnte nicht geändert werden.",
-              );
-            }
-          }}
-        >
-          <Label htmlFor="tag-rename">Tag umbenennen</Label>
-          <Input
-            id="tag-rename"
-            value={newName}
-            onChange={(event) => setNewName(event.target.value)}
-            minLength={2}
-            maxLength={30}
-          />
-          <Label htmlFor="tag-merge">
-            Oder mit vorhandenem Tag zusammenführen
-          </Label>
-          <select
-            id="tag-merge"
-            className={styles.select}
-            value={target}
-            onChange={(event) => setTarget(event.target.value)}
-          >
-            <option value="">Nicht zusammenführen</option>
-            {suggestions.data
-              ?.filter((tag) => tag.id !== manage.id)
-              .map((tag) => (
-                <option key={tag.id} value={tag.id}>
-                  {tag.name}
-                </option>
-              ))}
-          </select>
-          <div className="flex gap-2">
-            <Button variant="outline" disabled={write.isPending}>
-              Speichern
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setManage(null)}
+            </PopoverTrigger>
+            <PopoverContent
+              className={`${styles.theme} ${styles.tagPopover}`}
+              align="start"
+              onCloseAutoFocus={(event) => {
+                event.preventDefault();
+                if (trigger.current && !trigger.current.disabled)
+                  trigger.current.focus();
+                else
+                  chips.current
+                    ?.querySelector<HTMLButtonElement>(
+                      "button[aria-label^='Tag ']",
+                    )
+                    ?.focus();
+              }}
             >
-              Abbrechen
-            </Button>
-          </div>
-        </form>
-      )}
+              <Command label="Themen durchsuchen" shouldFilter={false} loop>
+                <CommandInput
+                  value={input}
+                  onValueChange={setInput}
+                  maxLength={30}
+                  placeholder="Thema suchen …"
+                  aria-label="Themen durchsuchen"
+                />
+                <CommandList ref={bindList} label="Themenvorschläge">
+                  {matches.isError ? (
+                    <p role="alert" className="p-3 text-sm">
+                      Themen konnten nicht geladen werden.
+                    </p>
+                  ) : !matches.data ? (
+                    <p role="status" className="p-3 text-sm">
+                      Themen werden geladen …
+                    </p>
+                  ) : (
+                    <CommandGroup>
+                      {visible.map((tag) => (
+                        <CommandItem
+                          key={tag.id}
+                          value={tag.id}
+                          disabled={write.isPending}
+                          onSelect={() =>
+                            void update([
+                              ...tags.map((item) => item.name),
+                              tag.name,
+                            ])
+                          }
+                        >
+                          {tag.name}
+                        </CommandItem>
+                      ))}
+                      {canCreate && (
+                        <CommandItem
+                          value="__create__"
+                          disabled={write.isPending}
+                          onSelect={() =>
+                            void update([
+                              ...tags.map((tag) => tag.name),
+                              input.trim(),
+                            ])
+                          }
+                        >
+                          Neu anlegen: „{input.trim()}“
+                        </CommandItem>
+                      )}
+                      {!visible.length && !canCreate && (
+                        <p className="p-3 text-sm">
+                          Keine weiteren Themen gefunden.
+                        </p>
+                      )}
+                    </CommandGroup>
+                  )}
+                </CommandList>
+                {remaining > 0 && (
+                  <p className="px-3 py-2 text-xs text-muted-foreground">
+                    + {remaining} weitere – Suche verfeinern
+                  </p>
+                )}
+                {error && (
+                  <p role="alert" className="p-3 text-sm">
+                    {error}
+                  </p>
+                )}
+              </Command>
+            </PopoverContent>
+          </Popover>
+        )}
+      </div>
       {error && <p role="alert">{error}</p>}
     </section>
   );
