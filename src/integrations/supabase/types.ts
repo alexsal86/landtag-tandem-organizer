@@ -6950,6 +6950,12 @@ export type Database = {
         Update: { tenant_id?: string; question_id?: string; tag_id?: string }
         Relationships: []
       }
+      knowledge_question_sources: {
+        Row: { id: string; tenant_id: string; question_id: string; kind: 'link'|'document'|'law'|'person'|'case'; title: string; url: string|null; document_id: string|null; case_id: string|null; as_of: string|null; created_by: string; created_at: string; client_revision: number }
+        Insert: { id?: string; tenant_id: string; question_id: string; kind: 'link'|'document'|'law'|'person'|'case'; title: string; url?: string|null; document_id?: string|null; case_id?: string|null; as_of?: string|null; created_by: string; created_at?: string; client_revision: number }
+        Update: { title?: string }
+        Relationships: []
+      }
       knowledge_questions: {
         Row: {
           archived_at: string | null
@@ -14064,6 +14070,8 @@ export type Database = {
       }
       knowledge_qa_set_tags: { Args: { p_question: string; p_expected_revision: number; p_names: string[] }; Returns: undefined }
       knowledge_qa_manage_tag: { Args: { p_tag: string; p_name?: string; p_merge_into?: string }; Returns: undefined }
+      knowledge_qa_add_source: { Args: { p_question: string; p_expected_revision: number; p_kind: 'link'|'document'|'law'|'person'|'case'; p_title?: string; p_url?: string; p_document?: string; p_case?: string; p_as_of?: string }; Returns: undefined }
+      knowledge_qa_remove_source: { Args: { p_source: string; p_expected_revision: number }; Returns: undefined }
       knowledge_qa_list: {
         Args: { p_tenant: string; p_query?: string; p_view?: string; p_limit?: number; p_cursor?: Json; p_status?: string; p_assignee?: string; p_sort?: string; p_tag?: string; p_quick?: string }
         Returns: { items: Json; total_count: number; next_cursor: Json | null; counts: Json; topics: Json }[]

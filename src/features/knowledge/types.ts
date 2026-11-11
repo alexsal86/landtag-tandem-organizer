@@ -75,3 +75,10 @@ export interface KnowledgeFilters {
 }
 
 export interface KnowledgeTag { id: string; name: string }
+
+export type KnowledgeSourceKind = 'link' | 'document' | 'law' | 'person' | 'case';
+export interface KnowledgeSource {
+  id: string; question_id: string; kind: KnowledgeSourceKind; title: string;
+  url: string | null; document_id: string | null; case_id: string | null; as_of: string | null;
+  created_by: string; created_at: string;
+}

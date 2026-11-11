@@ -35,6 +35,12 @@ try {
     CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$ SELECT current_setting('test.role',true) $$;
     CREATE TYPE app_role AS ENUM ('abgeordneter','bueroleitung','mitarbeiter','praktikant');
     CREATE TABLE tenants(id uuid PRIMARY KEY);
+    CREATE TABLE documents(id uuid PRIMARY KEY,tenant_id uuid,title text,user_id uuid);
+    CREATE TABLE case_files(id uuid PRIMARY KEY,tenant_id uuid,title text,user_id uuid);
+    ALTER TABLE documents ENABLE ROW LEVEL SECURITY; ALTER TABLE case_files ENABLE ROW LEVEL SECURITY;
+    CREATE POLICY document_read ON documents FOR SELECT TO authenticated USING(user_id=auth.uid());
+    CREATE POLICY case_read ON case_files FOR SELECT TO authenticated USING(user_id=auth.uid());
+    GRANT SELECT ON documents,case_files TO authenticated;
     CREATE TABLE profiles(user_id uuid PRIMARY KEY,tenant_id uuid,display_name text,avatar_url text);
     ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
     GRANT SELECT ON profiles TO authenticated;
@@ -82,7 +88,7 @@ try {
 
   }
 
-  for (const file of ['20261111100800_knowledge_tags.sql']) {
+  for (const file of ['20261111100800_knowledge_tags.sql','20261111100900_knowledge_sources.sql']) {
     const migration=await readFile(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8');
     await db.exec(migration); await db.exec(migration);
   }
@@ -102,8 +108,17 @@ try {
   await assert.rejects(read("SELECT * FROM knowledge_qa_list($1,'','answers',20,NULL,'','','updated','','bad')",[officeA]),e=>e.code==='22023');
   await assert.rejects(read('SELECT knowledge_qa_set_tags($1,$2,$3)',[q.id,q.revision,['Urlaub','urlaub']]),e=>e.code==='22023');
   await assert.rejects(read('SELECT knowledge_qa_set_tags($1,$2,$3)',[q.id,q.revision,['aa','bb','cc','dd','ee','ff']]),e=>e.code==='22023');
+  const doc='99999999-1111-4111-8111-111111111111'; const hidden='99999999-2222-4222-8222-222222222222';
+  await owner(); await db.query('INSERT INTO documents VALUES($1,$2,$3,$4),($5,$2,$6,$7)',[doc,officeA,'Sichtbares Dokument',alice,hidden,'Vertrauliches Dokument',clara]); await db.query('INSERT INTO case_files VALUES($1,$2,$3,$4)',[hidden,officeA,'Vertrauliche Fallakte',clara]); await actor(alice);
+  await denied(read("SELECT knowledge_qa_add_source($1,$2,'document','',NULL,$3)",[q.id,q.revision,hidden]));
+  await denied(read("SELECT knowledge_qa_add_source($1,$2,'case','',NULL,NULL,$3)",[q.id,q.revision,hidden]));
+  await read("SELECT knowledge_qa_add_source($1,$2,'document','',NULL,$3)",[q.id,q.revision,doc]);
+  q=(await read('SELECT * FROM knowledge_questions WHERE id=$1',[q.id]))[0];
+  assert.equal((await read('SELECT title FROM knowledge_question_sources WHERE question_id=$1',[q.id]))[0].title,'Sichtbares Dokument');
+  await assert.rejects(read("SELECT knowledge_qa_add_source($1,$2,'link','Script','javascript:alert(1)')",[q.id,q.revision]),e=>e.code==='23514');
   await owner(); await db.query("INSERT INTO action_permissions VALUES($1,'knowledge.write','{}')",[officeA]); await actor(alice);
   await denied(read('SELECT knowledge_qa_set_tags($1,$2,$3)',[q.id,q.revision,['Nein']]));
+  await denied(read("SELECT knowledge_qa_add_source($1,$2,'link','Gesperrt','https://example.test')",[q.id,q.revision]));
   await owner(); await db.query("DELETE FROM action_permissions WHERE action_key='knowledge.write'"); await actor(bob);
   assert.equal((await read("SELECT * FROM knowledge_qa_list($1)",[officeA]))[0].total_count,0);
   console.log('Knowledge 11–14 acceptance: quick/tag filters, tag rights, bounded metadata and idempotent migrations passed.');

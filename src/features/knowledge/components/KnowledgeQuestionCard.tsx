@@ -1,3 +1,4 @@
+import { KnowledgeSourcesPanel } from "./KnowledgeSourcesPanel";
 import { KnowledgeTagsPanel } from "./KnowledgeTagsPanel";
 import styles from "./KnowledgeWorkspace.module.css";
 import { KnowledgePersonLabel } from "./KnowledgePersonAvatar";
@@ -121,6 +122,38 @@ export function KnowledgeQuestionDetailContent({
             Diese Frage wartet auf eine Antwort.
           </p>
         )}
+        {!editing && (
+          <div className={styles.actions}>
+            {canWrite && !question.archived_at && (
+              <Button
+                className={`${styles.button} ${question.answered_at && status === "needs_review" ? "" : styles.primaryButton}`}
+                variant={question.answered_at && status === "needs_review" ? "outline" : "default"}
+                size="sm"
+                onClick={() => setEditing(true)}
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                {question.answered_at ? "Antwort bearbeiten" : "Beantworten"}
+              </Button>
+            )}
+            {question.answered_at && !question.archived_at && canVerify && (
+              <ReviewPanel question={question} now={now} primary={status === "needs_review"} />
+            )}
+            <Button
+              className={`${styles.button} ${styles.ghostButton}`}
+              variant="ghost"
+              size="sm"
+              onClick={() => setHistoryOpen((value) => !value)}
+              aria-expanded={historyOpen}
+            >
+              <History className="mr-2 h-4 w-4" />
+              Verlauf
+            </Button>
+          </div>
+        )}
+
+        <KnowledgeTagsPanel question={question} canWrite={canWrite} canManage={canManage} />
+        <KnowledgeSourcesPanel question={question} canWrite={canWrite} />
+        <details className="border-t pt-4"><summary className="cursor-pointer font-medium">Details</summary><div className="space-y-3">
         <div className={`${styles.metadata} items-center`}>
           <span>
             Gefragt von{" "}
@@ -181,36 +214,8 @@ export function KnowledgeQuestionDetailContent({
             />
           </p>
         )}
-        {!editing && (
-          <div className={styles.actions}>
-            {canWrite && !question.archived_at && (
-              <Button
-                className={`${styles.button} ${question.answered_at && status === "needs_review" ? "" : styles.primaryButton}`}
-                variant={question.answered_at && status === "needs_review" ? "outline" : "default"}
-                size="sm"
-                onClick={() => setEditing(true)}
-              >
-                <Pencil className="mr-2 h-4 w-4" />
-                {question.answered_at ? "Antwort bearbeiten" : "Beantworten"}
-              </Button>
-            )}
-            {question.answered_at && !question.archived_at && canVerify && (
-              <ReviewPanel question={question} now={now} primary={status === "needs_review"} />
-            )}
-            <Button
-              className={`${styles.button} ${styles.ghostButton}`}
-              variant="ghost"
-              size="sm"
-              onClick={() => setHistoryOpen((value) => !value)}
-              aria-expanded={historyOpen}
-            >
-              <History className="mr-2 h-4 w-4" />
-              Verlauf
-            </Button>
-          </div>
-        )}
 
-        <KnowledgeTagsPanel question={question} canWrite={canWrite} canManage={canManage} />
+        </div></details>
         {!editing && !question.archived_at && canManage && (
           <ManagementPanel question={question} />
         )}

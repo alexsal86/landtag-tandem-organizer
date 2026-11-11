@@ -14,6 +14,10 @@ export const knowledgePersonName = (
       "Ehemaliger Mitarbeiter"
     : "Noch nicht zugeordnet";
 export const KNOWLEDGE_EVENT_NAMES: Record<string, string> = {
+  tags_changed: "Tags geändert",
+  sources_changed: "Quellen geändert",
+  comment_added: "Rückfrage",
+  outdated_reported: "Als veraltet gemeldet",
   question_edited: "Frage bearbeitet",
   question_archived: "Frage archiviert",
   question_merged: "Duplikat zusammengeführt",

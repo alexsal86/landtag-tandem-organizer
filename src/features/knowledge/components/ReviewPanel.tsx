@@ -1,3 +1,6 @@
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import { useKnowledgeSources } from "../hooks/useKnowledgeExtras";
+import { KnowledgeSourceList } from "./KnowledgeSourcesPanel";
 import styles from "./KnowledgeWorkspace.module.css";
 import { useState } from "react";
 import { CheckCheck } from "lucide-react";
@@ -19,6 +22,7 @@ export function ReviewPanel({
   const [dueAt, setDueAt] = useState("");
   const [error, setError] = useState("");
   const write = useKnowledgeWrite();
+  const sources = useKnowledgeSources(question.id, baseRevision !== null);
   const review = async (verified: boolean) => {
     setError("");
     try {
@@ -50,9 +54,9 @@ export function ReviewPanel({
     }
   };
   return (
-    <div className={styles.reviewControls}>
+    <Dialog open={baseRevision !== null} onOpenChange={open => { if (!open) setBaseRevision(null); }}><div className={styles.reviewControls}>
       <div className={styles.reviewTriggers}>
-        <Button
+        <DialogTrigger asChild><Button
           className={`${styles.button} ${primary && baseRevision === null ? styles.primaryButton : ""}`}
           variant={primary && baseRevision === null ? "default" : "outline"}
           size="sm"
@@ -64,7 +68,7 @@ export function ReviewPanel({
         >
           <CheckCheck className="mr-2 h-4 w-4" />
           Als aktuell geprüft markieren
-        </Button>
+        </Button></DialogTrigger>
         <Button
           className={`${styles.button} ${styles.ghostButton}`}
           variant="ghost"
@@ -76,10 +80,11 @@ export function ReviewPanel({
         </Button>
       </div>
       {baseRevision !== null && (
-        <div className={`${styles.review} space-y-2`}>
-          <p className="text-sm">
-            Du bestätigst, dass du diese Antwort auf Aktualität geprüft hast.
-          </p>
+        <DialogContent className={`${styles.theme} space-y-3 max-h-[90dvh] overflow-auto`}>
+          <DialogHeader><DialogTitle>Aktualität bestätigen</DialogTitle><DialogDescription>Prüfe Antwort und Quellen auf Aktualität.</DialogDescription></DialogHeader>
+          <h4 className="font-medium">Quellen abgleichen</h4>
+          {sources.isPending ? <p>Quellen werden geladen …</p> : sources.isError ? <p role="alert">Quellen konnten nicht geladen werden.</p> : <KnowledgeSourceList sources={sources.data ?? []} />}
+          {error && <p role="alert">{error}</p>}
           <Label htmlFor={`due-${question.id}`}>
             Erneut prüfen am (optional)
           </Label>
@@ -94,7 +99,7 @@ export function ReviewPanel({
             <Button
               className={`${styles.button} ${styles.primaryButton}`}
               size="sm"
-              disabled={write.isPending}
+              disabled={write.isPending || sources.isPending || sources.isError}
               onClick={() => void review(true)}
             >
               Aktualität bestätigen
@@ -112,13 +117,13 @@ export function ReviewPanel({
               Abbrechen
             </Button>
           </div>
-        </div>
+        </DialogContent>
       )}
-      {error && (
+      {error && baseRevision === null && (
         <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       )}
-    </div>
+    </div></Dialog>
   );
 }
