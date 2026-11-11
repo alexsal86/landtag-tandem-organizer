@@ -1,3 +1,4 @@
+import styles from "./KnowledgeWorkspace.module.css";
 import { useState } from "react";
 import { Label } from "@/components/ui/label";
 import type { TenantProfileOption } from "@/hooks/useTenantProfiles";
@@ -18,11 +19,11 @@ export function AssigneeSelect({
   const [error, setError] = useState("");
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className={styles.assignment}>
         <Label htmlFor={`assignee-${question.id}`}>Zuständig</Label>
         <select
           id={`assignee-${question.id}`}
-          className="max-w-full rounded border bg-background px-2 py-1 text-sm"
+          className={styles.select}
           value={question.assigned_to || ""}
           disabled={write.isPending}
           onChange={async (event) => {

@@ -1,3 +1,4 @@
+import styles from "./KnowledgeWorkspace.module.css";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Plus, Search, Loader2 } from "lucide-react";
@@ -54,29 +55,29 @@ function KnowledgeWorkspaceContent() {
     updateParam("ansicht", next);
   };
   return (
-    <div className="h-full overflow-auto">
+    <div className={`${styles.theme} ${styles.workspace}`}>
       <section
-        className="mx-auto max-w-4xl space-y-6 p-4 pb-12 sm:p-8"
+        className={styles.content}
         aria-label="Wissen"
       >
-        <header className="flex items-center justify-between gap-3">
+        <header className={styles.header}>
           <div>
-            <h1 className="text-2xl font-semibold">Wissen</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <h1 className={styles.heading}>Wissen</h1>
+            <p className={styles.subtitle}>
               Fragen stellen. Wissen miteinander teilen.
             </p>
           </div>
           {canWrite && (
-            <Button onClick={() => setAsking("")}>
+            <Button className={`${styles.button} ${styles.primaryButton}`} onClick={() => setAsking("")}>
               <Plus className="mr-2 h-4 w-4" />
               Frage stellen
             </Button>
           )}
         </header>
-        <div className="relative">
-          <Search className="absolute left-4 top-4 h-5 w-5 text-muted-foreground" />
+        <div className={styles.search}>
+          <Search className={styles.searchIcon} />
           <Input
-            className="h-14 pl-12 pr-12 text-base"
+            className={styles.searchInput}
             aria-label="Wissen durchsuchen"
             placeholder="Was möchtest du wissen?"
             maxLength={300}
@@ -89,11 +90,11 @@ function KnowledgeWorkspaceContent() {
           {(list.isFetching || list.debouncing) && (
             <Loader2
               aria-label="Suche läuft"
-              className="absolute right-4 top-4 h-5 w-5 animate-spin text-muted-foreground"
+              className={`${styles.searchPending} animate-spin`}
             />
           )}
         </div>
-        <nav className="flex flex-wrap gap-2" aria-label="Wissensansichten">
+        <nav className={styles.tabs} aria-label="Wissensansichten">
           {(
             [
               ["answers", "Antworten"],
@@ -106,27 +107,23 @@ function KnowledgeWorkspaceContent() {
             <Button
               key={key}
               variant="ghost"
-              className={
-                view === key && !questionId
-                  ? "bg-primary/10 text-primary hover:bg-primary/15"
-                  : undefined
-              }
+              className={`${styles.button} ${styles.tab} ${view === key && !questionId ? styles.activeTab : ""}`}
               aria-current={view === key && !questionId ? "page" : undefined}
               onClick={() => navigateView(key as KnowledgeView)}
             >
               {label}{" "}
-              <span className="ml-2 text-xs">
+              <span className={styles.tabCount}>
                 {counts.data?.[key as KnowledgeView] ?? "–"}
               </span>
             </Button>
           ))}
         </nav>
         {!questionId && (
-          <div className="flex flex-wrap gap-3" aria-label="Wissen filtern">
-            <label className="text-sm">
-              Status{" "}
+          <div className={styles.filters} aria-label="Wissen filtern">
+            <label className={styles.filterLabel}>
+              <span className="sr-only">Status</span>
               <select
-                className="rounded border bg-background p-2"
+                className={styles.select}
                 value={filters.status}
                 onChange={(event) => updateParam("status", event.target.value)}
               >
@@ -137,10 +134,10 @@ function KnowledgeWorkspaceContent() {
                 <option value="needs_review">Prüfung fällig</option>
               </select>
             </label>
-            <label className="text-sm">
-              Zuständig{" "}
+            <label className={styles.filterLabel}>
+              <span className="sr-only">Zuständig</span>
               <select
-                className="rounded border bg-background p-2"
+                className={styles.select}
                 value={filters.assignee}
                 onChange={(event) =>
                   updateParam("zustaendig", event.target.value)
@@ -155,10 +152,10 @@ function KnowledgeWorkspaceContent() {
                 ))}
               </select>
             </label>
-            <label className="text-sm">
-              Sortierung{" "}
+            <label className={styles.filterLabel}>
+              <span className="sr-only">Sortierung</span>
               <select
-                className="rounded border bg-background p-2"
+                className={styles.select}
                 disabled={Boolean(search.trim())}
                 value={filters.sort}
                 onChange={(event) =>
@@ -182,7 +179,7 @@ function KnowledgeWorkspaceContent() {
           </p>
         )}
         {questionId && (
-          <Button variant="ghost" onClick={() => navigateView(view)}>
+          <Button className={`${styles.button} ${styles.ghostButton} ${styles.back}`} variant="ghost" onClick={() => navigateView(view)}>
             ← Zur Übersicht
           </Button>
         )}
@@ -191,6 +188,9 @@ function KnowledgeWorkspaceContent() {
             Mitarbeiternamen konnten nicht geladen werden.
           </p>
         )}
+        {!questionId && !list.isPending && !list.isError && !list.debouncing && (
+          <p className={styles.count} role="status">{list.totalCount} {list.totalCount === 1 ? "Eintrag" : "Einträge"}</p>
+        )}
         {list.isError ? (
           <div
             role="alert"
@@ -198,7 +198,7 @@ function KnowledgeWorkspaceContent() {
           >
             <p>Wissen konnte nicht geladen werden.</p>
             <Button
-              className="mt-3"
+              className={`${styles.button} mt-3`}
               variant="outline"
               onClick={() => void list.refetch()}
             >
@@ -210,7 +210,7 @@ function KnowledgeWorkspaceContent() {
             {search ? "Antworten werden gesucht …" : "Wissen wird geladen …"}
           </p>
         ) : list.data?.length ? (
-          <div className="space-y-4">
+          <div>
             {list.data.map((question) => (
               <KnowledgeQuestionCard
                 key={question.id}
@@ -227,7 +227,7 @@ function KnowledgeWorkspaceContent() {
             ))}
           </div>
         ) : (
-          <div className="rounded-lg border border-dashed p-8 text-center">
+          <div className={styles.emptyState}>
             <h2 className="font-medium">
               {questionId
                 ? "Frage nicht verfügbar"
@@ -249,18 +249,16 @@ function KnowledgeWorkspaceContent() {
                     : "Eine Frage ist der Anfang. Kategorien oder Schlagwörter brauchst du nicht."}
             </p>
             {!questionId && canWrite && (
-              <Button className="mt-4" onClick={() => setAsking(search)}>
+              <Button className={`${styles.button} ${styles.primaryButton} mt-4`} onClick={() => setAsking(search)}>
                 {search ? "Diese Frage stellen" : "Frage stellen"}
               </Button>
             )}
           </div>
         )}
-        <p className="text-sm text-muted-foreground" role="status">
-          {list.totalCount} Einträge
-        </p>
         {!questionId && list.hasNextPage && (
-          <div className="text-center">
+          <div className={styles.pagination}>
             <Button
+              className={styles.button}
               variant="outline"
               disabled={list.isFetching}
               onClick={() => void list.fetchNextPage()}
@@ -270,7 +268,7 @@ function KnowledgeWorkspaceContent() {
             </Button>
           </div>
         )}
-        <footer className="border-t pt-4">
+        <footer className={styles.footer}>
           <a
             className="text-sm text-muted-foreground hover:underline"
             href="/dossiers"

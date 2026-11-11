@@ -1,3 +1,4 @@
+import styles from "./KnowledgeWorkspace.module.css";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,21 +32,21 @@ export function ManagementPanel({ question }: { question: KnowledgeCard }) {
     setSearch("");
   };
   return (
-    <section aria-label="Frage verwalten" className="space-y-3 border-t pt-3">
-      <div className="flex flex-wrap gap-2">
-        <Button size="sm" variant="ghost" onClick={() => start("edit")}>
+    <section aria-label="Frage verwalten" className={`${styles.management} space-y-3`}>
+      <div className={styles.actions}>
+        <Button className={`${styles.button} ${styles.ghostButton}`} size="sm" variant="ghost" onClick={() => start("edit")}>
           Frage bearbeiten
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => start("archive")}>
+        <Button className={`${styles.button} ${styles.ghostButton}`} size="sm" variant="ghost" onClick={() => start("archive")}>
           Archivieren / schließen
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => start("merge")}>
+        <Button className={`${styles.button} ${styles.ghostButton}`} size="sm" variant="ghost" onClick={() => start("merge")}>
           Als Duplikat zusammenführen
         </Button>
       </div>
       {mode && (
         <form
-          className="space-y-3 rounded border p-3"
+          className={`${styles.review} space-y-3`}
           onSubmit={async (event) => {
             event.preventDefault();
             setError("");
@@ -82,7 +83,7 @@ export function ManagementPanel({ question }: { question: KnowledgeCard }) {
           {mode === "edit" && (
             <>
               <Label htmlFor={`edit-title-${question.id}`}>Frage</Label>
-              <Input
+              <Input className={styles.formInput}
                 id={`edit-title-${question.id}`}
                 required
                 maxLength={300}
@@ -92,7 +93,7 @@ export function ManagementPanel({ question }: { question: KnowledgeCard }) {
               <Label htmlFor={`edit-description-${question.id}`}>
                 Beschreibung
               </Label>
-              <Textarea
+              <Textarea className={styles.formInput}
                 id={`edit-description-${question.id}`}
                 maxLength={10000}
                 value={description}
@@ -111,7 +112,7 @@ export function ManagementPanel({ question }: { question: KnowledgeCard }) {
               <Label htmlFor={`merge-search-${question.id}`}>
                 Zielantwort suchen
               </Label>
-              <Input
+              <Input className={styles.formInput}
                 id={`merge-search-${question.id}`}
                 value={search}
                 onChange={(event) => {
@@ -127,7 +128,7 @@ export function ManagementPanel({ question }: { question: KnowledgeCard }) {
                     key={item.id}
                     type="button"
                     variant={target?.id === item.id ? "secondary" : "outline"}
-                    className="h-auto w-full whitespace-normal text-left"
+                    className={`${styles.button} ${styles.mergeTarget} ${target?.id === item.id ? styles.selectedTarget : ""}`}
                     onClick={() => setTarget(item)}
                   >
                     {item.title}
@@ -151,6 +152,7 @@ export function ManagementPanel({ question }: { question: KnowledgeCard }) {
           )}
           <div className="flex gap-2">
             <Button
+              className={`${styles.button} ${styles.primaryButton}`}
               size="sm"
               disabled={write.isPending || (mode === "merge" && !target)}
             >
@@ -159,6 +161,7 @@ export function ManagementPanel({ question }: { question: KnowledgeCard }) {
                 : "Schließen bestätigen"}
             </Button>
             <Button
+              className={`${styles.button} ${styles.ghostButton}`}
               size="sm"
               type="button"
               variant="ghost"

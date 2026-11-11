@@ -1,3 +1,4 @@
+import styles from "./KnowledgeWorkspace.module.css";
 import { useState } from "react";
 import EnhancedLexicalEditor from "@/components/lexical/EnhancedLexicalEditor";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,7 @@ export function KnowledgeAnswerEditor({
   const [error, setError] = useState("");
   const write = useKnowledgeWrite();
   return (
-    <div className="space-y-3">
+    <div className={`${styles.editor} space-y-3`}>
       <div inert={write.isPending} aria-busy={write.isPending}>
         <EnhancedLexicalEditor
           knowledgeMode
@@ -48,8 +49,9 @@ export function KnowledgeAnswerEditor({
           {error}
         </p>
       )}
-      <div className="flex flex-wrap gap-2">
+      <div className={styles.actions}>
         <Button
+          className={`${styles.button} ${styles.primaryButton}`}
           disabled={write.isPending || !draft.plainText.trim()}
           onClick={async () => {
             setError("");
@@ -74,7 +76,7 @@ export function KnowledgeAnswerEditor({
         >
           {write.isPending ? "Wird gespeichert …" : "Antwort speichern"}
         </Button>
-        <Button variant="ghost" disabled={write.isPending} onClick={onClose}>
+        <Button className={`${styles.button} ${styles.ghostButton}`} variant="ghost" disabled={write.isPending} onClick={onClose}>
           Abbrechen
         </Button>
       </div>

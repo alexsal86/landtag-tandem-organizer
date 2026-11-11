@@ -1,3 +1,4 @@
+import styles from "./KnowledgeWorkspace.module.css";
 import { useState } from "react";
 import { CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -47,9 +48,10 @@ export function ReviewPanel({
     }
   };
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
+    <div className={styles.reviewControls}>
+      <div className={styles.reviewTriggers}>
         <Button
+          className={styles.button}
           variant="outline"
           size="sm"
           disabled={write.isPending}
@@ -62,6 +64,7 @@ export function ReviewPanel({
           Als aktuell geprüft markieren
         </Button>
         <Button
+          className={`${styles.button} ${styles.ghostButton}`}
           variant="ghost"
           size="sm"
           disabled={write.isPending}
@@ -71,7 +74,7 @@ export function ReviewPanel({
         </Button>
       </div>
       {baseRevision !== null && (
-        <div className="space-y-2 rounded border bg-muted/20 p-3">
+        <div className={`${styles.review} space-y-2`}>
           <p className="text-sm">
             Du bestätigst, dass du diese Antwort auf Aktualität geprüft hast.
           </p>
@@ -81,12 +84,13 @@ export function ReviewPanel({
           <input
             id={`due-${question.id}`}
             type="datetime-local"
-            className="block max-w-full rounded border bg-background p-2 text-sm"
+            className={`${styles.formInput} block max-w-full`}
             value={dueAt}
             onChange={(event) => setDueAt(event.target.value)}
           />
-          <div className="flex gap-2">
+          <div className={styles.actions}>
             <Button
+              className={`${styles.button} ${styles.primaryButton}`}
               size="sm"
               disabled={write.isPending}
               onClick={() => void review(true)}
@@ -94,6 +98,7 @@ export function ReviewPanel({
               Aktualität bestätigen
             </Button>
             <Button
+              className={`${styles.button} ${styles.ghostButton}`}
               variant="ghost"
               size="sm"
               disabled={write.isPending}

@@ -1,3 +1,4 @@
+import styles from "./KnowledgeWorkspace.module.css";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -43,15 +44,14 @@ export function AskQuestionDialog({
         if (!open && !write.isPending) onClose();
       }}
     >
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Frage stellen</DialogTitle>
-          <DialogDescription>
+      <DialogContent className={`${styles.theme} ${styles.dialog}`} overlayClassName="bg-black/40">
+        <DialogHeader className={styles.dialogHeader}>
+          <DialogTitle className={styles.dialogTitle}>Frage stellen</DialogTitle>
+          <DialogDescription className={styles.dialogDescription}>
             Eine Frage genügt. Ein Kollege kann sie hier beantworten.
           </DialogDescription>
         </DialogHeader>
         <form
-          className="space-y-4"
           onSubmit={async (event) => {
             event.preventDefault();
             const validation = validateQuestion(title, description);
@@ -80,9 +80,10 @@ export function AskQuestionDialog({
             }
           }}
         >
-          <div className="space-y-1">
+          <div className={styles.formField}>
             <Label htmlFor="knowledge-question">Frage</Label>
             <Input
+              className={styles.formInput}
               id="knowledge-question"
               autoFocus
               required
@@ -95,7 +96,7 @@ export function AskQuestionDialog({
           {similar.data && similar.data.length > 0 && (
             <section
               aria-label="Ähnliche Fragen"
-              className="space-y-2 rounded border p-3"
+              className={styles.similar}
             >
               <h3 className="text-sm font-medium">
                 Gibt es dazu schon eine Antwort?
@@ -103,7 +104,7 @@ export function AskQuestionDialog({
               {similar.data.map((question) => (
                 <Link
                   key={question.id}
-                  className="block rounded border bg-muted/30 p-2 text-sm hover:bg-muted"
+                  className={styles.similarCard}
                   to={`?frage=${question.id}`}
                   onClick={onClose}
                 >
@@ -121,22 +122,23 @@ export function AskQuestionDialog({
               Frage trotzdem stellen.
             </p>
           )}
-          <div className="space-y-1">
+          <div className={styles.formField}>
             <Label htmlFor="knowledge-description">
               Ergänzende Informationen (optional)
             </Label>
             <Textarea
+              className={styles.formInput}
               id="knowledge-description"
               maxLength={10000}
               value={description}
               onChange={(event) => setDescription(event.target.value)}
             />
           </div>
-          <div className="space-y-1">
+          <div className={styles.formField}>
             <Label htmlFor="knowledge-assignee">Zuständig (optional)</Label>
             <select
               id="knowledge-assignee"
-              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              className={styles.formInput}
               value={assignee}
               onChange={(event) => setAssignee(event.target.value)}
             >
@@ -153,8 +155,9 @@ export function AskQuestionDialog({
               {error}
             </p>
           )}
-          <div className="flex justify-end gap-2">
+          <div className={styles.formActions}>
             <Button
+              className={`${styles.button} ${styles.ghostButton}`}
               type="button"
               variant="outline"
               disabled={write.isPending}
@@ -162,7 +165,7 @@ export function AskQuestionDialog({
             >
               Abbrechen
             </Button>
-            <Button disabled={!title.trim() || write.isPending}>
+            <Button className={`${styles.button} ${styles.primaryButton}`} disabled={!title.trim() || write.isPending}>
               {write.isPending ? "Wird gespeichert …" : "Frage stellen"}
             </Button>
           </div>

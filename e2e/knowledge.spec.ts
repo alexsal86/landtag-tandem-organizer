@@ -88,9 +88,11 @@ test('questions, answers, reviews, private attachments, search, errors and legac
   await expect(page.getByRole('heading', { name: 'Wissen', exact: true })).toBeVisible();
   await expect(page.getByPlaceholder('Was möchtest du wissen?')).toBeVisible();
   await page.getByRole('button', { name: 'Frage stellen', exact: true }).first().click();
+  await page.screenshot({ path: info.outputPath('wissen-dialog.png'), fullPage: true });
   await page.getByRole('textbox', { name: 'Frage', exact: true }).fill('Wie beantrage ich Urlaub?');
   await page.getByRole('dialog').getByRole('button', { name: 'Frage stellen', exact: true }).click();
   await expect(page.getByText('Offene Frage', { exact: true })).toBeVisible();
+  await page.screenshot({ path: info.outputPath('wissen-offene-frage.png'), fullPage: true });
   expect(questions[0].assigned_to).toBeNull();
   await page.getByRole('button', { name: 'Beantworten', exact: true }).click();
   const editor = page.locator('[contenteditable="true"][aria-label="Antwort"]');
@@ -104,12 +106,14 @@ test('questions, answers, reviews, private attachments, search, errors and legac
   await page.getByRole('button', { name: 'Als aktuell geprüft markieren' }).click();
   await page.getByRole('button', { name: 'Aktualität bestätigen' }).click();
   await expect(page.getByText('Geprüft', { exact: true })).toBeVisible();
+  await page.screenshot({ path: info.outputPath('wissen-geprueft.png'), fullPage: true });
   await page.getByRole('button', { name: 'Antwort bearbeiten' }).click();
   await editor.fill('Bitte den Antrag mit Datum an die Büroleitung senden.');
   await page.getByRole('button', { name: 'Antwort speichern', exact: true }).click();
   await expect(page.locator('div.rounded-full').getByText('Ungeprüft', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Überprüfung anfordern', exact: true }).click();
   await expect(page.getByText('Überprüfung erforderlich', { exact: true })).toBeVisible();
+  await page.screenshot({ path: info.outputPath('wissen-pruefung-faellig.png'), fullPage: true });
   await page.getByLabel('Datei anhängen', { exact: true }).setInputFiles({ name: 'ablauf.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 test') });
   await expect(page.getByText('ablauf.pdf', { exact: true })).toBeVisible();
   await expect(page.locator('div.rounded-full').getByText('Ungeprüft', { exact: true })).toBeVisible();
@@ -122,6 +126,11 @@ test('questions, answers, reviews, private attachments, search, errors and legac
   await page.getByRole('button',{name:'Vollständig anzeigen',exact:true}).click();
   await expect(page.getByRole('button',{name:'Antwort bearbeiten'})).toBeVisible();
   await page.screenshot({ path: info.outputPath('wissen-desktop.png'), fullPage: true });
+  await page.evaluate(() => document.documentElement.classList.add('dark'));
+  await page.waitForTimeout(350);
+  await page.screenshot({ path: info.outputPath('wissen-dark.png'), fullPage: true });
+  await page.evaluate(() => document.documentElement.classList.remove('dark'));
+  await page.waitForTimeout(350);
   await search.fill('Unbekannte Richtlinie');
   await page.getByRole('button', { name: 'Diese Frage stellen' }).click();
   await expect(page.getByRole('textbox', { name: 'Frage', exact: true })).toHaveValue('Unbekannte Richtlinie');

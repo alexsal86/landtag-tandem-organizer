@@ -1,3 +1,4 @@
+import styles from "./KnowledgeWorkspace.module.css";
 import { Link } from "react-router-dom";
 import { ManagementPanel } from "./ManagementPanel";
 import { useMemo, useState } from "react";
@@ -55,15 +56,16 @@ function FullKnowledgeQuestionCard({
     }
   }, [question.answer_content]);
   return (
-    <Card>
-      <CardContent className="space-y-4 p-4 sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <h2 className="min-w-0 flex-1 text-lg font-semibold break-words">
+    <Card className={styles.card}>
+      <CardContent className={styles.cardContent}>
+        <div className={styles.cardHeader}>
+          <h2 className={styles.cardTitle}>
             <button className="text-left hover:underline" onClick={onOpen}>
               {question.title}
             </button>
           </h2>
           <Badge
+            className={`${styles.badge} ${!question.answered_at ? styles.badgeOpen : status === "verified" ? styles.badgeVerified : status === "needs_review" ? styles.badgeDue : ""}`}
             variant={
               question.answered_at
                 ? status === "verified"
@@ -93,7 +95,7 @@ function FullKnowledgeQuestionCard({
           </p>
         )}
         {question.description && (
-          <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground">
+          <p className={styles.description}>
             {question.description}
           </p>
         )}
@@ -105,7 +107,7 @@ function FullKnowledgeQuestionCard({
           />
         ) : question.answered_at ? (
           <>
-            <EnhancedLexicalEditor
+            <div className={styles.answer}><EnhancedLexicalEditor
               key={`${question.id}-${question.answer_revision}`}
               knowledgeMode
               editable={false}
@@ -113,18 +115,18 @@ function FullKnowledgeQuestionCard({
               content={question.answer_text}
               contentNodes={validContent}
               onChange={() => {}}
-            />
+            /></div>
             <KnowledgeAttachments
               question={question}
               canWrite={canWrite && !question.archived_at}
             />
           </>
         ) : (
-          <p className="text-sm text-muted-foreground">
+          <p className={styles.emptyAnswer}>
             Diese Frage wartet auf eine Antwort.
           </p>
         )}
-        <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
+        <div className={styles.metadata}>
           <span>
             Gefragt von {name(question.created_by)} ·{" "}
             {formatDate(question.created_at)}
@@ -161,9 +163,10 @@ function FullKnowledgeQuestionCard({
           )
         )}
         {!editing && (
-          <div className="flex flex-wrap gap-2">
+          <div className={styles.actions}>
             {canWrite && !question.archived_at && (
               <Button
+                className={`${styles.button} ${question.answered_at ? "" : styles.primaryButton}`}
                 variant={question.answered_at ? "outline" : "default"}
                 size="sm"
                 onClick={() => setEditing(true)}
@@ -172,7 +175,9 @@ function FullKnowledgeQuestionCard({
                 {question.answered_at ? "Antwort bearbeiten" : "Beantworten"}
               </Button>
             )}
+            {question.answered_at && !question.archived_at && canVerify && <ReviewPanel question={question} now={now} />}
             <Button
+              className={`${styles.button} ${styles.ghostButton}`}
               variant="ghost"
               size="sm"
               onClick={() => setHistoryOpen((value) => !value)}
@@ -183,10 +188,7 @@ function FullKnowledgeQuestionCard({
             </Button>
           </div>
         )}
-        {!editing &&
-          question.answered_at &&
-          !question.archived_at &&
-          canVerify && <ReviewPanel question={question} now={now} />}
+
         {!editing && !question.archived_at && canManage && (
           <ManagementPanel question={question} />
         )}
@@ -219,7 +221,7 @@ export function KnowledgeQuestionCard(props: {
       return (
         <p role="alert">
           Frage konnte nicht geladen werden.{" "}
-          <Button onClick={() => void detail.refetch()}>
+          <Button className={styles.button} onClick={() => void detail.refetch()}>
             Erneut versuchen
           </Button>
         </p>
@@ -230,31 +232,34 @@ export function KnowledgeQuestionCard(props: {
   }
   const question = props.question;
   return (
-    <Card>
-      <CardContent className="space-y-4 p-6">
-        <div className="flex flex-wrap justify-between gap-2">
-          <h2 className="text-lg font-semibold">
+    <Card className={styles.card}>
+      <CardContent className={styles.cardContent}>
+        <div className={styles.cardHeader}>
+          <h2 className={styles.cardTitle}>
             <button onClick={props.onOpen}>{question.title}</button>
           </h2>
-          <Badge>
+          <Badge variant="outline" className={`${styles.badge} ${!question.answered_at ? styles.badgeOpen : effectiveReviewStatus(question, now) === "verified" ? styles.badgeVerified : effectiveReviewStatus(question, now) === "needs_review" ? styles.badgeDue : ""}`}>
             {question.answered_at
               ? REVIEW_LABELS[effectiveReviewStatus(question, now)]
               : "Offene Frage"}
           </Badge>
         </div>
         {question.description && (
-          <p className="text-sm text-muted-foreground">
+          <p className={styles.description}>
             {question.description}
           </p>
         )}
-        <p className="whitespace-pre-wrap text-sm">
-          {question.answered_at
-            ? question.answer_excerpt
-            : "Diese Frage wartet auf eine Antwort."}
-        </p>
-        <Button variant="outline" onClick={() => setExpanded(true)}>
-          Vollständig anzeigen
-        </Button>
+        <div className={question.answered_at ? `${styles.answer} ${styles.summaryAnswer}` : styles.emptyAnswer}>
+          <p>{question.answered_at ? question.answer_excerpt : "Diese Frage wartet auf eine Antwort."}</p>{" "}
+          <Button className={styles.expandLink} variant="link" onClick={() => setExpanded(true)}>
+            Vollständig anzeigen
+          </Button>
+        </div>
+        <div className={styles.metadata}>
+          <span>Gefragt von {knowledgePersonName(props.profiles, question.created_by)} · {formatDate(question.created_at)}</span>
+          {question.assigned_to && <span>Verantwortlich: {knowledgePersonName(props.profiles, question.assigned_to)}</span>}
+          {question.answer_updated_at && <span>Aktualisiert: {formatDate(question.answer_updated_at)}</span>}
+        </div>
       </CardContent>
     </Card>
   );

@@ -1,3 +1,4 @@
+import styles from "./KnowledgeWorkspace.module.css";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Download, Paperclip, X } from "lucide-react";
@@ -43,7 +44,7 @@ export function KnowledgeAttachments({
     }
   };
   return (
-    <div className="space-y-2">
+    <div className={styles.attachments}>
       {query.isLoading && (
         <p className="text-xs text-muted-foreground">
           Anhänge werden geladen …
@@ -60,11 +61,12 @@ export function KnowledgeAttachments({
       {query.data?.map((file) => (
         <div
           key={file.id}
-          className="flex items-center gap-2 rounded border px-2 py-1 text-sm"
+          className={styles.attachment}
         >
           <Paperclip className="h-4 w-4 shrink-0" />
           <span className="min-w-0 flex-1 break-all">{file.file_name}</span>
           <Button
+            className={styles.attachmentButton}
             variant="ghost"
             size="icon"
             aria-label={`${file.file_name} herunterladen`}
@@ -74,6 +76,7 @@ export function KnowledgeAttachments({
           </Button>
           {canWrite && (
             <Button
+              className={styles.attachmentButton}
               variant="ghost"
               size="icon"
               aria-label={`${file.file_name} entfernen`}
@@ -114,7 +117,7 @@ export function KnowledgeAttachments({
         </div>
       ))}
       {canWrite && (
-        <label className="inline-flex cursor-pointer items-center gap-1 text-sm text-primary hover:underline">
+        <label className={styles.attach}>
           <Paperclip className="h-4 w-4" />
           {busy ? "Datei wird übertragen …" : "Datei anhängen"}
           <input
