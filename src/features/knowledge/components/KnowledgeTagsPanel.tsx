@@ -1,4 +1,4 @@
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,9 @@ export function KnowledgeTagsPanel({
   const suggestions = useKnowledgeTags();
   const { topics: platformTopics } = useTopics();
   const write = useKnowledgeExtraWrite();
+  const navigate = useNavigate();
+  const topicFor = (name: string) =>
+    platformTopics.find((t) => t.label.toLowerCase() === name.toLowerCase());
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
   const [manage, setManage] = useState<KnowledgeTag | null>(null);
@@ -57,11 +60,22 @@ export function KnowledgeTagsPanel({
   };
   return (
     <section className="space-y-2 border-t pt-4" aria-label="Tags">
-      <h3 className="font-medium">Tags</h3>
+      <h3 className="font-medium">Themen</h3>
       <div className="flex flex-wrap gap-2">
         {tags.map((tag) => (
           <span className={styles.tagChip} key={tag.id}>
-            {tag.name}
+            {topicFor(tag.name) ? (
+              <button
+                type="button"
+                className="hover:underline"
+                aria-label={`Thema ${tag.name} plattformweit anzeigen`}
+                onClick={() => navigate(`/themen/${topicFor(tag.name)!.id}`)}
+              >
+                {tag.name}
+              </button>
+            ) : (
+              tag.name
+            )}
             {canWrite && question.answered_at && !question.archived_at && (
               <button
                 type="button"
