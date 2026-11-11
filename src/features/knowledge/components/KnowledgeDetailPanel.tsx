@@ -165,10 +165,9 @@ export function KnowledgeDetailPanel({
               {detail.data?.title || "Wissensfrage"}
             </SheetTitle>
             {detail.data?.description && (
-              <div className={styles.questionDescription}>
-                <h3>Beschreibung</h3>
-                <p>{detail.data.description}</p>
-              </div>
+              <p className={styles.questionDescription}>
+                {detail.data.description}
+              </p>
             )}
           </section>
           {copyMessage && (
