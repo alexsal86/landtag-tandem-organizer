@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
-import { Plus, GripVertical, Edit, Trash2, Tag, FileText, Users, Calendar, CheckSquare, Briefcase } from "lucide-react";
+import { Merge, Plus, GripVertical, Edit, Trash2, Tag, FileText, Users, Calendar, CheckSquare, Briefcase } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { TagIconPicker } from "@/components/contacts/TagIconPicker";
 
@@ -22,7 +22,9 @@ const getIconComponent = (iconName: string) => {
 };
 
 export const TopicSettings = () => {
-  const { topics, loading, createTopic, updateTopic, deleteTopic, toggleActive, updateOrder } = useTopics();
+  const { topics, loading, createTopic, updateTopic, deleteTopic, toggleActive, updateOrder, mergeTopics } = useTopics();
+  const [mergeSource, setMergeSource] = useState<Topic | null>(null);
+  const [mergeTarget, setMergeTarget] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingTopic, setEditingTopic] = useState<Topic | null>(null);
   const [formData, setFormData] = useState({
@@ -244,6 +246,16 @@ export const TopicSettings = () => {
                           <Edit className="h-4 w-4" />
                         </Button>
 
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`${topic.label} zusammenführen`}
+                          title="Mit anderem Thema zusammenführen"
+                          onClick={() => { setMergeSource(topic); setMergeTarget(""); }}
+                        >
+                          <Merge className="h-4 w-4" />
+                        </Button>
+
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
@@ -333,6 +345,39 @@ export const TopicSettings = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingTopic(null)}>Abbrechen</Button>
             <Button onClick={handleUpdate}>Speichern</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!mergeSource} onOpenChange={(o) => !o && setMergeSource(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>„{mergeSource?.label}" zusammenführen</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Alle Fallakten, Kontakte, Dokumente, Termine, Aufgaben und weiteren Verknüpfungen wandern zum Zielthema. „{mergeSource?.label}" wird danach entfernt.
+          </p>
+          <Label htmlFor="merge-target">Zielthema</Label>
+          <select
+            id="merge-target"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+            value={mergeTarget}
+            onChange={(e) => setMergeTarget(e.target.value)}
+          >
+            <option value="">Bitte wählen…</option>
+            {topics.filter((t) => t.id !== mergeSource?.id).map((t) => (
+              <option key={t.id} value={t.id}>{t.label}</option>
+            ))}
+          </select>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMergeSource(null)}>Abbrechen</Button>
+            <Button
+              disabled={!mergeTarget}
+              onClick={async () => {
+                if (mergeSource && mergeTarget && (await mergeTopics(mergeSource.id, mergeTarget))) setMergeSource(null);
+              }}
+            >
+              Zusammenführen
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
