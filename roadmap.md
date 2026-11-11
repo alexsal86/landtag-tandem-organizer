@@ -49,5 +49,6 @@
 # Plattformweite Themen (Option B)
 - [x] Themen beim Tippen anlegen, Zusammenführen für Büroleitung, alte Tags übernommen
 - [x] Fallakten nur noch mit Themen-Box; Wissens-Tags spiegeln Themen
-- [ ] Kontakt- und Dokumentformulare vollständig auf Themenauswahl umstellen
-- [ ] Querschnittsansicht pro Thema
+- [x] Kontakt-/Dokument-Tags laufen automatisch in Themen (DB-Abgleich)
+- [x] Querschnittsansicht pro Thema (/themen)
+- [ ] Angemeldet prüfen — externe Supabase-Testsitzung nicht verfügbar

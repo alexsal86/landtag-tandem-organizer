@@ -1,5 +1,6 @@
 import React from "react";
 import { useTopics, Topic } from "@/hooks/useTopics";
+import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -168,6 +169,7 @@ export const TopicDisplay: React.FC<TopicDisplayProps> = ({
   expandable = true,
 }) => {
   const { topics, loading } = useTopics();
+  const navigate = useNavigate();
   const [expanded, setExpanded] = React.useState(false);
 
   if (loading || topicIds.length === 0) {
@@ -184,7 +186,9 @@ export const TopicDisplay: React.FC<TopicDisplayProps> = ({
         <Badge
           key={topic.id}
           variant="secondary"
-          className="gap-1 text-xs"
+          className="gap-1 text-xs cursor-pointer"
+          title="Alles zu diesem Thema anzeigen"
+          onClick={(e) => { e.stopPropagation(); navigate(`/themen/${topic.id}`); }}
            style={{ 
             backgroundColor: `${topic.color ?? '#3b82f6'}20`,
             borderColor: topic.color ?? undefined,

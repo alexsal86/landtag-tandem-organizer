@@ -102,20 +102,15 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
 
   const fetchAllTags = async (): Promise<void> => {
     try {
+      // Platform-wide topics are the single vocabulary; tags sync to topics in the DB.
       const { data, error } = await supabase
-        .from('contacts')
-        .select('tags')
-        .not('tags', 'is', null);
+        .from('topics')
+        .select('label')
+        .eq('is_active', true)
+        .order('order_index');
 
       if (error) throw error;
-      
-      const tagsSet = new Set<string>();
-      data?.forEach((contact: Record<string, any>) => {
-        if (contact.tags && Array.isArray(contact.tags)) {
-          contact.tags.forEach((tag: string) => tagsSet.add(tag));
-        }
-      });
-      setAllTags(Array.from(tagsSet));
+      setAllTags((data ?? []).map((t) => t.label));
     } catch (error) {
       debugConsole.error('Error fetching tags:', error);
     }
@@ -838,7 +833,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
 
 
           <div>
-            <Label htmlFor="tags">Tags</Label>
+            <Label htmlFor="tags">Themen</Label>
             <TagInput
               tags={formData.tags}
               onTagsChange={(tags) => handleChange('tags', tags)}
