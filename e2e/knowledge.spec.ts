@@ -72,6 +72,7 @@ test('questions, answers, reviews, private attachments, search, errors and legac
       const profile = { id: 'profile', user_id: user.id, display_name: 'Test Mitarbeiter', tenant_id: tenant.id, avatar_url: avatarUrl }; data = single ? profile : [profile];
     } else if (path.endsWith('/tenants')) data = single ? tenant : [tenant];
     else if (path.endsWith('/user_onboarding_state')) data = { completed_at: '2026-01-01T00:00:00Z' };
+    else if (path.endsWith('/knowledge_tags') || path.endsWith('/knowledge_question_sources') || path.endsWith('/knowledge_question_comment_cards') || path.endsWith('/knowledge_question_followers')) data=single ? null : [];
     else if (path.endsWith('/knowledge_question_attachments')) data = attachments.filter(file => file.state === 'ready');
     else if (path.includes('/storage/v1/object/knowledge-attachments/')) data = { Key: path.split('/object/')[1], Id: 'file' };
     else if (path.endsWith('/knowledge_question_cards')) {
@@ -98,6 +99,7 @@ test('questions, answers, reviews, private attachments, search, errors and legac
   await expect(page.getByText('Offene Frage', { exact: true })).toBeVisible();
   await page.screenshot({ path: info.outputPath('wissen-offene-frage.png'), fullPage: true });
   expect(questions[0].assigned_to).toBeNull();
+  await page.getByText('Details',{exact:true}).click();
   const assignee = page.getByRole('combobox', { name: 'Zuständig', exact: true });
   await assignee.focus(); await assignee.press('ArrowDown');
   const personOption = page.getByRole('option', { name: 'Test Mitarbeiter', exact: true });
@@ -131,19 +133,19 @@ test('questions, answers, reviews, private attachments, search, errors and legac
   await page.getByLabel('Datei anhängen', { exact: true }).setInputFiles({ name: 'ablauf.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 test') });
   await expect(page.getByText('ablauf.pdf', { exact: true })).toBeVisible();
   await expect(page.locator('div.rounded-full').getByText('Ungeprüft', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '← Zur Übersicht' }).click();
+  await page.getByRole('dialog').getByRole('button',{name:'Schließen',exact:true}).click();
   await page.getByRole('button', { name: /^Antworten/ }).click();
   const search = page.getByRole('textbox', { name: 'Wissen durchsuchen' });
   await search.fill('Urlaub');
   await expect(page.getByText('Bitte den Antrag mit Datum an die Büroleitung senden.', { exact: true })).toBeVisible();
-  await expect(page.locator('[title="Test Mitarbeiter"][aria-hidden="true"]')).toHaveCount(0);
+  await expect(page.locator('section[aria-label="Wissen"] [title="Test Mitarbeiter"][aria-hidden="true"]')).toHaveCount(0);
   const profileRequestsBeforeExpand=requests.filter(path=>path.endsWith('/profiles')).length;
 
   await expect(page.locator('[contenteditable]')).toHaveCount(0);
-  await page.getByRole('button',{name:'Vollständig anzeigen',exact:true}).click();
+  await page.getByRole('button',{name:/Wie beantrage ich Urlaub/}).click();
   await expect(page.getByRole('button',{name:'Antwort bearbeiten'})).toBeVisible();
   expect(requests.filter(path=>path.endsWith('/profiles')).length).toBe(profileRequestsBeforeExpand);
-  await expect(page.locator('[title="Test Mitarbeiter"][aria-hidden="true"]')).toHaveCount(0);
+  await expect(page.locator('section[aria-label="Wissen"] [title="Test Mitarbeiter"][aria-hidden="true"]')).toHaveCount(0);
 
   await page.screenshot({ path: info.outputPath('wissen-desktop.png'), fullPage: true });
   await page.evaluate(() => document.documentElement.classList.add('dark'));
@@ -151,21 +153,22 @@ test('questions, answers, reviews, private attachments, search, errors and legac
   await page.screenshot({ path: info.outputPath('wissen-dark.png'), fullPage: true });
   await page.evaluate(() => document.documentElement.classList.remove('dark'));
   await page.waitForTimeout(350);
+  await page.getByRole('dialog').getByRole('button',{name:'Schließen',exact:true}).click();
   await search.fill('Unbekannte Richtlinie');
-  await page.getByRole('button', { name: 'Diese Frage stellen' }).click();
+  await page.getByRole('button', { name: /Unbekannte Richtlinie.*als Frage stellen/ }).click();
   await expect(page.getByRole('textbox', { name: 'Frage', exact: true })).toHaveValue('Unbekannte Richtlinie');
   await page.getByRole('button', { name: 'Abbrechen', exact: true }).click();
   failSearch = true; await search.fill('Suchfehler');
   await expect(page.getByRole('alert')).toContainText('Wissen konnte nicht geladen werden');
   await expect(page.getByText('Keine passenden Antworten gefunden')).toHaveCount(0);
   failSearch = false; await search.fill('');
-  await expect(page.getByRole('heading', { name: 'Wie beantrage ich Urlaub?' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Wie beantrage ich Urlaub/ })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: info.outputPath('wissen-mobile.png'), fullPage: true });
-  await expect(page.locator('[title="Test Mitarbeiter"] img[loading="lazy"][alt=""]')).toBeVisible();
+  await expect(page.getByRole('button',{name:/Wie beantrage ich Urlaub/})).toBeVisible();
 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.getByRole('button', { name: 'Vollständig anzeigen', exact: true }).click();
+  await page.getByRole('button',{name:/Wie beantrage ich Urlaub/}).click();
   await page.getByRole('button', { name: 'Frage bearbeiten', exact: true }).click();
   await page.getByRole('textbox', { name: 'Frage', exact: true }).fill('Wie beantrage ich Urlaub im Büro?');
   conflict = true;
@@ -173,6 +176,7 @@ test('questions, answers, reviews, private attachments, search, errors and legac
   await expect(page.getByRole('alert')).toContainText('inzwischen geändert');
   await page.getByRole('button', { name: 'Änderungen speichern' }).click();
   await expect(page.getByRole('heading', { name: 'Wie beantrage ich Urlaub im Büro?' })).toBeVisible();
+  await page.getByRole('dialog').getByRole('button',{name:'Schließen',exact:true}).click();
   await page.getByRole('button', { name: 'Frage stellen', exact: true }).first().click();
   await page.getByRole('textbox', { name: 'Frage', exact: true }).fill('Duplikat Urlaub');
   await page.getByRole('dialog').getByRole('button', { name: 'Frage stellen', exact: true }).click();
@@ -186,6 +190,7 @@ test('questions, answers, reviews, private attachments, search, errors and legac
   await page.getByRole('button', { name: 'Schließen bestätigen' }).click();
   await expect(page.getByText('Diese Frage ist archiviert.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Antwort bearbeiten' })).toHaveCount(0);
+  await page.getByRole('dialog').getByRole('button',{name:'Schließen',exact:true}).click();
   await page.getByRole('link', { name: 'Bisheriger Wissensbereich' }).click();
   await expect(page.getByText('Mein Radar', { exact: true })).toBeVisible();
   await page.goto('/knowledge'); await expect(page.getByRole('heading', { name: 'Wissensdatenbank', exact: true })).toBeVisible();

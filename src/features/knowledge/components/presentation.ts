@@ -28,11 +28,27 @@ export const KNOWLEDGE_EVENT_NAMES: Record<string, string> = {
   assignee_changed: "Zuständigkeit geändert",
 };
 
-export const knowledgeOpenDays = (createdAt: string, now: number) => Math.max(0, Math.floor((now - Date.parse(createdAt)) / 86_400_000));
-export function formatKnowledgeRelativeDate(value: string, now = Date.now()): string {
+export const knowledgeOpenDays = (createdAt: string, now: number) =>
+  Math.max(0, Math.floor((now - Date.parse(createdAt)) / 86_400_000));
+export function formatKnowledgeRelativeDate(
+  value: string,
+  now = Date.now(),
+): string {
   const seconds = (Date.parse(value) - now) / 1000;
-  if (Math.abs(seconds) < 60) return 'gerade eben';
-  const units: [Intl.RelativeTimeFormatUnit, number][] = [['year', 31536000], ['month', 2592000], ['week', 604800], ['day', 86400], ['hour', 3600], ['minute', 60]];
-  const [unit, size] = units.find(([, size]) => Math.abs(seconds) >= size) ?? units[units.length - 1];
-  return new Intl.RelativeTimeFormat('de', { numeric: 'auto' }).format(Math.trunc(seconds / size), unit);
+  if (Math.abs(seconds) < 60) return "gerade eben";
+  const units: [Intl.RelativeTimeFormatUnit, number][] = [
+    ["year", 31536000],
+    ["month", 2592000],
+    ["week", 604800],
+    ["day", 86400],
+    ["hour", 3600],
+    ["minute", 60],
+  ];
+  const [unit, size] =
+    units.find(([, size]) => Math.abs(seconds) >= size) ??
+    units[units.length - 1];
+  return new Intl.RelativeTimeFormat("de", { numeric: "auto" }).format(
+    Math.trunc(seconds / size),
+    unit,
+  );
 }

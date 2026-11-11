@@ -70,6 +70,7 @@ export const buildDeepLinkPath = (notification: Notification): string => {
         ? buildHighlightPath('/documents?tab=press', documentId)
         : buildHighlightPath('/documents?tab=letters', documentId);
     }
+    case 'knowledge_qa_comment':
     case 'knowledge_qa_assigned':
     case 'knowledge_qa_answered':
     case 'knowledge_qa_due':

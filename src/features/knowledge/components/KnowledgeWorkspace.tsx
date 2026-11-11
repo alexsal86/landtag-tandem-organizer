@@ -33,12 +33,27 @@ function KnowledgeWorkspaceContent() {
   useEffect(() => {
     const focusSearch = (event: KeyboardEvent) => {
       const target = event.target;
-      if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey || event.defaultPrevented || params.get('frage')) return;
-      if (target instanceof Element && target.closest('input,textarea,select,[contenteditable="true"],[role="textbox"],[role="combobox"],[role="dialog"]')) return;
-      event.preventDefault(); searchInput.current?.focus();
+      if (
+        event.key !== "/" ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey ||
+        event.defaultPrevented ||
+        params.get("frage")
+      )
+        return;
+      if (
+        target instanceof Element &&
+        target.closest(
+          'input,textarea,select,[contenteditable="true"],[role="textbox"],[role="combobox"],[role="dialog"]',
+        )
+      )
+        return;
+      event.preventDefault();
+      searchInput.current?.focus();
     };
-    document.addEventListener('keydown', focusSearch);
-    return () => document.removeEventListener('keydown', focusSearch);
+    document.addEventListener("keydown", focusSearch);
+    return () => document.removeEventListener("keydown", focusSearch);
   }, [params]);
   const [search, setSearch] = useState("");
   const [asking, setAsking] = useState<string | null>(null);
@@ -64,14 +79,19 @@ function KnowledgeWorkspaceContent() {
   const { allowed: canManage } = useActionPermission("knowledge.manage");
   const { allowed: canVerify } = useActionPermission("knowledge.verify");
   const navigateView = (next: KnowledgeView) => {
-    updateParam("ansicht", next);
+    setParams((previous) => {
+      const value = new URLSearchParams(previous);
+      value.delete("frage");
+      value.set("ansicht", next);
+      if (["open", "assigned", "review"].includes(next))
+        value.set("schnell", next);
+      else value.delete("schnell");
+      return value;
+    });
   };
   return (
     <div className={`${styles.theme} ${styles.workspace}`}>
-      <section
-        className={styles.content}
-        aria-label="Wissen"
-      >
+      <section className={styles.content} aria-label="Wissen">
         <header className={styles.header}>
           <div>
             <h1 className={styles.heading}>Wissen</h1>
@@ -80,7 +100,10 @@ function KnowledgeWorkspaceContent() {
             </p>
           </div>
           {canWrite && (
-            <Button className={`${styles.button} ${styles.primaryButton}`} onClick={() => setAsking("")}>
+            <Button
+              className={`${styles.button} ${styles.primaryButton}`}
+              onClick={() => setAsking("")}
+            >
               <Plus className="mr-2 h-4 w-4" />
               Frage stellen
             </Button>
@@ -107,10 +130,35 @@ function KnowledgeWorkspaceContent() {
             />
           )}
         </div>
-        <div className="flex flex-wrap gap-2" aria-label="Schnellfilter">
-          {([['','Alle'],['open','Offen'],['assigned','Mir zugewiesen'],...(canVerify ? [['review','Prüfung fällig']] : [])] as const).map(([key,label]) => <Button key={key} variant={filters.quick === key || (!filters.quick && !key) ? 'secondary' : 'ghost'} onClick={() => updateParam('schnell',key)}>{label}</Button>)}
-        </div>
-        {list.topics.length > 0 && <nav aria-label="Häufige Themen" className="flex flex-wrap items-center gap-2"><span className="text-sm">Häufige Themen</span>{list.topics.map(tag => <Button key={tag.id} size="sm" variant={filters.tag === tag.id ? 'secondary' : 'ghost'} onClick={() => updateParam('tag', filters.tag === tag.id ? '' : tag.id)}>{tag.name} ({tag.count})</Button>)}</nav>}
+        {filters.tag && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => updateParam("tag", "")}
+          >
+            Tagfilter entfernen
+          </Button>
+        )}
+        {list.topics.length > 0 && (
+          <nav
+            aria-label="Häufige Themen"
+            className="flex flex-wrap items-center gap-2"
+          >
+            <span className="text-sm">Häufige Themen</span>
+            {list.topics.map((tag) => (
+              <Button
+                key={tag.id}
+                size="sm"
+                variant={filters.tag === tag.id ? "secondary" : "ghost"}
+                onClick={() =>
+                  updateParam("tag", filters.tag === tag.id ? "" : tag.id)
+                }
+              >
+                {tag.name} ({tag.count})
+              </Button>
+            ))}
+          </nav>
+        )}
         <nav className={styles.tabs} aria-label="Wissensansichten">
           {(
             [
@@ -135,7 +183,7 @@ function KnowledgeWorkspaceContent() {
             </Button>
           ))}
         </nav>
-        {(
+        {
           <div className={styles.filters} aria-label="Wissen filtern">
             <label className={styles.filterLabel}>
               <span className="sr-only">Status</span>
@@ -189,14 +237,16 @@ function KnowledgeWorkspaceContent() {
               )}
             </label>
           </div>
-        )}
+        }
         {profileError && (
           <p role="alert" className="text-sm text-muted-foreground">
             Mitarbeiternamen konnten nicht geladen werden.
           </p>
         )}
         {!list.isPending && !list.isError && !list.debouncing && (
-          <p className={styles.count} role="status">{list.totalCount} {list.totalCount === 1 ? "Eintrag" : "Einträge"}</p>
+          <p className={styles.count} role="status">
+            {list.totalCount} {list.totalCount === 1 ? "Eintrag" : "Einträge"}
+          </p>
         )}
         {list.isError ? (
           <div
@@ -219,11 +269,19 @@ function KnowledgeWorkspaceContent() {
         ) : list.data?.length ? (
           <div>
             {list.data.map((question) => (
-              <KnowledgeQuestionRow key={question.id} question={question} showAvatar={!search.trim()}
-                onOpen={element => {
+              <KnowledgeQuestionRow
+                key={question.id}
+                question={question}
+                showAvatar={!search.trim()}
+                onOpen={(element) => {
                   returnFocus.current = element;
-                  setParams(previous => { const next = new URLSearchParams(previous); next.set('frage', question.id); return next; });
-                }} />
+                  setParams((previous) => {
+                    const next = new URLSearchParams(previous);
+                    next.set("frage", question.id);
+                    return next;
+                  });
+                }}
+              />
             ))}
           </div>
         ) : (
@@ -249,7 +307,10 @@ function KnowledgeWorkspaceContent() {
                     : "Eine Frage ist der Anfang. Kategorien oder Schlagwörter brauchst du nicht."}
             </p>
             {canWrite && (
-              <Button className={`${styles.button} ${styles.primaryButton} mt-4`} onClick={() => setAsking(search)}>
+              <Button
+                className={`${styles.button} ${styles.primaryButton} mt-4`}
+                onClick={() => setAsking(search)}
+              >
                 {search ? `„${search}“ als Frage stellen` : "Frage stellen"}
               </Button>
             )}
@@ -276,9 +337,28 @@ function KnowledgeWorkspaceContent() {
             Bisheriger Wissensbereich
           </a>
         </footer>
-        <KnowledgeDetailPanel questionId={questionId} profiles={profiles} assignable={assignable} canWrite={canWrite} canVerify={canVerify} canManage={canManage}
-          onClose={() => setParams(previous => { const next = new URLSearchParams(previous); next.delete('frage'); return next; })}
-          onReturnFocus={() => { if (returnFocus.current?.isConnected) returnFocus.current.focus(); searchInput.current?.focus(); }} />
+        <KnowledgeDetailPanel
+          questionId={questionId}
+          profiles={profiles}
+          assignable={assignable}
+          canWrite={canWrite}
+          canVerify={canVerify}
+          canManage={canManage}
+          onClose={() =>
+            setParams((previous) => {
+              const next = new URLSearchParams(previous);
+              next.delete("frage");
+              return next;
+            })
+          }
+          onReturnFocus={() => {
+            if (returnFocus.current?.isConnected) {
+              returnFocus.current.focus();
+            } else {
+              searchInput.current?.focus();
+            }
+          }}
+        />
         {asking !== null && (
           <AskQuestionDialog
             initialQuestion={asking}

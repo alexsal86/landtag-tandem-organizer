@@ -6956,6 +6956,24 @@ export type Database = {
         Update: { title?: string }
         Relationships: []
       }
+      knowledge_question_comments: {
+        Row: { id: string; tenant_id: string; question_id: string; author_id: string; body: string; created_at: string; revision: number }
+        Insert: { id?: string; tenant_id: string; question_id: string; author_id: string; body: string; created_at?: string; revision: number }
+        Update: { body?: string }
+        Relationships: []
+      }
+      knowledge_question_followers: {
+        Row: { tenant_id: string; question_id: string; user_id: string }
+        Insert: { tenant_id: string; question_id: string; user_id: string }
+        Update: { user_id?: string }
+        Relationships: []
+      }
+      knowledge_question_outdated_reports: {
+        Row: { tenant_id: string; question_id: string; reporter_id: string; body: string|null; created_at: string }
+        Insert: { tenant_id: string; question_id: string; reporter_id: string; body?: string|null; created_at?: string }
+        Update: { body?: string|null }
+        Relationships: []
+      }
       knowledge_questions: {
         Row: {
           archived_at: string | null
@@ -13922,6 +13940,10 @@ export type Database = {
         }
         Relationships: Database['public']['Views']['knowledge_question_cards']['Relationships']
       }
+      knowledge_question_comment_cards: {
+        Row: { id: string|null; tenant_id: string|null; question_id: string|null; author_id: string|null; body: string|null; created_at: string|null; revision: number|null; author_person: Json|null }
+        Relationships: []
+      }
       knowledge_question_cards: {
         Row: {
           tags: Json | null
@@ -14072,6 +14094,10 @@ export type Database = {
       knowledge_qa_manage_tag: { Args: { p_tag: string; p_name?: string; p_merge_into?: string }; Returns: undefined }
       knowledge_qa_add_source: { Args: { p_question: string; p_expected_revision: number; p_kind: 'link'|'document'|'law'|'person'|'case'; p_title?: string; p_url?: string; p_document?: string; p_case?: string; p_as_of?: string }; Returns: undefined }
       knowledge_qa_remove_source: { Args: { p_source: string; p_expected_revision: number }; Returns: undefined }
+      knowledge_qa_comment: { Args: { p_question: string; p_expected_revision: number; p_body: string }; Returns: undefined }
+      knowledge_qa_follow: { Args: { p_question: string; p_follow: boolean }; Returns: undefined }
+      knowledge_qa_report_outdated: { Args: { p_question: string; p_expected_revision: number; p_body?: string }; Returns: undefined }
+      knowledge_qa_tag_topics: { Args: { p_tenant: string }; Returns: { id: string; name: string; count: number }[] }
       knowledge_qa_list: {
         Args: { p_tenant: string; p_query?: string; p_view?: string; p_limit?: number; p_cursor?: Json; p_status?: string; p_assignee?: string; p_sort?: string; p_tag?: string; p_quick?: string }
         Returns: { items: Json; total_count: number; next_cursor: Json | null; counts: Json; topics: Json }[]
@@ -15351,6 +15377,7 @@ export type Database = {
       }
     }
     Enums: {
+      knowledge_source_kind: "link" | "document" | "law" | "person" | "case"
       app_role: "abgeordneter" | "bueroleitung" | "mitarbeiter" | "praktikant"
       case_item_escalation_status: "pending" | "accepted" | "rejected"
       case_item_interaction_visibility:

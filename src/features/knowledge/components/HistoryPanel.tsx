@@ -33,14 +33,33 @@ export function HistoryPanel({
         .map((event) => (
           <details key={event.id} className={styles.historyEvent}>
             <summary className="cursor-pointer">
-              <strong>{KNOWLEDGE_EVENT_NAMES[event.event_type] || "Änderung"}</strong> ·{" "}
-              {knowledgePersonName(profiles, event.actor_id)} ·{" "}
+              <strong>
+                {KNOWLEDGE_EVENT_NAMES[event.event_type] || "Änderung"}
+              </strong>{" "}
+              · {knowledgePersonName(profiles, event.actor_id)} ·{" "}
               {formatKnowledgeDate(event.created_at)}
             </summary>
             <p className="mt-2 whitespace-pre-wrap">
-              {String(
-                asObject(event.snapshot)?.answer_text || "Noch keine Antwort",
-              )}
+              {event.event_type === "tags_changed"
+                ? `Tags: ${(() => {
+                    const tags = asObject(event.snapshot)?.tags;
+                    return Array.isArray(tags)
+                      ? tags
+                          .map((tag) => String(asObject(tag)?.name || ""))
+                          .filter(Boolean)
+                          .join(", ") || "Keine Tags"
+                      : "Tags geändert";
+                  })()}`
+                : String(
+                    (["comment_added", "outdated_reported"].includes(
+                      event.event_type,
+                    )
+                      ? asObject(event.snapshot)?.metadata_note
+                      : asObject(event.snapshot)?.answer_text) ||
+                      (event.event_type === "outdated_reported"
+                        ? "Ohne Kommentar"
+                        : "Noch keine Antwort"),
+                  )}
             </p>
           </details>
         ))}

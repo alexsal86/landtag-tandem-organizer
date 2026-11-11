@@ -4,7 +4,7 @@ _Auto-generiert mit `npm run update:selftest-coverage`._
 
 Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
 
-Von 273 Tabellen haben 34 ein registriertes Szenario. 83 sind als Ausbau offen, 156 ausgenommen und 0 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
+Von 279 Tabellen haben 34 ein registriertes Szenario. 89 sind als Ausbau offen, 156 ausgenommen und 0 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
@@ -169,8 +169,14 @@ Von 273 Tabellen haben 34 ein registriertes Szenario. 83 sind als Ausbau offen, 
 | `knowledge_documents` | Ausstehend | — |
 | `knowledge_qa_notification_deliveries` | Szenario vorhanden | knowledge-lifecycle |
 | `knowledge_question_attachments` | Ausstehend | — |
+| `knowledge_question_comments` | Ausstehend | — |
 | `knowledge_question_events` | Szenario vorhanden | knowledge-lifecycle |
+| `knowledge_question_followers` | Ausstehend | — |
+| `knowledge_question_outdated_reports` | Ausstehend | — |
+| `knowledge_question_sources` | Ausstehend | — |
+| `knowledge_question_tags` | Ausstehend | — |
 | `knowledge_questions` | Szenario vorhanden | knowledge-lifecycle |
+| `knowledge_tags` | Ausstehend | — |
 | `leave_requests` | Ausstehend | — |
 | `letter_archive_settings` | Ausgenommen (nicht geprüft) | — |
 | `letter_attachments` | Szenario vorhanden | letter-lifecycle |

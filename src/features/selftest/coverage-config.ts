@@ -181,6 +181,9 @@ export const IGNORED_TABLES: string[] = [
 
 /** Bekannte Lücken. Diese Tabellen zählen ausdrücklich NICHT als getestet. */
 export const DEFERRED_TABLES: string[] = [
+  // Knowledge 11–14 use only the requested targeted acceptance suite, not new live selftest scenarios.
+  "knowledge_tags", "knowledge_question_tags", "knowledge_question_sources",
+  "knowledge_question_comments", "knowledge_question_followers", "knowledge_question_outdated_reports",
   // Real storage HTTP access still requires an isolated Supabase instance.
   "knowledge_question_attachments",
   "routine_package_runs", "routine_package_steps",

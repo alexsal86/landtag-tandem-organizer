@@ -152,7 +152,8 @@ export function ManagementPanel({ question }: { question: KnowledgeCard }) {
           )}
           <div className="flex gap-2">
             <Button
-              className={`${styles.button} ${styles.primaryButton}`}
+              className={styles.button}
+              variant="outline"
               size="sm"
               disabled={write.isPending || (mode === "merge" && !target)}
             >

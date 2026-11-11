@@ -88,7 +88,7 @@ try {
 
   }
 
-  for (const file of ['20261111100800_knowledge_tags.sql','20261111100900_knowledge_sources.sql']) {
+  for (const file of ['20261111100800_knowledge_tags.sql','20261111100900_knowledge_sources.sql','20261111101000_knowledge_conversation_followers.sql','20261111101100_knowledge_workspace_filters.sql']) {
     const migration=await readFile(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8');
     await db.exec(migration); await db.exec(migration);
   }
@@ -118,9 +118,34 @@ try {
   await assert.rejects(read("SELECT knowledge_qa_add_source($1,$2,'link','Script','javascript:alert(1)')",[q.id,q.revision]),e=>e.code==='23514');
   await owner(); await db.query("INSERT INTO action_permissions VALUES($1,'knowledge.write','{}')",[officeA]); await actor(alice);
   await denied(read('SELECT knowledge_qa_set_tags($1,$2,$3)',[q.id,q.revision,['Nein']]));
+  await denied(read('INSERT INTO knowledge_question_tags(tenant_id,question_id,tag_id) VALUES($1,$2,$3)',[officeA,q.id,tag.id]));
+  await denied(read("INSERT INTO knowledge_question_sources(tenant_id,question_id,kind,title,url,created_by,client_revision) VALUES($1,$2,'link','Verboten','https://example.test',$3,$4)",[officeA,q.id,alice,q.revision]));
   await denied(read("SELECT knowledge_qa_add_source($1,$2,'link','Gesperrt','https://example.test')",[q.id,q.revision]));
   await owner(); await db.query("DELETE FROM action_permissions WHERE action_key='knowledge.write'"); await actor(bob);
   assert.equal((await read("SELECT * FROM knowledge_qa_list($1)",[officeA]))[0].total_count,0);
+  await actor(alice);
+  let open=await create(officeA,'Rückfrage-Abnahme',clara);
+  assert.equal((await read('SELECT * FROM knowledge_question_followers WHERE question_id=$1',[open.id])).length,1);
+  assert.equal((await read("SELECT * FROM knowledge_qa_list($1,'','answers',20,NULL,'','','updated','','open')",[officeA]))[0].total_count,1,'Quick filter selects open scope independently of the answer view');
+  await read('SELECT knowledge_qa_comment($1,$2,$3)',[open.id,open.revision,'Kannst du das erläutern?']);
+  open=(await read('SELECT * FROM knowledge_questions WHERE id=$1',[open.id]))[0];
+  assert.equal((await read('SELECT * FROM knowledge_question_comment_cards WHERE question_id=$1',[open.id])).length,1);
+  open=await save(open,'Jetzt beantwortet.');
+  assert.equal((await read('SELECT * FROM knowledge_question_comment_cards WHERE question_id=$1',[open.id])).length,0,'Comments disappear from the live panel on answer');
+  assert.ok((await read("SELECT * FROM knowledge_question_events WHERE question_id=$1 AND event_type='comment_added'",[open.id]))[0].snapshot.metadata_note.includes('erläutern'));
+  await assert.rejects(read('SELECT knowledge_qa_comment($1,$2,$3)',[open.id,open.revision,'Zu spät']),e=>e.code==='22023');
+  await owner(); await db.query("INSERT INTO action_permissions VALUES($1,'knowledge.write','{}')",[officeA]); await actor(clara);
+  await read('SELECT knowledge_qa_follow($1,true)',[open.id]);
+  await read('SELECT knowledge_qa_report_outdated($1,$2,$3)',[open.id,open.revision,'Die Regelung ist überholt.']);
+  await actor(alice);
+  await read('SELECT knowledge_qa_report_outdated($1,$2,$3)',[open.id,open.revision,'Auch aufgefallen.']);
+  assert.equal((await read("SELECT count(*)::int AS n FROM knowledge_question_events WHERE question_id=$1 AND event_type='outdated_reported'",[open.id]))[0].n,1,'Repeated reports coalesce');
+  assert.equal((await read('SELECT review_status FROM knowledge_questions WHERE id=$1',[open.id]))[0].review_status,'needs_review');
+  await read('SELECT knowledge_qa_follow($1,false)',[open.id]);
+  await owner(); await db.exec(await readFile(new URL('../supabase/migrations/20261111101000_knowledge_conversation_followers.sql',import.meta.url),'utf8')); await actor(alice);
+  assert.equal((await read('SELECT * FROM knowledge_question_followers WHERE question_id=$1',[open.id])).length,0,'Migration replay preserves an explicit unfollow');
+  await actor(bob); await denied(read('SELECT knowledge_qa_follow($1,true)',[open.id]));
+  await denied(read('SELECT knowledge_qa_report_outdated($1,$2)',[open.id,open.revision]));
   console.log('Knowledge 11–14 acceptance: quick/tag filters, tag rights, bounded metadata and idempotent migrations passed.');
 } catch(error) { console.error(error.message,error.code??'',error.stack); process.exitCode=1; }
 finally { await db.close(); }

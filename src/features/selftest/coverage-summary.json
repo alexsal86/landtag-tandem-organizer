@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "source": "src/integrations/supabase/types.ts",
   "counts": {
-    "total": 273,
+    "total": 279,
     "scenario": 34,
-    "deferred": 83,
+    "deferred": 89,
     "excluded": 156,
     "missing": 0
   },
@@ -1522,6 +1522,11 @@
       "scenarios": []
     },
     {
+      "table": "knowledge_question_comments",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
       "table": "knowledge_question_events",
       "status": "scenario",
       "scenarios": [
@@ -1529,11 +1534,36 @@
       ]
     },
     {
+      "table": "knowledge_question_followers",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "knowledge_question_outdated_reports",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "knowledge_question_sources",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "knowledge_question_tags",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
       "table": "knowledge_questions",
       "status": "scenario",
       "scenarios": [
         "knowledge-lifecycle"
       ]
+    },
+    {
+      "table": "knowledge_tags",
+      "status": "deferred",
+      "scenarios": []
     },
     {
       "table": "leave_requests",
