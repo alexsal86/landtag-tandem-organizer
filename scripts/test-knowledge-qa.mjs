@@ -71,13 +71,16 @@ try {
   `);
   const actions = await readFile(new URL('../supabase/migrations/20261109142000_enforce_admin_actions.sql', import.meta.url), 'utf8');
   await db.exec(actions.slice(actions.indexOf('CREATE OR REPLACE FUNCTION public.is_tenant_action_allowed'), actions.indexOf('CREATE OR REPLACE FUNCTION public.enforce_configured_action')));
-  for (const file of ['20261110180000_knowledge_qa_core.sql', '20261110180100_knowledge_qa_search.sql', '20261110180200_knowledge_qa_storage.sql', '20261110180300_knowledge_legacy_access.sql', '20261111100000_knowledge_list_payload.sql', '20261111100100_knowledge_keyset.sql', '20261111100200_knowledge_search.sql', '20261111100300_knowledge_views_filters.sql', '20261111100400_knowledge_notifications.sql', '20261111100500_knowledge_manage.sql']) {
+  for (const file of ['20261110180000_knowledge_qa_core.sql', '20261110180100_knowledge_qa_search.sql', '20261110180200_knowledge_qa_storage.sql', '20261110180300_knowledge_legacy_access.sql', '20261111100000_knowledge_list_payload.sql', '20261111100100_knowledge_keyset.sql', '20261111100200_knowledge_search.sql', '20261111100300_knowledge_views_filters.sql', '20261111100400_knowledge_notifications.sql', '20261111100500_knowledge_manage.sql', '20261111100600_knowledge_manage_trigram_recovery.sql']) {
+    if (file === '20261111100500_knowledge_manage.sql' && process.env.KNOWLEDGE_SKIP_FAILED_MANAGE === '1') continue;
     const migration=await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8');
     await db.exec(migration);
     if (file.startsWith('20261111')) await db.exec(migration);
   }
   // Re-running additive migrations must preserve functions and data.
-  await db.exec(await readFile(new URL('../supabase/migrations/20261111100500_knowledge_manage.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/20261111100600_knowledge_manage_trigram_recovery.sql', import.meta.url), 'utf8'));
+  const listConfiguration=(await read("SELECT proconfig FROM pg_proc WHERE oid='public.knowledge_qa_list(uuid,text,text,integer,jsonb,text,text,text)'::regprocedure"))[0].proconfig;
+  assert.ok(!listConfiguration.some(setting=>setting.startsWith('pg_trgm.')), 'List creation and execution require no extension parameter privileges');
   await actor(alice);
   assert.equal((await read('SELECT knowledge_qa_notification_selftest($1) AS result',[officeA]))[0].result.ok,true);
   const diagnostic = (await read('SELECT knowledge_qa_selftest($1) AS result', [officeA]))[0].result;
@@ -133,6 +136,12 @@ try {
   await actor(alice);
   assert.equal((await read('SELECT * FROM knowledge_qa_list($1,$2)', [officeA, 'Haushaltsberatung']))[0].items[0].id,q.id,'Description is searched');
   assert.equal((await read('SELECT * FROM knowledge_qa_list($1,$2)', [officeA, 'Urlaab']))[0].items[0].id,q.id,'Typo fallback');
+  // A pooled connection's threshold must not change this RPC's matching rule.
+  await db.exec('SET pg_trgm.word_similarity_threshold=0.99');
+  assert.equal((await read('SELECT * FROM knowledge_qa_list($1,$2)', [officeA, 'Urlaab']))[0].items[0].id,q.id,'Typo fallback ignores session threshold');
+  assert.equal((await read("SELECT current_setting('pg_trgm.word_similarity_threshold') AS threshold"))[0].threshold,'0.99','RPC does not mutate connection settings');
+  await db.exec('RESET pg_trgm.word_similarity_threshold');
+
   assert.equal((await read('SELECT * FROM knowledge_qa_list($1,$2)', [officeA, 'Bueroleitung']))[0].items.length,2,'Umlaut variants');
 
   await assert.rejects(search(officeA, 'a'.repeat(301)), error => error.code === '22023');
