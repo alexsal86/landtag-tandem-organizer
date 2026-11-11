@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.knowledge_tag_sync_topic() FROM PUBLIC, anon, authenticated;
