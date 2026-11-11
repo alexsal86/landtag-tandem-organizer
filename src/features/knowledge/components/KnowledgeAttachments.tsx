@@ -146,12 +146,13 @@ export function KnowledgeAttachments({
                     p_type: file.type,
                     p_size: file.size,
                   })
-                  .single<KnowledgeAttachment>();
+                  .single();
                 if (failure) throw new Error(failure.message);
-                reservation = data;
+                const reserved = data as unknown as KnowledgeAttachment;
+                reservation = reserved;
                 const uploaded = await supabase.storage
                   .from("knowledge-attachments")
-                  .upload(data.storage_path, file, {
+                  .upload(reserved.storage_path, file, {
                     contentType: file.type,
                     upsert: false,
                   });
@@ -159,7 +160,7 @@ export function KnowledgeAttachments({
                 await write.mutateAsync({
                   name: "knowledge_qa_finish_attachment",
                   args: {
-                    p_attachment: data.id,
+                    p_attachment: reserved.id,
                     p_expected_revision: question.revision,
                   },
                 });

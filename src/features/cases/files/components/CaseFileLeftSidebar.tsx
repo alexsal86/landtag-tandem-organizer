@@ -161,18 +161,6 @@ export function CaseFileLeftSidebar({
         />
       </SectionCard>
 
-      {caseFile.tags && caseFile.tags.length > 0 && (
-        <SectionCard>
-          <SectionHeader label="Tags" />
-          <div className="flex flex-wrap gap-1">
-            {caseFile.tags.map((tag) => (
-              <Badge key={tag} variant="secondary" className="text-[10px]">
-                {tag}
-              </Badge>
-            ))}
-          </div>
-        </SectionCard>
-      )}
     </div>
   );
 }

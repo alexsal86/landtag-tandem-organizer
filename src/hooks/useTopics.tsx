@@ -156,6 +156,30 @@ export const useTopics = () => {
 
   const getActiveTopics = () => topics.filter(t => t.is_active);
 
+  /** Any tenant member: find or create a topic by its label (dedupe in DB). */
+  const quickCreateTopic = async (label: string): Promise<string | null> => {
+    if (!currentTenant) return null;
+    const { data, error } = await supabase.rpc('ensure_topic', { p_tenant: currentTenant.id, p_label: label });
+    if (error || !data) {
+      notify.error("Thema konnte nicht angelegt werden", { description: error?.message });
+      return null;
+    }
+    await fetchTopics();
+    return data as string;
+  };
+
+  /** Admins: merge source into target; all links move along. */
+  const mergeTopics = async (sourceId: string, targetId: string) => {
+    const { error } = await supabase.rpc('merge_topics', { p_source: sourceId, p_target: targetId });
+    if (error) {
+      notify.error("Zusammenführen fehlgeschlagen", { description: error.message });
+      return false;
+    }
+    notify.success("Themen zusammengeführt");
+    await fetchTopics();
+    return true;
+  };
+
   return {
     topics,
     loading,
@@ -166,6 +190,8 @@ export const useTopics = () => {
     toggleActive,
     updateOrder,
     getActiveTopics,
+    quickCreateTopic,
+    mergeTopics,
   };
 };
 

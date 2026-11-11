@@ -8,6 +8,7 @@ import {
   useKnowledgeExtraWrite,
 } from "../hooks/useKnowledgeExtras";
 import type { KnowledgeCard, KnowledgeTag } from "../types";
+import { useTopics } from "@/hooks/useTopics";
 import styles from "./KnowledgeWorkspace.module.css";
 
 export function KnowledgeTagsPanel({
@@ -21,6 +22,7 @@ export function KnowledgeTagsPanel({
 }) {
   const [params, setParams] = useSearchParams();
   const suggestions = useKnowledgeTags();
+  const { topics: platformTopics } = useTopics();
   const write = useKnowledgeExtraWrite();
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
@@ -130,6 +132,13 @@ export function KnowledgeTagsPanel({
               ?.filter((tag) => !tags.some((item) => item.id === tag.id))
               .map((tag) => (
                 <option key={tag.id} value={tag.name} />
+              ))}
+            {platformTopics
+              .filter((t) => t.is_active && t.label.length <= 30)
+              .filter((t) => !tags.some((item) => item.name.toLowerCase() === t.label.toLowerCase()))
+              .filter((t) => !suggestions.data?.some((k) => k.name.toLowerCase() === t.label.toLowerCase()))
+              .map((t) => (
+                <option key={`topic-${t.id}`} value={t.label} />
               ))}
           </datalist>
         </form>

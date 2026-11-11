@@ -181,9 +181,9 @@ export function useKnowledgeWrite() {
         throw new Error("Bitte anmelden und ein Büro wählen.");
       const { data, error } = await supabase
         .rpc(request.name, request.args)
-        .single<KnowledgeQuestion>();
+        .single();
       if (error) throw new Error(error.message);
-      return data;
+      return data as unknown as KnowledgeQuestion;
     },
     onSettled: () =>
       client.invalidateQueries({ queryKey: knowledgeKey(userId, tenantId) }),
