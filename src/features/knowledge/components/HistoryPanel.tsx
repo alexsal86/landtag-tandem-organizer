@@ -36,8 +36,13 @@ export function HistoryPanel({
               <strong>
                 {KNOWLEDGE_EVENT_NAMES[event.event_type] || "Änderung"}
               </strong>{" "}
-              · {knowledgePersonName(profiles, event.actor_id)} ·{" "}
-              {formatKnowledgeDate(event.created_at)}
+              ·{" "}
+              {["review_expired", "validity_policy_applied"].includes(
+                event.event_type,
+              )
+                ? "System"
+                : knowledgePersonName(profiles, event.actor_id)}{" "}
+              · {formatKnowledgeDate(event.created_at)}
             </summary>
             <p className="mt-2 whitespace-pre-wrap">
               {event.event_type === "tags_changed"

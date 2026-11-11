@@ -25,6 +25,8 @@ export const KNOWLEDGE_EVENT_NAMES: Record<string, string> = {
   question_created: "Frage gestellt",
   answer_changed: "Antwort oder Anhänge geändert",
   verified: "Als aktuell bestätigt",
+  validity_policy_applied: "Gültigkeit auf höchstens zwölf Monate begrenzt",
+  review_expired: "Gültigkeit abgelaufen – erneute Freigabe erforderlich",
   review_requested: "Überprüfung angefordert",
   assignee_changed: "Zuständigkeit geändert",
 };

@@ -1,3 +1,4 @@
+import { WorkflowLinks } from "@/components/workflow/WorkflowLinks";
 import { X, Save, Calendar, Flag, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,7 @@ export function TaskDetailSidebar({ task, isOpen, onClose, onTaskUpdate, onTaskR
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
+          <WorkflowLinks taskId={isOpen ? task.id : undefined} />
           {/* Task Info */}
           <div className="space-y-4">
             <div>

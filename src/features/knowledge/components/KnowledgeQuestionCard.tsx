@@ -22,6 +22,7 @@ import { KnowledgeAttachments } from "./KnowledgeAttachments";
 import { AssigneeSelect } from "./AssigneeSelect";
 import { ReviewPanel } from "./ReviewPanel";
 import { HistoryPanel } from "./HistoryPanel";
+import { useKnowledgeScope } from "../hooks/useKnowledgeQuestions";
 import { useReviewDeadline } from "../hooks/useReviewDeadline";
 import {
   formatKnowledgeDate as formatDate,
@@ -45,6 +46,8 @@ export function KnowledgeQuestionDetailContent({
   query: string;
   showAvatars: boolean;
 }) {
+  const { userId } = useKnowledgeScope();
+  const canApprove = Boolean(userId && question.assigned_to === userId);
   const [editing, setEditing] = useState(false);
   const answerAction = useRef<HTMLButtonElement>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -146,11 +149,12 @@ export function KnowledgeQuestionDetailContent({
         )}
         {!editing && question.answered_at && !question.archived_at && (
           <div className={styles.actions}>
-            {canVerify && (
+            {(canVerify || canApprove) && (
               <ReviewPanel
                 question={question}
                 now={now}
-                primary={status === "needs_review"}
+                primary={status === "needs_review" && canApprove}
+                canApprove={canApprove}
               />
             )}
             <KnowledgeOutdatedReport question={question} />

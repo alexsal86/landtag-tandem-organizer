@@ -26,6 +26,7 @@ export function WorkflowLinks({ taskId, caseFileId }: { taskId?: string; caseFil
   return <div className="space-y-1 text-sm">
     {query.isError && <button className="text-destructive underline" onClick={() => void query.refetch()}>Verknüpfungen erneut laden</button>}
     {source?.source_type === "decision" && source.source_id && <button className="text-primary underline" onClick={() => setDecisionId(source.source_id)}>Ursprüngliche Entscheidung öffnen</button>}
+    {source?.source_type === "knowledge_review" && source.source_id && <Link className="text-primary underline" to={`/wissen?frage=${source.source_id}`}>Wissensantwort prüfen und freigeben</Link>}
     {source?.source_type === "case_step" && source.source_id && <Link className="text-primary underline" to={`/mywork?tab=cases&caseItemId=${source.source_id}`}>Zugehörigen Vorgang öffnen</Link>}
     {source?.source_type === "case_file" && source.source_id && <Link className="text-primary underline" to={`/cases?tab=files&id=${source.source_id}`}>Zugehörige Akte öffnen</Link>}
     {source?.source_type === "quick_note" && source.source_id && <Link className="text-primary underline" to={`/mywork?tab=capture&highlight=${source.source_id}`}>Ursprüngliche Notiz öffnen</Link>}

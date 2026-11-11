@@ -20,10 +20,12 @@ export function ReviewPanel({
   question,
   now,
   primary = false,
+  canApprove = true,
 }: {
   question: KnowledgeCard;
   now: number;
   primary?: boolean;
+  canApprove?: boolean;
 }) {
   const [baseRevision, setBaseRevision] = useState<number | null>(null);
   const [dueAt, setDueAt] = useState("");
@@ -74,7 +76,12 @@ export function ReviewPanel({
               className={`${styles.button} ${primary && baseRevision === null ? styles.primaryButton : ""}`}
               variant={primary && baseRevision === null ? "default" : "outline"}
               size="sm"
-              disabled={write.isPending}
+              disabled={write.isPending || !canApprove}
+              title={
+                canApprove
+                  ? undefined
+                  : "Nur die zuständige Person kann die Antwort freigeben."
+              }
               onClick={() => {
                 setBaseRevision(question.revision);
                 setError("");
@@ -114,8 +121,13 @@ export function ReviewPanel({
             )}
             {error && <p role="alert">{error}</p>}
             <Label htmlFor={`due-${question.id}`}>
-              Erneut prüfen am (optional)
+              Früher erneut prüfen am (optional)
             </Label>
+            <p className="text-sm text-muted-foreground">
+              Eine Freigabe gilt höchstens zwölf Monate. Ohne früheren
+              Prüftermin wird nach zwölf Monaten eine Prüfaufgabe für die
+              zuständige Person erstellt.
+            </p>
             <input
               id={`due-${question.id}`}
               type="datetime-local"
