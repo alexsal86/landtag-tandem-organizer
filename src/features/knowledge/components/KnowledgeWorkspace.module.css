@@ -203,3 +203,15 @@
   .metadata { gap: 4px 12px; }
   .emptyState { padding: 28px 20px; }
 }
+
+/* Portaled assignee options inherit the workspace palette through .theme. */
+.assigneeMenu {
+  border-color: var(--knowledge-line);
+  background: var(--knowledge-surface);
+  color: var(--knowledge-ink);
+  font-size: 13px;
+}
+.assigneeMenu [data-highlighted] {
+  background: var(--knowledge-soft);
+  color: var(--knowledge-ink);
+}

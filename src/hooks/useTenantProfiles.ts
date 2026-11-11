@@ -6,6 +6,7 @@ import { STALE_TIME } from "@/lib/query-cache";
 export interface TenantProfileOption {
   user_id: string;
   display_name: string | null;
+  avatar_url?: string | null;
 }
 
 export function useTenantProfiles() {
@@ -19,7 +20,7 @@ export function useTenantProfiles() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("user_id, display_name")
+        .select("user_id, display_name, avatar_url")
         .eq("tenant_id", currentTenant!.id)
         .order("display_name");
 

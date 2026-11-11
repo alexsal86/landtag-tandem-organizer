@@ -1,4 +1,6 @@
 import styles from "./KnowledgeWorkspace.module.css";
+import { KnowledgePersonLabel } from "./KnowledgePersonAvatar";
+import { knowledgePersonForId } from "../person";
 import { Link } from "react-router-dom";
 import { ManagementPanel } from "./ManagementPanel";
 import { useMemo, useState } from "react";
@@ -30,6 +32,7 @@ function FullKnowledgeQuestionCard({
   canWrite,
   canVerify,
   canManage,
+  showAvatars,
   onOpen,
 }: {
   question: KnowledgeCard;
@@ -39,6 +42,7 @@ function FullKnowledgeQuestionCard({
   canVerify: boolean;
   canManage: boolean;
   query: string;
+  showAvatars: boolean;
   onOpen: () => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -95,9 +99,7 @@ function FullKnowledgeQuestionCard({
           </p>
         )}
         {question.description && (
-          <p className={styles.description}>
-            {question.description}
-          </p>
+          <p className={styles.description}>{question.description}</p>
         )}
 
         {editing ? (
@@ -107,15 +109,17 @@ function FullKnowledgeQuestionCard({
           />
         ) : question.answered_at ? (
           <>
-            <div className={styles.answer}><EnhancedLexicalEditor
-              key={`${question.id}-${question.answer_revision}`}
-              knowledgeMode
-              editable={false}
-              showToolbar={false}
-              content={question.answer_text}
-              contentNodes={validContent}
-              onChange={() => {}}
-            /></div>
+            <div className={styles.answer}>
+              <EnhancedLexicalEditor
+                key={`${question.id}-${question.answer_revision}`}
+                knowledgeMode
+                editable={false}
+                showToolbar={false}
+                content={question.answer_text}
+                contentNodes={validContent}
+                onChange={() => {}}
+              />
+            </div>
             <KnowledgeAttachments
               question={question}
               canWrite={canWrite && !question.archived_at}
@@ -126,10 +130,18 @@ function FullKnowledgeQuestionCard({
             Diese Frage wartet auf eine Antwort.
           </p>
         )}
-        <div className={styles.metadata}>
+        <div className={`${styles.metadata} items-center`}>
           <span>
-            Gefragt von {name(question.created_by)} ·{" "}
-            {formatDate(question.created_at)}
+            Gefragt von{" "}
+            <KnowledgePersonLabel
+              person={knowledgePersonForId(
+                question.created_by,
+                question.created_by_person,
+                profiles,
+              )}
+              showAvatar={showAvatars}
+            />{" "}
+            · {formatDate(question.created_at)}
           </span>
           {question.answered_at && (
             <span>
@@ -142,8 +154,16 @@ function FullKnowledgeQuestionCard({
           )}
           {status === "verified" && question.verified_at && (
             <span>
-              Bestätigt von {name(question.verified_by)} ·{" "}
-              {formatDate(question.verified_at)}
+              Bestätigt von{" "}
+              <KnowledgePersonLabel
+                person={knowledgePersonForId(
+                  question.verified_by,
+                  question.verified_by_person,
+                  profiles,
+                )}
+                showAvatar={showAvatars}
+              />{" "}
+              · {formatDate(question.verified_at)}
             </span>
           )}
           {question.review_due_at && (
@@ -155,12 +175,20 @@ function FullKnowledgeQuestionCard({
             question={question}
             profiles={profiles}
             assignable={assignable}
+            showAvatars={showAvatars}
           />
         ) : (
-          !question.answered_at &&
-          question.assigned_to && (
-            <p className="text-sm">Zuständig: {name(question.assigned_to)}</p>
-          )
+          <p className="flex items-center gap-2 text-sm">
+            Zuständig:{" "}
+            <KnowledgePersonLabel
+              person={knowledgePersonForId(
+                question.assigned_to,
+                question.assigned_to_person,
+                profiles,
+              )}
+              showAvatar={showAvatars}
+            />
+          </p>
         )}
         {!editing && (
           <div className={styles.actions}>
@@ -175,7 +203,9 @@ function FullKnowledgeQuestionCard({
                 {question.answered_at ? "Antwort bearbeiten" : "Beantworten"}
               </Button>
             )}
-            {question.answered_at && !question.archived_at && canVerify && <ReviewPanel question={question} now={now} />}
+            {question.answered_at && !question.archived_at && canVerify && (
+              <ReviewPanel question={question} now={now} />
+            )}
             <Button
               className={`${styles.button} ${styles.ghostButton}`}
               variant="ghost"
@@ -221,14 +251,23 @@ export function KnowledgeQuestionCard(props: {
       return (
         <p role="alert">
           Frage konnte nicht geladen werden.{" "}
-          <Button className={styles.button} onClick={() => void detail.refetch()}>
+          <Button
+            className={styles.button}
+            onClick={() => void detail.refetch()}
+          >
             Erneut versuchen
           </Button>
         </p>
       );
     if (detail.isPending) return <p role="status">Frage wird geladen …</p>;
     if (!detail.data) return <p>Frage nicht verfügbar.</p>;
-    return <FullKnowledgeQuestionCard {...props} question={detail.data} />;
+    return (
+      <FullKnowledgeQuestionCard
+        {...props}
+        question={detail.data}
+        showAvatars={Boolean(props.detail) || !props.query.trim()}
+      />
+    );
   }
   const question = props.question;
   return (
@@ -238,28 +277,92 @@ export function KnowledgeQuestionCard(props: {
           <h2 className={styles.cardTitle}>
             <button onClick={props.onOpen}>{question.title}</button>
           </h2>
-          <Badge variant="outline" className={`${styles.badge} ${!question.answered_at ? styles.badgeOpen : effectiveReviewStatus(question, now) === "verified" ? styles.badgeVerified : effectiveReviewStatus(question, now) === "needs_review" ? styles.badgeDue : ""}`}>
+          <Badge
+            variant="outline"
+            className={`${styles.badge} ${!question.answered_at ? styles.badgeOpen : effectiveReviewStatus(question, now) === "verified" ? styles.badgeVerified : effectiveReviewStatus(question, now) === "needs_review" ? styles.badgeDue : ""}`}
+          >
             {question.answered_at
               ? REVIEW_LABELS[effectiveReviewStatus(question, now)]
               : "Offene Frage"}
           </Badge>
         </div>
         {question.description && (
-          <p className={styles.description}>
-            {question.description}
-          </p>
+          <p className={styles.description}>{question.description}</p>
         )}
-        <div className={question.answered_at ? `${styles.answer} ${styles.summaryAnswer}` : styles.emptyAnswer}>
-          <p>{question.answered_at ? question.answer_excerpt : "Diese Frage wartet auf eine Antwort."}</p>{" "}
-          <Button className={styles.expandLink} variant="link" onClick={() => setExpanded(true)}>
+        <div
+          className={
+            question.answered_at
+              ? `${styles.answer} ${styles.summaryAnswer}`
+              : styles.emptyAnswer
+          }
+        >
+          <p>
+            {question.answered_at
+              ? question.answer_excerpt
+              : "Diese Frage wartet auf eine Antwort."}
+          </p>{" "}
+          <Button
+            className={styles.expandLink}
+            variant="link"
+            onClick={() => setExpanded(true)}
+          >
             Vollständig anzeigen
           </Button>
         </div>
-        <div className={styles.metadata}>
-          <span>Gefragt von {knowledgePersonName(props.profiles, question.created_by)} · {formatDate(question.created_at)}</span>
-          {question.assigned_to && <span>Verantwortlich: {knowledgePersonName(props.profiles, question.assigned_to)}</span>}
-          {question.answer_updated_at && <span>Aktualisiert: {formatDate(question.answer_updated_at)}</span>}
+        <div className={`${styles.metadata} items-center`}>
+          <span className="inline-flex items-center gap-1.5">
+            Gefragt von{" "}
+            <KnowledgePersonLabel
+              person={knowledgePersonForId(
+                question.created_by,
+                question.created_by_person,
+                props.profiles,
+              )}
+              showAvatar={!props.query.trim()}
+            />{" "}
+            · {formatDate(question.created_at)}
+          </span>
+          {question.verified_at &&
+            effectiveReviewStatus(question, now) === "verified" && (
+              <span className="inline-flex items-center gap-1.5">
+                Bestätigt von{" "}
+                <KnowledgePersonLabel
+                  person={question.verified_by_person}
+                  showAvatar={!props.query.trim()}
+                />{" "}
+                · {formatDate(question.verified_at)}
+              </span>
+            )}
+          {question.assigned_to && (
+            <span>
+              Verantwortlich:{" "}
+              {knowledgePersonName(props.profiles, question.assigned_to)}
+            </span>
+          )}
+          {question.answer_updated_at && (
+            <span>Aktualisiert: {formatDate(question.answer_updated_at)}</span>
+          )}
         </div>
+        {props.canWrite ? (
+          <AssigneeSelect
+            question={question}
+            profiles={props.profiles}
+            assignable={props.assignable}
+            showAvatars={!props.query.trim()}
+          />
+        ) : (
+          <p className="flex items-center gap-2 text-sm">
+            Zuständig:{" "}
+            <KnowledgePersonLabel
+              person={knowledgePersonForId(
+                question.assigned_to,
+                question.assigned_to_person,
+                props.profiles,
+              )}
+              showAvatar={!props.query.trim()}
+            />
+          </p>
+        )}
       </CardContent>
     </Card>
   );

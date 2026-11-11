@@ -1,3 +1,4 @@
+import { knowledgePersonColor, knowledgePersonInitials, knowledgePersonLabel } from '@/features/knowledge/person';
 import { answerText, effectiveReviewStatus, knowledgeUrlState, knowledgeQuestionPath, parseAnswer, validateAttachment, validateQuestion } from '@/features/knowledge/logic';
 import { supabase } from '@/integrations/supabase/client';
 import type { TestScenario } from '../types';
@@ -9,6 +10,10 @@ export const knowledgeLifecycleScenario: TestScenario = {
   checks: ['Frage als einziges Pflichtfeld', 'Validierte Antwort und sichere Links', 'Drei Prüfzustände und Fälligkeit', 'Anhanggrenzen', 'Lesen außerhalb des eigenen Büros'],
   limitations: ['Zwei-Büro-Isolation, FTS und Storage-Policies werden zusätzlich mit scripts/test-knowledge-qa.mjs in isoliertem PostgreSQL geprüft. Echte Storage-HTTP-Zugriffe benötigen eine Supabase-Testinstanz.'],
   steps: [
+    { id: 'person-presentation', label: 'Stabile Avatarfarben, Initialen und fehlende Zuordnung', kind: 'logic', run: async () => ({
+      ok: knowledgePersonColor('user-a') === knowledgePersonColor('user-a') && knowledgePersonInitials('Änne Beispiel') === 'ÄB' && knowledgePersonLabel(null) === 'Nicht zugeordnet',
+      message: 'Personen bleiben mit Namen lesbar; Initialen und Farbe sind reproduzierbar.',
+    }) },
     { id: 'notification-delivery', label: 'Serverzustellung, Einstellungen und dauerhafte Duplikatsperre', kind: 'workflow', run: async ctx => {
       const response = await supabase.rpc('knowledge_qa_notification_selftest', { p_tenant: ctx.tenantId });
       const result = response.data && typeof response.data === 'object' && !Array.isArray(response.data) ? response.data : null;

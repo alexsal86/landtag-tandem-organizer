@@ -35,10 +35,14 @@ try {
     CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$ SELECT current_setting('test.role',true) $$;
     CREATE TYPE app_role AS ENUM ('abgeordneter','bueroleitung','mitarbeiter','praktikant');
     CREATE TABLE tenants(id uuid PRIMARY KEY);
+    CREATE TABLE profiles(user_id uuid PRIMARY KEY,tenant_id uuid,display_name text,avatar_url text);
+    ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+    GRANT SELECT ON profiles TO authenticated;
     CREATE TABLE notification_types(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),tenant_id uuid,name text,label text,description text,category text,is_active boolean,UNIQUE(tenant_id,name));
     CREATE TABLE user_notification_settings(user_id uuid,notification_type_id uuid,is_enabled boolean,push_enabled boolean,UNIQUE(user_id,notification_type_id));
     CREATE TABLE notifications(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),tenant_id uuid,user_id uuid,notification_type_id uuid,title text,message text,data jsonb,priority text);
     CREATE TABLE user_tenant_memberships(tenant_id uuid,user_id uuid,role app_role,is_active boolean);
+    CREATE POLICY profiles_read ON profiles FOR SELECT TO authenticated USING(EXISTS(SELECT 1 FROM user_tenant_memberships m WHERE m.tenant_id=profiles.tenant_id AND m.user_id=auth.uid() AND m.is_active));
     CREATE TABLE action_permissions(tenant_id uuid,action_key text,allowed_roles app_role[],UNIQUE(tenant_id,action_key));
     CREATE FUNCTION is_superadmin(uuid) RETURNS boolean LANGUAGE sql AS $$ SELECT false $$;
     CREATE TABLE storage.buckets(id text PRIMARY KEY,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
@@ -71,16 +75,17 @@ try {
   `);
   const actions = await readFile(new URL('../supabase/migrations/20261109142000_enforce_admin_actions.sql', import.meta.url), 'utf8');
   await db.exec(actions.slice(actions.indexOf('CREATE OR REPLACE FUNCTION public.is_tenant_action_allowed'), actions.indexOf('CREATE OR REPLACE FUNCTION public.enforce_configured_action')));
-  for (const file of ['20261110180000_knowledge_qa_core.sql', '20261110180100_knowledge_qa_search.sql', '20261110180200_knowledge_qa_storage.sql', '20261110180300_knowledge_legacy_access.sql', '20261111100000_knowledge_list_payload.sql', '20261111100100_knowledge_keyset.sql', '20261111100200_knowledge_search.sql', '20261111100300_knowledge_views_filters.sql', '20261111100400_knowledge_notifications.sql', '20261111100500_knowledge_manage.sql', '20261111100600_knowledge_manage_trigram_recovery.sql']) {
+  for (const file of ['20261110180000_knowledge_qa_core.sql', '20261110180100_knowledge_qa_search.sql', '20261110180200_knowledge_qa_storage.sql', '20261110180300_knowledge_legacy_access.sql', '20261111100000_knowledge_list_payload.sql', '20261111100100_knowledge_keyset.sql', '20261111100200_knowledge_search.sql', '20261111100300_knowledge_views_filters.sql', '20261111100400_knowledge_notifications.sql', '20261111100500_knowledge_manage.sql', '20261111100600_knowledge_manage_trigram_recovery.sql', '20261111100700_knowledge_person_avatars.sql']) {
     if (file === '20261111100500_knowledge_manage.sql' && process.env.KNOWLEDGE_SKIP_FAILED_MANAGE === '1') continue;
     const migration=await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8');
     await db.exec(migration);
     if (file.startsWith('20261111')) await db.exec(migration);
   }
   // Re-running additive migrations must preserve functions and data.
-  await db.exec(await readFile(new URL('../supabase/migrations/20261111100600_knowledge_manage_trigram_recovery.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/20261111100700_knowledge_person_avatars.sql', import.meta.url), 'utf8'));
   const listConfiguration=(await read("SELECT proconfig FROM pg_proc WHERE oid='public.knowledge_qa_list(uuid,text,text,integer,jsonb,text,text,text)'::regprocedure"))[0].proconfig;
   assert.ok(!listConfiguration.some(setting=>setting.startsWith('pg_trgm.')), 'List creation and execution require no extension parameter privileges');
+  await db.query('INSERT INTO profiles VALUES($1,$2,$3,$4),($5,$6,$7,$8),($9,$2,$10,$11)',[alice,officeA,'Alice Beispiel','https://example.test/alice.png',bob,officeB,'Bob Privat','https://example.test/private.png',clara,'Clara Beispiel','https://example.test/clara.png']);
   await actor(alice);
   assert.equal((await read('SELECT knowledge_qa_notification_selftest($1) AS result',[officeA]))[0].result.ok,true);
   const diagnostic = (await read('SELECT knowledge_qa_selftest($1) AS result', [officeA]))[0].result;
@@ -107,12 +112,33 @@ try {
   assert.equal(summaryPage.items[0].id, q.id);
   assert.equal('answer_content' in summaryPage.items[0], false);
   assert.equal('answer_text' in summaryPage.items[0], false);
+  assert.deepEqual(summaryPage.items[0].created_by_person,{user_id:alice,display_name:'Alice Beispiel',avatar_url:'https://example.test/alice.png'});
+  assert.equal(summaryPage.items[0].assigned_to_person,null);
+  assert.equal(summaryPage.items[0].verified_by_person,null);
+  assert.ok(!JSON.stringify(summaryPage).includes('Bob Privat'));
+  assert.equal((await read('SELECT count(*)::int AS n FROM profiles WHERE user_id=$1',[bob]))[0].n,0,'Profile RLS remains active');
+
   assert.equal(q.review_status, 'unverified'); assert.equal((await search(officeA, '', 'open')).length, 0);
   q = await review(q); const verifiedRevision = q.revision;
   assert.equal(q.verified_by, alice); assert.ok(q.verified_at); assert.equal(q.verified_answer_revision, q.answer_revision);
   assert.equal((await save(q, q.answer_text)).revision, q.revision, 'Identical save preserves confirmation');
   q = (await read('SELECT * FROM knowledge_qa_set_assignee($1,$2,$3)', [q.id, q.revision, clara]))[0];
   assert.equal(q.review_status, 'verified', 'Assignment does not invalidate content');
+  const peoplePage=(await read('SELECT * FROM knowledge_qa_list($1)',[officeA]))[0];
+  assert.equal(peoplePage.items[0].assigned_to_person.avatar_url,'https://example.test/clara.png');
+  assert.equal(peoplePage.items[0].verified_by_person.display_name,'Alice Beispiel');
+  assert.equal((await read('SELECT assigned_to_person FROM knowledge_question_cards WHERE id=$1',[q.id]))[0].assigned_to_person.avatar_url,'https://example.test/clara.png');
+  await owner();
+  // Even a legacy actor reference must not expose a profile from another tenant.
+  const foreignActor=(await read('SELECT * FROM knowledge_qa_create_question($1,$2)',[officeA,'Fehlender Profilbezug']))[0];
+  await db.query('UPDATE knowledge_questions SET created_by=$1,revision=revision+1 WHERE id=$2',[bob,foreignActor.id]);
+  await db.query("INSERT INTO user_tenant_memberships VALUES($1,$2,'mitarbeiter',true)",[officeB,alice]);
+  await actor(alice);
+  assert.equal((await read('SELECT count(*)::int AS n FROM profiles WHERE user_id=$1',[bob]))[0].n,1,'Multi-office actor can read the other office profile directly');
+  const hiddenPerson=(await read('SELECT created_by_person FROM knowledge_question_summaries WHERE id=$1',[foreignActor.id]))[0].created_by_person;
+  assert.equal(hiddenPerson.display_name,null); assert.equal(hiddenPerson.avatar_url,null);
+  await owner(); await db.query('DELETE FROM user_tenant_memberships WHERE tenant_id=$1 AND user_id=$2',[officeB,alice]); await db.query('DELETE FROM knowledge_question_events WHERE question_id=$1',[foreignActor.id]); await db.query('DELETE FROM knowledge_questions WHERE id=$1',[foreignActor.id]); await actor(alice);
+
   await actor(clara);
   assert.equal((await read('SELECT * FROM knowledge_documents WHERE id=$1', [legacyA])).length, 0, 'Unpublished legacy article remains private within the same office');
   const old = q; q = await save(q, 'Bitte den Urlaubsantrag mit Datum an die Büroleitung senden.');

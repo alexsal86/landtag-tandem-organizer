@@ -13879,8 +13879,36 @@ export type Database = {
       }
     }
     Views: {
+      knowledge_question_summaries: {
+        Row: {
+          id: string | null
+          tenant_id: string | null
+          title: string | null
+          description: string | null
+          answer_excerpt: string | null
+          answered_at: string | null
+          review_status: string | null
+          effective_review_status: string | null
+          review_due_at: string | null
+          assigned_to: string | null
+          created_by: string | null
+          created_at: string | null
+          updated_at: string | null
+          answer_updated_at: string | null
+          revision: number | null
+          server_now: string | null
+          created_by_person: Json | null
+          assigned_to_person: Json | null
+          verified_by_person: Json | null
+          verified_at: string | null
+        }
+        Relationships: Database['public']['Views']['knowledge_question_cards']['Relationships']
+      }
       knowledge_question_cards: {
         Row: {
+          created_by_person: Json | null
+          assigned_to_person: Json | null
+          verified_by_person: Json | null
           archived_at: string | null
           merged_into: string | null
           title_search_vector: unknown

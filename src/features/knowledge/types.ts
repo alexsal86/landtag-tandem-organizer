@@ -2,11 +2,22 @@ import type { Database, Json } from "@/integrations/supabase/types";
 
 export type KnowledgeQuestion =
   Database["public"]["Tables"]["knowledge_questions"]["Row"];
+export interface KnowledgePerson {
+  user_id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+export interface KnowledgePersonFields {
+  created_by_person: KnowledgePerson;
+  assigned_to_person: KnowledgePerson | null;
+  verified_by_person: KnowledgePerson | null;
+}
 // The view selects whole knowledge_questions rows; generated view types mark every column nullable.
-export type KnowledgeCard = KnowledgeQuestion & {
-  effective_review_status: string | null;
-  server_now: string;
-};
+export type KnowledgeCard = KnowledgeQuestion &
+  KnowledgePersonFields & {
+    effective_review_status: string | null;
+    server_now: string;
+  };
 export type KnowledgeAttachment =
   Database["public"]["Tables"]["knowledge_question_attachments"]["Row"];
 export type KnowledgeEvent =
@@ -43,7 +54,9 @@ export type KnowledgeSummary = Pick<
   | "answer_updated_at"
   | "revision"
   | "server_now"
-> & { answer_excerpt: string };
+  | "verified_at"
+> &
+  KnowledgePersonFields & { answer_excerpt: string };
 export interface KnowledgePage {
   items: KnowledgeSummary[];
   total_count: number;

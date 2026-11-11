@@ -5,6 +5,9 @@ test('questions, answers, reviews, private attachments, search, errors and legac
   const user = { id: '33333333-3333-4333-8333-333333333333', email: 'staff@example.test', aud: 'authenticated', role: 'authenticated', app_metadata: { provider: 'email' }, user_metadata: { display_name: 'Test Mitarbeiter' } };
   const tenant = { id: '11111111-1111-4111-8111-111111111111', name: 'Testbüro', settings: {}, is_active: true, created_at: '2026-01-01T00:00:00Z' };
   type Question = { id: string; title: string; description: string; tenant_id: string; assigned_to: string | null; created_by: string; updated_by: string; created_at: string; updated_at: string; answer_content: unknown; answer_text: string; answered_by: string | null; answered_at: string | null; answer_updated_at: string | null; revision: number; answer_revision: number; review_status: string; verified_at: string | null; verified_by: string | null; verified_answer_revision: number | null; review_due_at: string | null; archived_at?: string | null; merged_into?: string | null };
+  const avatarUrl='https://wawofclbehbkebjivdte.supabase.co/storage/v1/object/public/avatars/test.png';
+  const personFor=(id: string | null) => id ? { user_id: id, display_name: 'Test Mitarbeiter', avatar_url: avatarUrl } : null;
+  const peopleFor=(question: Question) => ({ created_by_person: personFor(question.created_by), assigned_to_person: personFor(question.assigned_to), verified_by_person: personFor(question.verified_by) });
   const questions: Question[] = [];
   const attachments: Array<{ id: string; question_id: string; tenant_id: string; state: string; file_name: string; storage_path: string; file_type: string; file_size: number; uploaded_by: string; created_at: string }> = [];
   const requests: string[] = [];
@@ -17,6 +20,7 @@ test('questions, answers, reviews, private attachments, search, errors and legac
     const single = request.headers().accept?.includes('object+json');
     let data: unknown = single ? null : [];
     const json = (value: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(value) });
+    if (path.endsWith('/avatars/test.png')) return route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lK0AAAAASUVORK5CYII=','base64')});
     if (path.endsWith('/auth/v1/user')) data = user;
     else if (path.includes('/rpc/')) {
       const name = path.split('/').pop(); const body = request.postDataJSON() ?? {};
@@ -27,7 +31,7 @@ test('questions, answers, reviews, private attachments, search, errors and legac
           `${question.title} ${question.answer_text}`.toLowerCase().includes(String(body.p_query ?? '').toLowerCase())));
         data = [{ items: filtered.slice(0,body.p_limit ?? 20).map(question => {
           const { answer_content, answer_text, ...summary } = question;
-          return { ...summary, answer_excerpt: answer_text.slice(0,200), server_now: new Date().toISOString(), effective_review_status: question.review_status };
+          return { ...summary, ...peopleFor(question), answer_excerpt: answer_text.slice(0,200), server_now: new Date().toISOString(), effective_review_status: question.review_status };
         }), total_count: filtered.length, next_cursor: null }];
       } else if (name === 'knowledge_qa_counts') {
         data = [{ answers: questions.filter(q=>q.answered_at).length, open: questions.filter(q=>!q.answered_at).length, mine: questions.length, assigned: questions.filter(q=>q.assigned_to===user.id).length, review: questions.filter(q=>q.review_status==='needs_review').length }];
@@ -65,13 +69,13 @@ test('questions, answers, reviews, private attachments, search, errors and legac
     } else if (path.endsWith('/user_tenant_memberships')) {
       const membership = { id: 'membership', user_id: user.id, tenant_id: tenant.id, role: 'mitarbeiter', is_active: true, tenant }; data = single ? membership : [membership];
     } else if (path.endsWith('/profiles')) {
-      const profile = { id: 'profile', user_id: user.id, display_name: 'Test Mitarbeiter', tenant_id: tenant.id, avatar_url: null }; data = single ? profile : [profile];
+      const profile = { id: 'profile', user_id: user.id, display_name: 'Test Mitarbeiter', tenant_id: tenant.id, avatar_url: avatarUrl }; data = single ? profile : [profile];
     } else if (path.endsWith('/tenants')) data = single ? tenant : [tenant];
     else if (path.endsWith('/user_onboarding_state')) data = { completed_at: '2026-01-01T00:00:00Z' };
     else if (path.endsWith('/knowledge_question_attachments')) data = attachments.filter(file => file.state === 'ready');
     else if (path.includes('/storage/v1/object/knowledge-attachments/')) data = { Key: path.split('/object/')[1], Id: 'file' };
     else if (path.endsWith('/knowledge_question_cards')) {
-      const rows=questions.filter(q=>!url.searchParams.get('id') || url.searchParams.get('id')===`eq.${q.id}`).map(q=>({ ...q, server_now: new Date().toISOString(), effective_review_status:q.review_status }));
+      const rows=questions.filter(q=>!url.searchParams.get('id') || url.searchParams.get('id')===`eq.${q.id}`).map(q=>({ ...q, ...peopleFor(q), server_now: new Date().toISOString(), effective_review_status:q.review_status }));
       data=single ? rows[0] ?? null : rows;
     }
     else if (path.endsWith('/knowledge_questions')) data = single ? questions[0] : questions;
@@ -94,6 +98,16 @@ test('questions, answers, reviews, private attachments, search, errors and legac
   await expect(page.getByText('Offene Frage', { exact: true })).toBeVisible();
   await page.screenshot({ path: info.outputPath('wissen-offene-frage.png'), fullPage: true });
   expect(questions[0].assigned_to).toBeNull();
+  const assignee = page.getByRole('combobox', { name: 'Zuständig', exact: true });
+  await assignee.focus(); await assignee.press('ArrowDown');
+  const personOption = page.getByRole('option', { name: 'Test Mitarbeiter', exact: true });
+  await expect(personOption.locator('[aria-hidden="true"][title="Test Mitarbeiter"]')).toBeVisible();
+  await personOption.click();
+  await expect(assignee).toContainText('Test Mitarbeiter');
+  await assignee.click();
+  await page.getByRole('option', { name: 'Nicht zugeordnet', exact: true }).click();
+  await expect(assignee).toContainText('Nicht zugeordnet');
+
   await page.getByRole('button', { name: 'Beantworten', exact: true }).click();
   const editor = page.locator('[contenteditable="true"][aria-label="Antwort"]');
   await editor.fill('Bitte den Antrag an die Büroleitung senden.');
@@ -122,9 +136,15 @@ test('questions, answers, reviews, private attachments, search, errors and legac
   const search = page.getByRole('textbox', { name: 'Wissen durchsuchen' });
   await search.fill('Urlaub');
   await expect(page.getByText('Bitte den Antrag mit Datum an die Büroleitung senden.', { exact: true })).toBeVisible();
+  await expect(page.locator('[title="Test Mitarbeiter"][aria-hidden="true"]')).toHaveCount(0);
+  const profileRequestsBeforeExpand=requests.filter(path=>path.endsWith('/profiles')).length;
+
   await expect(page.locator('[contenteditable]')).toHaveCount(0);
   await page.getByRole('button',{name:'Vollständig anzeigen',exact:true}).click();
   await expect(page.getByRole('button',{name:'Antwort bearbeiten'})).toBeVisible();
+  expect(requests.filter(path=>path.endsWith('/profiles')).length).toBe(profileRequestsBeforeExpand);
+  await expect(page.locator('[title="Test Mitarbeiter"][aria-hidden="true"]')).toHaveCount(0);
+
   await page.screenshot({ path: info.outputPath('wissen-desktop.png'), fullPage: true });
   await page.evaluate(() => document.documentElement.classList.add('dark'));
   await page.waitForTimeout(350);
@@ -142,6 +162,8 @@ test('questions, answers, reviews, private attachments, search, errors and legac
   await expect(page.getByRole('heading', { name: 'Wie beantrage ich Urlaub?' })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: info.outputPath('wissen-mobile.png'), fullPage: true });
+  await expect(page.locator('[title="Test Mitarbeiter"] img[loading="lazy"][alt=""]')).toBeVisible();
+
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.getByRole('button', { name: 'Vollständig anzeigen', exact: true }).click();
   await page.getByRole('button', { name: 'Frage bearbeiten', exact: true }).click();

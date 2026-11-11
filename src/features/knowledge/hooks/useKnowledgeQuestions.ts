@@ -247,7 +247,7 @@ export function useKnowledgeQuestion(id: string | null) {
     queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from("knowledge_question_cards")
-        .select("id,tenant_id,title,description,assigned_to,created_by,created_at,updated_by,updated_at,answer_content,answer_text,answered_by,answered_at,answer_updated_at,revision,answer_revision,review_status,verified_by,verified_at,verified_answer_revision,review_due_at,search_vector,title_search_vector,effective_review_status,server_now,archived_at,merged_into")
+        .select("id,tenant_id,title,description,assigned_to,created_by,created_at,updated_by,updated_at,answer_content,answer_text,answered_by,answered_at,answer_updated_at,revision,answer_revision,review_status,verified_by,verified_at,verified_answer_revision,review_due_at,search_vector,title_search_vector,effective_review_status,server_now,archived_at,merged_into,created_by_person,assigned_to_person,verified_by_person")
         .eq("tenant_id", tenantId!)
         .eq("id", id!)
         .abortSignal(signal)
