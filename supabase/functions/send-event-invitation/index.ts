@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
 import { createServiceRoleClient } from "../_shared/supabase.ts";
 
-import { withSafeHandler, requireAuth, unauthorizedResponse } from "../_shared/security.ts";
+import { withSafeHandler, requireAuth, unauthorizedResponse, forbiddenResponse, callerClient } from "../_shared/security.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const DEFAULT_PUBLIC_LINK_TTL_DAYS = 45;
 
@@ -60,6 +60,18 @@ const handler = async (req: Request): Promise<Response> => {
       type,
     });
 
+    if (typeof eventPlanningId !== "string" || !Array.isArray(rsvpIds)) {
+      return new Response(JSON.stringify({ error: "Invalid request" }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
+    }
+
+    // The caller must be allowed to see this event planning (RLS) before privileged work.
+    const { data: visibleEvent } = await callerClient(req)
+      .from("event_plannings")
+      .select("id")
+      .eq("id", eventPlanningId)
+      .maybeSingle();
+    if (!visibleEvent) return forbiddenResponse();
+
     // Get event details
     const { data: event, error: eventError } = await supabase
       .from("event_plannings")
@@ -84,6 +96,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: rsvps, error: rsvpError } = await supabase
       .from("event_rsvps")
       .select("id, email, name")
+      .eq("event_planning_id", eventPlanningId)
       .in("id", rsvpIds);
 
     if (rsvpError) throw rsvpError;
