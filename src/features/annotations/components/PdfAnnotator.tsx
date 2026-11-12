@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import "pdfjs-dist/web/pdf_viewer.css";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { AnnotationLayer, AnnotationShape, type AnnotationEditingProps } from "./AnnotationShapes";
@@ -18,11 +17,12 @@ export function PdfAnnotator(props: Props) {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
+    setError(null); setPdf(null);
     let cancelled = false; let task: { destroy: () => Promise<void> } | null = null;
     (async () => {
       try {
-        const pdfjs = await import("pdfjs-dist");
-        pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+        const pdfjs = await import("@/lib/pdfjs");
+        if (cancelled) return;
         const loading = pdfjs.getDocument({ data: props.data.slice(0) }); task = loading;
         const doc = await loading.promise;
         if (!cancelled) setPdf(doc);
@@ -71,7 +71,7 @@ function PdfPage({ pdf, pageNumber, zoom, tool, color, annotations, activeId, dr
       renderTask = task;
       await task.promise.catch(() => undefined);
       if (cancelled) return;
-      const pdfjs = await import("pdfjs-dist");
+      const pdfjs = await import("@/lib/pdfjs");
       if (cancelled) return;
       textDiv.replaceChildren();
       const layer = new pdfjs.TextLayer({ textContentSource: page.streamTextContent(), container: textDiv, viewport: vp });

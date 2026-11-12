@@ -1,10 +1,7 @@
-import * as pdfjsLib from 'pdfjs-dist';
-import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import * as pdfjsLib from '@/lib/pdfjs';
 import type { ProtocolAgendaItem, ProtocolAnalysisSpeech, ProtocolSessionEvent } from '@/types/protocol';
 import { debugConsole } from '@/utils/debugConsole';
 import { isPdfTextItem } from '@/utils/protocolGuards';
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 export interface ParsedProtocol {
   text: string;
