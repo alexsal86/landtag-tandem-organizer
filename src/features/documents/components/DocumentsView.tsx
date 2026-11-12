@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { FileText, Upload, Download, Trash2, Plus, Search, ArrowUpDown, ArrowUp, ArrowDown, Calendar, Tag, FileType, Folder, FolderPlus, FolderInput, Home, ChevronRight, MoreVertical, Edit, Mail, Edit3, Send, Grid, List, Settings, RotateCcw, ListTodo, ListTree, Info, UserPlus, Newspaper, Save, Highlighter, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
@@ -228,6 +229,14 @@ export function DocumentsView() {
   }, [searchParams, setSearchParams, activeTab, navigate]);
 
   const getCategoryLabel = (name: string) => safeCategories.find(c => c.name === name)?.label || name;
+  const hiddenCategorySelectionCount = safeCategories.slice(3).filter(c => selectedCategories.includes(c.name)).length;
+  const categoryChip = (category: (typeof safeCategories)[number]) => {
+    const selected = selectedCategories.includes(category.name);
+    return <Button key={category.id} size="sm" variant={selected ? "default" : "outline"}
+      className={`rounded-full ${selected ? "" : "bg-white text-slate-900 hover:bg-slate-50"}`} aria-pressed={selected}
+      onClick={() => setSelectedCategories(current => current.includes(category.name) ? current.filter(name => name !== category.name) : [...current, category.name])}>{category.label}</Button>;
+  };
+
 
   const filteredDocuments = visibleDocuments(data.documents, { search: searchTerm, categories: selectedCategories,
     folderId: currentFolder, sort: documentSort });
@@ -462,9 +471,26 @@ export function DocumentsView() {
                     placeholder={activeTab === 'documents' ? "Dokumente durchsuchen..." : "Briefe durchsuchen..."} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                 </div>
                 {activeTab === 'documents' ? <div className="flex min-w-[180px] flex-1 flex-wrap items-center gap-2" role="group" aria-label="Kategorien auswählen">
-                  <Button size="sm" variant={selectedCategories.length === 0 ? "default" : "outline"} className="rounded-full" aria-pressed={selectedCategories.length === 0} onClick={() => setSelectedCategories([])}>Alle Kategorien</Button>
-                  {safeCategories.map(c => <Button key={c.id} size="sm" variant={selectedCategories.includes(c.name) ? "default" : "outline"} className="rounded-full"
-                    aria-pressed={selectedCategories.includes(c.name)} onClick={() => setSelectedCategories(current => current.includes(c.name) ? current.filter(name => name !== c.name) : [...current, c.name])}>{c.label}</Button>)}
+                  <Button size="sm" variant={selectedCategories.length === 0 ? "default" : "outline"}
+                    className={`rounded-full ${selectedCategories.length === 0 ? "" : "bg-white text-slate-900 hover:bg-slate-50"}`}
+                    aria-pressed={selectedCategories.length === 0} onClick={() => setSelectedCategories([])}>Alle</Button>
+                  {safeCategories.slice(0, 3).map(categoryChip)}
+                  {safeCategories.length > 3 && <Popover>
+                    <PopoverTrigger asChild>
+                      <Button size="sm" variant={hiddenCategorySelectionCount > 0 ? "default" : "outline"}
+                        className={`rounded-full px-3 ${hiddenCategorySelectionCount > 0 ? "" : "bg-white text-slate-900 hover:bg-slate-50"}`}
+                        aria-label={`Weitere Kategorien${hiddenCategorySelectionCount > 0 ? ` (${hiddenCategorySelectionCount} ausgewählt)` : ""}`}>
+                        <Plus className="h-4 w-4" aria-hidden="true" />
+                        {hiddenCategorySelectionCount > 0 && <span className="ml-1">{hiddenCategorySelectionCount}</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="max-h-72 w-80 max-w-[calc(100vw-2rem)] overflow-y-auto">
+                      <p className="mb-3 text-sm font-medium">Weitere Kategorien</p>
+                      <div className="flex flex-wrap gap-2" role="group" aria-label="Weitere Kategorien auswählen">
+                        {safeCategories.slice(3).map(categoryChip)}
+                      </div>
+                    </PopoverContent>
+                  </Popover>}
                 </div> : <Select value={filterStatus} onValueChange={setFilterStatus}><SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Alle Status</SelectItem>{letterSubTab === 'active' ? ['draft', 'review', 'approved'].map(s => <SelectItem key={s} value={s}>{s === 'draft' ? 'Entwurf' : s === 'review' ? 'Zur Prüfung' : 'Genehmigt'}</SelectItem>) : ['sent', 'archived'].map(s => <SelectItem key={s} value={s}>{s === 'sent' ? 'Versendet' : 'Archiviert'}</SelectItem>)}</SelectContent></Select>}
               </div>
               <div className="flex items-center gap-1 bg-muted p-1 rounded-md">
