@@ -187,11 +187,11 @@ export function GlobalSearchCommand() {
       if (!debouncedQuery || debouncedQuery.length < 2) return [];
       let query = supabase
         .from('contacts')
-        .select('id, name, organization, avatar_url, category, company, email, phone, mobile_phone, role, position')
+        .select('id, name, organization, avatar_url, category, company, email, phone, mobile_phone, position')
         .eq('tenant_id', currentTenant?.id ?? '');
       
       // Fuzzy search using pg_trgm similarity
-      query = query.or(`name.ilike.%${debouncedQuery}%,organization.ilike.%${debouncedQuery}%,company.ilike.%${debouncedQuery}%,email.ilike.%${debouncedQuery}%,phone.ilike.%${debouncedQuery}%,mobile_phone.ilike.%${debouncedQuery}%,role.ilike.%${debouncedQuery}%,position.ilike.%${debouncedQuery}%`);
+      query = query.or(`name.ilike.%${debouncedQuery}%,organization.ilike.%${debouncedQuery}%,company.ilike.%${debouncedQuery}%,email.ilike.%${debouncedQuery}%,phone.ilike.%${debouncedQuery}%,mobile_phone.ilike.%${debouncedQuery}%,position.ilike.%${debouncedQuery}%`);
       
       if (filters.category) {
         query = query.eq('category', filters.category);

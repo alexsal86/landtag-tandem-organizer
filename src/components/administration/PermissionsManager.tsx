@@ -39,8 +39,6 @@ const FIELD_TARGETS: Array<{ table: string; column: string; label: string }> = [
   { table: "contacts", column: "phone", label: "Kontakt · Telefon" },
   { table: "contacts", column: "email", label: "Kontakt · E-Mail" },
   { table: "contacts", column: "notes", label: "Kontakt · Notizen" },
-  { table: "contacts", column: "email_2", label: "Kontakt · weitere E-Mail" },
-  { table: "contacts", column: "email_3", label: "Kontakt · dritte E-Mail" },
   { table: "contacts", column: "mobile_phone", label: "Kontakt · Mobiltelefon" },
   { table: "contacts", column: "business_phone", label: "Kontakt · Geschäftstelefon" },
   { table: "letters", column: "content", label: "Brief · Inhalt" },

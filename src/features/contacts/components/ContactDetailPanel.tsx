@@ -161,7 +161,7 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
     if (!contactId) return;
     try {
       setLoading(true);
-      const { data, error } = await supabase.from('contacts').select('id, user_id, name, email, phone, notes, role, organization, category, priority, last_contact, avatar_url, address, birthday, website, linkedin, twitter, facebook, instagram, xing, contact_type, organization_id, tags, tenant_id, first_name, last_name, title, department, position, business_street, business_house_number, business_postal_code, business_city, business_country, business_phone, mobile_phone, email_2, email_3, is_favorite, coordinates, gender').eq('id', contactId).single();
+      const { data, error } = await supabase.from('contacts').select('id, user_id, name, email, phone, notes, role:position, organization, category, priority, last_contact, avatar_url, address, birthday, website, linkedin, facebook, instagram, contact_type, organization_id, tags, tenant_id, first_name, last_name, title, position, business_street, business_house_number, business_postal_code, business_city, business_country, business_phone, mobile_phone, is_favorite, coordinates, gender').eq('id', contactId).single();
       if (error) throw error;
       setContact({ ...data, contact_type: data.contact_type as "person" | "organization", category: data.category as Contact["category"], priority: data.priority as Contact["priority"], tags: data.tags || [], coordinates: data.coordinates as { lat: number; lng: number } | undefined } as Contact);
       let inheritedTags: string[] = [];
@@ -223,10 +223,8 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
     contact?.phone ? { key: "phone", href: `tel:${contact.phone}`, label: "Telefon", icon: Phone } : null,
     contact?.website ? { key: "website", href: contact.website.startsWith("http") ? contact.website : `https://${contact.website}`, label: "Website", icon: Globe } : null,
     contact?.linkedin ? { key: "linkedin", href: generateSocialMediaUrl("linkedin", contact.linkedin), label: "LinkedIn", icon: Linkedin } : null,
-    contact?.twitter ? { key: "twitter", href: generateSocialMediaUrl("twitter", contact.twitter), label: "Twitter/X", icon: Twitter } : null,
     contact?.facebook ? { key: "facebook", href: generateSocialMediaUrl("facebook", contact.facebook), label: "Facebook", icon: Facebook } : null,
     contact?.instagram ? { key: "instagram", href: generateSocialMediaUrl("instagram", contact.instagram), label: "Instagram", icon: Instagram } : null,
-    contact?.xing ? { key: "xing", href: generateSocialMediaUrl("xing", contact.xing), label: "Xing", icon: Globe } : null,
   ].filter(Boolean) as ContactChannel[];
 
   if (!contactId) return null;

@@ -3059,15 +3059,11 @@ export type Database = {
           contact_type: string | null
           coordinates: Json | null
           created_at: string
-          department: string | null
           email: string | null
-          email_2: string | null
-          email_3: string | null
           facebook: string | null
           first_name: string | null
           gender: string | null
           geocoded_at: string | null
-          geocoding_source: string | null
           id: string
           instagram: string | null
           is_favorite: boolean | null
@@ -3086,16 +3082,13 @@ export type Database = {
           processing_purpose: string | null
           retention_review_date: string | null
           retention_status: string
-          role: string | null
           source_origin: string | null
           tags: string[] | null
           tenant_id: string
           title: string | null
-          twitter: string | null
           updated_at: string
           user_id: string
           website: string | null
-          xing: string | null
         }
         Insert: {
           address?: string | null
@@ -3112,15 +3105,11 @@ export type Database = {
           contact_type?: string | null
           coordinates?: Json | null
           created_at?: string
-          department?: string | null
           email?: string | null
-          email_2?: string | null
-          email_3?: string | null
           facebook?: string | null
           first_name?: string | null
           gender?: string | null
           geocoded_at?: string | null
-          geocoding_source?: string | null
           id?: string
           instagram?: string | null
           is_favorite?: boolean | null
@@ -3139,16 +3128,13 @@ export type Database = {
           processing_purpose?: string | null
           retention_review_date?: string | null
           retention_status?: string
-          role?: string | null
           source_origin?: string | null
           tags?: string[] | null
           tenant_id: string
           title?: string | null
-          twitter?: string | null
           updated_at?: string
           user_id: string
           website?: string | null
-          xing?: string | null
         }
         Update: {
           address?: string | null
@@ -3165,15 +3151,11 @@ export type Database = {
           contact_type?: string | null
           coordinates?: Json | null
           created_at?: string
-          department?: string | null
           email?: string | null
-          email_2?: string | null
-          email_3?: string | null
           facebook?: string | null
           first_name?: string | null
           gender?: string | null
           geocoded_at?: string | null
-          geocoding_source?: string | null
           id?: string
           instagram?: string | null
           is_favorite?: boolean | null
@@ -3192,16 +3174,13 @@ export type Database = {
           processing_purpose?: string | null
           retention_review_date?: string | null
           retention_status?: string
-          role?: string | null
           source_origin?: string | null
           tags?: string[] | null
           tenant_id?: string
           title?: string | null
-          twitter?: string | null
           updated_at?: string
           user_id?: string
           website?: string | null
-          xing?: string | null
         }
         Relationships: [
           {
@@ -15697,15 +15676,11 @@ export type Database = {
           contact_type: string | null
           coordinates: Json | null
           created_at: string
-          department: string | null
           email: string | null
-          email_2: string | null
-          email_3: string | null
           facebook: string | null
           first_name: string | null
           gender: string | null
           geocoded_at: string | null
-          geocoding_source: string | null
           id: string
           instagram: string | null
           is_favorite: boolean | null
@@ -15724,16 +15699,13 @@ export type Database = {
           processing_purpose: string | null
           retention_review_date: string | null
           retention_status: string
-          role: string | null
           source_origin: string | null
           tags: string[] | null
           tenant_id: string
           title: string | null
-          twitter: string | null
           updated_at: string
           user_id: string
           website: string | null
-          xing: string | null
         }[]
         SetofOptions: {
           from: "*"

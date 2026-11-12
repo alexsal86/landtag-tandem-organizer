@@ -116,7 +116,6 @@ serve(withSafeHandler("geocode-contact-address", async (req) => {
         await supabaseClient
           .from('contacts')
           .update({
-            geocoding_source: 'failed',
             geocoded_at: new Date().toISOString(),
           })
           .eq('id', contactId);
@@ -143,7 +142,6 @@ serve(withSafeHandler("geocode-contact-address", async (req) => {
         .update({
           coordinates: coordinates,
           geocoded_at: new Date().toISOString(),
-          geocoding_source: 'nominatim',
         })
         .eq('id', contactId);
 

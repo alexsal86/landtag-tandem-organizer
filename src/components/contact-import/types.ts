@@ -12,7 +12,7 @@ export const FIELD_MAPPINGS: Record<string, string> = {
   Vorname: "first_name",
   Titel: "title",
   Firma: "organization",
-  Abteilung: "department",
+  Abteilung: "position",
   Position: "position",
   "Geschäftlich: Straße": "business_street",
   "Geschäftlich: Hausnummer": "business_house_number",
@@ -24,8 +24,6 @@ export const FIELD_MAPPINGS: Record<string, string> = {
   "Telefon (privat)": "phone",
   Mobiltelefon: "mobile_phone",
   "E-Mail 1": "email",
-  "E-Mail 2": "email_2",
-  "E-Mail 3": "email_3",
   "First Name": "first_name",
   "Last Name": "last_name",
   Company: "organization",
@@ -42,9 +40,9 @@ export const FIELD_MAPPINGS: Record<string, string> = {
 };
 
 export const TARGET_FIELDS = [
-  "first_name", "last_name", "title", "organization", "department", "position",
+  "first_name", "last_name", "title", "organization", "position",
   "business_street", "business_house_number", "business_postal_code", "business_city", "business_country",
   "business_phone", "mobile_phone",
-  "email", "email_2", "email_3", "phone", "address", "notes",
+  "email", "phone", "address", "notes",
   "distribution_list_names",
 ];

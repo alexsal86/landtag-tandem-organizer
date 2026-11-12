@@ -48,7 +48,7 @@ export const useInfiniteContacts = ({
       .from('contacts')
       .select(
         // Felder für Listenansicht (Detail-only: website, twitter, facebook, instagram, xing, business_street/postal/country/house_number)
-        'id, contact_type, name, role, organization, organization_id, email, phone, ' +
+        'id, contact_type, name, role:position, organization, organization_id, email, phone, ' +
         'avatar_url, is_favorite, tags, category, priority, last_contact, gender, ' +
         'address, business_city, birthday, notes, linkedin',
         { count: 'planned' }
@@ -66,13 +66,16 @@ export const useInfiniteContacts = ({
 
     // Search filter
     if (searchTerm) {
-      query = query.or(`name.ilike.%${searchTerm}%,organization.ilike.%${searchTerm}%,role.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
+      query = query.or(`name.ilike.%${searchTerm}%,organization.ilike.%${searchTerm}%,position.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
     }
 
     // Category filter
     if (selectedCategory !== "all") {
       if (selectedCategory === "favorites") {
         query = query.eq('is_favorite', true);
+      } else if (selectedCategory === "review_due") {
+        const today = new Date().toISOString().slice(0, 10);
+        query = query.or(`retention_review_date.is.null,retention_review_date.lte.${today}`);
       } else {
         query = query.eq('category', selectedCategory);
       }

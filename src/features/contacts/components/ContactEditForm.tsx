@@ -254,6 +254,14 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
 
       // Clean date fields - convert empty strings to null for database
       const cleanedUpdateData: Record<string, unknown> = { ...updateData };
+      // "Rolle" wird als Alias von position geladen; entfernte Spalten nie zurückschreiben.
+      if ('role' in cleanedUpdateData) {
+        cleanedUpdateData.position = cleanedUpdateData.role;
+        delete cleanedUpdateData.role;
+      }
+      for (const removed of ['twitter', 'xing', 'department', 'email_2', 'email_3', 'geocoding_source']) {
+        delete cleanedUpdateData[removed];
+      }
       const dateFields = ['birthday'];
       
       dateFields.forEach(field => {
@@ -766,15 +774,6 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
             </div>
 
             <div>
-              <Label htmlFor="twitter">Twitter</Label>
-              <Input
-                id="twitter"
-                value={formData.twitter || ''}
-                onChange={(e) => handleChange('twitter', e.target.value)}
-              />
-            </div>
-
-            <div>
               <Label htmlFor="facebook">Facebook</Label>
               <Input
                 id="facebook"
@@ -789,15 +788,6 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
                 id="instagram"
                 value={formData.instagram || ''}
                 onChange={(e) => handleChange('instagram', e.target.value)}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="xing">XING</Label>
-              <Input
-                id="xing"
-                value={formData.xing || ''}
-                onChange={(e) => handleChange('xing', e.target.value)}
               />
             </div>
           </div>
