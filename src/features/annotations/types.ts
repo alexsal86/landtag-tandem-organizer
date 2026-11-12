@@ -17,6 +17,9 @@ export interface DocumentAnnotation {
   tenant_id: string;
   document_id: string;
   parent_id: string | null;
+  assigned_to: string | null;
+  /** Linked task is read from document_annotation_tasks, not written directly. */
+  task_id: string | null;
   file_kind: AnnotationFileKind;
   file_version: string | null;
   annotation_type: AnnotationType;
@@ -49,4 +52,4 @@ export interface AnnotatableDocument {
   updated_at: string;
 }
 
-export type AnnotationPatch = Partial<Pick<DocumentAnnotation, "content" | "color" | "resolved" | "target_selector">>;
+export type AnnotationPatch = Partial<Pick<DocumentAnnotation, "content" | "color" | "resolved" | "target_selector" | "assigned_to">>;

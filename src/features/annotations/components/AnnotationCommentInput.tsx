@@ -1,6 +1,5 @@
+import { useAnnotationMembers } from "../useAnnotationMembers";
 import { useId, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { annotationMentionToken } from "../mentions";
@@ -16,20 +15,7 @@ export function AnnotationCommentInput({ tenantId, value, onChange, ...props }: 
   const [active, setActive] = useState(0);
   const [dismissed, setDismissed] = useState(false);
   const match = !dismissed && value.slice(0, cursor).match(/(?:^|\s)@([^@\n\[\]]*)$/);
-  const users = useQuery({
-    queryKey: ['annotation-mention-users', tenantId], enabled: !!match, staleTime: 60_000,
-    queryFn: async () => {
-      const members = await supabase.rpc('document_annotation_mention_members', { _tenant: tenantId });
-      // Preserve the existing picker until the matching database migration is deployed.
-      if (members.error?.code === 'PGRST202') {
-        const profiles = await supabase.from('profiles').select('user_id, display_name').eq('tenant_id', tenantId).order('display_name');
-        if (profiles.error) throw profiles.error;
-        return profiles.data ?? [];
-      }
-      if (members.error) throw members.error;
-      return (members.data ?? []).sort((a, b) => (a.display_name ?? '').localeCompare(b.display_name ?? '', 'de'));
-    },
-  });
+  const users = useAnnotationMembers(tenantId, !!match);
   const suggestions = match ? (users.data ?? []).filter(u => u.display_name?.toLocaleLowerCase('de').includes(match[1].toLocaleLowerCase('de'))).slice(0, 8) : [];
   const selectedIndex = Math.min(active, Math.max(0, suggestions.length - 1));
   const insert = (user: { user_id: string; display_name: string | null }) => {

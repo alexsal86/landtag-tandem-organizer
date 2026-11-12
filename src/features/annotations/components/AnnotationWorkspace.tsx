@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAnnotationMembers } from "../useAnnotationMembers";
+import { annotationTaskDefaults } from "../taskModel";
 import { useQuery } from "@tanstack/react-query";
 import { Highlighter, MousePointer2, Square, Pentagon, ZoomIn, ZoomOut, X, Eye, EyeOff, Undo2, Redo2, Maximize, MoveUpRight, FlagTriangleRight } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -25,6 +28,8 @@ const errorText = (error: unknown, fallback: string) => error && typeof error ==
 
 export function AnnotationWorkspace({ document: doc, open, onOpenChange, initialAnnotationId }: Props) {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const members = useAnnotationMembers(doc?.tenant_id, open);
   const viewerRef = useRef<HTMLDivElement>(null), canvasRef = useRef<HTMLDivElement>(null);
   const focusedLink = useRef<string | null>(null);
   const shortcuts = useRef<(event: KeyboardEvent) => void>(() => {});
@@ -47,7 +52,7 @@ export function AnnotationWorkspace({ document: doc, open, onOpenChange, initial
   const numbers = annotationNumbers(annotations);
   const editing = annotations.find(a => a.id === editingId);
   const composerTarget = draft ?? (editing?.parent_id ? annotations.find(a => a.id === editing.parent_id) : editing);
-  const busy = api.create.isPending || api.update.isPending || api.remove.isPending || history.busy;
+  const busy = api.create.isPending || api.update.isPending || api.remove.isPending || api.createTask.isPending || history.busy;
 
   useEffect(() => {
     const key = (e: KeyboardEvent) => shortcuts.current(e);
@@ -85,7 +90,7 @@ export function AnnotationWorkspace({ document: doc, open, onOpenChange, initial
     else { url = URL.createObjectURL(file.data); setImgUrl(url); }
     return () => { cancelled = true; if (url) URL.revokeObjectURL(url); setBuffer(null); setImgUrl(null); };
   }, [file.data, kind]);
-  const authorIds = useMemo(() => Array.from(new Set(api.annotations.map(a => a.created_by))), [api.annotations]);
+  const authorIds = useMemo(() => Array.from(new Set(api.annotations.flatMap(a => a.assigned_to ? [a.created_by, a.assigned_to] : [a.created_by]))), [api.annotations]);
   const authors = useQuery({
     queryKey: ["annotation-authors", authorIds.join(',')], enabled: authorIds.length > 0, staleTime: 5 * 60_000,
     queryFn: async () => {
@@ -204,6 +209,14 @@ export function AnnotationWorkspace({ document: doc, open, onOpenChange, initial
     }, 5000);
     pendingDeletes.current.set(id, entry);
   };
+  const createAnnotationTask = async (annotation: DocumentAnnotation) => {
+    if (!user || busy || !api.workflowReady) return;
+    const defaults = annotationTaskDefaults(annotation, doc.title, user.id);
+    try {
+      const id = await api.createTask.mutateAsync({ annotationId: annotation.id, title: defaults.title, assigneeId: defaults.assigneeId });
+      notify.success('Aufgabe angelegt', { action: { label: 'Öffnen', onClick: () => navigate(`/tasks?highlight=${encodeURIComponent(id)}`) } });
+    } catch (error) { notify.error(errorText(error, 'Aufgabe konnte nicht erstellt werden')); }
+  };
   const chooseColor = (next: AnnotationColor) => {
     setColor(next);
     const selected = annotations.find(a => a.id === activeId);
@@ -303,7 +316,8 @@ export function AnnotationWorkspace({ document: doc, open, onOpenChange, initial
           text={text} color={color} editing={!!editingId} saving={busy} onText={setText} onColor={setColor} onSave={() => { void saveComposer(); }} onCancel={cancelComposer} />}
       </div>
       <AnnotationSidebar tenantId={doc.tenant_id} saving={busy} loading={api.isLoading} failed={api.isError} onRetry={() => { void api.refetch(); }}
-        annotations={annotations} numbers={numbers} activeId={activeId} currentVersion={version} canManage={canEdit} canResolve={canResolveAnnotation(actor)}
+        annotations={annotations} numbers={numbers} activeId={activeId} userId={user?.id} workflowReady={api.workflowReady}
+        members={members.data ?? []} membersUnavailable={members.isLoading || members.isError} onCreateTask={a => { void createAnnotationTask(a); }} currentVersion={version} canManage={canEdit} canResolve={canResolveAnnotation(actor)}
         authorName={id => id === user?.id ? 'Du' : authors.data?.[id] ?? '…'} onSelect={id => selectAnnotation(id)} onEdit={editAnnotation}
         onUpdate={patchAnnotation} onDelete={deleteAnnotation} onReply={reply} />
     </TooltipProvider>

@@ -3702,8 +3702,15 @@ export type Database = {
           },
         ]
       }
+      document_annotation_tasks: {
+        Row: { id: string; annotation_id: string | null; task_id: string; document_id: string; tenant_id: string; created_at: string }
+        Insert: { id?: string; annotation_id?: string | null; task_id: string; document_id: string; tenant_id: string; created_at?: string }
+        Update: { id?: string; annotation_id?: string | null; task_id?: string; document_id?: string; tenant_id?: string; created_at?: string }
+        Relationships: []
+      }
       document_annotations: {
         Row: {
+          assigned_to: string | null
           annotation_type: string
           color: string
           content: string
@@ -3722,6 +3729,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assigned_to?: string | null
           annotation_type: string
           color?: string
           content?: string
@@ -3740,6 +3748,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assigned_to?: string | null
           annotation_type?: string
           color?: string
           content?: string
@@ -14475,6 +14484,14 @@ export type Database = {
       }
     }
     Functions: {
+      create_document_annotation_task: {
+        Args: { _annotation: string; _title?: string; _assignee?: string }
+        Returns: string
+      }
+      document_annotation_task_selftest: {
+        Args: { _tenant: string }
+        Returns: Json
+      }
       document_annotation_can_manage: {
         Args: { _tenant: string; _author: string }
         Returns: boolean

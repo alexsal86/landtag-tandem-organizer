@@ -25,3 +25,5 @@
 @media(prefers-reduced-motion:reduce){.annotation-workspace *{scroll-behavior:auto!important}}
 
 .annotation-workspace [data-annotation-surface]{border-radius:6px;box-shadow:0 8px 30px #0000002e}.annotation-workspace [data-annotation-surface]>img{border-radius:6px}.aw-shape:hover{fill-opacity:.35}
+
+.aw-assignee{display:flex;align-items:center;gap:8px;margin:8px 0 10px;color:var(--aw-muted);font-size:12px}.aw-assignee select{min-width:0;flex:1;border:1px solid var(--aw-border);border-radius:8px;padding:5px 8px;background:var(--aw-bg);color:var(--aw-fg)}.aw-assignee select:disabled{opacity:.65}.aw-actions{flex-wrap:wrap}

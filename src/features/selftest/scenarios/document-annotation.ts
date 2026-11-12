@@ -1,3 +1,5 @@
+import { annotationTaskDefaults, assignedAnnotationThreads } from "@/features/annotations/taskModel";
+import { taskZone, stepState } from "@/features/tasks/stafette";
 import { canManageAnnotation, canResolveAnnotation } from "@/features/annotations/permissions";
 import { annotationMentionToken, annotationMentionIds, annotationDocumentPath, plainAnnotationComment } from "@/features/annotations/mentions";
 import { advanceAnnotationHistory, emptyAnnotationHistory, recordAnnotationChange } from "@/features/annotations/annotationHistory";
@@ -8,7 +10,7 @@ import type { TestScenario } from '../types';
 export const documentAnnotationScenario: TestScenario = {
   id: 'document-annotation', title: 'Dokument-Annotation',
   description: 'Dateiregeln, Koordinaten, Polygon, Verschieben und Eckpunkte sowie Speicherung, Antworten und Zugriffsgrenzen.',
-  touches: ['documents', 'document_annotations'], features: ['documents', 'permissions'],
+  touches: ['documents', 'document_annotations', 'document_annotation_tasks', 'tasks', 'task_assignees'], features: ['documents', 'permissions', 'tasks'],
   checks: ['Dateityp', 'Bruchteil-Koordinaten', 'Polygon-Mindestpunkte', 'Verschieben und Eckpunkte', 'Zoomgrenzen', 'Anlegen, Antworten, Erledigen und Löschen', 'Fremde Autorenschaft und Mandatsgrenzen', 'Serverrollen und aktive RLS/Trigger', 'Erwähnungen mit Thread-Link'],
   limitations: ['Realtime, Scrollen und Benachrichtigungszustellung erfordern zwei interaktive Sitzungen. Die Serverrollenprüfung gilt für das angemeldete Konto; die UI-Regeln decken alle Rollen ab. Fremde Datensätze werden nicht testweise verändert.'],
   steps: [
@@ -125,6 +127,31 @@ export const documentAnnotationScenario: TestScenario = {
       return { ok: token === `@[Änne Büro](${id})` && ids.length === 1 && ids[0] === id
         && plainAnnotationComment(token) === '@Änne Büro' && params.get('annotate') === 'doc-id' && params.get('annotation') === 'reply-id',
         message: 'Eine bestätigte Person wird per UUID erwähnt; doppelte Erwähnungen bleiben eindeutig und der Link enthält den konkreten Thread.' };
+    } },
+    { id: 'annotation-task-rules', label: 'Zuständigkeit, Mein-Filter und Stafette-Vorgaben', kind: 'logic', run: async () => {
+      const rows = [
+        { id: 'mine', parent_id: null, resolved: false, assigned_to: 'me' },
+        { id: 'other', parent_id: null, resolved: false, assigned_to: 'other' },
+        { id: 'done', parent_id: null, resolved: true, assigned_to: 'me' },
+        { id: 'reply', parent_id: 'mine', resolved: false, assigned_to: null },
+      ];
+      const defaults = annotationTaskDefaults({ id: 'note', document_id: 'document', assigned_to: 'other', page_number: 12, content: 'Rückfrage formulieren' }, 'Drucksache', 'me');
+      const fallback = annotationTaskDefaults({ id: 'note', document_id: 'document', assigned_to: null, page_number: null, content: '' }, 'Anlage', 'me');
+      return { ok: assignedAnnotationThreads(rows, 'open', 'me', true).length === 1
+        && assignedAnnotationThreads(rows, 'all', 'me', true).length === 2
+        && assignedAnnotationThreads(rows, 'all', undefined, true).length === 0
+        && assignedAnnotationThreads(rows, 'open', 'me', false).length === 2
+        && defaults.assigneeId === 'other' && defaults.title.includes('Seite 12') && defaults.title.includes('Rückfrage')
+        && defaults.documentPath.includes('annotate=document') && defaults.documentPath.includes('annotation=note')
+        && fallback.assigneeId === 'me' && fallback.title.length > 0
+        && taskZone({ ball_owner: 'office', ball_assignee_id: defaults.assigneeId, next_action: defaults.nextAction }, 'other') === 'mine'
+        && stepState({ next_action: defaults.nextAction }) === 'set',
+        message: 'Nur eigene Hauptanmerkungen werden gefiltert; eine Aufgabe übernimmt die Zuständigkeit und eine konkrete nächste Aktion.' };
+    } },
+    { id: 'annotation-task-storage', label: 'Zuweisung und eindeutige Stafette-Aufgabe atomar speichern', kind: 'workflow', run: async ctx => {
+      const result = await supabase.rpc('document_annotation_task_selftest', { _tenant: ctx.tenantId });
+      const report = result.data && typeof result.data === 'object' && !Array.isArray(result.data) ? result.data : null;
+      return { ok: !result.error && report?.ok === true, message: result.error?.message ?? String(report?.message ?? 'Aufgabenprüfung fehlgeschlagen'), details: report?.checks };
     } },
     { id: 'schema', label: 'Antwortspalte im aktiven Backend vorhanden', critical: true, run: async ctx => {
       const result = await supabase.from('document_annotations').select('id,parent_id').eq('tenant_id', ctx.tenantId).limit(0);
