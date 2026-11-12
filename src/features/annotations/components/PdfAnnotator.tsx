@@ -18,16 +18,17 @@ export function PdfAnnotator(props: Props) {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    let cancelled = false; let doc: PDFDocumentProxy | null = null;
+    let cancelled = false; let task: { destroy: () => Promise<void> } | null = null;
     (async () => {
       try {
         const pdfjs = await import("pdfjs-dist");
         pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
-        doc = await pdfjs.getDocument({ data: props.data.slice(0) }).promise;
+        const loading = pdfjs.getDocument({ data: props.data.slice(0) }); task = loading;
+        const doc = await loading.promise;
         if (!cancelled) setPdf(doc);
       } catch (e) { if (!cancelled) setError(e instanceof Error ? e.message : "PDF konnte nicht geladen werden"); }
     })();
-    return () => { cancelled = true; void doc?.destroy(); };
+    return () => { cancelled = true; void task?.destroy(); };
   }, [props.data]);
   if (error) return <p className="p-lg text-destructive">{error}</p>;
   if (!pdf) return <LoadingState label="PDF wird geladen…" />;
