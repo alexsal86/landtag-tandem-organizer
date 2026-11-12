@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { FileText, Upload, Download, Trash2, Plus, Search, Filter, Calendar, Tag, FileType, Folder, FolderPlus, FolderInput, Home, ChevronRight, MoreVertical, Edit, Mail, Edit3, Send, Grid, List, Settings, RotateCcw, ListTodo, ListTree, Info, UserPlus, Newspaper, Save, Highlighter, MessageSquare } from "lucide-react";
+import { FileText, Upload, Download, Trash2, Plus, Search, ArrowUpDown, ArrowUp, ArrowDown, Calendar, Tag, FileType, Folder, FolderPlus, FolderInput, Home, ChevronRight, MoreVertical, Edit, Mail, Edit3, Send, Grid, List, Settings, RotateCcw, ListTodo, ListTree, Info, UserPlus, Newspaper, Save, Highlighter, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,7 +45,7 @@ import { SenderInformationManager } from "@/components/administration/SenderInfo
 import { useDocumentsData } from "@/components/documents/hooks/useDocumentsData";
 import { useDocumentOperations } from "@/components/documents/hooks/useDocumentOperations";
 import { DocumentDialogs } from "@/components/documents/DocumentDialogs";
-import { STATUS_LABELS, getStatusColor, formatFileSize } from "@/components/documents/types";
+import { STATUS_LABELS } from "@/components/documents/types";
 import type { Document, Letter, DocumentFolder } from "@/components/documents/types";
 import {
   isDocumentCategoryOption,
@@ -57,6 +57,7 @@ import { notify } from "@/lib/notify";
 import { AnnotationWorkspace } from "@/features/annotations/components/AnnotationWorkspace";
 import { getAnnotationFileKind } from "@/features/annotations/annotationModel";
 import { useAnnotationCounts } from "@/features/annotations/useAnnotations";
+import { visibleDocuments, nextDocumentSort, selectVisibleDocuments, type DocumentSort } from "../documentListModel";
 
 const AUTO_ARCHIVE_DEFAULT_DAYS = 30;
 const AUTO_ARCHIVE_SETTING_KEY = "letters_auto_archive_days";
@@ -86,7 +87,9 @@ export function DocumentsView() {
 
   const [activeTab, setActiveTab] = useState<'documents' | 'letters' | 'emails' | 'press'>(initialTab);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterCategory, setFilterCategory] = useState("all");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [documentSort, setDocumentSort] = useState<DocumentSort>({ key: "created_at", direction: "desc" });
+  const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(() => new Set());
   const [filterStatus, setFilterStatus] = useState("all");
   const [currentFolder, setCurrentFolder] = useState<string | null>(null);
   const [letterSubTab, setLetterSubTab] = useState<'active' | 'archived'>('active');
@@ -226,13 +229,21 @@ export function DocumentsView() {
 
   const getCategoryLabel = (name: string) => safeCategories.find(c => c.name === name)?.label || name;
 
-  const filteredDocuments = data.documents.filter(doc => {
-    const matchesSearch = doc.title.toLowerCase().includes(searchTerm.toLowerCase()) || doc.description?.toLowerCase().includes(searchTerm.toLowerCase()) || doc.file_name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = filterCategory === "all" || doc.category === filterCategory;
-    const matchesStatus = filterStatus === "all" || doc.status === filterStatus;
-    const matchesFolder = currentFolder ? doc.folder_id === currentFolder : !doc.folder_id;
-    return matchesSearch && matchesCategory && matchesStatus && matchesFolder;
-  });
+  const filteredDocuments = visibleDocuments(data.documents, { search: searchTerm, categories: selectedCategories,
+    folderId: currentFolder, sort: documentSort });
+  const visibleDocumentIds = filteredDocuments.map(doc => doc.id);
+  const selectedVisibleCount = visibleDocumentIds.filter(id => selectedDocumentIds.has(id)).length;
+  const allDocumentsSelected = visibleDocumentIds.length > 0 && selectedVisibleCount === visibleDocumentIds.length;
+  const selectAllDocuments = (checked: boolean) => setSelectedDocumentIds(current => selectVisibleDocuments(current, visibleDocumentIds, checked));
+  const selectDocument = (id: string, checked: boolean) => setSelectedDocumentIds(current => selectVisibleDocuments(current, [id], checked));
+  useEffect(() => { setSelectedDocumentIds(new Set()); }, [searchTerm, selectedCategories, currentFolder, data.currentTenant?.id]);
+  const sortButton = (key: DocumentSort["key"], label: string) => {
+    const Icon = documentSort.key !== key ? ArrowUpDown : documentSort.direction === "asc" ? ArrowUp : ArrowDown;
+    const next = nextDocumentSort(documentSort, key);
+    return <button type="button" className="inline-flex items-center gap-2 py-2 font-medium hover:text-foreground"
+      title={`${label} ${next.direction === "asc" ? "aufsteigend" : "absteigend"} sortieren`}
+      onClick={() => setDocumentSort(next)}>{label}<Icon className="h-4 w-4" aria-hidden="true" /></button>;
+  };
 
   const currentFolderSubfolders = data.folders.filter(f => f.parent_folder_id === currentFolder);
 
@@ -353,7 +364,7 @@ export function DocumentsView() {
                 {activeTab === 'documents' ? (
                   <>
                     <Dialog open={showCreateFolderDialog} onOpenChange={setShowCreateFolderDialog}>
-                      <DialogTrigger asChild><Button variant="outline" className="gap-2"><FolderPlus className="h-4 w-4" />Ordner erstellen</Button></DialogTrigger>
+                      <DialogTrigger asChild><Button variant="outline" className="gap-2 bg-white text-slate-900 hover:bg-slate-50"><FolderPlus className="h-4 w-4" />Ordner erstellen</Button></DialogTrigger>
                       <DialogContent className="sm:max-w-[400px]">
                         <DialogHeader><DialogTitle>Neuen Ordner erstellen</DialogTitle><DialogDescription>Erstellen Sie einen neuen Ordner zur Organisation Ihrer Dokumente</DialogDescription></DialogHeader>
                         <div className="space-y-4">
@@ -441,21 +452,26 @@ export function DocumentsView() {
             )}
           </div>
 
-          {/* Filters */}
-          {activeTab !== 'emails' && activeTab !== 'press' && (
-            <Card><CardContent className="p-4">
-              <div className="flex flex-wrap gap-4 items-center justify-between">
-                <div className="flex flex-wrap gap-4 items-center flex-1">
-                  <div className="flex items-center gap-2 min-w-[200px]"><Search className="h-4 w-4 text-muted-foreground" /><Input placeholder={activeTab === 'documents' ? "Dokumente durchsuchen..." : "Briefe durchsuchen..."} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></div>
-                  {activeTab === 'documents' && (<div className="flex items-center gap-2"><Filter className="h-4 w-4 text-muted-foreground" /><Select value={filterCategory} onValueChange={setFilterCategory}><SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Alle Kategorien</SelectItem>{safeCategories.map(c => <SelectItem key={c.id} value={c.name}>{c.label}</SelectItem>)}</SelectContent></Select></div>)}
-                  <Select value={filterStatus} onValueChange={setFilterStatus}><SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Alle Status</SelectItem>{activeTab === 'documents' ? Object.entries(STATUS_LABELS).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>) : letterSubTab === 'active' ? ['draft', 'review', 'approved'].map(s => <SelectItem key={s} value={s}>{s === 'draft' ? 'Entwurf' : s === 'review' ? 'Zur Prüfung' : 'Genehmigt'}</SelectItem>) : ['sent', 'archived'].map(s => <SelectItem key={s} value={s}>{s === 'sent' ? 'Versendet' : 'Archiviert'}</SelectItem>)}</SelectContent></Select>
+          {/* Search and category chips */}
+          {(activeTab === 'documents' || (activeTab === 'letters' && lettersEnabled)) && (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+                <div className="relative w-full sm:w-72 sm:shrink-0">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+                  <Input className="bg-white pl-10 text-slate-900 placeholder:text-slate-500" aria-label={activeTab === 'documents' ? "Dokumente durchsuchen" : "Briefe durchsuchen"}
+                    placeholder={activeTab === 'documents' ? "Dokumente durchsuchen..." : "Briefe durchsuchen..."} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                 </div>
-                <div className="flex items-center gap-1 bg-muted p-1 rounded-md">
-                  <Button variant={viewType === 'card' ? 'default' : 'ghost'} size="sm" onClick={() => setViewType('card')} className="h-8 w-8 p-0"><Grid className="h-4 w-4" /></Button>
-                  <Button variant={viewType === 'list' ? 'default' : 'ghost'} size="sm" onClick={() => setViewType('list')} className="h-8 w-8 p-0"><List className="h-4 w-4" /></Button>
-                </div>
+                {activeTab === 'documents' ? <div className="flex min-w-[180px] flex-1 flex-wrap items-center gap-2" role="group" aria-label="Kategorien auswählen">
+                  <Button size="sm" variant={selectedCategories.length === 0 ? "default" : "outline"} className="rounded-full" aria-pressed={selectedCategories.length === 0} onClick={() => setSelectedCategories([])}>Alle Kategorien</Button>
+                  {safeCategories.map(c => <Button key={c.id} size="sm" variant={selectedCategories.includes(c.name) ? "default" : "outline"} className="rounded-full"
+                    aria-pressed={selectedCategories.includes(c.name)} onClick={() => setSelectedCategories(current => current.includes(c.name) ? current.filter(name => name !== c.name) : [...current, c.name])}>{c.label}</Button>)}
+                </div> : <Select value={filterStatus} onValueChange={setFilterStatus}><SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Alle Status</SelectItem>{letterSubTab === 'active' ? ['draft', 'review', 'approved'].map(s => <SelectItem key={s} value={s}>{s === 'draft' ? 'Entwurf' : s === 'review' ? 'Zur Prüfung' : 'Genehmigt'}</SelectItem>) : ['sent', 'archived'].map(s => <SelectItem key={s} value={s}>{s === 'sent' ? 'Versendet' : 'Archiviert'}</SelectItem>)}</SelectContent></Select>}
               </div>
-            </CardContent></Card>
+              <div className="flex items-center gap-1 bg-muted p-1 rounded-md">
+                <Button variant={viewType === 'card' ? 'default' : 'ghost'} size="sm" aria-label="Kartenansicht" onClick={() => setViewType('card')} className="h-8 w-8 p-0"><Grid className="h-4 w-4" /></Button>
+                <Button variant={viewType === 'list' ? 'default' : 'ghost'} size="sm" aria-label="Listenansicht" onClick={() => setViewType('list')} className="h-8 w-8 p-0"><List className="h-4 w-4" /></Button>
+              </div>
+            </div>
           )}
         </div>
 
@@ -503,20 +519,28 @@ export function DocumentsView() {
               </div></div>
             )}
 
+            {/* Document selection */}
+            {filteredDocuments.length > 0 && <div className="mb-3 flex items-center gap-3 text-sm">
+              {viewType === 'card' && <label className="flex cursor-pointer items-center gap-2"><Checkbox
+                checked={allDocumentsSelected ? true : selectedVisibleCount > 0 ? "indeterminate" : false}
+                onCheckedChange={checked => selectAllDocuments(checked === true)} />Alle auswählen</label>}
+              <span role="status">{selectedVisibleCount > 0 ? `${selectedVisibleCount} ausgewählt` : `${filteredDocuments.length} Dokumente`}</span>
+              {selectedVisibleCount > 0 && <Button variant="ghost" size="sm" onClick={() => setSelectedDocumentIds(new Set())}>Auswahl aufheben</Button>}
+            </div>}
+
             {/* Documents */}
             {filteredDocuments.length === 0 && currentFolderSubfolders.length === 0 ? (
               <Card><CardContent className="p-8 text-center"><FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" /><h3 className="text-lg font-semibold mb-2">Keine Dokumente gefunden</h3><p className="text-muted-foreground mb-4">{data.documents.length === 0 ? "Laden Sie Ihr erstes Dokument hoch." : "Keine Dokumente entsprechen Ihren Filterkriterien."}</p>{data.documents.length === 0 && <Button onClick={() => setShowUploadDialog(true)} className="gap-2"><Plus className="h-4 w-4" />Erstes Dokument hochladen</Button>}</CardContent></Card>
             ) : viewType === 'card' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredDocuments.map(doc => (
-                  <Card key={doc.id} className="hover:shadow-lg transition-shadow overflow-hidden">
-                    <CardHeader className="pb-3"><div className="flex items-start justify-between gap-2 min-w-0"><div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden"><FileText className="h-5 w-5 text-primary flex-shrink-0" /><CardTitle className="text-lg truncate">{doc.title}</CardTitle></div><Badge className={`${getStatusColor(doc.status)} flex-shrink-0`}>{STATUS_LABELS[doc.status] || doc.status}</Badge></div>{doc.description && <CardDescription className="line-clamp-2 break-words">{doc.description}</CardDescription>}</CardHeader>
+                  <Card key={doc.id} className={`hover:shadow-lg transition-shadow overflow-hidden ${selectedDocumentIds.has(doc.id) ? "ring-2 ring-primary" : ""}`}>
+                    <CardHeader className="pb-3"><div className="flex items-start justify-between gap-2 min-w-0"><div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden"><Checkbox aria-label={`${doc.title} auswählen`} checked={selectedDocumentIds.has(doc.id)} onCheckedChange={checked => selectDocument(doc.id, checked === true)} /><FileText className="h-5 w-5 text-primary flex-shrink-0" /><CardTitle className="text-lg truncate">{doc.title}</CardTitle></div></div>{doc.description && <CardDescription className="line-clamp-2 break-words">{doc.description}</CardDescription>}</CardHeader>
                     <CardContent className="space-y-4">
                       <div className="space-y-2 text-sm text-muted-foreground">
                         <div className="flex items-center gap-2"><Folder className="h-4 w-4 flex-shrink-0" /><span className="truncate">{getCategoryLabel(doc.category ?? '')}</span></div>
                         <div className="flex items-center gap-2"><Calendar className="h-4 w-4 flex-shrink-0" /><span>{format(new Date(doc.created_at), "dd.MM.yyyy", { locale: de })}</span></div>
                         <div className="flex items-center gap-2"><FileType className="h-4 w-4 flex-shrink-0" /><span className="truncate">{doc.file_name}</span></div>
-                        <div><span>Größe: {formatFileSize(doc.file_size ?? undefined)}</span></div>
                       </div>
                       {(annotationCounts.data?.[doc.id] ?? 0) > 0 && <Badge variant="secondary" className="w-fit cursor-pointer gap-1" onClick={() => setAnnotateDoc(doc)}><MessageSquare className="h-3 w-3" />{annotationCounts.data?.[doc.id]} offene Anmerkungen</Badge>}
                       {doc.tags && doc.tags.length > 0 && <div className="flex flex-wrap gap-1">{doc.tags.map((tag, i) => <Badge key={i} variant="outline" className="text-xs"><Tag className="h-3 w-3 mr-1" />{tag}</Badge>)}</div>}
@@ -536,9 +560,17 @@ export function DocumentsView() {
                 ))}
               </div>
             ) : (
-              <Card><Table><TableHeader><TableRow><TableHead>Titel</TableHead><TableHead>Kategorie</TableHead><TableHead>Status</TableHead><TableHead>Erstellt</TableHead><TableHead>Größe</TableHead><TableHead>Kontakte</TableHead><TableHead className="text-right">Aktionen</TableHead></TableRow></TableHeader><TableBody>
+              <Card><Table><TableHeader><TableRow>
+                <TableHead className="w-10"><Checkbox aria-label="Alle sichtbaren Dokumente auswählen"
+                  checked={allDocumentsSelected ? true : selectedVisibleCount > 0 ? "indeterminate" : false}
+                  disabled={filteredDocuments.length === 0} onCheckedChange={checked => selectAllDocuments(checked === true)} /></TableHead>
+                <TableHead aria-sort={documentSort.key === 'title' ? documentSort.direction === 'asc' ? 'ascending' : 'descending' : 'none'}>{sortButton('title', 'Titel')}</TableHead>
+                <TableHead>Kategorie</TableHead>
+                <TableHead aria-sort={documentSort.key === 'created_at' ? documentSort.direction === 'asc' ? 'ascending' : 'descending' : 'none'}>{sortButton('created_at', 'Erstellt')}</TableHead>
+                <TableHead>Kontakte</TableHead><TableHead className="text-right">Aktionen</TableHead>
+              </TableRow></TableHeader><TableBody>
                 {filteredDocuments.map(doc => (
-                  <TableRow key={doc.id}><TableCell className="font-medium"><div className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" /><div><div className="flex items-center gap-2">{doc.title}{(annotationCounts.data?.[doc.id] ?? 0) > 0 && <Badge variant="secondary" className="gap-1 text-xs"><MessageSquare className="h-3 w-3" />{annotationCounts.data?.[doc.id]}</Badge>}</div>{doc.description && <div className="text-xs text-muted-foreground truncate max-w-[200px]">{doc.description}</div>}</div></div></TableCell><TableCell>{getCategoryLabel(doc.category ?? '')}</TableCell><TableCell><Badge className={getStatusColor(doc.status)}>{STATUS_LABELS[doc.status] || doc.status}</Badge></TableCell><TableCell>{format(new Date(doc.created_at), "dd.MM.yyyy", { locale: de })}</TableCell><TableCell>{formatFileSize(doc.file_size ?? undefined)}</TableCell><TableCell><DocumentContactManager documentId={doc.id} compact /></TableCell>
+                  <TableRow key={doc.id} data-state={selectedDocumentIds.has(doc.id) ? "selected" : undefined}><TableCell><Checkbox aria-label={`${doc.title} auswählen`} checked={selectedDocumentIds.has(doc.id)} onCheckedChange={checked => selectDocument(doc.id, checked === true)} /></TableCell><TableCell className="font-medium"><div className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" /><div><div className="flex items-center gap-2">{doc.title}{(annotationCounts.data?.[doc.id] ?? 0) > 0 && <Badge variant="secondary" className="gap-1 text-xs"><MessageSquare className="h-3 w-3" />{annotationCounts.data?.[doc.id]}</Badge>}</div>{doc.description && <div className="text-xs text-muted-foreground truncate max-w-[200px]">{doc.description}</div>}</div></div></TableCell><TableCell>{getCategoryLabel(doc.category ?? '')}</TableCell><TableCell>{format(new Date(doc.created_at), "dd.MM.yyyy", { locale: de })}</TableCell><TableCell><DocumentContactManager documentId={doc.id} compact /></TableCell>
                   <TableCell className="text-right"><TooltipProvider><div className="flex items-center gap-1 justify-end">
                     {doc.document_type === 'archived_letter' && doc.source_letter_id && <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={() => { setSelectedArchivedDocument(doc); setShowArchivedLetterDetails(true); }}><Info className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Details</TooltipContent></Tooltip>}
                     {doc.document_type !== 'archived_letter' && <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={() => handleEditDocument(doc)}><Edit className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Bearbeiten</TooltipContent></Tooltip>}
