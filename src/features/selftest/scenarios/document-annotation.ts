@@ -4,7 +4,7 @@ import { canManageAnnotation, canResolveAnnotation } from "@/features/annotation
 import { annotationMentionToken, annotationMentionIds, annotationDocumentPath, plainAnnotationComment } from "@/features/annotations/mentions";
 import { advanceAnnotationHistory, emptyAnnotationHistory, recordAnnotationChange } from "@/features/annotations/annotationHistory";
 import { supabase } from '@/integrations/supabase/client';
-import { getAnnotationFileKind, toFracPoint, toFracRect, polygonIsValid, isMeaningfulRect, moveAnnotationSelector, moveAnnotationHandle, annotationZoom, annotationBounds, annotationNumbers, annotationThreads, canCloseAnnotationPolygon, annotationPatchMatches, selectionRectsToFrac, pointAnnotationIsValid, isMeaningfulArrow, annotationShortcut, annotationPinAnchor } from '@/features/annotations/annotationModel';
+import { getAnnotationFileKind, toFracPoint, toFracRect, polygonIsValid, isMeaningfulRect, moveAnnotationSelector, moveAnnotationHandle, annotationZoom, annotationBounds, annotationNumbers, annotationThreads, canCloseAnnotationPolygon, annotationPatchMatches, selectionRectsToFrac, pointAnnotationIsValid, isMeaningfulArrow, annotationShortcut, annotationPinAnchor, defaultAnnotationTool, pdfTextLayerVariables } from '@/features/annotations/annotationModel';
 import type { TestScenario } from '../types';
 
 export const documentAnnotationScenario: TestScenario = {
@@ -97,6 +97,15 @@ export const documentAnnotationScenario: TestScenario = {
       return { ok: anchor?.x === tail.x && anchor.y === tail.y && reverse?.x === tip.x && reverse.y === tip.y
         && annotationPinAnchor('note', { points: [tail] }) === tail && annotationPinAnchor('arrow', {}) === null,
         message: 'Die Nummer sitzt am Pfeilanfang; die Spitze bleibt frei, auch bei nach links oder oben gerichteten Pfeilen.' };
+    } },
+    { id: 'pdf-text-layer', label: 'PDF-Textmarker ist direkt aktiv und Textschicht erhält ihre Skalierungswerte', kind: 'logic', run: async () => {
+      const checks = [.25, .5, 1, 2, 4].every(zoom => {
+        const style = pdfTextLayerVariables(zoom * 1.4, 2);
+        return style['--scale-factor'] === zoom * 1.4 && style['--total-scale-factor'] === zoom * 2.8
+          && style['--user-unit'] === 2 && style['--scale-round-x'] === '1px' && style['--scale-round-y'] === '1px';
+      });
+      return { ok: checks && defaultAnnotationTool('pdf') === 'highlight' && defaultAnnotationTool('image') === 'select',
+        message: 'PDFs starten mit Textauswahl. Die Textschicht nutzt dieselben Skalierungs- und Seiteneinheiten wie die gerenderte PDF-Seite.' };
     } },
     { id: 'zoom-invariance', label: 'Zoom- und Koordinatentreue bei 25 bis 400 Prozent', kind: 'logic', run: async () => {
       const checks = [.25, .5, 1, 1.75, 2, 4].map(zoom => {

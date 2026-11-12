@@ -157,3 +157,13 @@ export function annotationPinAnchor(type: AnnotationType, selector: AnnotationSe
   const bounds = annotationBounds(selector);
   return bounds ? { x: bounds.x, y: bounds.y } : null;
 }
+
+export function defaultAnnotationTool(kind: AnnotationFileKind | null): AnnotationTool {
+  return kind === "pdf" ? "highlight" : "select";
+}
+
+/** PDF.js' standalone text layer needs the variables normally supplied by PDFViewer.page. */
+export function pdfTextLayerVariables(scale: number, userUnit = 1) {
+  return { "--scale-factor": scale, "--user-unit": userUnit, "--total-scale-factor": scale * userUnit,
+    "--scale-round-x": "1px", "--scale-round-y": "1px" };
+}

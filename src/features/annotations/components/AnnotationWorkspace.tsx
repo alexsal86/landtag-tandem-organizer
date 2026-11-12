@@ -9,7 +9,7 @@ import { LoadingState, ErrorState } from "@/components/ui-patterns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { notify } from "@/lib/notify";
-import { ANNOTATION_COLORS, annotationNumbers, annotationPatchMatches, annotationShortcut, fileVersionOf, getAnnotationFileKind } from "../annotationModel";
+import { ANNOTATION_COLORS, defaultAnnotationTool, annotationNumbers, annotationPatchMatches, annotationShortcut, fileVersionOf, getAnnotationFileKind } from "../annotationModel";
 import { useAnnotations } from "../useAnnotations";
 import { canManageAnnotation, canResolveAnnotation } from "../permissions";
 import { useAnnotationHistory } from "../useAnnotationHistory";
@@ -36,7 +36,7 @@ export function AnnotationWorkspace({ document: doc, open, onOpenChange, initial
   const pendingDeletes = useRef(new Map<string, PendingDelete>());
   const mounted = useRef(true), editLock = useRef(false);
   const [pendingIds, setPendingIds] = useState(new Set<string>());
-  const [tool, setTool] = useState<AnnotationTool>("select");
+  const [tool, setTool] = useState<AnnotationTool>(() => defaultAnnotationTool(doc ? getAnnotationFileKind(doc.file_name, doc.file_type) : null));
   const [color, setColor] = useState<AnnotationColor>("yellow");
   const [hidden, setHidden] = useState(false);
   const [draft, setDraft] = useState<DraftAnnotation | null>(null);
@@ -131,7 +131,7 @@ export function AnnotationWorkspace({ document: doc, open, onOpenChange, initial
   const version = fileVersionOf(doc);
   const actor = { userId: user?.id, tenantMember: roles.data?.member ?? false, roles: roles.data?.roles ?? [] };
   const canEdit = (a: DocumentAnnotation) => canManageAnnotation(a.created_by, actor);
-  const cancelComposer = () => { setDraft(null); setEditingId(null); setText(''); if (activeId === '__draft__') setActiveId(null); };
+  const cancelComposer = () => { if (draft?.annotation_type === 'highlight') setTool('highlight'); setDraft(null); setEditingId(null); setText(''); if (activeId === '__draft__') setActiveId(null); };
   const patchAnnotation = async (id: string, patch: AnnotationPatch): Promise<boolean> => {
     const before = api.annotations.find(a => a.id === id);
     if (!before || busy || editLock.current) return false;
@@ -262,7 +262,6 @@ export function AnnotationWorkspace({ document: doc, open, onOpenChange, initial
   };
   const tools: { id: AnnotationTool; label: string; icon: typeof Square; show: boolean }[] = [
     { id: 'select', label: 'Auswählen (V)', icon: MousePointer2, show: true },
-    { id: 'highlight', label: 'Textmarker (H)', icon: Highlighter, show: kind === 'pdf' },
     { id: 'rect', label: 'Rechteck (R)', icon: Square, show: true },
     { id: 'polygon', label: 'Polygon (P)', icon: Pentagon, show: true },
     { id: 'arrow', label: 'Pfeil ziehen', icon: MoveUpRight, show: true },
@@ -299,6 +298,11 @@ export function AnnotationWorkspace({ document: doc, open, onOpenChange, initial
             : imgUrl ? <ImageAnnotator src={imgUrl} alt={doc.title} onImageSize={setImageSize} {...editorProps} /> : <LoadingState label="Datei wird geladen …" />}
         </div>
         <div className="aw-float aw-tools" role="toolbar" aria-label="Annotationswerkzeuge">
+          {kind === 'pdf' && <button type="button" className={`aw-text-marker ${tool === 'highlight' ? 'on' : ''}`}
+            aria-label="Text markieren (H)" aria-keyshortcuts="H" aria-pressed={tool === 'highlight'}
+            title="Text mit der Maus auswählen und markieren (H)" disabled={busy || !!composerTarget} onClick={() => chooseTool('highlight')}>
+            <Highlighter /><span>Text markieren</span><kbd>H</kbd>
+          </button>}
           {tools.filter(t => t.show).map(t => <span key={t.id}>{iconButton(t.label, t.icon, () => chooseTool(t.id), { active: tool === t.id, disabled: busy || (!!composerTarget && t.id !== 'select') })}</span>)}
           <span className="aw-separator" />
           {ANNOTATION_COLORS.map((c, index) => <Tooltip key={c.value}><TooltipTrigger asChild><button type="button" className={`aw-color ${c.value === color ? 'on' : ''}`}
