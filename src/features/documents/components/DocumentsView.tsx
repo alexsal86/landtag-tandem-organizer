@@ -311,6 +311,9 @@ export function DocumentsView() {
     return labels[action];
   };
 
+  const [annotateDoc, setAnnotateDoc] = useState<Document | null>(null);
+  const annotationCounts = useAnnotationCounts(data.currentTenant?.id, filteredDocuments.map(d => d.id));
+
   return (
     <div className="min-h-screen bg-gradient-subtle p-6">
       <div>
@@ -592,6 +595,7 @@ export function DocumentsView() {
           setShowArchivedLetterDetails={setShowArchivedLetterDetails}
           setSelectedArchivedDocument={setSelectedArchivedDocument}
         />
+      <AnnotationWorkspaceDialog document={annotateDoc} open={!!annotateDoc} onOpenChange={o => { if (!o) setAnnotateDoc(null); }} />
       </div>
     </div>
   );
