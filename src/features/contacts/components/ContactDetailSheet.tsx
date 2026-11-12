@@ -217,7 +217,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
         const [{ data: c, error: cErr }, { data: act }, { data: cs }] = await Promise.all([
           supabase
             .from("contacts")
-            .select("id, contact_type, name, role, organization, organization_id, email, phone, address, birthday, website, linkedin, twitter, facebook, instagram, xing, category, priority, last_contact, avatar_url, notes, tags, business_street, business_house_number, business_postal_code, business_city, business_country, updated_at")
+            .select("id, contact_type, name, role:position, organization, organization_id, email, phone, address, birthday, website, linkedin, facebook, instagram, category, priority, last_contact, avatar_url, notes, tags, business_street, business_house_number, business_postal_code, business_city, business_country, updated_at")
             .eq("id", contactId)
             .maybeSingle(),
           supabase

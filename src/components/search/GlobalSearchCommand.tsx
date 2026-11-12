@@ -187,7 +187,7 @@ export function GlobalSearchCommand() {
       if (!debouncedQuery || debouncedQuery.length < 2) return [];
       let query = supabase
         .from('contacts')
-        .select('id, name, organization, avatar_url, category, company, email, phone, mobile_phone, role, position')
+        .select('id, name, organization, avatar_url, category, company, email, phone, mobile_phone, position')
         .eq('tenant_id', currentTenant?.id ?? '');
       
       // Fuzzy search using pg_trgm similarity
