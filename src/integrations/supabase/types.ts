@@ -3702,6 +3702,68 @@ export type Database = {
           },
         ]
       }
+      document_annotations: {
+        Row: {
+          annotation_type: string
+          color: string
+          content: string
+          created_at: string
+          created_by: string
+          document_id: string
+          file_kind: string
+          file_version: string | null
+          id: string
+          page_number: number | null
+          quote_text: string | null
+          resolved: boolean
+          target_selector: Json
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          annotation_type: string
+          color?: string
+          content?: string
+          created_at?: string
+          created_by?: string
+          document_id: string
+          file_kind: string
+          file_version?: string | null
+          id?: string
+          page_number?: number | null
+          quote_text?: string | null
+          resolved?: boolean
+          target_selector?: Json
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          annotation_type?: string
+          color?: string
+          content?: string
+          created_at?: string
+          created_by?: string
+          document_id?: string
+          file_kind?: string
+          file_version?: string | null
+          id?: string
+          page_number?: number | null
+          quote_text?: string | null
+          resolved?: boolean
+          target_selector?: Json
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_annotations_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_categories: {
         Row: {
           color: string | null
