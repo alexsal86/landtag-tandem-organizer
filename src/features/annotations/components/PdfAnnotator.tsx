@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import "pdfjs-dist/web/pdf_viewer.css";
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import { AnnotationLayer, AnnotationShape, type AnnotationEditingProps } from "./AnnotationShapes";
+import { AnnotationLayer, AnnotationShape, PolygonPreview, type AnnotationEditingProps } from "./AnnotationShapes";
 import { useShapeDrawing } from "./useShapeDrawing";
 import { selectionRectsToFrac } from "../annotationModel";
 import type { AnnotationColor, AnnotationTool, DocumentAnnotation, DraftAnnotation } from "../types";
@@ -81,10 +81,12 @@ function PdfPage({ pdf, pageNumber, zoom, tool, color, annotations, activeId, dr
     return () => { cancelled = true; renderTask?.cancel(); textLayer?.cancel(); };
   }, [pdf, pageNumber, scale, visible]);
 
-  const { handlers, preview } = useShapeDrawing(
+  const { handlers, preview, arrowPreview, points, cursor } = useShapeDrawing(
     tool,
     r => onDraft({ annotation_type: "rect", page_number: pageNumber, target_selector: { rects: [r] }, quote_text: null }),
-    () => undefined,
+    points => onDraft({ annotation_type: "polygon", page_number: pageNumber, target_selector: { points }, quote_text: null }),
+    { onArrow: points => onDraft({ annotation_type: "arrow", page_number: pageNumber, target_selector: { points }, quote_text: null }),
+      onNote: point => onDraft({ annotation_type: "note", page_number: pageNumber, target_selector: { points: [point] }, quote_text: null }) },
   );
 
   const onMouseUp = () => {
@@ -100,7 +102,7 @@ function PdfPage({ pdf, pageNumber, zoom, tool, color, annotations, activeId, dr
   };
 
   const pageAnnotations = annotations.filter(a => a.page_number === pageNumber);
-  const drawing = tool === "rect";
+  const drawing = tool === "rect" || tool === "polygon" || tool === "arrow" || tool === "note";
   return (
     <div ref={pageRef} data-annotation-page={pageNumber} data-annotation-surface className="relative bg-card shadow-md" style={{ width: size?.w ?? 600, height: size?.h ?? 800, ["--scale-factor" as string]: scale }}
       onMouseUp={onMouseUp}>
@@ -108,6 +110,8 @@ function PdfPage({ pdf, pageNumber, zoom, tool, color, annotations, activeId, dr
       <div ref={textRef} className="textLayer" style={{ pointerEvents: tool === "highlight" ? "auto" : "none" }} />
       <AnnotationLayer annotations={pageAnnotations} activeId={activeId} onSelect={onSelect} interactive={tool === "select"} canEdit={canEdit} onChange={onChange} draft={draft?.page_number === pageNumber ? draft : null} draftColor={color} onDraftChange={onDraftChange} hidden={hidden} numbers={numbers}>
         {preview && <AnnotationShape type="rect" selector={{ rects: [preview] }} color={color} active />}
+        {arrowPreview && <AnnotationShape type="arrow" selector={{ points: arrowPreview }} color={color} active />}
+        <PolygonPreview points={points} cursor={cursor} color={color} />
       </AnnotationLayer>
       {drawing && <div className="absolute inset-0" style={{ cursor: "crosshair", touchAction: "none" }} {...handlers} />}
       <span className="absolute -left-xl top-0 text-caption text-muted-foreground tabular-nums">{pageNumber}</span>

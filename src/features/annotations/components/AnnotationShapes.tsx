@@ -20,6 +20,7 @@ interface ShapeProps {
 
 /** Geometry remains fractional; strokes and circular corner handles keep their screen size. */
 export function AnnotationShape({ type, selector, color, active, dimmed, onClick, onPointerDown, draggable }: ShapeProps) {
+  const size = useContext(SurfaceSize);
   const stroke = `hsl(${colorVar(color)})`;
   const common = {
     className: "aw-shape", fill: `hsl(${colorVar(color)})`, fillOpacity: type === "highlight" ? .35 : active ? .3 : .16,
@@ -30,12 +31,26 @@ export function AnnotationShape({ type, selector, color, active, dimmed, onClick
     onClick: onClick ? (e: React.MouseEvent) => { e.stopPropagation(); onClick(); } : undefined,
     onPointerDown: onPointerDown ? (e: React.PointerEvent<SVGElement>) => onPointerDown(e) : undefined,
   };
-  const vertices = type === "polygon" ? (selector.points ?? []).map((point, index) => ({ point, handle: { kind: "point", index } as AnnotationHandle }))
+  const vertices = (type === "polygon" || type === "arrow" || type === "note") ? (selector.points ?? []).map((point, index) => ({ point, handle: { kind: "point", index } as AnnotationHandle }))
     : (selector.rects ?? []).flatMap((r, index) => [
       { x: r.x, y: r.y }, { x: r.x + r.w, y: r.y }, { x: r.x + r.w, y: r.y + r.h }, { x: r.x, y: r.y + r.h },
     ].map((point, corner) => ({ point, handle: { kind: "rect", index, corner } as AnnotationHandle })));
+  const endpoints = type === "arrow" && selector.points?.length === 2 ? selector.points : null;
+  const from = endpoints && { x: endpoints[0].x * size.width, y: endpoints[0].y * size.height };
+  const to = endpoints && { x: endpoints[1].x * size.width, y: endpoints[1].y * size.height };
+  const angle = from && to ? Math.atan2(to.y - from.y, to.x - from.x) : 0;
+  const headLength = from && to ? Math.min(13, Math.hypot(to.x - from.x, to.y - from.y) * .65) : 0;
+  const head = to ? `M ${to.x - headLength * Math.cos(angle - Math.PI / 6)} ${to.y - headLength * Math.sin(angle - Math.PI / 6)} L ${to.x} ${to.y} L ${to.x - headLength * Math.cos(angle + Math.PI / 6)} ${to.y - headLength * Math.sin(angle + Math.PI / 6)}` : '';
+  const anchor = type === "note" ? selector.points?.[0] : null;
   return <g opacity={dimmed ? .45 : 1}>
-    {type === "polygon" ? <polygon points={(selector.points ?? []).map(p => `${p.x},${p.y}`).join(" ")} {...common} />
+    {type === "arrow" ? from && to && <g transform={`scale(${1 / size.width} ${1 / size.height})`}>
+      <line {...common} x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke="transparent" strokeWidth={16} fill="none" />
+      <line x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke={stroke} strokeWidth={active ? 3 : 2} strokeDasharray={dimmed ? '6 4' : undefined} style={{ pointerEvents: 'none' }} />
+      <path d={head} stroke={stroke} strokeWidth={active ? 3 : 2} strokeLinecap="round" strokeLinejoin="round" fill="none" style={{ pointerEvents: 'none' }} />
+    </g> : type === "note" ? anchor && <g transform={`translate(${anchor.x} ${anchor.y}) scale(${1 / size.width} ${1 / size.height})`}>
+      <path {...common} d="M -12 -15 H 6 L 14 -7 V 14 H -12 Z" fillOpacity={.95} strokeWidth={1.5} />
+      <path d="M 6 -15 V -7 H 14 M -6 0 H 8 M -6 5 H 4" fill="none" stroke="white" strokeWidth={1.5} strokeLinecap="round" style={{ pointerEvents: 'none' }} />
+    </g> : type === "polygon" ? <polygon points={(selector.points ?? []).map(p => `${p.x},${p.y}`).join(" ")} {...common} />
       : (selector.rects ?? []).map((r, i) => <rect key={i} x={r.x} y={r.y} width={r.w} height={r.h} {...common} />)}
     {active && vertices.map(({ point, handle }, i) => <Vertex key={i} point={point} color={color}
       onPointerDown={draggable && onPointerDown ? e => onPointerDown(e, handle) : undefined} />)}
@@ -158,7 +173,7 @@ export function AnnotationLayer({ annotations, activeId, onSelect, interactive =
       {!hidden && annotations.filter(a => !a.parent_id).map(a => {
         const bounds = annotationBounds(preview?.id === a.id ? preview.selector : a.target_selector);
         if (!bounds) return null;
-        return <g key={`pin-${a.id}`} transform={`translate(${bounds.x} ${bounds.y}) scale(${1 / size.width} ${1 / size.height})`}
+        return <g key={`pin-${a.id}`} transform={`translate(${bounds.x + (a.annotation_type === "note" ? 19 / size.width : 0)} ${bounds.y - (a.annotation_type === "note" ? 16 / size.height : 0)}) scale(${1 / size.width} ${1 / size.height})`}
           role="button" aria-label={`Anmerkung ${numbers[a.id] ?? ''} auswählen`} tabIndex={interactive ? 0 : -1}
           style={{ pointerEvents: interactive ? 'all' : 'none', cursor: 'pointer', opacity: a.resolved ? .6 : 1 }}
           onPointerDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); onSelect(a.id); }}

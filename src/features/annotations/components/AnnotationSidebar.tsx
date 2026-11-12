@@ -16,6 +16,7 @@ interface Props {
   onEdit: (annotation: DocumentAnnotation) => void; onUpdate: (id: string, patch: AnnotationPatch) => Promise<boolean>;
   onDelete: (id: string) => void; onReply: (id: string, content: string) => Promise<boolean>;
 }
+const TYPE_LABEL: Record<DocumentAnnotation["annotation_type"], string> = { highlight: "Textmarkierung", rect: "Bereich", polygon: "Polygon", arrow: "Pfeil", note: "Notiz-Nadel" };
 const plainComment = (text: string) => text.replace(/@\[([^\]]*)\]\([0-9a-f-]{36}\)/gi, "@$1");
 const timestamp = (text: string) => format(new Date(text), "dd.MM. HH:mm", { locale: de });
 
@@ -44,7 +45,7 @@ export function AnnotationSidebar(p: Props) {
     <DropdownMenuTrigger asChild><button type="button" className="aw-icon ml-auto !p-1" aria-label="Weitere Aktionen" disabled={p.saving}><MoreVertical /></button></DropdownMenuTrigger>
     <DropdownMenuContent align="end">
       <DropdownMenuItem onClick={() => p.onEdit(a)}><Pencil className="mr-2 h-4 w-4" />Bearbeiten</DropdownMenuItem>
-      <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => p.onDelete(a.id)}><Trash2 className="mr-2 h-4 w-4" />Löschen</DropdownMenuItem>
+      <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => p.onDelete(a.id)}><Trash2 className="mr-2 h-4 w-4" />Löschen<span className="ml-auto pl-4 text-xs opacity-60">Entf</span></DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>;
   return <aside className="aw-sidebar" aria-label="Anmerkungen">
@@ -66,7 +67,7 @@ export function AnnotationSidebar(p: Props) {
             <span className="aw-byline" title={`${p.authorName(a.created_by)} · ${timestamp(a.created_at)}`}>· {p.authorName(a.created_by)} · {timestamp(a.created_at)}</span>
             <span onClick={e => e.stopPropagation()} className="ml-auto">{menu(a)}</span>
           </div>
-          {a.page_number && <p className="mt-1 text-[11px] text-muted-foreground">Seite {a.page_number}</p>}
+          <p className="mt-1 text-[11px] text-muted-foreground">{TYPE_LABEL[a.annotation_type]}{a.page_number ? ` · Seite ${a.page_number}` : ""}</p>
           {a.file_version && a.file_version !== p.currentVersion && <p className="mt-2 flex gap-1 text-xs text-warning"><AlertTriangle className="h-3.5 w-3.5 shrink-0" />Ältere Dateiversion – Position kann abweichen</p>}
           {a.quote_text && <blockquote className="mt-2 line-clamp-3 border-l-2 pl-2 text-xs italic text-muted-foreground">„{a.quote_text}“</blockquote>}
           <p className="aw-text">{a.content ? plainComment(a.content) : 'Ohne Kommentar'}</p>

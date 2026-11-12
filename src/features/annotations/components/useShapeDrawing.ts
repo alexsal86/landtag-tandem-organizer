@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { canCloseAnnotationPolygon, isMeaningfulRect, polygonIsValid, toFracPoint, toFracRect } from "../annotationModel";
+import { canCloseAnnotationPolygon, isMeaningfulArrow, isMeaningfulRect, polygonIsValid, toFracPoint, toFracRect } from "../annotationModel";
 import type { AnnotationTool, FracPoint, FracRect } from "../types";
 
 /** Fractions stay stable during zoom; the unfinished polygon follows the pointer. */
-export function useShapeDrawing(tool: AnnotationTool, onRect: (r: FracRect) => void, onPolygon: (p: FracPoint[]) => void) {
+export function useShapeDrawing(tool: AnnotationTool, onRect: (r: FracRect) => void, onPolygon: (p: FracPoint[]) => void, extra?: { onArrow?: (points: FracPoint[]) => void; onNote?: (point: FracPoint) => void }) {
   const start = useRef<FracPoint | null>(null);
   const pointRef = useRef<FracPoint[]>([]);
+  const [arrowPreview, setArrowPreview] = useState<FracPoint[] | null>(null);
   const [preview, setPreview] = useState<FracRect | null>(null);
   const [points, setPoints] = useState<FracPoint[]>([]);
   const [cursor, setCursor] = useState<FracPoint | null>(null);
-  const cancel = () => { pointRef.current = []; start.current = null; setPoints([]); setPreview(null); setCursor(null); };
+  const cancel = () => { pointRef.current = []; start.current = null; setPoints([]); setPreview(null); setCursor(null); setArrowPreview(null); };
   useEffect(() => { cancel(); }, [tool]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -29,7 +30,7 @@ export function useShapeDrawing(tool: AnnotationTool, onRect: (r: FracRect) => v
   };
   const handlers = {
     onPointerDown: (e: React.PointerEvent) => {
-      if (tool !== "rect" || e.button !== 0) return;
+      if ((tool !== "rect" && tool !== "arrow") || e.button !== 0) return;
       e.preventDefault();
       e.currentTarget.setPointerCapture(e.pointerId);
       start.current = local(e);
@@ -38,18 +39,25 @@ export function useShapeDrawing(tool: AnnotationTool, onRect: (r: FracRect) => v
       const p = local(e);
       if (tool === "polygon") setCursor(p);
       if (tool === "rect" && start.current) setPreview(toFracRect(start.current, p, 1, 1));
+      if (tool === "arrow" && start.current) setArrowPreview([start.current, p]);
     },
     onPointerUp: (e: React.PointerEvent) => {
-      if (tool !== "rect" || !start.current) return;
-      const rect = toFracRect(start.current, local(e), 1, 1);
-      start.current = null; setPreview(null);
+      if ((tool !== "rect" && tool !== "arrow") || !start.current) return;
+      const from = start.current, to = local(e), box = e.currentTarget.getBoundingClientRect();
+      start.current = null; setPreview(null); setArrowPreview(null);
       if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
-      if (isMeaningfulRect(rect)) onRect(rect);
+      if (tool === "arrow") {
+        if (isMeaningfulArrow([from, to], box.width, box.height)) extra?.onArrow?.([from, to]);
+      } else {
+        const rect = toFracRect(from, to, 1, 1);
+        if (isMeaningfulRect(rect)) onRect(rect);
+      }
     },
     onPointerCancel: cancel,
-    onLostPointerCapture: () => { start.current = null; setPreview(null); },
+    onLostPointerCapture: () => { start.current = null; setPreview(null); setArrowPreview(null); },
     onPointerLeave: () => setCursor(null),
     onClick: (e: React.MouseEvent) => {
+      if (tool === "note" && e.button === 0 && e.detail <= 1) { extra?.onNote?.(local(e)); return; }
       if (tool !== "polygon" || e.button !== 0 || e.detail > 1) return;
       const point = local(e), box = e.currentTarget.getBoundingClientRect();
       if (canCloseAnnotationPolygon(pointRef.current, point, box.width, box.height)) {
@@ -66,5 +74,5 @@ export function useShapeDrawing(tool: AnnotationTool, onRect: (r: FracRect) => v
       cancel(); onPolygon(complete);
     },
   };
-  return { handlers, preview, points, cursor, cancel };
+  return { handlers, preview, arrowPreview, points, cursor, cancel };
 }

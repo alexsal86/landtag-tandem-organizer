@@ -1,5 +1,5 @@
 export type AnnotationFileKind = "pdf" | "image";
-export type AnnotationType = "highlight" | "rect" | "polygon";
+export type AnnotationType = "highlight" | "rect" | "polygon" | "arrow" | "note";
 export type AnnotationColor = "yellow" | "green" | "red" | "blue";
 export type AnnotationTool = "select" | AnnotationType;
 

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Highlighter, MousePointer2, Square, Pentagon, ZoomIn, ZoomOut, X, Eye, EyeOff, Undo2, Redo2, Maximize } from "lucide-react";
+import { Highlighter, MousePointer2, Square, Pentagon, ZoomIn, ZoomOut, X, Eye, EyeOff, Undo2, Redo2, Maximize, MoveUpRight, StickyNote } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { LoadingState, ErrorState } from "@/components/ui-patterns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { notify } from "@/lib/notify";
-import { ANNOTATION_COLORS, annotationNumbers, annotationPatchMatches, fileVersionOf, getAnnotationFileKind } from "../annotationModel";
+import { ANNOTATION_COLORS, annotationNumbers, annotationPatchMatches, annotationShortcut, fileVersionOf, getAnnotationFileKind } from "../annotationModel";
 import { useAnnotations } from "../useAnnotations";
 import { useAnnotationHistory } from "../useAnnotationHistory";
 import { colorVar } from "./AnnotationShapes";
@@ -184,7 +184,7 @@ export function AnnotationWorkspace({ document: doc, open, onOpenChange }: Props
     if (!composerTarget && selected && canEdit(selected)) void patchAnnotation(selected.id, { color: next });
   };
   const chooseTool = (next: AnnotationTool) => {
-    if (composerTarget && next !== 'select') return;
+    if (busy || (composerTarget && next !== 'select')) return;
     setTool(next); if (next !== 'select') { setHidden(false); setActiveId(null); }
   };
   const fit = () => {
@@ -198,28 +198,41 @@ export function AnnotationWorkspace({ document: doc, open, onOpenChange }: Props
     }
   };
   shortcuts.current = e => {
+    if (e.isComposing || e.repeat) return;
     if (e.target instanceof HTMLElement && e.target.closest('input,textarea,select,[contenteditable="true"],[role="menu"]')) return;
     const key = e.key.toLowerCase();
     if ((e.ctrlKey || e.metaKey) && key === 'z') { e.preventDefault(); if (!busy) void (e.shiftKey ? history.redo() : history.undo()); return; }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const action = kind ? annotationShortcut(key, kind) : null;
+    if (action) {
+      e.preventDefault();
+      if (busy) return;
+      if (action.action === 'color') chooseColor(action.color);
+      else if (action.action === 'tool') chooseTool(action.tool);
+      else if (action.action === 'delete') {
+        const selected = editingId ?? activeId;
+        if (selected === '__draft__') cancelComposer();
+        else if (selected) deleteAnnotation(selected);
+      } else { cancelComposer(); setActiveId(null); setTool('select'); }
+      return;
+    }
     if (key === 'v') chooseTool('select');
-    else if (key === 'r') chooseTool('rect');
-    else if (key === 'p' && kind === 'image') chooseTool('polygon');
-    else if (key === 'h') setHidden(current => !current);
     else if (key === '+' || key === '=') { e.preventDefault(); changeZoom(current => current + .1); }
     else if (key === '-') { e.preventDefault(); changeZoom(current => current - .1); }
     else if (key === '0') { e.preventDefault(); fit(); }
-    else if (key === 'escape' && !busy) { cancelComposer(); setActiveId(null); setTool('select'); }
   };
   const tools: { id: AnnotationTool; label: string; icon: typeof Square; show: boolean }[] = [
     { id: 'select', label: 'Auswählen (V)', icon: MousePointer2, show: true },
-    { id: 'highlight', label: 'Text markieren', icon: Highlighter, show: kind === 'pdf' },
+    { id: 'highlight', label: 'Textmarker (H)', icon: Highlighter, show: kind === 'pdf' },
     { id: 'rect', label: 'Rechteck (R)', icon: Square, show: true },
-    { id: 'polygon', label: 'Freiform (P)', icon: Pentagon, show: kind === 'image' },
+    { id: 'polygon', label: 'Polygon (P)', icon: Pentagon, show: true },
+    { id: 'arrow', label: 'Pfeil ziehen', icon: MoveUpRight, show: true },
+    { id: 'note', label: 'Notiz-Nadel setzen', icon: StickyNote, show: true },
   ];
   const hint = tool === 'polygon' ? 'Punkte setzen · Doppelklick oder Enter schließt die Form · Esc bricht ab'
+    : tool === 'arrow' ? 'Pfeil vom Startpunkt zur Zielstelle ziehen' : tool === 'note' ? 'Ins Dokument klicken, um eine Notiz anzuheften'
     : tool === 'rect' ? 'Rahmen aufziehen – danach Kommentar schreiben' : tool === 'highlight' ? 'Text auswählen – danach Kommentar schreiben'
-    : 'Markierung anklicken · Ecken ziehen · Mausrad zum Zoomen';
+    : '1–4: Farben · Entf: Löschen · Esc: Abbrechen · Mausrad: Zoom';
   const editorProps = { zoom, tool, color, annotations, activeId, draft, numbers, hidden,
     onSelect: (id: string) => selectAnnotation(id, false), onDraft: startDraft,
     canEdit: (a: DocumentAnnotation) => !busy && canEdit(a),
@@ -236,7 +249,7 @@ export function AnnotationWorkspace({ document: doc, open, onOpenChange }: Props
         <div className="min-w-0 flex-1"><div className="aw-title"><h2 className="max-w-full truncate">{doc.title}</h2><span className="aw-original">Original bleibt unverändert</span></div>
           <p className="aw-subtitle truncate">{doc.file_name}{imageSize && kind === 'image' ? ` · ${imageSize.width} × ${imageSize.height} px` : kind === 'pdf' ? ' · PDF' : ''}</p></div>
         {busy && <span className="text-xs text-muted-foreground" role="status">Speichert …</span>}
-        {iconButton(hidden ? 'Markierungen einblenden (H)' : 'Markierungen ausblenden (H)', hidden ? EyeOff : Eye, () => setHidden(current => !current), { active: hidden })}
+        {iconButton(hidden ? 'Markierungen einblenden' : 'Markierungen ausblenden', hidden ? EyeOff : Eye, () => setHidden(current => !current), { active: hidden })}
         {iconButton('Zurück zu den Dokumenten', X, () => onOpenChange(false))}
       </header>
       <div ref={canvasRef} className="aw-canvas">
@@ -249,8 +262,8 @@ export function AnnotationWorkspace({ document: doc, open, onOpenChange }: Props
         <div className="aw-float aw-tools" role="toolbar" aria-label="Annotationswerkzeuge">
           {tools.filter(t => t.show).map(t => <span key={t.id}>{iconButton(t.label, t.icon, () => chooseTool(t.id), { active: tool === t.id, disabled: busy || (!!composerTarget && t.id !== 'select') })}</span>)}
           <span className="aw-separator" />
-          {ANNOTATION_COLORS.map(c => <Tooltip key={c.value}><TooltipTrigger asChild><button type="button" className={`aw-color ${c.value === color ? 'on' : ''}`}
-            aria-label={c.label} aria-pressed={c.value === color} disabled={busy} onClick={() => chooseColor(c.value)}><span style={{ background: `hsl(${colorVar(c.value)})` }} /></button></TooltipTrigger><TooltipContent>{c.label}</TooltipContent></Tooltip>)}
+          {ANNOTATION_COLORS.map((c, index) => <Tooltip key={c.value}><TooltipTrigger asChild><button type="button" className={`aw-color ${c.value === color ? 'on' : ''}`}
+            aria-label={`${c.label} (${index + 1})`} aria-keyshortcuts={String(index + 1)} aria-pressed={c.value === color} disabled={busy} onClick={() => chooseColor(c.value)}><span style={{ background: `hsl(${colorVar(c.value)})` }} /></button></TooltipTrigger><TooltipContent>{c.label} ({index + 1})</TooltipContent></Tooltip>)}
           <span className="aw-separator" />
           {iconButton('Bearbeitung rückgängig (Strg+Z)', Undo2, () => { void history.undo(); }, { disabled: busy || !history.canUndo })}
           {iconButton('Bearbeitung wiederholen (Strg+Shift+Z)', Redo2, () => { void history.redo(); }, { disabled: busy || !history.canRedo })}

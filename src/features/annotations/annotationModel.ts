@@ -1,4 +1,4 @@
-import type { AnnotationColor, AnnotationFileKind, AnnotationSelector, FracPoint, FracRect } from "./types";
+import type { AnnotationColor, AnnotationFileKind, AnnotationTool, AnnotationSelector, FracPoint, FracRect } from "./types";
 
 export const ANNOTATION_COLORS: { value: AnnotationColor; label: string }[] = [
   { value: "yellow", label: "Hinweis" },
@@ -79,7 +79,11 @@ export function moveAnnotationSelector(selector: AnnotationSelector, delta: Frac
 /** Rectangle corners keep the opposite corner fixed; polygon vertices move independently. */
 export function moveAnnotationHandle(selector: AnnotationSelector, handle: AnnotationHandle, point: FracPoint): AnnotationSelector {
   const p = { x: clamp(point.x), y: clamp(point.y) };
-  if (handle.kind === "point") return { ...selector, points: selector.points?.map((old, i) => i === handle.index ? p : old) };
+  if (handle.kind === "point") {
+    const points = selector.points?.map((old, i) => i === handle.index ? p : old);
+    if (points?.length === 2 && points[0].x === points[1].x && points[0].y === points[1].y) return selector;
+    return { ...selector, points };
+  }
   return { ...selector, rects: selector.rects?.map((r, i) => {
     if (i !== handle.index) return r;
     const opposite = { x: handle.corner === 0 || handle.corner === 3 ? r.x + r.w : r.x,
@@ -119,4 +123,29 @@ export function annotationPatchMatches(record: object, patch: object): boolean {
   const normalize = (value: unknown): unknown => Array.isArray(value) ? value.map(normalize)
     : value && typeof value === "object" ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => [k, normalize(v)])) : value;
   return Object.entries(patch).every(([key, value]) => JSON.stringify(normalize((record as Record<string, unknown>)[key])) === JSON.stringify(normalize(value)));
+}
+
+
+export function pointAnnotationIsValid(type: "arrow" | "note", points: FracPoint[]): boolean {
+  if (points.length !== (type === "arrow" ? 2 : 1)) return false;
+  if (points.some(p => !Number.isFinite(p.x) || !Number.isFinite(p.y) || p.x < 0 || p.x > 1 || p.y < 0 || p.y > 1)) return false;
+  return type === "note" || points[0].x !== points[1].x || points[0].y !== points[1].y;
+}
+
+export function isMeaningfulArrow(points: FracPoint[], width: number, height: number): boolean {
+  return pointAnnotationIsValid("arrow", points) && Math.hypot((points[1].x - points[0].x) * width, (points[1].y - points[0].y) * height) >= 8;
+}
+
+export type AnnotationShortcut = { action: "color"; color: AnnotationColor } | { action: "tool"; tool: AnnotationTool } | { action: "delete" | "cancel" };
+export function annotationShortcut(key: string, kind: AnnotationFileKind): AnnotationShortcut | null {
+  const index = ["1", "2", "3", "4"].indexOf(key);
+  if (index >= 0) return { action: "color", color: ANNOTATION_COLORS[index].value };
+  switch (key.toLowerCase()) {
+    case "h": return kind === "pdf" ? { action: "tool", tool: "highlight" } : null;
+    case "r": return { action: "tool", tool: "rect" };
+    case "p": return { action: "tool", tool: "polygon" };
+    case "delete": return { action: "delete" };
+    case "escape": return { action: "cancel" };
+    default: return null;
+  }
 }

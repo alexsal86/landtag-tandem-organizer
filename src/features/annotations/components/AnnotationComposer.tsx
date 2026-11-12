@@ -40,7 +40,7 @@ export function AnnotationComposer({ target, viewer, canvas, zoom, tenantId, tex
       if (e.key === 'Escape') { e.stopPropagation(); e.preventDefault(); if (!saving) onCancel(); }
       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); if (!saving) onSave(); }
     }}>
-    <AnnotationCommentInput tenantId={tenantId} autoFocus value={text} onChange={onText} placeholder="Kommentar schreiben … @ für Erwähnung" rows={3} maxLength={5000} />
+    <AnnotationCommentInput tenantId={tenantId} autoFocus value={text} onChange={onText} placeholder={target.annotation_type === "note" ? "Notiz schreiben … @ für Erwähnung" : "Kommentar schreiben … @ für Erwähnung"} rows={3} maxLength={5000} />
     <div className="aw-composer-colors">{ANNOTATION_COLORS.map(c => <button key={c.value} type="button" aria-pressed={c.value === color}
       className={`aw-category ${c.value === color ? 'on' : ''}`} onClick={() => onColor(c.value)}>
       <i style={{ background: `hsl(${colorVar(c.value)})` }} />{c.label}</button>)}</div>

@@ -1,6 +1,6 @@
 import { advanceAnnotationHistory, emptyAnnotationHistory, recordAnnotationChange } from "@/features/annotations/annotationHistory";
 import { supabase } from '@/integrations/supabase/client';
-import { getAnnotationFileKind, toFracPoint, toFracRect, polygonIsValid, isMeaningfulRect, moveAnnotationSelector, moveAnnotationHandle, annotationZoom, annotationBounds, annotationNumbers, annotationThreads, canCloseAnnotationPolygon, annotationPatchMatches } from '@/features/annotations/annotationModel';
+import { getAnnotationFileKind, toFracPoint, toFracRect, polygonIsValid, isMeaningfulRect, moveAnnotationSelector, moveAnnotationHandle, annotationZoom, annotationBounds, annotationNumbers, annotationThreads, canCloseAnnotationPolygon, annotationPatchMatches, pointAnnotationIsValid, isMeaningfulArrow, annotationShortcut } from '@/features/annotations/annotationModel';
 import type { TestScenario } from '../types';
 
 export const documentAnnotationScenario: TestScenario = {
@@ -69,6 +69,23 @@ export const documentAnnotationScenario: TestScenario = {
         && annotationPatchMatches({ target_selector: { rects: [{ x: .1, y: .2, w: .3, h: .4 }] } }, { target_selector: { rects: [{ h: .4, w: .3, y: .2, x: .1 }] } }),
         message: 'Verlauf bleibt auf 50 erfolgreiche Bearbeitungen begrenzt; Konflikte und JSONB-Schlüsselreihenfolge werden korrekt erkannt.' };
     } },
+    { id: 'arrow-note-shortcuts', label: 'Pfeile, Notiz-Nadeln und Tastaturbelegung', kind: 'logic', run: async () => {
+      const arrow = [{ x: .1, y: .2 }, { x: .7, y: .6 }], note = [{ x: .5, y: .5 }];
+      const moved = moveAnnotationSelector({ points: note }, { x: 2, y: -2 }).points!;
+      const endpoint = moveAnnotationHandle({ points: arrow }, { kind: 'point', index: 1 }, { x: .9, y: .8 }).points!;
+      return { ok: pointAnnotationIsValid('arrow', arrow) && pointAnnotationIsValid('note', note)
+        && !pointAnnotationIsValid('arrow', note) && !pointAnnotationIsValid('note', arrow)
+        && !pointAnnotationIsValid('arrow', [note[0], note[0]]) && !pointAnnotationIsValid('note', [{ x: -1, y: .5 }])
+        && isMeaningfulArrow(arrow, 100, 100) && !isMeaningfulArrow([{ x: 0, y: 0 }, { x: .001, y: 0 }], 100, 100)
+        && moved[0].x === 1 && moved[0].y === 0 && endpoint[0] === arrow[0] && endpoint[1].x === .9
+        && ['yellow', 'green', 'red', 'blue'].every((color, index) => {
+          const action = annotationShortcut(String(index + 1), 'pdf'); return action?.action === 'color' && action.color === color;
+        }) && [['H', 'highlight'], ['R', 'rect'], ['P', 'polygon']].every(([key, tool]) => {
+          const action = annotationShortcut(key, 'pdf'); return action?.action === 'tool' && action.tool === tool;
+        }) && annotationShortcut('Delete', 'pdf')?.action === 'delete' && annotationShortcut('Escape', 'image')?.action === 'cancel'
+        && annotationShortcut('H', 'image') === null && annotationShortcut('5', 'pdf') === null,
+        message: 'Pfeile besitzen zwei getrennte Endpunkte, Notizen einen Anker; Farbkürzel und Werkzeugkürzel sind eindeutig.' };
+    } },
     { id: 'persistence', label: 'Anlegen → Antworten → Erledigen → Löschen; Rechte prüfen', run: async ctx => {
       const doc = await supabase.from('documents').insert({ tenant_id: ctx.tenantId, user_id: ctx.userId,
         title: `[SELFTEST] Annotation ${ctx.runId}`, file_name: 'selftest.pdf', file_path: `selftest/${ctx.runId}.pdf` }).select('id').single();
@@ -101,6 +118,23 @@ export const documentAnnotationScenario: TestScenario = {
       const foreign = await supabase.from('document_annotations').insert({ ...payload, tenant_id: crypto.randomUUID() }).select('id');
       for (const row of foreign.data ?? []) ctx.trackRecord({ table: 'document_annotations', id: row.id });
       checks.tenantGuard = !!foreign.error && !foreign.data?.length;
+      for (const shape of [
+        { type: 'arrow', points: [{ x: .1, y: .2 }, { x: .7, y: .6 }], moved: [{ x: .2, y: .3 }, { x: .8, y: .7 }] },
+        { type: 'note', points: [{ x: .5, y: .5 }], moved: [{ x: .6, y: .7 }] },
+      ]) {
+        const saved = await supabase.from('document_annotations').insert({ ...payload, annotation_type: shape.type, target_selector: { points: shape.points } }).select('id, annotation_type, target_selector').single();
+        checks[`${shape.type}Saved`] = !saved.error && saved.data?.annotation_type === shape.type;
+        if (saved.data) {
+          ctx.trackRecord({ table: 'document_annotations', id: saved.data.id });
+          const moved = await supabase.from('document_annotations').update({ target_selector: { points: shape.moved } }).eq('id', saved.data.id).select('target_selector').single();
+          checks[`${shape.type}Moved`] = !moved.error && annotationPatchMatches(moved.data ?? {}, { target_selector: { points: shape.moved } });
+          const removedShape = await supabase.from('document_annotations').delete().eq('id', saved.data.id).select('id').single();
+          checks[`${shape.type}Deleted`] = !removedShape.error && removedShape.data?.id === saved.data.id;
+        }
+        const invalid = await supabase.from('document_annotations').insert({ ...payload, annotation_type: shape.type, target_selector: { points: [] } }).select('id');
+        for (const row of invalid.data ?? []) ctx.trackRecord({ table: 'document_annotations', id: row.id });
+        checks[`${shape.type}Guard`] = !!invalid.error && !invalid.data?.length;
+      }
       const updated = await supabase.from('document_annotations').update({ resolved: true }).eq('id', created.data.id).select('resolved').single();
       checks.resolved = !updated.error && updated.data?.resolved === true;
       const removed = await supabase.from('document_annotations').delete().eq('id', created.data.id).select('id').single();

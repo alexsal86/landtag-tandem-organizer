@@ -21,10 +21,12 @@ export function ImageAnnotator({ src, alt, zoom, tool, color, annotations, activ
     });
     observer.observe(el); return () => observer.disconnect();
   }, []);
-  const { handlers, preview, points, cursor } = useShapeDrawing(
+  const { handlers, preview, arrowPreview, points, cursor } = useShapeDrawing(
     tool,
     r => onDraft({ annotation_type: "rect", page_number: null, target_selector: { rects: [r] }, quote_text: null }),
     p => onDraft({ annotation_type: "polygon", page_number: null, target_selector: { points: p }, quote_text: null }),
+    { onArrow: points => onDraft({ annotation_type: "arrow", page_number: null, target_selector: { points }, quote_text: null }),
+      onNote: point => onDraft({ annotation_type: "note", page_number: null, target_selector: { points: [point] }, quote_text: null }) },
   );
   // Fit the complete image at 100%; fixed pixel sizes prevent flex shrinking above 100%.
   const fit = Math.min(Math.max(1, viewport.width - 80) / natural.width, Math.max(1, viewport.height - 154) / natural.height, 1);
@@ -38,6 +40,7 @@ export function ImageAnnotator({ src, alt, zoom, tool, color, annotations, activ
             onLoad={e => { const size = { width: e.currentTarget.naturalWidth, height: e.currentTarget.naturalHeight }; setNatural(size); onImageSize?.(size); }} />
           <AnnotationLayer annotations={annotations} activeId={activeId} onSelect={onSelect} interactive={tool === "select"} canEdit={canEdit} onChange={onChange} draft={draft} draftColor={color} onDraftChange={onDraftChange} hidden={hidden} numbers={numbers}>
             {preview && <AnnotationShape type="rect" selector={{ rects: [preview] }} color={color} active />}
+            {arrowPreview && <AnnotationShape type="arrow" selector={{ points: arrowPreview }} color={color} active />}
             <PolygonPreview points={points} cursor={cursor} color={color} />
           </AnnotationLayer>
         </div>
