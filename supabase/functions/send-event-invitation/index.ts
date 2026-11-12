@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
 import { createServiceRoleClient } from "../_shared/supabase.ts";
+import { escapeHtml } from "../_shared/html.ts";
 
 import { withSafeHandler, requireAuth, unauthorizedResponse, forbiddenResponse, callerClient } from "../_shared/security.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
@@ -55,8 +56,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Processing event email:", {
       eventPlanningId,
-      eventTitle,
-      rsvpIds,
+      rsvpCount: Array.isArray(rsvpIds) ? rsvpIds.length : 0,
       type,
     });
 
@@ -81,6 +81,18 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (eventError || !event) {
       throw new Error("Event not found");
+    }
+
+    // Only the event owner or collaborators with edit rights may email guests.
+    if (event.user_id !== auth.userId) {
+      const { data: collab } = await supabase
+        .from("event_planning_collaborators")
+        .select("id")
+        .eq("event_planning_id", eventPlanningId)
+        .eq("user_id", auth.userId)
+        .eq("can_edit", true)
+        .maybeSingle();
+      if (!collab) return forbiddenResponse();
     }
 
     // Get creator name
@@ -113,10 +125,10 @@ const handler = async (req: Request): Promise<Response> => {
     };
 
     const getEmailHtml = (rsvp: { name: string }, invitationUrl: string) => {
-      const personalizedMessage = customMessage
-        ? customMessage
-            .replace(/\{name\}/g, rsvp.name)
-            .replace(/\{eventTitle\}/g, event.title)
+      const personalizedMessage = typeof customMessage === "string" && customMessage
+        ? escapeHtml(customMessage.slice(0, 2000))
+            .replace(/\{name\}/g, escapeHtml(rsvp.name ?? ""))
+            .replace(/\{eventTitle\}/g, escapeHtml(event.title ?? ""))
             .replace(/\n/g, "<br/>")
         : "";
 

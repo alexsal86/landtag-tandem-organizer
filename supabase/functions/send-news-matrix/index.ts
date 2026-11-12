@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
+import { getCallerTenantIds, filterTenantUserIds } from "../_shared/recipient-scope.ts";
 import { withSafeHandler, requireAuth, unauthorizedResponse } from "../_shared/security.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -94,12 +95,20 @@ serve(withSafeHandler("send-news-matrix", async (req: Request): Promise<Response
 
     const {
       article,
-      recipientUserIds,
+      recipientUserIds: requestedRecipientUserIds,
       senderName,
       personalMessage,
     }: SendNewsMatrixRequest = await req.json();
 
-    if (!article || !recipientUserIds || recipientUserIds.length === 0) {
+    // Only members of the caller's own office may receive messages.
+    const callerTenantIds = await getCallerTenantIds(supabase, auth.userId);
+    const recipientUserIds = await filterTenantUserIds(
+      supabase,
+      callerTenantIds,
+      Array.isArray(requestedRecipientUserIds) ? requestedRecipientUserIds.slice(0, 200) : [],
+    );
+
+    if (!article || recipientUserIds.length === 0) {
       throw new Error("Missing required fields");
     }
 
