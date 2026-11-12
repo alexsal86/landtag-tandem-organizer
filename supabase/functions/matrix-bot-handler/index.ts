@@ -486,6 +486,7 @@ Deno.serve(withSafeHandler("matrix-bot-handler", async (req) => {
         matrixToken,
         matrixHomeserver,
         matrixEnabledCache,
+        authed && !webhookOk && !internalOk ? authed.userId : null,
       );
     }
 
@@ -695,12 +696,35 @@ async function sendDecisionMessages(
   matrixToken: string,
   matrixHomeserver: string,
   matrixEnabledCache: Map<string, boolean>,
+  callerUserId: string | null,
 ) {
   try {
     console.log("🗳️ Sending decision messages via Matrix");
 
-    const { decisionId, participantIds, decisionTitle, decisionDescription } =
-      body;
+    const { decisionId, participantIds } = body;
+
+    // Load decision details from the database; never trust caller-supplied text.
+    const { data: decisionRow } = decisionId
+      ? await supabaseAdmin
+          .from("task_decisions")
+          .select("id, title, description, created_by")
+          .eq("id", decisionId)
+          .maybeSingle()
+      : { data: null };
+    if (!decisionRow) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Decision not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    if (callerUserId && decisionRow.created_by !== callerUserId) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Forbidden" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    const decisionTitle: string = decisionRow.title || "Entscheidung";
+    const decisionDescription: string = decisionRow.description || "";
 
     if (!decisionId || !participantIds || !Array.isArray(participantIds)) {
       return new Response(
