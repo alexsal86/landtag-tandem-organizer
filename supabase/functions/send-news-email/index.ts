@@ -3,6 +3,7 @@ import { escapeHtml, safeUrl, sanitizeEmailHtml } from "../_shared/html.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { Resend } from "npm:resend@2.0.0";
 
+import { getCallerTenantIds, filterTenantUserIds, filterTenantContactEmails } from "../_shared/recipient-scope.ts";
 import { withSafeHandler, requireAuth, unauthorizedResponse } from "../_shared/security.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -51,17 +52,20 @@ serve(withSafeHandler("send-news-email", async (req: Request): Promise<Response>
       throw new Error("Missing required fields");
     }
 
-    const externalRecipients = [...new Set(
-      recipients
-        .map((email) => email.trim())
-        .filter((email) => email && email.includes("@"))
-    )];
+    const callerTenantIds = await getCallerTenantIds(supabase, auth.userId);
+    // External recipients must be known contacts of the caller's office.
+    const externalRecipients = await filterTenantContactEmails(
+      supabase,
+      callerTenantIds,
+      recipients.slice(0, 200),
+    );
 
-    const uniqueInternalRecipientUserIds = [...new Set(
-      internalRecipientUserIds
-        .map((userId) => userId.trim())
-        .filter(Boolean)
-    )];
+    // Internal recipients must be members of the caller's office.
+    const uniqueInternalRecipientUserIds = await filterTenantUserIds(
+      supabase,
+      callerTenantIds,
+      internalRecipientUserIds.slice(0, 200).map((userId) => userId.trim()),
+    );
 
     const resolvedInternalEmails: string[] = [];
     const unresolvedInternalRecipientUserIds: string[] = [];
