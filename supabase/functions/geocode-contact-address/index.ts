@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 
-import { withSafeHandler, requireAuth, unauthorizedResponse } from "../_shared/security.ts";
+import { withSafeHandler, requireAuth, unauthorizedResponse, forbiddenResponse, callerClient } from "../_shared/security.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -44,6 +44,14 @@ serve(withSafeHandler("geocode-contact-address", async (req) => {
 
     // If contactId provided, fetch address from database
     if (contactId) {
+      // The caller must be allowed to see this contact (RLS) before any privileged read/write.
+      const { data: visible } = await callerClient(req)
+        .from('contacts')
+        .select('id')
+        .eq('id', contactId)
+        .maybeSingle();
+      if (!visible) return forbiddenResponse();
+
       const { data: contact, error } = await supabaseClient
         .from('contacts')
         .select('business_street, business_house_number, business_postal_code, business_city, business_country')
