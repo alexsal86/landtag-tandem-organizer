@@ -398,18 +398,24 @@ serve(withSafeHandler("manage-tenant-user", async (req) => {
           throw new Error('userId is required');
         }
 
-        // For Abgeordneter: verify user is in their tenant
+        // For Abgeordneter: caller must administer the tenant, and the target
+        // must belong exclusively to it (an account spanning other tenants or a
+        // platform admin can only be deleted by a platform admin).
         if (!isPlatformAdmin && isAbgeordneter) {
-          const { data: targetMembership } = await supabaseAdmin
-            .from('user_tenant_memberships')
-            .select('tenant_id')
-            .eq('user_id', userId)
-            .eq('tenant_id', tenantId)
-            .eq('is_active', true)
-            .maybeSingle();
+          if (!tenantId) throw new HttpError(400, 'tenantId is required');
+          await assertTenantPermission(tenantId, 'abgeordneter');
 
-          if (!targetMembership) {
-            throw new HttpError(403, 'Insufficient permissions - user not in target tenant');
+          const { data: targetMemberships } = await supabaseAdmin
+            .from('user_tenant_memberships')
+            .select('tenant_id, is_active')
+            .eq('user_id', userId);
+          const memberships = (targetMemberships ?? []) as { tenant_id: string; is_active: boolean }[];
+          const inTenant = memberships.some((m) => m.tenant_id === tenantId && m.is_active);
+          const elsewhere = memberships.some((m) => m.tenant_id !== tenantId);
+          const { data: targetIsSuperadmin } = await supabaseAdmin.rpc('is_superadmin', { _user_id: userId });
+
+          if (!inTenant || elsewhere || targetIsSuperadmin === true) {
+            throw new HttpError(403, 'Insufficient permissions - user not exclusively in target tenant');
           }
         } else if (!isPlatformAdmin) {
           throw new Error('Insufficient permissions');
@@ -456,6 +462,24 @@ serve(withSafeHandler("manage-tenant-user", async (req) => {
         if (!canUpdate) {
           throw new Error('Insufficient permissions');
         }
+        if (!isPlatformAdmin) await assertTenantPermission(tenantId, 'abgeordneter');
+
+        if (!['abgeordneter', 'bueroleitung', 'mitarbeiter', 'praktikant'].includes(role)) {
+          throw new HttpError(400, 'Invalid role');
+        }
+
+        // Target must be an active member of the tenant being administered.
+        const { data: roleTargetMemberships } = await supabaseAdmin
+          .from('user_tenant_memberships')
+          .select('tenant_id, is_active')
+          .eq('user_id', userId);
+        const roleMemberships = (roleTargetMemberships ?? []) as { tenant_id: string; is_active: boolean }[];
+        if (!roleMemberships.some((m) => m.tenant_id === tenantId && m.is_active)) {
+          throw new HttpError(403, 'Insufficient permissions - user not in target tenant');
+        }
+        // The account-wide role may only be changed by a tenant admin when the
+        // user belongs to no other tenant.
+        const mayWriteGlobalRole = isPlatformAdmin || !roleMemberships.some((m) => m.tenant_id !== tenantId);
 
         console.log(`Updating role for user ${userId} to ${role}`);
 
@@ -469,12 +493,14 @@ serve(withSafeHandler("manage-tenant-user", async (req) => {
         if (membershipError) throw membershipError;
 
         // Update user_roles
-        const { error: roleError } = await supabaseAdmin.from('user_roles').upsert({
-          user_id: userId,
-          role: role
-        }, { onConflict: 'user_id' });
+        if (mayWriteGlobalRole) {
+          const { error: roleError } = await supabaseAdmin.from('user_roles').upsert({
+            user_id: userId,
+            role: role
+          }, { onConflict: 'user_id' });
 
-        if (roleError) throw roleError;
+          if (roleError) throw roleError;
+        }
 
         await logAdminAction(
           supabaseAdmin,

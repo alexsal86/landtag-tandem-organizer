@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createServiceRoleClient } from "../_shared/supabase.ts";
 
-import { withSafeHandler } from "../_shared/security.ts";
+import { withSafeHandler, callerClient } from "../_shared/security.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -48,11 +48,16 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Processing email for action:", actionId, "item:", checklistItemId);
 
-    // Fetch action configuration
-    const { data: action, error: actionError } = await supabase
+    if (typeof actionId !== "string" || typeof checklistItemId !== "string") {
+      throw new Error("Invalid request");
+    }
+
+    // Fetch action configuration with the caller's permissions (RLS), bound to the checklist item
+    const { data: action, error: actionError } = await callerClient(req)
       .from("event_planning_item_actions")
       .select("id, action_type, action_config, is_enabled")
       .eq("id", actionId)
+      .eq("checklist_item_id", checklistItemId)
       .eq("is_enabled", true)
       .single();
 

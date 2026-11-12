@@ -222,3 +222,43 @@ export function withSafeHandler(
     }
   };
 }
+
+// ─── Caller-scoped client ─────────────────────────────────────────────────────
+// Returns a client that acts with the caller's JWT so RLS decides whether the
+// caller may see a record. Use it to authorize request-selected IDs before any
+// service-role work.
+export function callerClient(req: Request) {
+  const authHeader = req.headers.get("Authorization") ?? "";
+  return createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+    { global: { headers: { Authorization: authHeader } } },
+  );
+}
+
+/** True when the caller is Abgeordneter/Büroleitung in any active tenant or superadmin. */
+export async function isTenantAdminOrSuperadmin(userId: string): Promise<boolean> {
+  const admin = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+  );
+  const { data: superadmin } = await admin.rpc("is_superadmin", { _user_id: userId });
+  if (superadmin === true) return true;
+  const { data } = await admin
+    .from("user_tenant_memberships")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .in("role", ["abgeordneter", "bueroleitung"])
+    .limit(1);
+  return (data?.length ?? 0) > 0;
+}
+
+export async function isSuperadmin(userId: string): Promise<boolean> {
+  const admin = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+  );
+  const { data } = await admin.rpc("is_superadmin", { _user_id: userId });
+  return data === true;
+}

@@ -50,6 +50,7 @@ serve(withSafeHandler("analyze-parliament-protocol", async (req) => {
   const auth = await requireAuth(req);
   if (!auth) return unauthorizedResponse();
 
+  let authorizedProtocolId: string | null = null;
   try {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -83,6 +84,7 @@ serve(withSafeHandler("analyze-parliament-protocol", async (req) => {
       });
     }
 
+    authorizedProtocolId = String(protocolId);
     console.log(`Starting database insertion for protocol: ${protocolId}`);
 
     // Update status to processing
@@ -189,7 +191,10 @@ serve(withSafeHandler("analyze-parliament-protocol", async (req) => {
     try {
       // Try to get protocolId from the original request
       const requestBody = await req.clone().json();
-      protocolIdFromError = requestBody.protocolId;
+      // Only touch a protocol the caller was authorized for.
+      protocolIdFromError = authorizedProtocolId && requestBody.protocolId === authorizedProtocolId
+        ? authorizedProtocolId
+        : null;
     } catch (parseError) {
       console.error('Could not parse request body for error handling:', parseError);
     }

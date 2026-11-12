@@ -4,7 +4,7 @@ import { Resend } from "https://esm.sh/resend@4.0.0";
 import { requireAppBaseUrl } from "../_shared/url.ts";
 import { createServiceRoleClient } from "../_shared/supabase.ts";
 
-import { withSafeHandler, requireAuth, unauthorizedResponse } from "../_shared/security.ts";
+import { withSafeHandler, requireAuth, unauthorizedResponse, forbiddenResponse } from "../_shared/security.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
@@ -47,6 +47,19 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Poll title:", pollTitle);
     console.log("Creator name:", creatorName);
     console.log("=== END DEBUG INFO ===");
+
+    if (typeof pollId !== "string" || !Array.isArray(participantEmails)) {
+      return new Response(JSON.stringify({ error: "Invalid request" }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
+    }
+
+    // Only the poll's creator may send its invitation links.
+    const { data: ownedPoll } = await supabase
+      .from("appointment_polls")
+      .select("id")
+      .eq("id", pollId)
+      .eq("user_id", auth.userId)
+      .maybeSingle();
+    if (!ownedPoll) return forbiddenResponse();
 
     const emailResults = [];
 
