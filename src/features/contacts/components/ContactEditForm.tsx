@@ -254,6 +254,14 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
 
       // Clean date fields - convert empty strings to null for database
       const cleanedUpdateData: Record<string, unknown> = { ...updateData };
+      // "Rolle" wird als Alias von position geladen; entfernte Spalten nie zurückschreiben.
+      if ('role' in cleanedUpdateData) {
+        cleanedUpdateData.position = cleanedUpdateData.role;
+        delete cleanedUpdateData.role;
+      }
+      for (const removed of ['twitter', 'xing', 'department', 'email_2', 'email_3', 'geocoding_source']) {
+        delete cleanedUpdateData[removed];
+      }
       const dateFields = ['birthday'];
       
       dateFields.forEach(field => {
