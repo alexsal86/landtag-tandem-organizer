@@ -27,6 +27,7 @@ import { TagInput } from "@/components/ui/tag-input";
 import type { ContactCategory, ContactDuplicateCandidate, ContactPriority, EditableContact } from "@/types/contact";
 import { createContactSchema } from "@/features/contacts/schemas/contact.schema";
 import { notify } from "@/lib/notify";
+import { LEGAL_BASIS_OPTIONS, SOURCE_ORIGIN_OPTIONS, defaultLegalBasis, defaultReviewDate, retentionRuleText } from "@/features/contacts/privacy/retention";
 
 type ContactFormData = {
   contact_type: Exclude<import("@/types/contact").ContactType, "archive">;
@@ -44,8 +45,10 @@ type ContactFormData = {
   main_contact_person: string;
   category: ContactCategory | "";
   priority: ContactPriority | "";
-  added_reason: string;
-  added_at: string;
+  legal_basis: string;
+  source_origin: string;
+  processing_purpose: string;
+  consent_given_at: string;
 };
 
 const ADDED_REASON_OPTIONS = [
@@ -80,8 +83,10 @@ export function CreateContact() {
     tags: [],
     industry: "",
     main_contact_person: "",
-    added_reason: "",
-    added_at: new Date().toISOString().split("T")[0],
+    legal_basis: "",
+    source_origin: "",
+    processing_purpose: "",
+    consent_given_at: "",
   });
 
   const [organizations, setOrganizations] = useState<
@@ -256,8 +261,11 @@ export function CreateContact() {
         tags: (formData.tags ?? []).length > 0 ? formData.tags : null,
         industry: formData.industry || null,
         main_contact_person: formData.main_contact_person || null,
-        added_reason: formData.added_reason || null,
-        added_at: formData.added_at || new Date().toISOString(),
+        legal_basis: formData.legal_basis || defaultLegalBasis(formData.category),
+        source_origin: formData.source_origin || null,
+        processing_purpose: formData.processing_purpose || null,
+        consent_given_at: formData.legal_basis === "consent" && formData.consent_given_at ? formData.consent_given_at : null,
+        retention_review_date: defaultReviewDate(formData.category),
       }]);
 
       if (error) throw error;
@@ -583,36 +591,39 @@ export function CreateContact() {
                     </Select>
                   </div>
 
-                  <div>
-                    <Label htmlFor="added_reason">Grund der Aufnahme</Label>
-                    <Select
-                      onValueChange={(value) =>
-                        handleInputChange("added_reason", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Grund auswählen" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ADDED_REASON_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="added_at">Aufnahmedatum</Label>
-                    <Input
-                      id="added_at"
-                      type="date"
-                      value={formData.added_at}
-                      onChange={(e) =>
-                        handleInputChange("added_at", e.target.value)
-                      }
-                    />
+                  <div className="space-y-3 rounded-md border border-border p-3">
+                    <div className="text-sm font-medium">Herkunft & Rechtsgrundlage (DSGVO)</div>
+                    <div>
+                      <Label>Rechtsgrundlage</Label>
+                      <Select value={formData.legal_basis || defaultLegalBasis(formData.category)} onValueChange={(v) => handleInputChange("legal_basis", v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {LEGAL_BASIS_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {formData.legal_basis === "consent" && (
+                      <div>
+                        <Label htmlFor="consent_given_at">Einwilligung erteilt am</Label>
+                        <Input id="consent_given_at" type="date" value={formData.consent_given_at} onChange={(e) => handleInputChange("consent_given_at", e.target.value)} />
+                      </div>
+                    )}
+                    <div>
+                      <Label>Herkunft der Daten</Label>
+                      <Select value={formData.source_origin} onValueChange={(v) => handleInputChange("source_origin", v)}>
+                        <SelectTrigger><SelectValue placeholder="Woher stammt der Kontakt?" /></SelectTrigger>
+                        <SelectContent>
+                          {SOURCE_ORIGIN_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="processing_purpose">Zweck</Label>
+                      <Input id="processing_purpose" placeholder="z. B. Bürgeranliegen Verkehr" value={formData.processing_purpose} onChange={(e) => handleInputChange("processing_purpose", e.target.value)} />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Nächste Prüfung: {new Date(`${defaultReviewDate(formData.category)}T00:00:00`).toLocaleDateString("de-DE")}. {retentionRuleText(formData.category)}
+                    </p>
                   </div>
                 </CardContent>
               </Card>
