@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { FileText, Upload, Download, Trash2, Plus, Search, Filter, Calendar, Tag, FileType, Folder, FolderPlus, FolderInput, Home, ChevronRight, MoreVertical, Edit, Mail, Edit3, Send, Grid, List, Settings, RotateCcw, ListTodo, ListTree, Info, UserPlus, Newspaper, Save } from "lucide-react";
+import { FileText, Upload, Download, Trash2, Plus, Search, Filter, Calendar, Tag, FileType, Folder, FolderPlus, FolderInput, Home, ChevronRight, MoreVertical, Edit, Mail, Edit3, Send, Grid, List, Settings, RotateCcw, ListTodo, ListTree, Info, UserPlus, Newspaper, Save, Highlighter, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -54,6 +54,9 @@ import {
   type DocumentDialogState,
 } from "@/components/documents/operationsContract";
 import { notify } from "@/lib/notify";
+import { AnnotationWorkspaceDialog } from "@/features/annotations/components/AnnotationWorkspaceDialog";
+import { getAnnotationFileKind } from "@/features/annotations/annotationModel";
+import { useAnnotationCounts } from "@/features/annotations/useAnnotations";
 
 const AUTO_ARCHIVE_DEFAULT_DAYS = 30;
 const AUTO_ARCHIVE_SETTING_KEY = "letters_auto_archive_days";
@@ -308,6 +311,9 @@ export function DocumentsView() {
     return labels[action];
   };
 
+  const [annotateDoc, setAnnotateDoc] = useState<Document | null>(null);
+  const annotationCounts = useAnnotationCounts(data.currentTenant?.id, filteredDocuments.map(d => d.id));
+
   return (
     <div className="min-h-screen bg-gradient-subtle p-6">
       <div>
@@ -492,13 +498,14 @@ export function DocumentsView() {
                         <div className="flex items-center gap-2"><FileType className="h-4 w-4 flex-shrink-0" /><span className="truncate">{doc.file_name}</span></div>
                         <div><span>Größe: {formatFileSize(doc.file_size ?? undefined)}</span></div>
                       </div>
+                      {(annotationCounts.data?.[doc.id] ?? 0) > 0 && <Badge variant="secondary" className="w-fit cursor-pointer gap-1" onClick={() => setAnnotateDoc(doc)}><MessageSquare className="h-3 w-3" />{annotationCounts.data?.[doc.id]} offene Anmerkungen</Badge>}
                       {doc.tags && doc.tags.length > 0 && <div className="flex flex-wrap gap-1">{doc.tags.map((tag, i) => <Badge key={i} variant="outline" className="text-xs"><Tag className="h-3 w-3 mr-1" />{tag}</Badge>)}</div>}
                       <DocumentContactManager documentId={doc.id} compact />
                       <Separator />
                       <TooltipProvider><div className="flex justify-between gap-2"><div className="flex gap-1">
                         {doc.document_type === 'archived_letter' && doc.source_letter_id && <Tooltip><TooltipTrigger asChild><Button variant="outline" size="sm" onClick={() => { setSelectedArchivedDocument(doc); setShowArchivedLetterDetails(true); }}><Info className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Details</TooltipContent></Tooltip>}
                         {doc.document_type !== 'archived_letter' && <Tooltip><TooltipTrigger asChild><Button variant="outline" size="sm" onClick={() => handleEditDocument(doc)}><Edit className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Bearbeiten</TooltipContent></Tooltip>}
-                        <Tooltip><TooltipTrigger asChild><Button variant="outline" size="sm" onClick={() => ops.handleDownload(doc)}><Download className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Download</TooltipContent></Tooltip>
+                        {getAnnotationFileKind(doc.file_name, doc.file_type) && <Tooltip><TooltipTrigger asChild><Button variant="outline" size="sm" aria-label="Ansehen & annotieren" onClick={() => setAnnotateDoc(doc)}><Highlighter className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Ansehen & annotieren</TooltipContent></Tooltip>}<Tooltip><TooltipTrigger asChild><Button variant="outline" size="sm" onClick={() => ops.handleDownload(doc)}><Download className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Download</TooltipContent></Tooltip>
                         <Tooltip><TooltipTrigger asChild><Button variant="outline" size="sm" onClick={() => { setSelectedDocument(doc); setShowMoveFolderDialog(true); }}><FolderInput className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Verschieben</TooltipContent></Tooltip>
                         <DocumentContactAddDialog documentId={doc.id} trigger={<Tooltip><TooltipTrigger asChild><Button variant="outline" size="sm"><UserPlus className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Kontakt hinzufügen</TooltipContent></Tooltip>} />
                       </div>
@@ -511,11 +518,11 @@ export function DocumentsView() {
             ) : (
               <Card><Table><TableHeader><TableRow><TableHead>Titel</TableHead><TableHead>Kategorie</TableHead><TableHead>Status</TableHead><TableHead>Erstellt</TableHead><TableHead>Größe</TableHead><TableHead>Kontakte</TableHead><TableHead className="text-right">Aktionen</TableHead></TableRow></TableHeader><TableBody>
                 {filteredDocuments.map(doc => (
-                  <TableRow key={doc.id}><TableCell className="font-medium"><div className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" /><div><div>{doc.title}</div>{doc.description && <div className="text-xs text-muted-foreground truncate max-w-[200px]">{doc.description}</div>}</div></div></TableCell><TableCell>{getCategoryLabel(doc.category ?? '')}</TableCell><TableCell><Badge className={getStatusColor(doc.status)}>{STATUS_LABELS[doc.status] || doc.status}</Badge></TableCell><TableCell>{format(new Date(doc.created_at), "dd.MM.yyyy", { locale: de })}</TableCell><TableCell>{formatFileSize(doc.file_size ?? undefined)}</TableCell><TableCell><DocumentContactManager documentId={doc.id} compact /></TableCell>
+                  <TableRow key={doc.id}><TableCell className="font-medium"><div className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" /><div><div className="flex items-center gap-2">{doc.title}{(annotationCounts.data?.[doc.id] ?? 0) > 0 && <Badge variant="secondary" className="gap-1 text-xs"><MessageSquare className="h-3 w-3" />{annotationCounts.data?.[doc.id]}</Badge>}</div>{doc.description && <div className="text-xs text-muted-foreground truncate max-w-[200px]">{doc.description}</div>}</div></div></TableCell><TableCell>{getCategoryLabel(doc.category ?? '')}</TableCell><TableCell><Badge className={getStatusColor(doc.status)}>{STATUS_LABELS[doc.status] || doc.status}</Badge></TableCell><TableCell>{format(new Date(doc.created_at), "dd.MM.yyyy", { locale: de })}</TableCell><TableCell>{formatFileSize(doc.file_size ?? undefined)}</TableCell><TableCell><DocumentContactManager documentId={doc.id} compact /></TableCell>
                   <TableCell className="text-right"><TooltipProvider><div className="flex items-center gap-1 justify-end">
                     {doc.document_type === 'archived_letter' && doc.source_letter_id && <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={() => { setSelectedArchivedDocument(doc); setShowArchivedLetterDetails(true); }}><Info className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Details</TooltipContent></Tooltip>}
                     {doc.document_type !== 'archived_letter' && <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={() => handleEditDocument(doc)}><Edit className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Bearbeiten</TooltipContent></Tooltip>}
-                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={() => ops.handleDownload(doc)}><Download className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Download</TooltipContent></Tooltip>
+                    {getAnnotationFileKind(doc.file_name, doc.file_type) && <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" aria-label="Ansehen & annotieren" onClick={() => setAnnotateDoc(doc)}><Highlighter className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Ansehen & annotieren</TooltipContent></Tooltip>}<Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={() => ops.handleDownload(doc)}><Download className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Download</TooltipContent></Tooltip>
                     <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={() => ops.handleDelete(doc)} className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Löschen</TooltipContent></Tooltip>
                   </div></TooltipProvider></TableCell></TableRow>
                 ))}
@@ -588,6 +595,7 @@ export function DocumentsView() {
           setShowArchivedLetterDetails={setShowArchivedLetterDetails}
           setSelectedArchivedDocument={setSelectedArchivedDocument}
         />
+      <AnnotationWorkspaceDialog document={annotateDoc} open={!!annotateDoc} onOpenChange={o => { if (!o) setAnnotateDoc(null); }} />
       </div>
     </div>
   );

@@ -1,0 +1,49 @@
+export type AnnotationFileKind = "pdf" | "image";
+export type AnnotationType = "highlight" | "rect" | "polygon";
+export type AnnotationColor = "yellow" | "green" | "red" | "blue";
+export type AnnotationTool = "select" | AnnotationType;
+
+/** All coordinates are fractions (0..1) of the page/image size, so they survive zoom and resizing. */
+export interface FracRect { x: number; y: number; w: number; h: number }
+export interface FracPoint { x: number; y: number }
+
+export interface AnnotationSelector {
+  rects?: FracRect[];
+  points?: FracPoint[];
+}
+
+export interface DocumentAnnotation {
+  id: string;
+  tenant_id: string;
+  document_id: string;
+  file_kind: AnnotationFileKind;
+  file_version: string | null;
+  annotation_type: AnnotationType;
+  page_number: number | null;
+  target_selector: AnnotationSelector;
+  quote_text: string | null;
+  color: AnnotationColor;
+  content: string;
+  resolved: boolean;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DraftAnnotation {
+  annotation_type: AnnotationType;
+  page_number: number | null;
+  target_selector: AnnotationSelector;
+  quote_text: string | null;
+}
+
+export interface AnnotatableDocument {
+  id: string;
+  tenant_id: string;
+  title: string;
+  file_name: string;
+  file_path: string;
+  file_type?: string | null;
+  file_size?: number | null;
+  updated_at: string;
+}
