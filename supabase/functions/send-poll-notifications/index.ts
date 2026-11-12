@@ -34,7 +34,16 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { pollId, notificationType, participantEmails, changes, respondentName }: NotificationRequest = await req.json();
+    const { pollId, notificationType, participantEmails, changes: rawChanges, respondentName: rawRespondentName }: NotificationRequest = await req.json();
+    const allowedTypes = ['new_response', 'poll_updated', 'poll_deleted', 'deadline_reminder'];
+    if (!allowedTypes.includes(notificationType)) {
+      return new Response(JSON.stringify({ error: 'Invalid notification type' }), {
+        status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
+    // Bound free-text fields so they cannot carry long arbitrary messages.
+    const changes = typeof rawChanges === 'string' ? rawChanges.slice(0, 300) : undefined;
+    const respondentName = typeof rawRespondentName === 'string' ? rawRespondentName.slice(0, 100) : 'Ein Teilnehmer';
 
     console.log('Sending poll notifications:', { pollId, notificationType });
 
