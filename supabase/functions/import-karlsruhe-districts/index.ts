@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
-import { withSafeHandler, requireAuth, unauthorizedResponse } from "../_shared/security.ts";
+import { withSafeHandler, requireAuth, unauthorizedResponse, forbiddenResponse, isSuperadmin } from "../_shared/security.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -62,6 +62,8 @@ serve(withSafeHandler("import-karlsruhe-districts", async (req) => {
 
   const auth = await requireAuth(req);
   if (!auth) return unauthorizedResponse();
+  // Shared geographic reference data: only platform superadmins may replace it.
+  if (!(await isSuperadmin(auth.userId))) return forbiddenResponse();
 
   try {
     const supabaseClient = createClient(

@@ -253,3 +253,12 @@ export async function isTenantAdminOrSuperadmin(userId: string): Promise<boolean
     .limit(1);
   return (data?.length ?? 0) > 0;
 }
+
+export async function isSuperadmin(userId: string): Promise<boolean> {
+  const admin = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+  );
+  const { data } = await admin.rpc("is_superadmin", { _user_id: userId });
+  return data === true;
+}
