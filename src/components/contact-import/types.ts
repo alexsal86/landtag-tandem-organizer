@@ -24,8 +24,6 @@ export const FIELD_MAPPINGS: Record<string, string> = {
   "Telefon (privat)": "phone",
   Mobiltelefon: "mobile_phone",
   "E-Mail 1": "email",
-  "E-Mail 2": "notes",
-  "E-Mail 3": "notes",
   "First Name": "first_name",
   "Last Name": "last_name",
   Company: "organization",
