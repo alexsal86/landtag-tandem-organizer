@@ -2,7 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 
-import { withSafeHandler, requireAuth, unauthorizedResponse } from "../_shared/security.ts";
+import { withSafeHandler, requireAuth, unauthorizedResponse, callerClient } from "../_shared/security.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -218,7 +218,9 @@ serve(withSafeHandler("detect-appointment-district", async (req) => {
       console.log('Fetching party associations for district:', matchedDistrict.id);
 
       // First try with the corrected JSONB query
-      let { data: partyAssociations, error: partyError } = await supabase
+      // Tenant-scoped data: read with the caller's permissions (RLS).
+      const callerDb = callerClient(req);
+      let { data: partyAssociations, error: partyError } = await callerDb
         .from('party_associations')
         .select(`
           id, name, party_name, phone, website, email,
@@ -230,7 +232,7 @@ serve(withSafeHandler("detect-appointment-district", async (req) => {
       // Fallback: if the first query fails, try alternative approach
       if (partyError) {
         console.log('First query failed, trying alternative JSONB query:', partyError);
-        const fallbackQuery = await supabase
+        const fallbackQuery = await callerDb
           .from('party_associations')
           .select(`
             id, name, party_name, phone, website, email,
