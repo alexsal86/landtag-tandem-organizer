@@ -1,5 +1,5 @@
 import { toast } from "@/hooks/use-toast";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { debugConsole } from "@/utils/debugConsole";
 import { useNavigate, useParams } from "react-router-dom";
@@ -126,6 +126,16 @@ export function useContactsViewState(): UseContactsViewStateResult {
 
   const distributionListsState = useContactsDistributionLists(user, currentTenant?.id, toast);
 
+  const [reviewDueCount, setReviewDueCount] = useState(0);
+  useEffect(() => {
+    if (!currentTenant?.id) return;
+    const today = new Date().toISOString().slice(0, 10);
+    void supabase.from("contacts").select("id", { count: "exact", head: true })
+      .eq("tenant_id", currentTenant.id).neq("name", "Archivierter Kontakt")
+      .or(`retention_review_date.is.null,retention_review_date.lte.${today}`)
+      .then(({ count }) => setReviewDueCount(count ?? 0));
+  }, [currentTenant?.id, contacts.length]);
+
   const visibleContactIds = contacts.map((contact) => contact.id);
   const { counts: documentCounts } = useContactDocumentCounts(visibleContactIds);
 
@@ -133,13 +143,14 @@ export function useContactsViewState(): UseContactsViewStateResult {
     () => [
       { value: "all", label: "Alle Kontakte", count: totalCount },
       { value: "favorites", label: "Favoriten", count: contacts.filter((contact) => contact.is_favorite).length },
+      { value: "review_due", label: "Datenschutz-Prüfung fällig", count: reviewDueCount },
       { value: "citizen", label: "Bürger", count: contacts.filter((contact) => contact.category === "citizen").length },
       { value: "colleague", label: "Kollegen", count: contacts.filter((contact) => contact.category === "colleague").length },
       { value: "business", label: "Wirtschaft", count: contacts.filter((contact) => contact.category === "business").length },
       { value: "media", label: "Medien", count: contacts.filter((contact) => contact.category === "media").length },
       { value: "lobbyist", label: "Lobbyisten", count: contacts.filter((contact) => contact.category === "lobbyist").length },
     ],
-    [contacts, totalCount],
+    [contacts, totalCount, reviewDueCount],
   );
 
   const allTags = useMemo(() => {
