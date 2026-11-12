@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Highlighter, MousePointer2, Square, Pentagon, ZoomIn, ZoomOut, X } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -20,6 +20,7 @@ interface Props { document: AnnotatableDocument | null; open: boolean; onOpenCha
 
 export function AnnotationWorkspaceDialog({ document: doc, open, onOpenChange }: Props) {
   const { user } = useAuth();
+  const viewerRef = useRef<HTMLDivElement>(null);
   const kind = doc ? getAnnotationFileKind(doc.file_name, doc.file_type) : null;
   const [tool, setTool] = useState<AnnotationTool>("select");
   const [color, setColor] = useState<AnnotationColor>("yellow");
@@ -78,6 +79,27 @@ export function AnnotationWorkspaceDialog({ document: doc, open, onOpenChange }:
       onError: () => notify.error("Anmerkung konnte nicht gespeichert werden"),
     });
   };
+  const selectAnnotation = (id: string) => {
+    const selected = annotations.find(a => a.id === id);
+    const targetId = selected?.parent_id ?? id;
+    setActiveId(targetId);
+    const shape = viewerRef.current?.querySelector(`[data-annotation-id="${targetId}"]`);
+    const page = viewerRef.current?.querySelector(`[data-annotation-page="${selected?.page_number ?? 1}"]`);
+    (shape ?? page)?.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+  };
+  const reply = async (parentId: string, content: string): Promise<boolean> => {
+    const parent = annotations.find(a => a.id === parentId);
+    if (!parent || !user || !kind) return false;
+    try {
+      await create.mutateAsync({ tenantId: doc.tenant_id, fileKind: kind, fileVersion: parent.file_version ?? version,
+      draft: parent, color: parent.color, content, userId: user.id, parentId });
+      notify.success("Antwort gespeichert");
+      return true;
+    } catch {
+      notify.error("Antwort konnte nicht gespeichert werden");
+      return false;
+    }
+  };
   const err = () => notify.error("Änderung nicht möglich");
 
   const tools: { id: AnnotationTool; label: string; icon: typeof Square; show: boolean }[] = [
@@ -120,16 +142,16 @@ export function AnnotationWorkspaceDialog({ document: doc, open, onOpenChange }:
           </header>
         </TooltipProvider>
         <div className="flex min-h-0 flex-1">
-          <div className="min-w-0 flex-1 overflow-auto bg-muted/40">
+          <div ref={viewerRef} className="min-w-0 flex-1 overflow-auto bg-muted/40">
             {!kind ? <ErrorState title="Dateityp nicht unterstützt" description="Annotation ist für PDF, JPG, PNG und WebP möglich." />
               : file.isError ? <ErrorState title="Datei konnte nicht geladen werden" />
               : kind === "pdf" ? (buffer ? <PdfAnnotator data={buffer} zoom={zoom} tool={tool} color={color} annotations={annotations} activeId={activeId} draft={draft} onSelect={setActiveId} onDraft={setDraft} /> : <LoadingState label="Datei wird geladen…" />)
               : imgUrl ? <ImageAnnotator src={imgUrl} alt={doc.title} zoom={zoom} tool={tool} color={color} annotations={annotations} activeId={activeId} draft={draft} onSelect={setActiveId} onDraft={setDraft} />
               : <LoadingState label="Datei wird geladen…" />}
           </div>
-          <AnnotationSidebar annotations={annotations} activeId={activeId} draft={draft} draftColor={color} currentVersion={version}
+          <AnnotationSidebar tenantId={doc.tenant_id} onReply={reply} saving={create.isPending} annotations={annotations} activeId={activeId} draft={draft} draftColor={color} currentVersion={version}
             userId={user?.id} canModerate={!!roles.data} authorName={id => id === user?.id ? "Du" : authors.data?.[id] ?? "…"}
-            onSelect={setActiveId} onSaveDraft={saveDraft} onCancelDraft={() => setDraft(null)}
+            onSelect={selectAnnotation} onSaveDraft={saveDraft} onCancelDraft={() => setDraft(null)}
             onUpdate={(id, patch) => update.mutate({ id, patch }, { onError: err })}
             onDelete={id => remove.mutate(id, { onError: err })} />
         </div>

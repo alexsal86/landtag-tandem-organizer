@@ -3713,6 +3713,7 @@ export type Database = {
           file_kind: string
           file_version: string | null
           id: string
+          parent_id: string | null
           page_number: number | null
           quote_text: string | null
           resolved: boolean
@@ -3730,6 +3731,7 @@ export type Database = {
           file_kind: string
           file_version?: string | null
           id?: string
+          parent_id?: string | null
           page_number?: number | null
           quote_text?: string | null
           resolved?: boolean
@@ -3747,6 +3749,7 @@ export type Database = {
           file_kind?: string
           file_version?: string | null
           id?: string
+          parent_id?: string | null
           page_number?: number | null
           quote_text?: string | null
           resolved?: boolean
@@ -3755,6 +3758,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "document_annotations_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "document_annotations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "document_annotations_document_id_fkey"
             columns: ["document_id"]

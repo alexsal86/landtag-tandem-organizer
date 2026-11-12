@@ -97,7 +97,7 @@ function PdfPage({ pdf, pageNumber, zoom, tool, color, annotations, activeId, dr
   const pageAnnotations = annotations.filter(a => a.page_number === pageNumber);
   const drawing = tool === "rect";
   return (
-    <div ref={pageRef} className="relative bg-card shadow-md" style={{ width: size?.w ?? 600, height: size?.h ?? 800, ["--scale-factor" as string]: scale }}
+    <div ref={pageRef} data-annotation-page={pageNumber} className="relative bg-card shadow-md" style={{ width: size?.w ?? 600, height: size?.h ?? 800, ["--scale-factor" as string]: scale }}
       onMouseUp={onMouseUp}>
       <canvas ref={canvasRef} className="block" />
       <div ref={textRef} className="textLayer" style={{ pointerEvents: tool === "highlight" ? "auto" : "none" }} />

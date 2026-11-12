@@ -16,6 +16,7 @@ export interface DocumentAnnotation {
   id: string;
   tenant_id: string;
   document_id: string;
+  parent_id: string | null;
   file_kind: AnnotationFileKind;
   file_version: string | null;
   annotation_type: AnnotationType;

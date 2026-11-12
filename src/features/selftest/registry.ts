@@ -1,3 +1,4 @@
+import { documentAnnotationScenario } from "./scenarios/document-annotation";
 import { knowledgeLifecycleScenario } from './scenarios/knowledge-lifecycle';
 import { adminControlsScenario } from './scenarios/admin-controls';
 import { annualTaskStafetteScenario } from './scenarios/annual-task-stafette';
@@ -21,6 +22,7 @@ import { accessBoundariesScenario } from "./scenarios/access-boundaries";
 import { jourFixePlatformIntegrationScenario } from './scenarios/jour-fixe-platform-integration';
 
 export const SELFTEST_SCENARIOS: TestScenario[] = [
+  documentAnnotationScenario,
   knowledgeLifecycleScenario,
   adminControlsScenario,
   annualTaskStafetteScenario,

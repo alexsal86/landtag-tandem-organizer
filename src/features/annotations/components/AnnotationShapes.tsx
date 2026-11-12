@@ -39,9 +39,9 @@ export function AnnotationLayer({ annotations, activeId, onSelect, children }: {
 }) {
   return (
     <svg className="absolute inset-0 h-full w-full" viewBox="0 0 1 1" preserveAspectRatio="none" style={{ pointerEvents: "none" }}>
-      {annotations.map(a => (
-        <AnnotationShape key={a.id} type={a.annotation_type} selector={a.target_selector} color={a.color}
-          active={a.id === activeId} dimmed={a.resolved} onClick={() => onSelect(a.id)} />
+      {annotations.filter(a => !a.parent_id).map(a => (
+        <g key={a.id} data-annotation-id={a.id}><AnnotationShape type={a.annotation_type} selector={a.target_selector} color={a.color}
+          active={a.id === activeId} dimmed={a.resolved} onClick={() => onSelect(a.id)} /></g>
       ))}
       {children}
     </svg>

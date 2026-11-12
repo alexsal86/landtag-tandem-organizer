@@ -1,8 +1,9 @@
+import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { AnnotationColor, DocumentAnnotation, DraftAnnotation, AnnotationFileKind } from "./types";
 
-const COLS = "id, tenant_id, document_id, file_kind, file_version, annotation_type, page_number, target_selector, quote_text, color, content, resolved, created_by, created_at, updated_at";
+const COLS = "id, tenant_id, document_id, parent_id, file_kind, file_version, annotation_type, page_number, target_selector, quote_text, color, content, resolved, created_by, created_at, updated_at";
 const key = (documentId: string) => ["document-annotations", documentId];
 
 export function useAnnotations(documentId: string | null) {
@@ -23,10 +24,22 @@ export function useAnnotations(documentId: string | null) {
     qc.invalidateQueries({ queryKey: ["document-annotation-counts"] });
   };
 
+  useEffect(() => {
+    if (!documentId) return;
+    const channel = supabase.channel(`document-annotations:${documentId}:${crypto.randomUUID()}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "document_annotations", filter: `document_id=eq.${documentId}` }, () => {
+        void qc.invalidateQueries({ queryKey: key(documentId) });
+        void qc.invalidateQueries({ queryKey: ["document-annotation-counts"] });
+      }).subscribe(status => {
+        if (status === "SUBSCRIBED") void qc.invalidateQueries({ queryKey: key(documentId) });
+      });
+    return () => { void supabase.removeChannel(channel); };
+  }, [documentId, qc]);
+
   const create = useMutation({
-    mutationFn: async (args: { tenantId: string; fileKind: AnnotationFileKind; fileVersion: string; draft: DraftAnnotation; color: AnnotationColor; content: string; userId: string }) => {
+    mutationFn: async (args: { tenantId: string; fileKind: AnnotationFileKind; fileVersion: string; draft: DraftAnnotation; color: AnnotationColor; content: string; userId: string; parentId?: string }) => {
       const { error } = await supabase.from("document_annotations").insert({
-        tenant_id: args.tenantId, document_id: documentId!, file_kind: args.fileKind, file_version: args.fileVersion,
+        parent_id: args.parentId ?? null, tenant_id: args.tenantId, document_id: documentId!, file_kind: args.fileKind, file_version: args.fileVersion,
         annotation_type: args.draft.annotation_type, page_number: args.draft.page_number,
         target_selector: JSON.parse(JSON.stringify(args.draft.target_selector)), quote_text: args.draft.quote_text,
         color: args.color, content: args.content, created_by: args.userId,
@@ -37,14 +50,14 @@ export function useAnnotations(documentId: string | null) {
   });
   const update = useMutation({
     mutationFn: async (args: { id: string; patch: Partial<Pick<DocumentAnnotation, "content" | "color" | "resolved">> }) => {
-      const { error } = await supabase.from("document_annotations").update(args.patch).eq("id", args.id);
+      const { error } = await supabase.from("document_annotations").update(args.patch).eq("id", args.id).select("id").single();
       if (error) throw error;
     },
     onSuccess: invalidate,
   });
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("document_annotations").delete().eq("id", id);
+      const { error } = await supabase.from("document_annotations").delete().eq("id", id).select("id").single();
       if (error) throw error;
     },
     onSuccess: invalidate,
@@ -60,7 +73,7 @@ export function useAnnotationCounts(tenantId: string | undefined, documentIds: s
     staleTime: 60_000,
     queryFn: async (): Promise<Record<string, number>> => {
       const { data, error } = await supabase.from("document_annotations").select("document_id")
-        .eq("tenant_id", tenantId!).eq("resolved", false).in("document_id", documentIds.slice(0, 300));
+        .eq("tenant_id", tenantId!).eq("resolved", false).is("parent_id", null).in("document_id", documentIds.slice(0, 300));
       if (error) throw error;
       const counts: Record<string, number> = {};
       for (const r of data ?? []) counts[r.document_id] = (counts[r.document_id] ?? 0) + 1;

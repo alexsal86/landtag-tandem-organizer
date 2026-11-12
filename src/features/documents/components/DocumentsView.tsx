@@ -312,6 +312,20 @@ export function DocumentsView() {
   };
 
   const [annotateDoc, setAnnotateDoc] = useState<Document | null>(null);
+  useEffect(() => {
+    const id = searchParams.get('annotate');
+    if (!id) return;
+    let cancelled = false;
+    void supabase.from('documents').select('*').eq('id', id).maybeSingle().then(({ data: target, error }) => {
+      if (cancelled) return;
+      if (target && !error) setAnnotateDoc({ ...target, status: target.status ?? "draft",
+        archived_attachments: Array.isArray(target.archived_attachments) ? target.archived_attachments : undefined });
+      else notify.error("Dokument konnte nicht geöffnet werden");
+      const next = new URLSearchParams(searchParams); next.delete('annotate');
+      setSearchParams(next, { replace: true });
+    });
+    return () => { cancelled = true; };
+  }, [searchParams, setSearchParams]);
   const annotationCounts = useAnnotationCounts(data.currentTenant?.id, filteredDocuments.map(d => d.id));
 
   return (

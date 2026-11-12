@@ -65,6 +65,10 @@ export const buildDeepLinkPath = (notification: Notification): string => {
     case 'document_created':
       return buildHighlightPath('/documents?tab=letters', getNotificationDataId(data, 'document_id'));
     case 'document_mention': {
+      if (data.document_type === 'annotation') {
+        const id = getNotificationDataId(data, 'document_id');
+        return id ? `/documents?tab=documents&annotate=${encodeURIComponent(id)}` : '/documents?tab=documents';
+      }
       const documentId = getNotificationDataId(data, 'documentId', 'document_id');
       return data.document_type === 'press'
         ? buildHighlightPath('/documents?tab=press', documentId)

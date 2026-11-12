@@ -14,7 +14,7 @@ export async function findLegacySelftestRecords(tenantId: string, userId: string
     ["event_plannings", "title", "user_id"], ["daily_briefings", "title", "author_id"],
     ["appointment_requests", "title", "created_by"],
     ["quick_notes", "title", "user_id"], ["contacts", "name", "user_id"],
-    ["contact_activities", "title", "created_by"],
+    ["contact_activities", "title", "created_by"], ["documents", "title", "user_id"],
   ];
   const records: CreatedRecord[] = [];
   for (const [table, markerColumn, ownerColumn] of sources) {
