@@ -137,9 +137,16 @@ serve(withSafeHandler("send-document-email", async (req) => {
         .from("sender_information")
         .select("name, landtag_email")
         .eq("id", sender_id)
-        .single();
+        .eq("tenant_id", tenant_id)
+        .maybeSingle();
 
-      if (!senderError && senderInfo) {
+      if (senderError || !senderInfo) {
+        return new Response(JSON.stringify({ error: "Sender not found" }), {
+          status: 403,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+      {
         fromEmail = senderInfo.landtag_email || fromEmail;
         fromName = senderInfo.name || fromName;
       }
