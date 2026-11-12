@@ -14410,6 +14410,10 @@ export type Database = {
         Args: { _task: string; _text: string }
         Returns: undefined
       }
+      _create_default_checklist_items_impl: {
+        Args: { planning_id: string; template_id_param?: string }
+        Returns: undefined
+      }
       _ensure_topic: {
         Args: { p_label: string; p_tenant: string }
         Returns: string
