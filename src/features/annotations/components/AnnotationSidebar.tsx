@@ -1,109 +1,92 @@
-import { useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { Check, Pencil, Trash2, RotateCcw, AlertTriangle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Check, Pencil, Trash2, RotateCcw, AlertTriangle, MoreVertical, Send } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AnnotationCommentInput } from "./AnnotationCommentInput";
-import { EmptyState } from "@/components/ui-patterns";
-import { ANNOTATION_COLORS } from "../annotationModel";
+import { ANNOTATION_COLORS, annotationThreads, type AnnotationFilter } from "../annotationModel";
 import { colorVar } from "./AnnotationShapes";
-import type { AnnotationColor, DocumentAnnotation, DraftAnnotation } from "../types";
+import type { DocumentAnnotation, AnnotationPatch } from "../types";
 
 interface Props {
-  tenantId: string; saving: boolean; onReply: (id: string, content: string) => Promise<boolean>;
-  annotations: DocumentAnnotation[]; activeId: string | null; draft: DraftAnnotation | null;
-  draftColor: AnnotationColor; currentVersion: string; userId: string | undefined; canModerate: boolean;
-  authorName: (id: string) => string;
-  onSelect: (id: string) => void; onSaveDraft: (content: string) => void; onCancelDraft: () => void;
-  onUpdate: (id: string, patch: Partial<Pick<DocumentAnnotation, "content" | "color" | "resolved">>) => void;
-  onDelete: (id: string) => void;
+  tenantId: string; saving: boolean; loading: boolean; failed: boolean; onRetry: () => void;
+  annotations: DocumentAnnotation[]; numbers: Record<string, number>; activeId: string | null;
+  currentVersion: string; userId: string | undefined; canModerate: boolean;
+  authorName: (id: string) => string; onSelect: (id: string) => void;
+  onEdit: (annotation: DocumentAnnotation) => void; onUpdate: (id: string, patch: AnnotationPatch) => Promise<boolean>;
+  onDelete: (id: string) => void; onReply: (id: string, content: string) => Promise<boolean>;
 }
-
-const TYPE_LABEL = { highlight: "Textmarkierung", rect: "Bereich", polygon: "Polygon" } as const;
+const plainComment = (text: string) => text.replace(/@\[([^\]]*)\]\([0-9a-f-]{36}\)/gi, "@$1");
+const timestamp = (text: string) => format(new Date(text), "dd.MM. HH:mm", { locale: de });
 
 export function AnnotationSidebar(p: Props) {
-  const [filter, setFilter] = useState<"open" | "all">("open");
-  const [draftText, setDraftText] = useState("");
-  const [editId, setEditId] = useState<string | null>(null);
-  const [editText, setEditText] = useState("");
+  const [filter, setFilter] = useState<AnnotationFilter>("open");
   const [replyId, setReplyId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
-  const roots = p.annotations.filter(a => !a.parent_id && (filter === "all" || !a.resolved));
-  const list = roots.flatMap(a => [a, ...p.annotations.filter(r => r.parent_id === a.id)]);
-
-  return (
-    <aside className="flex h-full w-[340px] shrink-0 flex-col border-l bg-card">
-      <div className="flex items-center justify-between border-b p-md">
-        <span className="section-label">Anmerkungen ({p.annotations.filter(a => !a.parent_id && !a.resolved).length} offen)</span>
-        <div className="flex gap-2xs">
-          <Button size="sm" variant={filter === "open" ? "secondary" : "ghost"} onClick={() => setFilter("open")}>Offen</Button>
-          <Button size="sm" variant={filter === "all" ? "secondary" : "ghost"} onClick={() => setFilter("all")}>Alle</Button>
-        </div>
-      </div>
-
-      {p.draft && (
-        <div className="space-y-sm border-b bg-muted/40 p-md">
-          <p className="text-label font-medium">Neue {TYPE_LABEL[p.draft.annotation_type]}{p.draft.page_number ? ` · Seite ${p.draft.page_number}` : ""}</p>
-          {p.draft.quote_text && <blockquote className="border-l-2 pl-sm text-caption italic text-muted-foreground line-clamp-3">„{p.draft.quote_text}"</blockquote>}
-          <AnnotationCommentInput tenantId={p.tenantId} autoFocus value={draftText} onChange={setDraftText} placeholder="Kommentar (optional) … @ für Erwähnung" rows={3} maxLength={5000} />
-          <div className="flex justify-end gap-xs">
-            <Button size="sm" variant="ghost" onClick={() => { setDraftText(""); p.onCancelDraft(); }}>Verwerfen</Button>
-            <Button size="sm" disabled={p.saving} onClick={() => { p.onSaveDraft(draftText.trim()); setDraftText(""); }}>Speichern</Button>
+  const list = useRef<HTMLDivElement>(null);
+  const lastSelected = useRef<string | null>(null);
+  const roots = annotationThreads(p.annotations, filter);
+  const total = annotationThreads(p.annotations, 'all').length;
+  const open = annotationThreads(p.annotations, 'open').length;
+  useEffect(() => {
+    if (p.activeId === lastSelected.current) return;
+    lastSelected.current = p.activeId;
+    const selected = p.annotations.find(a => a.id === p.activeId);
+    if (selected) setFilter(current => current === 'all' ? current : selected.resolved ? 'done' : 'open');
+  }, [p.activeId, p.annotations]);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      if (p.activeId) list.current?.querySelector(`[data-annotation-thread="${p.activeId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [p.activeId, filter]);
+  const menu = (a: DocumentAnnotation) => (a.created_by === p.userId || p.canModerate) && <DropdownMenu>
+    <DropdownMenuTrigger asChild><button type="button" className="aw-icon ml-auto !p-1" aria-label="Weitere Aktionen" disabled={p.saving}><MoreVertical /></button></DropdownMenuTrigger>
+    <DropdownMenuContent align="end">
+      <DropdownMenuItem onClick={() => p.onEdit(a)}><Pencil className="mr-2 h-4 w-4" />Bearbeiten</DropdownMenuItem>
+      <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => p.onDelete(a.id)}><Trash2 className="mr-2 h-4 w-4" />Löschen</DropdownMenuItem>
+    </DropdownMenuContent>
+  </DropdownMenu>;
+  return <aside className="aw-sidebar" aria-label="Anmerkungen">
+    <div className="aw-sidebar-header"><h3>Anmerkungen</h3><div className="aw-segments" role="group" aria-label="Anmerkungen filtern">
+      {([['open', 'Offen', open], ['done', 'Erledigt', total - open], ['all', 'Alle', total]] as const).map(([id, label, count]) =>
+        <button type="button" key={id} className={filter === id ? 'on' : ''} aria-pressed={filter === id} onClick={() => setFilter(id)}>{label} ({count})</button>)}
+    </div></div>
+    <div ref={list} className="aw-list">
+      {p.loading ? <p className="aw-empty" role="status">Anmerkungen werden geladen …</p>
+        : p.failed ? <div className="aw-empty" role="alert">Anmerkungen konnten nicht geladen werden.<br /><button className="aw-button mt-3" onClick={p.onRetry}>Erneut versuchen</button></div>
+        : roots.length === 0 ? <div className="aw-empty">{filter === 'open' && total > 0 ? 'Alles erledigt' : 'Keine Anmerkungen'}<br /><small>Zeichne einen Bereich ins Dokument, um zu starten.</small></div>
+        : roots.map(a => <article key={a.id} data-annotation-thread={a.id} tabIndex={0}
+          aria-label={`Anmerkung ${p.numbers[a.id]} auswählen`} onClick={() => p.onSelect(a.id)}
+          onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); p.onSelect(a.id); } }}
+          style={{ '--aw-color': `hsl(${colorVar(a.color)})` } as CSSProperties}
+          className={`aw-card ${a.id === p.activeId ? 'selected' : ''} ${a.resolved ? 'done' : ''}`}>
+          <div className="aw-card-head"><span className="aw-number">{p.numbers[a.id]}</span>
+            <span className="aw-card-kind">{ANNOTATION_COLORS.find(c => c.value === a.color)?.label}</span>
+            <span className="aw-byline" title={`${p.authorName(a.created_by)} · ${timestamp(a.created_at)}`}>· {p.authorName(a.created_by)} · {timestamp(a.created_at)}</span>
+            <span onClick={e => e.stopPropagation()} className="ml-auto">{menu(a)}</span>
           </div>
-        </div>
-      )}
-
-      <div className="flex-1 overflow-y-auto">
-        {list.length === 0 ? (
-          <EmptyState title={filter === "open" ? "Keine offenen Anmerkungen" : "Noch keine Anmerkungen"} description="Wähle oben ein Werkzeug und markiere eine Stelle im Dokument." />
-        ) : list.map(a => {
-          const mine = a.created_by === p.userId; const canEdit = mine || p.canModerate;
-          return (
-            <div key={a.id} onClick={() => p.onSelect(a.id)}
-              className={`${a.parent_id ? "ml-md border-l" : ""} cursor-pointer space-y-xs border-b p-md transition-colors duration-fast ${a.id === p.activeId ? "bg-accent" : "hover:bg-muted/50"} ${a.resolved ? "opacity-60" : ""}`}>
-              <div className="flex items-center gap-xs text-caption text-muted-foreground">
-                <span className="h-3 w-3 rounded-pill" style={{ background: `hsl(${colorVar(a.color)})` }} />
-                <span>{a.parent_id ? "Antwort" : TYPE_LABEL[a.annotation_type]}{a.page_number ? ` · S. ${a.page_number}` : ""}</span>
-                <span className="ml-auto">{p.authorName(a.created_by)} · {format(new Date(a.created_at), "dd.MM. HH:mm", { locale: de })}</span>
-              </div>
-              {a.file_version && a.file_version !== p.currentVersion && (
-                <p className="flex items-center gap-2xs text-caption text-warning"><AlertTriangle className="h-3 w-3" />Zu einer älteren Dateiversion erstellt – Position kann abweichen</p>
-              )}
-              {a.quote_text && <blockquote className="border-l-2 pl-sm text-caption italic text-muted-foreground line-clamp-3">„{a.quote_text}"</blockquote>}
-              {editId === a.id ? (
-                <div className="space-y-xs" onClick={e => e.stopPropagation()}>
-                  <AnnotationCommentInput tenantId={p.tenantId} value={editText} onChange={setEditText} rows={3} maxLength={5000} />
-                  <div className="flex flex-wrap gap-2xs">
-                    {ANNOTATION_COLORS.map(c => (
-                      <button key={c.value} title={c.label} aria-label={c.label} onClick={() => p.onUpdate(a.id, { color: c.value })}
-                        className={`h-5 w-5 rounded-pill border-2 ${a.color === c.value ? "border-foreground" : "border-transparent"}`} style={{ background: `hsl(${colorVar(c.value)})` }} />
-                    ))}
-                  </div>
-                  <div className="flex justify-end gap-xs">
-                    <Button size="sm" variant="ghost" onClick={() => setEditId(null)}>Abbrechen</Button>
-                    <Button size="sm" onClick={() => { p.onUpdate(a.id, { content: editText.trim() }); setEditId(null); }}>Speichern</Button>
-                  </div>
-                </div>
-              ) : a.content ? <p className="whitespace-pre-wrap text-body">{a.content.replace(/@\[([^\]]*)\]\([0-9a-f-]{36}\)/gi, "@$1")}</p> : <p className="text-caption text-muted-foreground">Ohne Kommentar</p>}
-              {editId !== a.id && (
-                <div className="flex gap-2xs" onClick={e => e.stopPropagation()}>
-                  {!a.parent_id && <Button size="sm" variant="ghost" className="h-7 px-xs" onClick={() => p.onUpdate(a.id, { resolved: !a.resolved })}>
-                    {a.resolved ? <><RotateCcw className="mr-2xs h-3.5 w-3.5" />Wieder öffnen</> : <><Check className="mr-2xs h-3.5 w-3.5" />Erledigt</>}
-                  </Button>}
-                  {!a.parent_id && <Button size="sm" variant="ghost" onClick={() => { setReplyId(a.id); setReplyText(""); }}>Antworten</Button>}
-                  {canEdit && <Button size="sm" variant="ghost" className="h-7 px-xs" aria-label="Bearbeiten" onClick={() => { setEditId(a.id); setEditText(a.content); }}><Pencil className="h-3.5 w-3.5" /></Button>}
-                  {canEdit && <Button size="sm" variant="ghost" className="h-7 px-xs text-destructive" aria-label="Löschen" onClick={() => { if (window.confirm("Anmerkung löschen?")) p.onDelete(a.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>}
-                </div>
-              )}
-              {replyId === a.id && <div className="space-y-xs" onClick={e => e.stopPropagation()}>
-                <AnnotationCommentInput tenantId={p.tenantId} value={replyText} onChange={setReplyText} placeholder="Antwort … @ für Erwähnung" autoFocus rows={3} maxLength={5000} />
-                <Button size="sm" variant="ghost" onClick={() => setReplyId(null)}>Abbrechen</Button>
-                <Button size="sm" disabled={!replyText.trim() || p.saving} onClick={async () => { if (await p.onReply(a.id, replyText.trim())) { setReplyId(null); setReplyText(""); } }}>Antwort speichern</Button>
-              </div>}
-            </div>
-          );
-        })}
-      </div>
-    </aside>
-  );
+          {a.page_number && <p className="mt-1 text-[11px] text-muted-foreground">Seite {a.page_number}</p>}
+          {a.file_version && a.file_version !== p.currentVersion && <p className="mt-2 flex gap-1 text-xs text-warning"><AlertTriangle className="h-3.5 w-3.5 shrink-0" />Ältere Dateiversion – Position kann abweichen</p>}
+          {a.quote_text && <blockquote className="mt-2 line-clamp-3 border-l-2 pl-2 text-xs italic text-muted-foreground">„{a.quote_text}“</blockquote>}
+          <p className="aw-text">{a.content ? plainComment(a.content) : 'Ohne Kommentar'}</p>
+          {p.annotations.filter(r => r.parent_id === a.id).map(r => <div className="aw-reply" key={r.id}>
+            <div className="flex items-center gap-1"><span className="min-w-0 flex-1 whitespace-pre-wrap">{plainComment(r.content)}</span><span onClick={e => e.stopPropagation()}>{menu(r)}</span></div>
+            <small>{p.authorName(r.created_by)} · {timestamp(r.created_at)}</small>
+          </div>)}
+          <div className="aw-actions" onClick={e => e.stopPropagation()}>
+            <button className="aw-button" disabled={p.saving} onClick={() => { void p.onUpdate(a.id, { resolved: !a.resolved }); }}>
+              {a.resolved ? <RotateCcw /> : <Check />}{a.resolved ? 'Wieder öffnen' : 'Erledigt'}</button>
+            <button className="aw-button" onClick={() => { setReplyId(replyId === a.id ? null : a.id); setReplyText(''); }}>Antworten</button>
+          </div>
+          {replyId === a.id && <form className="mt-2 space-y-2" onClick={e => e.stopPropagation()} onSubmit={async e => {
+            e.preventDefault(); if (replyText.trim() && !p.saving && await p.onReply(a.id, replyText.trim())) { setReplyId(null); setReplyText(''); }
+          }}>
+            <AnnotationCommentInput tenantId={p.tenantId} value={replyText} onChange={setReplyText} placeholder="Antwort … @ für Erwähnung" autoFocus rows={2} maxLength={5000} />
+            <div className="flex justify-end gap-2"><button type="button" className="aw-button" onClick={() => setReplyId(null)}>Abbrechen</button>
+              <button type="submit" className="aw-button primary" disabled={!replyText.trim() || p.saving}><Send />Senden</button></div>
+          </form>}
+        </article>)}
+    </div>
+  </aside>;
 }

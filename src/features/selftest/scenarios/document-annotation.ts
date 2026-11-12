@@ -1,5 +1,6 @@
+import { advanceAnnotationHistory, emptyAnnotationHistory, recordAnnotationChange } from "@/features/annotations/annotationHistory";
 import { supabase } from '@/integrations/supabase/client';
-import { getAnnotationFileKind, toFracPoint, toFracRect, polygonIsValid, isMeaningfulRect, moveAnnotationSelector, moveAnnotationHandle, annotationZoom } from '@/features/annotations/annotationModel';
+import { getAnnotationFileKind, toFracPoint, toFracRect, polygonIsValid, isMeaningfulRect, moveAnnotationSelector, moveAnnotationHandle, annotationZoom, annotationBounds, annotationNumbers, annotationThreads, canCloseAnnotationPolygon, annotationPatchMatches } from '@/features/annotations/annotationModel';
 import type { TestScenario } from '../types';
 
 export const documentAnnotationScenario: TestScenario = {
@@ -37,6 +38,36 @@ export const documentAnnotationScenario: TestScenario = {
         && original.rects[0].x === .1 && polygon.points[1].x === .5
         && annotationZoom(10) === 4 && annotationZoom(.01) === .25 && annotationZoom(1.5) === 1.5,
         message: 'Form und Grenzen bleiben erhalten; Ecken sind unabhängig bearbeitbar; Zoom reicht über 100 Prozent.' };
+    } },
+    { id: 'annotation-presentation', label: 'Nummern, Filter, Anker und Polygonabschluss', kind: 'logic', run: async () => {
+      const rows = [{ id: 'a', parent_id: null, resolved: false }, { id: 'reply', parent_id: 'a', resolved: false }, { id: 'b', parent_id: null, resolved: true }];
+      const numbers = annotationNumbers(rows);
+      const bounds = annotationBounds({ points: [{ x: .2, y: .3 }, { x: .8, y: .7 }, { x: .4, y: .9 }] });
+      const points = [{ x: .1, y: .1 }, { x: .5, y: .1 }, { x: .5, y: .5 }];
+      return { ok: numbers.a === 1 && numbers.b === 2 && numbers.reply === undefined
+        && annotationThreads(rows, 'open').length === 1 && annotationThreads(rows, 'done')[0]?.id === 'b'
+        && annotationThreads(rows, 'all').length === 2 && bounds?.x === .2 && bounds.y === .3
+        && Math.abs(bounds.w - .6) < 1e-8 && Math.abs(bounds.h - .6) < 1e-8 && annotationBounds({}) === null
+        && canCloseAnnotationPolygon(points, { x: .105, y: .105 }, 1000, 1000)
+        && !canCloseAnnotationPolygon(points.slice(0, 2), points[0], 1000, 1000)
+        && !canCloseAnnotationPolygon(points, { x: .5, y: .5 }, 1000, 1000),
+        message: 'Antworten erhalten keine eigene Markierungsnummer; Filter und Kommentaranker passen zur gespeicherten Geometrie.' };
+    } },
+    { id: 'edit-history', label: 'Bearbeitungen rückgängig und wiederholen, ohne fremde Änderungen zu überschreiben', kind: 'logic', run: async () => {
+      const entry = { id: 'a', before: { content: 'Vorher' }, after: { content: 'Nachher' } };
+      let state = recordAnnotationChange(emptyAnnotationHistory(), entry);
+      state = advanceAnnotationHistory(state, 'undo');
+      const undone = state.undo.length === 0 && state.redo.length === 1;
+      state = advanceAnnotationHistory(state, 'redo');
+      const redone = state.undo.length === 1 && state.redo.length === 0;
+      state = recordAnnotationChange(advanceAnnotationHistory(state, 'undo'), entry);
+      const branched = state.redo.length === 0;
+      for (let i = 0; i < 60; i++) state = recordAnnotationChange(state, entry);
+      return { ok: undone && redone && branched && state.undo.length === 50
+        && annotationPatchMatches({ content: 'Nachher', color: 'blue' }, entry.after)
+        && !annotationPatchMatches({ content: 'Kollegin hat geändert' }, entry.after)
+        && annotationPatchMatches({ target_selector: { rects: [{ x: .1, y: .2, w: .3, h: .4 }] } }, { target_selector: { rects: [{ h: .4, w: .3, y: .2, x: .1 }] } }),
+        message: 'Verlauf bleibt auf 50 erfolgreiche Bearbeitungen begrenzt; Konflikte und JSONB-Schlüsselreihenfolge werden korrekt erkannt.' };
     } },
     { id: 'persistence', label: 'Anlegen → Antworten → Erledigen → Löschen; Rechte prüfen', run: async ctx => {
       const doc = await supabase.from('documents').insert({ tenant_id: ctx.tenantId, user_id: ctx.userId,

@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import type { AnnotationColor, DocumentAnnotation, DraftAnnotation, AnnotationFileKind } from "./types";
+import { annotationPatchMatches } from "./annotationModel";
+import type { AnnotationPatch, AnnotationColor, DocumentAnnotation, DraftAnnotation, AnnotationFileKind } from "./types";
 
 const COLS = "id, tenant_id, document_id, parent_id, file_kind, file_version, annotation_type, page_number, target_selector, quote_text, color, content, resolved, created_by, created_at, updated_at";
 const key = (documentId: string) => ["document-annotations", documentId];
@@ -40,20 +41,30 @@ export function useAnnotations(documentId: string | null) {
 
   const create = useMutation({
     mutationFn: async (args: { tenantId: string; fileKind: AnnotationFileKind; fileVersion: string; draft: DraftAnnotation; color: AnnotationColor; content: string; userId: string; parentId?: string }) => {
-      const { error } = await supabase.from("document_annotations").insert({
+      const { data, error } = await supabase.from("document_annotations").insert({
         parent_id: args.parentId ?? null, tenant_id: args.tenantId, document_id: documentId!, file_kind: args.fileKind, file_version: args.fileVersion,
         annotation_type: args.draft.annotation_type, page_number: args.draft.page_number,
         target_selector: JSON.parse(JSON.stringify(args.draft.target_selector)), quote_text: args.draft.quote_text,
         color: args.color, content: args.content, created_by: args.userId,
-      });
+      }).select(COLS).single();
       if (error) throw error;
+      return data as unknown as DocumentAnnotation;
     },
     onSuccess: invalidate,
   });
   const update = useMutation({
-    mutationFn: async (args: { id: string; patch: Partial<Pick<DocumentAnnotation, "content" | "color" | "resolved" | "target_selector">> }) => {
-      const { error } = await supabase.from("document_annotations").update({ ...args.patch, ...(args.patch.target_selector ? { target_selector: JSON.parse(JSON.stringify(args.patch.target_selector)) } : {}) }).eq("id", args.id).select("id").single();
+    mutationFn: async (args: { id: string; patch: AnnotationPatch; expected?: AnnotationPatch }) => {
+      let query = supabase.from("document_annotations").update({ ...args.patch, ...(args.patch.target_selector ? { target_selector: JSON.parse(JSON.stringify(args.patch.target_selector)) } : {}) })
+        .eq("id", args.id).eq("document_id", documentId!);
+      if (args.expected) {
+        const current = await supabase.from("document_annotations").select(COLS).eq("id", args.id).eq("document_id", documentId!).single();
+        if (current.error) throw current.error;
+        if (!annotationPatchMatches(current.data, args.expected)) throw new Error("Diese Anmerkung wurde inzwischen geändert. Bitte die aktuelle Fassung prüfen.");
+        query = query.eq("updated_at", current.data.updated_at);
+      }
+      const { data, error } = await query.select(COLS).single();
       if (error) throw error;
+      return data as unknown as DocumentAnnotation;
     },
     onSuccess: invalidate,
   });
@@ -64,7 +75,7 @@ export function useAnnotations(documentId: string | null) {
     },
     onSuccess: invalidate,
   });
-  return { annotations: list.data ?? [], isLoading: list.isLoading, create, update, remove };
+  return { annotations: list.data ?? [], isLoading: list.isLoading, isError: list.isError, refetch: list.refetch, create, update, remove };
 }
 
 /** Open (not resolved) annotation counts per document for list badges. */

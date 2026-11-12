@@ -1,10 +1,10 @@
 import type { AnnotationColor, AnnotationFileKind, AnnotationSelector, FracPoint, FracRect } from "./types";
 
 export const ANNOTATION_COLORS: { value: AnnotationColor; label: string }[] = [
-  { value: "yellow", label: "Wichtig" },
-  { value: "green", label: "Zustimmung / ok" },
-  { value: "red", label: "Klärungsbedarf" },
-  { value: "blue", label: "Info / Hinweis" },
+  { value: "yellow", label: "Hinweis" },
+  { value: "green", label: "Passt" },
+  { value: "red", label: "Fehler" },
+  { value: "blue", label: "Frage" },
 ];
 
 const IMAGE_EXT = ["png", "jpg", "jpeg", "webp"];
@@ -91,4 +91,32 @@ export function moveAnnotationHandle(selector: AnnotationSelector, handle: Annot
 
 export function annotationZoom(value: number): number {
   return Math.max(0.25, Math.min(4, Math.round(value * 100) / 100));
+}
+
+/** Bounding box shared by canvas pins and the comment composer. */
+export function annotationBounds(selector: AnnotationSelector): FracRect | null {
+  const points = [...(selector.points ?? []), ...(selector.rects ?? []).flatMap(r => [{ x: r.x, y: r.y }, { x: r.x + r.w, y: r.y + r.h }])];
+  if (!points.length) return null;
+  const x = Math.min(...points.map(p => p.x)), y = Math.min(...points.map(p => p.y));
+  return { x, y, w: Math.max(...points.map(p => p.x)) - x, h: Math.max(...points.map(p => p.y)) - y };
+}
+
+export type AnnotationFilter = "open" | "done" | "all";
+export function annotationThreads<T extends { parent_id: string | null; resolved: boolean }>(annotations: T[], filter: AnnotationFilter): T[] {
+  return annotations.filter(a => !a.parent_id && (filter === "all" || a.resolved === (filter === "done")));
+}
+
+export function annotationNumbers(annotations: { id: string; parent_id: string | null }[]): Record<string, number> {
+  return Object.fromEntries(annotations.filter(a => !a.parent_id).map((a, i) => [a.id, i + 1]));
+}
+
+export function canCloseAnnotationPolygon(points: FracPoint[], point: FracPoint, width: number, height: number): boolean {
+  return polygonIsValid(points) && Math.hypot((point.x - points[0].x) * width, (point.y - points[0].y) * height) <= 12;
+}
+
+/** JSONB key order is immaterial; compare only fields affected by the local operation. */
+export function annotationPatchMatches(record: object, patch: object): boolean {
+  const normalize = (value: unknown): unknown => Array.isArray(value) ? value.map(normalize)
+    : value && typeof value === "object" ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => [k, normalize(v)])) : value;
+  return Object.entries(patch).every(([key, value]) => JSON.stringify(normalize((record as Record<string, unknown>)[key])) === JSON.stringify(normalize(value)));
 }

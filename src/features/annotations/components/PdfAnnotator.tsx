@@ -33,13 +33,13 @@ export function PdfAnnotator(props: Props) {
   if (error) return <p className="p-lg text-destructive">{error}</p>;
   if (!pdf) return <LoadingState label="PDF wird geladen…" />;
   return (
-    <div className="flex min-h-full w-max min-w-full flex-col items-center gap-lg p-12">
+    <div className="flex min-h-full w-max min-w-full flex-col items-center gap-lg px-10 pb-[70px] pt-[84px]">
       {Array.from({ length: pdf.numPages }, (_, i) => <PdfPage key={i} pdf={pdf} pageNumber={i + 1} {...props} />)}
     </div>
   );
 }
 
-function PdfPage({ pdf, pageNumber, zoom, tool, color, annotations, activeId, draft, onSelect, onDraft, canEdit, onChange, onDraftChange }: Props & { pdf: PDFDocumentProxy; pageNumber: number }) {
+function PdfPage({ pdf, pageNumber, zoom, tool, color, annotations, activeId, draft, onSelect, onDraft, canEdit, onChange, onDraftChange, hidden, numbers }: Props & { pdf: PDFDocumentProxy; pageNumber: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -106,7 +106,7 @@ function PdfPage({ pdf, pageNumber, zoom, tool, color, annotations, activeId, dr
       onMouseUp={onMouseUp}>
       <canvas ref={canvasRef} className="block" />
       <div ref={textRef} className="textLayer" style={{ pointerEvents: tool === "highlight" ? "auto" : "none" }} />
-      <AnnotationLayer annotations={pageAnnotations} activeId={activeId} onSelect={onSelect} interactive={tool === "select"} canEdit={canEdit} onChange={onChange} draft={draft?.page_number === pageNumber ? draft : null} draftColor={color} onDraftChange={onDraftChange}>
+      <AnnotationLayer annotations={pageAnnotations} activeId={activeId} onSelect={onSelect} interactive={tool === "select"} canEdit={canEdit} onChange={onChange} draft={draft?.page_number === pageNumber ? draft : null} draftColor={color} onDraftChange={onDraftChange} hidden={hidden} numbers={numbers}>
         {preview && <AnnotationShape type="rect" selector={{ rects: [preview] }} color={color} active />}
       </AnnotationLayer>
       {drawing && <div className="absolute inset-0" style={{ cursor: "crosshair", touchAction: "none" }} {...handlers} />}

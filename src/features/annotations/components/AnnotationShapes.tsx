@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { moveAnnotationHandle, moveAnnotationSelector, type AnnotationHandle } from "../annotationModel";
+import { annotationBounds, moveAnnotationHandle, moveAnnotationSelector, type AnnotationHandle } from "../annotationModel";
 import type { DocumentAnnotation, AnnotationColor, AnnotationSelector, AnnotationType, FracPoint, DraftAnnotation } from "../types";
 
 export const colorVar = (c: AnnotationColor) => `var(--annotation-${c})`;
@@ -22,8 +22,9 @@ interface ShapeProps {
 export function AnnotationShape({ type, selector, color, active, dimmed, onClick, onPointerDown, draggable }: ShapeProps) {
   const stroke = `hsl(${colorVar(color)})`;
   const common = {
-    fill: `hsl(${colorVar(color)} / ${type === "highlight" ? 0.35 : 0.15})`,
+    className: "aw-shape", fill: `hsl(${colorVar(color)})`, fillOpacity: type === "highlight" ? .35 : active ? .3 : .16,
     stroke: active || type !== "highlight" ? stroke : "none", strokeWidth: active ? 3 : 1.5,
+    strokeDasharray: dimmed ? "6 4" : undefined,
     vectorEffect: "non-scaling-stroke" as const,
     style: { cursor: draggable ? "move" : onClick ? "pointer" : undefined, pointerEvents: onClick ? "all" as const : "none" as const },
     onClick: onClick ? (e: React.MouseEvent) => { e.stopPropagation(); onClick(); } : undefined,
@@ -62,9 +63,11 @@ export interface AnnotationEditingProps {
   canEdit: (annotation: DocumentAnnotation) => boolean;
   onChange: (id: string, selector: AnnotationSelector) => Promise<void>;
   onDraftChange?: (selector: AnnotationSelector) => void;
+  hidden?: boolean;
+  numbers?: Record<string, number>;
 }
 
-export function AnnotationLayer({ annotations, activeId, onSelect, interactive = true, canEdit, onChange, draft, draftColor = "yellow", onDraftChange, children }: {
+export function AnnotationLayer({ annotations, activeId, onSelect, interactive = true, canEdit, onChange, draft, draftColor = "yellow", onDraftChange, hidden = false, numbers = {}, children }: {
   annotations: DocumentAnnotation[]; activeId: string | null; onSelect: (id: string) => void;
   interactive?: boolean; children?: React.ReactNode; draft?: DraftAnnotation | null; draftColor?: AnnotationColor;
 } & Partial<AnnotationEditingProps>) {
@@ -92,7 +95,7 @@ export function AnnotationLayer({ annotations, activeId, onSelect, interactive =
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   }, []);
-  useEffect(() => { if (!interactive) cancel(); }, [interactive]);
+  useEffect(() => { if (!interactive || hidden) cancel(); }, [interactive, hidden]);
 
   const local = (e: React.PointerEvent) => {
     const rect = svgRef.current!.getBoundingClientRect();
@@ -103,14 +106,14 @@ export function AnnotationLayer({ annotations, activeId, onSelect, interactive =
     return current.handle ? moveAnnotationHandle(current.original, current.handle, p)
       : moveAnnotationSelector(current.original, { x: p.x - current.start.x, y: p.y - current.start.y });
   };
-  const shapes = annotations.filter(a => !a.parent_id).map(a => ({
+  const shapes = annotations.filter(a => !a.parent_id && !hidden).map(a => ({
     id: a.id, annotation_type: a.annotation_type, target_selector: a.target_selector, color: a.color,
     resolved: a.resolved, active: a.id === activeId, editable: !!onChange && !!canEdit?.(a),
   }));
   if (draft) shapes.push({ id: "__draft__", annotation_type: draft.annotation_type, target_selector: draft.target_selector,
     color: draftColor, resolved: false, active: activeId === "__draft__", editable: !!onDraftChange });
   return <SurfaceSize.Provider value={size}>
-    <svg ref={svgRef} className="absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 1 1" preserveAspectRatio="none"
+    <svg aria-label="Markierungen" ref={svgRef} className="absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 1 1" preserveAspectRatio="none"
       data-annotation-dragging={!!drag.current} style={{ pointerEvents: "none", touchAction: interactive ? "none" : undefined }}
       onClickCapture={e => { if (suppressClick.current) { suppressClick.current = false; e.stopPropagation(); } }}
       onPointerMove={e => {
@@ -152,6 +155,19 @@ export function AnnotationLayer({ annotations, activeId, onSelect, interactive =
         </g>;
       })}
       {children}
+      {!hidden && annotations.filter(a => !a.parent_id).map(a => {
+        const bounds = annotationBounds(preview?.id === a.id ? preview.selector : a.target_selector);
+        if (!bounds) return null;
+        return <g key={`pin-${a.id}`} transform={`translate(${bounds.x} ${bounds.y}) scale(${1 / size.width} ${1 / size.height})`}
+          role="button" aria-label={`Anmerkung ${numbers[a.id] ?? ''} auswählen`} tabIndex={interactive ? 0 : -1}
+          style={{ pointerEvents: interactive ? 'all' : 'none', cursor: 'pointer', opacity: a.resolved ? .6 : 1 }}
+          onPointerDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); onSelect(a.id); }}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(a.id); } }}>
+          {activeId === a.id && <circle r={16} fill="none" stroke="var(--aw-fg, currentColor)" strokeWidth={2} />}
+          <circle r={12} fill={`hsl(${colorVar(a.color)})`} stroke="white" strokeWidth={2} />
+          <text textAnchor="middle" dominantBaseline="central" fill="white" fontSize={12} fontWeight={700} style={{ pointerEvents: 'none' }}>{a.resolved ? '✓' : numbers[a.id]}</text>
+        </g>;
+      })}
     </svg>
   </SurfaceSize.Provider>;
 }

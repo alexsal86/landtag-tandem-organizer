@@ -48,3 +48,5 @@ export interface AnnotatableDocument {
   file_size?: number | null;
   updated_at: string;
 }
+
+export type AnnotationPatch = Partial<Pick<DocumentAnnotation, "content" | "color" | "resolved" | "target_selector">>;

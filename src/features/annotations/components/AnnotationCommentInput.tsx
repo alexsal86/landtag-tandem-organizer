@@ -24,7 +24,7 @@ export function AnnotationCommentInput({ tenantId, value, onChange, ...props }: 
     <Textarea {...props} value={value} onChange={e => { onChange(e.target.value); setCursor(e.target.selectionStart); }} onSelect={e => setCursor(e.currentTarget.selectionStart)} />
     {match && <div className="max-h-40 overflow-auto rounded-md border bg-popover p-xs" aria-label="Person erwähnen">
       {users.isError && <p className="text-caption">Personen konnten nicht geladen werden.</p>}
-      {(users.data ?? []).filter(u => u.display_name?.toLowerCase().includes(match[1].toLowerCase())).slice(0, 8).map(u => <Button key={u.user_id} variant="ghost" size="sm" className="block w-full text-left" onClick={() => {
+      {(users.data ?? []).filter(u => u.display_name?.toLowerCase().includes(match[1].toLowerCase())).slice(0, 8).map(u => <Button type="button" key={u.user_id} variant="ghost" size="sm" className="block w-full text-left" onClick={() => {
         const start = cursor - match[1].length - 1;
         const token = `@[${u.display_name?.replace(/[\[\]]/g, "")}](${u.user_id}) `;
         const next = value.slice(0, start) + token + value.slice(cursor);
