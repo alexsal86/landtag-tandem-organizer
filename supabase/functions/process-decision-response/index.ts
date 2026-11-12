@@ -36,7 +36,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("=== PROCESS DECISION RESPONSE DEBUG ===");
     console.log("Participant ID:", participantId);
-    console.log("Token:", token ? "Present" : "Missing");
     console.log("Response type:", responseType);
     console.log("Comment:", comment ? "Present" : "None");
     console.log("=== END DEBUG INFO ===");
@@ -49,7 +48,7 @@ const handler = async (req: Request): Promise<Response> => {
       .eq('token', token)
       .single();
 
-    console.log("Participant data:", JSON.stringify(participant));
+    console.log("Participant found:", !!participant);
 
     if (participantError || !participant) {
       console.error("Invalid participant or token:", participantError);

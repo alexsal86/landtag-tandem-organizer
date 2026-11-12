@@ -106,7 +106,7 @@ serve(withSafeHandler("manage-tenant-user", async (req) => {
     }
 
     const isPlatformAdmin = await hasPlatformAdminAccess(supabaseAdmin, user);
-    console.log(`User ${user.email} is platform admin: ${isPlatformAdmin}`);
+    console.log(`User ${user.id} is platform admin: ${isPlatformAdmin}`);
 
     // Resolve caller's tenant membership and role
     const { data: callerMembershipData } = await supabaseAdmin
@@ -269,7 +269,7 @@ serve(withSafeHandler("manage-tenant-user", async (req) => {
         });
         if (statusError) console.error('Status creation error:', statusError);
 
-        console.log(`User ${email} created successfully`);
+        console.log('Tenant user created successfully');
         await logAdminAction(
           supabaseAdmin,
           user.id,

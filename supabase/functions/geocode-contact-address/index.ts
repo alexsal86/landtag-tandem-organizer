@@ -80,7 +80,7 @@ serve(withSafeHandler("geocode-contact-address", async (req) => {
     }
 
     const fullAddress = addressParts.join(', ');
-    console.log('Geocoding address:', fullAddress);
+    console.log('Geocoding contact address');
 
     // Call Nominatim Geocoding API
     const nominatimUrl = new URL('https://nominatim.openstreetmap.org/search');
@@ -101,7 +101,7 @@ serve(withSafeHandler("geocode-contact-address", async (req) => {
     const geocodeData: NominatimResponse[] = await geocodeResponse.json();
 
     if (geocodeData.length === 0) {
-      console.log('No geocoding results found for:', fullAddress);
+      console.log('No geocoding results found');
 
       // Save failed geocoding attempt
       if (contactId) {

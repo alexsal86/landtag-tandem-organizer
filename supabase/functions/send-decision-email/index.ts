@@ -206,7 +206,7 @@ const handler = async (req: Request): Promise<Response> => {
         const noUrl = `${baseUrl}&response=no`;
         const questionUrl = `${baseUrl}&response=question`;
 
-        console.log("About to send email to:", participantEmail, "for participant:", participantName);
+        console.log("Sending decision email for participant:", participantId);
 
         // Helper function to replace all template variables
         const replaceVariables = (text: string) => {
@@ -317,7 +317,7 @@ const handler = async (req: Request): Promise<Response> => {
             emailResults.push({ participantId, success: false, error: errorMessage });
           }
         } else {
-          console.log("Email sent successfully to:", participantEmail, "ID:", emailResponse.data?.id);
+          console.log("Decision email sent, ID:", emailResponse.data?.id);
           emailResults.push({ participantId, success: true, messageId: emailResponse.data?.id });
         }
 
@@ -330,7 +330,6 @@ const handler = async (req: Request): Promise<Response> => {
     const successCount = emailResults.filter(r => r.success).length;
     console.log("=== EMAIL RESULTS SUMMARY ===");
     console.log(`Sent ${successCount}/${emailResults.length} emails successfully`);
-    console.log("Results:", JSON.stringify(emailResults, null, 2));
     console.log("=== END SUMMARY ===");
 
     return new Response(
