@@ -247,7 +247,7 @@ export function CreateContact() {
         tenant_id: currentTenant.id,
         contact_type: formData.contact_type,
         name: formData.name,
-        role: formData.role || null,
+        position: formData.role || null,
         organization_id: formData.organization_id || null,
         organization: organizationName,
         email: formData.email || null,

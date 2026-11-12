@@ -206,7 +206,7 @@ export default function EditContact() {
         .from("contacts")
         .update({
           name: contact.name,
-          role: contact.role || null,
+          position: contact.role || null,
           organization_id: contact.organization_id || null,
           organization: organizationName,
           email: contact.email || null,

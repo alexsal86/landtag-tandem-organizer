@@ -223,10 +223,8 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
     contact?.phone ? { key: "phone", href: `tel:${contact.phone}`, label: "Telefon", icon: Phone } : null,
     contact?.website ? { key: "website", href: contact.website.startsWith("http") ? contact.website : `https://${contact.website}`, label: "Website", icon: Globe } : null,
     contact?.linkedin ? { key: "linkedin", href: generateSocialMediaUrl("linkedin", contact.linkedin), label: "LinkedIn", icon: Linkedin } : null,
-    contact?.twitter ? { key: "twitter", href: generateSocialMediaUrl("twitter", contact.twitter), label: "Twitter/X", icon: Twitter } : null,
     contact?.facebook ? { key: "facebook", href: generateSocialMediaUrl("facebook", contact.facebook), label: "Facebook", icon: Facebook } : null,
     contact?.instagram ? { key: "instagram", href: generateSocialMediaUrl("instagram", contact.instagram), label: "Instagram", icon: Instagram } : null,
-    contact?.xing ? { key: "xing", href: generateSocialMediaUrl("xing", contact.xing), label: "Xing", icon: Globe } : null,
   ].filter(Boolean) as ContactChannel[];
 
   if (!contactId) return null;

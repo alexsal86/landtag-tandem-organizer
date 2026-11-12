@@ -295,10 +295,8 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
     return [
       contact.website && { key: "website", icon: Globe, label: "Website", href: buildSocialUrl("website", contact.website) },
       contact.linkedin && { key: "linkedin", icon: Linkedin, label: "LinkedIn", href: buildSocialUrl("linkedin", contact.linkedin) },
-      contact.twitter && { key: "twitter", icon: Twitter, label: "X / Twitter", href: buildSocialUrl("twitter", contact.twitter) },
       contact.facebook && { key: "facebook", icon: Facebook, label: "Facebook", href: buildSocialUrl("facebook", contact.facebook) },
       contact.instagram && { key: "instagram", icon: Instagram, label: "Instagram", href: buildSocialUrl("instagram", contact.instagram) },
-      contact.xing && { key: "xing", icon: Globe, label: "Xing", href: buildSocialUrl("xing", contact.xing) },
     ].filter(Boolean) as Array<{ key: string; icon: ComponentType<{ className?: string }>; label: string; href: string }>;
   }, [contact]);
 

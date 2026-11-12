@@ -128,7 +128,7 @@ async function runExport(admin: any, request: any) {
       throw new Error("invalid subject email");
     }
     const seen = new Map<string, any>();
-    for (const col of ["email", "email_2", "email_3"]) {
+    for (const col of ["email"]) {
       const { data } = await admin.from("contacts").select("*").eq("tenant_id", tenantId).eq(col, normalized);
       for (const c of data ?? []) seen.set(c.id, c);
     }
@@ -199,8 +199,6 @@ async function runAnonymize(admin: any, request: any) {
     first_name: null,
     last_name: null,
     email: null,
-    email_2: null,
-    email_3: null,
     phone: null,
     business_phone: null,
     mobile_phone: null,
@@ -212,10 +210,8 @@ async function runAnonymize(admin: any, request: any) {
     notes: "[entfernt nach DSGVO]",
     avatar_url: null,
     linkedin: null,
-    twitter: null,
     facebook: null,
     instagram: null,
-    xing: null,
     website: null,
     birthday: null,
     coordinates: null,
