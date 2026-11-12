@@ -45,20 +45,17 @@ const handler = async (req: Request): Promise<Response> => {
       decisionId,
       taskId,
       participantIds,
-      decisionTitle,
-      decisionDescription
     }: DecisionEmailRequest = await req.json();
 
     console.log("=== SEND DECISION EMAIL DEBUG ===");
     console.log("Decision ID:", decisionId);
     console.log("Task ID:", taskId);
     console.log("Participant IDs:", participantIds);
-    console.log("Decision title:", decisionTitle);
     console.log("=== END DEBUG INFO ===");
 
     const { data: decisionData, error: decisionError } = await supabase
       .from('task_decisions')
-      .select('id')
+      .select('id, title, description, created_by')
       .eq('id', decisionId)
       .eq('tenant_id', effectiveTenantId)
       .maybeSingle();
@@ -72,6 +69,17 @@ const handler = async (req: Request): Promise<Response> => {
         },
       );
     }
+
+    if (decisionData.created_by !== tenantAccess.user.id) {
+      return new Response(
+        JSON.stringify({ error: 'Only the decision creator can send invitations' }),
+        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      );
+    }
+
+    // Use stored decision details, never caller-supplied text.
+    const decisionTitle: string = decisionData.title || 'Entscheidung';
+    const decisionDescription: string = decisionData.description || '';
 
     const { data: templates, error: templateError } = await supabase
       .from('decision_email_templates')
