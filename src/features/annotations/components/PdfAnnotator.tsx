@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import "pdfjs-dist/web/pdf_viewer.css";
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import { AnnotationLayer, AnnotationShape } from "./AnnotationShapes";
+import { AnnotationLayer, AnnotationShape, type AnnotationEditingProps } from "./AnnotationShapes";
 import { useShapeDrawing } from "./useShapeDrawing";
 import { selectionRectsToFrac } from "../annotationModel";
 import type { AnnotationColor, AnnotationTool, DocumentAnnotation, DraftAnnotation } from "../types";
 import { LoadingState } from "@/components/ui-patterns";
 
-interface Props {
+interface Props extends AnnotationEditingProps {
   data: ArrayBuffer; zoom: number; tool: AnnotationTool; color: AnnotationColor;
   annotations: DocumentAnnotation[]; activeId: string | null; draft: DraftAnnotation | null;
   onSelect: (id: string) => void; onDraft: (d: DraftAnnotation) => void;
@@ -33,13 +33,13 @@ export function PdfAnnotator(props: Props) {
   if (error) return <p className="p-lg text-destructive">{error}</p>;
   if (!pdf) return <LoadingState label="PDF wird geladen…" />;
   return (
-    <div className="flex flex-col items-center gap-lg p-lg">
+    <div className="flex min-h-full w-max min-w-full flex-col items-center gap-lg p-12">
       {Array.from({ length: pdf.numPages }, (_, i) => <PdfPage key={i} pdf={pdf} pageNumber={i + 1} {...props} />)}
     </div>
   );
 }
 
-function PdfPage({ pdf, pageNumber, zoom, tool, color, annotations, activeId, draft, onSelect, onDraft }: Props & { pdf: PDFDocumentProxy; pageNumber: number }) {
+function PdfPage({ pdf, pageNumber, zoom, tool, color, annotations, activeId, draft, onSelect, onDraft, canEdit, onChange, onDraftChange }: Props & { pdf: PDFDocumentProxy; pageNumber: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -55,6 +55,8 @@ function PdfPage({ pdf, pageNumber, zoom, tool, color, annotations, activeId, dr
 
   useEffect(() => {
     let cancelled = false;
+    let renderTask: { cancel: () => void } | null = null;
+    let textLayer: { cancel: () => void } | null = null;
     (async () => {
       const page = await pdf.getPage(pageNumber);
       const vp = page.getViewport({ scale });
@@ -66,14 +68,17 @@ function PdfPage({ pdf, pageNumber, zoom, tool, color, annotations, activeId, dr
       canvas.width = Math.floor(vp.width * ratio); canvas.height = Math.floor(vp.height * ratio);
       canvas.style.width = `${vp.width}px`; canvas.style.height = `${vp.height}px`;
       const task = page.render({ canvas, viewport: vp, transform: ratio !== 1 ? [ratio, 0, 0, ratio, 0, 0] : undefined });
+      renderTask = task;
       await task.promise.catch(() => undefined);
       if (cancelled) return;
       const pdfjs = await import("pdfjs-dist");
+      if (cancelled) return;
       textDiv.replaceChildren();
       const layer = new pdfjs.TextLayer({ textContentSource: page.streamTextContent(), container: textDiv, viewport: vp });
+      textLayer = layer;
       await layer.render().catch(() => undefined);
     })();
-    return () => { cancelled = true; };
+    return () => { cancelled = true; renderTask?.cancel(); textLayer?.cancel(); };
   }, [pdf, pageNumber, scale, visible]);
 
   const { handlers, preview } = useShapeDrawing(
@@ -97,12 +102,11 @@ function PdfPage({ pdf, pageNumber, zoom, tool, color, annotations, activeId, dr
   const pageAnnotations = annotations.filter(a => a.page_number === pageNumber);
   const drawing = tool === "rect";
   return (
-    <div ref={pageRef} data-annotation-page={pageNumber} className="relative bg-card shadow-md" style={{ width: size?.w ?? 600, height: size?.h ?? 800, ["--scale-factor" as string]: scale }}
+    <div ref={pageRef} data-annotation-page={pageNumber} data-annotation-surface className="relative bg-card shadow-md" style={{ width: size?.w ?? 600, height: size?.h ?? 800, ["--scale-factor" as string]: scale }}
       onMouseUp={onMouseUp}>
       <canvas ref={canvasRef} className="block" />
       <div ref={textRef} className="textLayer" style={{ pointerEvents: tool === "highlight" ? "auto" : "none" }} />
-      <AnnotationLayer annotations={pageAnnotations} activeId={activeId} onSelect={onSelect}>
-        {draft?.page_number === pageNumber && <AnnotationShape type={draft.annotation_type} selector={draft.target_selector} color={color} active />}
+      <AnnotationLayer annotations={pageAnnotations} activeId={activeId} onSelect={onSelect} interactive={tool === "select"} canEdit={canEdit} onChange={onChange} draft={draft?.page_number === pageNumber ? draft : null} draftColor={color} onDraftChange={onDraftChange}>
         {preview && <AnnotationShape type="rect" selector={{ rects: [preview] }} color={color} active />}
       </AnnotationLayer>
       {drawing && <div className="absolute inset-0" style={{ cursor: "crosshair", touchAction: "none" }} {...handlers} />}

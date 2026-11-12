@@ -20,8 +20,10 @@ export function useAnnotations(documentId: string | null) {
     },
   });
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: key(documentId ?? "none") });
-    qc.invalidateQueries({ queryKey: ["document-annotation-counts"] });
+    return Promise.all([
+      qc.invalidateQueries({ queryKey: key(documentId ?? "none") }),
+      qc.invalidateQueries({ queryKey: ["document-annotation-counts"] }),
+    ]);
   };
 
   useEffect(() => {
@@ -49,8 +51,8 @@ export function useAnnotations(documentId: string | null) {
     onSuccess: invalidate,
   });
   const update = useMutation({
-    mutationFn: async (args: { id: string; patch: Partial<Pick<DocumentAnnotation, "content" | "color" | "resolved">> }) => {
-      const { error } = await supabase.from("document_annotations").update(args.patch).eq("id", args.id).select("id").single();
+    mutationFn: async (args: { id: string; patch: Partial<Pick<DocumentAnnotation, "content" | "color" | "resolved" | "target_selector">> }) => {
+      const { error } = await supabase.from("document_annotations").update({ ...args.patch, ...(args.patch.target_selector ? { target_selector: JSON.parse(JSON.stringify(args.patch.target_selector)) } : {}) }).eq("id", args.id).select("id").single();
       if (error) throw error;
     },
     onSuccess: invalidate,

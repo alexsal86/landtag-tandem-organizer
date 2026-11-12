@@ -1,49 +1,60 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { isMeaningfulRect, polygonIsValid, toFracPoint, toFracRect } from "../annotationModel";
 import type { AnnotationTool, FracPoint, FracRect } from "../types";
 
-/** Pointer handling for rectangle dragging and polygon clicking on a sized surface. */
+/** Fractions stay stable during zoom; the unfinished polygon follows the pointer. */
 export function useShapeDrawing(tool: AnnotationTool, onRect: (r: FracRect) => void, onPolygon: (p: FracPoint[]) => void) {
-  const [start, setStart] = useState<{ x: number; y: number } | null>(null);
+  const start = useRef<FracPoint | null>(null);
+  const pointRef = useRef<FracPoint[]>([]);
   const [preview, setPreview] = useState<FracRect | null>(null);
   const [points, setPoints] = useState<FracPoint[]>([]);
+  const [cursor, setCursor] = useState<FracPoint | null>(null);
+  const cancel = () => { pointRef.current = []; start.current = null; setPoints([]); setPreview(null); setCursor(null); };
+  useEffect(() => { cancel(); }, [tool]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") cancel(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const local = (e: React.PointerEvent | React.MouseEvent) => {
-    const box = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    return { p: { x: e.clientX - box.left, y: e.clientY - box.top }, w: box.width, h: box.height };
+    const box = e.currentTarget.getBoundingClientRect();
+    return toFracPoint({ x: e.clientX - box.left, y: e.clientY - box.top }, box.width, box.height);
   };
-
   const handlers = {
     onPointerDown: (e: React.PointerEvent) => {
-      if (tool !== "rect") return;
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-      setStart(local(e).p);
+      if (tool !== "rect" || e.button !== 0) return;
+      e.preventDefault();
+      e.currentTarget.setPointerCapture(e.pointerId);
+      start.current = local(e);
     },
     onPointerMove: (e: React.PointerEvent) => {
-      if (tool !== "rect" || !start) return;
-      const { p, w, h } = local(e);
-      setPreview(toFracRect(start, p, w, h));
+      const p = local(e);
+      if (tool === "polygon") setCursor(p);
+      if (tool === "rect" && start.current) setPreview(toFracRect(start.current, p, 1, 1));
     },
     onPointerUp: (e: React.PointerEvent) => {
-      if (tool !== "rect" || !start) return;
-      const { p, w, h } = local(e);
-      const r = toFracRect(start, p, w, h);
-      setStart(null); setPreview(null);
-      if (isMeaningfulRect(r)) onRect(r);
+      if (tool !== "rect" || !start.current) return;
+      const rect = toFracRect(start.current, local(e), 1, 1);
+      start.current = null; setPreview(null);
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+      if (isMeaningfulRect(rect)) onRect(rect);
     },
+    onPointerCancel: cancel,
+    onLostPointerCapture: () => { start.current = null; setPreview(null); },
+    onPointerLeave: () => setCursor(null),
     onClick: (e: React.MouseEvent) => {
-      if (tool !== "polygon") return;
-      const { p, w, h } = local(e);
-      setPoints(prev => [...prev, toFracPoint(p, w, h)]);
+      if (tool !== "polygon" || e.button !== 0 || e.detail > 1) return;
+      pointRef.current = [...pointRef.current, local(e)];
+      setPoints(pointRef.current);
     },
-    onDoubleClick: () => {
+    onDoubleClick: (e: React.MouseEvent) => {
       if (tool !== "polygon") return;
-      // the double click also added a point via onClick; drop the duplicate
-      const pts = points.slice(0, -1);
-      setPoints([]);
-      if (polygonIsValid(pts)) onPolygon(pts);
+      e.preventDefault();
+      const complete = pointRef.current;
+      if (!polygonIsValid(complete)) return;
+      cancel(); onPolygon(complete);
     },
   };
-  const cancel = () => { setPoints([]); setStart(null); setPreview(null); };
-  return { handlers, preview, points, cancel };
+  return { handlers, preview, points, cursor, cancel };
 }

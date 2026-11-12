@@ -1,12 +1,12 @@
 import { supabase } from '@/integrations/supabase/client';
-import { getAnnotationFileKind, toFracPoint, toFracRect, polygonIsValid, isMeaningfulRect } from '@/features/annotations/annotationModel';
+import { getAnnotationFileKind, toFracPoint, toFracRect, polygonIsValid, isMeaningfulRect, moveAnnotationSelector, moveAnnotationHandle, annotationZoom } from '@/features/annotations/annotationModel';
 import type { TestScenario } from '../types';
 
 export const documentAnnotationScenario: TestScenario = {
   id: 'document-annotation', title: 'Dokument-Annotation',
-  description: 'Dateiregeln, Koordinaten und Polygon sowie Speicherung, Antworten und Zugriffsgrenzen.',
+  description: 'Dateiregeln, Koordinaten, Polygon, Verschieben und Eckpunkte sowie Speicherung, Antworten und Zugriffsgrenzen.',
   touches: ['documents', 'document_annotations'], features: ['documents', 'permissions'],
-  checks: ['Dateityp', 'Bruchteil-Koordinaten', 'Polygon-Mindestpunkte', 'Anlegen, Antworten, Erledigen und Löschen', 'Fremde Autorenschaft und Mandatsgrenzen'],
+  checks: ['Dateityp', 'Bruchteil-Koordinaten', 'Polygon-Mindestpunkte', 'Verschieben und Eckpunkte', 'Zoomgrenzen', 'Anlegen, Antworten, Erledigen und Löschen', 'Fremde Autorenschaft und Mandatsgrenzen'],
   limitations: ['Realtime, Scrollen und Benachrichtigungszustellung erfordern eine interaktive Sitzung mit zwei Personen. Rollenwechsel und Bearbeiten fremder Kommentare werden hier nicht simuliert.'],
   steps: [
     { id: 'file-kind', label: 'Unterstützte Dateitypen', kind: 'logic', run: async () => ({
@@ -25,6 +25,19 @@ export const documentAnnotationScenario: TestScenario = {
       ok: !polygonIsValid([]) && !polygonIsValid([{ x: 0, y: 0 }, { x: 1, y: 0 }])
         && polygonIsValid([{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }]), message: 'Gemeinsame Polygonregel geprüft.',
     }) },
+    { id: 'edit-geometry', label: 'Markierungen verschieben, Eckpunkte anpassen und Zoom begrenzen', kind: 'logic', run: async () => {
+      const original = { rects: [{ x: .1, y: .2, w: .3, h: .2 }] };
+      const moved = moveAnnotationSelector(original, { x: 2, y: -2 }).rects![0];
+      const resized = moveAnnotationHandle(original, { kind: 'rect', index: 0, corner: 2 }, { x: .6, y: .7 }).rects![0];
+      const polygon = { points: [{ x: .1, y: .1 }, { x: .5, y: .1 }, { x: .3, y: .5 }] };
+      const vertex = moveAnnotationHandle(polygon, { kind: 'point', index: 1 }, { x: 2, y: -.5 }).points!;
+      return { ok: Math.abs(moved.x - .7) < 1e-8 && moved.y === 0 && moved.w === .3 && moved.h === .2
+        && resized.x === .1 && resized.y === .2 && Math.abs(resized.w - .5) < 1e-8 && Math.abs(resized.h - .5) < 1e-8
+        && vertex[1].x === 1 && vertex[1].y === 0 && vertex[0] === polygon.points[0]
+        && original.rects[0].x === .1 && polygon.points[1].x === .5
+        && annotationZoom(10) === 4 && annotationZoom(.01) === .25 && annotationZoom(1.5) === 1.5,
+        message: 'Form und Grenzen bleiben erhalten; Ecken sind unabhängig bearbeitbar; Zoom reicht über 100 Prozent.' };
+    } },
     { id: 'persistence', label: 'Anlegen → Antworten → Erledigen → Löschen; Rechte prüfen', run: async ctx => {
       const doc = await supabase.from('documents').insert({ tenant_id: ctx.tenantId, user_id: ctx.userId,
         title: `[SELFTEST] Annotation ${ctx.runId}`, file_name: 'selftest.pdf', file_path: `selftest/${ctx.runId}.pdf` }).select('id').single();
@@ -36,6 +49,11 @@ export const documentAnnotationScenario: TestScenario = {
       if (created.error || !created.data) return { ok: false, message: created.error?.message ?? 'Anmerkung fehlt' };
       ctx.trackRecord({ table: 'document_annotations', id: created.data.id });
       const checks: Record<string, boolean> = { saved: created.data.content === payload.content && !created.data.resolved };
+      const repositioned = await supabase.from('document_annotations').update({ target_selector: { rects: [{ x: .2, y: .3, w: .3, h: .2 }] } })
+        .eq('id', created.data.id).select('target_selector').single();
+      const stored = repositioned.data?.target_selector as { rects?: { x: number; y: number; w: number; h: number }[] } | undefined;
+      const rect = stored?.rects?.[0];
+      checks.repositioned = !repositioned.error && rect?.x === .2 && rect.y === .3 && rect.w === .3 && rect.h === .2;
       const reply = await supabase.from('document_annotations').insert({ ...payload, parent_id: created.data.id, content: '[SELFTEST] Antwort' }).select('id, parent_id').single();
       if (reply.data) ctx.trackRecord({ table: 'document_annotations', id: reply.data.id });
       checks.reply = !reply.error && reply.data?.parent_id === created.data.id;

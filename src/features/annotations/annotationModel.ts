@@ -1,4 +1,4 @@
-import type { AnnotationColor, AnnotationFileKind, FracPoint, FracRect } from "./types";
+import type { AnnotationColor, AnnotationFileKind, AnnotationSelector, FracPoint, FracRect } from "./types";
 
 export const ANNOTATION_COLORS: { value: AnnotationColor; label: string }[] = [
   { value: "yellow", label: "Wichtig" },
@@ -56,4 +56,39 @@ export function selectionRectsToFrac(
 
 export function polygonIsValid(points: FracPoint[]): boolean {
   return points.length >= 3;
+}
+
+export type AnnotationHandle = { kind: "point"; index: number } | { kind: "rect"; index: number; corner: 0 | 1 | 2 | 3 };
+
+/** Translate the entire selection, keeping its shape and all vertices within the page. */
+export function moveAnnotationSelector(selector: AnnotationSelector, delta: FracPoint): AnnotationSelector {
+  const vertices = [
+    ...(selector.points ?? []),
+    ...(selector.rects ?? []).flatMap(r => [{ x: r.x, y: r.y }, { x: r.x + r.w, y: r.y + r.h }]),
+  ];
+  if (!vertices.length) return selector;
+  const dx = Math.max(-Math.min(...vertices.map(p => p.x)), Math.min(delta.x, 1 - Math.max(...vertices.map(p => p.x))));
+  const dy = Math.max(-Math.min(...vertices.map(p => p.y)), Math.min(delta.y, 1 - Math.max(...vertices.map(p => p.y))));
+  return {
+    ...selector,
+    ...(selector.points && { points: selector.points.map(p => ({ x: clamp(p.x + dx), y: clamp(p.y + dy) })) }),
+    ...(selector.rects && { rects: selector.rects.map(r => ({ ...r, x: clamp(r.x + dx), y: clamp(r.y + dy) })) }),
+  };
+}
+
+/** Rectangle corners keep the opposite corner fixed; polygon vertices move independently. */
+export function moveAnnotationHandle(selector: AnnotationSelector, handle: AnnotationHandle, point: FracPoint): AnnotationSelector {
+  const p = { x: clamp(point.x), y: clamp(point.y) };
+  if (handle.kind === "point") return { ...selector, points: selector.points?.map((old, i) => i === handle.index ? p : old) };
+  return { ...selector, rects: selector.rects?.map((r, i) => {
+    if (i !== handle.index) return r;
+    const opposite = { x: handle.corner === 0 || handle.corner === 3 ? r.x + r.w : r.x,
+      y: handle.corner < 2 ? r.y + r.h : r.y };
+    const next = toFracRect(p, opposite, 1, 1);
+    return isMeaningfulRect(next) ? next : r;
+  }) };
+}
+
+export function annotationZoom(value: number): number {
+  return Math.max(0.25, Math.min(4, Math.round(value * 100) / 100));
 }

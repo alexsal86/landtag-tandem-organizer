@@ -54,7 +54,7 @@ import {
   type DocumentDialogState,
 } from "@/components/documents/operationsContract";
 import { notify } from "@/lib/notify";
-import { AnnotationWorkspaceDialog } from "@/features/annotations/components/AnnotationWorkspaceDialog";
+import { AnnotationWorkspace } from "@/features/annotations/components/AnnotationWorkspace";
 import { getAnnotationFileKind } from "@/features/annotations/annotationModel";
 import { useAnnotationCounts } from "@/features/annotations/useAnnotations";
 
@@ -327,6 +327,12 @@ export function DocumentsView() {
     return () => { cancelled = true; };
   }, [searchParams, setSearchParams]);
   const annotationCounts = useAnnotationCounts(data.currentTenant?.id, filteredDocuments.map(d => d.id));
+
+  if (annotateDoc) return (
+    <div className="min-w-0 bg-gradient-subtle p-4">
+      <AnnotationWorkspace key={annotateDoc.id} document={annotateDoc} open onOpenChange={o => { if (!o) setAnnotateDoc(null); }} />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-subtle p-6">
@@ -609,7 +615,6 @@ export function DocumentsView() {
           setShowArchivedLetterDetails={setShowArchivedLetterDetails}
           setSelectedArchivedDocument={setSelectedArchivedDocument}
         />
-      <AnnotationWorkspaceDialog document={annotateDoc} open={!!annotateDoc} onOpenChange={o => { if (!o) setAnnotateDoc(null); }} />
       </div>
     </div>
   );

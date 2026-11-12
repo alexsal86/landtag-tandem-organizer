@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Highlighter, MousePointer2, Square, Pentagon, ZoomIn, ZoomOut, X } from "lucide-react";
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { LoadingState, ErrorState } from "@/components/ui-patterns";
@@ -13,23 +12,24 @@ import { useAnnotations } from "../useAnnotations";
 import { colorVar } from "./AnnotationShapes";
 import { PdfAnnotator } from "./PdfAnnotator";
 import { ImageAnnotator } from "./ImageAnnotator";
+import { useAnnotationZoom } from "./useAnnotationZoom";
 import { AnnotationSidebar } from "./AnnotationSidebar";
-import type { AnnotatableDocument, AnnotationColor, AnnotationTool, DraftAnnotation } from "../types";
+import type { AnnotatableDocument, AnnotationColor, AnnotationTool, DraftAnnotation, AnnotationSelector, DocumentAnnotation } from "../types";
 
 interface Props { document: AnnotatableDocument | null; open: boolean; onOpenChange: (o: boolean) => void }
 
-export function AnnotationWorkspaceDialog({ document: doc, open, onOpenChange }: Props) {
+export function AnnotationWorkspace({ document: doc, open, onOpenChange }: Props) {
   const { user } = useAuth();
   const viewerRef = useRef<HTMLDivElement>(null);
   const kind = doc ? getAnnotationFileKind(doc.file_name, doc.file_type) : null;
   const [tool, setTool] = useState<AnnotationTool>("select");
   const [color, setColor] = useState<AnnotationColor>("yellow");
-  const [zoom, setZoom] = useState(1);
+  const { zoom, changeZoom } = useAnnotationZoom(viewerRef, open ? doc?.id : undefined);
   const [draft, setDraft] = useState<DraftAnnotation | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const { annotations, create, update, remove } = useAnnotations(open && doc ? doc.id : null);
 
-  useEffect(() => { if (!open) { setDraft(null); setActiveId(null); setTool("select"); setZoom(1); } }, [open]);
+  useEffect(() => { if (!open) { setDraft(null); setActiveId(null); setTool("select"); } }, [open]);
   useEffect(() => { if (kind === "pdf" && tool === "polygon") setTool("rect"); }, [kind, tool]);
 
   const file = useQuery({
@@ -69,7 +69,7 @@ export function AnnotationWorkspaceDialog({ document: doc, open, onOpenChange }:
     },
   });
 
-  if (!doc) return null;
+  if (!doc || !open) return null;
   const version = fileVersionOf(doc);
 
   const saveDraft = (content: string) => {
@@ -100,6 +100,12 @@ export function AnnotationWorkspaceDialog({ document: doc, open, onOpenChange }:
       return false;
     }
   };
+  const canEditPosition = (annotation: DocumentAnnotation) => annotation.created_by === user?.id || !!roles.data;
+  const changePosition = async (id: string, selector: AnnotationSelector) => {
+    try { await update.mutateAsync({ id, patch: { target_selector: selector } }); }
+    catch (error) { notify.error("Position konnte nicht gespeichert werden"); throw error; }
+  };
+  const startDraft = (next: DraftAnnotation) => { setDraft(next); setActiveId("__draft__"); setTool("select"); };
   const err = () => notify.error("Änderung nicht möglich");
 
   const tools: { id: AnnotationTool; label: string; icon: typeof Square; show: boolean }[] = [
@@ -110,13 +116,12 @@ export function AnnotationWorkspaceDialog({ document: doc, open, onOpenChange }:
   ];
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[92vh] max-w-[96vw] flex-col gap-0 overflow-hidden p-0 [&>button]:hidden">
+    <section aria-label="Dokument annotieren" className="flex h-[calc(100dvh-6rem)] min-h-[520px] min-w-0 flex-col overflow-hidden rounded-lg border bg-card">
         <TooltipProvider>
-          <header className="flex items-center gap-sm border-b px-md py-sm">
+          <header className="flex flex-wrap items-center gap-sm border-b px-md py-sm">
             <div className="min-w-0 flex-1">
-              <DialogTitle className="truncate text-title">{doc.title}</DialogTitle>
-              <DialogDescription className="truncate text-caption">{doc.file_name} · Originaldatei bleibt unverändert</DialogDescription>
+              <h2 className="truncate text-title">{doc.title}</h2>
+              <p className="truncate text-caption">{doc.file_name} · Originaldatei bleibt unverändert</p>
             </div>
             <div className="flex items-center gap-2xs rounded-md border p-2xs">
               {tools.filter(t => t.show).map(t => (
@@ -134,19 +139,22 @@ export function AnnotationWorkspaceDialog({ document: doc, open, onOpenChange }:
               ))}
             </div>
             <div className="flex items-center gap-2xs">
-              <Button size="sm" variant="ghost" className="h-8 w-8 p-0" aria-label="Verkleinern" onClick={() => setZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2)))}><ZoomOut className="h-4 w-4" /></Button>
+              <Button size="sm" variant="ghost" className="h-8 w-8 p-0" aria-label="Verkleinern" onClick={() => changeZoom(z => z - 0.25)}><ZoomOut className="h-4 w-4" /></Button>
               <span className="w-12 text-center text-caption tabular-nums">{Math.round(zoom * 100)} %</span>
-              <Button size="sm" variant="ghost" className="h-8 w-8 p-0" aria-label="Vergrößern" onClick={() => setZoom(z => Math.min(3, +(z + 0.25).toFixed(2)))}><ZoomIn className="h-4 w-4" /></Button>
+              <Button size="sm" variant="ghost" className="h-8 w-8 p-0" aria-label="Vergrößern" onClick={() => changeZoom(z => z + 0.25)}><ZoomIn className="h-4 w-4" /></Button>
             </div>
-            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" aria-label="Schließen" onClick={() => onOpenChange(false)}><X className="h-4 w-4" /></Button>
+            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" aria-label="Zurück zu den Dokumenten" title="Zurück zu den Dokumenten" onClick={() => onOpenChange(false)}><X className="h-4 w-4" /></Button>
           </header>
         </TooltipProvider>
+        <p className="border-b px-md py-xs text-caption text-muted-foreground">
+          Auswählen: Markierung ziehen · Kreise: Ecken anpassen · Mausrad: zoomen · Shift + Mausrad: scrollen · Esc: Zeichnung abbrechen
+        </p>
         <div className="flex min-h-0 flex-1">
-          <div ref={viewerRef} className="min-w-0 flex-1 overflow-auto bg-muted/40">
+          <div ref={viewerRef} className="min-w-0 flex-1 overflow-auto bg-muted/40 [scrollbar-gutter:stable]">
             {!kind ? <ErrorState title="Dateityp nicht unterstützt" description="Annotation ist für PDF, JPG, PNG und WebP möglich." />
               : file.isError ? <ErrorState title="Datei konnte nicht geladen werden" />
-              : kind === "pdf" ? (buffer ? <PdfAnnotator data={buffer} zoom={zoom} tool={tool} color={color} annotations={annotations} activeId={activeId} draft={draft} onSelect={setActiveId} onDraft={setDraft} /> : <LoadingState label="Datei wird geladen…" />)
-              : imgUrl ? <ImageAnnotator src={imgUrl} alt={doc.title} zoom={zoom} tool={tool} color={color} annotations={annotations} activeId={activeId} draft={draft} onSelect={setActiveId} onDraft={setDraft} />
+              : kind === "pdf" ? (buffer ? <PdfAnnotator data={buffer} zoom={zoom} tool={tool} color={color} annotations={annotations} activeId={activeId} draft={draft} onSelect={setActiveId} onDraft={startDraft} canEdit={canEditPosition} onChange={changePosition} onDraftChange={selector => setDraft(current => current ? { ...current, target_selector: selector } : null)} /> : <LoadingState label="Datei wird geladen…" />)
+              : imgUrl ? <ImageAnnotator src={imgUrl} alt={doc.title} zoom={zoom} tool={tool} color={color} annotations={annotations} activeId={activeId} draft={draft} onSelect={setActiveId} onDraft={startDraft} canEdit={canEditPosition} onChange={changePosition} onDraftChange={selector => setDraft(current => current ? { ...current, target_selector: selector } : null)} />
               : <LoadingState label="Datei wird geladen…" />}
           </div>
           <AnnotationSidebar tenantId={doc.tenant_id} onReply={reply} saving={create.isPending} annotations={annotations} activeId={activeId} draft={draft} draftColor={color} currentVersion={version}
@@ -155,7 +163,6 @@ export function AnnotationWorkspaceDialog({ document: doc, open, onOpenChange }:
             onUpdate={(id, patch) => update.mutate({ id, patch }, { onError: err })}
             onDelete={id => remove.mutate(id, { onError: err })} />
         </div>
-      </DialogContent>
-    </Dialog>
+    </section>
   );
 }
