@@ -2,7 +2,7 @@ import { canManageAnnotation, canResolveAnnotation } from "@/features/annotation
 import { annotationMentionToken, annotationMentionIds, annotationDocumentPath, plainAnnotationComment } from "@/features/annotations/mentions";
 import { advanceAnnotationHistory, emptyAnnotationHistory, recordAnnotationChange } from "@/features/annotations/annotationHistory";
 import { supabase } from '@/integrations/supabase/client';
-import { getAnnotationFileKind, toFracPoint, toFracRect, polygonIsValid, isMeaningfulRect, moveAnnotationSelector, moveAnnotationHandle, annotationZoom, annotationBounds, annotationNumbers, annotationThreads, canCloseAnnotationPolygon, annotationPatchMatches, selectionRectsToFrac, pointAnnotationIsValid, isMeaningfulArrow, annotationShortcut } from '@/features/annotations/annotationModel';
+import { getAnnotationFileKind, toFracPoint, toFracRect, polygonIsValid, isMeaningfulRect, moveAnnotationSelector, moveAnnotationHandle, annotationZoom, annotationBounds, annotationNumbers, annotationThreads, canCloseAnnotationPolygon, annotationPatchMatches, selectionRectsToFrac, pointAnnotationIsValid, isMeaningfulArrow, annotationShortcut, annotationPinAnchor } from '@/features/annotations/annotationModel';
 import type { TestScenario } from '../types';
 
 export const documentAnnotationScenario: TestScenario = {
@@ -87,6 +87,14 @@ export const documentAnnotationScenario: TestScenario = {
         }) && annotationShortcut('Delete', 'pdf')?.action === 'delete' && annotationShortcut('Escape', 'image')?.action === 'cancel'
         && annotationShortcut('H', 'image') === null && annotationShortcut('5', 'pdf') === null,
         message: 'Pfeile besitzen zwei getrennte Endpunkte, Notizen einen Anker; Farbkürzel und Werkzeugkürzel sind eindeutig.' };
+    } },
+    { id: 'arrow-pin-anchor', label: 'Pfeilnummer bleibt bei jeder Richtung am Startpunkt', kind: 'logic', run: async () => {
+      const tail = { x: .8, y: .7 }, tip = { x: .1, y: .2 };
+      const anchor = annotationPinAnchor('arrow', { points: [tail, tip] });
+      const reverse = annotationPinAnchor('arrow', { points: [tip, tail] });
+      return { ok: anchor?.x === tail.x && anchor.y === tail.y && reverse?.x === tip.x && reverse.y === tip.y
+        && annotationPinAnchor('note', { points: [tail] }) === tail && annotationPinAnchor('arrow', {}) === null,
+        message: 'Die Nummer sitzt am Pfeilanfang; die Spitze bleibt frei, auch bei nach links oder oben gerichteten Pfeilen.' };
     } },
     { id: 'zoom-invariance', label: 'Zoom- und Koordinatentreue bei 25 bis 400 Prozent', kind: 'logic', run: async () => {
       const checks = [.25, .5, 1, 1.75, 2, 4].map(zoom => {

@@ -1,4 +1,4 @@
-import type { AnnotationColor, AnnotationFileKind, AnnotationTool, AnnotationSelector, FracPoint, FracRect } from "./types";
+import type { AnnotationColor, AnnotationFileKind, AnnotationType, AnnotationTool, AnnotationSelector, FracPoint, FracRect } from "./types";
 
 export const ANNOTATION_COLORS: { value: AnnotationColor; label: string }[] = [
   { value: "yellow", label: "Hinweis" },
@@ -148,4 +148,12 @@ export function annotationShortcut(key: string, kind: AnnotationFileKind): Annot
     case "escape": return { action: "cancel" };
     default: return null;
   }
+}
+
+
+/** Arrow labels belong to their tail, irrespective of the direction of the arrow. */
+export function annotationPinAnchor(type: AnnotationType, selector: AnnotationSelector): FracPoint | null {
+  if (type === "arrow" || type === "note") return selector.points?.[0] ?? null;
+  const bounds = annotationBounds(selector);
+  return bounds ? { x: bounds.x, y: bounds.y } : null;
 }

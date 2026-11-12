@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Highlighter, MousePointer2, Square, Pentagon, ZoomIn, ZoomOut, X, Eye, EyeOff, Undo2, Redo2, Maximize, MoveUpRight, StickyNote } from "lucide-react";
+import { Highlighter, MousePointer2, Square, Pentagon, ZoomIn, ZoomOut, X, Eye, EyeOff, Undo2, Redo2, Maximize, MoveUpRight, FlagTriangleRight } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { LoadingState, ErrorState } from "@/components/ui-patterns";
 import { supabase } from "@/integrations/supabase/client";
@@ -253,7 +253,7 @@ export function AnnotationWorkspace({ document: doc, open, onOpenChange, initial
     { id: 'rect', label: 'Rechteck (R)', icon: Square, show: true },
     { id: 'polygon', label: 'Polygon (P)', icon: Pentagon, show: true },
     { id: 'arrow', label: 'Pfeil ziehen', icon: MoveUpRight, show: true },
-    { id: 'note', label: 'Notiz-Nadel setzen', icon: StickyNote, show: true },
+    { id: 'note', label: 'Notiz-Nadel setzen', icon: FlagTriangleRight, show: true },
   ];
   const hint = tool === 'polygon' ? 'Punkte setzen · Doppelklick oder Enter schließt die Form · Esc bricht ab'
     : tool === 'arrow' ? 'Pfeil vom Startpunkt zur Zielstelle ziehen' : tool === 'note' ? 'Ins Dokument klicken, um eine Notiz anzuheften'

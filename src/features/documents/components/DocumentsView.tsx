@@ -20,7 +20,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { FileText, Upload, Download, Trash2, Plus, Search, ArrowUpDown, ArrowUp, ArrowDown, Calendar, Tag, FileType, Folder, FolderPlus, FolderInput, Home, ChevronRight, MoreVertical, Edit, Mail, Edit3, Send, Grid, List, Settings, RotateCcw, ListTodo, ListTree, Info, UserPlus, Newspaper, Save, Highlighter, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
@@ -89,6 +88,7 @@ export function DocumentsView() {
   const [activeTab, setActiveTab] = useState<'documents' | 'letters' | 'emails' | 'press'>(initialTab);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [categoriesExpanded, setCategoriesExpanded] = useState(false);
   const [documentSort, setDocumentSort] = useState<DocumentSort>({ key: "created_at", direction: "desc" });
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(() => new Set());
   const [filterStatus, setFilterStatus] = useState("all");
@@ -229,7 +229,6 @@ export function DocumentsView() {
   }, [searchParams, setSearchParams, activeTab, navigate]);
 
   const getCategoryLabel = (name: string) => safeCategories.find(c => c.name === name)?.label || name;
-  const hiddenCategorySelectionCount = safeCategories.slice(3).filter(c => selectedCategories.includes(c.name)).length;
   const categoryChip = (category: (typeof safeCategories)[number]) => {
     const selected = selectedCategories.includes(category.name);
     return <Button key={category.id} size="sm" variant={selected ? "default" : "outline"}
@@ -351,6 +350,18 @@ export function DocumentsView() {
     return () => { cancelled = true; };
   }, [searchParams, setSearchParams]);
   const annotationCounts = useAnnotationCounts(data.currentTenant?.id, filteredDocuments.map(d => d.id));
+  const annotationBadge = (doc: Document, compact = false) => {
+    const count = annotationCounts.data?.[doc.id] ?? 0;
+    if (!count) return null;
+    const label = `${count} offene ${count === 1 ? 'Anmerkung' : 'Anmerkungen'}`;
+    return <TooltipProvider><Tooltip><TooltipTrigger asChild>
+      <button type="button" className="inline-flex w-fit items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary hover:bg-primary/20"
+        title={label} aria-label={`${label} öffnen`} onClick={() => setAnnotateDoc(doc)}>
+        <MessageSquare className="h-3 w-3" />{compact ? count : label}
+      </button>
+    </TooltipTrigger><TooltipContent>{label} – zum Öffnen klicken</TooltipContent></Tooltip></TooltipProvider>;
+  };
+
 
   if (annotateDoc) return (
     <div className="min-w-0 bg-gradient-subtle p-4">
@@ -479,22 +490,13 @@ export function DocumentsView() {
                     className={`rounded-full ${selectedCategories.length === 0 ? "" : "bg-white text-slate-900 hover:bg-slate-50"}`}
                     aria-pressed={selectedCategories.length === 0} onClick={() => setSelectedCategories([])}>Alle</Button>
                   {safeCategories.slice(0, 3).map(categoryChip)}
-                  {safeCategories.length > 3 && <Popover>
-                    <PopoverTrigger asChild>
-                      <Button size="sm" variant={hiddenCategorySelectionCount > 0 ? "default" : "outline"}
-                        className={`rounded-full px-3 ${hiddenCategorySelectionCount > 0 ? "" : "bg-white text-slate-900 hover:bg-slate-50"}`}
-                        aria-label={`Weitere Kategorien${hiddenCategorySelectionCount > 0 ? ` (${hiddenCategorySelectionCount} ausgewählt)` : ""}`}>
-                        <Plus className="h-4 w-4" aria-hidden="true" />
-                        {hiddenCategorySelectionCount > 0 && <span className="ml-1">{hiddenCategorySelectionCount}</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent align="start" className="max-h-72 w-80 max-w-[calc(100vw-2rem)] overflow-y-auto">
-                      <p className="mb-3 text-sm font-medium">Weitere Kategorien</p>
-                      <div className="flex flex-wrap gap-2" role="group" aria-label="Weitere Kategorien auswählen">
-                        {safeCategories.slice(3).map(categoryChip)}
-                      </div>
-                    </PopoverContent>
-                  </Popover>}
+                  <span id="document-extra-categories" className="contents">{categoriesExpanded && safeCategories.slice(3).map(categoryChip)}</span>
+                  {safeCategories.length > 3 && <Button size="sm" variant="outline" className="rounded-full bg-white px-3 text-slate-900 hover:bg-slate-50"
+                    aria-expanded={categoriesExpanded} aria-controls="document-extra-categories"
+                    aria-label={categoriesExpanded ? 'Weniger Kategorien anzeigen' : `${safeCategories.length - 3} weitere Kategorien anzeigen`}
+                    onClick={() => setCategoriesExpanded(current => !current)}>
+                    {categoriesExpanded ? 'Weniger' : `+${safeCategories.length - 3}`}
+                  </Button>}
                 </div> : <Select value={filterStatus} onValueChange={setFilterStatus}><SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Alle Status</SelectItem>{letterSubTab === 'active' ? ['draft', 'review', 'approved'].map(s => <SelectItem key={s} value={s}>{s === 'draft' ? 'Entwurf' : s === 'review' ? 'Zur Prüfung' : 'Genehmigt'}</SelectItem>) : ['sent', 'archived'].map(s => <SelectItem key={s} value={s}>{s === 'sent' ? 'Versendet' : 'Archiviert'}</SelectItem>)}</SelectContent></Select>}
               </div>
               <div className="flex items-center gap-1 bg-muted p-1 rounded-md">
@@ -572,7 +574,7 @@ export function DocumentsView() {
                         <div className="flex items-center gap-2"><Calendar className="h-4 w-4 flex-shrink-0" /><span>{format(new Date(doc.created_at), "dd.MM.yyyy", { locale: de })}</span></div>
                         <div className="flex items-center gap-2"><FileType className="h-4 w-4 flex-shrink-0" /><span className="truncate">{doc.file_name}</span></div>
                       </div>
-                      {(annotationCounts.data?.[doc.id] ?? 0) > 0 && <Badge variant="secondary" className="w-fit cursor-pointer gap-1" onClick={() => setAnnotateDoc(doc)}><MessageSquare className="h-3 w-3" />{annotationCounts.data?.[doc.id]} offene Anmerkungen</Badge>}
+                      {annotationBadge(doc)}
                       {doc.tags && doc.tags.length > 0 && <div className="flex flex-wrap gap-1">{doc.tags.map((tag, i) => <Badge key={i} variant="outline" className="text-xs"><Tag className="h-3 w-3 mr-1" />{tag}</Badge>)}</div>}
                       <DocumentContactManager documentId={doc.id} compact />
                       <Separator />
@@ -600,7 +602,7 @@ export function DocumentsView() {
                 <TableHead>Kontakte</TableHead><TableHead className="text-right">Aktionen</TableHead>
               </TableRow></TableHeader><TableBody>
                 {filteredDocuments.map(doc => (
-                  <TableRow key={doc.id} data-state={selectedDocumentIds.has(doc.id) ? "selected" : undefined}><TableCell><Checkbox aria-label={`${doc.title} auswählen`} checked={selectedDocumentIds.has(doc.id)} onCheckedChange={checked => selectDocument(doc.id, checked === true)} /></TableCell><TableCell className="font-medium"><div className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" /><div><div className="flex items-center gap-2">{doc.title}{(annotationCounts.data?.[doc.id] ?? 0) > 0 && <Badge variant="secondary" className="gap-1 text-xs"><MessageSquare className="h-3 w-3" />{annotationCounts.data?.[doc.id]}</Badge>}</div>{doc.description && <div className="text-xs text-muted-foreground truncate max-w-[200px]">{doc.description}</div>}</div></div></TableCell><TableCell>{getCategoryLabel(doc.category ?? '')}</TableCell><TableCell>{format(new Date(doc.created_at), "dd.MM.yyyy", { locale: de })}</TableCell><TableCell><DocumentContactManager documentId={doc.id} compact /></TableCell>
+                  <TableRow key={doc.id} data-state={selectedDocumentIds.has(doc.id) ? "selected" : undefined}><TableCell><Checkbox aria-label={`${doc.title} auswählen`} checked={selectedDocumentIds.has(doc.id)} onCheckedChange={checked => selectDocument(doc.id, checked === true)} /></TableCell><TableCell className="font-medium"><div className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" /><div><div className="flex items-center gap-2">{doc.title}{annotationBadge(doc, true)}</div>{doc.description && <div className="text-xs text-muted-foreground truncate max-w-[200px]">{doc.description}</div>}</div></div></TableCell><TableCell>{getCategoryLabel(doc.category ?? '')}</TableCell><TableCell>{format(new Date(doc.created_at), "dd.MM.yyyy", { locale: de })}</TableCell><TableCell><DocumentContactManager documentId={doc.id} compact /></TableCell>
                   <TableCell className="text-right"><TooltipProvider><div className="flex items-center gap-1 justify-end">
                     {doc.document_type === 'archived_letter' && doc.source_letter_id && <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={() => { setSelectedArchivedDocument(doc); setShowArchivedLetterDetails(true); }}><Info className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Details</TooltipContent></Tooltip>}
                     {doc.document_type !== 'archived_letter' && <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={() => handleEditDocument(doc)}><Edit className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Bearbeiten</TooltipContent></Tooltip>}

@@ -1,5 +1,6 @@
+import { FlagTriangleRight } from "lucide-react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { annotationBounds, moveAnnotationHandle, moveAnnotationSelector, type AnnotationHandle } from "../annotationModel";
+import { annotationPinAnchor, moveAnnotationHandle, moveAnnotationSelector, type AnnotationHandle } from "../annotationModel";
 import type { DocumentAnnotation, AnnotationColor, AnnotationSelector, AnnotationType, FracPoint, DraftAnnotation } from "../types";
 
 export const colorVar = (c: AnnotationColor) => `var(--annotation-${c})`;
@@ -48,8 +49,7 @@ export function AnnotationShape({ type, selector, color, active, dimmed, onClick
       <line x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke={stroke} strokeWidth={active ? 3 : 2} strokeDasharray={dimmed ? '6 4' : undefined} style={{ pointerEvents: 'none' }} />
       <path d={head} stroke={stroke} strokeWidth={active ? 3 : 2} strokeLinecap="round" strokeLinejoin="round" fill="none" style={{ pointerEvents: 'none' }} />
     </g> : type === "note" ? anchor && <g transform={`translate(${anchor.x} ${anchor.y}) scale(${1 / size.width} ${1 / size.height})`}>
-      <path {...common} d="M -12 -15 H 6 L 14 -7 V 14 H -12 Z" fillOpacity={.95} strokeWidth={1.5} />
-      <path d="M 6 -15 V -7 H 14 M -6 0 H 8 M -6 5 H 4" fill="none" stroke="white" strokeWidth={1.5} strokeLinecap="round" style={{ pointerEvents: 'none' }} />
+      <FlagTriangleRight {...common} x={-4} y={-22} width={24} height={24} strokeWidth={2} fillOpacity={.3} />
     </g> : type === "polygon" ? <polygon points={(selector.points ?? []).map(p => `${p.x},${p.y}`).join(" ")} {...common} />
       : (selector.rects ?? []).map((r, i) => <rect key={i} x={r.x} y={r.y} width={r.w} height={r.h} {...common} />)}
     {active && vertices.map(({ point, handle }, i) => <Vertex key={i} point={point} color={color}
@@ -171,9 +171,9 @@ export function AnnotationLayer({ annotations, activeId, onSelect, interactive =
       })}
       {children}
       {!hidden && annotations.filter(a => !a.parent_id).map(a => {
-        const bounds = annotationBounds(preview?.id === a.id ? preview.selector : a.target_selector);
-        if (!bounds) return null;
-        return <g key={`pin-${a.id}`} transform={`translate(${bounds.x + (a.annotation_type === "note" ? 19 / size.width : 0)} ${bounds.y - (a.annotation_type === "note" ? 16 / size.height : 0)}) scale(${1 / size.width} ${1 / size.height})`}
+        const anchor = annotationPinAnchor(a.annotation_type, preview?.id === a.id ? preview.selector : a.target_selector);
+        if (!anchor) return null;
+        return <g key={`pin-${a.id}`} transform={`translate(${anchor.x - (a.annotation_type === "note" ? 14 / size.width : 0)} ${anchor.y - (a.annotation_type === "note" ? 26 / size.height : 0)}) scale(${1 / size.width} ${1 / size.height})`}
           role="button" aria-label={`Anmerkung ${numbers[a.id] ?? ''} auswählen`} tabIndex={interactive ? 0 : -1}
           style={{ pointerEvents: interactive ? 'all' : 'none', cursor: 'pointer', opacity: a.resolved ? .6 : 1 }}
           onPointerDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); onSelect(a.id); }}
