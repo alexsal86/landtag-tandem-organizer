@@ -173,7 +173,7 @@ export function AnnotationLayer({ annotations, activeId, onSelect, interactive =
       {!hidden && annotations.filter(a => !a.parent_id).map(a => {
         const anchor = annotationPinAnchor(a.annotation_type, preview?.id === a.id ? preview.selector : a.target_selector);
         if (!anchor) return null;
-        return <g key={`pin-${a.id}`} transform={`translate(${anchor.x - (a.annotation_type === "note" ? 14 / size.width : 0)} ${anchor.y - (a.annotation_type === "note" ? 26 / size.height : 0)}) scale(${1 / size.width} ${1 / size.height})`}
+        return <g key={`pin-${a.id}`} transform={`translate(${anchor.x} ${anchor.y + (a.annotation_type === "note" ? 12 / size.height : 0)}) scale(${1 / size.width} ${1 / size.height})`}
           role="button" aria-label={`Anmerkung ${numbers[a.id] ?? ''} auswählen`} tabIndex={interactive ? 0 : -1}
           style={{ pointerEvents: interactive ? 'all' : 'none', cursor: 'pointer', opacity: a.resolved ? .6 : 1 }}
           onPointerDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); onSelect(a.id); }}
