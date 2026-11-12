@@ -3055,6 +3055,7 @@ export type Database = {
           business_postal_code: string | null
           business_street: string | null
           category: string | null
+          consent_given_at: string | null
           contact_type: string | null
           coordinates: Json | null
           created_at: string
@@ -3072,6 +3073,7 @@ export type Database = {
           is_favorite: boolean | null
           last_contact: string | null
           last_name: string | null
+          legal_basis: string | null
           linkedin: string | null
           mobile_phone: string | null
           name: string
@@ -3081,7 +3083,11 @@ export type Database = {
           phone: string | null
           position: string | null
           priority: string | null
+          processing_purpose: string | null
+          retention_review_date: string | null
+          retention_status: string
           role: string | null
+          source_origin: string | null
           tags: string[] | null
           tenant_id: string
           title: string | null
@@ -3102,6 +3108,7 @@ export type Database = {
           business_postal_code?: string | null
           business_street?: string | null
           category?: string | null
+          consent_given_at?: string | null
           contact_type?: string | null
           coordinates?: Json | null
           created_at?: string
@@ -3119,6 +3126,7 @@ export type Database = {
           is_favorite?: boolean | null
           last_contact?: string | null
           last_name?: string | null
+          legal_basis?: string | null
           linkedin?: string | null
           mobile_phone?: string | null
           name: string
@@ -3128,7 +3136,11 @@ export type Database = {
           phone?: string | null
           position?: string | null
           priority?: string | null
+          processing_purpose?: string | null
+          retention_review_date?: string | null
+          retention_status?: string
           role?: string | null
+          source_origin?: string | null
           tags?: string[] | null
           tenant_id: string
           title?: string | null
@@ -3149,6 +3161,7 @@ export type Database = {
           business_postal_code?: string | null
           business_street?: string | null
           category?: string | null
+          consent_given_at?: string | null
           contact_type?: string | null
           coordinates?: Json | null
           created_at?: string
@@ -3166,6 +3179,7 @@ export type Database = {
           is_favorite?: boolean | null
           last_contact?: string | null
           last_name?: string | null
+          legal_basis?: string | null
           linkedin?: string | null
           mobile_phone?: string | null
           name?: string
@@ -3175,7 +3189,11 @@ export type Database = {
           phone?: string | null
           position?: string | null
           priority?: string | null
+          processing_purpose?: string | null
+          retention_review_date?: string | null
+          retention_status?: string
           role?: string | null
+          source_origin?: string | null
           tags?: string[] | null
           tenant_id?: string
           title?: string | null
@@ -15675,6 +15693,7 @@ export type Database = {
           business_postal_code: string | null
           business_street: string | null
           category: string | null
+          consent_given_at: string | null
           contact_type: string | null
           coordinates: Json | null
           created_at: string
@@ -15692,6 +15711,7 @@ export type Database = {
           is_favorite: boolean | null
           last_contact: string | null
           last_name: string | null
+          legal_basis: string | null
           linkedin: string | null
           mobile_phone: string | null
           name: string
@@ -15701,7 +15721,11 @@ export type Database = {
           phone: string | null
           position: string | null
           priority: string | null
+          processing_purpose: string | null
+          retention_review_date: string | null
+          retention_status: string
           role: string | null
+          source_origin: string | null
           tags: string[] | null
           tenant_id: string
           title: string | null

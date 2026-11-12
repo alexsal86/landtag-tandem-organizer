@@ -1,3 +1,4 @@
+import { ContactPrivacyCard } from "@/features/contacts/privacy/ContactPrivacyCard";
 import { useState, useEffect, type ComponentType } from "react";
 import { Trash2, PhoneCall, Plus, FileText, ChevronDown, Euro, ArrowLeft, Star, Mail, Phone, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -241,6 +242,7 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
   return (
     <div className="h-full overflow-y-auto">
       <div className="p-6 space-y-6">
+        <ContactPrivacyCard contactId={contact.id} />
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 shrink-0" aria-label="Zurück">
