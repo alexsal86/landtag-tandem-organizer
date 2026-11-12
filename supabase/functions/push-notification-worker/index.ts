@@ -2,7 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.52.0';
 
-import { withSafeHandler, requireAuth, unauthorizedResponse } from "../_shared/security.ts";
+import { withSafeHandler, requireServiceRole, unauthorizedResponse } from "../_shared/security.ts";
 console.log("Push notification worker initialized");
 
 const corsHeaders = {
@@ -17,8 +17,9 @@ serve(withSafeHandler("push-notification-worker", async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const auth = await requireAuth(req);
-  if (!auth) return unauthorizedResponse();
+  // Internal-only: callers must present the server credential; signed-in users
+  // must never pick push recipients or content directly.
+  if (!requireServiceRole(req)) return unauthorizedResponse();
 
   try {
     console.log('🔗 Initializing Supabase...');
@@ -29,7 +30,7 @@ serve(withSafeHandler("push-notification-worker", async (req) => {
 
     // Get notification data from request
     const requestData = await req.json();
-    console.log('📦 Received notification request:', requestData);
+    
 
     const { user_id, title, message, priority = 'medium', data = {} } = requestData;
 
