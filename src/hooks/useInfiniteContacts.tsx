@@ -73,6 +73,9 @@ export const useInfiniteContacts = ({
     if (selectedCategory !== "all") {
       if (selectedCategory === "favorites") {
         query = query.eq('is_favorite', true);
+      } else if (selectedCategory === "review_due") {
+        const today = new Date().toISOString().slice(0, 10);
+        query = query.or(`retention_review_date.is.null,retention_review_date.lte.${today}`);
       } else {
         query = query.eq('category', selectedCategory);
       }
