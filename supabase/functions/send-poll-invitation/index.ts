@@ -36,16 +36,11 @@ const handler = async (req: Request): Promise<Response> => {
     const {
       pollId,
       participantEmails,
-      pollTitle,
-      pollDescription,
-      creatorName
     }: PollInvitationRequest = await req.json();
 
     console.log("=== SEND POLL INVITATION DEBUG ===");
     console.log("Poll ID:", pollId);
-    console.log("Poll invitation recipients:", participantEmails.length);
-    console.log("Poll title:", pollTitle);
-    console.log("Creator name:", creatorName);
+    console.log("Poll invitation recipients:", Array.isArray(participantEmails) ? participantEmails.length : 0);
     console.log("=== END DEBUG INFO ===");
 
     if (typeof pollId !== "string" || !Array.isArray(participantEmails)) {
@@ -55,11 +50,21 @@ const handler = async (req: Request): Promise<Response> => {
     // Only the poll's creator may send its invitation links.
     const { data: ownedPoll } = await supabase
       .from("appointment_polls")
-      .select("id")
+      .select("id, title, description")
       .eq("id", pollId)
       .eq("user_id", auth.userId)
       .maybeSingle();
     if (!ownedPoll) return forbiddenResponse();
+
+    // Email content comes from stored poll data, never from the request.
+    const pollTitle: string = ownedPoll.title || "Terminabstimmung";
+    const pollDescription: string = ownedPoll.description || "";
+    const { data: creatorProfile } = await supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("user_id", auth.userId)
+      .maybeSingle();
+    const creatorName: string = creatorProfile?.display_name || "Ein Teammitglied";
 
     const emailResults = [];
 
@@ -105,7 +110,6 @@ const handler = async (req: Request): Promise<Response> => {
         const pollUrl = `${domain}/poll-guest/${pollId}?token=${participantToken}`;
 
         console.log("Sending poll invitation email");
-        console.log("Using Resend API key:", Deno.env.get("RESEND_API_KEY")?.substring(0, 10) + "...");
 
         // Send invitation email
         const emailResponse = await resend.emails.send({
