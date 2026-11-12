@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.document_annotations_validate() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.document_annotations_guard_edit() FROM PUBLIC, anon, authenticated;
