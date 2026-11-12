@@ -112,7 +112,8 @@ export const useAllPersonContacts = () => {
     if (!user || !currentTenant) return;
 
     const contactsChannel = supabase
-      .channel("person-contacts-changes")
+      // Several document cards can mount this hook at once; Supabase reuses channels by name.
+      .channel(`person-contacts-changes-${currentTenant.id}-${crypto.randomUUID()}`)
       .on(
         "postgres_changes",
         {

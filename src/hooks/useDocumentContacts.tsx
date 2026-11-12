@@ -51,7 +51,7 @@ export const useDocumentContacts = (documentId?: string) => {
         .eq('document_id', documentId);
 
       if (error) throw error;
-      setDocumentContacts(data as DocumentContact[]);
+      setDocumentContacts((data ?? []) as DocumentContact[]);
     } catch (error) {
       debugConsole.error('Error fetching document contacts:', error);
     } finally {
@@ -129,10 +129,11 @@ export const useDocumentContacts = (documentId?: string) => {
 
   // Real-time updates
   useEffect(() => {
-    if (!documentId) return;
+    if (!documentId || !currentTenant || !user) return;
 
     const channel = supabase
-      .channel(`document-contacts-${documentId}`)
+      // The contact badges and add dialog each own their subscription.
+      .channel(`document-contacts-${currentTenant.id}-${documentId}-${crypto.randomUUID()}`)
       .on(
         'postgres_changes',
         {
@@ -148,9 +149,9 @@ export const useDocumentContacts = (documentId?: string) => {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel);
     };
-  }, [documentId]);
+  }, [documentId, currentTenant?.id, user?.id]);
 
   return {
     documentContacts,
