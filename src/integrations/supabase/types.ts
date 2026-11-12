@@ -14475,6 +14475,22 @@ export type Database = {
       }
     }
     Functions: {
+      document_annotation_can_manage: {
+        Args: { _tenant: string; _author: string }
+        Returns: boolean
+      }
+      document_annotation_mention_members: {
+        Args: { _tenant: string }
+        Returns: { user_id: string; display_name: string }[]
+      }
+      document_annotation_mention_ids: {
+        Args: { _content: string }
+        Returns: string[]
+      }
+      document_annotations_permissions_selftest: {
+        Args: { _tenant: string }
+        Returns: Json
+      }
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined

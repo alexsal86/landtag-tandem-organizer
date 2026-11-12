@@ -1,3 +1,4 @@
+import { annotationDocumentPath } from "@/features/annotations/mentions";
 import { knowledgeQuestionPath } from '@/features/knowledge/logic';
 import type { Notification, NotificationData } from '@/hooks/useNotifications';
 import { isLetterNotificationType } from '@/utils/letterNotificationTypes';
@@ -67,7 +68,7 @@ export const buildDeepLinkPath = (notification: Notification): string => {
     case 'document_mention': {
       if (data.document_type === 'annotation') {
         const id = getNotificationDataId(data, 'document_id');
-        return id ? `/documents?tab=documents&annotate=${encodeURIComponent(id)}` : '/documents?tab=documents';
+        return annotationDocumentPath(id, getNotificationDataId(data, "annotation_id"));
       }
       const documentId = getNotificationDataId(data, 'documentId', 'document_id');
       return data.document_type === 'press'

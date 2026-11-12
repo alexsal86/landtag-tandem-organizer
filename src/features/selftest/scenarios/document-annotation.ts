@@ -1,14 +1,16 @@
+import { canManageAnnotation, canResolveAnnotation } from "@/features/annotations/permissions";
+import { annotationMentionToken, annotationMentionIds, annotationDocumentPath, plainAnnotationComment } from "@/features/annotations/mentions";
 import { advanceAnnotationHistory, emptyAnnotationHistory, recordAnnotationChange } from "@/features/annotations/annotationHistory";
 import { supabase } from '@/integrations/supabase/client';
-import { getAnnotationFileKind, toFracPoint, toFracRect, polygonIsValid, isMeaningfulRect, moveAnnotationSelector, moveAnnotationHandle, annotationZoom, annotationBounds, annotationNumbers, annotationThreads, canCloseAnnotationPolygon, annotationPatchMatches, pointAnnotationIsValid, isMeaningfulArrow, annotationShortcut } from '@/features/annotations/annotationModel';
+import { getAnnotationFileKind, toFracPoint, toFracRect, polygonIsValid, isMeaningfulRect, moveAnnotationSelector, moveAnnotationHandle, annotationZoom, annotationBounds, annotationNumbers, annotationThreads, canCloseAnnotationPolygon, annotationPatchMatches, selectionRectsToFrac, pointAnnotationIsValid, isMeaningfulArrow, annotationShortcut } from '@/features/annotations/annotationModel';
 import type { TestScenario } from '../types';
 
 export const documentAnnotationScenario: TestScenario = {
   id: 'document-annotation', title: 'Dokument-Annotation',
   description: 'Dateiregeln, Koordinaten, Polygon, Verschieben und Eckpunkte sowie Speicherung, Antworten und Zugriffsgrenzen.',
   touches: ['documents', 'document_annotations'], features: ['documents', 'permissions'],
-  checks: ['Dateityp', 'Bruchteil-Koordinaten', 'Polygon-Mindestpunkte', 'Verschieben und Eckpunkte', 'Zoomgrenzen', 'Anlegen, Antworten, Erledigen und Löschen', 'Fremde Autorenschaft und Mandatsgrenzen'],
-  limitations: ['Realtime, Scrollen und Benachrichtigungszustellung erfordern eine interaktive Sitzung mit zwei Personen. Rollenwechsel und Bearbeiten fremder Kommentare werden hier nicht simuliert.'],
+  checks: ['Dateityp', 'Bruchteil-Koordinaten', 'Polygon-Mindestpunkte', 'Verschieben und Eckpunkte', 'Zoomgrenzen', 'Anlegen, Antworten, Erledigen und Löschen', 'Fremde Autorenschaft und Mandatsgrenzen', 'Serverrollen und aktive RLS/Trigger', 'Erwähnungen mit Thread-Link'],
+  limitations: ['Realtime, Scrollen und Benachrichtigungszustellung erfordern zwei interaktive Sitzungen. Die Serverrollenprüfung gilt für das angemeldete Konto; die UI-Regeln decken alle Rollen ab. Fremde Datensätze werden nicht testweise verändert.'],
   steps: [
     { id: 'file-kind', label: 'Unterstützte Dateitypen', kind: 'logic', run: async () => ({
       ok: getAnnotationFileKind('A.PDF') === 'pdf' && getAnnotationFileKind('scan', 'application/pdf') === 'pdf'
@@ -86,6 +88,52 @@ export const documentAnnotationScenario: TestScenario = {
         && annotationShortcut('H', 'image') === null && annotationShortcut('5', 'pdf') === null,
         message: 'Pfeile besitzen zwei getrennte Endpunkte, Notizen einen Anker; Farbkürzel und Werkzeugkürzel sind eindeutig.' };
     } },
+    { id: 'zoom-invariance', label: 'Zoom- und Koordinatentreue bei 25 bis 400 Prozent', kind: 'logic', run: async () => {
+      const checks = [.25, .5, 1, 1.75, 2, 4].map(zoom => {
+        const width = 1200 * zoom, height = 800 * zoom;
+        const point = toFracPoint({ x: .35 * width, y: .7 * height }, width, height);
+        const rect = toFracRect({ x: .2 * width, y: .3 * height }, { x: .6 * width, y: .8 * height }, width, height);
+        const selection = selectionRectsToFrac([{ left: 10 + .2 * width, top: 20 + .3 * height, width: .4 * width, height: .05 * height }], { left: 10, top: 20, width, height });
+        const near = (a: number, b: number) => Math.abs(a - b) < 1e-8;
+        return near(point.x, .35) && near(point.y, .7) && near(rect.x, .2) && near(rect.y, .3) && near(rect.w, .4) && near(rect.h, .5)
+          && selection.length === 1 && near(selection[0].x, .2) && near(selection[0].y, .3) && near(selection[0].w, .4) && near(selection[0].h, .05);
+      });
+      return { ok: checks.every(Boolean), message: 'Punkte, Bereiche und PDF-Textmarkierungen behalten über alle Zoomstufen dieselben Bruchteile.' };
+    } },
+    { id: 'permission-matrix', label: 'Autor, Mitarbeitende, Leitung und fehlende Mitgliedschaft unterscheiden', kind: 'logic', run: async () => {
+      const staff = { userId: 'staff', tenantMember: true, roles: ['mitarbeiter'] };
+      return { ok: canManageAnnotation('staff', staff) && !canManageAnnotation('other', staff) && canResolveAnnotation(staff)
+        && ['abgeordneter', 'bueroleitung'].every(role => canManageAnnotation('other', { ...staff, roles: [role] }))
+        && !canManageAnnotation('staff', { ...staff, tenantMember: false })
+        && !canManageAnnotation('other', { ...staff, tenantMember: false, roles: ['bueroleitung'] })
+        && !canResolveAnnotation({ ...staff, tenantMember: false }) && !canResolveAnnotation({ ...staff, userId: undefined }),
+        message: 'Nur Autor oder Leitung dürfen ändern/löschen; aktive Mitglieder dürfen erledigt setzen. Ohne Mitgliedschaft besteht kein Zugriff.' };
+    } },
+    { id: 'mention-link', label: 'Erwähnungen eindeutig auflösen und direkt zum Thread verlinken', kind: 'logic', run: async () => {
+      const id = '11111111-aaaa-4444-8888-111111111111';
+      const token = annotationMentionToken('Änne [Büro]', id);
+      const ids = annotationMentionIds(`${token} ${token} @NichtAusgewählt @[Ungültig](keine-uuid)`);
+      const params = new URL(annotationDocumentPath('doc-id', 'reply-id'), 'https://selftest.invalid').searchParams;
+      return { ok: token === `@[Änne Büro](${id})` && ids.length === 1 && ids[0] === id
+        && plainAnnotationComment(token) === '@Änne Büro' && params.get('annotate') === 'doc-id' && params.get('annotation') === 'reply-id',
+        message: 'Eine bestätigte Person wird per UUID erwähnt; doppelte Erwähnungen bleiben eindeutig und der Link enthält den konkreten Thread.' };
+    } },
+    { id: 'schema', label: 'Antwortspalte im aktiven Backend vorhanden', critical: true, run: async ctx => {
+      const result = await supabase.from('document_annotations').select('id,parent_id').eq('tenant_id', ctx.tenantId).limit(0);
+      return { ok: !result.error, message: result.error?.message ?? 'parent_id ist im aktiven Backend verfügbar.' };
+    } },
+    { id: 'server-mentions', label: 'Client und Datenbank erkennen dieselben erwähnten Personen', run: async () => {
+      const id = '11111111-aaaa-4444-8888-111111111111';
+      const content = `${annotationMentionToken('Büro', id)} @[Büro](${id.toUpperCase()}) @Freitext @[Ungültig](keine-uuid)`;
+      const result = await supabase.rpc('document_annotation_mention_ids', { _content: content });
+      return { ok: !result.error && JSON.stringify([...(result.data ?? [])].sort()) === JSON.stringify(annotationMentionIds(content).sort()),
+        message: result.error?.message ?? 'Server und UI lösen bestätigte Erwähnungen identisch auf; es werden keine Benachrichtigungen versendet.' };
+    } },
+    { id: 'server-permissions', label: 'Serverrollen, Löschpolicy und aktive Schutz-Trigger prüfen', run: async ctx => {
+      const result = await supabase.rpc('document_annotations_permissions_selftest', { _tenant: ctx.tenantId });
+      const report = result.data && typeof result.data === 'object' && !Array.isArray(result.data) ? result.data : null;
+      return { ok: !result.error && report?.ok === true, message: result.error?.message ?? String(report?.message ?? 'Serverprüfung fehlgeschlagen'), details: report?.checks };
+    } },
     { id: 'persistence', label: 'Anlegen → Antworten → Erledigen → Löschen; Rechte prüfen', run: async ctx => {
       const doc = await supabase.from('documents').insert({ tenant_id: ctx.tenantId, user_id: ctx.userId,
         title: `[SELFTEST] Annotation ${ctx.runId}`, file_name: 'selftest.pdf', file_path: `selftest/${ctx.runId}.pdf` }).select('id').single();
@@ -112,6 +160,17 @@ export const documentAnnotationScenario: TestScenario = {
         const moved = await supabase.from('document_annotations').update({ parent_id: null }).eq('id', reply.data.id).select('id');
         checks.immutableParent = !!moved.error;
       }
+      const otherDoc = await supabase.from('documents').insert({ tenant_id: ctx.tenantId, user_id: ctx.userId,
+        title: `[SELFTEST] Fremdes Thread-Ziel ${ctx.runId}`, file_name: 'other.pdf', file_path: `selftest/${ctx.runId}-other.pdf` }).select('id').single();
+      checks.otherDocumentCreated = !otherDoc.error && !!otherDoc.data;
+      if (otherDoc.data) {
+        ctx.trackRecord({ table: 'documents', id: otherDoc.data.id });
+        const crossDocument = await supabase.from('document_annotations').insert({ ...payload, document_id: otherDoc.data.id, parent_id: created.data.id }).select('id');
+        for (const row of crossDocument.data ?? []) ctx.trackRecord({ table: 'document_annotations', id: row.id });
+        checks.crossDocumentDenied = !!crossDocument.error && !crossDocument.data?.length;
+      }
+      const loadedReplies = await supabase.from('document_annotations').select('id,parent_id,content').eq('document_id', doc.data.id).eq('parent_id', created.data.id);
+      checks.threadReadback = !loadedReplies.error && loadedReplies.data?.length === 1 && loadedReplies.data[0].id === reply.data?.id && loadedReplies.data[0].content === '[SELFTEST] Antwort';
       const forged = await supabase.from('document_annotations').insert({ ...payload, created_by: crypto.randomUUID() }).select('id');
       for (const row of forged.data ?? []) ctx.trackRecord({ table: 'document_annotations', id: row.id });
       checks.authorGuard = !!forged.error && !forged.data?.length;

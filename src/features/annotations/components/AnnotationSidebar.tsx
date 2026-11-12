@@ -1,3 +1,4 @@
+import { plainAnnotationComment as plainComment } from "../mentions";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -11,13 +12,13 @@ import type { DocumentAnnotation, AnnotationPatch } from "../types";
 interface Props {
   tenantId: string; saving: boolean; loading: boolean; failed: boolean; onRetry: () => void;
   annotations: DocumentAnnotation[]; numbers: Record<string, number>; activeId: string | null;
-  currentVersion: string; userId: string | undefined; canModerate: boolean;
+  currentVersion: string; canManage: (annotation: DocumentAnnotation) => boolean; canResolve: boolean;
   authorName: (id: string) => string; onSelect: (id: string) => void;
   onEdit: (annotation: DocumentAnnotation) => void; onUpdate: (id: string, patch: AnnotationPatch) => Promise<boolean>;
   onDelete: (id: string) => void; onReply: (id: string, content: string) => Promise<boolean>;
 }
 const TYPE_LABEL: Record<DocumentAnnotation["annotation_type"], string> = { highlight: "Textmarkierung", rect: "Bereich", polygon: "Polygon", arrow: "Pfeil", note: "Notiz-Nadel" };
-const plainComment = (text: string) => text.replace(/@\[([^\]]*)\]\([0-9a-f-]{36}\)/gi, "@$1");
+
 const timestamp = (text: string) => format(new Date(text), "dd.MM. HH:mm", { locale: de });
 
 export function AnnotationSidebar(p: Props) {
@@ -41,7 +42,7 @@ export function AnnotationSidebar(p: Props) {
     });
     return () => cancelAnimationFrame(frame);
   }, [p.activeId, filter]);
-  const menu = (a: DocumentAnnotation) => (a.created_by === p.userId || p.canModerate) && <DropdownMenu>
+  const menu = (a: DocumentAnnotation) => p.canManage(a) && <DropdownMenu>
     <DropdownMenuTrigger asChild><button type="button" className="aw-icon ml-auto !p-1" aria-label="Weitere Aktionen" disabled={p.saving}><MoreVertical /></button></DropdownMenuTrigger>
     <DropdownMenuContent align="end">
       <DropdownMenuItem onClick={() => p.onEdit(a)}><Pencil className="mr-2 h-4 w-4" />Bearbeiten</DropdownMenuItem>
@@ -76,9 +77,9 @@ export function AnnotationSidebar(p: Props) {
             <small>{p.authorName(r.created_by)} · {timestamp(r.created_at)}</small>
           </div>)}
           <div className="aw-actions" onClick={e => e.stopPropagation()}>
-            <button className="aw-button" disabled={p.saving} onClick={() => { void p.onUpdate(a.id, { resolved: !a.resolved }); }}>
+            <button className="aw-button" disabled={p.saving || !p.canResolve} onClick={() => { void p.onUpdate(a.id, { resolved: !a.resolved }); }}>
               {a.resolved ? <RotateCcw /> : <Check />}{a.resolved ? 'Wieder öffnen' : 'Erledigt'}</button>
-            <button className="aw-button" onClick={() => { setReplyId(replyId === a.id ? null : a.id); setReplyText(''); }}>Antworten</button>
+            <button className="aw-button" disabled={p.saving || !p.canResolve} onClick={() => { setReplyId(replyId === a.id ? null : a.id); setReplyText(''); }}>Antworten</button>
           </div>
           {replyId === a.id && <form className="mt-2 space-y-2" onClick={e => e.stopPropagation()} onSubmit={async e => {
             e.preventDefault(); if (replyText.trim() && !p.saving && await p.onReply(a.id, replyText.trim())) { setReplyId(null); setReplyText(''); }

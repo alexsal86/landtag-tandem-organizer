@@ -32,6 +32,7 @@ export interface NotificationData extends UnknownRecord {
   start_time?: string | null;
   message_id?: string | null;
   document_id?: string | null;
+  annotation_id?: string | null;
   document_type?: string | null;
   documentId?: string | null;
   letter_id?: string | null;

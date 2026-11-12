@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { notify } from "@/lib/notify";
 import { ANNOTATION_COLORS, annotationNumbers, annotationPatchMatches, annotationShortcut, fileVersionOf, getAnnotationFileKind } from "../annotationModel";
 import { useAnnotations } from "../useAnnotations";
+import { canManageAnnotation, canResolveAnnotation } from "../permissions";
 import { useAnnotationHistory } from "../useAnnotationHistory";
 import { colorVar } from "./AnnotationShapes";
 import { PdfAnnotator } from "./PdfAnnotator";
@@ -18,13 +19,14 @@ import { AnnotationComposer } from "./AnnotationComposer";
 import type { AnnotatableDocument, AnnotationColor, AnnotationTool, DraftAnnotation, AnnotationSelector, DocumentAnnotation, AnnotationPatch } from "../types";
 import "./annotations.css";
 
-interface Props { document: AnnotatableDocument | null; open: boolean; onOpenChange: (open: boolean) => void }
+interface Props { document: AnnotatableDocument | null; open: boolean; onOpenChange: (open: boolean) => void; initialAnnotationId?: string | null }
 interface PendingDelete { timer: ReturnType<typeof setTimeout> | null; toast: string | number }
 const errorText = (error: unknown, fallback: string) => error && typeof error === 'object' && 'message' in error ? String(error.message) : fallback;
 
-export function AnnotationWorkspace({ document: doc, open, onOpenChange }: Props) {
+export function AnnotationWorkspace({ document: doc, open, onOpenChange, initialAnnotationId }: Props) {
   const { user } = useAuth();
   const viewerRef = useRef<HTMLDivElement>(null), canvasRef = useRef<HTMLDivElement>(null);
+  const focusedLink = useRef<string | null>(null);
   const shortcuts = useRef<(event: KeyboardEvent) => void>(() => {});
   const pendingDeletes = useRef(new Map<string, PendingDelete>());
   const mounted = useRef(true), editLock = useRef(false);
@@ -92,19 +94,43 @@ export function AnnotationWorkspace({ document: doc, open, onOpenChange }: Props
     },
   });
   const roles = useQuery({
-    queryKey: ["annotation-moderator", user?.id], enabled: !!user?.id, staleTime: 10 * 60_000,
+    queryKey: ["annotation-permissions", doc?.tenant_id, user?.id], enabled: !!user?.id && !!doc?.tenant_id, staleTime: 60_000,
     queryFn: async () => {
-      const { data } = await supabase.from('user_roles').select('role').eq('user_id', user!.id);
-      return (data ?? []).some(row => row.role === 'abgeordneter' || row.role === 'bueroleitung');
+      const [assigned, membership] = await Promise.all([
+        supabase.from('user_roles').select('role').eq('user_id', user!.id),
+        supabase.from('user_tenant_memberships').select('user_id').eq('tenant_id', doc!.tenant_id).eq('user_id', user!.id).eq('is_active', true).limit(1),
+      ]);
+      if (assigned.error) throw assigned.error;
+      if (membership.error) throw membership.error;
+      return { roles: (assigned.data ?? []).map(row => row.role), member: !!membership.data?.length };
     },
   });
+  useEffect(() => {
+    if (!initialAnnotationId || focusedLink.current === initialAnnotationId) return;
+    const selected = api.annotations.find(a => a.id === initialAnnotationId);
+    const viewer = viewerRef.current;
+    if (!selected || !viewer) return;
+    const rootId = selected.parent_id ?? selected.id;
+    setActiveId(rootId); setHidden(false);
+    const observer = new MutationObserver(() => focus());
+    const focus = () => {
+      const shape = viewer.querySelector(`[data-annotation-id="${rootId}"]`);
+      if (shape) { shape.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' }); focusedLink.current = initialAnnotationId; observer.disconnect(); }
+    };
+    observer.observe(viewer, { childList: true, subtree: true });
+    const frame = requestAnimationFrame(focus);
+    return () => { observer.disconnect(); cancelAnimationFrame(frame); };
+  }, [initialAnnotationId, api.annotations, buffer, imgUrl]);
+
   if (!doc || !open) return null;
   const version = fileVersionOf(doc);
-  const canEdit = (a: DocumentAnnotation) => a.created_by === user?.id || !!roles.data;
+  const actor = { userId: user?.id, tenantMember: roles.data?.member ?? false, roles: roles.data?.roles ?? [] };
+  const canEdit = (a: DocumentAnnotation) => canManageAnnotation(a.created_by, actor);
   const cancelComposer = () => { setDraft(null); setEditingId(null); setText(''); if (activeId === '__draft__') setActiveId(null); };
   const patchAnnotation = async (id: string, patch: AnnotationPatch): Promise<boolean> => {
     const before = api.annotations.find(a => a.id === id);
     if (!before || busy || editLock.current) return false;
+    if (Object.keys(patch).some(key => key !== "resolved") ? !canEdit(before) : !canResolveAnnotation(actor)) return false;
     if (annotationPatchMatches(before, patch)) return true;
     const previous = Object.fromEntries(Object.keys(patch).map(key => [key, before[key as keyof DocumentAnnotation]])) as AnnotationPatch;
     editLock.current = true;
@@ -277,7 +303,7 @@ export function AnnotationWorkspace({ document: doc, open, onOpenChange }: Props
           text={text} color={color} editing={!!editingId} saving={busy} onText={setText} onColor={setColor} onSave={() => { void saveComposer(); }} onCancel={cancelComposer} />}
       </div>
       <AnnotationSidebar tenantId={doc.tenant_id} saving={busy} loading={api.isLoading} failed={api.isError} onRetry={() => { void api.refetch(); }}
-        annotations={annotations} numbers={numbers} activeId={activeId} currentVersion={version} userId={user?.id} canModerate={!!roles.data}
+        annotations={annotations} numbers={numbers} activeId={activeId} currentVersion={version} canManage={canEdit} canResolve={canResolveAnnotation(actor)}
         authorName={id => id === user?.id ? 'Du' : authors.data?.[id] ?? '…'} onSelect={id => selectAnnotation(id)} onEdit={editAnnotation}
         onUpdate={patchAnnotation} onDelete={deleteAnnotation} onReply={reply} />
     </TooltipProvider>

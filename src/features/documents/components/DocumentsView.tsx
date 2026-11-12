@@ -331,6 +331,7 @@ export function DocumentsView() {
     return labels[action];
   };
 
+  const [linkedAnnotationId, setLinkedAnnotationId] = useState<string | null>(null);
   const [annotateDoc, setAnnotateDoc] = useState<Document | null>(null);
   useEffect(() => {
     const id = searchParams.get('annotate');
@@ -338,10 +339,13 @@ export function DocumentsView() {
     let cancelled = false;
     void supabase.from('documents').select('*').eq('id', id).maybeSingle().then(({ data: target, error }) => {
       if (cancelled) return;
-      if (target && !error) setAnnotateDoc({ ...target, status: target.status ?? "draft",
-        archived_attachments: Array.isArray(target.archived_attachments) ? target.archived_attachments : undefined });
+      if (target && !error) {
+        setLinkedAnnotationId(searchParams.get("annotation"));
+        setAnnotateDoc({ ...target, status: target.status ?? "draft",
+          archived_attachments: Array.isArray(target.archived_attachments) ? target.archived_attachments : undefined });
+      }
       else notify.error("Dokument konnte nicht geöffnet werden");
-      const next = new URLSearchParams(searchParams); next.delete('annotate');
+      const next = new URLSearchParams(searchParams); next.delete('annotate'); next.delete('annotation');
       setSearchParams(next, { replace: true });
     });
     return () => { cancelled = true; };
@@ -350,7 +354,7 @@ export function DocumentsView() {
 
   if (annotateDoc) return (
     <div className="min-w-0 bg-gradient-subtle p-4">
-      <AnnotationWorkspace key={annotateDoc.id} document={annotateDoc} open onOpenChange={o => { if (!o) setAnnotateDoc(null); }} />
+      <AnnotationWorkspace key={annotateDoc.id} document={annotateDoc} initialAnnotationId={linkedAnnotationId} open onOpenChange={o => { if (!o) { setAnnotateDoc(null); setLinkedAnnotationId(null); } }} />
     </div>
   );
 
