@@ -207,16 +207,29 @@ Deno.serve(withSafeHandler("matrix-bot-handler", async (req) => {
 
   // Auth: accept either an authenticated Supabase user (in-app trigger) or a
   // valid shared secret in the X-Matrix-Webhook-Secret header (Matrix server).
-  const { requireAuth, requireSharedSecret, unauthorizedResponse } = await import("../_shared/security.ts");
+  const { requireAuth, requireSharedSecret, requireServiceRole, unauthorizedResponse } = await import("../_shared/security.ts");
   const authed = await requireAuth(req);
   const webhookOk = requireSharedSecret(req, "MATRIX_WEBHOOK_SECRET", "x-matrix-webhook-secret");
-  if (!authed && !webhookOk) {
+  const internalOk = requireServiceRole(req);
+  if (!authed && !webhookOk && !internalOk) {
     return unauthorizedResponse();
   }
 
   try {
     // Parse request body
     const body = (await req.json()) as MatrixSendRequestBody;
+    // Signed-in app users may only target their own Matrix subscriptions;
+    // targeting other users or broadcasting is reserved for trusted callers.
+    if (authed && !webhookOk && !internalOk) {
+      if (body.user_id && body.user_id !== authed.userId) {
+        return new Response(JSON.stringify({ success: false, error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      body.user_id = authed.userId;
+      body.allow_broadcast = false;
+    }
     console.log("📨 Matrix request body:", JSON.stringify(body, null, 2));
 
     // Get Matrix configuration from secrets
