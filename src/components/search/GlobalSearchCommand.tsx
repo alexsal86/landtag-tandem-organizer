@@ -191,7 +191,7 @@ export function GlobalSearchCommand() {
         .eq('tenant_id', currentTenant?.id ?? '');
       
       // Fuzzy search using pg_trgm similarity
-      query = query.or(`name.ilike.%${debouncedQuery}%,organization.ilike.%${debouncedQuery}%,company.ilike.%${debouncedQuery}%,email.ilike.%${debouncedQuery}%,phone.ilike.%${debouncedQuery}%,mobile_phone.ilike.%${debouncedQuery}%,role.ilike.%${debouncedQuery}%,position.ilike.%${debouncedQuery}%`);
+      query = query.or(`name.ilike.%${debouncedQuery}%,organization.ilike.%${debouncedQuery}%,company.ilike.%${debouncedQuery}%,email.ilike.%${debouncedQuery}%,phone.ilike.%${debouncedQuery}%,mobile_phone.ilike.%${debouncedQuery}%,position.ilike.%${debouncedQuery}%`);
       
       if (filters.category) {
         query = query.eq('category', filters.category);

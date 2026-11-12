@@ -75,7 +75,7 @@ export default function EditContact() {
   const fetchContact = async () => {
     const { data, error } = await supabase
       .from("contacts")
-      .select("id, user_id, name, email, phone, notes, role, organization, category, priority, last_contact, avatar_url, address, birthday, website, linkedin, twitter, facebook, instagram, xing, contact_type, organization_id, tags, tenant_id, first_name, last_name, title, department, position, business_street, business_house_number, business_postal_code, business_city, business_country, business_phone, mobile_phone, email_2, email_3, is_favorite, coordinates, gender")
+      .select("id, user_id, name, email, phone, notes, role:position, organization, category, priority, last_contact, avatar_url, address, birthday, website, linkedin, facebook, instagram, contact_type, organization_id, tags, tenant_id, first_name, last_name, title, position, business_street, business_house_number, business_postal_code, business_city, business_country, business_phone, mobile_phone, is_favorite, coordinates, gender")
       .eq("id", id!)
       .eq("tenant_id", currentTenant!.id)
       .single();
