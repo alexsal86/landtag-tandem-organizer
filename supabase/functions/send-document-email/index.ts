@@ -212,14 +212,14 @@ serve(withSafeHandler("send-document-email", async (req) => {
           };
         }
 
-        console.log(`✓ Sent to ${recipient.email}`);
+        console.log("✓ Document email sent");
       } catch (error: any) {
         failed++;
         failedRecipients.push({
           email: recipient.email,
           error: "Delivery failed",
         });
-        console.error(`✗ Failed ${recipient.email}:`, error.message);
+        console.error("✗ Document email failed:", error.message);
       }
     }
 

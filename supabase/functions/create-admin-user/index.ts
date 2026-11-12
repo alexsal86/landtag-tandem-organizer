@@ -74,7 +74,7 @@ serve(withSafeHandler("create-admin-user", async (req) => {
     // Generate password if not provided
     const userPassword = password || generatePassword();
 
-    console.log('Creating user with email:', email);
+    console.log('Creating admin user');
 
     // Create the user using Supabase Admin API
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({

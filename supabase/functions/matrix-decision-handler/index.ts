@@ -140,7 +140,7 @@ async function handleMatrixMessage(
 
   const [, command, token, messageText] = match;
 
-  console.log(`⚡ Decision command detected: ${command} with token ${token}`);
+  console.log(`⚡ Decision command detected: ${command}`);
 
   // Find the participant by token
   const { data: participant, error: participantError } = await supabase
@@ -164,7 +164,7 @@ async function handleMatrixMessage(
     .maybeSingle();
 
   if (participantError || !participant) {
-    console.error('❌ Participant not found for token:', token, participantError);
+    console.error('❌ Participant not found for supplied token', participantError?.message ?? '');
 
     await sendMatrixResponse(message.room_id,
       '❌ Ungültiger Token oder Entscheidung nicht gefunden.',
@@ -319,7 +319,7 @@ async function processDecisionCommand(
   matrixHomeserver: string
 ) {
   // This function can be used for direct API testing or future enhancements
-  console.log(`🎯 Processing direct decision command: ${command.command} for token ${command.token}`);
+  console.log(`🎯 Processing direct decision command: ${command.command}`);
 
   // Implementation similar to handleMatrixMessage but for direct API calls
   return { success: true, message: 'Direct command processed' };

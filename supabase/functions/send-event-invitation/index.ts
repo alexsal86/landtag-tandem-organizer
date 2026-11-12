@@ -250,10 +250,10 @@ const handler = async (req: Request): Promise<Response> => {
             html: getEmailHtml(rsvp, invitationUrl),
           });
 
-          console.log(`Email sent to ${rsvp.email}:`, emailResponse);
+          console.log("Event invitation sent for RSVP:", rsvp.id);
           return { email: rsvp.email, success: true };
         } catch (error) {
-          console.error(`Error sending to ${rsvp.email}:`, error);
+          console.error("Error sending event invitation for RSVP:", rsvp.id, error instanceof Error ? error.message : "");
           return { email: rsvp.email, success: false, error: String(error) };
         }
       }),

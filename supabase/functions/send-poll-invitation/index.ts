@@ -43,7 +43,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("=== SEND POLL INVITATION DEBUG ===");
     console.log("Poll ID:", pollId);
-    console.log("Participant emails:", participantEmails);
+    console.log("Poll invitation recipients:", participantEmails.length);
     console.log("Poll title:", pollTitle);
     console.log("Creator name:", creatorName);
     console.log("=== END DEBUG INFO ===");
@@ -62,25 +62,25 @@ const handler = async (req: Request): Promise<Response> => {
           .maybeSingle();
 
         if (participantError) {
-          console.error("Database error getting participant for", email, ":", participantError);
+          console.error("Database error getting poll participant:", participantError?.message ?? "");
           emailResults.push({ email, success: false, error: "Database error: " + participantError.message });
           continue;
         }
 
         if (!participant) {
-          console.error("Participant not found for", email);
+          console.error("Poll participant not found");
           emailResults.push({ email, success: false, error: "Participant not found in database" });
           continue;
         }
 
-        console.log("Found participant for", email, ":", {
+        console.log("Found poll participant:", {
           name: participant.name,
           hasToken: !!participant.token,
           tokenLength: participant.token?.length || 0
         });
 
         if (!participant.token) {
-          console.error("No token found for external participant", email);
+          console.error("No token found for external poll participant");
           emailResults.push({ email, success: false, error: "No token found for participant" });
           continue;
         }
@@ -91,7 +91,7 @@ const handler = async (req: Request): Promise<Response> => {
         const domain = requireAppBaseUrl(req);
         const pollUrl = `${domain}/poll-guest/${pollId}?token=${participantToken}`;
 
-        console.log("About to send email to:", email, "with URL:", pollUrl);
+        console.log("Sending poll invitation email");
         console.log("Using Resend API key:", Deno.env.get("RESEND_API_KEY")?.substring(0, 10) + "...");
 
         // Send invitation email
@@ -148,13 +148,12 @@ const handler = async (req: Request): Promise<Response> => {
             emailResults.push({ email, success: false, error: emailResponse.error });
           }
         } else {
-          console.log("Email sent successfully to:", email, "ID:", emailResponse.data?.id);
+          console.log("Poll invitation sent, ID:", emailResponse.data?.id);
           emailResults.push({ email, success: true, messageId: emailResponse.data?.id });
         }
 
       } catch (emailError) {
-        console.error("Error sending email to", email, ":", emailError);
-        console.error("Error details:", JSON.stringify(emailError, null, 2));
+        console.error("Error sending poll invitation:", emailError instanceof Error ? emailError.message : "");
         emailResults.push({ email, success: false, error: emailError instanceof Error ? emailError.message : "Unknown error" });
       }
     }
@@ -162,7 +161,6 @@ const handler = async (req: Request): Promise<Response> => {
     const successCount = emailResults.filter(r => r.success).length;
     console.log("=== EMAIL RESULTS SUMMARY ===");
     console.log(`Sent ${successCount}/${emailResults.length} emails successfully`);
-    console.log("Results:", JSON.stringify(emailResults, null, 2));
     console.log("=== END SUMMARY ===");
 
     return new Response(
