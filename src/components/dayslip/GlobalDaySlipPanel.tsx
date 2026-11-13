@@ -60,6 +60,21 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
     return () => setDockVisible?.(false);
   }, [open, setDockVisible]);
 
+  useEffect(() => {
+    if (!open) return;
+    const media = window.matchMedia("(max-width: 1023px)");
+    const previousOverflow = document.body.style.overflow;
+    const updateScrollLock = () => {
+      document.body.style.overflow = media.matches ? "hidden" : previousOverflow;
+    };
+    updateScrollLock();
+    media.addEventListener("change", updateScrollLock);
+    return () => {
+      media.removeEventListener("change", updateScrollLock);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
+
   const [showArchive, setShowArchive] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -334,7 +349,7 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
           aria-label="Tageszettel"
           className={cn(
             "flex flex-col border border-border/60 bg-background/95 backdrop-blur transition-[opacity,transform] duration-300 ease-out",
-            docked ? "relative h-full w-full border-y-0 border-r-0" : "fixed bottom-24 right-6 z-50 h-[min(84vh,920px)] w-[calc(100vw-1rem)] sm:w-[min(24rem,calc(100vw-2rem))] lg:w-[min(35rem,calc(100vw-3rem))] max-w-[calc(100vw-1rem)] rounded-2xl shadow-2xl",
+            docked ? "relative h-full w-full border-y-0 border-r-0" : "fixed inset-0 z-50 h-dvh w-full overflow-hidden border-0 bg-background pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] lg:inset-auto lg:bottom-24 lg:right-6 lg:h-[min(84vh,920px)] lg:w-[min(35rem,calc(100vw-3rem))] lg:max-w-[calc(100vw-1rem)] lg:rounded-2xl lg:border lg:bg-background/95 lg:shadow-2xl",
             closing ? "translate-y-3 opacity-0" : "translate-y-0 opacity-100",
           )}
           onDragOver={(event) => event.preventDefault()}
@@ -658,6 +673,7 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
       )}
 
       {!(docked && open) && <button type="button" className={cn(
+        open && "max-lg:hidden",
         "fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full border shadow-lg backdrop-blur transition-[transform,background-color,box-shadow] duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         isDraggingToDaySlip && canDropToDaySlip
           ? "border-palette-green bg-palette-green text-white ring-4 ring-palette-green/30 scale-110"
