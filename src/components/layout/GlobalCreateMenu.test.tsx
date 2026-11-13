@@ -39,10 +39,12 @@ describe("GlobalCreateMenu", () => {
   it("opens the create menu and lists the create actions", async () => {
     render(<GlobalCreateMenu />);
 
-    fireEvent.pointerDown(screen.getByRole("button", { name: /Globales Erstellen-Menü/i }), {
-      button: 0,
-      ctrlKey: false,
-    });
+    // jsdom has no PointerEvent constructor, so a plain pointerdown event would carry
+    // no `button` and Radix would ignore it. Dispatch a mouse-backed pointerdown instead.
+    fireEvent(
+      screen.getByRole("button", { name: /Globales Erstellen-Menü/i }),
+      new MouseEvent("pointerdown", { bubbles: true, cancelable: true, button: 0 })
+    );
 
     await waitFor(() => {
       expect(screen.getByRole("menuitem", { name: /Schnelle Notiz/i })).toBeInTheDocument();
