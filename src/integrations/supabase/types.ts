@@ -5083,8 +5083,27 @@ export type Database = {
           },
         ]
       }
+      employee_meeting_audit: {
+        Row: { id: string; meeting_id: string; actor: string; action: string; reason: string | null; protocol_hash: string | null; created_at: string }
+        Insert: { id?: string; meeting_id: string; actor: string; action: string; reason?: string | null; protocol_hash?: string | null; created_at?: string }
+        Update: { id?: string; meeting_id?: string; actor?: string; action?: string; reason?: string | null; protocol_hash?: string | null; created_at?: string }
+        Relationships: [{ foreignKeyName: "employee_meeting_audit_meeting_id_fkey"; columns: ["meeting_id"]; isOneToOne: false; referencedRelation: "employee_meetings"; referencedColumns: ["id"] }]
+      }
+      employee_meeting_private_notes: {
+        Row: { meeting_id: string; user_id: string; notes: string }
+        Insert: { meeting_id: string; user_id: string; notes?: string }
+        Update: { meeting_id?: string; user_id?: string; notes?: string }
+        Relationships: [{ foreignKeyName: "employee_meeting_private_notes_meeting_id_fkey"; columns: ["meeting_id"]; isOneToOne: false; referencedRelation: "employee_meetings"; referencedColumns: ["id"] }]
+      }
       employee_meetings: {
         Row: {
+          preparation_notified_at: string | null
+          acknowledgement_requested_at: string | null
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          protocol_hash: string | null
+          acknowledgement_comment: string | null
+          version: number
           action_items: Json | null
           cancellation_reason: string | null
           completed_at: string | null
@@ -5108,6 +5127,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          preparation_notified_at?: string | null
+          acknowledgement_requested_at?: string | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          protocol_hash?: string | null
+          acknowledgement_comment?: string | null
+          version?: number
           action_items?: Json | null
           cancellation_reason?: string | null
           completed_at?: string | null
@@ -5131,6 +5157,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          preparation_notified_at?: string | null
+          acknowledgement_requested_at?: string | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          protocol_hash?: string | null
+          acknowledgement_comment?: string | null
+          version?: number
           action_items?: Json | null
           cancellation_reason?: string | null
           completed_at?: string | null
@@ -14527,6 +14560,15 @@ export type Database = {
       }
     }
     Functions: {
+      get_latest_employee_meetings: { Args: { p_employee_ids: string[] }; Returns: { employee_id: string; meeting_id: string; meeting_date: string }[] }
+      get_employee_meeting_trend: { Args: { p_employee_id: string; p_tenant_id: string }; Returns: { id: string; meeting_date: string; status: string; mood: number | null; workload: number | null; balance: number | null }[] }
+      create_meeting_action_task: { Args: { p_action_item_id: string }; Returns: string }
+      request_protocol_acknowledgement: { Args: { p_meeting_id: string }; Returns: undefined }
+      acknowledge_meeting_protocol: { Args: { p_meeting_id: string; p_comment?: string; p_protocol_hash?: string }; Returns: undefined }
+      reopen_meeting_protocol: { Args: { p_meeting_id: string; p_reason: string }; Returns: undefined }
+      save_employee_meeting: { Args: { p_meeting_id: string; p_version: number; p_patch: Json; p_private_notes?: string }; Returns: number }
+      mutate_employee_meeting_action: { Args: { p_meeting_id: string; p_action: string; p_item_id?: string; p_data?: Json }; Returns: string }
+
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined

@@ -4,7 +4,7 @@ _Auto-generiert mit `npm run update:selftest-coverage`._
 
 Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
 
-Von 279 Tabellen haben 34 ein registriertes Szenario. 89 sind als Ausbau offen, 156 ausgenommen und 0 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
+Von 283 Tabellen haben 37 ein registriertes Szenario. 91 sind als Ausbau offen, 155 ausgenommen und 0 noch nicht eingeordnet. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
@@ -21,6 +21,8 @@ Von 279 Tabellen haben 34 ein registriertes Szenario. 89 sind als Ausbau offen, 
 | `daily-briefing-lifecycle` | Tages-Briefings (Vortag-Regel) | daily_briefings |
 | `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | day_slips |
 | `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | task_decisions, task_decision_participants |
+| `document-annotation` | Dokument-Annotation | documents, document_annotations, document_annotation_tasks, tasks, task_assignees |
+| `document-list` | Dokumente: Suche, Kategorien, Sortierung und Auswahl | Keine (reine Regeln) |
 | `event-planning-lifecycle` | Event-Planung (komplett: Termine, Speaker, Checkliste, Timeline) | event_plannings, event_planning_dates, event_planning_speakers, event_planning_contacts, event_planning_checklist_items, event_planning_timeline_assignments |
 | `jour-fixe-platform-integration` | Jour Fixe: Plattformquellen & Stafetten-Abschluss | meetings, meeting_agenda_items, tasks, task_decisions |
 | `knowledge-lifecycle` | Wissen: Fragen, Antworten und manuelle Prüfung | knowledge_questions, knowledge_question_events, knowledge_qa_notification_deliveries |
@@ -107,11 +109,13 @@ Von 279 Tabellen haben 34 ein registriertes Szenario. 89 sind als Ausbau offen, 
 | `distribution_lists` | Ausstehend | — |
 | `district_notes` | Ausstehend | — |
 | `district_support_assignments` | Ausstehend | — |
+| `document_annotation_tasks` | Szenario vorhanden | document-annotation |
+| `document_annotations` | Szenario vorhanden | document-annotation |
 | `document_categories` | Ausgenommen (nicht geprüft) | — |
 | `document_contacts` | Ausgenommen (nicht geprüft) | — |
 | `document_folders` | Ausstehend | — |
 | `document_topics` | Ausgenommen (nicht geprüft) | — |
-| `documents` | Szenario vorhanden | letter-lifecycle |
+| `documents` | Szenario vorhanden | document-annotation, letter-lifecycle |
 | `dossier_entries` | Ausstehend | — |
 | `dossier_links` | Ausgenommen (nicht geprüft) | — |
 | `dossier_position_versions` | Ausgenommen (nicht geprüft) | — |
@@ -129,6 +133,8 @@ Von 279 Tabellen haben 34 ein registriertes Szenario. 89 sind als Ausbau offen, 
 | `email_logs` | Ausgenommen (nicht geprüft) | — |
 | `email_templates` | Ausgenommen (nicht geprüft) | — |
 | `employee_meeting_action_items` | Ausstehend | — |
+| `employee_meeting_audit` | Ausstehend | — |
+| `employee_meeting_private_notes` | Ausstehend | — |
 | `employee_meeting_requests` | Ausstehend | — |
 | `employee_meetings` | Ausstehend | — |
 | `employee_settings` | Ausgenommen (nicht geprüft) | — |
@@ -264,7 +270,7 @@ Von 279 Tabellen haben 34 ein registriertes Szenario. 89 sind als Ausbau offen, 
 | `system_health` | Ausgenommen (nicht geprüft) | — |
 | `tags` | Ausgenommen (nicht geprüft) | — |
 | `task_archive_settings` | Ausgenommen (nicht geprüft) | — |
-| `task_assignees` | Ausgenommen (nicht geprüft) | — |
+| `task_assignees` | Szenario vorhanden | document-annotation |
 | `task_categories` | Ausgenommen (nicht geprüft) | — |
 | `task_comments` | Ausgenommen (nicht geprüft) | — |
 | `task_decision_attachments` | Ausgenommen (nicht geprüft) | — |
@@ -279,7 +285,7 @@ Von 279 Tabellen haben 34 ein registriertes Szenario. 89 sind als Ausbau offen, 
 | `task_snoozes` | Ausgenommen (nicht geprüft) | — |
 | `task_statuses` | Ausgenommen (nicht geprüft) | — |
 | `task_topics` | Ausgenommen (nicht geprüft) | — |
-| `tasks` | Szenario vorhanden | annual-task-stafette, appointment-briefing-lifecycle, case-item-lifecycle, jour-fixe-platform-integration, letter-lifecycle, meeting-lifecycle, quick-note-lifecycle, task-lifecycle |
+| `tasks` | Szenario vorhanden | annual-task-stafette, appointment-briefing-lifecycle, case-item-lifecycle, document-annotation, jour-fixe-platform-integration, letter-lifecycle, meeting-lifecycle, quick-note-lifecycle, task-lifecycle |
 | `team_announcement_dismissals` | Ausgenommen (nicht geprüft) | — |
 | `team_announcements` | Ausstehend | — |
 | `team_dashboard_members` | Ausgenommen (nicht geprüft) | — |

@@ -1,3 +1,4 @@
+import { extractPlainTextFromHtml } from "../protocolText";
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -72,7 +73,7 @@ export function EmployeeMeetingPDFExport({
       // Content
       pdf.setFont('helvetica', 'normal');
       if (content && content.trim()) {
-        currentY = addText(content, leftMargin, currentY, contentWidth, 11);
+        currentY = addText(extractPlainTextFromHtml(content), leftMargin, currentY, contentWidth, 11);
       } else {
         pdf.setTextColor(150, 150, 150);
         currentY = addText('- Keine Angaben -', leftMargin, currentY, contentWidth, 10);
@@ -104,12 +105,15 @@ export function EmployeeMeetingPDFExport({
     currentY += 10;
     
     // ============ VORBEREITUNG ============
-    if (employeePrep?.notes || supervisorPrep?.notes) {
+    if (employeePrep?.notes || employeePrep?.proud_of || employeePrep?.need_support || employeePrep?.skills_to_deepen || supervisorPrep?.notes) {
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(14);
       pdf.text('Vorbereitung', leftMargin, currentY);
       currentY += 10;
       
+      if (employeePrep?.proud_of) addSection('Worauf bin ich stolz?', employeePrep.proud_of);
+      if (employeePrep?.need_support) addSection('Wo brauche ich Unterstützung?', employeePrep.need_support);
+      if (employeePrep?.skills_to_deepen) addSection('Welche Fähigkeiten möchte ich vertiefen?', employeePrep.skills_to_deepen);
       if (employeePrep?.notes) {
         addSection('Vorbereitung Mitarbeiter', employeePrep.notes);
       }
@@ -235,18 +239,18 @@ export function EmployeeMeetingPDFExport({
       
       // Action items
       pdf.setFont('helvetica', 'normal');
-      actionItems.forEach((item, index) => {
+      actionItems.forEach((item) => {
         // Page break if needed
         if (currentY > pageHeight - 20) {
           pdf.addPage();
           currentY = 20;
         }
         
-        const descLines = pdf.splitTextToSize(item.description, 85);
+        const descLines = pdf.splitTextToSize(extractPlainTextFromHtml(item.description), 85);
         const maxLines = Math.min(descLines.length, 3);
         
         pdf.text(descLines.slice(0, maxLines), leftMargin, currentY);
-        pdf.text(item.owner === 'employee' ? 'Mitarbeiter' : 'Vorgesetzter', leftMargin + 90, currentY);
+        pdf.text(item.owner === 'both' ? 'Beide' : item.owner === 'employee' ? 'Mitarbeiter' : 'Vorgesetzter', leftMargin + 90, currentY);
         pdf.text(item.due_date ? format(new Date(item.due_date), 'dd.MM.yy') : '-', leftMargin + 130, currentY);
         
         const statusText = item.status === 'completed' ? 'Erledigt' : 
@@ -257,6 +261,10 @@ export function EmployeeMeetingPDFExport({
       });
     }
     
+    if (meeting.protocol_hash) {
+      addSection('Protokollfreigabe', `${meeting.status === 'acknowledged' ? 'Bestätigt' : 'Bestätigung offen'}${meeting.acknowledged_at ? ` am ${format(new Date(meeting.acknowledged_at), 'dd.MM.yyyy HH:mm')}` : ''} · SHA-256: ${meeting.protocol_hash.slice(0, 12)}`);
+      if (meeting.acknowledgement_comment) addSection('Einspruch/Ergänzung', meeting.acknowledgement_comment);
+    }
     // ============ FOOTER / SIGNATURES ============
     if (currentY > pageHeight - 60) {
       pdf.addPage();

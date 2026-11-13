@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "source": "src/integrations/supabase/types.ts",
   "counts": {
-    "total": 279,
-    "scenario": 34,
-    "deferred": 89,
-    "excluded": 156,
+    "total": 283,
+    "scenario": 37,
+    "deferred": 91,
+    "excluded": 155,
     "missing": 0
   },
   "scenarios": [
@@ -376,6 +376,34 @@
           ]
         }
       ],
+      "registered": true
+    },
+    {
+      "id": "document-annotation",
+      "title": "Dokument-Annotation",
+      "touches": [
+        "documents",
+        "document_annotations",
+        "document_annotation_tasks",
+        "tasks",
+        "task_assignees"
+      ],
+      "features": [
+        "documents",
+        "permissions",
+        "tasks"
+      ],
+      "writes": [],
+      "registered": true
+    },
+    {
+      "id": "document-list",
+      "title": "Dokumente: Suche, Kategorien, Sortierung und Auswahl",
+      "touches": [],
+      "features": [
+        "documents"
+      ],
+      "writes": [],
       "registered": true
     },
     {
@@ -1196,6 +1224,20 @@
       "scenarios": []
     },
     {
+      "table": "document_annotation_tasks",
+      "status": "scenario",
+      "scenarios": [
+        "document-annotation"
+      ]
+    },
+    {
+      "table": "document_annotations",
+      "status": "scenario",
+      "scenarios": [
+        "document-annotation"
+      ]
+    },
+    {
       "table": "document_categories",
       "status": "excluded",
       "scenarios": []
@@ -1219,6 +1261,7 @@
       "table": "documents",
       "status": "scenario",
       "scenarios": [
+        "document-annotation",
         "letter-lifecycle"
       ]
     },
@@ -1304,6 +1347,16 @@
     },
     {
       "table": "employee_meeting_action_items",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "employee_meeting_audit",
+      "status": "deferred",
+      "scenarios": []
+    },
+    {
+      "table": "employee_meeting_private_notes",
       "status": "deferred",
       "scenarios": []
     },
@@ -2018,8 +2071,10 @@
     },
     {
       "table": "task_assignees",
-      "status": "excluded",
-      "scenarios": []
+      "status": "scenario",
+      "scenarios": [
+        "document-annotation"
+      ]
     },
     {
       "table": "task_categories",
@@ -2110,6 +2165,7 @@
         "annual-task-stafette",
         "appointment-briefing-lifecycle",
         "case-item-lifecycle",
+        "document-annotation",
         "jour-fixe-platform-integration",
         "letter-lifecycle",
         "meeting-lifecycle",

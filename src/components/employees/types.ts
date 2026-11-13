@@ -106,16 +106,22 @@ export type EmployeeMeetingStatus =
   | "scheduled"
   | "in_progress"
   | "completed"
+  | "pending_acknowledgement"
+  | "acknowledged"
   | "cancelled"
   | "cancelled_by_employee"
   | "rescheduled";
 
 export type MeetingPreparationData = {
+  proud_of?: string;
+  need_support?: string;
+  skills_to_deepen?: string;
   notes?: string;
   private_notes?: string;
 };
 
 export type ProtocolData = {
+  previous_action_reasons?: Record<string, string>;
   wellbeing_mood?: string;
   wellbeing_workload?: string;
   wellbeing_balance?: string;
@@ -139,7 +145,7 @@ export type ProtocolData = {
 };
 
 export type ActionItemOwner = "employee" | "supervisor" | "both";
-export type ActionItemStatus = "open" | "in_progress" | "completed";
+export type ActionItemStatus = "open" | "in_progress" | "completed" | "cancelled";
 
 export type ActionItem = {
   id?: string;
@@ -168,6 +174,12 @@ export type EmployeeMeeting = {
   meeting_date: string;
   meeting_type: EmployeeMeetingType;
   status: EmployeeMeetingStatus;
+  version: number;
+  acknowledgement_requested_at?: string | null;
+  acknowledged_at?: string | null;
+  acknowledged_by?: string | null;
+  protocol_hash?: string | null;
+  acknowledgement_comment?: string | null;
   protocol_data?: ProtocolData | null;
   employee_preparation?: MeetingPreparationData | null;
   supervisor_preparation?: MeetingPreparationData | null;

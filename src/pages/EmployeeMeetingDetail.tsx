@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { debugConsole } from "@/utils/debugConsole";
 import { notify } from "@/lib/notify";
-import { toast } from "@/hooks/use-toast";
+import { EMPLOYEE_MEETING_HELP_CONTENT } from "@/config/helpContent";
+import { PageHelpButton } from "@/components/shared/PageHelpButton";
 
 export default function EmployeeMeetingDetail() {
   const { meetingId, subId } = useParams<{ meetingId?: string; subId?: string }>();
@@ -40,15 +41,8 @@ export default function EmployeeMeetingDetail() {
           return;
         }
 
-        const canAccess = meeting.employee_id === user.id || meeting.conducted_by === user.id;
-        setHasAccess(canAccess);
-
-        if (!canAccess) {
-          notify.error("Zugriff verweigert", {
-            description: "Sie haben keinen Zugriff auf dieses Gespräch."
-});
-          navigate("/employee");
-        }
+        // SELECT is already scoped to the employee/current direct supervisor by RLS.
+        setHasAccess(true);
       } catch (error: unknown) {
         debugConsole.error("Error checking access:", error);
         notify.error("Fehler", {
@@ -61,7 +55,7 @@ export default function EmployeeMeetingDetail() {
     };
 
     checkAccess();
-  }, [user, resolvedMeetingId, navigate, toast]);
+  }, [user, resolvedMeetingId, navigate]);
 
   if (loading) {
     return (
@@ -92,8 +86,9 @@ export default function EmployeeMeetingDetail() {
           <ArrowLeft className="h-4 w-4" />
           Zurück
         </Button>
+        <PageHelpButton {...EMPLOYEE_MEETING_HELP_CONTENT} />
       </div>
-      <EmployeeMeetingProtocol meetingId={resolvedMeetingId} onBack={() => navigate("/employee")} />
+      <EmployeeMeetingProtocol key={resolvedMeetingId} meetingId={resolvedMeetingId} onBack={() => navigate("/employee")} />
     </div>
   );
 }

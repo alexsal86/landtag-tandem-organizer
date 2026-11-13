@@ -112,3 +112,15 @@ export const MYWORK_HELP_CONTENT: Record<string, HelpContent> = {
     ]
   }
 };
+
+export const EMPLOYEE_MEETING_HELP_CONTENT: HelpContent = {
+  title: "Mitarbeitergespräche",
+  description: "Gespräche vorbereiten, Vereinbarungen bestätigen und Maßnahmen gemeinsam verfolgen.",
+  features: [
+    "Der Vorbereitungsbogen öffnet 7 Tage vor dem Termin; private Notizen bleiben ausschließlich bei Ihnen.",
+    "Nach Abschluss sendet die Gesprächsleitung das gesperrte Protokoll zur Bestätigung. Einsprüche bleiben offen, bis die Leitung das Protokoll begründet wieder öffnet.",
+    "Erst die Bestätigung ohne Einspruch erzeugt Aufgaben. Bei gemeinsamer Verantwortung führt die mitarbeitende Person, die Führungskraft wirkt mit.",
+    "Der Rückblick übernimmt offene Maßnahmen als Verweise auf bestehende Aufgaben; die Gründe werden im aktuellen Gespräch dokumentiert.",
+    "Der Belastungsverlauf dient der Unterstützung und ist nur für die betroffene Person und ihre direkte Führungskraft sichtbar.",
+  ],
+};

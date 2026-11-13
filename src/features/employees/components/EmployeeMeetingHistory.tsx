@@ -182,6 +182,8 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
       scheduled: "Geplant",
       in_progress: "In Bearbeitung",
       completed: "Abgeschlossen",
+      pending_acknowledgement: "Bestätigung offen",
+      acknowledged: "Bestätigt",
       cancelled: "Abgesagt",
       cancelled_by_employee: "Vom MA abgesagt",
       rescheduled: "Umterminiert",
@@ -225,6 +227,8 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
     { value: "all", label: "Alle" },
     { value: "in_progress", label: "In Bearbeitung" },
     { value: "completed", label: "Abgeschlossen" },
+    { value: "pending_acknowledgement", label: "Bestätigung offen" },
+    { value: "acknowledged", label: "Bestätigt" },
     { value: "cancelled", label: "Abgesagt" },
     ...(["scheduled", "rescheduled"].filter(status => meetings.some(meeting => meeting.status === status)).map(status => ({
       value: status, label: status === "scheduled" ? "Geplant" : "Umterminiert",
