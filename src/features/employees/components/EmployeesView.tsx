@@ -1,3 +1,4 @@
+import { TeamRitualWorkspace } from '@/features/team-rituals/TeamRitualWorkspace';
 import { HrWorkspace } from "@/features/onboarding-hr/HrWorkspace";
 import { ResponsibilityMatrix } from "@/features/responsibilities/ResponsibilityMatrix";
 import { useCallback, useEffect, useState } from "react";
@@ -22,7 +23,7 @@ import { PendingLeavesTable, EmployeeListTable } from "@/components/employees/Em
 export function EmployeesView() {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get("tab");
-  const activeTab = requestedTab && ["overview", "meetings", "timetracking", "responsibilities", "hr"].includes(requestedTab)
+  const activeTab = requestedTab && ["overview", "meetings", "timetracking", "responsibilities", "hr", "rituals"].includes(requestedTab)
     ? requestedTab : "overview";
   const handleTabChange = (tab: string) => {
     setSearchParams(previous => {
@@ -68,7 +69,7 @@ export function EmployeesView() {
 
   if (!data.isAdmin) {
     return (
-      <div><Tabs value={["responsibilities", "hr"].includes(activeTab) ? activeTab : "overview"} onValueChange={handleTabChange}><TabsList className="h-auto flex-wrap"><TabsTrigger value="overview">Mein Profil</TabsTrigger><TabsTrigger value="responsibilities">Zuständigkeiten & Matrix</TabsTrigger><TabsTrigger value="hr">HR-Onboarding & Offboarding</TabsTrigger></TabsList><TabsContent value="responsibilities"><ResponsibilityMatrix /></TabsContent><TabsContent value="hr"><HrWorkspace /></TabsContent><TabsContent value="overview"><EmployeeSelfView
+      <div><Tabs value={["responsibilities", "hr", "rituals"].includes(activeTab) ? activeTab : "overview"} onValueChange={handleTabChange}><TabsList className="h-auto flex-wrap"><TabsTrigger value="overview">Mein Profil</TabsTrigger><TabsTrigger value="responsibilities">Zuständigkeiten & Matrix</TabsTrigger><TabsTrigger value="hr">HR-Onboarding & Offboarding</TabsTrigger><TabsTrigger value="rituals">Team-Rituale</TabsTrigger></TabsList><TabsContent value="responsibilities"><ResponsibilityMatrix /></TabsContent><TabsContent value="hr"><HrWorkspace /></TabsContent><TabsContent value="rituals"><TeamRitualWorkspace /></TabsContent><TabsContent value="overview"><EmployeeSelfView
         loading={data.loading}
         selfSettings={data.selfSettings}
         selfLeaveAgg={data.selfLeaveAgg}
@@ -108,7 +109,7 @@ export function EmployeesView() {
         <TabsList className="mb-4 h-auto flex-wrap">
           <TabsTrigger value="overview"><Calendar className="h-4 w-4 mr-2" />Übersicht</TabsTrigger>
           <TabsTrigger value="meetings"><MessageSquare className="h-4 w-4 mr-2" />Gespräche</TabsTrigger>
-          <TabsTrigger value="responsibilities">Zuständigkeiten & Matrix</TabsTrigger><TabsTrigger value="hr">HR-Onboarding & Offboarding</TabsTrigger>
+          <TabsTrigger value="responsibilities">Zuständigkeiten & Matrix</TabsTrigger><TabsTrigger value="hr">HR-Onboarding & Offboarding</TabsTrigger><TabsTrigger value="rituals">Team-Rituale</TabsTrigger>
           <TabsTrigger value="timetracking"><Clock className="h-4 w-4 mr-2" />Zeiterfassung</TabsTrigger>
         </TabsList>
 
@@ -147,7 +148,7 @@ export function EmployeesView() {
           <EmployeeMeetingHistory showFilters={true} refreshTrigger={meetingHistoryRefreshTrigger} onScheduleMeeting={() => setMeetingEmployeePickerOpen(true)} />
         </TabsContent>
 
-        <TabsContent value="responsibilities"><ResponsibilityMatrix /></TabsContent><TabsContent value="hr"><HrWorkspace /></TabsContent>
+        <TabsContent value="responsibilities"><ResponsibilityMatrix /></TabsContent><TabsContent value="hr"><HrWorkspace /></TabsContent><TabsContent value="rituals"><TeamRitualWorkspace /></TabsContent>
         <TabsContent value="timetracking">
           <AdminTimeTrackingView />
         </TabsContent>

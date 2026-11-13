@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ConfettiAnimation } from '@/components/celebrations/ConfettiAnimation';
 import { useTeamRituals } from './data';
-import { berlinDay, upcomingTeamEvents } from './logic';
+import { berlinDay, upcomingAnniversaries, upcomingTeamEvents } from './logic';
 export function TeamEvents() {
   const { data } = useTeamRituals();
   const [celebration, setCelebration] = useState(0);
-  if (!data?.enabled || !data.own?.opted_in) return null;
+  if (!data?.enabled) return null;
   const today = berlinDay(new Date());
-  const events = upcomingTeamEvents(data.profiles, new Date());
+  const events = [...upcomingAnniversaries(data.employment, new Date()),
+    ...(data.own?.opted_in ? upcomingTeamEvents(data.profiles.map(p => ({ ...p, joined_on: null })), new Date()) : [])]
+    .sort((a, b) => a.date.localeCompare(b.date));
   if (!events.length) return null;
   return <aside className="my-3 space-y-2 text-sm" aria-label="Team-Ereignisse diese Woche">
     <p className="font-medium">Im Team diese Woche</p>

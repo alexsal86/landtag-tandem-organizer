@@ -98,3 +98,10 @@
 - Lokale Paketinstallation ohne Manifest-/Lockfile-Änderung: bestehende Peer-/Lockfile-Inkonsistenz verhindert `npm ci`; deshalb `npm install --legacy-peer-deps --ignore-scripts --no-package-lock --no-save`.
 - [x] Integration auf aktuellem `main`: additive Konflikte in Roadmap, Selbsttest-Registry und RPC-Typen zusammengeführt; fehlende `regionIds`/`committeeIds` beim Aufgabenformular-Reset aus parallel integrierter Zuständigkeitsmatrix ergänzt.
 - [x] Phase-3-PR veröffentlicht: https://github.com/alexsal86/landtag-tandem-organizer/pull/1423
+
+# Team-Rituale – Ergänzungen zur Phase 1
+- [x] Reiter „Team-Rituale“ unter `/employee?tab=rituals` für alle aktiven Mitglieder; Fragenbank und Mandantenfreigabe für Abgeordnete und Büroleitung. Dashboard verweist direkt darauf.
+- [x] Eintrittsjubiläen automatisch aus `employee_settings.employment_start_date`, ohne persönliche Teilnahme-/Geburtstagsfreigabe. Schmale tenant-geprüfte Projektion statt Erweiterung der HR-Leserechte. Das doppelte Eintrittsdatum im Ritualprofil wird geleert und nicht mehr verwendet.
+- [x] Geburtstage bleiben freiwillig; Kalenderwoche und Konfetti berücksichtigen automatisch ermittelte Jubiläen.
+- [ ] Migration `20261113160000_team_ritual_employee_access.sql` anwenden und Rollen, zugeordnetes Eintrittsdatum und Mandantenwechsel mit echter Anmeldung prüfen — externe Supabase-Testsitzung fehlt.
+- Gezielte Prüfungen erfolgen gesammelt mit den nachfolgenden Phasen; keine zusätzlichen Hook-/Komponenten-/Datenbanktests.

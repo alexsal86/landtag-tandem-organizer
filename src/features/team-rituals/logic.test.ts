@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { berlinDay, berlinWeek, isValidWeeklyAnswer, pickNextQuestion, upcomingTeamEvents, type TeamProfile } from './logic';
+import { berlinDay, berlinWeek, canManageTeamRituals, upcomingAnniversaries, isValidWeeklyAnswer, pickNextQuestion, upcomingTeamEvents, type TeamProfile } from './logic';
 const profile: TeamProfile = { user_id: 'a', display_name: 'Team', opted_in: true, show_events: true, birthday: '02-29', birth_year: null, joined_on: null };
 describe('Team-Rituale', () => {
+  it('allows both office leadership roles and derives anniversaries without game consent', () => {
+    expect(canManageTeamRituals('abgeordneter')).toBe(true);
+    expect(canManageTeamRituals('bueroleitung')).toBe(true);
+    expect(canManageTeamRituals('mitarbeiter')).toBe(false);
+    expect(upcomingAnniversaries([{ user_id: 'a', display_name: 'Team', joined_on: '2020-12-31' }], new Date('2025-12-31T12:00Z'))[0]).toMatchObject({ kind: 'anniversary', years: 5 });
+  });
   it('accepts optional answers only with 1–280 Unicode characters', () => {
     expect(isValidWeeklyAnswer('   ')).toBe(false);
     expect(isValidWeeklyAnswer('😀'.repeat(280))).toBe(true);

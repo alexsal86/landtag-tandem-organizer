@@ -51,3 +51,12 @@ export function isValidWeeklyAnswer(answer: string): boolean {
   const length = Array.from(answer.trim()).length;
   return length > 0 && length <= 280;
 }
+
+export interface EmploymentProfile { user_id: string; display_name: string; joined_on: string }
+/** Employment anniversaries use canonical personnel data, independently of game/birthday consent. */
+export function upcomingAnniversaries(profiles: readonly EmploymentProfile[], today: Date): TeamEvent[] {
+  return upcomingTeamEvents(profiles.map(p => ({ ...p, opted_in: true, show_events: true, birthday: null, birth_year: null })), today);
+}
+export function canManageTeamRituals(role: string | null): boolean {
+  return role === 'abgeordneter' || role === 'bueroleitung';
+}

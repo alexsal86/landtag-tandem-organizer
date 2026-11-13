@@ -4,11 +4,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
 import type { Json } from '@/integrations/supabase/types';
-import { berlinDay, berlinWeek, type TeamProfile } from './logic';
+import { berlinDay, berlinWeek, type EmploymentProfile, type TeamProfile } from './logic';
 export interface RitualQuestion { id: string; question: string; active: boolean }
 export interface Snapshot {
   enabled: boolean; admin: boolean; own: TeamProfile | null; profiles: TeamProfile[];
-  questions: RitualQuestion[]; week: { id: string; question: string } | null;
+  employment: EmploymentProfile[]; questions: RitualQuestion[]; week: { id: string; question: string } | null;
   answers: { user_id: string; answer: string; display_name: string }[];
 }
 // Validate every field consumed by the UI at the RPC boundary.
@@ -42,6 +42,7 @@ function decode(value: Json): Snapshot {
   return {
     enabled: bool(row.enabled), admin: bool(row.admin), own: row.own === null ? null : profile(row.own!),
     profiles: list(row.profiles).map(profile),
+    employment: list(row.employment ?? []).map(value => { const p = record(value); return { user_id: text(p.user_id), display_name: text(p.display_name), joined_on: text(p.joined_on) }; }),
     questions: list(row.questions).map(value => { const q = record(value); return { id: text(q.id), question: text(q.question), active: bool(q.active) }; }),
     week: week ? { id: text(week.id), question: text(week.question) } : null,
     answers: list(row.answers).map(value => { const a = record(value); return { user_id: text(a.user_id), answer: text(a.answer), display_name: text(a.display_name) }; }),

@@ -1,11 +1,16 @@
 import type { TestScenario } from '../types';
-import { berlinDay, berlinWeek, isValidWeeklyAnswer, pickNextQuestion, upcomingTeamEvents, type TeamProfile } from '@/features/team-rituals/logic';
+import { berlinDay, berlinWeek, canManageTeamRituals, upcomingAnniversaries, isValidWeeklyAnswer, pickNextQuestion, upcomingTeamEvents, type TeamProfile } from '@/features/team-rituals/logic';
 export const teamRitualsScenario: TestScenario = {
   id: 'team-rituals', title: 'Freiwillige Team-Rituale',
   description: 'Fragenrotation und Team-Ereignisse ohne Datenbankzugriff.',
   features: ['dashboard'], touches: [],
   limitations: ['RLS, Rollen, parallele RPC-Aufrufe, Freigaben und GDPR-Löschung mit Anmeldung separat prüfen.'],
   steps: [
+    { id: 'employee-access-anniversary', label: 'Leitungsrollen und automatische Eintrittsjubiläen', kind: 'logic', run: async () => ({
+      ok: canManageTeamRituals('abgeordneter') && canManageTeamRituals('bueroleitung') && !canManageTeamRituals('mitarbeiter')
+        && upcomingAnniversaries([{ user_id: 'a', display_name: 'Team', joined_on: '2020-12-31' }], new Date('2025-12-31T12:00Z'))[0]?.years === 5,
+      message: 'Beide Leitungsrollen können verwalten; Eintrittsjubiläen benötigen keine Spiel-/Geburtstagsfreigabe.',
+    }) },
     { id: 'answer-length', label: 'Freiwillige Antworten mit höchstens 280 Zeichen', kind: 'logic', run: async () => ({
       ok: !isValidWeeklyAnswer(' ') && isValidWeeklyAnswer('😀'.repeat(280)) && !isValidWeeklyAnswer('a'.repeat(281)),
       message: 'Leere Antworten und mehr als 280 Unicode-Zeichen werden abgewiesen.',
