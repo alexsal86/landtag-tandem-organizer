@@ -1,3 +1,4 @@
+import { checkBingo, readBingoState, validBingoFields, bingoBoard } from '@/features/team-rituals/bingo';
 import { isValidFunFacts } from '@/features/team-rituals/twoTruths';
 import type { TestScenario } from '../types';
 import { berlinDay, berlinWeek, canManageTeamRituals, upcomingAnniversaries, isValidWeeklyAnswer, pickNextQuestion, upcomingTeamEvents, type TeamProfile } from '@/features/team-rituals/logic';
@@ -7,6 +8,15 @@ export const teamRitualsScenario: TestScenario = {
   features: ['dashboard'], touches: [],
   limitations: ['RLS, Rollen, parallele RPC-Aufrufe, Freigaben und GDPR-Löschung mit Anmeldung separat prüfen.'],
   steps: [
+    { id: 'bingo-rules', label: 'Bingo-Reihen und lokaler Wochenzustand', kind: 'logic', run: async () => {
+      const fields = Array.from({ length: 12 }, (_, index) => `Feld ${index}`);
+      return { ok: checkBingo([0, 1, 2]) && checkBingo([0, 4, 8]) && !checkBingo([0, 0, 0])
+        && validBingoFields(fields) && bingoBoard(fields, 'same').length === 9
+        && JSON.stringify(bingoBoard(fields, 'same')) === JSON.stringify(bingoBoard(fields, 'same'))
+        && !readBingoState('{invalid', 'current').started
+        && !readBingoState(JSON.stringify({ scope: 'old', started: true, selected: [0, 1, 2] }), 'current').started,
+        message: 'Reihen, Spalten und Diagonalen; lokale Auswahl ist an Person, Mandant, Kalenderwoche und Konfiguration gebunden.' };
+    } },
     { id: 'two-truths-profile', label: 'Drei verschiedene Aussagen und genau eine Lüge', kind: 'logic', run: async () => ({
       ok: isValidFunFacts(['Wahrheit A', 'Wahrheit B', 'Erfunden'], 2)
         && !isValidFunFacts(['Gleich', 'gleich', 'Erfunden'], 2) && !isValidFunFacts(['A', 'B', 'C'], 3),

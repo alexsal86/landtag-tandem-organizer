@@ -1,3 +1,4 @@
+import { BingoWidget } from '@/features/team-rituals/BingoWidget';
 import { TwoTruthsWidget } from '@/features/team-rituals/TwoTruthsWidget';
 import { WeeklyQuestionWidget } from '@/features/team-rituals/WeeklyQuestionWidget';
 import { Phone, Timer, FileText, Plus, X, ClipboardCheck } from "lucide-react";
@@ -27,6 +28,7 @@ interface WidgetQuickAccessProps {
 }
 
 const WIDGET_REGISTRY = [
+  { id: 'mandate_bingo', name: 'Mandats-Bingo', icon: FileText, description: 'Lokales Bingo fürs Büro' },
   { id: 'two_truths', name: 'Zwei Wahrheiten, eine Lüge', icon: FileText, description: 'Freiwilliges Monatsquiz' },
   { id: 'weekly_question', name: 'Frage der Woche', icon: FileText, description: 'Freiwillige Team-Rituale, Geburtstage und Jubiläen' },
   { id: 'quicknotes', name: 'Notizen', icon: FileText, description: 'Schnelle Notizen erstellen und verwalten' },
@@ -161,6 +163,7 @@ export function WidgetQuickAccess({ activeWidget, onWidgetChange }: WidgetQuickA
 
       {/* Widget content below buttons */}
       <div className="rounded-lg border bg-card shadow-sm h-[700px] overflow-auto">
+        {activeWidget === 'mandate_bingo' && <BingoWidget />}
         {activeWidget === 'two_truths' && <TwoTruthsWidget />}
         {activeWidget === 'weekly_question' && <WeeklyQuestionWidget />}
         {activeWidget === 'quicknotes' && <QuickNotesWidget />}

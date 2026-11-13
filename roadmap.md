@@ -112,3 +112,10 @@
 - [x] Lösung ausschließlich nach eigener Antwort über `answer_two_truths_quiz`; Quiz-/Antwort-/Geheimnistabellen ohne Client-Leserechte, keine Punktetabelle. Der separate Profil-Editor darf ausschließlich die eigene Lügenmarkierung laden.
 - [x] Entzug der Freigabe, Teilnahmeende, Kontolöschung und Mitgliedschaftsentzug entfernen Quizdaten über geprüfte RPCs, Trigger und Cascades. Ein neuer Logic-Selbsttest-Schritt, kein zusätzliches Unit-Test-File.
 - [ ] Migration `20261113161000_team_two_truths.sql` anwenden; Payload vor/nach Antwort, wiederholte/parallele Antwort, Monatswechsel, Freigabeentzug und GDPR mit echter Anmeldung prüfen — externe Supabase-Testsitzung fehlt.
+
+# Team-Rituale – Phase 3: Mandats-Bingo
+- [x] Mobiles 3×3-Widget `mandate_bingo`, freiwilliger lokaler Start, zurücksetzen/beenden und vorhandenes Konfetti bei Bingo. Keine Punkte, Streaks oder Ranglisten.
+- [x] Ausschließlich lokale Auswahl je Benutzer/Mandant; Wochen-/Konfigurationswechsel beginnt neue Runde. Nur neutrale Feldkonfiguration liegt tenant-geschützt in der Datenbank.
+- [x] 12 neutrale Standardfelder und Pflege durch Abgeordnete/Büroleitung unter Mitarbeiter → Team-Rituale; Schreibaktionen nur per RPC mit Rollen-/Tenant-Prüfung.
+- [x] Pure `checkBingo`, ein kleines zusätzliches Unit-Test-File und ein Logic-Selbsttest-Schritt.
+- [ ] Migration `20261113162000_team_bingo.sql` anwenden; Konfiguration mit Leitungs-/Mitarbeiterkonto und Tenantwechsel angemeldet prüfen — externe Supabase-Testsitzung fehlt.

@@ -8,6 +8,7 @@ export type WidgetSize =
 export const DASHBOARD_WIDGET_TYPES = [
   'weekly_question',
   'two_truths',
+  'mandate_bingo',
   'stats',
   'tasks',
   'schedule',
@@ -61,6 +62,7 @@ export type DashboardDefaultWidgetConfig = DashboardWidgetConfigBase;
 export interface WidgetConfigMap {
   weekly_question: DashboardDefaultWidgetConfig;
   two_truths: DashboardDefaultWidgetConfig;
+  mandate_bingo: DashboardDefaultWidgetConfig;
   stats: DashboardDefaultWidgetConfig;
   tasks: DashboardDefaultWidgetConfig;
   schedule: DashboardDefaultWidgetConfig;

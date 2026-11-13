@@ -541,6 +541,7 @@ export function useDashboardLayout() {
       'actions': 'Aktionen',
       'weekly_question': 'Frage der Woche',
       'two_truths': 'Zwei Wahrheiten, eine Lüge',
+      'mandate_bingo': 'Mandats-Bingo',
       'stakeholder-network': 'Stakeholder-Netzwerk'
     };
     

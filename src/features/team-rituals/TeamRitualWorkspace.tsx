@@ -1,3 +1,4 @@
+import { BingoWidget, BingoSettings } from './BingoWidget';
 import { FunFactsEditor } from './FunFactsEditor';
 import { TwoTruthsWidget } from './TwoTruthsWidget';
 import { QuestionBank } from './QuestionBank';
@@ -12,5 +13,7 @@ export function TeamRitualWorkspace() {
     <WeeklyQuestionWidget />
     <FunFactsEditor />
     <TwoTruthsWidget />
+    <BingoSettings />
+    <BingoWidget />
   </section>;
 }

@@ -14871,6 +14871,8 @@ export type Database = {
       }
     }
     Functions: {
+      team_bingo_config: { Args: { p_tenant: string }; Returns: Json }
+      save_team_bingo_config: { Args: { p_tenant: string; p_fields: string[] }; Returns: undefined }
       team_ritual_enabled: { Args: { p_tenant: string }; Returns: boolean }
       own_team_fun_facts: { Args: { p_tenant: string }; Returns: Json }
       save_team_fun_facts: { Args: { p_tenant: string; p_facts: string[]; p_lie_index: number; p_shared: boolean }; Returns: undefined }
