@@ -21,45 +21,28 @@ vi.mock("@/features/knowledge/globalQuestion", () => ({
 import { GlobalCreateMenu } from "./GlobalCreateMenu";
 
 const trigger = () => screen.getByRole("button", { name: /Globales Erstellen-Menü/i });
-const report = (label: string) => {
-  console.log(
-    `${label}: expanded=${trigger().getAttribute("aria-expanded")} items=${
-      document.body.querySelectorAll("[role=menuitem]").length
-    }`
-  );
-};
 
-describe("open mechanics", () => {
+describe("probe", () => {
   afterEach(cleanup);
 
-  it("pointerDown", () => {
-    render(<GlobalCreateMenu />);
-    fireEvent.pointerDown(trigger(), { button: 0, ctrlKey: false, pointerType: "mouse" });
-    report("pointerDown");
-  });
-
-  it("mouseDown+mouseUp+click", () => {
+  it("inspects react props on the trigger", () => {
     render(<GlobalCreateMenu />);
     const el = trigger();
-    fireEvent.mouseDown(el, { button: 0 });
-    fireEvent.mouseUp(el, { button: 0 });
-    fireEvent.click(el);
-    report("mouse sequence");
-  });
+    const key = Object.keys(el).find((k) => k.startsWith("__reactProps$"));
+    console.log("props key:", key);
+    const props = key ? (el as unknown as Record<string, Record<string, unknown>>)[key] : {};
+    console.log("handler names:", Object.keys(props || {}).filter((k) => k.startsWith("on")).join(","));
+    console.log("has PointerEvent:", typeof (window as unknown as { PointerEvent?: unknown }).PointerEvent);
 
-  it("keyDown Enter", () => {
-    render(<GlobalCreateMenu />);
-    const el = trigger();
-    el.focus();
-    fireEvent.keyDown(el, { key: "Enter", code: "Enter" });
-    report("Enter");
-  });
-
-  it("keyDown Space", () => {
-    render(<GlobalCreateMenu />);
-    const el = trigger();
-    el.focus();
-    fireEvent.keyDown(el, { key: " ", code: "Space" });
-    report("Space");
+    // native listener probe
+    let seen = "";
+    const probe = (e: Event) => {
+      seen += `${e.type},`;
+    };
+    el.addEventListener("pointerdown", probe);
+    fireEvent.pointerDown(el, { button: 0, ctrlKey: false });
+    el.removeEventListener("pointerdown", probe);
+    console.log("native saw:", seen);
+    console.log("expanded after:", el.getAttribute("aria-expanded"));
   });
 });
