@@ -1,3 +1,5 @@
+import { FunFactsEditor } from './FunFactsEditor';
+import { TwoTruthsWidget } from './TwoTruthsWidget';
 import { QuestionBank } from './QuestionBank';
 import { WeeklyQuestionWidget } from './WeeklyQuestionWidget';
 import { TeamEvents } from './TeamEvents';
@@ -8,5 +10,7 @@ export function TeamRitualWorkspace() {
     <QuestionBank />
     <TeamEvents />
     <WeeklyQuestionWidget />
+    <FunFactsEditor />
+    <TwoTruthsWidget />
   </section>;
 }

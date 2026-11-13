@@ -17,6 +17,7 @@ export type ChecklistItem = {
 };
 
 const DEFAULT_ITEMS: ChecklistItem[] = [
+  { key: "team.know", label: "Lerne dein Team kennen", description: "Freiwillig: Drei Aussagen teilen oder beim Monatsquiz mitraten.", icon: "Users", cta_route: "/employee?tab=rituals", source: "default" },
   { key: "profile.complete", label: "Profil vervollständigen", description: "Foto, Anzeigename und Telefon hinterlegen.", icon: "UserCircle2", cta_route: "/einstellungen/profil", source: "default" },
   { key: "contact.first", label: "Ersten Kontakt anlegen", description: "Bürger*in oder Stakeholder erfassen.", icon: "Users", cta_route: "/kontakte", source: "default" },
   { key: "appointment.first", label: "Ersten Termin planen", description: "Termin im Kalender anlegen oder importieren.", icon: "CalendarPlus", cta_route: "/kalender", source: "default" },
@@ -40,6 +41,7 @@ interface OnboardingData {
   progress: Record<string, boolean>;
   dismissed: boolean;
   tenantItems: ChecklistItem[];
+  teamRitualsEnabled: boolean;
 }
 
 export interface OnboardingChecklist {
@@ -62,7 +64,7 @@ function roleAllowed(item: ChecklistItem, role: string | null): boolean {
 }
 
 async function fetchOnboarding(userId: string, tenantId: string): Promise<OnboardingData> {
-  const [stateRes, itemsRes] = await Promise.all([
+  const [stateRes, itemsRes, ritualRes] = await Promise.all([
     supabase
       .from("user_onboarding_state")
       .select("checklist_progress, checklist_dismissed_at")
@@ -75,12 +77,14 @@ async function fetchOnboarding(userId: string, tenantId: string): Promise<Onboar
       .eq("tenant_id", tenantId)
       .eq("active", true)
       .order("position", { ascending: true }),
+    supabase.rpc("team_ritual_enabled", { p_tenant: tenantId }),
   ]);
 
   const rows = (itemsRes.data ?? []) as DbRow[];
   return {
     progress: (stateRes.data?.checklist_progress ?? {}) as Record<string, boolean>,
     dismissed: !!stateRes.data?.checklist_dismissed_at,
+    teamRitualsEnabled: ritualRes.data === true,
     tenantItems: rows.map((r) => ({
       key: r.item_key,
       label: r.label,
@@ -93,7 +97,7 @@ async function fetchOnboarding(userId: string, tenantId: string): Promise<Onboar
   };
 }
 
-const EMPTY: OnboardingData = { progress: {}, dismissed: false, tenantItems: [] };
+const EMPTY: OnboardingData = { progress: {}, dismissed: false, tenantItems: [], teamRitualsEnabled: false };
 
 export function useOnboardingChecklist(): OnboardingChecklist {
   const { user } = useAuth();
@@ -112,12 +116,12 @@ export function useOnboardingChecklist(): OnboardingChecklist {
     queryFn: () => fetchOnboarding(userId as string, tenantId as string),
   });
 
-  const { progress, dismissed, tenantItems } = data ?? EMPTY;
+  const { progress, dismissed, tenantItems, teamRitualsEnabled } = data ?? EMPTY;
 
   const items = useMemo(() => {
     const all: ChecklistItem[] = [...DEFAULT_ITEMS, ...tenantItems];
-    return all.filter((i) => roleAllowed(i, role));
-  }, [tenantItems, role]);
+    return all.filter((i) => roleAllowed(i, role) && (i.key !== "team.know" || teamRitualsEnabled));
+  }, [tenantItems, role, teamRitualsEnabled]);
 
   const completedCount = items.filter((i) => progress[i.key]).length;
 

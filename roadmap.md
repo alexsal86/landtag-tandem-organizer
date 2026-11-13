@@ -105,3 +105,10 @@
 - [x] Geburtstage bleiben freiwillig; Kalenderwoche und Konfetti berücksichtigen automatisch ermittelte Jubiläen.
 - [ ] Migration `20261113160000_team_ritual_employee_access.sql` anwenden und Rollen, zugeordnetes Eintrittsdatum und Mandantenwechsel mit echter Anmeldung prüfen — externe Supabase-Testsitzung fehlt.
 - Gezielte Prüfungen erfolgen gesammelt mit den nachfolgenden Phasen; keine zusätzlichen Hook-/Komponenten-/Datenbanktests.
+
+# Team-Rituale – Phase 2: Zwei Wahrheiten, eine Lüge
+- [x] Drei private Aussagen mit separater Quizfreigabe unter Mitarbeiter → Team-Rituale; Monatswidget `two_truths` und freiwilliger Onboarding-Schritt „Lerne dein Team kennen“ nur bei aktiviertem Mandantenfeature.
+- [x] Gemeinsames Monatsquiz mit Berliner Monatsschlüssel und eindeutiger Mandant/Monat-Vergabe; nur aktive, freiwillig teilnehmende Personen mit freigegebenen Aussagen werden gewählt.
+- [x] Lösung ausschließlich nach eigener Antwort über `answer_two_truths_quiz`; Quiz-/Antwort-/Geheimnistabellen ohne Client-Leserechte, keine Punktetabelle. Der separate Profil-Editor darf ausschließlich die eigene Lügenmarkierung laden.
+- [x] Entzug der Freigabe, Teilnahmeende, Kontolöschung und Mitgliedschaftsentzug entfernen Quizdaten über geprüfte RPCs, Trigger und Cascades. Ein neuer Logic-Selbsttest-Schritt, kein zusätzliches Unit-Test-File.
+- [ ] Migration `20261113161000_team_two_truths.sql` anwenden; Payload vor/nach Antwort, wiederholte/parallele Antwort, Monatswechsel, Freigabeentzug und GDPR mit echter Anmeldung prüfen — externe Supabase-Testsitzung fehlt.

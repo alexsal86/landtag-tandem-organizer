@@ -14871,6 +14871,13 @@ export type Database = {
       }
     }
     Functions: {
+      team_ritual_enabled: { Args: { p_tenant: string }; Returns: boolean }
+      own_team_fun_facts: { Args: { p_tenant: string }; Returns: Json }
+      save_team_fun_facts: { Args: { p_tenant: string; p_facts: string[]; p_lie_index: number; p_shared: boolean }; Returns: undefined }
+      delete_team_fun_facts: { Args: { p_tenant: string }; Returns: undefined }
+      team_two_truths_snapshot: { Args: { p_tenant: string }; Returns: Json }
+      answer_two_truths_quiz: { Args: { p_tenant: string; p_quiz: string; p_guess: number }; Returns: Json }
+
       selftest_employee_hr: { Args: {p_tenant:string}; Returns:Json }
       save_employee_lifecycle: { Args: {p_tenant:string;p_user:string;p_type:string;p_start:string;p_end?:string|null;p_mentor?:string|null;p_id?:string|null}; Returns:string }
       save_employee_hr_template: { Args: {p_tenant:string;p_name:string;p_type:string;p_direction:string;p_steps:Json;p_id?:string|null}; Returns:string }

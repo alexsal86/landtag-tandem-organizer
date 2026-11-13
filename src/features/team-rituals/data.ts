@@ -12,19 +12,19 @@ export interface Snapshot {
   answers: { user_id: string; answer: string; display_name: string }[];
 }
 // Validate every field consumed by the UI at the RPC boundary.
-function record(value: Json | undefined): { [key: string]: Json | undefined } {
+export function record(value: Json | undefined): { [key: string]: Json | undefined } {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Ungültige Team-Daten');
   return value;
 }
-function text(value: Json | undefined): string {
+export function text(value: Json | undefined): string {
   if (typeof value !== 'string') throw new Error('Ungültiger Team-Text');
   return value;
 }
-function bool(value: Json | undefined): boolean {
+export function bool(value: Json | undefined): boolean {
   if (typeof value !== 'boolean') throw new Error('Ungültige Team-Freigabe');
   return value;
 }
-function list(value: Json | undefined): Json[] {
+export function list(value: Json | undefined): Json[] {
   if (!Array.isArray(value)) throw new Error('Ungültige Team-Liste');
   return value;
 }

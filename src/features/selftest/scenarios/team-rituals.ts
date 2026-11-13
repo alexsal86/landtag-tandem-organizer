@@ -1,3 +1,4 @@
+import { isValidFunFacts } from '@/features/team-rituals/twoTruths';
 import type { TestScenario } from '../types';
 import { berlinDay, berlinWeek, canManageTeamRituals, upcomingAnniversaries, isValidWeeklyAnswer, pickNextQuestion, upcomingTeamEvents, type TeamProfile } from '@/features/team-rituals/logic';
 export const teamRitualsScenario: TestScenario = {
@@ -6,6 +7,11 @@ export const teamRitualsScenario: TestScenario = {
   features: ['dashboard'], touches: [],
   limitations: ['RLS, Rollen, parallele RPC-Aufrufe, Freigaben und GDPR-Löschung mit Anmeldung separat prüfen.'],
   steps: [
+    { id: 'two-truths-profile', label: 'Drei verschiedene Aussagen und genau eine Lüge', kind: 'logic', run: async () => ({
+      ok: isValidFunFacts(['Wahrheit A', 'Wahrheit B', 'Erfunden'], 2)
+        && !isValidFunFacts(['Gleich', 'gleich', 'Erfunden'], 2) && !isValidFunFacts(['A', 'B', 'C'], 3),
+      message: 'Aussagen sind verschieden, begrenzt und genau eine wird als erfunden markiert. Serverseitige Geheimhaltung separat angemeldet prüfen.',
+    }) },
     { id: 'employee-access-anniversary', label: 'Leitungsrollen und automatische Eintrittsjubiläen', kind: 'logic', run: async () => ({
       ok: canManageTeamRituals('abgeordneter') && canManageTeamRituals('bueroleitung') && !canManageTeamRituals('mitarbeiter')
         && upcomingAnniversaries([{ user_id: 'a', display_name: 'Team', joined_on: '2020-12-31' }], new Date('2025-12-31T12:00Z'))[0]?.years === 5,

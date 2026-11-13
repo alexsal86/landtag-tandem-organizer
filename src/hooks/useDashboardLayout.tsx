@@ -540,6 +540,7 @@ export function useDashboardLayout() {
       'blackboard': 'Pinnwand',
       'actions': 'Aktionen',
       'weekly_question': 'Frage der Woche',
+      'two_truths': 'Zwei Wahrheiten, eine Lüge',
       'stakeholder-network': 'Stakeholder-Netzwerk'
     };
     

@@ -1,3 +1,4 @@
+import { TwoTruthsWidget } from '@/features/team-rituals/TwoTruthsWidget';
 import { WeeklyQuestionWidget } from '@/features/team-rituals/WeeklyQuestionWidget';
 import { useState, useEffect } from "react";
 import { WidgetOverlayMenu } from '@/components/dashboard/WidgetOverlayMenu';
@@ -592,6 +593,8 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
         return <NewsWidget widgetId={widget.id} />;
       case 'appointmentfeedback':
         return <AppointmentFeedbackWidget widgetSize={widget.widgetSize} isEditMode={isEditMode} />;
+      case 'two_truths':
+        return <TwoTruthsWidget />;
       case 'weekly_question':
         return <WeeklyQuestionWidget />;
       case 'stakeholder-network':
@@ -603,7 +606,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
   };
 
   // For new widget types that handle their own layout, render them directly
-  if (['weekly_question', 'quicknotes', 'pomodoro', 'habits', 'calllog', 'combined-messages', 'quickactions', 'news', 'appointmentfeedback', 'stakeholder-network', 'stats', 'actions', 'tasks', 'schedule', 'messages', 'blackboard'].includes(widget.type)) {
+  if (['two_truths', 'weekly_question', 'quicknotes', 'pomodoro', 'habits', 'calllog', 'combined-messages', 'quickactions', 'news', 'appointmentfeedback', 'stakeholder-network', 'stats', 'actions', 'tasks', 'schedule', 'messages', 'blackboard'].includes(widget.type)) {
     return (
       <div 
         className={`group relative h-full w-full max-w-full overflow-hidden ${isDragging ? 'opacity-50 rotate-1' : ''}`}
