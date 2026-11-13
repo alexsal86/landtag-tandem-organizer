@@ -1,5 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/hooks/useAuth", () => ({
@@ -22,38 +21,45 @@ vi.mock("@/features/knowledge/globalQuestion", () => ({
 import { GlobalCreateMenu } from "./GlobalCreateMenu";
 
 const trigger = () => screen.getByRole("button", { name: /Globales Erstellen-Menü/i });
+const report = (label: string) => {
+  console.log(
+    `${label}: expanded=${trigger().getAttribute("aria-expanded")} items=${
+      document.body.querySelectorAll("[role=menuitem]").length
+    }`
+  );
+};
 
 describe("open mechanics", () => {
   afterEach(cleanup);
 
-  it("pointerDown then reports state", () => {
+  it("pointerDown", () => {
     render(<GlobalCreateMenu />);
     fireEvent.pointerDown(trigger(), { button: 0, ctrlKey: false, pointerType: "mouse" });
-    console.log("after pointerDown expanded =", trigger().getAttribute("aria-expanded"));
-    console.log("body items =", document.body.querySelectorAll("[role=menuitem]").length);
+    report("pointerDown");
   });
 
-  it("click reports state", async () => {
+  it("mouseDown+mouseUp+click", () => {
     render(<GlobalCreateMenu />);
-    fireEvent.click(trigger());
-    console.log("after click expanded =", trigger().getAttribute("aria-expanded"));
-    console.log("body items =", document.body.querySelectorAll("[role=menuitem]").length);
+    const el = trigger();
+    fireEvent.mouseDown(el, { button: 0 });
+    fireEvent.mouseUp(el, { button: 0 });
+    fireEvent.click(el);
+    report("mouse sequence");
   });
 
-  it("userEvent.click reports state", async () => {
+  it("keyDown Enter", () => {
     render(<GlobalCreateMenu />);
-    const user = userEvent.setup();
-    await user.click(trigger());
-    console.log("after userEvent expanded =", trigger().getAttribute("aria-expanded"));
-    console.log("body items =", document.body.querySelectorAll("[role=menuitem]").length);
+    const el = trigger();
+    el.focus();
+    fireEvent.keyDown(el, { key: "Enter", code: "Enter" });
+    report("Enter");
   });
 
-  it("keyboard Enter reports state", async () => {
+  it("keyDown Space", () => {
     render(<GlobalCreateMenu />);
-    const user = userEvent.setup();
-    trigger().focus();
-    await user.keyboard("{Enter}");
-    console.log("after Enter expanded =", trigger().getAttribute("aria-expanded"));
-    console.log("body items =", document.body.querySelectorAll("[role=menuitem]").length);
+    const el = trigger();
+    el.focus();
+    fireEvent.keyDown(el, { key: " ", code: "Space" });
+    report("Space");
   });
 });
