@@ -14,6 +14,37 @@ export type Database = {
   }
   public: {
     Tables: {
+      topic_catalog_links: {
+        Row: {
+          id: string
+          tenant_id: string
+          topic_id: string
+          kind: string
+          committee_id: string | null
+          region_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          topic_id: string
+          kind: string
+          committee_id?: string | null
+          region_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          topic_id?: string
+          kind?: string
+          committee_id?: string | null
+          region_id?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+
       action_permissions: {
         Row: {
           action_key: string
@@ -15316,6 +15347,7 @@ export type Database = {
       }
     }
     Functions: {
+      convert_topic_to_catalog: { Args: {p_topic:string;p_kind:string;p_region_kind?:string}; Returns:Json }
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined
@@ -16947,10 +16979,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_latest_employee_meetings: {
+        Args: { p_employee_ids: string[] }
+        Returns: { employee_id: string; meeting_id: string; meeting_date: string }[]
+      }
       save_team_question: {
         Args: {
           p_active: boolean
-          p_id: string
+          p_id: string | null
           p_question: string
           p_tenant: string
         }
@@ -16958,9 +16994,9 @@ export type Database = {
       }
       save_team_ritual_profile: {
         Args: {
-          p_birth_year: number
-          p_birthday: string
-          p_joined_on: string
+          p_birth_year: number | null
+          p_birthday: string | null
+          p_joined_on: string | null
           p_opted_in: boolean
           p_show_events: boolean
           p_tenant: string

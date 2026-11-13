@@ -64,7 +64,7 @@ describe("Zuständigkeitsdaten", () => {
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.people).toEqual([
-      { id: "person", name: "Anna" },
+      { id: "person", name: "Anna", badgeColor:null, avatarUrl:null },
     ]);
     for (const call of mock.calls.filter((c) => c.table !== "profiles"))
       expect(call.filters).toContainEqual(["tenant_id", "tenant-a"]);

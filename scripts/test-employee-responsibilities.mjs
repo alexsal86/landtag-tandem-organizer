@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { PGlite } from '../tests/database/node_modules/@electric-sql/pglite/dist/index.js';
 const db = new PGlite();
+const migrationText=name=>readFile(new URL('../supabase/migrations/'+name,import.meta.url),'utf8');
 const a='11111111-1111-4111-8111-111111111111', b='22222222-2222-4222-8222-222222222222';
 const lead='33333333-3333-4333-8333-333333333333', staff='44444444-4444-4444-8444-444444444444', foreign='55555555-5555-4555-8555-555555555555';
 const q=async(sql,args=[]) => (await db.query(sql,args)).rows;
@@ -19,7 +20,7 @@ try {
  CREATE TABLE profiles(user_id uuid,display_name text);
  CREATE TABLE tasks(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),tenant_id uuid,user_id uuid,ball_owner text,ball_assignee_id uuid,assigned_to text,timeline jsonb);
  CREATE TABLE case_files(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),tenant_id uuid,user_id uuid,assigned_to uuid);
- GRANT SELECT ON user_tenant_memberships,profiles TO authenticated;
+ GRANT SELECT ON user_tenant_memberships,profiles,topics TO authenticated;
  GRANT SELECT,UPDATE ON tasks,case_files TO authenticated;
  ALTER TABLE tasks ENABLE ROW LEVEL SECURITY; ALTER TABLE case_files ENABLE ROW LEVEL SECURITY;
 
@@ -29,6 +30,8 @@ try {
  INSERT INTO user_tenant_memberships VALUES ('${a}','${lead}','bueroleitung',true),('${a}','${staff}','mitarbeiter',true),('${b}','${foreign}','abgeordneter',true);
  `);
  await db.exec(migration);await db.exec(migration);
+ await db.exec('ALTER TABLE topics ADD COLUMN IF NOT EXISTS label text,ADD COLUMN IF NOT EXISTS is_active boolean DEFAULT true');
+ const conversion=await migrationText('20261113180000_topic_catalog_conversion.sql');await db.exec(conversion);await db.exec(conversion);
  await db.exec(`CREATE POLICY tenant_tasks ON tasks USING(user_belongs_to_tenant(tenant_id)) WITH CHECK(user_belongs_to_tenant(tenant_id));
  CREATE POLICY tenant_files ON case_files USING(user_belongs_to_tenant(tenant_id)) WITH CHECK(user_belongs_to_tenant(tenant_id));
  INSERT INTO profiles VALUES('${staff}','Mitarbeiter');`);
@@ -89,6 +92,17 @@ try {
  await q("SELECT set_employee_responsibility($1,$2,'topic',$3,'secondary')",[a,staff,topic2]);
  await q('SELECT merge_topics($1,$2)',[topic1,topic2]);
  assert.equal((await q("SELECT level,topic_id FROM employee_responsibilities WHERE kind='topic'"))[0].level,'primary');
+ await q("SELECT set_employee_responsibility($1,$2,'topic',$3,'primary')",[a,lead,topic2]);
+ const converted=(await q("SELECT convert_topic_to_catalog($1,'committee') AS result",[topic2]))[0].result;
+ assert.equal((await q("SELECT convert_topic_to_catalog($1,'committee') AS result",[topic2]))[0].result.reused,true);
+ assert.equal((await q('SELECT is_active FROM topics WHERE id=$1',[topic2]))[0].is_active,false);
+ assert.equal((await q("SELECT count(*) n FROM employee_responsibilities WHERE committee_id=$1 AND level='primary'",[converted.id]))[0].n,2,'Conversion preserves multiple primary people');
+ await assert.rejects(q("SELECT set_employee_responsibility($1,$2,'topic',$3,'primary')",[a,staff,topic2]),e=>e.code==='22023');
+ await actor(staff);await assert.rejects(q("SELECT convert_topic_to_catalog($1,'committee')",[topic2]),e=>e.code==='42501');
+ await actor(foreign);await assert.rejects(q("SELECT convert_topic_to_catalog($1,'committee')",[topic2]),e=>e.code==='42501');
+ await actor(lead);
+ await q("SELECT merge_responsibility_catalog($1,'committee',$2,$3)",[a,converted.id,committee]);
+ assert.equal((await q('SELECT committee_id FROM topic_catalog_links WHERE topic_id=$1',[topic2]))[0].committee_id,committee);
  await db.exec('RESET ROLE; SET ROLE anon');
  await assert.rejects(q('SELECT * FROM committees'),e=>e.code==='42501');
  await assert.rejects(q("SELECT save_responsibility_catalog($1,'committee','anon')",[a]),e=>e.code==='42501');

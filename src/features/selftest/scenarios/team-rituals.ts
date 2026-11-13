@@ -1,3 +1,4 @@
+import {ritualDashboardState} from "@/features/team-rituals/logic";
 import { OFFICE_ROUTINE_TEMPLATES, parseRoutineSteps, validateOfficeRoutine } from '@/features/automation/officeRoutineTemplates';
 import { checkBingo, readBingoState, validBingoFields, bingoBoard } from '@/features/team-rituals/bingo';
 import { isValidFunFacts } from '@/features/team-rituals/twoTruths';
@@ -9,6 +10,8 @@ export const teamRitualsScenario: TestScenario = {
   features: ['dashboard'], touches: [],
   limitations: ['RLS, Rollen, parallele RPC-Aufrufe, Freigaben und GDPR-Löschung mit Anmeldung separat prüfen.'],
   steps: [
+    {id:'dashboard-discovery',label:'Team-Rituale bleiben im Dashboard auffindbar, ohne automatische Teilnahme',kind:'logic',run:async()=>({ok:ritualDashboardState(false,false,false,false)==='disabled'&&ritualDashboardState(false,false,true,false)==='join'&&ritualDashboardState(false,true,false,false)==='unavailable'&&ritualDashboardState(false,false,true,true)==='ready',message:'Bürofreigabe, persönliche Zustimmung und Datenfehler haben eigene sichtbare Einstiegszustände.'})},
+
     { id: 'team-routine-templates', label: 'Editierbare freiwillige Team-Vorlagen', kind: 'logic', run: async () => {
       const ids = ['team-walk-talk', 'team-regional-snack', 'team-constituency-trip'];
       const templates = OFFICE_ROUTINE_TEMPLATES.filter(template => ids.includes(template.id));

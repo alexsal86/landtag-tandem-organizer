@@ -1,3 +1,5 @@
+import {useTopicCatalogLinks} from "@/features/topics/useTopicCatalogLinks";
+import {TopicConversionButton} from "@/features/topics/TopicConversionButton";
 import React, { useState } from "react";
 import { useTopics, Topic } from "@/hooks/useTopics";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +24,9 @@ const getIconComponent = (iconName: string) => {
 };
 
 export const TopicSettings = () => {
-  const { topics, loading, createTopic, updateTopic, deleteTopic, toggleActive, updateOrder, mergeTopics } = useTopics();
+  const catalogLinks=useTopicCatalogLinks();
+  const convertedIds=new Set((catalogLinks.data??[]).map(link=>link.topic_id));
+  const { topics, loading, createTopic, updateTopic, deleteTopic, toggleActive, updateOrder, mergeTopics, fetchTopics } = useTopics();
   const [mergeSource, setMergeSource] = useState<Topic | null>(null);
   const [mergeTarget, setMergeTarget] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -204,7 +208,7 @@ export const TopicSettings = () => {
                       <div
                         ref={provided.innerRef}
                         {...provided.draggableProps}
-                        className={`flex items-center gap-3 p-3 rounded-lg border ${
+                        className={`flex flex-wrap items-center gap-3 p-3 rounded-lg border ${
                           snapshot.isDragging ? 'bg-accent shadow-lg' : 'bg-card'
                         } ${!topic.is_active ? 'opacity-50' : ''}`}
                       >
@@ -233,7 +237,9 @@ export const TopicSettings = () => {
                           )}
                         </div>
 
+                        <TopicConversionButton topic={topic} onConverted={fetchTopics}/>
                         <Switch
+                          disabled={convertedIds.has(topic.id)}
                           checked={topic.is_active}
                           onCheckedChange={(checked) => toggleActive(topic.id, checked)}
                         />
@@ -241,7 +247,7 @@ export const TopicSettings = () => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => openEdit(topic)}
+                          disabled={convertedIds.has(topic.id)} onClick={() => openEdit(topic)}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -249,7 +255,7 @@ export const TopicSettings = () => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          aria-label={`${topic.label} zusammenführen`}
+                          disabled={convertedIds.has(topic.id)} aria-label={`${topic.label} zusammenführen`}
                           title="Mit anderem Thema zusammenführen"
                           onClick={() => { setMergeSource(topic); setMergeTarget(""); }}
                         >
@@ -258,7 +264,7 @@ export const TopicSettings = () => {
 
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                            <Button disabled={convertedIds.has(topic.id)} variant="ghost" size="icon" className="text-destructive hover:text-destructive">
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </AlertDialogTrigger>
@@ -364,7 +370,7 @@ export const TopicSettings = () => {
             onChange={(e) => setMergeTarget(e.target.value)}
           >
             <option value="">Bitte wählen…</option>
-            {topics.filter((t) => t.id !== mergeSource?.id).map((t) => (
+            {topics.filter((t) => t.id !== mergeSource?.id && !convertedIds.has(t.id)).map((t) => (
               <option key={t.id} value={t.id}>{t.label}</option>
             ))}
           </select>

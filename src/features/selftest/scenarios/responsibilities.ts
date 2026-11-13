@@ -17,6 +17,8 @@ export const responsibilitiesScenario: TestScenario = {
     "Der Fremdtenant-Lesetest verwendet für das angemeldete Konto nicht zugängliche IDs. Zwei echte Sitzungen und RPC-Schreibtests werden zusätzlich im isolierten Datenbanktest geprüft.",
   ],
   steps: [
+    {id:'topic-conversion-boundary',label:'Themenumwandlung verlangt Tenant und Leitungsrolle',kind:'workflow',run:async()=>{const r=await supabase.rpc('convert_topic_to_catalog',{p_topic:crypto.randomUUID(),p_kind:'committee'});return {ok:r.error?.code==='42501',message:'Unbekannte bzw. fremde Themen können nicht umgewandelt werden.'};}},
+
     {
       id: "matrix-multiple-primary",
       label: "Mehrere Primärpersonen und unterschiedliche Abdeckungslücken",

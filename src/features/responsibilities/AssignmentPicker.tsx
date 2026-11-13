@@ -1,3 +1,5 @@
+import { mentionColors } from "@/utils/mentionColors";
+import { getHashedColor } from "@/utils/userColors";
 import { useState } from "react";
 import { Check, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,7 +16,7 @@ import {
   CommandItem,
   CommandGroup,
 } from "@/components/ui/command";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import {
   referenceOf,
@@ -31,10 +33,38 @@ const responsibilityStyle = (level: string) =>
   level === "primary"
     ? "border-primary/40 bg-primary/10 text-foreground"
     : "border-transparent bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-200";
-export function PersonMark({ name }: { name: string }) {
+export interface ResponsibilityPerson {
+  id: string;
+  name: string;
+  badgeColor?: string | null;
+  avatarUrl?: string | null;
+}
+export function PersonMark({
+  name,
+  id,
+  badgeColor,
+  avatarUrl,
+}: {
+  name: string;
+  id?: string;
+  badgeColor?: string | null;
+  avatarUrl?: string | null;
+}) {
+  const colors = mentionColors(badgeColor || getHashedColor(id ?? name));
   return (
-    <Avatar className="h-6 w-6">
-      <AvatarFallback className="bg-primary/15 text-xs text-primary">
+    <Avatar
+      className="h-6 w-6 shrink-0 border-2"
+      style={{
+        borderColor: colors.background,
+        backgroundColor: colors.background,
+        color: colors.text,
+      }}
+    >
+      <AvatarImage src={avatarUrl || undefined} alt="" />
+      <AvatarFallback
+        className="text-xs font-semibold"
+        style={{ backgroundColor: colors.background, color: colors.text }}
+      >
         {name
           .split(/\s+/)
           .filter(Boolean)
@@ -54,7 +84,7 @@ export function PersonAssignment({
   onChange,
   label,
 }: {
-  person: { id: string; name: string };
+  person: ResponsibilityPerson;
   area: { id: string; kind: string; name: string };
   level: string;
   canEdit: boolean;
@@ -65,12 +95,12 @@ export function PersonAssignment({
   const [open, setOpen] = useState(false);
   const content = (
     <>
-      <PersonMark name={person.name} />
+      <PersonMark {...person} />
       <span>{label ?? person.name}</span>
     </>
   );
   const style = cn(
-    "inline-flex max-w-full items-center gap-1.5 rounded-full border py-1 pl-1 pr-3 text-sm",
+    "inline-flex max-w-full items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-sm",
     responsibilityStyle(level),
   );
   if (!canEdit)
@@ -138,7 +168,7 @@ export function AreaAssignmentPicker({
 }: {
   area: ResponsibilityArea;
   level: "primary" | "secondary";
-  people: { id: string; name: string }[];
+  people: ResponsibilityPerson[];
   rows: Responsibility[];
   busy: boolean;
   onChange: ChangeResponsibility;
@@ -179,6 +209,7 @@ export function AreaAssignmentPicker({
                     key={person.id}
                     value={`${person.name} ${person.id}`}
                     disabled={busy}
+                    className="flex items-center gap-3"
                     onSelect={() => {
                       void onChange(
                         person.id,
@@ -188,7 +219,7 @@ export function AreaAssignmentPicker({
                       );
                     }}
                   >
-                    <PersonMark name={person.name} />
+                    <PersonMark {...person} />
                     <span className="flex-1">{person.name}</span>
                     {current === level ? (
                       <Check className="h-4 w-4" />

@@ -1,3 +1,4 @@
+import {TeamRitualDashboardCard} from "@/features/team-rituals/TeamRitualDashboardCard";
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -191,6 +192,7 @@ export function MyWorkDashboardTab() {
               <DashboardJourFixeWidget />
             </ErrorBoundary>
           </DashboardWidgetContainer>
+          <TeamRitualDashboardCard />
           <NewsWidgetCard />
         </div>
       </div>
