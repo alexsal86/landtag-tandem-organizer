@@ -1,7 +1,7 @@
+import { ResponsibleSuggestion } from "@/features/responsibilities/ResponsibleSuggestion";
 import { CaseFile } from "@/features/cases/files/hooks";
 import { CaseFileContact, CaseFileDocument, CONTACT_ROLES } from "@/features/cases/files/hooks";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { TopicSelector } from "@/components/topics/TopicSelector";
 import { UserSelector } from "@/components/admin/UserSelector";
@@ -19,6 +19,7 @@ interface CaseFileLeftSidebarProps {
   onTopicsChange: (topicIds: string[]) => void;
   onAddContact: () => void;
   onAssignUser?: (userId: string) => void;
+  onMatrixAssign?: (userId: string) => void;
 }
 
 function SectionHeader({
@@ -58,6 +59,7 @@ export function CaseFileLeftSidebar({
   onTopicsChange,
   onAddContact,
   onAssignUser,
+  onMatrixAssign,
 }: CaseFileLeftSidebarProps) {
   const getRoleLabel = (roleValue: string) => {
     return CONTACT_ROLES.find((r) => r.value === roleValue)?.label || roleValue;
@@ -159,6 +161,7 @@ export function CaseFileLeftSidebar({
           onTopicsChange={onTopicsChange}
           compact
         />
+        {onMatrixAssign && <ResponsibleSuggestion context={{topicIds:assignedTopics}} onAccept={onMatrixAssign} />}
       </SectionCard>
 
     </div>

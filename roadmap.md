@@ -52,3 +52,19 @@
 - [x] Kontakt-/Dokument-Tags laufen automatisch in Themen (DB-Abgleich)
 - [x] Querschnittsansicht pro Thema (/themen)
 - [ ] Angemeldet prüfen — externe Supabase-Testsitzung nicht verfügbar
+
+# Büro-Team-Features — Phase 1: Zuständigkeiten & Matrix (13.11.2026)
+- [x] Eigener Branch `feat/employee-responsibilities-phase-1`; PR-Text in `docs/prs/phase-1-employee-responsibilities.md` vorbereitet.
+- [x] Wiederholbare Migration: Ausschüsse, Regionen mit optionalem Wahlkreisverweis und Zuständigkeiten; genau passende Referenzen, Tenant-FKs, Unique-Indizes, RLS-Lesen und rollengeprüfte Schreib-RPCs.
+- [x] Zusammenführen von Ausschüssen/Regionen und Erweiterung des Themen-Merge; Primärzuständigkeit bei Doppelungen erhalten.
+- [x] Reine Vorschlags-/Lückenlogik, 14 neue Vitest-Tests und registrierte Selbsttest-Schritte für Logik, Übergabe und Tenant-/Rollengrenzen.
+- [x] Matrix und Zuständigkeitsprofile unter `/employee`; Themen-Box wiederverwendet, Bearbeitung auf Leitung/Abgeordnete begrenzt.
+- [x] Bestätigte Vorschläge bei Fallakten/Vorgängen/Aufgaben und Kontakt-Aufgaben; Übergaben über RPCs mit unverändertem Ball-Typ. Region/Ausschuss sind bei Fallakten/Aufgaben Vorschlagseingaben, bei Vorgängen zusätzlich Intake-Daten.
+- [x] Themen beim Tenant-Wechsel zurücksetzen und verspätete Antworten verwerfen; Kontakt-Themen erst nach Tenant-Prüfung laden. Abwesenheiten nur über aktive Tenant-User-IDs, ohne Gründe.
+- [x] Isolierter PGlite-Test mit echter Migration zweimal, zwei bevölkerten Tenants, Rollen/anon, gesperrten Direktzugriffen, Referenzintegrität, Merge und wiederholter Übergabe erfolgreich.
+- [x] Feature-Strict-Typecheck (inkl. neuem Selbsttest-Szenario), Mitarbeiter-/Knowledge-Typecheck und Build erfolgreich; neuer Code ohne Lint-Warnungen. Betroffene Altdateien haben weiterhin vorhandene Warnungen, aber keine Lint-Fehler.
+- [x] Matrix mit Chromium und gemocktem Service geprüft (Lücken, Sekundärzuständigkeit speichern, reine Leseansicht); Route ohne Sitzung führt zur Anmeldung.
+- [ ] Gesamtchecks grün: Gesamt-Vitest aktuell 33 fehlgeschlagene Tests in 21 Dateien; Ausgangscommit `8333462be` reproduziert dieselben 21 fehlerhaften Dateien (32 fehlgeschlagene Tests, Parser-Suite bereits beim Import defekt). Breite Selftest-/Komponenten-/Features-Typechecks sind schon im Ausgangsstand rot; keine zusätzlichen Fehler pro Datei/TS-Code.
+- [ ] Echte Supabase-Session: Live-Migration, bestehende Produktions-Trigger/RLS im Zusammenspiel, Anmeldung und persistente Selbsttest-Läufe noch nicht geprüft. PGlite verwendet ein isoliertes Minimalschema mit den benötigten bestehenden Helfer-/Tabellenschnittstellen.
+- [ ] Draft-PR veröffentlichen — bereitgestellte GitHub-Authentifizierung ungültig.
+- [ ] Phase 1 vollständig abnehmen; Phase 2 erst danach. Phase-2-Spezifikation fehlt im Auftrag und wurde angefragt; Phase 3 bleibt nachgelagert, insbesondere `handover_tasks_to_deputy` aus Phase 2 fehlt noch.

@@ -163,7 +163,7 @@ export const useCaseFiles = () => {
     }
   }, [user, currentTenant, toast]);
 
-  const createCaseFile = async (data: CaseFileFormData, participants: CaseFileParticipantInput[] = []) => {
+  const createCaseFile = async (data: CaseFileFormData, participants: CaseFileParticipantInput[] = [], topicIds: string[] = []) => {
     if (!user || !currentTenant) return null;
 
     try {
@@ -180,6 +180,16 @@ export const useCaseFiles = () => {
         .single();
 
       if (error) throw error;
+
+      if (topicIds.length > 0) {
+        const { error: topicsError } = await supabase.from('case_file_topics').insert(
+          [...new Set(topicIds)].map(topic_id => ({case_file_id:newCaseFile.id,topic_id}))
+        );
+        if (topicsError) {
+          await supabase.from('case_files').delete().eq('id',newCaseFile.id);
+          throw topicsError;
+        }
+      }
 
       if (participants.length > 0) {
         const { error: participantsError } = await supabase
@@ -303,7 +313,7 @@ export const useCaseFiles = () => {
           table: 'case_files',
           filter: `tenant_id=eq.${currentTenant.id}`,
         },
-        (payload: Record<string, any>) => {
+        (payload) => {
           if (payload.eventType === 'DELETE') {
             const deletedId = payload.old?.id as string | undefined;
             if (deletedId) {

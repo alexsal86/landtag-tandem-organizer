@@ -1,5 +1,8 @@
+import { useContactTaskContext } from "@/features/responsibilities/useContactTaskContext";
+import { ResponsibilityContextFields } from "@/features/responsibilities/ResponsibilityContextFields";
+import { ResponsibleSuggestion } from "@/features/responsibilities/ResponsibleSuggestion";
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Plus, Tag } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,8 +27,13 @@ type TaskInsert = TablesInsert<"tasks">;
 
 export default function CreateTask() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const contactId = searchParams.get('contact');
+  const contactContext = useContactTaskContext(contactId);
+  const [topicsTouched,setTopicsTouched] = useState(false);
   const { currentTenant } = useTenant();
   const { saveTaskTopics } = useCreateTaskWithTopics();
+  const [matrixAssignee,setMatrixAssignee] = useState<string|null>(null);
   const [loading, setLoading] = useState(false);
   const [userProfiles, setUserProfiles] = useState<ProfileOption[]>([]);
   const [_currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -39,7 +47,11 @@ export default function CreateTask() {
     dueDate: "",
     assignedTo: [] as string[],
     topicIds: [] as string[],
+    regionIds: [] as string[],
+    committeeIds: [] as string[],
   });
+
+  const selectedTopicIds = topicsTouched ? formData.topicIds : contactContext.data?.topicIds ?? formData.topicIds;
 
   debugConsole.log('🔍 CreateTask component render - formData:', formData);
 
@@ -94,6 +106,7 @@ export default function CreateTask() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (contactId && !contactContext.data) return;
     setLoading(true);
 
       debugConsole.log('📝 Starting task creation process');
@@ -133,6 +146,7 @@ export default function CreateTask() {
         // Create task with assigned_to as comma-separated string
         const taskData: TaskInsert = {
           title: formData.title.trim(),
+          ...(contactContext.data ? {source_type:"contact",source_id:contactContext.data.id} : {}),
           description: formData.description?.trim() || null,
           priority: formData.priority,
           category: formData.category || 'personal',
@@ -164,6 +178,10 @@ export default function CreateTask() {
           throw new Error(insertError.message);
         }
 
+        if (matrixAssignee && insertedTask) {
+          const handover = await supabase.rpc('assign_from_responsibility_matrix', {p_tenant:currentTenant.id,p_kind:'task',p_id:insertedTask.id,p_user:matrixAssignee});
+          if (handover.error) notify.error("Aufgabe erstellt, Übergabe fehlgeschlagen", {description:handover.error.message});
+        }
         debugConsole.log('✅ Task created successfully:', insertedTask);
 
         const { data: senderProfile } = await supabase
@@ -185,8 +203,8 @@ export default function CreateTask() {
         );
         
         // Save topics if any selected
-        if (formData.topicIds.length > 0) {
-          await saveTaskTopics(insertedTask.id, formData.topicIds);
+        if (selectedTopicIds.length > 0) {
+          await saveTaskTopics(insertedTask.id, selectedTopicIds);
         }
         
         notify.success("Aufgabe erstellt", {
@@ -326,6 +344,8 @@ export default function CreateTask() {
                 </div>
               </div>
 
+              {contactContext.data&&<p className="text-sm">Kontakt-Aufgabe: {contactContext.data.name}</p>}
+              {contactContext.error&&<p role="alert" className="text-destructive">{contactContext.error.message}</p>}
               {/* Topics Section */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
@@ -333,14 +353,17 @@ export default function CreateTask() {
                   Themen (optional)
                 </Label>
                 <TopicSelector
-                  selectedTopicIds={formData.topicIds}
-                  onTopicsChange={(topicIds) => setFormData({ ...formData, topicIds })}
+                  selectedTopicIds={selectedTopicIds}
+                  onTopicsChange={(topicIds) => {setTopicsTouched(true);setFormData({ ...formData, topicIds });}}
                   placeholder="Themen zuweisen..."
                 />
+                <ResponsibilityContextFields regionIds={formData.regionIds} committeeIds={formData.committeeIds} onChange={patch=>setFormData(previous=>({...previous,...patch}))} />
+                <ResponsibleSuggestion context={{...formData,topicIds:selectedTopicIds}} onAccept={setMatrixAssignee} />
+                {matrixAssignee&&<p className="text-sm">Übergabe an {userProfiles.find(profile=>profile.user_id===matrixAssignee)?.display_name ?? "ausgewählte Person"} beim Erstellen vorgemerkt. <Button type="button" variant="link" onClick={()=>setMatrixAssignee(null)}>Zurücknehmen</Button></p>}
               </div>
 
               <div className="flex gap-4 pt-4">
-                <Button type="submit" disabled={loading} className="gap-2">
+                <Button type="submit" disabled={loading || (!!contactId && !contactContext.data)} className="gap-2">
                   <Plus className="h-4 w-4" />
                   {loading ? "Wird erstellt..." : "Aufgabe erstellen"}
                 </Button>

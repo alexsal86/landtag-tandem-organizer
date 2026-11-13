@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { ContactPrivacyCard } from "@/features/contacts/privacy/ContactPrivacyCard";
 import { useState, useEffect, type ComponentType } from "react";
 import { Trash2, PhoneCall, Plus, FileText, ChevronDown, Euro, ArrowLeft, Star, Mail, Phone, Globe } from "lucide-react";
@@ -261,6 +262,7 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
               >
                 <Star className={`h-4 w-4 ${contact.is_favorite ? "text-palette-yellow fill-current" : "text-muted-foreground"}`} />
               </Button>
+              <Button asChild variant="outline" size="sm"><Link to={`/create-task?contact=${encodeURIComponent(contactId)}`}>Kontakt-Aufgabe</Link></Button>
               <Button onClick={() => setIsEditing(true)} size="sm" className="rounded-full px-5">
                 Bearbeiten
               </Button>

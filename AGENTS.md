@@ -32,3 +32,4 @@
 - Document annotations live in src/features/annotations and store shapes as 0..1 fractions of page/image size plus a file version stamp, so markings survive zoom and flag outdated files; originals in storage are never modified.
 
 - Annotation follow-up tasks are created only through create_document_annotation_task: it locks the root annotation, validates tenant/assignee membership and atomically writes the Stafette task and unique document_annotation_tasks link. Task links are read-only to clients; deleting an annotation keeps its existing task and document backlink.
+- Employee responsibility matching and coverage rules live in src/features/responsibilities/suggest.ts; matrix writes and confirmed task/file assignments use tenant-checked RPCs, while case-item handovers reuse handover_case_items and preserve the existing ball_owner category.

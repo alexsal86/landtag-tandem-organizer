@@ -1,3 +1,4 @@
+import { ResponsibilityMatrix } from "@/features/responsibilities/ResponsibilityMatrix";
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { NewUserForm } from "@/components/admin/NewUserForm";
@@ -20,7 +21,7 @@ import { PendingLeavesTable, EmployeeListTable } from "@/components/employees/Em
 export function EmployeesView() {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get("tab");
-  const activeTab = requestedTab && ["overview", "meetings", "timetracking"].includes(requestedTab)
+  const activeTab = requestedTab && ["overview", "meetings", "timetracking", "responsibilities"].includes(requestedTab)
     ? requestedTab : "overview";
   const handleTabChange = (tab: string) => {
     setSearchParams(previous => {
@@ -66,12 +67,12 @@ export function EmployeesView() {
 
   if (!data.isAdmin) {
     return (
-      <EmployeeSelfView
+      <div><Tabs value={activeTab === "responsibilities" ? "responsibilities" : "overview"} onValueChange={handleTabChange}><TabsList><TabsTrigger value="overview">Mein Profil</TabsTrigger><TabsTrigger value="responsibilities">Zuständigkeiten & Matrix</TabsTrigger></TabsList><TabsContent value="responsibilities"><ResponsibilityMatrix /></TabsContent><TabsContent value="overview"><EmployeeSelfView
         loading={data.loading}
         selfSettings={data.selfSettings}
         selfLeaveAgg={data.selfLeaveAgg}
         selfProfile={data.selfProfile}
-      />
+      /></TabsContent></Tabs></div>
     );
   }
 
@@ -106,6 +107,7 @@ export function EmployeesView() {
         <TabsList className="mb-4">
           <TabsTrigger value="overview"><Calendar className="h-4 w-4 mr-2" />Übersicht</TabsTrigger>
           <TabsTrigger value="meetings"><MessageSquare className="h-4 w-4 mr-2" />Gespräche</TabsTrigger>
+          <TabsTrigger value="responsibilities">Zuständigkeiten & Matrix</TabsTrigger>
           <TabsTrigger value="timetracking"><Clock className="h-4 w-4 mr-2" />Zeiterfassung</TabsTrigger>
         </TabsList>
 
@@ -144,6 +146,7 @@ export function EmployeesView() {
           <EmployeeMeetingHistory showFilters={true} refreshTrigger={meetingHistoryRefreshTrigger} onScheduleMeeting={() => setMeetingEmployeePickerOpen(true)} />
         </TabsContent>
 
+        <TabsContent value="responsibilities"><ResponsibilityMatrix /></TabsContent>
         <TabsContent value="timetracking">
           <AdminTimeTrackingView />
         </TabsContent>
