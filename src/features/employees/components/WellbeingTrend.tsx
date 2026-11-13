@@ -11,7 +11,7 @@ export function WellbeingTrend({ meetings }: { meetings: WellbeingPoint[] }) {
       <div className="h-56" role="img" aria-label="Verlauf von Zufriedenheit, Belastung und Balance auf einer Skala von 1 bis 5">
         <ResponsiveContainer width="100%" height="100%"><LineChart data={trend.points.map(point => ({ ...point }))}>
           <XAxis dataKey="meeting_date" tickFormatter={(value: unknown) => new Date(String(value)).toLocaleDateString("de-DE", { timeZone: "Europe/Berlin" })} />
-          <YAxis domain={[1, 5] as [number, number]} ticks={[1, 2, 3, 4, 5]} /><Tooltip labelFormatter={(value: string | number) => new Date(String(value)).toLocaleDateString("de-DE", { timeZone: "Europe/Berlin" })} /><Legend />
+          <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} /><Tooltip labelFormatter={(value: unknown) => new Date(String(value)).toLocaleDateString("de-DE", { timeZone: "Europe/Berlin" })} /><Legend />
           <Line dataKey="mood" name="Zufriedenheit" stroke="#2563eb" />
           <Line dataKey="workload" name="Belastung" stroke="#d97706" />
           <Line dataKey="balance" name="Balance" stroke="#16a34a" />

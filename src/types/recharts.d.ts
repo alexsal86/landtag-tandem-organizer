@@ -68,6 +68,8 @@ interface CartesianAxisProps extends BaseRechartsProps {
   tickFormatter?: (value: unknown, index?: number) => string;
   width?: number;
   hide?: boolean;
+  domain?: [number, number];
+  ticks?: number[];
 }
 
 interface BarProps extends BaseRechartsProps {
@@ -80,6 +82,7 @@ interface LineProps extends BaseRechartsProps {
   stroke?: string;
   type?: string;
   name?: string;
+  connectNulls?: boolean;
 }
 
 interface ChartWrapperProps extends BaseRechartsProps {
@@ -88,6 +91,7 @@ interface ChartWrapperProps extends BaseRechartsProps {
 
 declare module 'recharts' {
   export interface TooltipProps extends import('react').Attributes {
+    labelFormatter?: (label: unknown) => import('react').ReactNode;
     children?: ReactNode;
     className?: string;
     content?: ReactNode;
