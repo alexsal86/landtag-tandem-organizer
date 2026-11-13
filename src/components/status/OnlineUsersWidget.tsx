@@ -1,5 +1,4 @@
 import React from 'react';
-import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -21,8 +20,7 @@ export const OnlineUsersWidget: React.FC = () => {
   };
 
   return (
-    <Card>
-      <CardContent className="p-0">
+    <div>
         {onlineUsers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <Wifi className="w-12 h-12 text-muted-foreground mb-3" />
@@ -109,7 +107,6 @@ export const OnlineUsersWidget: React.FC = () => {
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+    </div>
   );
 };
