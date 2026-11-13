@@ -1,0 +1,42 @@
+{
+  "version": "2026-11-13.1",
+  "title": "Verpflichtung auf Datenschutz und Vertraulichkeit",
+  "sections": [
+    {
+      "title": "Geltungsbereich und Vertraulichkeit",
+      "text": "Ich verpflichte mich, personenbezogene Daten, die mir im Rahmen meiner Tätigkeit zugänglich werden, vertraulich zu behandeln. Dazu gehören insbesondere Angaben über Beschäftigte, Bewerberinnen und Bewerber, Bürgerinnen und Bürger sowie Kontaktpersonen. Die Verpflichtung gilt für digitale Daten, Papierunterlagen, Gespräche und alle weiteren Formen der Verarbeitung, auch im Homeoffice und unterwegs."
+    },
+    {
+      "title": "Verarbeitung nur für dienstliche Zwecke",
+      "text": "Ich verarbeite personenbezogene Daten nur im Rahmen meiner Aufgaben, meiner Berechtigungen und der rechtmäßigen Weisungen der verantwortlichen Stelle (Art. 29 und Art. 32 Abs. 4 DSGVO). Ich greife nur auf die für meine Aufgabe erforderlichen Daten zu. Ich verwende sie nicht für private Zwecke und gebe sie nur an berechtigte Personen weiter. Bei unklaren oder möglicherweise rechtswidrigen Weisungen kläre ich den Sachverhalt vor der Verarbeitung mit der zuständigen Leitung oder Datenschutzstelle."
+    },
+    {
+      "title": "Grundsätze des Datenschutzes",
+      "text": "Ich beachte insbesondere Rechtmäßigkeit, Zweckbindung, Datenminimierung, Richtigkeit, Speicherbegrenzung sowie Integrität und Vertraulichkeit (Art. 5 DSGVO). Ich erhebe und nutze nur erforderliche Daten und beachte die vorgesehenen Aufbewahrungs- und Löschregeln. Eigenmächtige Kopien, private Archive oder eine Nutzung für andere Zwecke sind unzulässig."
+    },
+    {
+      "title": "Besonders schutzbedürftige Informationen",
+      "text": "Gesundheitsdaten, politische Meinungen, religiöse Überzeugungen und andere besondere Kategorien personenbezogener Daten nach Art. 9 DSGVO sowie Angaben über strafrechtliche Verurteilungen nach Art. 10 DSGVO behandle ich mit besonderer Sorgfalt. Ich verarbeite sie nur, wenn dies ausdrücklich zu meinen Aufgaben gehört und die dafür vorgesehenen Voraussetzungen und Schutzmaßnahmen erfüllt sind."
+    },
+    {
+      "title": "Sicherer Umgang mit Daten und Arbeitsmitteln",
+      "text": "Ich nutze nur freigegebene Geräte, Programme, Speicherorte und Übertragungswege. Ich schütze Zugangsdaten, gebe sie nicht weiter und sperre meinen Bildschirm bei Abwesenheit. Unterlagen und Geräte bewahre ich vor unbefugtem Zugriff geschützt auf. Vor dem Versand prüfe ich Empfänger und Berechtigungen. Personenbezogene oder vertrauliche Inhalte übertrage ich nur nach ausdrücklicher Freigabe in externe Dienste, private E-Mail-Konten, Cloudspeicher oder KI-Anwendungen."
+    },
+    {
+      "title": "Vorfälle unverzüglich melden",
+      "text": "Verlorene Geräte oder Unterlagen, Fehlversand, verdächtige Zugriffe und andere mögliche Datenschutzverletzungen melde ich unverzüglich über die internen Meldewege an die zuständige Leitung oder Datenschutzstelle. Ich sichere verfügbare Informationen und wirke an der Aufklärung mit. Ich entscheide nicht selbst über eine Meldung an Aufsichtsbehörden oder betroffene Personen; hierfür ist die verantwortliche Stelle zuständig."
+    },
+    {
+      "title": "Anfragen und Rechte betroffener Personen",
+      "text": "Anfragen zu Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit oder Widerspruch leite ich unverzüglich an die zuständige Stelle weiter. Ich erteile keine unbefugten Auskünfte und beachte die internen Verfahren zur Prüfung von Identität, Berechtigung und Fristen."
+    },
+    {
+      "title": "Fortgeltung, Rückgabe und Folgen",
+      "text": "Diese Vertraulichkeitspflicht gilt auch nach einem Aufgabenwechsel und nach dem Ende meiner Tätigkeit fort. Bei deren Beendigung gebe ich dienstliche Unterlagen und Arbeitsmittel zurück und behalte keine unbefugten Kopien. Gesetzliche Offenlegungsrechte und geschützte Meldungen von Rechtsverstößen bleiben unberührt. Verstöße können abhängig vom Einzelfall arbeits- oder dienstrechtliche, zivilrechtliche und strafrechtliche Folgen haben. Die gesetzlichen Pflichten der verantwortlichen Stelle bleiben bestehen."
+    },
+    {
+      "title": "Persönliche Erklärung",
+      "text": "Ich habe diese Verpflichtung vollständig gelesen und verstanden und verpflichte mich, sie einzuhalten. Bei Fragen oder Unsicherheiten wende ich mich vor der betreffenden Verarbeitung an die zuständige Leitung oder Datenschutzstelle. Diese Erklärung dokumentiert meine Verpflichtung zur Vertraulichkeit; sie ist keine Einwilligung in die Verarbeitung meiner eigenen Beschäftigtendaten und ersetzt keine erforderliche Datenschutzunterweisung."
+    }
+  ]
+}

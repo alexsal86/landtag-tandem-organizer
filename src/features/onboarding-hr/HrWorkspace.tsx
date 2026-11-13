@@ -1,19 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { GdprDeclarationEditor } from "./GdprDeclarationEditor";
+import { GdprDeclarationDialog } from "./GdprDeclarationDialog";
+import { canConfirmGdpr, type GdprDeclaration } from "./gdpr";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTenantUsers } from "@/hooks/useTenantUsers";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
 import { DeputySelect } from "@/components/timetracking/DeputySelect";
 import { useHrData, type HrStep } from "./useHrData";
 import {
@@ -46,12 +39,17 @@ function HrStepAction({
   evidence,
   onComplete,
   busy,
-  tenantId,
+  isEmployee,
+  onConfirmGdpr,
+  declaration,
   onRetry,
 }: {
   step: DisplayStep;
   admin: boolean;
   evidence?: {
+    declaration_text: string | null;
+    declaration_version: string | null;
+    created_at: string;
     confirmed_on: string;
     confirmed_by: string;
     document_id: string | null;
@@ -62,29 +60,13 @@ function HrStepAction({
     deputy: string | null,
   ) => Promise<void>;
   busy: boolean;
-  tenantId: string;
+  isEmployee: boolean;
+  declaration: GdprDeclaration;
+  onConfirmGdpr: (version: string) => Promise<boolean>;
   onRetry: () => Promise<void>;
 }) {
-  const [date, setDate] = useState(hrToday());
-  const [document, setDocument] = useState("");
   const [deputy, setDeputy] = useState("");
-  const documents = useQuery({
-    queryKey: ["hr-proof-documents", tenantId],
-    enabled:
-      admin && step.hr_evidence_kind === "gdpr" && step.status !== "completed",
-    staleTime: 60_000,
-    queryFn: async () => {
-      const r = await supabase
-        .from("documents")
-        .select("id,title")
-        .eq("tenant_id", tenantId)
-        .order("created_at", { ascending: false })
-        .limit(100);
-      if (r.error) throw r.error;
-      return r.data;
-    },
-  });
-  const canConfirm = step.hr_evidence_kind === "none" || admin;
+  const canConfirm = step.hr_evidence_kind === "none" || (step.hr_evidence_kind === "handover" && admin);
   return (
     <div className="rounded-md border p-3 space-y-2">
       <div className="flex flex-wrap justify-between gap-2">
@@ -119,6 +101,7 @@ function HrStepAction({
         <p className="text-sm">
           Nachweis vom {evidence.confirmed_on} · bestätigt von{" "}
           {evidence.confirmed_by}
+          {evidence.declaration_version && <> · Textversion {evidence.declaration_version} · {new Date(evidence.created_at).toLocaleString("de-DE")}</>}
           {evidence.document_id && (
             <>
               {" "}
@@ -135,45 +118,6 @@ function HrStepAction({
       )}
       {step.status !== "completed" && canConfirm && (
         <>
-          {step.hr_evidence_kind === "gdpr" && (
-            <div className="grid gap-2 sm:grid-cols-2">
-              <Label>
-                Datum der DSGVO-Verpflichtung
-                <Input
-                  type="date"
-                  max={hrToday()}
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                />
-              </Label>
-              <Label>
-                Dokumentverweis (optional)
-                <Select
-                  value={document || "none"}
-                  onValueChange={(value) =>
-                    setDocument(value === "none" ? "" : value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Nachweis auswählen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Ohne Dokumentverweis</SelectItem>
-                    {documents.data?.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>
-                        {d.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {documents.error && (
-                  <span className="text-sm text-destructive">
-                    Dokumente konnten nicht geladen werden.
-                  </span>
-                )}
-              </Label>
-            </div>
-          )}
           {step.hr_evidence_kind === "handover" && (
             <DeputySelect
               value={deputy}
@@ -185,26 +129,28 @@ function HrStepAction({
             disabled={
               busy ||
               !step.entity_id ||
-              (step.hr_evidence_kind === "gdpr" && !date) ||
               (step.hr_evidence_kind === "handover" && !deputy)
             }
             onClick={() =>
               void onComplete(
-                step.hr_evidence_kind === "gdpr" ? date : null,
-                document || null,
+                null,
+                null,
                 deputy || null,
               )
             }
           >
-            {step.hr_evidence_kind === "gdpr"
-              ? "Nachweis bestätigen und erledigen"
-              : step.hr_evidence_kind === "handover"
+            {step.hr_evidence_kind === "handover"
                 ? "Aufgaben übergeben und erledigen"
                 : "Erledigen"}
           </Button>
         </>
       )}
-      {step.status !== "completed" && !canConfirm && (
+      {step.hr_evidence_kind === "gdpr" && <GdprDeclarationDialog
+        currentDeclaration={declaration}
+        declarationText={evidence?.declaration_text} declarationVersion={evidence?.declaration_version}
+        busy={busy} completed={step.status === "completed"}
+        canConfirm={isEmployee && !!step.entity_id && ["active", "blocked"].includes(step.status)} onConfirm={onConfirmGdpr} />}
+      {step.status !== "completed" && !canConfirm && step.hr_evidence_kind !== "gdpr" && (
         <p className="text-sm text-muted-foreground">
           Diesen Nachweis bzw. die Übergabe bestätigt die Büroleitung.
         </p>
@@ -255,6 +201,10 @@ export function HrWorkspace() {
         Schlüsselnummern eintragen. Laufende Pakete behalten ihre beim Start
         gespeicherten Termine und Vorlagen.
       </p>
+      {model.isAdmin && model.tenantId && <GdprDeclarationEditor
+        declaration={data.declaration} busy={model.mutation.isPending}
+        onSave={(text, version) => execute({ name: "save_employee_hr_gdpr_declaration", args: { p_tenant: model.tenantId!, p_text: text, p_expected_version: version } })}
+      />}
       {error && (
         <p role="alert" className="text-destructive">
           {error}
@@ -371,7 +321,11 @@ export function HrWorkspace() {
                         return (
                           <HrStepAction
                             key={step.id}
-                            tenantId={employment.tenant_id}
+                            isEmployee={canConfirmGdpr(model.userId, employment.user_id, true)}
+                            declaration={data.declaration}
+                            onConfirmGdpr={async (version) => {
+                              return execute({ name: "confirm_employee_hr_gdpr", args: { p_step: step.id, p_version: version } });
+                            }}
                             step={step}
                             admin={model.isAdmin}
                             busy={model.mutation.isPending}

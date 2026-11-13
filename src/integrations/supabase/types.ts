@@ -5067,8 +5067,16 @@ export type Database = {
           },
         ]
       }
+      employee_hr_gdpr_declarations: {
+        Row: { tenant_id: string; version: string; text: string; updated_at: string; updated_by: string }
+        Insert: { tenant_id: string; version: string; text: string; updated_at?: string; updated_by: string }
+        Update: { tenant_id?: string; version?: string; text?: string; updated_at?: string; updated_by?: string }
+        Relationships: []
+      }
       employee_hr_evidence: {
         Row: {
+          declaration_text: string | null
+          declaration_version: string | null
           confirmed_by: string
           confirmed_on: string
           created_at: string
@@ -5079,6 +5087,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          declaration_text?: string | null
+          declaration_version?: string | null
           confirmed_by: string
           confirmed_on: string
           created_at?: string
@@ -5089,6 +5099,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          declaration_text?: string | null
+          declaration_version?: string | null
           confirmed_by?: string
           confirmed_on?: string
           created_at?: string
@@ -15492,6 +15504,14 @@ export type Database = {
         Args: { _appointment_id: string }
         Returns: undefined
       }
+      save_employee_hr_gdpr_declaration: {
+        Args: { p_tenant: string; p_text: string; p_expected_version: string };
+        Returns: string;
+      };
+      confirm_employee_hr_gdpr: {
+        Args: { p_step: string; p_version: string };
+        Returns: undefined;
+      };
       complete_employee_hr_step: {
         Args: {
           p_confirmed_on?: string

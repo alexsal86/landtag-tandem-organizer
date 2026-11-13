@@ -1,3 +1,4 @@
+import { canConfirmGdpr, hasReadToEnd, isValidDeclaration, DEFAULT_GDPR_DECLARATION } from "@/features/onboarding-hr/gdpr";
 import {
   hrDueDay,
   hrProgress,
@@ -23,6 +24,7 @@ export const onboardingHrScenario: TestScenario = {
     "routine_package_runs",
     "routine_package_steps",
     "employee_hr_evidence",
+    "employee_hr_gdpr_declarations",
     "employee_hr_reminder_log",
     "notification_types",
     "notifications",
@@ -35,6 +37,27 @@ export const onboardingHrScenario: TestScenario = {
     "Der Servertest rollt seine vollständigen Fixtures zurück. Echte Zustellung und der 15-Minuten-Job benötigen eine bereitgestellte Datenbank.",
   ],
   steps: [
+    {
+      id: "gdpr-edit-validation",
+      label: "Datenschutztext: vollständige Vorlage und Eingabegrenzen prüfen",
+      kind: "logic",
+      run: async () => ({
+        ok: isValidDeclaration(DEFAULT_GDPR_DECLARATION.text) && !isValidDeclaration(" ".repeat(100)) && !isValidDeclaration("a".repeat(50001)),
+        message: "Nur vollständige Texte innerhalb der zulässigen Länge können gespeichert werden.",
+      }),
+    },
+    {
+      id: "gdpr-personal-confirmation",
+      label: "DSGVO: nur persönlich und erst nach dem Textende bestätigen",
+      kind: "logic",
+      run: async () => ({
+        ok: !hasReadToEnd(0, 300, 1200) && hasReadToEnd(900, 300, 1200)
+          && !canConfirmGdpr("leitung", "person", true)
+          && !canConfirmGdpr("person", "person", false)
+          && canConfirmGdpr("person", "person", true),
+        message: "Scrollfreigabe und persönliche Bestätigung geprüft.",
+      }),
+    },
     {
       id: "deadlines",
       label: "Eintrittsfristen, Überfälligkeit und anstehende Austritte",

@@ -1,3 +1,4 @@
+import { DEFAULT_GDPR_DECLARATION, type GdprDeclaration } from "./gdpr";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
@@ -16,6 +17,7 @@ type HrRun = Pick<
   | "hr_template_revision"
 >;
 interface HrData {
+  declaration: GdprDeclaration;
   employment: Tables<"employee_lifecycle">[];
   runs: HrRun[];
   steps: HrStep[];
@@ -34,6 +36,8 @@ export function useHrData() {
     staleTime: 60_000,
     queryFn: async () => {
       if (!tenantId) throw new Error("Kein Büro ausgewählt.");
+      const declaration = await supabase.from("employee_hr_gdpr_declarations").select("version,text").eq("tenant_id", tenantId);
+      if (declaration.error) throw declaration.error;
       const employment = await supabase
         .from("employee_lifecycle")
         .select(
@@ -69,7 +73,7 @@ export function useHrData() {
         ? await supabase
             .from("employee_hr_evidence")
             .select(
-              "id,tenant_id,step_id,user_id,confirmed_on,confirmed_by,document_id,created_at",
+              "id,tenant_id,step_id,user_id,confirmed_on,confirmed_by,document_id,created_at,declaration_text,declaration_version",
             )
             .eq("tenant_id", tenantId)
             .in("step_id", stepIds)
@@ -86,6 +90,7 @@ export function useHrData() {
         : { data: [], error: null };
       if (templates.error) throw templates.error;
       return {
+        declaration: declaration.data?.[0] ?? DEFAULT_GDPR_DECLARATION,
         employment: employment.data,
         runs: runs.data ?? [],
         steps: steps.data ?? [],
@@ -101,6 +106,8 @@ export function useHrData() {
     | "seed_employee_hr_templates"
     | "start_employee_hr"
     | "complete_employee_hr_step"
+    | "confirm_employee_hr_gdpr"
+    | "save_employee_hr_gdpr_declaration"
     | "remind_employee_hr"
     | "refresh_routine_package";
   type Mutation = {
@@ -116,7 +123,7 @@ export function useHrData() {
       if (result.error) throw new Error(result.error.message);
       return result.data;
     },
-    onSuccess: async () => {
+    onSettled: async () => {
       await Promise.all([
         client.invalidateQueries({ queryKey: ["employee-hr"] }),
         client.invalidateQueries({ queryKey: ["employee-admin-overview"] }),
