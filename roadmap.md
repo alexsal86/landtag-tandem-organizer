@@ -127,3 +127,12 @@
 - [ ] Vorlage mit echter Anmeldung übernehmen, speichern, deaktivieren und einmal regulär ausführen — externe Supabase-Testsitzung fehlt. Keine Edge-Function-Deployments oder Datenbank-Selbsttestläufe durchgeführt.
 
 - UI-Wege, Datenannahmen, Dateiliste je Phase und Prüfgrenzen: `docs/team-rituals.md`.
+
+# Zuständigkeiten — Mockup v2
+- [x] Mockup als integrierte App-Oberfläche umgesetzt: „Nach Bereich“ / „Nach Person“, Suche, gruppierte Bereiche und direkte Zuweisung über die vorhandene RPC.
+- [x] Mehrere Primärpersonen je Bereich ausdrücklich erlaubt. Änderungen betreffen ausschließlich die ausgewählte Person; keine automatische Herabstufung anderer Primärzuständiger.
+- [x] Lückenfilter unterscheidet „keine Primärzuständigkeit“ von „niemand zuständig“. Bestehende allgemeine Lückenerkennung und Vorschlagslogik bleiben erhalten.
+- [x] Personenkarten mit tatsächlichen Primär-/Sekundärzahlen und Rollenfokus, ohne behauptete Auslastung. Profilbearbeitung und bestehende Themen-Box erhalten; Katalogverwaltung in einem Dialog.
+- [x] Bestehendes App-Theme, mobile Darstellung und Tastaturbedienung mit shadcn-Popovers; Mitglieder lesen, Leitung/Abgeordnete bearbeiten.
+- [x] Vier gezielte Vitest-Tests inklusive Selbsttest-Logik, Feature-Typecheck und Lint. Chromium-Smoke mit gemocktem Service: weitere Primärperson ohne Änderung anderer Personen, Lückenfilter, Suche, Personenkarten/Profil, Mobilansicht und reine Leseansicht.
+- [ ] Persistente Bedienung mit echter Supabase-Sitzung nicht geprüft. Keine neue Migration nötig; vorhandene Tenant-/Rollen-RPCs und das bestehende Datenmodell werden verwendet.
