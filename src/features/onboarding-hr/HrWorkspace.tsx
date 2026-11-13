@@ -282,7 +282,7 @@ export function HrWorkspace() {
                 p_user: form.user,
                 p_type: form.type,
                 p_start: form.start,
-                p_end: form.end || null,
+                p_end: form.end || undefined,
                 p_mentor: form.mentor === "none" ? undefined : form.mentor,
                 p_id: form.id || undefined,
               },
