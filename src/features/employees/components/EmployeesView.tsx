@@ -119,20 +119,10 @@ export function EmployeesView() {
             onLeaveAction={ops.handleLeaveAction}
             onCancelApproval={ops.handleCancelApproval}
           />
-          {searchParams.get("employee") && (
-            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-              <span>Ansicht für die ausgewählte Person</span>
-              <Button variant="outline" size="sm" onClick={() => setSearchParams(previous => {
-                const next = new URLSearchParams(previous);
-                next.delete("employee");
-                return next;
-              })}>Alle Mitarbeitenden anzeigen</Button>
-            </div>
-          )}
           <EmployeeListTable
             headerAction={<Button onClick={() => setNewEmployeeOpen(true)} className="h-11 rounded-xl bg-lime-600 px-5 text-white hover:bg-lime-700"><Plus className="mr-2 h-4 w-4" />Mitarbeiter</Button>}
             loading={data.loading}
-            employees={searchParams.get("employee") ? data.employees.filter(employee => employee.user_id === searchParams.get("employee")) : data.employees}
+            employees={data.employees}
             leaves={data.leaves}
             sickDays={data.sickDays}
             setEmployees={data.setEmployees}
