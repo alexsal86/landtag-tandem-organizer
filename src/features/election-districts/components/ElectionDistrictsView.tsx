@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { boundaryAreaKm2, directMandateParty, partyColors, hasRenderableBoundary, searchElectionDistricts } from "../mapModel";
 import { Button } from "@/components/ui/button";
-import { Users, BarChart3, Crown, Award, Search } from "lucide-react";
+import { Users, BarChart3, Search } from "lucide-react";
 import { useElectionDistricts } from "@/hooks/useElectionDistricts";
 import { DistrictNotes } from "./DistrictNotes";
 import { getPartyColor, getPartyTextColor } from "../partyColors";
@@ -266,65 +266,47 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
 
           {/* District Information */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">
-                {selectedDistrict?.district_type === 'verwaltungsgrenze' ? 'Verwaltungsgrenze' : 'Wahlkreis-Informationen'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-5">
               {selectedDistrict ? (
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary">
-                      {selectedDistrict.district_number}
-                    </Badge>
-                    <span className="font-semibold">{selectedDistrict.district_name}</span>
-                  </div>
-                  
-                  {selectedDistrict.representatives && selectedDistrict.representatives.length > 0 && (() => {
-                    // Group representatives by legislature period
-                    const byLegislature = selectedDistrict.representatives.reduce<Record<string, typeof selectedDistrict.representatives>>((acc, rep) => {
-                      const period = rep.legislature_period || '18. Legislaturperiode';
-                      if (!acc[period]) acc[period] = [];
-                      acc[period].push(rep);
-                      return acc;
+                  {(() => {
+                    const representatives = selectedDistrict.representatives || [];
+                    const byLegislature = representatives.reduce<Record<string, typeof representatives>>((groups, rep) => {
+                      const period = rep.legislature_period?.trim() || '18. Legislaturperiode';
+                      (groups[period] ||= []).push(rep);
+                      return groups;
                     }, {});
-                    const periods = Object.keys(byLegislature).sort().reverse();
-
-                    return (
-                      <div className="space-y-3">
-                        {periods.map(period => (
-                          <div key={period} className="space-y-2">
-                            <h4 className="font-semibold text-sm flex items-center gap-1">
-                              <Crown className="h-4 w-4" />
-                              {period}
-                            </h4>
-                            {byLegislature[period].map((rep) => (
-                              <div key={rep.id} className="flex items-center gap-2 text-sm">
-                                {rep.mandate_type === 'direct' && <Award className="h-3 w-3 text-palette-yellow" />}
-                                <span className="font-medium">{rep.name}</span>
-                                <Badge 
-                                  variant="outline" 
-                                  className="text-xs"
-                                  style={{ 
-                                    backgroundColor: getPartyColor(rep.party), 
-                                    color: getPartyTextColor(rep.party),
-                                    border: 'none'
-                                  }}
-                                >
-                                  {rep.party}
-                                </Badge>
-                                <span className="text-xs text-muted-foreground">
-                                  ({rep.mandate_type === 'direct' ? 'Direkt' : 'Liste'})
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        ))}
-                      </div>
-                    );
+                    // Keep historical mandates under their own period, newest first.
+                    const periods = Object.keys(byLegislature).sort((a, b) => b.localeCompare(a, 'de', { numeric: true }));
+                    if (!periods.length) periods.push('');
+                    return periods.map(period => {
+                      const reps = [...(byLegislature[period] || [])].sort((a, b) =>
+                        Number(b.mandate_type === 'direct') - Number(a.mandate_type === 'direct') || a.order_index - b.order_index
+                      );
+                      const winner = reps.find(rep => rep.mandate_type === 'direct');
+                      return (
+                        <section key={period} className="space-y-2">
+                          <h3 className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <Badge variant="outline" className="border-0 text-xs" style={{ backgroundColor: getPartyColor(winner?.party), color: getPartyTextColor(winner?.party) }}>
+                              {selectedDistrict.district_number}
+                            </Badge>
+                            <span className="font-semibold">{selectedDistrict.district_name}</span>
+                            {period && <span className="ml-auto text-xs font-normal text-muted-foreground">{period}</span>}
+                          </h3>
+                          {reps.map(rep => (
+                            <div key={rep.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-border/60 py-2 text-sm">
+                              <span className="font-medium">{rep.name}</span>
+                              <Badge variant="outline" className="border-0 px-2 py-0 text-xs" style={{ backgroundColor: getPartyColor(rep.party), color: getPartyTextColor(rep.party) }}>
+                                {rep.party}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">{rep.mandate_type === 'direct' ? '★ Direkt' : 'Liste'}</span>
+                            </div>
+                          ))}
+                        </section>
+                      );
+                    });
                   })()}
-                  
+
                   {selectedDistrict.population && (
                     <div className="flex items-center gap-2 text-sm">
                       <Users className="h-4 w-4 text-muted-foreground" />
@@ -332,7 +314,6 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
                     </div>
                   )}
                   
-                  {selectedDistrict.region && <p className="text-sm text-muted-foreground">Region: {selectedDistrict.region}</p>}
                   {selectedDistrict.contact_info?.phone && (
                     <p className="text-sm break-words">Telefon: {selectedDistrict.contact_info.phone}</p>
                   )}
