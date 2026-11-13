@@ -65,6 +65,7 @@ export interface UseContactsViewStateResult {
   contacts: Contact[];
   loading: boolean;
   loadingMore: boolean;
+  loadError: boolean;
   hasMore: boolean;
   totalCount: number;
   loadMore: () => void;
@@ -109,6 +110,7 @@ export function useContactsViewState(): UseContactsViewStateResult {
     contacts,
     loading,
     loadingMore,
+    loadError,
     hasMore,
     totalCount,
     loadMore,
@@ -231,6 +233,7 @@ export function useContactsViewState(): UseContactsViewStateResult {
     contacts,
     loading,
     loadingMore,
+    loadError,
     hasMore,
     totalCount,
     loadMore,
