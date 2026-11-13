@@ -28,3 +28,5 @@ und tägliche Erinnerungsansprüche. Keine vollständige Testsuite und keine
 Browser-Testserie, wie gewünscht. Live-Migration, echte Supabase-Sitzung und
 Benachrichtigungszustellung sind offen. Phase 1 wurde inzwischen zusammengeführt; der separate Phase-3-PR richtet sich
 gegen `main`.
+
+PR: https://github.com/alexsal86/landtag-tandem-organizer/pull/1423
