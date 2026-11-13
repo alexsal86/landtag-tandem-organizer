@@ -1,5 +1,8 @@
+import { AnnotationAudit } from "./AnnotationAudit";
+import { searchAnnotationThreads, nextAnnotationId } from "../annotationSearch";
+import { annotationPageLabel } from "../textHighlights";
 import { Link } from "react-router-dom";
-import { assignedAnnotationThreads } from "../taskModel";
+import { assignedAnnotationThreads, annotationTaskStatusLabel } from "../taskModel";
 import { plainAnnotationComment as plainComment } from "../mentions";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { format } from "date-fns";
@@ -9,16 +12,19 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AnnotationCommentInput } from "./AnnotationCommentInput";
 import { ANNOTATION_COLORS, type AnnotationFilter } from "../annotationModel";
 import { colorVar } from "./AnnotationShapes";
-import type { DocumentAnnotation, AnnotationPatch } from "../types";
+import type { DocumentAnnotation, AnnotationPatch, AnnotationColor } from "../types";
 
 interface Props {
-  userId?: string; workflowReady: boolean; membersUnavailable: boolean;
+  documentId: string; userId?: string; workflowReady: boolean; membersUnavailable: boolean;
   members: { user_id: string; display_name: string | null }[];
   onCreateTask: (annotation: DocumentAnnotation) => void;
   tenantId: string; saving: boolean; loading: boolean; failed: boolean; onRetry: () => void;
   annotations: DocumentAnnotation[]; numbers: Record<string, number>; activeId: string | null;
   currentVersion: string; canManage: (annotation: DocumentAnnotation) => boolean; canResolve: boolean;
   authorName: (id: string) => string; onSelect: (id: string) => void;
+  onLocateText?: (annotation: DocumentAnnotation) => void;
+  onReanchor: (annotation: DocumentAnnotation) => void;
+  onReselect?: (annotation: DocumentAnnotation) => void;
   onEdit: (annotation: DocumentAnnotation) => void; onUpdate: (id: string, patch: AnnotationPatch) => Promise<boolean>;
   onDelete: (id: string) => void; onReply: (id: string, content: string) => Promise<boolean>;
 }
@@ -28,12 +34,16 @@ const timestamp = (text: string) => format(new Date(text), "dd.MM. HH:mm", { loc
 
 export function AnnotationSidebar(p: Props) {
   const [filter, setFilter] = useState<AnnotationFilter>("open");
+  const [historyId, setHistoryId] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [color, setColor] = useState<AnnotationColor | ''>('');
+  const [author, setAuthor] = useState('');
   const [onlyMine, setOnlyMine] = useState(false);
   const [replyId, setReplyId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const list = useRef<HTMLDivElement>(null);
   const lastSelected = useRef<string | null>(null);
-  const roots = assignedAnnotationThreads(p.annotations, filter, p.userId, onlyMine);
+  const roots = searchAnnotationThreads(p.annotations, assignedAnnotationThreads(p.annotations, filter, p.userId, onlyMine), query, color, author);
   const total = assignedAnnotationThreads(p.annotations, 'all', p.userId, onlyMine).length;
   const open = assignedAnnotationThreads(p.annotations, 'open', p.userId, onlyMine).length;
   useEffect(() => {
@@ -55,16 +65,35 @@ export function AnnotationSidebar(p: Props) {
     <DropdownMenuTrigger asChild><button type="button" className="aw-icon ml-auto !p-1" aria-label="Weitere Aktionen" disabled={p.saving}><MoreVertical /></button></DropdownMenuTrigger>
     <DropdownMenuContent align="end">
       <DropdownMenuItem onClick={() => p.onEdit(a)}><Pencil className="mr-2 h-4 w-4" />Bearbeiten</DropdownMenuItem>
+      {!a.parent_id && a.annotation_type === 'highlight' && p.onReselect && <DropdownMenuItem onClick={() => p.onReselect?.(a)}>Textauswahl ändern</DropdownMenuItem>}
+      {!a.parent_id && a.annotation_type === 'highlight' && a.file_version !== p.currentVersion && p.onLocateText && <DropdownMenuItem onClick={() => p.onLocateText?.(a)}>Textstelle automatisch suchen</DropdownMenuItem>}
+      {!a.parent_id && a.file_version !== p.currentVersion && <DropdownMenuItem onClick={() => p.onReanchor(a)}>In aktueller Datei neu verorten</DropdownMenuItem>}
       <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => p.onDelete(a.id)}><Trash2 className="mr-2 h-4 w-4" />Löschen<span className="ml-auto pl-4 text-xs opacity-60">Entf</span></DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>;
   return <aside className="aw-sidebar" aria-label="Anmerkungen">
-    <div className="aw-sidebar-header"><h3>Anmerkungen</h3><div className="aw-segments" role="group" aria-label="Anmerkungen filtern">
+    <div className="aw-sidebar-header"><h3>Anmerkungen</h3>
+      <button type="button" className="aw-button mb-2" aria-expanded={historyId === '__all__'} onClick={() => setHistoryId(historyId === '__all__' ? null : '__all__')}>Dokument-Verlauf</button>
+      {historyId === '__all__' && <AnnotationAudit documentId={p.documentId} authorName={p.authorName} />}<div className="aw-segments" role="group" aria-label="Anmerkungen filtern">
       {([['open', 'Offen', open], ['done', 'Erledigt', total - open], ['all', 'Alle', total]] as const).map(([id, label, count]) =>
         <button type="button" key={id} className={filter === id ? 'on' : ''} aria-pressed={filter === id} onClick={() => setFilter(id)}>{label} ({count})</button>)}
     </div>
       <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs"><input type="checkbox" checked={onlyMine} disabled={!p.userId || !p.workflowReady}
         style={{ accentColor: 'var(--aw-primary)' }} onChange={e => setOnlyMine(e.target.checked)} />Nur mir zugewiesene Anmerkungen</label>
+    </div>
+    <div className="space-y-2 border-b p-3">
+      <input className="w-full rounded-md border bg-white px-3 py-2 text-sm text-black" aria-label="Anmerkungen und markierten Text durchsuchen" placeholder="Kommentare und Text durchsuchen …" value={query} onChange={e => setQuery(e.target.value)} />
+      <div className="flex gap-2">
+        <select aria-label="Nach Farbe filtern" className="min-w-0 flex-1 rounded border bg-background p-1 text-xs" value={color} onChange={e => setColor(e.target.value as AnnotationColor | '')}>
+          <option value="">Alle Farben</option>{ANNOTATION_COLORS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+        </select>
+        <select aria-label="Nach Autor filtern" className="min-w-0 flex-1 rounded border bg-background p-1 text-xs" value={author} onChange={e => setAuthor(e.target.value)}>
+          <option value="">Alle Autor:innen</option>{Array.from(new Set(p.annotations.filter(a => !a.parent_id).map(a => a.created_by))).map(id => <option key={id} value={id}>{p.authorName(id)}</option>)}
+        </select>
+      </div>
+      <div className="flex items-center justify-between text-xs"><span>{roots.length} Treffer</span>{([-1, 1] as const).map(direction => <button key={direction} type="button" className="aw-button" disabled={!roots.length} onClick={() => {
+        const id = nextAnnotationId(roots.map(a => a.id), p.activeId, direction); if (id) p.onSelect(id);
+      }}>{direction === -1 ? '↑ Vorherige' : '↓ Nächste'}</button>)}</div>
     </div>
     <div ref={list} className="aw-list">
       {p.loading ? <p className="aw-empty" role="status">Anmerkungen werden geladen …</p>
@@ -80,7 +109,7 @@ export function AnnotationSidebar(p: Props) {
             <span className="aw-byline" title={`${p.authorName(a.created_by)} · ${timestamp(a.created_at)}`}>· {p.authorName(a.created_by)} · {timestamp(a.created_at)}</span>
             <span onClick={e => e.stopPropagation()} className="ml-auto">{menu(a)}</span>
           </div>
-          <p className="mt-1 text-[11px] text-muted-foreground">{TYPE_LABEL[a.annotation_type]}{a.page_number ? ` · Seite ${a.page_number}` : ""}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">{TYPE_LABEL[a.annotation_type]}{annotationPageLabel(a) ? ` · ${annotationPageLabel(a)}` : ""}</p>
           {a.file_version && a.file_version !== p.currentVersion && <p className="mt-2 flex gap-1 text-xs text-warning"><AlertTriangle className="h-3.5 w-3.5 shrink-0" />Ältere Dateiversion – Position kann abweichen</p>}
           {a.quote_text && <blockquote className="mt-2 line-clamp-3 border-l-2 pl-2 text-xs italic text-muted-foreground">„{a.quote_text}“</blockquote>}
           <p className="aw-text">{a.content ? plainComment(a.content) : 'Ohne Kommentar'}</p>
@@ -99,7 +128,7 @@ export function AnnotationSidebar(p: Props) {
           </label>
           <div className="aw-actions" onClick={e => e.stopPropagation()}>
             <button className="aw-button" disabled={p.saving || !p.canResolve} onClick={() => { void p.onUpdate(a.id, { resolved: !a.resolved }); }}>
-              {a.resolved ? <RotateCcw /> : <Check />}{a.resolved ? 'Wieder öffnen' : 'Erledigt'}</button>
+              {a.resolved ? <RotateCcw /> : <Check />}{a.resolved ? 'Wieder öffnen' : a.task_status === 'completed' ? 'Anmerkung erledigen' : 'Erledigt'}</button>
             <button className="aw-button" disabled={p.saving || !p.canResolve} onClick={() => { setReplyId(replyId === a.id ? null : a.id); setReplyText(''); }}>Antworten</button>
           </div>
           <div className="aw-actions mt-2" onClick={e => e.stopPropagation()}>
@@ -107,6 +136,12 @@ export function AnnotationSidebar(p: Props) {
               : <button className="aw-button" disabled={p.saving || !p.workflowReady || !p.canResolve}
                 title={!p.workflowReady ? 'Aufgaben aus Anmerkungen sind noch nicht verfügbar' : a.assigned_to ? `Zugewiesen an ${p.authorName(a.assigned_to)}` : 'Wird dir als Stafette-Aufgabe zugewiesen'} onClick={() => p.onCreateTask(a)}><ListTodo />Als Aufgabe übernehmen</button>}
           </div>
+          <button type="button" className="aw-button mt-2" aria-expanded={historyId === a.id} onClick={e => { e.stopPropagation(); setHistoryId(historyId === a.id ? null : a.id); }}>Änderungsverlauf</button>
+          {historyId === a.id && <AnnotationAudit documentId={a.document_id} threadId={a.id} authorName={p.authorName} />}
+          {a.task_id && <p className="mt-2 text-xs text-muted-foreground" role="status">
+            Aufgabe: {annotationTaskStatusLabel(a.task_status)}
+            {a.task_status === 'completed' && !a.resolved && <span className="block text-green-700">Aufgabe abgeschlossen. Bitte die Anmerkung prüfen und bei Bedarf erledigen.</span>}
+          </p>}
           {replyId === a.id && <form className="mt-2 space-y-2" onClick={e => e.stopPropagation()} onSubmit={async e => {
             e.preventDefault(); if (replyText.trim() && !p.saving && await p.onReply(a.id, replyText.trim())) { setReplyId(null); setReplyText(''); }
           }}>

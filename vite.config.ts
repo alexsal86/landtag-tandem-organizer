@@ -1,3 +1,4 @@
+import { annotationOcrAssets } from "./scripts/viteAnnotationOcr.ts";
 import { quickNotesOfflineShell } from "./scripts/viteQuickNotesOffline";
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
@@ -143,6 +144,7 @@ export default defineConfig(({ mode }) => ({
     headers: securityHeaders,
   },
   plugins: [
+    annotationOcrAssets(),
     quickNotesOfflineShell(),
     lexicalDedupePlugin(),
     publicInvitationApiProxy(),

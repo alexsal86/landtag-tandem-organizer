@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { annotationPatchMatches } from "./annotationModel";
@@ -31,10 +31,24 @@ export function useAnnotations(documentId: string | null) {
       }
       if (links.error && !["42P01", "PGRST205"].includes(links.error.code)) throw links.error;
       const tasks = new Map<string, string>((links.data ?? []).filter(link => !!link.annotation_id).map(link => [link.annotation_id!, link.task_id] as [string, string]));
-      return { rows: (rows ?? []).map(row => ({ ...row, assigned_to: row.assigned_to ?? null, task_id: tasks.get(row.id) ?? null })),
+      return { rows: (rows ?? []).map(row => ({ ...row, assigned_to: row.assigned_to ?? null, task_id: tasks.get(row.id) ?? null, task_status: null })),
         workflowReady: assignedReady && !links.error };
     },
   });
+  const taskIdsKey = (list.data?.rows ?? []).flatMap(row => row.task_id ? [row.task_id] : []).sort().join(',');
+  const taskStatuses = useQuery({
+    queryKey: ["document-annotation-task-status", documentId, taskIdsKey],
+    enabled: !!documentId && !!taskIdsKey,
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const result = await supabase.from("tasks").select("id,status").in("id", taskIdsKey.split(','));
+      if (result.error) throw result.error;
+      return new Map<string, string | null>(result.data.map(task => [task.id, task.status] as [string, string | null]));
+    },
+  });
+  const annotations = useMemo(() => (list.data?.rows ?? []).map(row => ({ ...row,
+    task_status: row.task_id ? taskStatuses.data?.get(row.task_id) ?? null : null,
+  })), [list.data, taskStatuses.data]);
   const columns = list.data?.workflowReady ? COLS : BASE_COLS;
   const invalidate = () => {
     return Promise.all([
@@ -43,6 +57,12 @@ export function useAnnotations(documentId: string | null) {
     ]);
   };
 
+  const auditSchema = useQuery({ queryKey: ['annotation-audit-ready', documentId], enabled: !!documentId,
+    staleTime: 60_000, retry: false, queryFn: async () => {
+      const result = await supabase.from('document_annotation_events').select('id').eq('document_id', documentId!).limit(0);
+      if (result.error) return false;
+      return true;
+    } });
   const workflowReady = list.data?.workflowReady ?? false;
   useEffect(() => {
     if (!documentId) return;
@@ -53,9 +73,17 @@ export function useAnnotations(documentId: string | null) {
     const channel = supabase.channel(`document-annotations:${documentId}:${crypto.randomUUID()}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "document_annotations", filter: `document_id=eq.${documentId}` }, refresh);
     if (workflowReady) channel.on("postgres_changes", { event: "*", schema: "public", table: "document_annotation_tasks", filter: `document_id=eq.${documentId}` }, refresh);
+    if (auditSchema.data) channel.on("postgres_changes", { event: "INSERT", schema: "public", table: "document_annotation_events", filter: `document_id=eq.${documentId}` }, () => {
+      void qc.invalidateQueries({ queryKey: ["annotation-events", documentId] });
+    });
+    for (const taskId of taskIdsKey.split(',').filter(Boolean)) {
+      channel.on("postgres_changes", { event: "UPDATE", schema: "public", table: "tasks", filter: `id=eq.${taskId}` }, () => {
+        void qc.invalidateQueries({ queryKey: ["document-annotation-task-status", documentId] });
+      });
+    }
     channel.subscribe(status => { if (status === "SUBSCRIBED") refresh(); });
     return () => { void supabase.removeChannel(channel); };
-  }, [documentId, qc, workflowReady]);
+  }, [documentId, qc, workflowReady, taskIdsKey, auditSchema.data]);
 
   const create = useMutation({
     mutationFn: async (args: { tenantId: string; fileKind: AnnotationFileKind; fileVersion: string; draft: DraftAnnotation; color: AnnotationColor; content: string; userId: string; parentId?: string }) => {
@@ -66,7 +94,7 @@ export function useAnnotations(documentId: string | null) {
         color: args.color, content: args.content, created_by: args.userId,
       }).select(columns).single();
       if (error) throw error;
-      return { ...data, assigned_to: (data as unknown as DocumentAnnotation).assigned_to ?? null, task_id: null } as unknown as DocumentAnnotation;
+      return { ...data, assigned_to: (data as unknown as DocumentAnnotation).assigned_to ?? null, task_id: null, task_status: null } as unknown as DocumentAnnotation;
     },
     onSuccess: invalidate,
   });
@@ -82,7 +110,7 @@ export function useAnnotations(documentId: string | null) {
       }
       const { data, error } = await query.select(columns).single();
       if (error) throw error;
-      return { ...data, assigned_to: (data as unknown as DocumentAnnotation).assigned_to ?? null, task_id: null } as unknown as DocumentAnnotation;
+      return { ...data, assigned_to: (data as unknown as DocumentAnnotation).assigned_to ?? null, task_id: null, task_status: null } as unknown as DocumentAnnotation;
     },
     onSuccess: invalidate,
   });
@@ -103,7 +131,7 @@ export function useAnnotations(documentId: string | null) {
       await Promise.all([invalidate(), qc.invalidateQueries({ queryKey: ["my-work-tasks"] }), qc.invalidateQueries({ queryKey: ["tasks"] }), qc.invalidateQueries({ queryKey: ["workflow-links"] })]);
     },
   });
-  return { annotations: list.data?.rows ?? [], workflowReady: list.data?.workflowReady ?? false, createTask, isLoading: list.isLoading, isError: list.isError, refetch: list.refetch, create, update, remove };
+  return { annotations, workflowReady: list.data?.workflowReady ?? false, createTask, isLoading: list.isLoading, isError: list.isError, refetch: list.refetch, create, update, remove };
 }
 
 /** Open (not resolved) annotation counts per document for list badges. */

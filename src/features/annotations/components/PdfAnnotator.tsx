@@ -1,3 +1,6 @@
+import { OcrTextLayer } from "./OcrTextLayer";
+import { useAnnotationOcr } from "../useAnnotationOcr";
+import { highlightOnPage, textHighlightDraft, updateHighlightPage } from "../textHighlights";
 import { notify } from "@/lib/notify";
 import { useEffect, useRef, useState } from "react";
 import "pdfjs-dist/web/pdf_viewer.css";
@@ -5,7 +8,7 @@ import type { PDFDocumentProxy } from "pdfjs-dist";
 import { AnnotationLayer, AnnotationShape, PolygonPreview, type AnnotationEditingProps } from "./AnnotationShapes";
 import { useShapeDrawing } from "./useShapeDrawing";
 import { pdfTextLayerVariables, selectionRectsToFrac } from "../annotationModel";
-import type { AnnotationColor, AnnotationTool, DocumentAnnotation, DraftAnnotation } from "../types";
+import type { AnnotationColor, AnnotationTool, DocumentAnnotation, DraftAnnotation, AnnotationTextPage } from "../types";
 import { LoadingState } from "@/components/ui-patterns";
 
 interface Props extends AnnotationEditingProps {
@@ -17,6 +20,45 @@ interface Props extends AnnotationEditingProps {
 export function PdfAnnotator(props: Props) {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const root = useRef<HTMLDivElement>(null);
+  const selecting = useRef(false);
+  const draftCallback = useRef(props.onDraft);
+  draftCallback.current = props.onDraft;
+  useEffect(() => {
+    if (props.tool !== 'highlight') return;
+    let frame: number | null = null;
+    const clearDrag = () => { selecting.current = false; if (root.current) root.current.dataset.annotationDragging = 'false'; };
+    const finish = () => {
+      if (!selecting.current) return;
+      clearDrag();
+      frame = requestAnimationFrame(() => {
+        const selection = window.getSelection();
+        if (!selection || selection.isCollapsed || !selection.rangeCount || !root.current) return;
+        const selected = selection.getRangeAt(0).cloneRange();
+        const pages: AnnotationTextPage[] = [];
+        for (const textLayer of root.current.querySelectorAll<HTMLElement>('.aw-pdf-text:not([hidden])')) {
+          if (!selected.intersectsNode(textLayer)) continue;
+          if (textLayer.dataset.textState === 'loading' || textLayer.dataset.textState === 'error') {
+            notify.info('Die Textschicht einer ausgewählten Seite ist noch nicht verfügbar. Bitte die Auswahl wiederholen.'); return;
+          }
+          const range = selected.cloneRange(), bounds = document.createRange(); bounds.selectNodeContents(textLayer);
+          if (range.compareBoundaryPoints(Range.START_TO_START, bounds) < 0) range.setStart(bounds.startContainer, bounds.startOffset);
+          if (range.compareBoundaryPoints(Range.END_TO_END, bounds) > 0) range.setEnd(bounds.endContainer, bounds.endOffset);
+          const page = textLayer.closest<HTMLElement>('[data-annotation-page]');
+          if (!page) continue;
+          const rects = selectionRectsToFrac(Array.from(range.getClientRects()), page.getBoundingClientRect());
+          const text = range.toString().trim();
+          if (rects.length && text) pages.push({ page_number: Number(page.dataset.annotationPage), rects, quote_text: text.slice(0, 2000) });
+        }
+        const draft = textHighlightDraft(pages);
+        if (draft) { selection.removeAllRanges(); draftCallback.current(draft); }
+      });
+    };
+    const cancel = (e: KeyboardEvent) => { if (e.key === 'Escape') { clearDrag(); if (frame !== null) cancelAnimationFrame(frame); } };
+    window.addEventListener('mouseup', finish); window.addEventListener('keydown', cancel);
+    return () => { clearDrag(); if (frame !== null) cancelAnimationFrame(frame); window.removeEventListener('mouseup', finish); window.removeEventListener('keydown', cancel); };
+  }, [props.tool, props.data]);
+
   useEffect(() => {
     setError(null); setPdf(null);
     let cancelled = false; let task: { destroy: () => Promise<void> } | null = null;
@@ -34,7 +76,11 @@ export function PdfAnnotator(props: Props) {
   if (error) return <p className="p-lg text-destructive">{error}</p>;
   if (!pdf) return <LoadingState label="PDF wird geladen…" />;
   return (
-    <div className="flex min-h-full w-max min-w-full flex-col items-center gap-lg px-10 pb-[70px] pt-[84px]">
+    <div ref={root} onMouseDownCapture={e => {
+      if (props.tool === 'highlight' && e.button === 0 && e.target instanceof HTMLElement && e.target.closest('.aw-pdf-text[data-text-state="ready"]')) {
+        selecting.current = true; if (root.current) root.current.dataset.annotationDragging = 'true';
+      }
+    }} className="flex min-h-full w-max min-w-full flex-col items-center gap-lg px-10 pb-[70px] pt-[84px]">
       {Array.from({ length: pdf.numPages }, (_, i) => <PdfPage key={i} pdf={pdf} pageNumber={i + 1} {...props} />)}
     </div>
   );
@@ -43,13 +89,11 @@ export function PdfAnnotator(props: Props) {
 function PdfPage({ pdf, pageNumber, zoom, tool, color, annotations, activeId, draft, onSelect, onDraft, canEdit, onChange, onDraftChange, hidden, numbers }: Props & { pdf: PDFDocumentProxy; pageNumber: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
+  const ocr = useAnnotationOcr();
   const pageRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<{ w: number; h: number; userUnit: number } | null>(null);
   const [textState, setTextState] = useState<"loading" | "ready" | "empty" | "error">("loading");
   const [pageError, setPageError] = useState<string | null>(null);
-  const selecting = useRef(false);
-  const draftCallback = useRef(onDraft);
-  draftCallback.current = onDraft;
   const [visible, setVisible] = useState(pageNumber <= 2);
   const scale = zoom * 1.4;
 
@@ -101,48 +145,37 @@ function PdfPage({ pdf, pageNumber, zoom, tool, color, annotations, activeId, dr
       onNote: point => onDraft({ annotation_type: "note", page_number: pageNumber, target_selector: { points: [point] }, quote_text: null }) },
   );
 
-  useEffect(() => {
-    if (tool !== "highlight" || !visible) return;
-    let frame: number | null = null;
-    const finish = () => {
-      if (!selecting.current) return;
-      selecting.current = false;
-      if (pageRef.current) pageRef.current.dataset.annotationDragging = "false";
-      frame = requestAnimationFrame(() => {
-        const sel = window.getSelection(), page = pageRef.current, textLayer = textRef.current;
-        if (!sel || sel.isCollapsed || !sel.rangeCount || !page || !textLayer) return;
-        const range = sel.getRangeAt(0).cloneRange();
-        if (!range.intersectsNode(textLayer)) return;
-        if (!page.contains(range.commonAncestorContainer)) {
-          notify.info("Bitte Text innerhalb einer PDF-Seite markieren."); return;
-        }
-        const textBounds = document.createRange(); textBounds.selectNodeContents(textLayer);
-        if (range.compareBoundaryPoints(Range.START_TO_START, textBounds) < 0) range.setStart(textBounds.startContainer, textBounds.startOffset);
-        if (range.compareBoundaryPoints(Range.END_TO_END, textBounds) > 0) range.setEnd(textBounds.endContainer, textBounds.endOffset);
-        const rects = selectionRectsToFrac(Array.from(range.getClientRects()), page.getBoundingClientRect());
-        const text = range.toString().trim();
-        if (rects.length && text) {
-          sel.removeAllRanges();
-          draftCallback.current({ annotation_type: "highlight", page_number: pageNumber, target_selector: { rects }, quote_text: text.slice(0, 2000) });
-        }
-      });
-    };
-    const cancel = (e: KeyboardEvent) => { if (e.key === "Escape") { selecting.current = false; if (pageRef.current) pageRef.current.dataset.annotationDragging = "false"; if (frame !== null) cancelAnimationFrame(frame); } };
-    window.addEventListener("mouseup", finish); window.addEventListener("keydown", cancel);
-    return () => { selecting.current = false; if (pageRef.current) pageRef.current.dataset.annotationDragging = "false"; if (frame !== null) cancelAnimationFrame(frame); window.removeEventListener("mouseup", finish); window.removeEventListener("keydown", cancel); };
-  }, [tool, visible, pageNumber]);
-
-  const pageAnnotations = annotations.filter(a => a.page_number === pageNumber);
+  const pageAnnotations = annotations.map(a => highlightOnPage(a, pageNumber)).filter((a): a is DocumentAnnotation => a !== null);
+  const pageDraft = draft ? highlightOnPage(draft, pageNumber) : null;
   const drawing = tool === "rect" || tool === "polygon" || tool === "arrow" || tool === "note";
   return (
     <div ref={pageRef} data-annotation-page={pageNumber} data-annotation-surface className="relative bg-card shadow-md" style={{ width: size?.w ?? 600, height: size?.h ?? 800, ...pdfTextLayerVariables(scale, size?.userUnit ?? 1) }}>
       <canvas ref={canvasRef} className="block" />
-      <div ref={textRef} className="textLayer aw-pdf-text" data-selectable={tool === "highlight"}
-        onMouseDown={e => { if (e.button === 0 && tool === "highlight" && textState === "ready") { selecting.current = true; if (pageRef.current) pageRef.current.dataset.annotationDragging = "true"; } }}
+      <div ref={textRef} hidden={!!ocr.words?.length} className="textLayer aw-pdf-text" data-selectable={tool === "highlight"} data-text-state={textState}
         style={{ pointerEvents: tool === "highlight" ? "auto" : "none", userSelect: tool === "highlight" ? "text" : "none" }} />
-      {tool === "highlight" && textState === "empty" && <p className="aw-pdf-text-status" role="status">Diese Seite enthält keinen auswählbaren Text. Bei Scans kannst du Bereiche markieren.</p>}
-      {pageError && <p className="aw-pdf-text-status text-destructive" role="alert">Textschicht konnte nicht geladen werden: {pageError}</p>}
-      <AnnotationLayer annotations={pageAnnotations} activeId={activeId} onSelect={onSelect} interactive={tool === "select"} canEdit={canEdit} onChange={onChange} draft={draft?.page_number === pageNumber ? draft : null} draftColor={color} onDraftChange={onDraftChange} hidden={hidden} numbers={numbers}>
+      {!!ocr.words?.length && size && <OcrTextLayer words={ocr.words} width={size.w} height={size.h} selectable={tool === 'highlight'} />}
+      {tool === 'highlight' && (textState === 'empty' || textState === 'error') && !ocr.words?.length && <div className="aw-pdf-text-status !pointer-events-auto" role="status">
+        {ocr.busy ? `Texterkennung läuft … ${ocr.progress} %` : ocr.error ?? pageError ?? 'Diese Seite enthält keinen auswählbaren Text.'}
+        <button type="button" className="aw-button ml-2" onClick={() => {
+          if (ocr.busy) { ocr.cancel(); return; }
+          void ocr.recognize(async signal => {
+            const page = await pdf.getPage(pageNumber);
+            if (signal.aborted) throw new Error('Abgebrochen');
+            const base = page.getViewport({ scale: 1 });
+            const vp = page.getViewport({ scale: Math.min(2, 2200 / base.width) });
+            const canvas = document.createElement('canvas'); canvas.width = Math.ceil(vp.width); canvas.height = Math.ceil(vp.height);
+            const task = page.render({ canvas, viewport: vp });
+            const cancel = () => task.cancel(); signal.addEventListener('abort', cancel, { once: true });
+            try { await task.promise; } finally { signal.removeEventListener('abort', cancel); }
+            return canvas;
+          });
+        }}>{ocr.busy ? 'Abbrechen' : 'Text erkennen (OCR)'}</button>
+        <small className="block">Deutsch · Erkennung lokal im Browser. Erkannten Text bitte prüfen.</small>
+      </div>}
+      <AnnotationLayer annotations={pageAnnotations} activeId={activeId} onSelect={onSelect} interactive={tool === "select"} canEdit={canEdit} onChange={(id, selector) => {
+        const original = annotations.find(a => a.id === id);
+        return onChange(id, original ? updateHighlightPage(original.target_selector, pageNumber, selector) : selector);
+      }} draft={pageDraft} draftColor={color} onDraftChange={selector => onDraftChange?.(draft ? updateHighlightPage(draft.target_selector, pageNumber, selector) : selector)} hidden={hidden} numbers={numbers}>
         {preview && <AnnotationShape type="rect" selector={{ rects: [preview] }} color={color} active />}
         {arrowPreview && <AnnotationShape type="arrow" selector={{ points: arrowPreview }} color={color} active />}
         <PolygonPreview points={points} cursor={cursor} color={color} />

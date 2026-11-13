@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAnnotationMembers } from "../useAnnotationMembers";
 import { annotationTaskDefaults } from "../taskModel";
 import { useQuery } from "@tanstack/react-query";
-import { Highlighter, MousePointer2, Square, Pentagon, ZoomIn, ZoomOut, X, Eye, EyeOff, Undo2, Redo2, Maximize, MoveUpRight, FlagTriangleRight } from "lucide-react";
+import { Highlighter, MousePointer2, Square, Pentagon, ZoomIn, ZoomOut, X, Eye, EyeOff, Undo2, Redo2, Maximize, MoveUpRight, FlagTriangleRight, Download } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { LoadingState, ErrorState } from "@/components/ui-patterns";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,7 +52,8 @@ export function AnnotationWorkspace({ document: doc, open, onOpenChange, initial
   const numbers = annotationNumbers(annotations);
   const editing = annotations.find(a => a.id === editingId);
   const composerTarget = draft ?? (editing?.parent_id ? annotations.find(a => a.id === editing.parent_id) : editing);
-  const busy = api.create.isPending || api.update.isPending || api.remove.isPending || api.createTask.isPending || history.busy;
+  const [locating, setLocating] = useState(false);
+  const busy = locating || api.create.isPending || api.update.isPending || api.remove.isPending || api.createTask.isPending || history.busy;
 
   useEffect(() => {
     const key = (e: KeyboardEvent) => shortcuts.current(e);
@@ -127,13 +128,15 @@ export function AnnotationWorkspace({ document: doc, open, onOpenChange, initial
     return () => { observer.disconnect(); cancelAnimationFrame(frame); };
   }, [initialAnnotationId, api.annotations, buffer, imgUrl]);
 
+  const [exporting, setExporting] = useState(false);
+  const [reselect, setReselect] = useState<DocumentAnnotation | null>(null);
   if (!doc || !open) return null;
   const version = fileVersionOf(doc);
   const actor = { userId: user?.id, tenantMember: roles.data?.member ?? false, roles: roles.data?.roles ?? [] };
   const canEdit = (a: DocumentAnnotation) => canManageAnnotation(a.created_by, actor);
-  const cancelComposer = () => { if (draft?.annotation_type === 'highlight') setTool('highlight'); setDraft(null); setEditingId(null); setText(''); if (activeId === '__draft__') setActiveId(null); };
-  const patchAnnotation = async (id: string, patch: AnnotationPatch): Promise<boolean> => {
-    const before = api.annotations.find(a => a.id === id);
+  const cancelComposer = () => { setReselect(null); if (draft?.annotation_type === 'highlight') setTool('highlight'); setDraft(null); setEditingId(null); setText(''); if (activeId === '__draft__') setActiveId(null); };
+  const patchAnnotation = async (id: string, patch: AnnotationPatch, baseline?: DocumentAnnotation): Promise<boolean> => {
+    const before = baseline ?? api.annotations.find(a => a.id === id);
     if (!before || busy || editLock.current) return false;
     if (Object.keys(patch).some(key => key !== "resolved") ? !canEdit(before) : !canResolveAnnotation(actor)) return false;
     if (annotationPatchMatches(before, patch)) return true;
@@ -156,9 +159,51 @@ export function AnnotationWorkspace({ document: doc, open, onOpenChange, initial
   };
   const editAnnotation = (a: DocumentAnnotation) => {
     if (!canEdit(a) || busy) return;
-    setDraft(null); setEditingId(a.id); setText(a.content); setColor(a.color); setHidden(false); setTool('select'); selectAnnotation(a.id);
+    setReselect(null); setDraft(null); setEditingId(a.id); setText(a.content); setColor(a.color); setHidden(false); setTool('select'); selectAnnotation(a.id);
+  };
+  const exportPdf = async () => {
+    if (!file.data || !kind || exporting || busy || pendingIds.size) return;
+    setExporting(true);
+    try {
+      const { exportAnnotatedPdf } = await import('../exportPdf');
+      const bytes = await exportAnnotatedPdf(file.data, kind, doc.title, annotations, version,
+        id => id === user?.id ? 'Du' : authors.data?.[id] ?? 'Unbekannt');
+      const url = URL.createObjectURL(new Blob([bytes.slice().buffer as ArrayBuffer], { type: 'application/pdf' }));
+      const link = document.createElement('a'); link.href = url; link.download = `${doc.title.replace(/[<>:"/\\|?*]/g, '_')}-Anmerkungen.pdf`;
+      link.click(); setTimeout(() => URL.revokeObjectURL(url), 30_000);
+      notify.success('PDF-Kopie mit Anmerkungen und Kommentarliste exportiert');
+    } catch (error) { notify.error(errorText(error, 'PDF-Export nicht möglich')); }
+    finally { setExporting(false); }
+  };
+  const locateText = async (a: DocumentAnnotation) => {
+    if (!buffer || !canEdit(a) || busy) return;
+    setLocating(true);
+    try {
+      const { suggestTextLocation } = await import('../relocateText');
+      const candidate = await suggestTextLocation(buffer, a);
+      if (!mounted.current) return;
+      if (!candidate) { notify.info('Textstelle nicht eindeutig gefunden. Bitte die Markierung manuell neu verorten.'); return; }
+      setReselect(a); setEditingId(null); setDraft(candidate); setColor(a.color); setTool('select'); setActiveId('__draft__'); setHidden(false);
+      requestAnimationFrame(() => viewerRef.current?.querySelector(`[data-annotation-page="${candidate.page_number}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+    } catch (error) { notify.error(errorText(error, 'Textstelle konnte nicht gesucht werden')); }
+    finally { setLocating(false); }
+  };
+  const reselectAnnotation = (a: DocumentAnnotation) => {
+    if (!canEdit(a) || busy || a.annotation_type !== 'highlight') return;
+    setDraft(null); setEditingId(null); setText(''); setReselect(a); setColor(a.color); setTool('highlight'); setHidden(false); selectAnnotation(a.id);
+  };
+  const reanchorAnnotation = (a: DocumentAnnotation) => {
+    if (!canEdit(a) || busy) return;
+    setDraft(null); setEditingId(null); setText(''); setReselect(a); setColor(a.color); setTool(a.annotation_type); setHidden(false); selectAnnotation(a.id);
   };
   const startDraft = (next: DraftAnnotation) => {
+    if (reselect) {
+      void patchAnnotation(reselect.id, { target_selector: next.target_selector, quote_text: next.quote_text,
+        page_number: next.page_number, file_version: version }, reselect).then(saved => {
+          if (saved) { setReselect(null); setDraft(null); setActiveId(reselect.id); setTool('select'); notify.success('Markierung in aktueller Datei gespeichert'); }
+        });
+      return;
+    }
     setDraft(next); setEditingId(null); setText(''); setActiveId('__draft__'); setTool('select'); setHidden(false);
   };
   const saveComposer = async () => {
@@ -220,10 +265,11 @@ export function AnnotationWorkspace({ document: doc, open, onOpenChange, initial
   const chooseColor = (next: AnnotationColor) => {
     setColor(next);
     const selected = annotations.find(a => a.id === activeId);
-    if (!composerTarget && selected && canEdit(selected)) void patchAnnotation(selected.id, { color: next });
+    if (!reselect && !composerTarget && selected && canEdit(selected)) void patchAnnotation(selected.id, { color: next });
   };
   const chooseTool = (next: AnnotationTool) => {
     if (busy || (composerTarget && next !== 'select')) return;
+    if (reselect && next !== reselect.annotation_type) { setReselect(null); setDraft(null); setActiveId(reselect.id); }
     setTool(next); if (next !== 'select') { setHidden(false); setActiveId(null); }
   };
   const fit = () => {
@@ -286,11 +332,17 @@ export function AnnotationWorkspace({ document: doc, open, onOpenChange, initial
       <header className="aw-header">
         <div className="min-w-0 flex-1"><div className="aw-title"><h2 className="max-w-full truncate">{doc.title}</h2><span className="aw-original">Original bleibt unverändert</span></div>
           <p className="aw-subtitle truncate">{doc.file_name}{imageSize && kind === 'image' ? ` · ${imageSize.width} × ${imageSize.height} px` : kind === 'pdf' ? ' · PDF' : ''}</p></div>
-        {busy && <span className="text-xs text-muted-foreground" role="status">Speichert …</span>}
+        {busy && <span className="text-xs text-muted-foreground" role="status">{locating ? 'Textstelle wird gesucht …' : 'Speichert …'}</span>}
+        {iconButton(exporting ? 'PDF wird exportiert …' : 'PDF mit Anmerkungen exportieren', Download, () => { void exportPdf(); }, { disabled: exporting || busy || !file.data || !!pendingIds.size })}
         {iconButton(hidden ? 'Markierungen einblenden' : 'Markierungen ausblenden', hidden ? EyeOff : Eye, () => setHidden(current => !current), { active: hidden })}
         {iconButton('Zurück zu den Dokumenten', X, () => onOpenChange(false))}
       </header>
       <div ref={canvasRef} className="aw-canvas">
+        {reselect && <div className="absolute left-4 top-4 z-30 rounded-md border bg-background p-3 text-sm shadow" role="status">
+          {draft ? 'Vorschlag prüfen: Grenzen umfassen ganze Textabschnitte.' : reselect.annotation_type === 'highlight' ? 'Text neu auswählen' : 'Markierung neu zeichnen'} · Anmerkung {numbers[reselect.id]}
+          {draft && <button type="button" className="aw-button ml-2" disabled={busy} onClick={() => startDraft(draft)}>Position übernehmen</button>}
+          <button type="button" className="aw-button ml-2" disabled={busy} onClick={() => { setReselect(null); setDraft(null); setTool('select'); setActiveId(reselect.id); }}>Abbrechen</button>
+        </div>}
         <div ref={viewerRef} className="aw-viewport">
           {!kind ? <ErrorState title="Dateityp nicht unterstützt" description="Annotation ist für PDF, JPG, PNG und WebP möglich." />
             : file.isError ? <ErrorState title="Datei konnte nicht geladen werden" />
@@ -316,13 +368,13 @@ export function AnnotationWorkspace({ document: doc, open, onOpenChange, initial
           {iconButton('Vergrößern (+)', ZoomIn, () => changeZoom(current => current + .1))}<span className="aw-separator" />{iconButton('Einpassen (0)', Maximize, fit)}
         </div>
         <p className="aw-float aw-hint" title={hint}>{hint}</p>
-        {composerTarget && <AnnotationComposer key={editingId ?? 'draft'} target={composerTarget} viewer={viewerRef} canvas={canvasRef} zoom={zoom} tenantId={doc.tenant_id}
+        {composerTarget && !reselect && <AnnotationComposer key={editingId ?? 'draft'} target={composerTarget} viewer={viewerRef} canvas={canvasRef} zoom={zoom} tenantId={doc.tenant_id}
           text={text} color={color} editing={!!editingId} saving={busy} onText={setText} onColor={setColor} onSave={() => { void saveComposer(); }} onCancel={cancelComposer} />}
       </div>
-      <AnnotationSidebar tenantId={doc.tenant_id} saving={busy} loading={api.isLoading} failed={api.isError} onRetry={() => { void api.refetch(); }}
+      <AnnotationSidebar documentId={doc.id} tenantId={doc.tenant_id} saving={busy} loading={api.isLoading} failed={api.isError} onRetry={() => { void api.refetch(); }}
         annotations={annotations} numbers={numbers} activeId={activeId} userId={user?.id} workflowReady={api.workflowReady}
         members={members.data ?? []} membersUnavailable={members.isLoading || members.isError} onCreateTask={a => { void createAnnotationTask(a); }} currentVersion={version} canManage={canEdit} canResolve={canResolveAnnotation(actor)}
-        authorName={id => id === user?.id ? 'Du' : authors.data?.[id] ?? '…'} onSelect={id => selectAnnotation(id)} onEdit={editAnnotation}
+        authorName={id => id === user?.id ? 'Du' : authors.data?.[id] ?? '…'} onSelect={id => selectAnnotation(id)} onEdit={editAnnotation} onReanchor={reanchorAnnotation} onLocateText={kind === 'pdf' ? a => { void locateText(a); } : undefined} onReselect={kind === 'pdf' ? reselectAnnotation : undefined}
         onUpdate={patchAnnotation} onDelete={deleteAnnotation} onReply={reply} />
     </TooltipProvider>
   </section></div>;

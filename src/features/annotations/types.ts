@@ -7,7 +7,10 @@ export type AnnotationTool = "select" | AnnotationType;
 export interface FracRect { x: number; y: number; w: number; h: number }
 export interface FracPoint { x: number; y: number }
 
+export interface AnnotationTextPage { page_number: number; rects: FracRect[]; quote_text: string }
+
 export interface AnnotationSelector {
+  pages?: AnnotationTextPage[];
   rects?: FracRect[];
   points?: FracPoint[];
 }
@@ -20,6 +23,7 @@ export interface DocumentAnnotation {
   assigned_to: string | null;
   /** Linked task is read from document_annotation_tasks, not written directly. */
   task_id: string | null;
+  task_status: string | null;
   file_kind: AnnotationFileKind;
   file_version: string | null;
   annotation_type: AnnotationType;
@@ -52,4 +56,4 @@ export interface AnnotatableDocument {
   updated_at: string;
 }
 
-export type AnnotationPatch = Partial<Pick<DocumentAnnotation, "content" | "color" | "resolved" | "target_selector" | "assigned_to">>;
+export type AnnotationPatch = Partial<Pick<DocumentAnnotation, "content" | "color" | "resolved" | "target_selector" | "assigned_to" | "quote_text" | "page_number" | "file_version">>;

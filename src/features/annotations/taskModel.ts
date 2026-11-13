@@ -15,3 +15,13 @@ export function annotationTaskDefaults(annotation: Pick<DocumentAnnotation, 'con
   return { title, assigneeId: annotation.assigned_to ?? userId, nextAction: title,
     documentPath: annotationDocumentPath(annotation.document_id, annotation.id) };
 }
+
+
+export function annotationTaskStatusLabel(status: string | null | undefined): string {
+  switch (status) {
+    case 'todo': return 'Offen';
+    case 'in-progress': return 'In Bearbeitung';
+    case 'completed': return 'Abgeschlossen';
+    default: return 'Status nicht verfügbar';
+  }
+}

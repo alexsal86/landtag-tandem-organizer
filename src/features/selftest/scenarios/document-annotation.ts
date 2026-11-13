@@ -1,4 +1,11 @@
-import { annotationTaskDefaults, assignedAnnotationThreads } from "@/features/annotations/taskModel";
+import { searchAnnotationThreads, nextAnnotationId } from "@/features/annotations/annotationSearch";
+import { annotationEventLabel } from "@/features/annotations/audit";
+import { exportPoint, exportRect } from "@/features/annotations/exportModel";
+import { ocrWord } from "@/features/annotations/ocrModel";
+import { uniqueTextAnchor } from "@/features/annotations/textAnchors";
+import type { DocumentAnnotation } from "@/features/annotations/types";
+import { textHighlightDraft, highlightOnPage, updateHighlightPage } from "@/features/annotations/textHighlights";
+import { annotationTaskDefaults, assignedAnnotationThreads, annotationTaskStatusLabel } from "@/features/annotations/taskModel";
 import { taskZone, stepState } from "@/features/tasks/stafette";
 import { canManageAnnotation, canResolveAnnotation } from "@/features/annotations/permissions";
 import { annotationMentionToken, annotationMentionIds, annotationDocumentPath, plainAnnotationComment } from "@/features/annotations/mentions";
@@ -10,10 +17,52 @@ import type { TestScenario } from '../types';
 export const documentAnnotationScenario: TestScenario = {
   id: 'document-annotation', title: 'Dokument-Annotation',
   description: 'Dateiregeln, Koordinaten, Polygon, Verschieben und Eckpunkte sowie Speicherung, Antworten und Zugriffsgrenzen.',
-  touches: ['documents', 'document_annotations', 'document_annotation_tasks', 'tasks', 'task_assignees'], features: ['documents', 'permissions', 'tasks'],
-  checks: ['Dateityp', 'Bruchteil-Koordinaten', 'Polygon-Mindestpunkte', 'Verschieben und Eckpunkte', 'Zoomgrenzen', 'Anlegen, Antworten, Erledigen und Löschen', 'Fremde Autorenschaft und Mandatsgrenzen', 'Serverrollen und aktive RLS/Trigger', 'Erwähnungen mit Thread-Link'],
-  limitations: ['Realtime, Scrollen und Benachrichtigungszustellung erfordern zwei interaktive Sitzungen. Die Serverrollenprüfung gilt für das angemeldete Konto; die UI-Regeln decken alle Rollen ab. Fremde Datensätze werden nicht testweise verändert.'],
+  touches: ['documents', 'document_annotations', 'document_annotation_events', 'document_annotation_tasks', 'tasks', 'task_assignees'], features: ['documents', 'permissions', 'tasks'],
+  checks: ['Mehrseitige Textauswahl', 'Suche und Navigation', 'OCR-Geometrie', 'PDF-Exportkoordinaten', 'Textanker und Änderungsverlauf', 'Dateityp', 'Bruchteil-Koordinaten', 'Polygon-Mindestpunkte', 'Verschieben und Eckpunkte', 'Zoomgrenzen', 'Anlegen, Antworten, Erledigen und Löschen', 'Fremde Autorenschaft und Mandatsgrenzen', 'Serverrollen und aktive RLS/Trigger', 'Erwähnungen mit Thread-Link'],
+  limitations: ['OCR-Erkennungsqualität, Textauswahl und PDF-Exportdarstellung erfordern eine interaktive Prüfung.', 'Realtime, Scrollen und Benachrichtigungszustellung erfordern zwei interaktive Sitzungen. Die Serverrollenprüfung gilt für das angemeldete Konto; die UI-Regeln decken alle Rollen ab. Fremde Datensätze werden nicht testweise verändert.'],
   steps: [
+    { id: 'search-navigation', label: 'Kommentar, Antwort und Text durchsuchen und Treffer zyklisch anspringen', kind: 'logic', run: async () => {
+      const roots = [{ id:'a',parent_id:null,content:'Erster Kommentar',quote_text:'Haushalt',color:'red',created_by:'me' },
+        { id:'b',parent_id:null,content:'Zweiter Kommentar',quote_text:null,color:'green',created_by:'other' }] as DocumentAnnotation[];
+      const rows = [...roots,{ id:'reply',parent_id:'a',content:'Ministerium hat geantwortet',quote_text:null } as DocumentAnnotation];
+      return { ok: searchAnnotationThreads(rows,roots,'MINISTERIUM','','')[0]?.id === 'a'
+        && searchAnnotationThreads(rows,roots,'Haushalt','red','me').length === 1
+        && searchAnnotationThreads(rows,roots,'Haushalt','green','').length === 0
+        && nextAnnotationId(['a','b'],'b',1) === 'a' && nextAnnotationId(['a','b'],'a',-1) === 'b'
+        && nextAnnotationId([],null,1) === null,
+        message:'Antworttreffer führen zur Hauptanmerkung; Farbe/Autor werden kombiniert und Navigation springt am Ende zurück.' };
+    } },
+    { id: 'ocr-export-version-history', label: 'OCR-Bruchteile, PDF-Exportkoordinaten, Textanker und Verlauf', kind: 'logic', run: async () => {
+      const word=ocrWord('Text',{x0:100,y0:200,x1:300,y1:240},1000,1000,95);
+      const point=exportPoint({x:.2,y:.3},600,800),rect=exportRect({x:.1,y:.2,w:.3,h:.1},600,800);
+      return { ok: word?.rect.x === .1 && word.rect.h === .04 && word.confidence === 95
+        && ocrWord('',{x0:0,y0:0,x1:1,y1:1},1,1,0) === null
+        && point.x === 120 && point.y === 560 && rect.width === 180 && Math.abs(rect.y-560)<1e-8
+        && !!uniqueTextAnchor('Der neue   Haushalt ist da','neue Haushalt')
+        && uniqueTextAnchor('Haushalt Haushalt','Haushalt') === null && uniqueTextAnchor('kurz','kurz') === null
+        && annotationEventLabel({event_type:'updated',before_data:{resolved:false},after_data:{resolved:true}}).includes('Erledigt-Status')
+        && annotationEventLabel({event_type:'deleted',before_data:null,after_data:null}) === 'Anmerkung gelöscht',
+        message:'OCR normalisiert pixelgetreu, Export kehrt die PDF-Y-Achse um, mehrdeutige Textanker werden abgelehnt und Änderungen benannt.' };
+    } },
+    { id: 'multipage-text-selection', label: 'Mehrseitige Textmarkierungen bleiben seitengetreu bearbeitbar', kind: 'logic', run: async () => {
+      const first = { x: .1, y: .2, w: .3, h: .04 }, second = { x: .2, y: .3, w: .4, h: .05 };
+      const draft = textHighlightDraft([{ page_number: 3, rects: [second], quote_text: 'Dritte Seite' },
+        { page_number: 2, rects: [first], quote_text: 'Zweite Seite' }]);
+      if (!draft) return { ok: false, message: 'Textauswahl fehlt.' };
+      const changed = updateHighlightPage(draft.target_selector, 3, { rects: [{ ...second, x: .4 }] });
+      const legacy = textHighlightDraft([{ page_number: 1, rects: [first], quote_text: 'Altformat' }]);
+      return { ok: draft.page_number === 2 && draft.quote_text === 'Zweite Seite\n\nDritte Seite'
+        && highlightOnPage(draft, 3)?.target_selector.rects?.[0].x === .2 && highlightOnPage(draft, 1) === null
+        && changed.pages?.[0].rects[0].x === .1 && changed.pages?.[1].rects[0].x === .4
+        && draft.target_selector.pages?.[1].rects[0].x === .2 && !!legacy && !legacy.target_selector.pages
+        && textHighlightDraft([]) === null,
+        message: 'Auswahl wird nach Seite sortiert; Teilbearbeitungen erhalten andere Seiten und das bisherige Speicherformat.' };
+    } },
+    { id: 'annotation-task-status', label: 'Aufgabenstatus anzeigen und Anmerkungen bewusst abschließen', kind: 'logic', run: async () => ({
+      ok: annotationTaskStatusLabel('todo') === 'Offen' && annotationTaskStatusLabel('in-progress') === 'In Bearbeitung'
+        && annotationTaskStatusLabel('completed') === 'Abgeschlossen' && annotationTaskStatusLabel(null) === 'Status nicht verfügbar',
+      message: 'Aufgabenstatus und fehlende Leserechte werden eindeutig dargestellt; Erledigen bleibt eine eigene Aktion.',
+    }) },
     { id: 'file-kind', label: 'Unterstützte Dateitypen', kind: 'logic', run: async () => ({
       ok: getAnnotationFileKind('A.PDF') === 'pdf' && getAnnotationFileKind('scan', 'application/pdf') === 'pdf'
         && ['png', 'jpg', 'jpeg', 'webp'].every(ext => getAnnotationFileKind(`a.${ext}`) === 'image')
@@ -238,11 +287,24 @@ export const documentAnnotationScenario: TestScenario = {
         for (const row of invalid.data ?? []) ctx.trackRecord({ table: 'document_annotations', id: row.id });
         checks[`${shape.type}Guard`] = !!invalid.error && !invalid.data?.length;
       }
+      const textDraft = textHighlightDraft([{page_number:1,rects:[{x:.1,y:.2,w:.3,h:.04}],quote_text:'Erste Seite'},
+        {page_number:2,rects:[{x:.2,y:.3,w:.4,h:.04}],quote_text:'Zweite Seite'}])!;
+      const highlight = await supabase.from('document_annotations').insert({...payload,...textDraft,target_selector:JSON.parse(JSON.stringify(textDraft.target_selector))}).select('id,target_selector,quote_text').single();
+      checks.multipage = !highlight.error && annotationPatchMatches({ target_selector: highlight.data?.target_selector }, { target_selector: textDraft.target_selector })
+        && highlight.data?.quote_text === textDraft.quote_text;
+      if(highlight.data){
+        ctx.trackRecord({table:'document_annotations',id:highlight.data.id});
+        const deletedHighlight=await supabase.from('document_annotations').delete().eq('id',highlight.data.id).select('id').single();
+        checks.highlightDeleted=!deletedHighlight.error;
+      }
       const updated = await supabase.from('document_annotations').update({ resolved: true }).eq('id', created.data.id).select('resolved').single();
       checks.resolved = !updated.error && updated.data?.resolved === true;
       const removed = await supabase.from('document_annotations').delete().eq('id', created.data.id).select('id').single();
       const remaining = await supabase.from('document_annotations').select('id').eq('document_id', doc.data.id);
       checks.deleted = !removed.error && removed.data?.id === created.data.id && !remaining.error && remaining.data?.length === 0;
+      const audit = await supabase.from('document_annotation_events').select('event_type,actor_id,before_data,after_data')
+        .eq('document_id',doc.data.id).eq('annotation_id',created.data.id);
+      checks.audit = !audit.error && ['created','updated','deleted'].every(type => audit.data?.some(event => event.event_type === type && event.actor_id === ctx.userId));
       return { ok: Object.values(checks).every(Boolean), message: Object.values(checks).every(Boolean) ? 'Speicherablauf und Rechte geprüft.' : 'Speicherablauf oder Rechte fehlgeschlagen.', details: checks };
     } },
   ],

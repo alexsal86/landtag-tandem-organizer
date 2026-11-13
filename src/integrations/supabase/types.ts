@@ -3925,6 +3925,12 @@ export type Database = {
           },
         ]
       }
+      document_annotation_events: {
+        Row: { id: string; document_id: string; tenant_id: string; annotation_id: string; thread_id: string; actor_id: string | null; event_type: string; before_data: Json | null; after_data: Json | null; created_at: string }
+        Insert: { id?: string; document_id: string; tenant_id: string; annotation_id: string; thread_id: string; actor_id?: string | null; event_type: string; before_data?: Json | null; after_data?: Json | null; created_at?: string }
+        Update: { id?: string; document_id?: string; tenant_id?: string; annotation_id?: string; thread_id?: string; actor_id?: string | null; event_type?: string; before_data?: Json | null; after_data?: Json | null; created_at?: string }
+        Relationships: []
+      }
       document_annotation_tasks: {
         Row: {
           annotation_id: string | null
