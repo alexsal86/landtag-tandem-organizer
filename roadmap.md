@@ -66,5 +66,5 @@
 - [x] Matrix mit Chromium und gemocktem Service geprüft (Lücken, Sekundärzuständigkeit speichern, reine Leseansicht); Route ohne Sitzung führt zur Anmeldung.
 - [ ] Gesamtchecks grün: Gesamt-Vitest aktuell 33 fehlgeschlagene Tests in 21 Dateien; Ausgangscommit `8333462be` reproduziert dieselben 21 fehlerhaften Dateien (32 fehlgeschlagene Tests, Parser-Suite bereits beim Import defekt). Breite Selftest-/Komponenten-/Features-Typechecks sind schon im Ausgangsstand rot; keine zusätzlichen Fehler pro Datei/TS-Code.
 - [ ] Echte Supabase-Session: Live-Migration, bestehende Produktions-Trigger/RLS im Zusammenspiel, Anmeldung und persistente Selbsttest-Läufe noch nicht geprüft. PGlite verwendet ein isoliertes Minimalschema mit den benötigten bestehenden Helfer-/Tabellenschnittstellen.
-- [ ] Draft-PR veröffentlichen — bereitgestellte GitHub-Authentifizierung ungültig.
+- [x] Draft-PR veröffentlicht: https://github.com/alexsal86/landtag-tandem-organizer/pull/1422 (über verbundenen GitHub-Dienst; CLI-API ist gesperrt).
 - [ ] Phase 1 vollständig abnehmen; Phase 2 erst danach. Phase-2-Spezifikation fehlt im Auftrag und wurde angefragt; Phase 3 bleibt nachgelagert, insbesondere `handover_tasks_to_deputy` aus Phase 2 fehlt noch.

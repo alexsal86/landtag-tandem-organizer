@@ -21,4 +21,4 @@ Thema + Region schlägt Thema, danach Region, danach einen reinen Ausschusstreff
 
 Die private Routinen-Vertretungsauflösung wurde geprüft: Sie löst aktive Vertretungsketten auf und behandelt Konflikte/Zyklen. Phase 1 verwendet bewusst den angeforderten Abwesenheitsparameter und Sekundärzuständigkeiten; eine öffentliche Vertretungs-RPC ist Teil der noch fehlenden Phase-2-Spezifikation.
 
-Phase 2/3, HR-Daten und eine weitere Workflow-Engine sind nicht enthalten. Die alte Aufgabenansicht bleibt erhalten. Vollständige Abnahme ist wegen der vorhandenen roten Gesamtchecks und des fehlenden angemeldeten Gesamttests offen. GitHub-PR-Veröffentlichung ist durch die ungültige bereitgestellte Authentifizierung blockiert; dieser Text ist für einen Draft-PR vorbereitet.
+Phase 2/3, HR-Daten und eine weitere Workflow-Engine sind nicht enthalten. Die alte Aufgabenansicht bleibt erhalten. Vollständige Abnahme ist wegen der vorhandenen roten Gesamtchecks und des fehlenden angemeldeten Gesamttests offen. Draft-PR: https://github.com/alexsal86/landtag-tandem-organizer/pull/1422 (über verbundenen GitHub-Dienst erstellt; CLI-API-Zugriff ist gesperrt).
