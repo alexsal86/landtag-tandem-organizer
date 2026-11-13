@@ -11,6 +11,7 @@ import sunflowerIcon from '@/assets/sunflower.svg';
 
 interface LeafletKarlsruheMapProps {
   districts: ElectionDistrict[];
+  districtCount?: number;
   onDistrictClick: (district: ElectionDistrict) => void;
   selectedDistrict?: ElectionDistrict;
   showPartyAssociations?: boolean;
@@ -48,7 +49,8 @@ const getDistrictMarkerDimensions = (zoomLevel: number) => {
 };
 
 const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({ 
-  districts, 
+  districts,
+  districtCount,
   onDistrictClick, 
   selectedDistrict,
   showPartyAssociations = false,
@@ -58,7 +60,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
   showBaseMap = false,
   selectedParties,
 }) => {
-  const { associations } = usePartyAssociations();
+  const { associations } = usePartyAssociations(showPartyAssociations);
   const [zoomLevel, setZoomLevel] = useState(8);
   const [mapReady, setMapReady] = useState(0);
   const mapEl = useRef<HTMLDivElement | null>(null);
@@ -251,7 +253,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
             }
           });
           const tooltip = document.createElement('span');
-          tooltip.textContent = `${district.district_number}: ${district.district_name}${directMandate ? ` · ${directMandate.party}` : ''}`;
+          tooltip.textContent = `${district.district_number || '–'}: ${district.district_name}${directMandate ? ` · ${directMandate.party}` : ''}`;
           layer.bindTooltip(tooltip, { sticky: true });
           layer.on('add', () => {
             const element = (layer as L.Path).getElement();
@@ -283,7 +285,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 
     // Add markers with district numbers (only for election districts, not administrative boundaries)
     const occupied: L.Point[] = [];
-    [...districts].sort((a, b) => Number(b.id === selectedDistrict?.id) - Number(a.id === selectedDistrict?.id)).filter(d => showDistrictMarkers && d.district_type !== 'verwaltungsgrenze').forEach((district) => {
+    [...districts].sort((a, b) => Number(b.id === selectedDistrict?.id) - Number(a.id === selectedDistrict?.id)).filter(d => showDistrictMarkers && d.district_type !== 'verwaltungsgrenze' && d.district_number > 0).forEach((district) => {
       if (!district.center_coordinates) return;
       const { lat, lng } = district.center_coordinates as { lat: number; lng: number };
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
@@ -297,7 +299,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       const marker = L.marker([lat, lng], {
         alt: `WK:${district.id}`,
         icon: L.divIcon({
-          html: `<div style="background: white; border: ${borderWidth}px solid ${partyColor}; border-radius: 50%; width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: ${fontSize}px; color: black; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">${district.district_number}</div>`,
+          html: `<div style="background: white; border: ${borderWidth}px solid ${partyColor}; border-radius: 50%; width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: ${fontSize}px; color: black; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">${district.district_number || '–'}</div>`,
           className: 'custom-district-marker',
           iconSize: [size, size],
           iconAnchor: [size / 2, size / 2]
@@ -305,14 +307,14 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       });
       
       const label = document.createElement('span');
-      label.textContent = `${district.district_number}: ${district.district_name}`;
+      label.textContent = `${district.district_number || '–'}: ${district.district_name}`;
       marker.bindTooltip(label);
       marker.on('click', () => onDistrictClickRef.current(district));
       
       // Enhanced tooltip with representative info
       if (directMandate) {
         marker.bindTooltip(
-          `<strong>WK ${district.district_number}: ${district.district_name}</strong><br/>
+          `<strong>WK ${district.district_number || '–'}: ${district.district_name}</strong><br/>
            <strong>${directMandate.name}</strong> (${directMandate.party})<br/>
            Direktmandat`, 
           {
@@ -514,7 +516,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
         }}><MoveDiagonal className="h-4 w-4" /></button>
       </div>
       <div className="pointer-events-none absolute top-3 right-3 z-[1000] rounded-full border border-border bg-card/95 px-3 py-1.5 text-xs shadow-[0_2px_3px_rgba(20,30,10,0.08),0_5px_12px_rgba(20,30,10,0.14)]" role="status">
-        {districts.filter(d => d.district_type !== 'verwaltungsgrenze').length} Wahlkreise
+        {districtCount ?? districts.filter(d => d.district_type !== 'verwaltungsgrenze').length} Wahlkreise
       </div>
     </div>
   );

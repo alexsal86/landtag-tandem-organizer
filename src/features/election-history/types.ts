@@ -1,12 +1,12 @@
 export interface ElectionPeriod {
-  id: string; number: number; name: string; election_date: string; starts_on: string; ends_on: string | null;
+  id: string; number: number; name: string; election_date: string | null; starts_on: string | null; election_year: number | null; ends_on: string | null;
   is_current: boolean; is_published: boolean; source_url: string | null; notes: string | null;
 }
 export interface ElectionPerson {
   id: string; name: string; biography: string | null; source_url: string | null; history_complete: boolean;
 }
 export interface HistoricalDistrict {
-  id: string; period_id: string; district_number: number; name: string; boundary_note: string | null; source_url: string | null;
+  id: string; period_id: string; district_number: number | null; number_label: string | null; boundaries: import('@/types/geoDomain').GeoJsonGeometry | null; name: string; boundary_note: string | null; source_url: string | null;
 }
 export interface ElectionCandidacy {
   id: string; period_id: string; person_id: string; district_id: string | null; party: string;
@@ -15,9 +15,9 @@ export interface ElectionCandidacy {
   source_url: string | null; notes: string | null;
 }
 export interface HistoricalMandate {
-  id: string; period_id: string; person_id: string; district_id: string | null; candidacy_id: string | null;
+  id: string; period_id: string; person_id: string | null; person_name: string | null; original_mandate: string | null; party_label: string | null; left_early: boolean; district_id: string | null; candidacy_id: string | null;
   party: string; mandate_type: 'direct' | 'list'; entry_type: 'election' | 'succession';
-  starts_on: string; ends_on: string | null; source_url: string | null; notes: string | null;
+  starts_on: string | null; ends_on: string | null; source_url: string | null; notes: string | null;
 }
 export interface ElectionAudit {
   id: string; table_name: string; record_id: string; action: string; actor_id: string | null; occurred_at: string;

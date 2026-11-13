@@ -15361,6 +15361,8 @@ export type Database = {
       }
     }
     Functions: {
+      get_election_person_summary: { Args: { person: string; through_period: string }; Returns: Json }
+      get_election_history_period: { Args: { period: string }; Returns: Json }
       set_current_election_history_period: { Args: { period: string }; Returns: undefined }
       convert_topic_to_catalog: { Args: {p_topic:string;p_kind:string;p_region_kind?:string}; Returns:Json }
       _briefing_task_event: {

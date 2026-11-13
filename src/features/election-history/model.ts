@@ -1,3 +1,5 @@
+import { normalizeGeoJsonGeometry } from '@/hooks/geoContracts';
+import { hasRenderableBoundary } from '@/features/election-districts/mapModel';
 import type { ElectionCandidacy, ElectionHistoryData, ElectionHistoryTables, HistoricalMandate } from './types';
 export type HistoryEntity = 'periods' | 'people' | 'districts' | 'candidacies' | 'mandates';
 export const historyTables = {
@@ -39,20 +41,25 @@ export function parseHistoryForm(entity: HistoryEntity, v: FormValues): ParsedHi
   const notes = optional(v, 'notes');
   switch (entity) {
     case 'periods': {
-      const starts_on = dateValue(v, 'starts_on');
+      const starts_on = dateValue(v, 'starts_on', false);
       const ends_on = dateValue(v, 'ends_on', false);
-      const election_date = dateValue(v, 'election_date');
-      if (election_date > starts_on || (ends_on && ends_on < starts_on)) throw new Error('Wahltag und Legislaturzeitraum passen nicht zusammen.');
+      const election_date = dateValue(v, 'election_date', false);
+      if ((election_date && starts_on && election_date > starts_on) || (starts_on && ends_on && ends_on < starts_on)) throw new Error('Wahltag und Legislaturzeitraum passen nicht zusammen.');
       const number = numberValue(v, 'number', 1);
       if (number === null) throw new Error('Bitte eine Legislatur-Nummer angeben.');
       if (v.is_current === true && v.is_published !== true) throw new Error('Die aktuelle Periode muss freigegeben sein.');
-      return { entity, data: { number, name: required(v, 'name'), election_date, starts_on, ends_on, is_current: v.is_current === true, is_published: v.is_published === true, source_url, notes } } as const;
+      return { entity, data: { number, name: required(v, 'name'), election_year: numberValue(v, 'election_year', 1900, 2200), election_date, starts_on, ends_on, is_current: v.is_current === true, is_published: v.is_published === true, source_url, notes } } as const;
     }
     case 'people': return { entity, data: { name: required(v, 'name'), biography: optional(v, 'biography'), history_complete: v.history_complete === true, source_url } } as const;
     case 'districts': {
       const district_number = numberValue(v, 'district_number', 1);
-      if (district_number === null) throw new Error('Bitte eine Wahlkreisnummer angeben.');
-      return { entity, data: { period_id: required(v, 'period_id'), district_number, name: required(v, 'name'), boundary_note: optional(v, 'boundary_note'), source_url } } as const;
+      let boundaries = null;
+      if (optional(v, 'boundaries')) {
+        try { boundaries = normalizeGeoJsonGeometry(JSON.parse(String(v.boundaries))); }
+        catch { throw new Error('Die Wahlkreisgrenze ist kein gültiges GeoJSON.'); }
+        if (!hasRenderableBoundary(boundaries)) throw new Error('Bitte eine WGS84-Polygon- oder MultiPolygon-Geometrie eingeben.');
+      }
+      return { entity, data: { period_id: required(v, 'period_id'), district_number, number_label: optional(v, 'number_label'), boundaries, name: required(v, 'name'), boundary_note: optional(v, 'boundary_note'), source_url } } as const;
     }
     case 'candidacies': {
       const ballot_type = required(v, 'ballot_type');
@@ -65,14 +72,19 @@ export function parseHistoryForm(entity: HistoryEntity, v: FormValues): ParsedHi
       return { entity, data } as const;
     }
     case 'mandates': {
-      const starts_on = dateValue(v, 'starts_on');
+      const starts_on = dateValue(v, 'starts_on', false);
       const ends_on = dateValue(v, 'ends_on', false);
-      if (ends_on && ends_on < starts_on) throw new Error('Das Mandatsende liegt vor dem Beginn.');
+      if (starts_on && ends_on && ends_on < starts_on) throw new Error('Das Mandatsende liegt vor dem Beginn.');
       const mandate_type = required(v, 'mandate_type'), entry_type = required(v, 'entry_type');
       if (!['direct','list'].includes(mandate_type) || !['election','succession'].includes(entry_type)) throw new Error('Ungültige Mandatsauswahl.');
       const district_id = optional(v, 'district_id');
       if (mandate_type === 'direct' && !district_id) throw new Error('Ein Direktmandat braucht einen Wahlkreis.');
-      return { entity, data: { period_id: required(v, 'period_id'), person_id: required(v, 'person_id'), district_id, candidacy_id: optional(v, 'candidacy_id'), party: required(v, 'party'),
+      const person_id = optional(v, 'person_id');
+      const person_name = optional(v, 'person_name');
+      if (!person_id && !person_name) throw new Error('Bitte einen Namen oder eine verknüpfte Person angeben.');
+      return { entity, data: { period_id: required(v, 'period_id'), person_id, person_name,
+        original_mandate: optional(v, 'original_mandate'), party_label: optional(v, 'party_label'), left_early: v.left_early === true,
+        district_id, candidacy_id: optional(v, 'candidacy_id'), party: required(v, 'party'),
         starts_on, ends_on, mandate_type: mandate_type as HistoricalMandate['mandate_type'], entry_type: entry_type as HistoricalMandate['entry_type'], source_url, notes } } as const;
     }
   }

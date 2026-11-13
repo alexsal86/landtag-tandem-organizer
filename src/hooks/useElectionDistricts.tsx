@@ -66,7 +66,7 @@ export interface ElectionDistrictNote {
   updated_at: string;
 }
 
-export function useElectionDistricts() {
+export function useElectionDistricts({ enabled = true }: { enabled?: boolean } = {}) {
   const { user } = useAuth();
 
   const normalizeRepresentative = (value: unknown): ElectionRepresentative | null => {
@@ -173,7 +173,7 @@ export function useElectionDistricts() {
   } = useQuery({
     queryKey: ["election-districts", user?.id],
     queryFn: fetchDistricts,
-    enabled: Boolean(user),
+    enabled: Boolean(user) && enabled,
     staleTime: STALE_TIME.GEO,
     gcTime: STALE_TIME.GEO * 2,
   });

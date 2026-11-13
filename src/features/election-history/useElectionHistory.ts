@@ -2,30 +2,47 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { historyTables, type HistoryEntity, type FormValues, parseHistoryForm } from './model';
-import type { ElectionHistoryData, ElectionHistoryTables } from './types';
+import type { ElectionHistoryData, ElectionPeriod } from './types';
 
-// Supabase's default row limit must not silently truncate historical records.
-async function readAll<K extends typeof historyTables[HistoryEntity]>(table: K): Promise<ElectionHistoryTables[K]['Row'][]> {
-  const rows: ElectionHistoryTables[K]['Row'][] = [];
-  for (let offset = 0; ; offset += 500) {
-    const { data, error } = await supabase.from(table).select('*').order('id').range(offset, offset + 499);
-    if (error) throw error;
-    const page = (data || []) as unknown as ElectionHistoryTables[K]['Row'][];
-    rows.push(...page);
-    if (page.length < 500) return rows;
-  }
-}
-export function useElectionHistory(): UseQueryResult<ElectionHistoryData, Error> {
+/** The small period index is the only query made before a selection. */
+export function useElectionPeriods(): UseQueryResult<ElectionPeriod[], Error> {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ['election-history', user?.id], enabled: !!user,
-    queryFn: async (): Promise<ElectionHistoryData> => {
-      const [periods, people, districts, candidacies, mandates] = await Promise.all([
-        readAll('election_history_periods'), readAll('election_history_people'), readAll('election_history_districts'),
-        readAll('election_history_candidacies'), readAll('election_history_mandates'),
-      ]);
-      return { periods: periods.sort((a, b) => b.number - a.number), people: people.sort((a, b) => a.name.localeCompare(b.name, 'de')), districts, candidacies, mandates };
-    }, staleTime: 60_000, retry: false,
+    queryKey: ['election-history', user?.id, 'periods'], enabled: !!user,
+    queryFn: async ({ signal }) => {
+      const { data, error } = await supabase.from('election_history_periods').select('*').order('number', { ascending: false }).limit(100).abortSignal(signal);
+      if (error) throw error;
+      return data || [];
+    }, staleTime: 60_000, gcTime: 300_000, retry: false,
+  });
+}
+export function useElectionHistory(periodId?: string): UseQueryResult<ElectionHistoryData, Error> {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['election-history', user?.id, 'period', periodId], enabled: !!user && !!periodId,
+    queryFn: async ({ signal }): Promise<ElectionHistoryData> => {
+      if (!periodId) throw new Error('Bitte eine Legislaturperiode auswählen.');
+      const { data, error } = await supabase.rpc('get_election_history_period', { period: periodId }).abortSignal(signal);
+      if (error) throw error;
+      if (!data || typeof data !== 'object' || Array.isArray(data)
+          || !Array.isArray(data.periods) || !Array.isArray(data.people) || !Array.isArray(data.districts)
+          || !Array.isArray(data.candidacies) || !Array.isArray(data.mandates)) throw new Error('Ungültige Periodendaten.');
+      return data as unknown as ElectionHistoryData;
+    }, staleTime: 60_000, gcTime: 120_000, retry: false,
+  });
+}
+/** Search is bounded and explicit; never download the complete person register. */
+export function useElectionPersonSearch(search: string, enabled: boolean) {
+  const { user } = useAuth();
+  const term = search.trim();
+  return useQuery({
+    queryKey: ['election-history', user?.id, 'people-search', term], enabled: !!user && enabled && term.length >= 2,
+    queryFn: async ({ signal }) => {
+      const escaped = term.replace(/[\\%_]/g, character => `\\${character}`);
+      const { data, error } = await supabase.from('election_history_people').select('*').ilike('name', `${escaped}%`).order('name').limit(20).abortSignal(signal);
+      if (error) throw error;
+      return data || [];
+    }, staleTime: 60_000, gcTime: 120_000,
   });
 }
 export async function saveHistoryEntry(entity: HistoryEntity, values: FormValues, id?: string) {
@@ -52,7 +69,7 @@ export async function deleteHistoryEntry(entity: HistoryEntity, id: string) {
 export function historyError(error: unknown): string {
   if (typeof error === 'object' && error !== null && 'code' in error) {
     if (error.code === '23503') return 'Der Datensatz wird noch verwendet oder eine Zuordnung gehört zu einer anderen Periode. Bitte zuerst die Verknüpfungen prüfen.';
-    if (error.code === '23505') return 'Dieser Eintrag existiert bereits. Pro Wahlkreis und Wahl kann es nur einen Direktwahlsieger geben.';
+    if (error.code === '23505') return 'Dieser Datensatz oder diese Zuordnung existiert bereits. Bitte vorhandene Mandate und Wahlkreisnummern prüfen.';
     if (error.code === '42501') return 'Nur Super-Admins dürfen zentrale Wahldaten ändern.';
     if (error.code === '42P01' || error.code === 'PGRST205') return 'Die zentrale Wahldatenbank ist noch nicht eingerichtet. Bitte die neue Datenbankmigration einspielen.';
   }

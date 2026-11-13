@@ -36,7 +36,7 @@ export interface PartyAssociation {
   boundary_districts?: ElectionDistrict[];
 }
 
-export function usePartyAssociations() {
+export function usePartyAssociations(enabled = true) {
   const [associations, setAssociations] = useState<PartyAssociation[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -136,8 +136,8 @@ export function usePartyAssociations() {
   };
 
   useEffect(() => {
-    fetchAssociations();
-  }, []);
+    if (enabled) void fetchAssociations();
+  }, [enabled]);
 
   const refetch = () => {
     fetchAssociations();
@@ -145,7 +145,7 @@ export function usePartyAssociations() {
 
   return {
     associations,
-    loading,
+    loading: enabled && loading,
     refetch
   };
 }

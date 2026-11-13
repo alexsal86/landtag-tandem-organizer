@@ -25,50 +25,69 @@ Im Selbsttest-Center gibt es zusätzlich das Szenario „Wahlkreiskarte: Suche u
 ## Zentrale Wahldaten und Mandatshistorie
 
 Super-Admin → **Wahldaten & Mandatshistorie**
-(`/administration?adminSection=superadmin&adminSubSection=election-history`) pflegt
-plattformweite Legislaturperioden, Personen, historische Wahlkreise, Kandidaturen
-und tatsächliche Mandatsabschnitte. Die Datenbankmigration
-`20261114090000_central_election_history.sql` muss vor Verwendung eingespielt werden.
-Die neuen Tabellen sind unabhängig von den vorhandenen `election_representatives`;
-Bestandsdaten und tenantbezogene Notizen bleiben erhalten. Es gibt keinen
-unsicheren automatischen Personenabgleich anhand von Namen und keine Testdaten.
+(`/administration?adminSection=superadmin&adminSubSection=election-history`).
 
-1. Periode als Entwurf mit Wahltag und Legislaturzeitraum anlegen.
-2. Personen und die Wahlkreise dieser Periode anlegen; Namensgleichheit ist
-   erlaubt, die Kurzbiografie kann der Unterscheidung dienen. Wahlkreisnummern
-   sind nur innerhalb einer Periode eindeutig.
-3. Kandidaturen erfassen: damalige Partei, persönliche Kandidaten-/Erststimmen,
-   Anteil, Rang, Listenplatz und Wahlausgang. Auch Listengewählte und erfolglose
-   Kandidierende können persönliche Wahlkreisergebnisse erhalten. Parteizweitstimmen
-   werden hier ausdrücklich nicht als persönliche Ergebnisse gespeichert.
-4. Mandate erfassen: Person, Periode, Wahlkreis (optional für reine Listenmandate),
-   Direkt/Liste, gewählt/nachgerückt, tatsächlicher Beginn/Ende und Quelle. Die
-   zugehörige Kandidatur ist optional verknüpfbar. Bei verknüpften gewählten
-   Mandaten müssen Wahlausgang und Wahlkreis passen; Nachrücken kann auf eine
-   ursprünglich erfolglose Kandidatur folgen. Verknüpfungen zwischen Perioden und
-   überlappende Mandatsabschnitte einer Person in derselben Periode sind gesperrt.
-5. Periode über **Periode prüfen** ansehen und anschließend freigeben.
-   **Als aktuell festlegen** schaltet die Standardperiode atomar um. Zum
-   Zurückziehen der aktuellen Periode zuerst eine andere als aktuell festlegen.
+### Einrichtung und Import
 
-Alle angemeldeten Tenants lesen freigegebene Perioden; nur Super-Admins bearbeiten
-zentrale Datensätze oder sehen Entwürfe und das Änderungsprotokoll. Personenstammdaten
-sind angemeldeten Nutzern lesbar. Änderungen werden durch Datenbanktrigger
-append-only protokolliert. Löschungen referenzierter Datensätze sind gesperrt;
-Löschen im Editor verlangt eine Bestätigung.
+Migrationen in dieser Reihenfolge einspielen:
 
-Die Karte bietet die freigegebenen Perioden zur Auswahl und verwendet deren Namen
-und Mandate. Ohne freigegebene Perioden wird die bisherige Datenquelle verwendet.
-Historische Grenzgeometrien werden nicht erfunden: Die Karte nutzt die vorhandenen
-Grenzdaten und kennzeichnet diesen Umstand. Grenzänderungen lassen sich pro
-historischem Wahlkreis dokumentieren. Nicht vorhandene Perioden/Daten werden
-nicht als belegte historische Lücken oder Nullergebnisse ausgegeben.
+1. `20261114090000_central_election_history.sql`: zentrale Tabellen und Super-Admin-Schreibrechte.
+2. `20261114100000_election_history_period_loading.sql`: historische Nummern/Geometrien,
+   unbekannte Datumsangaben und das Laden je einzelner Legislaturperiode.
+3. `20261114110000_historical_election_members.sql`: 18 Perioden, 1.272 damalige
+   Wahlkreisdatensätze und 2.559 Mandatseinträge aus der bereitgestellten Tabelle.
 
-Wiederwahlen zählen verschiedene gewählte Legislaturperioden minus die erste Wahl;
-Nachrücken und mehrere Mandatsabschnitte derselben Periode erhöhen den Zähler nicht.
-Die Anzeige bezieht sich auf die ausgewählte Periode und frühere Perioden. Solange
-bei einer Person die Vollständigkeit nicht ausdrücklich bestätigt wurde, zeigt die
-Ansicht nur die Zahl erfasster gewählter Perioden. Die Bestätigung setzt eine
-vollständige, freigegebene Historie voraus. Kandidaturen und Mandate ohne Wahlkreis
-bleiben zentral pflegbar und in der Periodenvorschau sichtbar, sind aber keinem
-Kartenpolygon zugeordnet.
+Der Import legt neue Perioden als Entwurf an. Bereits vorhandene Perioden mit
+passender Nummer bleiben erhalten. Stabile Datensatz-IDs verhindern Duplikate bei
+erneuter Ausführung; bestehende Datensätze werden nicht überschrieben.
+Datei-, Blatt- und Zeilenherkunft sowie Quellenlinks werden nicht importiert.
+Das Skript `scripts/import-election-history.py input.xlsx output.sql` erzeugt
+SQL mit openpyxl; die Excel-Datei wird nicht als App-Asset ausgeliefert.
+
+Importierte Namen werden als `person_name` am Mandat gespeichert. Gleiche Namen
+werden nicht automatisch zu einer globalen Personenidentität zusammengeführt.
+Die Administration erlaubt die bewusste Verknüpfung mit einer Person; die Suche
+lädt erst ab zwei Anfangsbuchstaben höchstens 20 Treffer. Nach Bestätigung einer
+vollständigen Identität/Historie kann die Wiederwahlzusammenfassung abgerufen
+werden. Nachrücken zählt dabei nicht als Wahl.
+
+Originalbezeichnungen wie Erst-, Zweit-, Landeslistenmandat und historische
+Partei-/Fraktionsangaben bleiben erhalten. Unbekannte Amtsdaten bleiben NULL,
+ein Wahljahr ersetzt weder einen Wahltag noch einen Mandatsbeginn. Der Import
+erfindet keine Stimmenzahlen und legt keine unbelegten Kandidaturen an.
+Landeslistenmandate ohne Wahlkreis erhalten keine künstliche Gebietszuordnung.
+
+Acht Kombinationen aus Periode und überlieferter Nummer tragen widersprüchliche
+Namen. Dort bleibt die gesicherte Nummer leer; die überlieferte Angabe steht in
+`number_label` und die Zuordnung ist zur Prüfung markiert. Historische Gebiete
+bleiben nach Periode und Datensatz-ID getrennt. Vor Freigabe in der Vorschau prüfen.
+
+### Historische Umrisse
+
+Die Datei enthält keine Grenzgeometrien. Beim Wahlkreis kann eine WGS84-Polygon-
+oder MultiPolygon-Geometrie als GeoJSON hinterlegt werden. Ohne diese Geometrie
+ist der damalige Wahlkreis in der Mitgliederübersicht und der Wahlkreisauswahl
+verfügbar, aber nicht als vermeintlich belegte Fläche auf der Karte. Aktuelle
+Grenzen werden nicht anhand gleicher Nummern oder Namen auf frühere Perioden
+übertragen. Historische Geometrien verändern keine bestehenden Geodaten oder
+Tenant-Notizen. Historische Nummern dürfen unbekannt sein; NULL ist keine neue
+oder erfundene Wahlkreisnummer.
+
+### Laden und Anzeige
+
+- Initial wird nur der kleine Periodenindex gelesen. Danach lädt
+  `get_election_history_period` ausschließlich die gewählte Legislatur mit ihren
+  Mandaten, Kandidaturen, Wahlkreisen und den dort verknüpften Personen.
+- Es gibt keine „Alle Perioden“-Abfrage und keinen globalen Personen-Vollabruf.
+  Die Daten bleiben nach Benutzer und Periode getrennt gecacht (60 Sekunden
+  Aktualität, 2 Minuten nach Verlassen); laufende Anfragen werden beim Wechsel
+  abgebrochen. Die Excel-Datei und Importdaten werden nicht ins Frontend gebündelt.
+- Ansichten zeigen zunächst 25 Einträge, weitere explizit auf Anforderung.
+  Die öffentliche Mitgliederübersicht ist zunächst eingeklappt.
+- Wiederwahlzahlen werden erst beim Aufklappen für die einzelne bestätigte Person
+  serverseitig aggregiert; dafür werden keine früheren Perioden vollständig geladen.
+- Normale Tenants lesen nur freigegebene Perioden. Die Administration sieht auch
+  Entwürfe. Veröffentlichung und die aktuelle Standardperiode werden zentral
+  gepflegt; RLS und das vorhandene Änderungsprotokoll bleiben wirksam.
+- Ohne freigegebene historische Perioden bleibt die bestehende Wahlkreiskarte nutzbar.
+  Fremdschlüssel verhindern Verknüpfungen zwischen verschiedenen Perioden.
