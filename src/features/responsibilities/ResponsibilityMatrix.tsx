@@ -20,9 +20,7 @@ import {
   PersonMark,
 } from "./AssignmentPicker";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { Link, useSearchParams } from "react-router-dom";
 import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,29 +51,9 @@ export function ResponsibilityMatrix() {
   const [view, setView] = useState<"areas" | "people">("areas");
   const [query, setQuery] = useState("");
   const [onlyGaps, setOnlyGaps] = useState(false);
-  const [catalogOpen, setCatalogOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(!!params.get("employee"));
-  const [catalogKind, setCatalogKind] = useState("committee");
-  const [name, setName] = useState("");
-  const [regionKind, setRegionKind] = useState("gemeinde");
-  const [district, setDistrict] = useState("none");
-  const [source, setSource] = useState("");
-  const [target, setTarget] = useState("");
   const [focus, setFocus] = useState("");
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  const districts = useQuery({
-    queryKey: ["responsibility-election-districts"],
-    enabled: isAdmin,
-    queryFn: async () => {
-      const r = await supabase
-        .from("election_districts")
-        .select("id,district_name")
-        .order("district_name");
-      if (r.error) throw r.error;
-      return r.data;
-    },
-  });
   if (model.isLoading) return <p>Lade Zuständigkeiten …</p>;
   if (model.error || !model.data)
     return (
@@ -170,42 +148,6 @@ export function ResponsibilityMatrix() {
       return false;
     }
   };
-  const catalogItems =
-    catalogKind === "committee" ? data.committees : data.regions;
-  const catalogAction = async (merge: boolean) => {
-    if (!model.tenantId) return;
-    setBusy(true);
-    setError("");
-    try {
-      const result = merge
-        ? await supabase.rpc("merge_responsibility_catalog", {
-            p_tenant: model.tenantId,
-            p_kind: catalogKind,
-            p_source: source,
-            p_target: target,
-          })
-        : await supabase.rpc("save_responsibility_catalog", {
-            p_tenant: model.tenantId,
-            p_kind: catalogKind,
-            p_name: name,
-            p_region_kind: regionKind,
-            ...(district !== "none" ? { p_election_district: district } : {}),
-          });
-      if (result.error) throw result.error;
-      setName("");
-      setSource("");
-      setTarget("");
-      await model.refresh();
-    } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : "Katalog konnte nicht gespeichert werden.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
   return (
     <section className="space-y-4 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -217,15 +159,11 @@ export function ResponsibilityMatrix() {
           </p>
         </div>
         {isAdmin && (
-          <Button
-            variant="outline"
-            onClick={() => {
-              setError("");
-              setCatalogOpen(true);
-            }}
-          >
-            <Settings2 className="mr-2 h-4 w-4" />
-            Katalog verwalten
+          <Button variant="outline" asChild>
+            <Link to="/administration?adminSection=content&adminSubSection=topics">
+              <Settings2 className="mr-2 h-4 w-4" />
+              Katalog verwalten
+            </Link>
           </Button>
         )}
       </div>
@@ -718,126 +656,6 @@ export function ResponsibilityMatrix() {
           )}
         </DialogContent>
       </Dialog>
-      {isAdmin && (
-        <Dialog open={catalogOpen} onOpenChange={setCatalogOpen}>
-          <DialogContent className="max-h-[85vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Katalog verwalten</DialogTitle>
-              <DialogDescription>
-                Ausschüsse und Regionen anlegen oder zusammenführen.{" "}
-                <a className="underline" href="/themen">
-                  Themen verwalten
-                </a>
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-3">
-              {error && (
-                <p role="alert" className="text-destructive">
-                  {error}
-                </p>
-              )}
-              <h3 className="font-semibold">Ausschüsse & Regionen</h3>
-              <Select
-                value={catalogKind}
-                onValueChange={(v) => {
-                  setCatalogKind(v);
-                  setSource("");
-                  setTarget("");
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="committee">Ausschüsse</SelectItem>
-                  <SelectItem value="region">Regionen</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input
-                aria-label="Neuer Katalogeintrag"
-                placeholder="Name"
-                maxLength={120}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-              {catalogKind === "region" && (
-                <>
-                  <Select value={regionKind} onValueChange={setRegionKind}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="stadtteil">Stadtteil</SelectItem>
-                      <SelectItem value="gemeinde">Gemeinde</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={district} onValueChange={setDistrict}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Wahlkreis verknüpfen" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">
-                        Ohne Wahlkreisverknüpfung
-                      </SelectItem>
-                      {districts.data?.map((d) => (
-                        <SelectItem key={d.id} value={d.id}>
-                          {d.district_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {districts.error && (
-                    <p role="alert">Wahlkreise konnten nicht geladen werden.</p>
-                  )}
-                </>
-              )}
-              <Button
-                disabled={busy || !name.trim()}
-                onClick={() => void catalogAction(false)}
-              >
-                Anlegen
-              </Button>
-              <p className="text-sm text-muted-foreground">
-                Zusammenführen überträgt Zuständigkeiten zum Ziel; bei
-                Doppelungen bleibt Primär erhalten. Der Quelleintrag wird
-                aufgelöst.
-              </p>
-              <Select value={source} onValueChange={setSource}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Quelle" />
-                </SelectTrigger>
-                <SelectContent>
-                  {catalogItems.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={target} onValueChange={setTarget}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Ziel" />
-                </SelectTrigger>
-                <SelectContent>
-                  {catalogItems
-                    .filter((c) => c.id !== source)
-                    .map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-              <Button
-                disabled={busy || !source || !target || source === target}
-                onClick={() => void catalogAction(true)}
-              >
-                Quelle mit Ziel zusammenführen
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
     </section>
   );
 }
