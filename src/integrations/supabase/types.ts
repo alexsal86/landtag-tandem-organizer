@@ -14875,6 +14875,13 @@ export type Database = {
       handover_tasks_to_deputy: { Args: {p_tenant:string;p_user:string;p_deputy:string}; Returns:number }
       can_view_employee_hr: { Args: {p_tenant:string;p_user:string}; Returns:boolean }
       hr_task_visible: { Args: {p_task:string}; Returns:boolean }
+      configure_team_rituals: { Args: { p_tenant: string; p_enabled: boolean }; Returns: undefined }
+      save_team_ritual_profile: { Args: { p_tenant: string; p_opted_in: boolean; p_show_events: boolean; p_birthday: string | null; p_birth_year: number | null; p_joined_on: string | null }; Returns: undefined }
+      save_team_question: { Args: { p_tenant: string; p_id: string | null; p_question: string; p_active: boolean }; Returns: undefined }
+      ensure_weekly_question: { Args: { p_tenant: string }; Returns: string | null }
+      upsert_weekly_answer: { Args: { p_tenant: string; p_week: string; p_answer: string }; Returns: undefined }
+      delete_weekly_answer: { Args: { p_tenant: string; p_week: string }; Returns: undefined }
+      team_ritual_snapshot: { Args: { p_tenant: string }; Returns: Json }
 
       get_latest_employee_meetings: {
         Args: { p_employee_ids: string[] }

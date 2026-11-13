@@ -539,6 +539,7 @@ export function useDashboardLayout() {
       'news': 'News Feed',
       'blackboard': 'Pinnwand',
       'actions': 'Aktionen',
+      'weekly_question': 'Frage der Woche',
       'stakeholder-network': 'Stakeholder-Netzwerk'
     };
     

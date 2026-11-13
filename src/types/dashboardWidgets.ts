@@ -6,6 +6,7 @@ export type WidgetSize =
   | '6x1' | '6x2' | '7x1' | '7x2' | '8x1' | '8x2';
 
 export const DASHBOARD_WIDGET_TYPES = [
+  'weekly_question',
   'stats',
   'tasks',
   'schedule',
@@ -57,6 +58,7 @@ export interface DashboardPomodoroConfig extends DashboardWidgetConfigBase {
 export type DashboardDefaultWidgetConfig = DashboardWidgetConfigBase;
 
 export interface WidgetConfigMap {
+  weekly_question: DashboardDefaultWidgetConfig;
   stats: DashboardDefaultWidgetConfig;
   tasks: DashboardDefaultWidgetConfig;
   schedule: DashboardDefaultWidgetConfig;

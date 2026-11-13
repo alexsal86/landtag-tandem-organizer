@@ -1,3 +1,4 @@
+import { WeeklyQuestionWidget } from '@/features/team-rituals/WeeklyQuestionWidget';
 import { Phone, Timer, FileText, Plus, X, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -25,6 +26,7 @@ interface WidgetQuickAccessProps {
 }
 
 const WIDGET_REGISTRY = [
+  { id: 'weekly_question', name: 'Frage der Woche', icon: FileText, description: 'Freiwillige Team-Rituale, Geburtstage und Jubiläen' },
   { id: 'quicknotes', name: 'Notizen', icon: FileText, description: 'Schnelle Notizen erstellen und verwalten' },
   { id: 'calllog', name: 'Anrufe', icon: Phone, description: 'Anrufprotokolle verwalten' },
   { id: 'pomodoro', name: 'Timer', icon: Timer, description: 'Pomodoro-Timer für produktives Arbeiten' },
@@ -157,6 +159,7 @@ export function WidgetQuickAccess({ activeWidget, onWidgetChange }: WidgetQuickA
 
       {/* Widget content below buttons */}
       <div className="rounded-lg border bg-card shadow-sm h-[700px] overflow-auto">
+        {activeWidget === 'weekly_question' && <WeeklyQuestionWidget />}
         {activeWidget === 'quicknotes' && <QuickNotesWidget />}
         {activeWidget === 'calllog' && <CallLogWidget />}
         {activeWidget === 'pomodoro' && <PomodoroWidget />}

@@ -1,3 +1,4 @@
+import { TeamEvents } from '@/features/team-rituals/TeamEvents';
 import { useMemo } from 'react';
 import { GripVertical } from 'lucide-react';
 import { getLucideIcon } from '@/utils/iconUtils';
@@ -182,6 +183,7 @@ export const DashboardGreetingSection = ({ data }: Props) => {
           </button>
         </div>
       )}
+      <TeamEvents />
       <WeatherToggle />
     </div>
   );

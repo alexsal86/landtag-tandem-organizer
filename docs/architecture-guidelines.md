@@ -96,3 +96,18 @@ Reviewer prüfen mindestens:
 - `pytest -q` ist als verpflichtender Job aktiv.
 - Neue Python-/Parser-Änderungen müssen mindestens einen echten Testfall mitbringen.
 - Security-Hygiene-Checks und Drift-Checks bleiben verpflichtend.
+
+## Team-Rituale (Phase 1)
+
+Ownership: Primary `team-platform`, Secondary `team-office`, Feature `team-rituals`.
+`src/features/team-rituals/data.ts` lädt per React Query mit Benutzer-/Mandantenschlüssel;
+alle Änderungen laufen über Tenant-geprüfte RPCs. Reine Berliner Datumslogik und
+Fragenrotation liegen in `src/features/team-rituals/logic.ts`; die SQL-Vergabe nutzt
+äquivalent die am längsten nicht gestellte aktive Frage (UUID als Tie-Breaker).
+Die Regeln sind mit einem kleinen Unit-Test-File und Logic-Selbsttest-Schritten abgedeckt.
+Datumsfelder liegen absichtlich in tenant-lokalen `team_ritual_profiles`, damit die
+Freigabe nicht unbeabsichtigt in weitere Mitgliedschaften übernommen wird.
+Der vorhandene GDPR-Kontolöschpfad (`manage-tenant-user/deleteUser`) löscht diese
+personenbezogenen Daten über `auth.users ON DELETE CASCADE`; Mitgliedschaftsentzug
+entfernt sie zusätzlich per Trigger. Kontakt-GDPR ist ein separater Datenbestand.
+Echte Rollen-/RLS-/RPC- und Löschprüfungen mit Anmeldung stehen in `roadmap.md` offen.
