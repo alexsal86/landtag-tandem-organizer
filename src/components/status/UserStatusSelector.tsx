@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetClose,
+} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { useUserStatus } from '@/hooks/useUserStatus';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Calendar, Clock, MessageSquare, Settings, Smile } from 'lucide-react';
+import { Clock, MessageSquare, X } from 'lucide-react';
 import { OnlineUsersWidget } from "@/components/status/OnlineUsersWidget";
 
 // Emoji categories
@@ -107,51 +108,39 @@ export const UserStatusSelector: React.FC<UserStatusSelectorProps> = ({ children
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+      <SheetTrigger asChild>
         {children}
-      </DialogTrigger>
-      <DialogContent className={showOnlineUsers ? "max-w-3xl max-h-[90vh] overflow-y-auto" : "max-w-md"}>
-        <div className="-mx-6 -mt-6 mb-4 border-b border-border bg-muted/40 px-6 py-2">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Online-Anzeige</p>
-          <div className="mt-1 inline-flex items-center gap-2 rounded-md bg-background px-2 py-1 text-xs">
-            <span>{currentDisplay.emoji}</span>
-            <span className="font-medium">{currentDisplay.label}</span>
-          </div>
-        </div>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Settings className="w-5 h-5" />
-            Status ändern
-          </DialogTitle>
-        </DialogHeader>
+      </SheetTrigger>
+      <SheetContent side="right" aria-describedby={undefined} className="w-full sm:max-w-md h-dvh overflow-y-auto space-y-6">
+        <SheetHeader className="flex-row items-center justify-between space-y-0 text-left">
+          <SheetTitle className="text-2xl">Anwesenheit</SheetTitle>
+          <SheetClose asChild>
+            <Button variant="ghost" size="icon" aria-label="Schließen">
+              <X className="h-4 w-4" />
+            </Button>
+          </SheetClose>
+        </SheetHeader>
 
-        {showOnlineUsers && (
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Anwesenheit</Label>
-            <OnlineUsersWidget />
-          </div>
-        )}
+        {showOnlineUsers && <OnlineUsersWidget />}
 
         <div className="space-y-6">
-          {/* Current Status Display */}
-          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-            <Avatar className="w-10 h-10">
-              <AvatarImage src={profileData?.avatar_url || undefined} />
-              <AvatarFallback>
-                {profileData?.display_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">{currentDisplay.emoji}</span>
-                <span className="font-medium">{currentDisplay.label}</span>
+          {!showOnlineUsers && (
+            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+              <div className="relative">
+                <Avatar className="w-10 h-10">
+                  <AvatarImage src={profileData?.avatar_url || undefined} />
+                  <AvatarFallback>
+                    {profileData?.display_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="absolute -bottom-0.5 -right-0.5 text-xs" title={currentDisplay.label}>
+                  {currentDisplay.emoji}
+                </span>
               </div>
-              <p className="text-sm text-muted-foreground">
-                {profileData?.display_name || user?.email}
-              </p>
+              <p className="text-sm font-medium">{profileData?.display_name || user?.email}</p>
             </div>
-          </div>
+          )}
 
           {/* Quick Status Options */}
           <div>
@@ -294,7 +283,7 @@ export const UserStatusSelector: React.FC<UserStatusSelectorProps> = ({ children
             </Button>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 };

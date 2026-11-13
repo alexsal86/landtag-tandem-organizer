@@ -1,11 +1,10 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useUserStatus } from '@/hooks/useUserStatus';
-import { Users, Wifi, Clock } from 'lucide-react';
+import { Wifi, Clock } from 'lucide-react';
 
 export const OnlineUsersWidget: React.FC = () => {
   const { onlineUsers, getStatusDisplay } = useUserStatus();
@@ -22,16 +21,7 @@ export const OnlineUsersWidget: React.FC = () => {
   };
 
   return (
-    <Card className="h-[400px]">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2">
-          <Users className="w-5 h-5" />
-          Online Benutzer
-          <Badge variant="secondary" className="ml-auto">
-            {onlineUsers.length}
-          </Badge>
-        </CardTitle>
-      </CardHeader>
+    <Card>
       <CardContent className="p-0">
         {onlineUsers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -42,7 +32,7 @@ export const OnlineUsersWidget: React.FC = () => {
             </p>
           </div>
         ) : (
-          <ScrollArea className="h-[300px]">
+          <div className="max-h-[300px] overflow-y-auto">
             <div className="space-y-2 p-4">
               {onlineUsers.map((user) => {
                 const statusDisplay = getStatusDisplay(user.status);
@@ -86,9 +76,6 @@ export const OnlineUsersWidget: React.FC = () => {
                         <h4 className="font-medium text-sm truncate">
                           {user.display_name || 'Unbekannt'}
                         </h4>
-                        <Badge variant="outline" className="text-xs px-1.5 py-0.5">
-                          {statusDisplay.label}
-                        </Badge>
                       </div>
                       
                       {/* Custom Status Message */}
@@ -99,7 +86,7 @@ export const OnlineUsersWidget: React.FC = () => {
                       )}
                       
                       {/* Online Time */}
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                         <Clock className="w-3 h-3" />
                         <span>Online {formatTimeAgo(user.online_at)}</span>
                       </div>
@@ -120,7 +107,7 @@ export const OnlineUsersWidget: React.FC = () => {
                 );
               })}
             </div>
-          </ScrollArea>
+          </div>
         )}
       </CardContent>
     </Card>
