@@ -1,6 +1,6 @@
 export const partyColors: Record<string, string> = {
-  CDU: '#343a40', SPD: '#dc2626', GRÜNE: '#15803d', FDP: '#facc15',
-  AFD: '#009ee0', LINKE: '#be3075', 'Ohne Direktmandat': '#9ca3af',
+  CDU: '#1f2937', SPD: '#dc2626', GRÜNE: '#16a34a', FDP: '#ffed00',
+  AFD: '#1e40af', LINKE: '#be3075', 'Ohne Direktmandat': '#9ca3af',
 };
 
 export function getPartyColor(party?: string): string {
@@ -11,5 +11,5 @@ export function getPartyColor(party?: string): string {
 }
 
 export function getPartyTextColor(party?: string): string {
-  return getPartyColor(party) === '#facc15' ? '#000000' : '#ffffff';
+  return getPartyColor(party) === '#ffed00' ? '#000000' : '#ffffff';
 }

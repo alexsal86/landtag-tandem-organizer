@@ -220,7 +220,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
             weight: isSelected ? 4 : (isPartyBoundary ? 3 : 1.5),
             opacity: 1,
             fillColor: partyColor,
-            fillOpacity: isSelected ? 0.85 : (isPartyBoundary ? 0.4 : (isAdministrative ? 0.3 : 0.6)),
+            fillOpacity: isSelected ? 0.9 : (isPartyBoundary ? 0.4 : (isAdministrative ? 0.3 : 0.6)),
             dashArray: isAdministrative ? '5, 5' : '',
             smoothFactor: 0, // No simplification for maximum precision
           } as L.PathOptions;
@@ -235,21 +235,20 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
           const isSelected = selectedDistrict?.id === district.id;
           const directMandate = district.representatives?.find(rep => rep.mandate_type === 'direct');
 
-          const baseColor = getPartyColorHex(district, isPartyBoundary);
-          const hoverColor = '#' + baseColor.slice(1).match(/.{2}/g)!.map(channel =>
-            Math.round(parseInt(channel, 16) * 0.7).toString(16).padStart(2, '0')
-          ).join('');
+          let restingOpacity: number | undefined;
           layer.on('mouseover', () => {
-            (layer as L.Path).setStyle({ 
-              weight: 4,
-              fillColor: hoverColor
-            });
+            const path = layer as L.Path;
+            restingOpacity = path.options.fillOpacity;
+            // Match the mockup: retain the party hue and increase opacity.
+            // Outline-only and filtered-out districts keep their transparent fill.
+            if (restingOpacity && restingOpacity > 0) {
+              path.setStyle({ fillOpacity: isSelected ? 0.9 : 0.85 });
+            }
           });
           layer.on('mouseout', () => {
-            (layer as L.Path).setStyle({ 
-              weight: isSelected ? 4 : (isPartyBoundary ? 3 : 1.5),
-              fillColor: baseColor
-            });
+            if (restingOpacity !== undefined) {
+              (layer as L.Path).setStyle({ fillOpacity: restingOpacity });
+            }
           });
           const tooltip = document.createElement('span');
           tooltip.textContent = `${district.district_number}: ${district.district_name}${directMandate ? ` · ${directMandate.party}` : ''}`;
@@ -472,7 +471,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
         const selected = selectedDistrict?.id === district.id;
         (layer as L.Path).setStyle({
           color: selected ? '#2563eb' : showDistrictPolygons && active ? '#ffffff' : '#7b8475',
-          fillOpacity: showDistrictPolygons && active ? (selected ? 0.85 : 0.6) : 0,
+          fillOpacity: showDistrictPolygons && active ? (selected ? 0.9 : 0.6) : 0,
           weight: selected ? 4 : 1.5,
         });
       });
