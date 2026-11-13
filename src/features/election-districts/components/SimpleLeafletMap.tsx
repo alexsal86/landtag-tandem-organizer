@@ -6,6 +6,7 @@ import * as L from 'leaflet';
 import { ElectionDistrict } from '@/hooks/useElectionDistricts';
 import { usePartyAssociations } from '@/hooks/usePartyAssociations';
 import { MapPin, Users, Square } from 'lucide-react';
+import { getPartyColor } from '../partyColors';
 import { hasRenderableBoundary } from '../mapModel';
 import sunflowerIcon from '@/assets/sunflower.svg';
 
@@ -37,15 +38,7 @@ const getPartyColorHex = (district?: ElectionDistrict, isPartyAssociationBoundar
   const directMandate = district.representatives?.find(rep => rep.mandate_type === 'direct');
   const party = directMandate?.party;
   
-  switch (party?.toUpperCase()) {
-    case 'CDU': return '#000000';
-    case 'SPD': return '#dc2626';
-    case 'GRÜNE': return '#16a34a';
-    case 'FDP': return '#facc15';
-    case 'AFD': return '#1e40af';
-    case 'LINKE': return '#9333ea';
-    default: return '#6b7280';
-  }
+  return getPartyColor(party);
 };
 
 const getDistrictMarkerDimensions = (zoomLevel: number) => {
@@ -222,14 +215,11 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
         onEachFeature: (feature, layer) => {
           const districtId = feature?.properties?.district_id;
           const isPartyBoundary = feature?.properties?.isPartyBoundary;
-          const associationName = feature?.properties?.associationName;
           const allDistricts = allDistrictsToRender.map(item => item.district);
           const district = allDistricts.find(d => d.id === districtId);
           if (!district) return;
           
           const isSelected = selectedDistrict?.id === district.id;
-          const partyColor = getPartyColorHex(district, isPartyBoundary);
-          const directMandate = district.representatives?.find(rep => rep.mandate_type === 'direct');
 
           const isAdministrative = district.district_type === 'verwaltungsgrenze';
           
@@ -246,52 +236,6 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
             });
           });
           layer.on('click', () => onDistrictClickRef.current(district));
-
-          let popupContent = `
-            <div class="p-2 min-w-[200px]">
-              <div class="flex items-center gap-2 mb-2">
-                <span class="px-2 py-1 rounded text-white text-xs font-medium" style="background-color: ${partyColor}">${district.district_number}</span>
-                <h3 class="font-semibold">${district.district_name || (isAdministrative ? `Kreis ${district.district_number}` : `Wahlkreis ${district.district_number}`)}</h3>
-              </div>
-              <div class="space-y-1 text-sm text-muted-foreground">
-          `;
-
-          if (isPartyBoundary) {
-            popupContent += `
-                <div class="mb-2 p-2 border-l-4 border-palette-green bg-palette-green/10">
-                  <div class="flex items-center gap-2 text-palette-green">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" class="text-palette-green" style="display: inline;"><path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L19 8V7L17 8V7C15 7 13.5 8.5 13.5 10.5S15 14 17 14V13L19 14V13L21 14V12C21 10.34 19.66 9 18 9H16C14.34 9 13 10.34 13 12V14C13 15.66 14.34 17 16 17H18C19.66 17 21 15.66 21 14V12C21 10.34 19.66 9 18 9ZM12 7C13.66 7 15 8.34 15 10V14C15 15.66 13.66 17 12 17S9 15.66 9 14V10C9 8.34 10.34 7 12 7ZM3 9V7L5 8V7L7 8V7C9 7 10.5 8.5 10.5 10.5S9 14 7 14V13L5 14V13L3 14V12C3 10.34 4.34 9 6 9H8C9.66 9 11 10.34 11 12V14C11 15.66 9.66 17 8 17H6C4.34 17 3 15.66 3 14V12C3 10.34 4.34 9 6 9Z"/></svg>
-                    <strong>Grüner Kreisverband: ${associationName}</strong>
-                  </div>
-                  <div class="text-xs text-palette-green mt-1">Verwaltungsgrenze als Zuständigkeitsgebiet</div>
-                </div>
-                <div class="mb-2">
-                  <strong>Typ:</strong> Verwaltungsgrenze<br>
-                  <strong>Region:</strong> ${district.region || 'Baden-Württemberg'}
-                </div>
-            `;
-          } else if (isAdministrative) {
-            popupContent += `
-                <div class="mb-2">
-                  <strong>Typ:</strong> Verwaltungsgrenze<br>
-                  <strong>Region:</strong> ${district.region || 'Baden-Württemberg'}
-                </div>
-            `;
-          } else {
-            popupContent += `
-                ${directMandate ? `<div class="flex items-center gap-2"><span>🏆</span><span><strong>${directMandate.name}</strong> (${directMandate.party})</span></div>` : '<div class="text-muted-foreground">Kein Direktmandat</div>'}
-                ${district.representatives && district.representatives.length > 1 ? `<div class="text-xs text-muted-foreground">${district.representatives.length - 1} weitere Abgeordnete</div>` : ''}
-            `;
-          }
-
-          popupContent += `
-                ${district.population ? `<div class="flex items-center gap-2"><span>👥</span><span>${district.population.toLocaleString()} Einwohner</span></div>` : ''}
-                ${district.area_km2 ? `<div class="flex items-center gap-2"><span>📐</span><span>ca. ${district.area_km2} km²</span></div>` : ''}
-              </div>
-            </div>
-          `;
-
-          (layer as L.Layer).bindPopup(popupContent);
         },
       });
 
@@ -424,22 +368,9 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
             })
           });
 
-          const popupContent = `
-            <div style="font-family: system-ui, -apple-system, sans-serif; min-width: 250px;">
-              <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                <img src="${sunflowerIcon}" alt="Sunflower" width="24" height="24" style="margin-right: 8px;" />
-                <strong style="color: #22c55e; font-size: 16px;">Kreisverband</strong>
-              </div>
-              <p><strong>Wahlkreis:</strong> ${boundaryDistrict.district_name} (${boundaryDistrict.district_number})</p>
-              <p><strong>Kreisverband:</strong> ${association.name}</p>
-              ${association.email ? `<p><strong>E-Mail:</strong> <a href="mailto:${association.email}" style="color: #22c55e;">${association.email}</a></p>` : ''}
-              ${association.phone ? `<p><strong>Telefon:</strong> ${association.phone}</p>` : ''}
-              ${association.website ? `<p><strong>Website:</strong> <a href="${association.website}" target="_blank" style="color: #22c55e;">${association.website}</a></p>` : ''}
-              ${association.full_address ? `<p><strong>Adresse:</strong> ${association.full_address}</p>` : ''}
-            </div>
-          `;
-
-          marker.bindPopup(popupContent);
+          marker.on('click', () => onDistrictClickRef.current(
+            districts.find(district => district.id === boundaryDistrict.id) ?? boundaryDistrict
+          ));
           markerLayerRef.current!.addLayer(marker);
         }); 
       });

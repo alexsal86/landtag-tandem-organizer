@@ -6,23 +6,12 @@ import { hasRenderableBoundary, searchElectionDistricts } from "../mapModel";
 import { Button } from "@/components/ui/button";
 import { Users, BarChart3, Crown, Award, Search, SlidersHorizontal } from "lucide-react";
 import { useElectionDistricts } from "@/hooks/useElectionDistricts";
-import { DistrictDetailDialog } from "@/features/election-districts/components/DistrictDetailDialog";
+import { DistrictNotes } from "./DistrictNotes";
+import { getPartyColor, getPartyTextColor } from "../partyColors";
 import SimpleLeafletMap from "@/features/election-districts/components/SimpleLeafletMap";
 import LeafletMapFallback from "@/features/election-districts/components/LeafletMapFallback";
 import { debugConsole } from '@/utils/debugConsole';
 import { ElectionDistrict } from "@/hooks/useElectionDistricts";
-
-const getPartyColor = (party?: string): string => {
-  switch (party?.toLowerCase()) {
-    case 'fdp': return '#FFD700';
-    case 'grüne': return '#4CAF50'; 
-    case 'cdu': return '#0066CC';
-    case 'spd': return '#E3000F';
-    case 'afd': return '#00A0E6';
-    case 'die linke': return '#BE3075';
-    default: return '#9E9E9E';
-  }
-};
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component<
@@ -62,7 +51,6 @@ class ErrorBoundary extends React.Component<
 export const ElectionDistrictsView = () => {
   const { districts, loading } = useElectionDistricts();
   const [selectedDistrict, setSelectedDistrict] = useState<ElectionDistrict | null>(null);
-  const [showDistrictDialog, setShowDistrictDialog] = useState(false);
   const [useMapFallback, setUseMapFallback] = useState(false);
   const [showElectionDistricts, setShowElectionDistricts] = useState(true);
   const [showAdministrativeBoundaries, setShowAdministrativeBoundaries] = useState(false);
@@ -75,7 +63,7 @@ export const ElectionDistrictsView = () => {
 
   const handleDistrictClick = (district: ElectionDistrict) => {
     setSelectedDistrict(district);
-    setShowDistrictDialog(true);
+    setSidebarOpen(true);
   };
 
   const handleMapError = () => {
@@ -100,6 +88,7 @@ export const ElectionDistrictsView = () => {
     && (d.district_type === 'verwaltungsgrenze' || showDistrictPolygons));
   const focusDistrict = (district: ElectionDistrict) => {
     setSelectedDistrict(district);
+    setSidebarOpen(true);
     setFocusedDistrict({ ...district });
     if (district.district_type === 'verwaltungsgrenze') setShowAdministrativeBoundaries(true);
     else setShowElectionDistricts(true);
@@ -290,7 +279,7 @@ export const ElectionDistrictsView = () => {
                                   className="text-xs"
                                   style={{ 
                                     backgroundColor: getPartyColor(rep.party), 
-                                    color: '#fff',
+                                    color: getPartyTextColor(rep.party),
                                     border: 'none'
                                   }}
                                 >
@@ -314,17 +303,22 @@ export const ElectionDistrictsView = () => {
                     </div>
                   )}
                   
+                  {selectedDistrict.region && <p className="text-sm text-muted-foreground">Region: {selectedDistrict.region}</p>}
+                  {selectedDistrict.contact_info?.phone && (
+                    <p className="text-sm break-words">Telefon: {selectedDistrict.contact_info.phone}</p>
+                  )}
+                  {selectedDistrict.contact_info?.email && (
+                    <p className="text-sm break-words">E-Mail: {selectedDistrict.contact_info.email}</p>
+                  )}
+                  {selectedDistrict.website_url && (
+                    <a href={selectedDistrict.website_url} target="_blank" rel="noopener noreferrer" className="block text-sm text-primary underline">Website</a>
+                  )}
                   {!hasRenderableBoundary(selectedDistrict.boundaries) && (
                     <p className="text-sm text-muted-foreground">Für dieses Gebiet fehlen nutzbare Grenzdaten.</p>
                   )}
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full mt-3"
-                    onClick={() => setShowDistrictDialog(true)}
-                  >
-                    Details & Notizen
-                  </Button>
+                  <div className="border-t pt-4 mt-4">
+                    <DistrictNotes key={selectedDistrict.id} district={selectedDistrict} />
+                  </div>
                 </div>
               ) : (
                 <p className="text-muted-foreground text-sm">
@@ -343,44 +337,57 @@ export const ElectionDistrictsView = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {hasElectionData && (
+              {selectedDistrict ? (
                 <>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Wahlkreise gesamt:</span>
-                    <Badge variant="secondary">{electionDistricts.length}</Badge>
+                  <p className="text-sm font-medium">{selectedDistrict.district_name}</p>
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Einwohner:</span>
+                    <Badge variant="secondary">{selectedDistrict.population?.toLocaleString('de-DE') ?? 'Unbekannt'}</Badge>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Gesamtbevölkerung:</span>
-                    <Badge variant="secondary">
-                      {electionDistricts.reduce((sum, d) => sum + (d.population || 0), 0).toLocaleString()}
-                    </Badge>
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Fläche:</span>
+                    <Badge variant="secondary">{selectedDistrict.area_km2 != null ? `${selectedDistrict.area_km2.toLocaleString('de-DE')} km²` : 'Unbekannt'}</Badge>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Gesamtfläche:</span>
-                    <Badge variant="secondary">
-                      ca. {electionDistricts.reduce((sum, d) => sum + (d.area_km2 || 0), 0)} km²
-                    </Badge>
-                  </div>
+                  {selectedDistrict.rural_percentage != null && (
+                    <div className="flex justify-between items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Ländlicher Anteil:</span>
+                      <Badge variant="secondary">{selectedDistrict.rural_percentage.toLocaleString('de-DE')} %</Badge>
+                    </div>
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => setSelectedDistrict(null)}>Gesamtübersicht anzeigen</Button>
                 </>
-              )}
-              {hasAdministrativeData && (
+              ) : (
                 <>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Verwaltungsgrenzen:</span>
-                    <Badge variant="outline">{administrativeBoundaries.length}</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Bevölkerung (Verwaltung):</span>
-                    <Badge variant="outline">
-                      {administrativeBoundaries.reduce((sum, d) => sum + (d.population || 0), 0).toLocaleString()}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Fläche (Verwaltung):</span>
-                    <Badge variant="outline">
-                      ca. {administrativeBoundaries.reduce((sum, d) => sum + (d.area_km2 || 0), 0).toLocaleString()} km²
-                    </Badge>
-                  </div>
+                  <p className="text-sm text-muted-foreground">Gesamtübersicht</p>
+
+                  {hasElectionData && (
+                    <>
+                      {[
+                        ['Wahlkreise gesamt:', electionDistricts.length.toLocaleString('de-DE')],
+                        ['Gesamtbevölkerung:', electionDistricts.reduce((sum, d) => sum + (d.population ?? 0), 0).toLocaleString('de-DE')],
+                        ['Gesamtfläche:', `${electionDistricts.reduce((sum, d) => sum + (d.area_km2 ?? 0), 0).toLocaleString('de-DE')} km²`],
+                      ].map(([label, value]) => (
+                        <div key={label} className="flex justify-between items-center gap-2">
+                          <span className="text-sm text-muted-foreground">{label}</span>
+                          <Badge variant="secondary">{value}</Badge>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  {hasAdministrativeData && (
+                    <>
+                      {[
+                        ['Verwaltungsgrenzen:', administrativeBoundaries.length.toLocaleString('de-DE')],
+                        ['Bevölkerung (Verwaltung):', administrativeBoundaries.reduce((sum, d) => sum + (d.population ?? 0), 0).toLocaleString('de-DE')],
+                        ['Fläche (Verwaltung):', `${administrativeBoundaries.reduce((sum, d) => sum + (d.area_km2 ?? 0), 0).toLocaleString('de-DE')} km²`],
+                      ].map(([label, value]) => (
+                        <div key={label} className="flex justify-between items-center gap-2">
+                          <span className="text-sm text-muted-foreground">{label}</span>
+                          <Badge variant="outline">{value}</Badge>
+                        </div>
+                      ))}
+                    </>
+                  )}
                 </>
               )}
             </CardContent>
@@ -397,30 +404,12 @@ export const ElectionDistrictsView = () => {
                   <>
                     <div className="text-sm text-muted-foreground">Parteifarben (Direktmandate):</div>
                     <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 bg-black rounded"></div>
-                        <span>CDU</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 bg-palette-red rounded"></div>
-                        <span>SPD</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 bg-palette-green rounded"></div>
-                        <span>GRÜNE</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 bg-palette-yellow/60 rounded"></div>
-                        <span>FDP</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 bg-palette-blue rounded"></div>
-                        <span>AfD</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 bg-palette-purple rounded"></div>
-                        <span>LINKE</span>
-                      </div>
+                      {['CDU', 'SPD', 'GRÜNE', 'FDP/DVP', 'AfD'].map(party => (
+                        <div key={party} className="flex items-center gap-1">
+                          <div className="w-3 h-3 rounded" style={{ backgroundColor: getPartyColor(party) }} />
+                          <span>{party}</span>
+                        </div>
+                      ))}
                     </div>
                     <div className="pt-2 border-t">
                       <div className="flex items-center gap-2 mb-1">
@@ -447,13 +436,6 @@ export const ElectionDistrictsView = () => {
           </Card>
         </div>
       </div>
-
-      {/* District Detail Dialog */}
-      <DistrictDetailDialog
-        district={selectedDistrict}
-        open={showDistrictDialog}
-        onOpenChange={setShowDistrictDialog}
-      />
     </div>
   );
 };

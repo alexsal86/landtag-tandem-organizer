@@ -1,6 +1,8 @@
 # Wahlkreise BW
 
 - Die Suche findet Wahlkreise nach Namen (ohne Beachtung der Großschreibung) oder exakter Nummer. Enter wählt den ersten Treffer; Escape schließt die Trefferliste. Die Auswahl zoomt auf die Grenze oder, wenn sie fehlt, auf den Mittelpunkt.
+- Ein Klick auf eine Zahl oder Gebietsfläche zeigt Informationen und bearbeitbare Arbeitsnotizen in der Seitenleiste, ohne Klick-Popup. Die Statistik zeigt das ausgewählte Gebiet; „Gesamtübersicht anzeigen“ hebt die Auswahl auf.
+- CDU wird schwarz, FDP/DVP gelb mit schwarzer Schrift dargestellt. Karte, Parteibadges und Legende verwenden dieselben Farben; die Legende enthält CDU, SPD, GRÜNE, FDP/DVP und AfD.
 - Unter „Ebenen“ lassen sich farbige Wahlkreisflächen und Nummernkreise getrennt schalten. Verwaltungsgrenzen und Kreisverbände bleiben eigene Ebenen.
 - Auf kleinen Bildschirmen öffnet „Ebenen & Infos“ die einklappbare Seitenleiste. Die Suche bleibt sichtbar.
 - Fehlende, leere oder unbrauchbare WGS84-Grenzdaten werden mit einer aufklappbaren Gebietsliste angezeigt. Ein defektes Polygon verhindert nicht die Darstellung der anderen Gebiete.

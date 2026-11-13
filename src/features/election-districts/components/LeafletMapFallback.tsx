@@ -1,4 +1,5 @@
 import React from 'react';
+import { getPartyColor, getPartyTextColor } from '../partyColors';
 import { ElectionDistrict } from '@/hooks/useElectionDistricts';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Users, Square } from 'lucide-react';
@@ -9,18 +10,6 @@ interface LeafletMapFallbackProps {
   onDistrictClick: (district: ElectionDistrict) => void;
   selectedDistrict?: ElectionDistrict;
 }
-
-const getPartyColor = (party?: string): string => {
-  switch (party?.toLowerCase()) {
-    case 'fdp': return '#FFD700';
-    case 'grüne': return '#4CAF50'; 
-    case 'cdu': return '#0066CC';
-    case 'spd': return '#E3000F';
-    case 'afd': return '#00A0E6';
-    case 'die linke': return '#BE3075';
-    default: return '#9E9E9E';
-  }
-};
 
 const LeafletMapFallback: React.FC<LeafletMapFallbackProps> = ({ 
   districts, 
@@ -52,7 +41,7 @@ const LeafletMapFallback: React.FC<LeafletMapFallbackProps> = ({
                 <div className="flex items-center gap-3 mb-2">
                   <Badge 
                     variant="secondary" 
-                    style={{ backgroundColor: partyColor, color: '#fff' }}
+                    style={{ backgroundColor: partyColor, color: getPartyTextColor(district.representatives?.find(rep => rep.mandate_type === 'direct')?.party) }}
                     className="text-xs"
                   >
                     {district.district_number}
