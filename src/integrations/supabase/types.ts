@@ -5020,6 +5020,70 @@ export type Database = {
           },
         ]
       }
+      employee_meeting_audit: {
+        Row: {
+          action: string
+          actor: string
+          created_at: string
+          id: string
+          meeting_id: string
+          protocol_hash: string | null
+          reason: string | null
+        }
+        Insert: {
+          action: string
+          actor: string
+          created_at?: string
+          id?: string
+          meeting_id: string
+          protocol_hash?: string | null
+          reason?: string | null
+        }
+        Update: {
+          action?: string
+          actor?: string
+          created_at?: string
+          id?: string
+          meeting_id?: string
+          protocol_hash?: string | null
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_meeting_audit_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "employee_meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_meeting_private_notes: {
+        Row: {
+          meeting_id: string
+          notes: string
+          user_id: string
+        }
+        Insert: {
+          meeting_id: string
+          notes?: string
+          user_id: string
+        }
+        Update: {
+          meeting_id?: string
+          notes?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_meeting_private_notes_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "employee_meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_meeting_requests: {
         Row: {
           created_at: string
@@ -5083,27 +5147,12 @@ export type Database = {
           },
         ]
       }
-      employee_meeting_audit: {
-        Row: { id: string; meeting_id: string; actor: string; action: string; reason: string | null; protocol_hash: string | null; created_at: string }
-        Insert: { id?: string; meeting_id: string; actor: string; action: string; reason?: string | null; protocol_hash?: string | null; created_at?: string }
-        Update: { id?: string; meeting_id?: string; actor?: string; action?: string; reason?: string | null; protocol_hash?: string | null; created_at?: string }
-        Relationships: [{ foreignKeyName: "employee_meeting_audit_meeting_id_fkey"; columns: ["meeting_id"]; isOneToOne: false; referencedRelation: "employee_meetings"; referencedColumns: ["id"] }]
-      }
-      employee_meeting_private_notes: {
-        Row: { meeting_id: string; user_id: string; notes: string }
-        Insert: { meeting_id: string; user_id: string; notes?: string }
-        Update: { meeting_id?: string; user_id?: string; notes?: string }
-        Relationships: [{ foreignKeyName: "employee_meeting_private_notes_meeting_id_fkey"; columns: ["meeting_id"]; isOneToOne: false; referencedRelation: "employee_meetings"; referencedColumns: ["id"] }]
-      }
       employee_meetings: {
         Row: {
-          preparation_notified_at: string | null
-          acknowledgement_requested_at: string | null
           acknowledged_at: string | null
           acknowledged_by: string | null
-          protocol_hash: string | null
           acknowledgement_comment: string | null
-          version: number
+          acknowledgement_requested_at: string | null
           action_items: Json | null
           cancellation_reason: string | null
           completed_at: string | null
@@ -5116,8 +5165,10 @@ export type Database = {
           meeting_date: string
           meeting_type: string
           next_meeting_due: string | null
+          preparation_notified_at: string | null
           protocol: Json | null
           protocol_data: Json | null
+          protocol_hash: string | null
           reschedule_request_reason: string | null
           shared_during_meeting: boolean | null
           status: string
@@ -5125,15 +5176,13 @@ export type Database = {
           supervisor_preparation: Json | null
           tenant_id: string
           updated_at: string
+          version: number
         }
         Insert: {
-          preparation_notified_at?: string | null
-          acknowledgement_requested_at?: string | null
           acknowledged_at?: string | null
           acknowledged_by?: string | null
-          protocol_hash?: string | null
           acknowledgement_comment?: string | null
-          version?: number
+          acknowledgement_requested_at?: string | null
           action_items?: Json | null
           cancellation_reason?: string | null
           completed_at?: string | null
@@ -5146,8 +5195,10 @@ export type Database = {
           meeting_date: string
           meeting_type?: string
           next_meeting_due?: string | null
+          preparation_notified_at?: string | null
           protocol?: Json | null
           protocol_data?: Json | null
+          protocol_hash?: string | null
           reschedule_request_reason?: string | null
           shared_during_meeting?: boolean | null
           status?: string
@@ -5155,15 +5206,13 @@ export type Database = {
           supervisor_preparation?: Json | null
           tenant_id: string
           updated_at?: string
+          version?: number
         }
         Update: {
-          preparation_notified_at?: string | null
-          acknowledgement_requested_at?: string | null
           acknowledged_at?: string | null
           acknowledged_by?: string | null
-          protocol_hash?: string | null
           acknowledgement_comment?: string | null
-          version?: number
+          acknowledgement_requested_at?: string | null
           action_items?: Json | null
           cancellation_reason?: string | null
           completed_at?: string | null
@@ -5176,8 +5225,10 @@ export type Database = {
           meeting_date?: string
           meeting_type?: string
           next_meeting_due?: string | null
+          preparation_notified_at?: string | null
           protocol?: Json | null
           protocol_data?: Json | null
+          protocol_hash?: string | null
           reschedule_request_reason?: string | null
           shared_during_meeting?: boolean | null
           status?: string
@@ -5185,6 +5236,7 @@ export type Database = {
           supervisor_preparation?: Json | null
           tenant_id?: string
           updated_at?: string
+          version?: number
         }
         Relationships: [
           {
@@ -14560,15 +14612,6 @@ export type Database = {
       }
     }
     Functions: {
-      get_latest_employee_meetings: { Args: { p_employee_ids: string[] }; Returns: { employee_id: string; meeting_id: string; meeting_date: string }[] }
-      get_employee_meeting_trend: { Args: { p_employee_id: string; p_tenant_id: string }; Returns: { id: string; meeting_date: string; status: string; mood: number | null; workload: number | null; balance: number | null }[] }
-      create_meeting_action_task: { Args: { p_action_item_id: string }; Returns: string }
-      request_protocol_acknowledgement: { Args: { p_meeting_id: string }; Returns: undefined }
-      acknowledge_meeting_protocol: { Args: { p_meeting_id: string; p_comment?: string; p_protocol_hash?: string }; Returns: undefined }
-      reopen_meeting_protocol: { Args: { p_meeting_id: string; p_reason: string }; Returns: undefined }
-      save_employee_meeting: { Args: { p_meeting_id: string; p_version: number; p_patch: Json; p_private_notes?: string }; Returns: number }
-      mutate_employee_meeting_action: { Args: { p_meeting_id: string; p_action: string; p_item_id?: string; p_data?: Json }; Returns: string }
-
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined
@@ -14585,6 +14628,14 @@ export type Database = {
       _meeting_default_start: { Args: { _date: string }; Returns: string }
       ack_task_nudge: {
         Args: { _reply?: string; _task_id: string }
+        Returns: undefined
+      }
+      acknowledge_meeting_protocol: {
+        Args: {
+          p_comment?: string
+          p_meeting_id: string
+          p_protocol_hash?: string
+        }
         Returns: undefined
       }
       advance_appointment_briefing: {
@@ -14903,6 +14954,10 @@ export type Database = {
             }
             Returns: string
           }
+      create_meeting_action_task: {
+        Args: { p_action_item_id: string }
+        Returns: string
+      }
       create_notification: {
         Args: {
           data_param?: Json
@@ -14949,6 +15004,7 @@ export type Database = {
       }
       dispatch_due_knowledge_reviews: { Args: never; Returns: number }
       dispatch_due_task_reminders: { Args: never; Returns: number }
+      dispatch_employee_preparation_reminders: { Args: never; Returns: number }
       dispatch_workflow_trigger: {
         Args: {
           _entity_id: string
@@ -14993,6 +15049,10 @@ export type Database = {
           p_title: string
         }
         Returns: boolean
+      }
+      employee_protocol_hash: {
+        Args: { p_meeting_id: string }
+        Returns: string
       }
       ensure_topic: {
         Args: { p_label: string; p_tenant: string }
@@ -15130,6 +15190,17 @@ export type Database = {
       get_employee_admin_overview: {
         Args: { p_tenant_id: string }
         Returns: Json
+      }
+      get_employee_meeting_trend: {
+        Args: { p_employee_id: string; p_tenant_id: string }
+        Returns: {
+          balance: number
+          id: string
+          meeting_date: string
+          mood: number
+          status: string
+          workload: number
+        }[]
       }
       get_globally_shared_user_ids: {
         Args: { _user_id: string }
@@ -15800,6 +15871,15 @@ export type Database = {
         Args: { p_source: string; p_target: string }
         Returns: undefined
       }
+      mutate_employee_meeting_action: {
+        Args: {
+          p_action: string
+          p_data?: Json
+          p_item_id?: string
+          p_meeting_id: string
+        }
+        Returns: string
+      }
       mutate_secured_records: {
         Args: {
           _data?: Json
@@ -15982,6 +16062,10 @@ export type Database = {
         Args: { _retry_step_id?: string; _run_id: string }
         Returns: undefined
       }
+      reopen_meeting_protocol: {
+        Args: { p_meeting_id: string; p_reason: string }
+        Returns: undefined
+      }
       reorder_admin_items: {
         Args: { _ids: string[]; _table: string; _tenant_id: string }
         Returns: undefined
@@ -15990,12 +16074,64 @@ export type Database = {
         Args: { _role: string; _tenant_id: string; _user_id: string }
         Returns: undefined
       }
+      request_protocol_acknowledgement: {
+        Args: { p_meeting_id: string }
+        Returns: undefined
+      }
+      require_employee_meeting_access: {
+        Args: { p_meeting_id: string; p_supervisor?: boolean }
+        Returns: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          acknowledgement_comment: string | null
+          acknowledgement_requested_at: string | null
+          action_items: Json | null
+          cancellation_reason: string | null
+          completed_at: string | null
+          conducted_by: string
+          created_at: string
+          employee_id: string
+          employee_notes: string | null
+          employee_preparation: Json | null
+          id: string
+          meeting_date: string
+          meeting_type: string
+          next_meeting_due: string | null
+          preparation_notified_at: string | null
+          protocol: Json | null
+          protocol_data: Json | null
+          protocol_hash: string | null
+          reschedule_request_reason: string | null
+          shared_during_meeting: boolean | null
+          status: string
+          supervisor_notes: string | null
+          supervisor_preparation: Json | null
+          tenant_id: string
+          updated_at: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "employee_meetings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       run_data_lint: {
         Args: { _tenant_id: string }
         Returns: {
           finding_count: number
           scope: string
         }[]
+      }
+      save_employee_meeting: {
+        Args: {
+          p_meeting_id: string
+          p_patch: Json
+          p_private_notes?: string
+          p_version: number
+        }
+        Returns: number
       }
       save_quick_note: {
         Args: {

@@ -33,3 +33,11 @@ describe('secured Supabase transport', () => {
     expect(await (send.mock.calls[0][0] as Request).text()).toBe('{"title":"hello"}');
   });
 });
+
+import { includeFilteredColumns } from './securedFetch';
+import { it as it2, expect as expect2 } from 'vitest';
+it2('adds filtered and sorted columns to a partial RPC select', () => {
+  const url = new URL('https://x/rest/v1/rpc/read_secured_contacts?select=id,name&category=eq.citizen&order=last_name.asc&or=(retention_review_date.lte.2026-01-01,retention_status.eq.review)');
+  includeFilteredColumns(url);
+  expect2(url.searchParams.get('select')).toBe('id,name,category,last_name,retention_review_date,retention_status');
+});
