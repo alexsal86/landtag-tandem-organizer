@@ -282,9 +282,9 @@ export function HrWorkspace() {
                 p_user: form.user,
                 p_type: form.type,
                 p_start: form.start,
-                p_end: form.end || null,
-                p_mentor: form.mentor === "none" ? null : form.mentor,
-                p_id: form.id || null,
+                p_end: form.end || undefined,
+                p_mentor: form.mentor === "none" ? undefined : form.mentor,
+                p_id: form.id || undefined,
               },
             });
           }}
@@ -570,9 +570,9 @@ export function HrWorkspace() {
                                 name: "complete_employee_hr_step",
                                 args: {
                                   p_step: step.id,
-                                  p_confirmed_on: date,
-                                  p_document: document,
-                                  p_deputy: deputy,
+                                  p_confirmed_on: date ?? undefined,
+                                  p_document: document ?? undefined,
+                                  p_deputy: deputy ?? undefined,
                                 },
                               });
                             }}

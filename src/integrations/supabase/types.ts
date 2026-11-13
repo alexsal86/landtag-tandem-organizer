@@ -14,229 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      employee_lifecycle: {
-        Row: {
-          id: string
-          tenant_id: string
-          user_id: string
-          employment_type: string
-          start_date: string
-          end_date: string | null
-          mentor_user_id: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          tenant_id: string
-          user_id: string
-          employment_type: string
-          start_date: string
-          end_date?: string | null
-          mentor_user_id?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          tenant_id?: string
-          user_id?: string
-          employment_type?: string
-          start_date?: string
-          end_date?: string | null
-          mentor_user_id?: string | null
-          created_at?: string
-        }
-        Relationships: []
-      }
-
-      employee_hr_templates: {
-        Row: {
-          id: string
-          tenant_id: string
-          name: string
-          employment_type: string
-          direction: string
-          steps: Json
-          revision: number
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          tenant_id: string
-          name: string
-          employment_type: string
-          direction: string
-          steps: Json
-          revision?: number
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          tenant_id?: string
-          name?: string
-          employment_type?: string
-          direction?: string
-          steps?: Json
-          revision?: number
-          created_at?: string
-        }
-        Relationships: []
-      }
-
-      employee_hr_evidence: {
-        Row: {
-          id: string
-          tenant_id: string
-          step_id: string
-          user_id: string
-          confirmed_on: string
-          confirmed_by: string
-          document_id: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          tenant_id: string
-          step_id: string
-          user_id: string
-          confirmed_on: string
-          confirmed_by: string
-          document_id?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          tenant_id?: string
-          step_id?: string
-          user_id?: string
-          confirmed_on?: string
-          confirmed_by?: string
-          document_id?: string | null
-          created_at?: string
-        }
-        Relationships: []
-      }
-
-      employee_hr_reminder_log: {
-        Row: {
-          id: string
-          tenant_id: string
-          lifecycle_id: string
-          recipient_id: string
-          reminder_day: string
-        }
-        Insert: {
-          id?: string
-          tenant_id: string
-          lifecycle_id: string
-          recipient_id: string
-          reminder_day: string
-        }
-        Update: {
-          id?: string
-          tenant_id?: string
-          lifecycle_id?: string
-          recipient_id?: string
-          reminder_day?: string
-        }
-        Relationships: []
-      }
-
-      committees: {
-        Row: {
-          id: string
-          tenant_id: string
-          name: string
-          is_active: boolean
-          order_index: number
-        }
-        Insert: {
-          id?: string
-          tenant_id: string
-          name: string
-          is_active?: boolean
-          order_index?: number
-        }
-        Update: {
-          id?: string
-          tenant_id?: string
-          name?: string
-          is_active?: boolean
-          order_index?: number
-        }
-        Relationships: []
-      }
-
-      regions: {
-        Row: {
-          id: string
-          tenant_id: string
-          name: string
-          kind: string
-          election_district_id: string | null
-          is_active: boolean
-          order_index: number
-        }
-        Insert: {
-          id?: string
-          tenant_id: string
-          name: string
-          kind: string
-          election_district_id?: string | null
-          is_active?: boolean
-          order_index?: number
-        }
-        Update: {
-          id?: string
-          tenant_id?: string
-          name?: string
-          kind?: string
-          election_district_id?: string | null
-          is_active?: boolean
-          order_index?: number
-        }
-        Relationships: []
-      }
-
-      employee_responsibilities: {
-        Row: {
-          id: string
-          tenant_id: string
-          user_id: string
-          kind: string
-          topic_id: string | null
-          committee_id: string | null
-          region_id: string | null
-          role_focus: string | null
-          level: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          tenant_id: string
-          user_id: string
-          kind: string
-          topic_id?: string | null
-          committee_id?: string | null
-          region_id?: string | null
-          role_focus?: string | null
-          level: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          tenant_id?: string
-          user_id?: string
-          kind?: string
-          topic_id?: string | null
-          committee_id?: string | null
-          region_id?: string | null
-          role_focus?: string | null
-          level?: string
-          created_at?: string
-        }
-        Relationships: []
-      }
-
       action_permissions: {
         Row: {
           action_key: string
@@ -3103,6 +2880,38 @@ export type Database = {
         }
         Relationships: []
       }
+      committees: {
+        Row: {
+          id: string
+          is_active: boolean
+          name: string
+          order_index: number
+          tenant_id: string
+        }
+        Insert: {
+          id?: string
+          is_active?: boolean
+          name: string
+          order_index?: number
+          tenant_id: string
+        }
+        Update: {
+          id?: string
+          is_active?: boolean
+          name?: string
+          order_index?: number
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "committees_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_activities: {
         Row: {
           activity_type: string
@@ -3926,10 +3735,51 @@ export type Database = {
         ]
       }
       document_annotation_events: {
-        Row: { id: string; document_id: string; tenant_id: string; annotation_id: string; thread_id: string; actor_id: string | null; event_type: string; before_data: Json | null; after_data: Json | null; created_at: string }
-        Insert: { id?: string; document_id: string; tenant_id: string; annotation_id: string; thread_id: string; actor_id?: string | null; event_type: string; before_data?: Json | null; after_data?: Json | null; created_at?: string }
-        Update: { id?: string; document_id?: string; tenant_id?: string; annotation_id?: string; thread_id?: string; actor_id?: string | null; event_type?: string; before_data?: Json | null; after_data?: Json | null; created_at?: string }
-        Relationships: []
+        Row: {
+          actor_id: string | null
+          after_data: Json | null
+          annotation_id: string
+          before_data: Json | null
+          created_at: string
+          document_id: string
+          event_type: string
+          id: string
+          tenant_id: string
+          thread_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          after_data?: Json | null
+          annotation_id: string
+          before_data?: Json | null
+          created_at?: string
+          document_id: string
+          event_type: string
+          id?: string
+          tenant_id: string
+          thread_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          after_data?: Json | null
+          annotation_id?: string
+          before_data?: Json | null
+          created_at?: string
+          document_id?: string
+          event_type?: string
+          id?: string
+          tenant_id?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_annotation_events_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       document_annotation_tasks: {
         Row: {
@@ -5186,6 +5036,182 @@ export type Database = {
           },
         ]
       }
+      employee_hr_evidence: {
+        Row: {
+          confirmed_by: string
+          confirmed_on: string
+          created_at: string
+          document_id: string | null
+          id: string
+          step_id: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          confirmed_by: string
+          confirmed_on: string
+          created_at?: string
+          document_id?: string | null
+          id?: string
+          step_id: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          confirmed_by?: string
+          confirmed_on?: string
+          created_at?: string
+          document_id?: string | null
+          id?: string
+          step_id?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_hr_evidence_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_hr_evidence_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: true
+            referencedRelation: "routine_package_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_hr_evidence_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_hr_reminder_log: {
+        Row: {
+          id: string
+          lifecycle_id: string
+          recipient_id: string
+          reminder_day: string
+          tenant_id: string
+        }
+        Insert: {
+          id?: string
+          lifecycle_id: string
+          recipient_id: string
+          reminder_day: string
+          tenant_id: string
+        }
+        Update: {
+          id?: string
+          lifecycle_id?: string
+          recipient_id?: string
+          reminder_day?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_hr_reminder_log_lifecycle_id_fkey"
+            columns: ["lifecycle_id"]
+            isOneToOne: false
+            referencedRelation: "employee_lifecycle"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_hr_reminder_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_hr_templates: {
+        Row: {
+          created_at: string
+          direction: string
+          employment_type: string
+          id: string
+          name: string
+          revision: number
+          steps: Json
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          direction: string
+          employment_type: string
+          id?: string
+          name: string
+          revision?: number
+          steps: Json
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          direction?: string
+          employment_type?: string
+          id?: string
+          name?: string
+          revision?: number
+          steps?: Json
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_hr_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_lifecycle: {
+        Row: {
+          created_at: string
+          employment_type: string
+          end_date: string | null
+          id: string
+          mentor_user_id: string | null
+          start_date: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          employment_type: string
+          end_date?: string | null
+          id?: string
+          mentor_user_id?: string | null
+          start_date: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          employment_type?: string
+          end_date?: string | null
+          id?: string
+          mentor_user_id?: string | null
+          start_date?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_lifecycle_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_meeting_action_items: {
         Row: {
           assigned_to: string | null
@@ -5474,6 +5500,74 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_responsibilities: {
+        Row: {
+          committee_id: string | null
+          created_at: string
+          id: string
+          kind: string
+          level: string
+          region_id: string | null
+          role_focus: string | null
+          tenant_id: string
+          topic_id: string | null
+          user_id: string
+        }
+        Insert: {
+          committee_id?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          level: string
+          region_id?: string | null
+          role_focus?: string | null
+          tenant_id: string
+          topic_id?: string | null
+          user_id: string
+        }
+        Update: {
+          committee_id?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          level?: string
+          region_id?: string | null
+          role_focus?: string | null
+          tenant_id?: string
+          topic_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_responsibilities_tenant_id_committee_id_fkey"
+            columns: ["tenant_id", "committee_id"]
+            isOneToOne: false
+            referencedRelation: "committees"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "employee_responsibilities_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_responsibilities_tenant_id_region_id_fkey"
+            columns: ["tenant_id", "region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "employee_responsibilities_tenant_id_topic_id_fkey"
+            columns: ["tenant_id", "topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["tenant_id", "id"]
           },
         ]
       }
@@ -11021,16 +11115,60 @@ export type Database = {
           },
         ]
       }
+      regions: {
+        Row: {
+          election_district_id: string | null
+          id: string
+          is_active: boolean
+          kind: string
+          name: string
+          order_index: number
+          tenant_id: string
+        }
+        Insert: {
+          election_district_id?: string | null
+          id?: string
+          is_active?: boolean
+          kind: string
+          name: string
+          order_index?: number
+          tenant_id: string
+        }
+        Update: {
+          election_district_id?: string | null
+          id?: string
+          is_active?: boolean
+          kind?: string
+          name?: string
+          order_index?: number
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "regions_election_district_id_fkey"
+            columns: ["election_district_id"]
+            isOneToOne: false
+            referencedRelation: "election_districts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "regions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       routine_package_runs: {
         Row: {
+          annual_task_id: string | null
+          created_at: string
           employee_lifecycle_id: string | null
+          finish_day: string
           hr_direction: string | null
           hr_template_id: string | null
           hr_template_revision: number | null
-
-          annual_task_id: string | null
-          created_at: string
-          finish_day: string
           id: string
           rule_id: string | null
           start_day: string
@@ -11039,14 +11177,13 @@ export type Database = {
           year: number
         }
         Insert: {
+          annual_task_id?: string | null
+          created_at?: string
           employee_lifecycle_id?: string | null
+          finish_day: string
           hr_direction?: string | null
           hr_template_id?: string | null
           hr_template_revision?: number | null
-
-          annual_task_id: string | null
-          created_at?: string
-          finish_day: string
           id?: string
           rule_id?: string | null
           start_day: string
@@ -11055,14 +11192,13 @@ export type Database = {
           year: number
         }
         Update: {
+          annual_task_id?: string | null
+          created_at?: string
           employee_lifecycle_id?: string | null
+          finish_day?: string
           hr_direction?: string | null
           hr_template_id?: string | null
           hr_template_revision?: number | null
-
-          annual_task_id?: string | null
-          created_at?: string
-          finish_day?: string
           id?: string
           rule_id?: string | null
           start_day?: string
@@ -11072,10 +11208,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "hr_run_lifecycle_tenant_fk"
+            columns: ["tenant_id", "employee_lifecycle_id"]
+            isOneToOne: false
+            referencedRelation: "employee_lifecycle"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
             foreignKeyName: "routine_package_runs_annual_task_id_fkey"
             columns: ["annual_task_id"]
             isOneToOne: false
             referencedRelation: "annual_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "routine_package_runs_hr_template_id_fkey"
+            columns: ["hr_template_id"]
+            isOneToOne: false
+            referencedRelation: "employee_hr_templates"
             referencedColumns: ["id"]
           },
           {
@@ -11103,11 +11253,6 @@ export type Database = {
       }
       routine_package_steps: {
         Row: {
-          hr_phase: string | null
-          is_mandatory: boolean
-          hr_anchor_day: string | null
-          hr_evidence_kind: string
-
           approval_id: string | null
           approver_id: string | null
           assignee_id: string
@@ -11118,7 +11263,11 @@ export type Database = {
           due_day: string | null
           entity_id: string | null
           error_message: string | null
+          hr_anchor_day: string | null
+          hr_evidence_kind: string
+          hr_phase: string | null
           id: string
+          is_mandatory: boolean
           kind: string
           nominal_approver_id: string | null
           nominal_assignee_id: string
@@ -11130,11 +11279,6 @@ export type Database = {
           use_deputy: boolean
         }
         Insert: {
-          hr_phase?: string | null
-          is_mandatory?: boolean
-          hr_anchor_day?: string | null
-          hr_evidence_kind?: string
-
           approval_id?: string | null
           approver_id?: string | null
           assignee_id: string
@@ -11145,7 +11289,11 @@ export type Database = {
           due_day?: string | null
           entity_id?: string | null
           error_message?: string | null
+          hr_anchor_day?: string | null
+          hr_evidence_kind?: string
+          hr_phase?: string | null
           id?: string
+          is_mandatory?: boolean
           kind: string
           nominal_approver_id?: string | null
           nominal_assignee_id: string
@@ -11157,11 +11305,6 @@ export type Database = {
           use_deputy?: boolean
         }
         Update: {
-          hr_phase?: string | null
-          is_mandatory?: boolean
-          hr_anchor_day?: string | null
-          hr_evidence_kind?: string
-
           approval_id?: string | null
           approver_id?: string | null
           assignee_id?: string
@@ -11172,7 +11315,11 @@ export type Database = {
           due_day?: string | null
           entity_id?: string | null
           error_message?: string | null
+          hr_anchor_day?: string | null
+          hr_evidence_kind?: string
+          hr_phase?: string | null
           id?: string
+          is_mandatory?: boolean
           kind?: string
           nominal_approver_id?: string | null
           nominal_assignee_id?: string
@@ -13316,6 +13463,29 @@ export type Database = {
           },
         ]
       }
+      team_bingo_settings: {
+        Row: {
+          fields: string[]
+          tenant_id: string
+        }
+        Insert: {
+          fields: string[]
+          tenant_id: string
+        }
+        Update: {
+          fields?: string[]
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_bingo_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_dashboard_members: {
         Row: {
           added_at: string
@@ -13381,6 +13551,281 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_fun_facts: {
+        Row: {
+          facts: string[]
+          lie_index: number
+          shared: boolean
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          facts: string[]
+          lie_index: number
+          shared?: boolean
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          facts?: string[]
+          lie_index?: number
+          shared?: boolean
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_fun_facts_tenant_id_user_id_fkey"
+            columns: ["tenant_id", "user_id"]
+            isOneToOne: true
+            referencedRelation: "team_ritual_profiles"
+            referencedColumns: ["tenant_id", "user_id"]
+          },
+        ]
+      }
+      team_question_answers: {
+        Row: {
+          answer: string
+          tenant_id: string
+          user_id: string
+          week_id: string
+        }
+        Insert: {
+          answer: string
+          tenant_id: string
+          user_id: string
+          week_id: string
+        }
+        Update: {
+          answer?: string
+          tenant_id?: string
+          user_id?: string
+          week_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_question_answers_tenant_id_user_id_fkey"
+            columns: ["tenant_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "team_ritual_profiles"
+            referencedColumns: ["tenant_id", "user_id"]
+          },
+          {
+            foreignKeyName: "team_question_answers_tenant_id_week_id_fkey"
+            columns: ["tenant_id", "week_id"]
+            isOneToOne: false
+            referencedRelation: "team_question_weeks"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
+      team_question_weeks: {
+        Row: {
+          id: string
+          question: string
+          question_id: string
+          tenant_id: string
+          week_start: string
+        }
+        Insert: {
+          id?: string
+          question: string
+          question_id: string
+          tenant_id: string
+          week_start: string
+        }
+        Update: {
+          id?: string
+          question?: string
+          question_id?: string
+          tenant_id?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_question_weeks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_question_weeks_tenant_id_question_id_fkey"
+            columns: ["tenant_id", "question_id"]
+            isOneToOne: false
+            referencedRelation: "team_questions"
+            referencedColumns: ["tenant_id", "id"]
+          },
+        ]
+      }
+      team_questions: {
+        Row: {
+          active: boolean
+          id: string
+          question: string
+          tenant_id: string
+        }
+        Insert: {
+          active?: boolean
+          id?: string
+          question: string
+          tenant_id: string
+        }
+        Update: {
+          active?: boolean
+          id?: string
+          question?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_questions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_ritual_profiles: {
+        Row: {
+          birth_year: number | null
+          birthday: string | null
+          joined_on: string | null
+          opted_in: boolean
+          show_events: boolean
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          birth_year?: number | null
+          birthday?: string | null
+          joined_on?: string | null
+          opted_in?: boolean
+          show_events?: boolean
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          birth_year?: number | null
+          birthday?: string | null
+          joined_on?: string | null
+          opted_in?: boolean
+          show_events?: boolean
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_ritual_profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_ritual_settings: {
+        Row: {
+          enabled: boolean
+          tenant_id: string
+        }
+        Insert: {
+          enabled?: boolean
+          tenant_id: string
+        }
+        Update: {
+          enabled?: boolean
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_ritual_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_two_truths_answers: {
+        Row: {
+          guess_index: number
+          quiz_id: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          guess_index: number
+          quiz_id: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          guess_index?: number
+          quiz_id?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_two_truths_answers_tenant_id_quiz_id_fkey"
+            columns: ["tenant_id", "quiz_id"]
+            isOneToOne: false
+            referencedRelation: "team_two_truths_months"
+            referencedColumns: ["tenant_id", "id"]
+          },
+          {
+            foreignKeyName: "team_two_truths_answers_tenant_id_user_id_fkey"
+            columns: ["tenant_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "team_ritual_profiles"
+            referencedColumns: ["tenant_id", "user_id"]
+          },
+        ]
+      }
+      team_two_truths_months: {
+        Row: {
+          facts: string[]
+          id: string
+          lie_index: number
+          month_start: string
+          subject_user_id: string
+          tenant_id: string
+        }
+        Insert: {
+          facts: string[]
+          id?: string
+          lie_index: number
+          month_start: string
+          subject_user_id: string
+          tenant_id: string
+        }
+        Update: {
+          facts?: string[]
+          id?: string
+          lie_index?: number
+          month_start?: string
+          subject_user_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_two_truths_months_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_two_truths_months_tenant_id_subject_user_id_fkey"
+            columns: ["tenant_id", "subject_user_id"]
+            isOneToOne: false
+            referencedRelation: "team_fun_facts"
+            referencedColumns: ["tenant_id", "user_id"]
           },
         ]
       }
@@ -14871,54 +15316,6 @@ export type Database = {
       }
     }
     Functions: {
-      team_bingo_config: { Args: { p_tenant: string }; Returns: Json }
-      save_team_bingo_config: { Args: { p_tenant: string; p_fields: string[] }; Returns: undefined }
-      team_ritual_enabled: { Args: { p_tenant: string }; Returns: boolean }
-      own_team_fun_facts: { Args: { p_tenant: string }; Returns: Json }
-      save_team_fun_facts: { Args: { p_tenant: string; p_facts: string[]; p_lie_index: number; p_shared: boolean }; Returns: undefined }
-      delete_team_fun_facts: { Args: { p_tenant: string }; Returns: undefined }
-      team_two_truths_snapshot: { Args: { p_tenant: string }; Returns: Json }
-      answer_two_truths_quiz: { Args: { p_tenant: string; p_quiz: string; p_guess: number }; Returns: Json }
-
-      selftest_employee_hr: { Args: {p_tenant:string}; Returns:Json }
-      save_employee_lifecycle: { Args: {p_tenant:string;p_user:string;p_type:string;p_start:string;p_end?:string|null;p_mentor?:string|null;p_id?:string|null}; Returns:string }
-      save_employee_hr_template: { Args: {p_tenant:string;p_name:string;p_type:string;p_direction:string;p_steps:Json;p_id?:string|null}; Returns:string }
-      seed_employee_hr_templates: { Args: {p_tenant:string}; Returns:undefined }
-      start_employee_hr: { Args: {p_lifecycle:string;p_template:string}; Returns:string }
-      complete_employee_hr_step: { Args: {p_step:string;p_confirmed_on?:string|null;p_document?:string|null;p_deputy?:string|null}; Returns:undefined }
-      remind_employee_hr: { Args: {p_lifecycle:string}; Returns:number }
-      handover_tasks_to_deputy: { Args: {p_tenant:string;p_user:string;p_deputy:string}; Returns:number }
-      can_view_employee_hr: { Args: {p_tenant:string;p_user:string}; Returns:boolean }
-      hr_task_visible: { Args: {p_task:string}; Returns:boolean }
-      configure_team_rituals: { Args: { p_tenant: string; p_enabled: boolean }; Returns: undefined }
-      save_team_ritual_profile: { Args: { p_tenant: string; p_opted_in: boolean; p_show_events: boolean; p_birthday: string | null; p_birth_year: number | null; p_joined_on: string | null }; Returns: undefined }
-      save_team_question: { Args: { p_tenant: string; p_id: string | null; p_question: string; p_active: boolean }; Returns: undefined }
-      ensure_weekly_question: { Args: { p_tenant: string }; Returns: string | null }
-      upsert_weekly_answer: { Args: { p_tenant: string; p_week: string; p_answer: string }; Returns: undefined }
-      delete_weekly_answer: { Args: { p_tenant: string; p_week: string }; Returns: undefined }
-      team_ritual_snapshot: { Args: { p_tenant: string }; Returns: Json }
-
-      get_latest_employee_meetings: {
-        Args: { p_employee_ids: string[] }
-        Returns: { employee_id: string; meeting_id: string; meeting_date: string }[]
-      }
-      assign_from_responsibility_matrix: {
-        Args: { p_tenant: string; p_kind: string; p_id: string; p_user: string | null }
-        Returns: undefined
-      }
-      set_employee_responsibility: {
-        Args: { p_tenant: string; p_user: string; p_kind: string; p_reference: string; p_level?: string | null }
-        Returns: string
-      }
-      save_responsibility_catalog: {
-        Args: { p_tenant: string; p_kind: string; p_name: string; p_id?: string; p_region_kind?: string; p_election_district?: string; p_active?: boolean }
-        Returns: string
-      }
-      merge_responsibility_catalog: {
-        Args: { p_tenant: string; p_kind: string; p_source: string; p_target: string }
-        Returns: undefined
-      }
-
       _briefing_task_event: {
         Args: { _task: string; _text: string }
         Returns: undefined
@@ -14949,6 +15346,10 @@ export type Database = {
         Args: { _action: string; _appointment_id: string }
         Returns: undefined
       }
+      answer_two_truths_quiz: {
+        Args: { p_guess: number; p_quiz: string; p_tenant: string }
+        Returns: Json
+      }
       approve_gdpr_delete: {
         Args: { p_request_id: string }
         Returns: undefined
@@ -14967,6 +15368,10 @@ export type Database = {
       }
       assign_contact_to_organization: {
         Args: { contact_id: string; org_id: string }
+        Returns: undefined
+      }
+      assign_from_responsibility_matrix: {
+        Args: { p_id: string; p_kind: string; p_tenant: string; p_user: string }
         Returns: undefined
       }
       audit_rls_gaps: {
@@ -15023,6 +15428,10 @@ export type Database = {
         Args: { _column: string; _table: string; _user_id: string }
         Returns: boolean
       }
+      can_view_employee_hr: {
+        Args: { p_tenant: string; p_user: string }
+        Returns: boolean
+      }
       can_view_event_planning: {
         Args: { _planning_id: string; _user_id: string }
         Returns: boolean
@@ -15049,6 +15458,19 @@ export type Database = {
       cleanup_workflow_runs: { Args: never; Returns: number }
       complete_appointment_briefing: {
         Args: { _appointment_id: string }
+        Returns: undefined
+      }
+      complete_employee_hr_step: {
+        Args: {
+          p_confirmed_on?: string
+          p_deputy?: string
+          p_document?: string
+          p_step: string
+        }
+        Returns: undefined
+      }
+      configure_team_rituals: {
+        Args: { p_enabled: boolean; p_tenant: string }
         Returns: undefined
       }
       contacts_secured:
@@ -15309,6 +15731,11 @@ export type Database = {
         }
         Returns: undefined
       }
+      delete_team_fun_facts: { Args: { p_tenant: string }; Returns: undefined }
+      delete_weekly_answer: {
+        Args: { p_tenant: string; p_week: string }
+        Returns: undefined
+      }
       dispatch_due_knowledge_reviews: { Args: never; Returns: number }
       dispatch_due_task_reminders: { Args: never; Returns: number }
       dispatch_employee_preparation_reminders: { Args: never; Returns: number }
@@ -15365,6 +15792,7 @@ export type Database = {
         Args: { p_label: string; p_tenant: string }
         Returns: string
       }
+      ensure_weekly_question: { Args: { p_tenant: string }; Returns: string }
       execute_annual_automation_routine: {
         Args: { _annual_task_id: string; _rule_id: string; _year: number }
         Returns: Json
@@ -15576,6 +16004,10 @@ export type Database = {
         Args: { p_item_ids: string[]; p_to_user_id: string }
         Returns: number
       }
+      handover_tasks_to_deputy: {
+        Args: { p_deputy: string; p_tenant: string; p_user: string }
+        Returns: number
+      }
       has_active_tenant_role: {
         Args: { _roles: string[]; _tenant_id: string; _user_id: string }
         Returns: boolean
@@ -15587,6 +16019,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      hr_task_visible: { Args: { p_task: string }; Returns: boolean }
       increment_fact_usage: { Args: { _fact_id: string }; Returns: undefined }
       insert_sample_contacts: {
         Args: { target_user_id: string }
@@ -16174,6 +16607,15 @@ export type Database = {
         Args: { _row: Json; _table: string }
         Returns: Json
       }
+      merge_responsibility_catalog: {
+        Args: {
+          p_kind: string
+          p_source: string
+          p_target: string
+          p_tenant: string
+        }
+        Returns: undefined
+      }
       merge_topics: {
         Args: { p_source: string; p_target: string }
         Returns: undefined
@@ -16226,6 +16668,7 @@ export type Database = {
           step_index: number
         }[]
       }
+      own_team_fun_facts: { Args: { p_tenant: string }; Returns: Json }
       parse_task_assignee_ids: {
         Args: { p_assigned_to: string }
         Returns: string[]
@@ -16369,6 +16812,7 @@ export type Database = {
         Args: { _retry_step_id?: string; _run_id: string }
         Returns: undefined
       }
+      remind_employee_hr: { Args: { p_lifecycle: string }; Returns: number }
       reopen_meeting_protocol: {
         Args: { p_meeting_id: string; p_reason: string }
         Returns: undefined
@@ -16431,6 +16875,29 @@ export type Database = {
           scope: string
         }[]
       }
+      save_employee_hr_template: {
+        Args: {
+          p_direction: string
+          p_id?: string
+          p_name: string
+          p_steps: Json
+          p_tenant: string
+          p_type: string
+        }
+        Returns: string
+      }
+      save_employee_lifecycle: {
+        Args: {
+          p_end?: string
+          p_id?: string
+          p_mentor?: string
+          p_start: string
+          p_tenant: string
+          p_type: string
+          p_user: string
+        }
+        Returns: string
+      }
       save_employee_meeting: {
         Args: {
           p_meeting_id: string
@@ -16454,6 +16921,51 @@ export type Database = {
           p_title: string
         }
         Returns: Json
+      }
+      save_responsibility_catalog: {
+        Args: {
+          p_active?: boolean
+          p_election_district?: string
+          p_id?: string
+          p_kind: string
+          p_name: string
+          p_region_kind?: string
+          p_tenant: string
+        }
+        Returns: string
+      }
+      save_team_bingo_config: {
+        Args: { p_fields: string[]; p_tenant: string }
+        Returns: undefined
+      }
+      save_team_fun_facts: {
+        Args: {
+          p_facts: string[]
+          p_lie_index: number
+          p_shared: boolean
+          p_tenant: string
+        }
+        Returns: undefined
+      }
+      save_team_question: {
+        Args: {
+          p_active: boolean
+          p_id: string
+          p_question: string
+          p_tenant: string
+        }
+        Returns: undefined
+      }
+      save_team_ritual_profile: {
+        Args: {
+          p_birth_year: number
+          p_birthday: string
+          p_joined_on: string
+          p_opted_in: boolean
+          p_show_events: boolean
+          p_tenant: string
+        }
+        Returns: undefined
       }
       search_admin_audit_logs: {
         Args: {
@@ -16516,6 +17028,11 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      seed_employee_hr_templates: {
+        Args: { p_tenant: string }
+        Returns: undefined
+      }
+      selftest_employee_hr: { Args: { p_tenant: string }; Returns: Json }
       send_message: {
         Args: {
           author_id_param: string
@@ -16545,14 +17062,39 @@ export type Database = {
         Args: { _appointment_id: string; _depth: string }
         Returns: undefined
       }
+      set_employee_responsibility: {
+        Args: {
+          p_kind: string
+          p_level?: string
+          p_reference: string
+          p_tenant: string
+          p_user: string
+        }
+        Returns: string
+      }
       snapshot_rls_coverage: { Args: never; Returns: string }
       snapshot_rls_coverage_internal: { Args: never; Returns: string }
       spawn_annual_task_to_stafette: {
         Args: { _annual_task_id: string; _assignee?: string; _year: number }
         Returns: string
       }
+      start_employee_hr: {
+        Args: { p_lifecycle: string; p_template: string }
+        Returns: string
+      }
       sync_birthday_appointments: { Args: never; Returns: undefined }
       sync_existing_contact_tags: { Args: never; Returns: undefined }
+      team_bingo_config: { Args: { p_tenant: string }; Returns: Json }
+      team_ritual_employment: { Args: { p_tenant: string }; Returns: Json }
+      team_ritual_enabled: { Args: { p_tenant: string }; Returns: boolean }
+      team_ritual_member: { Args: { p_tenant: string }; Returns: boolean }
+      team_ritual_participant: { Args: { p_tenant: string }; Returns: boolean }
+      team_ritual_snapshot: { Args: { p_tenant: string }; Returns: Json }
+      team_ritual_visible: {
+        Args: { p_events: boolean; p_tenant: string; p_user: string }
+        Returns: boolean
+      }
+      team_two_truths_snapshot: { Args: { p_tenant: string }; Returns: Json }
       topic_name_from_label: { Args: { p_label: string }; Returns: string }
       undo_contact_bulk_action: { Args: { _audit_id: string }; Returns: number }
       update_contact_usage: {
@@ -16562,6 +17104,10 @@ export type Database = {
       update_waiting_routine_steps: {
         Args: { _run_id: string }
         Returns: number
+      }
+      upsert_weekly_answer: {
+        Args: { p_answer: string; p_tenant: string; p_week: string }
+        Returns: undefined
       }
       user_belongs_to_tenant: { Args: { _tenant_id: string }; Returns: boolean }
       user_can_access_case_item: {
