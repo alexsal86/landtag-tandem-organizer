@@ -114,3 +114,20 @@ Wahlkreis, einschließlich Zeitraum. Nur Mandate ohne `district_id` stehen im
 separaten Abschnitt „Mandate ohne Wahlkreis“. Die importierte 18. Periode enthält
 154 zugeordnete und drei reine Landeslistenmandate; fehlende verknüpfte Kandidaturen
 werden nicht als fehlende Wahlkreiszuordnung bezeichnet.
+
+### Änderungen im Entwurf sichern
+
+Bestehende Datensätze unveröffentlichter Perioden werden nach 900 ms Eingabepause
+automatisch gespeichert, sobald das Formular gültig ist. Globale Personenstammdaten,
+neue Datensätze und die Freigabe benötigen weiterhin explizites Speichern. Eine
+automatische Speicherung bestätigt die Datenbankantwort und übernimmt die tatsächlich
+gespeicherten Werte (einschließlich geerbter Mandatsdaten) zurück ins Formular.
+
+Jede Änderung wird außerdem sofort als benutzerspezifischer Browserentwurf
+zwischengespeichert. Beim Bereichs-/Periodenwechsel oder Neuladen bleibt dieser
+erhalten und lässt sich über den Entwurfshinweis wiederherstellen. Das gilt auch
+für noch unvollständige Formulare und fehlgeschlagene Datenbankanfragen. Die
+Anzeige unterscheidet lokale Zwischenspeicherung von erfolgreicher DB-Speicherung.
+Bei blockiertem Browser-Speicher erscheint ein entsprechender Hinweis. Nach
+erfolgreichem Speichern oder explizitem Verwerfen wird nur der passende lokale
+Entwurf entfernt; neuere Eingaben werden nicht durch verspätete Antworten gelöscht.

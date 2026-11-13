@@ -57,9 +57,10 @@ export async function saveHistoryEntry(entity: HistoryEntity, values: FormValues
       case 'mandates': return id ? supabase.from('election_history_mandates').update(parsed.data).eq('id', id) : supabase.from('election_history_mandates').insert(parsed.data);
     }
   })();
-  const { data, error } = await mutation.select('id').single();
+  const { data, error } = await mutation.select('*').single();
   if (error) throw error;
   if (!data) throw new Error('Der Datensatz konnte nicht gespeichert werden.');
+  return data;
 }
 export async function deleteHistoryEntry(entity: HistoryEntity, id: string) {
   const { data, error } = await supabase.from(historyTables[entity]).delete().eq('id', id).select('id').single();

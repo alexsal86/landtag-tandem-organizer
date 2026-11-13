@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react';
+import { useElectionEditorDrafts, type ElectionEditorDraft } from './editorDrafts';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +12,7 @@ import { notify } from '@/lib/notify';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdministrationAccess } from '@/components/administration/useAdministrationAccess';
 import { useElectionHistory, useElectionPeriods, useElectionPersonSearch, saveHistoryEntry, deleteHistoryEntry, historyError } from './useElectionHistory';
-import { formatPersonalResult, formatMandateDateRange, type FormValues, type HistoryEntity } from './model';
+import { formatPersonalResult, formatMandateDateRange, parseHistoryForm, type FormValues, type HistoryEntity } from './model';
 import type { ElectionHistoryData } from './types';
 import { ElectionHistoryAudit } from './ElectionHistoryAudit';
 import { ElectionPeriodPreview } from './ElectionPeriodPreview';
@@ -71,9 +72,10 @@ export default function ElectionHistoryAdmin() {
   const access = useAdministrationAccess(user?.id, undefined, loading);
   if (access.checkingAdmin) return <p>Prüfe Berechtigung …</p>;
   if (!access.isSuperAdmin) return <p>Nur Super-Admins können zentrale Wahldaten verwalten.</p>;
-  return <ElectionHistoryWorkspace />;
+  return <ElectionHistoryWorkspace key={user?.id} userId={user?.id || ''} />;
 }
-function ElectionHistoryWorkspace() {
+function ElectionHistoryWorkspace({ userId }: { userId: string }) {
+  const browserDrafts = useElectionEditorDrafts(userId);
   const periodQuery = useElectionPeriods();
   const cache = useQueryClient();
   const [entity, setEntity] = useState<HistoryEntity>('periods');
@@ -88,6 +90,8 @@ function ElectionHistoryWorkspace() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
   const [preview, setPreview] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [draftStatus, setDraftStatus] = useState('');
   const personMatches = useElectionPersonSearch(entity === 'people' ? search : personSearch, entity === 'people' || editing !== undefined);
   const data: ElectionHistoryData | undefined = periodQuery.data && (!selectedPeriod || query.data) ? {
     ...(query.data || { periods: [], people: [], districts: [], candidacies: [], mandates: [] }),
@@ -95,6 +99,32 @@ function ElectionHistoryWorkspace() {
     people: [...new Map([...(query.data?.people || []), ...((entity === 'people' || editing !== undefined) ? personMatches.data || [] : [])].map(person => [person.id, person])).values()],
   } : undefined;
   const refresh = () => cache.invalidateQueries({ queryKey: ['election-history'] });
+  const editorPeriod = entity === 'periods' ? editing || selectedPeriod : String(values.period_id || selectedPeriod);
+  const canAutosave = editing !== undefined && editing !== null && entity !== 'people' && dirty
+    && periodQuery.data?.some(period => period.id === editorPeriod && !period.is_published)
+    && (entity !== 'periods' || values.is_published !== true);
+
+  useEffect(() => {
+    if (!canAutosave || saving) return;
+    const timer = window.setTimeout(() => {
+      try { parseHistoryForm(entity, values); }
+      catch { setDraftStatus('Unvollständige Eingaben sind im Browser zwischengespeichert.'); return; }
+      setSaving(true); setFormError(''); setDraftStatus('Entwurf wird gespeichert …');
+      void saveHistoryEntry(entity, values, editing || undefined).then(async saved => {
+        browserDrafts.remove(entity, editing || null, editorPeriod, values);
+        setValues(rowValues(saved));
+        setDirty(false); setDraftStatus('Entwurf gespeichert.');
+        await cache.invalidateQueries({ queryKey: ['election-history'] });
+      }).catch(error => {
+        setFormError(historyError(error));
+        setDraftStatus('Noch nicht in der Datenbank gespeichert. Bitte erneut auf Speichern klicken.');
+      }).finally(() => setSaving(false));
+    }, 900);
+    return () => window.clearTimeout(timer);
+    // A failed request is retried only after another edit or an explicit save.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entity, editing, editorPeriod, values, dirty, canAutosave]);
+
   if (periodQuery.isLoading || query.isLoading) return <p>Lade zentrale Wahldaten …</p>;
   if (periodQuery.error || query.error || !data) return <Card><CardHeader><CardTitle>Wahldatenbank</CardTitle></CardHeader><CardContent><p role="alert">{historyError(periodQuery.error || query.error)}</p><Button className="mt-3" onClick={() => void Promise.all([periodQuery.refetch(), query.refetch()])}>Erneut laden</Button></CardContent></Card>;
   const periodName = (id: string) => data.periods.find(p => p.id === id)?.name || '';
@@ -113,12 +143,15 @@ function ElectionHistoryWorkspace() {
     const period = data.periods.find(p => p.id === selectedPeriod) || data.periods.find(p => p.is_current) || data.periods[0];
     setValues({ period_id: period?.id || '', starts_on: '', ends_on: '', start_from_period: false, end_from_period: false, is_current: false, is_published: false, history_complete: false,
       ballot_type: 'candidate', outcome: 'unknown', mandate_type: 'list', entry_type: 'election' });
+    const cached = browserDrafts.get(entity, null, period?.id || '');
+    if (cached) setValues(cached.values);
+    setDirty(!!cached); setDraftStatus(cached ? 'Browserentwurf wiederhergestellt.' : '');
     setEditing(null); setFormError('');
   };
   const submit = async (event: FormEvent) => {
     event.preventDefault(); if (saving) return;
     setSaving(true); setFormError('');
-    try { await saveHistoryEntry(entity, values, editing || undefined); setEditing(undefined); await refresh(); notify.success('Zentrale Wahldaten gespeichert'); }
+    try { await saveHistoryEntry(entity, values, editing || undefined); browserDrafts.remove(entity, editing || null, editorPeriod); setDirty(false); setDraftStatus('Gespeichert.'); setEditing(undefined); await refresh(); notify.success('Zentrale Wahldaten gespeichert'); }
     catch (error) { setFormError(historyError(error)); }
     finally { setSaving(false); }
   };
@@ -138,7 +171,8 @@ function ElectionHistoryWorkspace() {
       await refresh(); notify.success('Aktuelle Legislaturperiode geändert');
     } catch (error) { notify.error(historyError(error)); } finally { setSaving(false); }
   };
-  const changeField = (key: string, value: string | boolean) => setValues(previous => {
+  const changeField = (key: string, value: string | boolean) => {
+    const previous = values;
     const next = { ...previous, [key]: value };
     if (key === 'period_id') {
       next.district_id = ''; next.candidacy_id = '';
@@ -157,15 +191,22 @@ function ElectionHistoryWorkspace() {
       const c = data.candidacies.find(c => c.id === value);
       if (c) { next.district_id = c.district_id || ''; next.party = c.party; if (c.outcome === 'direct' || c.outcome === 'list') next.mandate_type = c.outcome; }
     }
-    return next;
-  });
+    setValues(next); setDirty(true); setDraftStatus('Änderungen im Browser zwischengespeichert.');
+    browserDrafts.put({ entity, id: editing || null, periodId: editorPeriod, values: next });
+  };
+  const restoreDraft = (draft: ElectionEditorDraft) => {
+    setEntity(draft.entity); setPeriodFilter(draft.periodId); setEditing(draft.id);
+    setValues(draft.values); setDirty(true); setFormError(''); setDraftStatus('Browserentwurf wiederhergestellt.');
+  };
   return <div className="space-y-5">
     <div><h2 className="text-2xl font-semibold">Wahldaten & Mandatshistorie</h2><p className="mt-1 text-sm text-muted-foreground">Zentrale Daten für alle Tenants. Jeweils eine Legislatur auswählen. Importierte Mandate behalten ihre Namen; Personen werden erst nach Bestätigung verknüpft. Historische Umrisse lassen sich bei den damaligen Wahlkreisen ergänzen.</p></div>
-    <Tabs value={entity} onValueChange={value => { setEntity(value as HistoryEntity); setEditing(undefined); setFormError(''); setSearch(''); setPageSize(25); setPersonSearch(''); }}>
+    {browserDrafts.storageFailed && <p role="alert" className="text-sm text-destructive">Der Browser kann Eingaben nicht zwischenspeichern. Bitte vor dem Verlassen über Speichern sichern.</p>}
+    {browserDrafts.drafts.length > 0 && <details className="rounded-lg border bg-muted/20 p-3"><summary className="cursor-pointer text-sm">{browserDrafts.drafts.length} noch nicht gespeicherte Browserentwürfe</summary><div className="mt-2 flex flex-wrap gap-2">{browserDrafts.drafts.map(draft => <Button key={`${draft.entity}:${draft.id}:${draft.periodId}`} size="sm" variant="outline" disabled={saving} onClick={() => restoreDraft(draft)}>{sections[draft.entity]}: {String(draft.values.name || draft.values.person_name || periodQuery.data?.find(p => p.id === draft.periodId)?.name || 'Datensatz')} wiederherstellen</Button>)}</div></details>}
+    <Tabs value={entity} onValueChange={value => { setEntity(value as HistoryEntity); setDirty(false); setDraftStatus(''); setEditing(undefined); setFormError(''); setSearch(''); setPageSize(25); setPersonSearch(''); }}>
       <TabsList className="h-auto flex flex-wrap justify-start gap-1">{Object.entries(sections).map(([key, label]) => <TabsTrigger disabled={saving} key={key} value={key}>{label} ({data[key as HistoryEntity].length})</TabsTrigger>)}</TabsList>
     </Tabs>
     <div className="flex flex-wrap items-end gap-3">
-      <div><Label htmlFor="history-period-filter">Periode / Vorschau</Label><select id="history-period-filter" className={selectClass} value={selectedPeriod} disabled={saving} onChange={e => { setPeriodFilter(e.target.value); setEditing(undefined); setPageSize(25); setSearch(''); setPersonSearch(''); }}><option value="" disabled>Legislaturperiode auswählen</option>{data.periods.map(p => <option key={p.id} value={p.id}>{p.name}{p.is_published ? '' : ' · Entwurf'}</option>)}</select></div>
+      <div><Label htmlFor="history-period-filter">Periode / Vorschau</Label><select id="history-period-filter" className={selectClass} value={selectedPeriod} disabled={saving} onChange={e => { setPeriodFilter(e.target.value); setDirty(false); setDraftStatus(''); setEditing(undefined); setPageSize(25); setSearch(''); setPersonSearch(''); }}><option value="" disabled>Legislaturperiode auswählen</option>{data.periods.map(p => <option key={p.id} value={p.id}>{p.name}{p.is_published ? '' : ' · Entwurf'}</option>)}</select></div>
       <div className="flex-1"><Label htmlFor="history-search">Datensätze suchen</Label><Input id="history-search" value={search} onChange={e => { setSearch(e.target.value); setPageSize(25); }} placeholder="Name, Partei oder Wahlkreis …" /></div>
       <Button variant="outline" disabled={!selectedPeriod} onClick={() => setPreview(v => !v)}>{preview ? 'Vorschau schließen' : 'Periode prüfen'}</Button>
       <Button disabled={saving} onClick={startNew}>+ Neu anlegen</Button>
@@ -186,8 +227,9 @@ function ElectionHistoryWorkspace() {
             {entity === 'mandates' && (field.key === 'starts_on' || field.key === 'ends_on') && <p className="mt-1 text-xs text-muted-foreground">{values[field.key === 'starts_on' ? 'start_from_period' : 'end_from_period'] === true ? 'Aus der Legislaturperiode übernommen; ein eigener Datumseintrag hebt die Übernahme auf.' : field.key === 'starts_on' ? 'Leer: Periodenbeginn für gewählte Mandate übernehmen. Nachrücker benötigen ihr eigenes Eintrittsdatum.' : 'Leer: Periodenende übernehmen, sofern kein vorzeitiger Austritt bekannt ist.'}</p>}
             {field.help && <p className="mt-1 text-xs text-muted-foreground">{field.help}</p>}
           </div>)}
+          {draftStatus && <p role="status" className="md:col-span-2 text-xs text-muted-foreground">{draftStatus}</p>}
           {formError && <p className="md:col-span-2 text-sm text-destructive" role="alert">{formError}</p>}
-          <div className="md:col-span-2 flex gap-2"><Button type="submit">{saving ? 'Speichert …' : 'Speichern'}</Button><Button type="button" variant="outline" onClick={() => setEditing(undefined)}>Abbrechen</Button></div>
+          <div className="md:col-span-2 flex gap-2"><Button type="submit">{saving ? 'Speichert …' : canAutosave ? 'Entwurf speichern' : 'Speichern'}</Button><Button type="button" variant="outline" onClick={() => { browserDrafts.remove(entity, editing || null, editorPeriod); setDirty(false); setDraftStatus(''); setEditing(undefined); }}>{dirty ? 'Ungespeicherte Änderungen verwerfen' : 'Schließen'}</Button></div>
         </fieldset>
       </form>
     </CardContent></Card>}
@@ -200,7 +242,7 @@ function ElectionHistoryWorkspace() {
         </div>
         <div className="flex flex-wrap gap-2">
           {entity === 'periods' && row.values.is_published && !row.values.is_current && <Button size="sm" variant="outline" disabled={saving} onClick={() => void makeCurrent(row.id)}>Als aktuell festlegen</Button>}
-          <Button size="sm" variant="outline" disabled={saving} onClick={() => { setValues(row.values); setEditing(row.id); setFormError(''); }}>Bearbeiten</Button>
+          <Button size="sm" variant="outline" disabled={saving} onClick={() => { const rowPeriod = entity === 'periods' ? row.id : String(row.values.period_id || selectedPeriod); const draft = browserDrafts.get(entity, row.id, rowPeriod); setValues(draft?.values || row.values); setEditing(row.id); setDirty(!!draft); setDraftStatus(draft ? 'Browserentwurf wiederhergestellt.' : ''); setFormError(''); }}>Bearbeiten</Button>
           <Button size="sm" variant="ghost" disabled={saving} onClick={() => void remove(row.id)}>Löschen</Button>
         </div>
       </div>)}
