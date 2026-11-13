@@ -111,3 +111,15 @@ Der vorhandene GDPR-Kontolöschpfad (`manage-tenant-user/deleteUser`) löscht di
 personenbezogenen Daten über `auth.users ON DELETE CASCADE`; Mitgliedschaftsentzug
 entfernt sie zusätzlich per Trigger. Kontakt-GDPR ist ein separater Datenbestand.
 Echte Rollen-/RLS-/RPC- und Löschprüfungen mit Anmeldung stehen in `roadmap.md` offen.
+
+### Team-Rituale: Mitarbeiterverwaltung und Phasen 2–4
+
+Unter `/employee?tab=rituals` verwenden Abgeordnete und Büroleitung dieselben
+aktiven Tenant-Rollenprüfungen. Eintrittsjubiläen projizieren nur die erforderlichen
+Felder aus `employee_settings`; private HR-Leserechte werden nicht erweitert.
+Quiz-Geheimnisse werden ausschließlich über geprüfte RPCs projiziert: fremde
+Lügenindizes erst nach eigener Antwort, eigene nur im Profil-Editor. Quiz-Snapshots
+und Antworten werden bei Widerruf/Benutzerlöschung entfernt. Bingo speichert
+Spielfortschritt nur lokal; der Server verwaltet neutrale Felder. Team-Vorlagen
+verwenden unverändert den bestehenden Routine-Assistenten und Executor.
+Ownership bleibt `team-platform` / `team-office`; Details: `docs/team-rituals.md`.

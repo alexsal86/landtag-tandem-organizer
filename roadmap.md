@@ -104,7 +104,7 @@
 - [x] Eintrittsjubiläen automatisch aus `employee_settings.employment_start_date`, ohne persönliche Teilnahme-/Geburtstagsfreigabe. Schmale tenant-geprüfte Projektion statt Erweiterung der HR-Leserechte. Das doppelte Eintrittsdatum im Ritualprofil wird geleert und nicht mehr verwendet.
 - [x] Geburtstage bleiben freiwillig; Kalenderwoche und Konfetti berücksichtigen automatisch ermittelte Jubiläen.
 - [ ] Migration `20261113160000_team_ritual_employee_access.sql` anwenden und Rollen, zugeordnetes Eintrittsdatum und Mandantenwechsel mit echter Anmeldung prüfen — externe Supabase-Testsitzung fehlt.
-- Gezielte Prüfungen erfolgen gesammelt mit den nachfolgenden Phasen; keine zusätzlichen Hook-/Komponenten-/Datenbanktests.
+- [x] Gesammelte gezielte Prüfungen nach Phasen 2–4: 8 reine Logiktests bestanden, ein Typecheck mit dokumentierter expliziter Typenliste erfolgreich, ESLint 0 Fehler/19 bestehende Warnungen. Keine Hook-/Komponenten-/Datenbanktests.
 
 # Team-Rituale – Phase 2: Zwei Wahrheiten, eine Lüge
 - [x] Drei private Aussagen mit separater Quizfreigabe unter Mitarbeiter → Team-Rituale; Monatswidget `two_truths` und freiwilliger Onboarding-Schritt „Lerne dein Team kennen“ nur bei aktiviertem Mandantenfeature.
@@ -125,3 +125,5 @@
 - [x] Automatisch im vorhandenen Automatisierungs-Hub und Regel-Assistenten verfügbar; Planungstermine, Arbeitsschritte und Zuständigkeiten bleiben editierbar. Vorlagen starten nichts von selbst; erst eine ausdrücklich gespeicherte/aktivierte Regel wird ausgeführt und kann im Hub wieder deaktiviert werden.
 - [x] Vorhandener Jahresroutinen-Executor und vorhandene Aufgabenpakete, keine neue Engine, keine automatisch verpflichteten Teilnehmenden; ein Logic-Selbsttest-Schritt und kein zusätzliches Unit-Test-File.
 - [ ] Vorlage mit echter Anmeldung übernehmen, speichern, deaktivieren und einmal regulär ausführen — externe Supabase-Testsitzung fehlt. Keine Edge-Function-Deployments oder Datenbank-Selbsttestläufe durchgeführt.
+
+- UI-Wege, Datenannahmen, Dateiliste je Phase und Prüfgrenzen: `docs/team-rituals.md`.

@@ -47,4 +47,3 @@ begin
   ) into result;
   return result || jsonb_build_object('employment',public.team_ritual_employment(p_tenant));
 end; $$;
-
