@@ -40,9 +40,9 @@ const getPartyColorHex = (district?: ElectionDistrict, isPartyAssociationBoundar
 
 const getDistrictMarkerDimensions = (zoomLevel: number) => {
   const clampedZoom = Math.max(6, Math.min(13, zoomLevel));
-  const size = Math.round(14 + (clampedZoom - 6) * 2);
+  const size = Math.round(18 + (clampedZoom - 6) * 2);
   const fontSize = Math.max(9, Math.round(size * 0.4));
-  const borderWidth = Math.max(1, Math.round(size * 0.08));
+  const borderWidth = Math.max(2.5, Math.round(size * 0.1));
 
   return { size, fontSize, borderWidth };
 };

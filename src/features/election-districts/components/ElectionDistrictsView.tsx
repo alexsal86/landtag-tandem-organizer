@@ -239,9 +239,9 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
                   Grüne Kreisverbände
                 </label>
               </div>
-              <label className="flex items-center gap-2 text-sm pt-2">
+              <label className="flex items-center gap-2 text-sm font-medium pt-2">
                 <input type="checkbox" checked={showBaseMap} onChange={event => setShowBaseMap(event.target.checked)} />
-                OpenStreetMap-Hintergrund
+                OpenStreetMap
               </label>
               <div className="mt-4 border-t pt-3">
                 <p className="mb-2 text-xs text-muted-foreground">Nach Direktmandaten filtern</p>
@@ -253,7 +253,7 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
                         if (next.has(party)) next.delete(party); else next.add(party);
                         return next;
                       })}
-                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-all duration-200 motion-reduce:transition-none ${selectedParties.has(party) ? 'border-foreground/40 bg-accent shadow-sm' : 'border-border bg-transparent opacity-50 hover:opacity-80'}`}>
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-all duration-200 motion-reduce:transition-none ${selectedParties.has(party) ? 'border-[#aeb4a6] bg-[#f0f2ed] dark:border-[#676e60] dark:bg-[#292c26] shadow-sm' : 'border-border bg-transparent opacity-50 hover:opacity-80'}`}>
                       <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: partyColors[party] }} />
                       {party === 'AFD' ? 'AfD' : party}
                       <span className="text-muted-foreground">{electionDistricts.filter(d => directMandateParty(d) === party).length}</span>
@@ -371,16 +371,16 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
                   <p className="text-sm font-medium">{selectedDistrict.district_name}</p>
                   <div className="flex justify-between items-center gap-2">
                     <span className="text-sm text-muted-foreground">Einwohner:</span>
-                    <Badge variant="secondary">{selectedDistrict.population?.toLocaleString('de-DE') ?? 'Unbekannt'}</Badge>
+                    <Badge variant="outline" className="border-[#dfe3da] bg-[#f0f2ed] text-[#3f4938] dark:border-[#42483b] dark:bg-[#292c26] dark:text-[#dce3d5]">{selectedDistrict.population?.toLocaleString('de-DE') ?? 'Unbekannt'}</Badge>
                   </div>
                   <div className="flex justify-between items-center gap-2">
                     <span className="text-sm text-muted-foreground">Fläche:</span>
-                    <Badge variant="secondary">{boundaryAreaKm2(selectedDistrict.boundaries) != null ? `${boundaryAreaKm2(selectedDistrict.boundaries)!.toLocaleString('de-DE', { maximumFractionDigits: 1 })} km² (Geometrie)` : 'Unbekannt'}</Badge>
+                    <Badge variant="outline" className="border-[#dfe3da] bg-[#f0f2ed] text-[#3f4938] dark:border-[#42483b] dark:bg-[#292c26] dark:text-[#dce3d5]">{boundaryAreaKm2(selectedDistrict.boundaries) != null ? `${boundaryAreaKm2(selectedDistrict.boundaries)!.toLocaleString('de-DE', { maximumFractionDigits: 1 })} km² (Geometrie)` : 'Unbekannt'}</Badge>
                   </div>
                   {selectedDistrict.rural_percentage != null && (
                     <div className="flex justify-between items-center gap-2">
                       <span className="text-sm text-muted-foreground">Ländlicher Anteil:</span>
-                      <Badge variant="secondary">{selectedDistrict.rural_percentage.toLocaleString('de-DE')} %</Badge>
+                      <Badge variant="outline" className="border-[#dfe3da] bg-[#f0f2ed] text-[#3f4938] dark:border-[#42483b] dark:bg-[#292c26] dark:text-[#dce3d5]">{selectedDistrict.rural_percentage.toLocaleString('de-DE')} %</Badge>
                     </div>
                   )}
                   <Button variant="outline" size="sm" onClick={() => setSelectedDistrict(null)}>Gesamtübersicht anzeigen</Button>
@@ -398,7 +398,7 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
                       ].map(([label, value]) => (
                         <div key={label} className="flex justify-between items-center gap-2">
                           <span className="text-sm text-muted-foreground">{label}</span>
-                          <Badge variant="secondary">{value}</Badge>
+                          <Badge variant="outline" className="border-[#dfe3da] bg-[#f0f2ed] text-[#3f4938] dark:border-[#42483b] dark:bg-[#292c26] dark:text-[#dce3d5]">{value}</Badge>
                         </div>
                       ))}
                     </>
@@ -412,7 +412,7 @@ export const ElectionDistrictsView = ({ sidebarHeader }: { sidebarHeader?: React
                       ].map(([label, value]) => (
                         <div key={label} className="flex justify-between items-center gap-2">
                           <span className="text-sm text-muted-foreground">{label}</span>
-                          <Badge variant="outline">{value}</Badge>
+                          <Badge variant="outline" className="border-[#dfe3da] bg-[#f0f2ed] text-[#3f4938] dark:border-[#42483b] dark:bg-[#292c26] dark:text-[#dce3d5]">{value}</Badge>
                         </div>
                       ))}
                     </>

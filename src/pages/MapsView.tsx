@@ -25,9 +25,9 @@ export const MapsView = () => {
     <div className="rounded-xl border bg-card p-3 shadow-sm">
       <p className="mb-2 text-xs font-medium text-muted-foreground">Kartenansicht</p>
       <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="grid h-auto w-full grid-cols-1 gap-1 p-1">
-          <TabsTrigger value="wahlkreise" className="justify-start gap-2"><MapPin className="h-4 w-4" />Wahlkreise BW</TabsTrigger>
-          <TabsTrigger value="stadtteile" className="justify-start gap-2"><Building2 className="h-4 w-4" />Stadtteile Karlsruhe</TabsTrigger>
+        <TabsList className="grid h-auto w-full grid-cols-1 gap-0 overflow-hidden rounded-lg border bg-transparent p-0">
+          <TabsTrigger value="wahlkreise" className="justify-start gap-2 rounded-none px-3 py-2.5 first:rounded-t-lg last:rounded-b-lg data-[state=active]:bg-[#f0f2ed] dark:data-[state=active]:bg-[#292c26] data-[state=active]:shadow-none"><MapPin className="h-4 w-4" />Wahlkreise BW</TabsTrigger>
+          <TabsTrigger value="stadtteile" className="justify-start gap-2 rounded-none px-3 py-2.5 first:rounded-t-lg last:rounded-b-lg data-[state=active]:bg-[#f0f2ed] dark:data-[state=active]:bg-[#292c26] data-[state=active]:shadow-none"><Building2 className="h-4 w-4" />Stadtteile Karlsruhe</TabsTrigger>
         </TabsList>
       </Tabs>
     </div>
