@@ -7,6 +7,7 @@ export interface TenantProfileOption {
   user_id: string;
   display_name: string | null;
   avatar_url?: string | null;
+  badge_color?: string | null;
 }
 
 export function useTenantProfiles() {
@@ -20,7 +21,7 @@ export function useTenantProfiles() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("user_id, display_name, avatar_url")
+        .select("user_id, display_name, avatar_url, badge_color")
         .eq("tenant_id", currentTenant!.id)
         .order("display_name");
 

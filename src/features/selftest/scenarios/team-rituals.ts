@@ -1,5 +1,5 @@
 import { partitionQuestions, ritualMonth } from '@/features/team-rituals/history';
-import {ritualDashboardState} from "@/features/team-rituals/logic";
+import {visibleWeeklyAnswers, ritualDashboardState} from "@/features/team-rituals/logic";
 import { OFFICE_ROUTINE_TEMPLATES, parseRoutineSteps, validateOfficeRoutine } from '@/features/automation/officeRoutineTemplates';
 import { checkBingo, readBingoState, validBingoFields, bingoBoard } from '@/features/team-rituals/bingo';
 import { isValidFunFacts } from '@/features/team-rituals/twoTruths';
@@ -16,6 +16,14 @@ export const teamRitualsScenario: TestScenario = {
       return { ok: groups.active[0]?.id === 'used' && groups.archived[0]?.id === 'paused'
         && ritualMonth('2026-11-01') === 'November 2026',
         message: 'Bereits gestellte aktive Wochenfragen bleiben in der Rotation; pausierte Fragen werden getrennt angezeigt. Quiz-Einsatzmonate sind sichtbar. SQL-Auswahlsperre und Archivberechtigungen separat prüfen.' };
+    } },
+    { id: 'weekly-answer-reveal', label: 'Teamantworten erst nach eigenem Beitrag anzeigen', kind: 'logic', run: async () => {
+      const answers = [{ user_id: 'other' }, { user_id: 'self' }];
+      return { ok: visibleWeeklyAnswers(answers, 'new').length === 0
+        && visibleWeeklyAnswers(answers).length === 0
+        && visibleWeeklyAnswers(answers, 'self').length === 2
+        && visibleWeeklyAnswers(answers.filter(a => a.user_id !== 'self'), 'self').length === 0,
+        message: 'Nur ein gespeicherter eigener Beitrag öffnet die Übersicht; nach Löschen oder Wochenwechsel bleibt sie wieder verborgen.' };
     } },
     {id:'dashboard-discovery',label:'Team-Rituale bleiben im Dashboard auffindbar, ohne automatische Teilnahme',kind:'logic',run:async()=>({ok:ritualDashboardState(false,false,false,false)==='disabled'&&ritualDashboardState(false,false,true,false)==='join'&&ritualDashboardState(false,true,false,false)==='unavailable'&&ritualDashboardState(false,false,true,true)==='ready',message:'Bürofreigabe, persönliche Zustimmung und Datenfehler haben eigene sichtbare Einstiegszustände.'})},
 

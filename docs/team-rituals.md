@@ -15,6 +15,12 @@ Stand: 13.11.2026. Zuständig: `team-platform`, Vertretung: `team-office`.
 
 Neue Fragen stehen oberhalb der bestehenden Fragen, durch Linien abgesetzt. Jede Zeile enthält Aktiv-Status, Fragetext, letzte Einsatzwoche und Speichern. Die letzte Einsatzwoche stammt aus `max(team_question_weeks.week_start)` je Mandant und Frage; ohne Einsatz erscheint „Noch nie gestellt“. Vor Anwendung der Migration `20261113170000_team_question_last_used.sql` erscheint stattdessen „Letzter Einsatz unbekannt“. Die bestehende Rotation (unbenutzte, dann am längsten nicht verwendete aktive Fragen) bleibt erhalten.
 
+## Dashboard-Wochenfrage
+
+Die Team-Rituale-Karte zeigt die aktive Frage direkt mit Antwortfeld und Absenden. Der Einstieg zur Mitarbeiterübersicht bleibt als beschrifteter Pfeil-Link erreichbar. Nach einer gespeicherten eigenen Wochenantwort erscheint die Antwortliste mit Profilavatar beziehungsweise Initialen in der Mitarbeiterfarbe. Dieselbe Liste wird in der Ritualübersicht verwendet; nach Löschen der eigenen Antwort bleibt sie wieder verborgen. Die Anzeige wird im Client gesteuert, die bestehenden RPC- und Leserechte bleiben bestehen.
+
+Die Anzeigeregel ist im Selbsttest-Szenario und in den sieben erfolgreichen Logiktests abgedeckt. Gezieltes ESLint erfolgreich. Browserprüfung durch fehlendes Playwright blockiert; angemeldeten Speicherablauf separat prüfen.
+
 ## Annahmen und Datenwege
 
 Eintrittsdaten bleiben ausschließlich im bestehenden Mitarbeiter-Datenbestand. Eine tenant-geprüfte Projektion liefert nur User-ID, Anzeigename und Eintrittsdatum; keine privaten HR-Felder. Das frühere doppelte Ritual-Eintrittsdatum wird geleert und bei Schreibaufrufen ignoriert. Geburtstag und Fun Facts bleiben separat freiwillig.

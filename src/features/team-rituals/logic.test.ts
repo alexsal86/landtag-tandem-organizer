@@ -1,4 +1,4 @@
-import {ritualDashboardState} from "./logic";
+import {visibleWeeklyAnswers, ritualDashboardState} from "./logic";
 import { describe, expect, it } from 'vitest';
 import { berlinDay, berlinWeek, canManageTeamRituals, upcomingAnniversaries, isValidWeeklyAnswer, pickNextQuestion, upcomingTeamEvents, type TeamProfile } from './logic';
 const profile: TeamProfile = { user_id: 'a', display_name: 'Team', opted_in: true, show_events: true, birthday: '02-29', birth_year: null, joined_on: null };
@@ -36,3 +36,11 @@ describe('Team-Rituale', () => {
 });
 
 it("hält den Dashboard-Einstieg auch ohne Freigabe oder Teilnahme sichtbar",()=>{expect(ritualDashboardState(false,false,false,false)).toBe("disabled");expect(ritualDashboardState(false,false,true,false)).toBe("join");expect(ritualDashboardState(false,true,true,true)).toBe("unavailable");expect(ritualDashboardState(false,false,true,true)).toBe("ready");});
+
+it('reveals team answers only while the current user has a saved answer', () => {
+  const answers = [{ user_id: 'other' }, { user_id: 'self' }];
+  expect(visibleWeeklyAnswers(answers, 'new')).toEqual([]);
+  expect(visibleWeeklyAnswers(answers)).toEqual([]);
+  expect(visibleWeeklyAnswers(answers, 'self')).toEqual(answers);
+  expect(visibleWeeklyAnswers(answers.filter(a => a.user_id !== 'self'), 'self')).toEqual([]);
+});

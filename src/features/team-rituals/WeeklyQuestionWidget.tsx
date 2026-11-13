@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { notify } from '@/lib/notify';
 import { useTeamRituals, type Snapshot } from './data';
+import { WeeklyAnswers } from './WeeklyAnswers';
 import { TeamEvents } from './TeamEvents';
 import { berlinDay, isValidWeeklyAnswer } from './logic';
 
@@ -35,7 +36,6 @@ function RitualPanel({ data, tenantId, userId }: { data: Snapshot; tenantId: str
     finally { setBusy(false); }
   }
   return <Card className="h-full overflow-auto"><CardHeader><CardTitle>Frage der Woche</CardTitle></CardHeader><CardContent className="space-y-4">
-    <p className="text-sm text-muted-foreground">Freiwillig, ohne Punkte oder Ranglisten. Antworten sind im eigenen Büro sichtbar.</p>
     {!data.enabled ? <p>Team-Rituale sind für dieses Büro ausgeschaltet.</p> : !data.own?.opted_in ? <p>Aktiviere deine Teilnahme unter „Meine Team-Rituale“.</p> : <>
       <p className="font-medium">{data.week?.question ?? 'Zurzeit ist keine Frage aktiv.'}</p>
       {data.week && <form key={data.week.id} className="space-y-2" onSubmit={e => { e.preventDefault(); void run(() => supabase.rpc('upsert_weekly_answer', { p_tenant: tenantId, p_week: data.week!.id, p_answer: answer })); }}>
@@ -49,7 +49,7 @@ function RitualPanel({ data, tenantId, userId }: { data: Snapshot; tenantId: str
           return result;
         })}>Eigene Antwort löschen</Button>}
       </form>}
-      <ul className="space-y-2">{data.answers.map(a => <li key={a.user_id}><strong>{a.display_name}:</strong> <span className="whitespace-pre-wrap break-words">{a.answer}</span></li>)}</ul>
+      <WeeklyAnswers answers={data.answers} userId={userId} />
       <TeamEvents />
     </>}
     <Button variant="outline" onClick={() => setSettings(!settings)} aria-expanded={settings}>Meine Team-Rituale</Button>

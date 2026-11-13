@@ -52,6 +52,11 @@ export function isValidWeeklyAnswer(answer: string): boolean {
   return length > 0 && length <= 280;
 }
 
+/** Reveal the overview only after the current user has a persisted contribution. */
+export function visibleWeeklyAnswers<T extends { user_id: string }>(answers: readonly T[], userId?: string): readonly T[] {
+  return userId && answers.some(answer => answer.user_id === userId) ? answers : [];
+}
+
 export interface EmploymentProfile { user_id: string; display_name: string; joined_on: string }
 /** Employment anniversaries use canonical personnel data, independently of game/birthday consent. */
 export function upcomingAnniversaries(profiles: readonly EmploymentProfile[], today: Date): TeamEvent[] {
