@@ -1,3 +1,4 @@
+import { OFFICE_ROUTINE_TEMPLATES, parseRoutineSteps, validateOfficeRoutine } from '@/features/automation/officeRoutineTemplates';
 import { checkBingo, readBingoState, validBingoFields, bingoBoard } from '@/features/team-rituals/bingo';
 import { isValidFunFacts } from '@/features/team-rituals/twoTruths';
 import type { TestScenario } from '../types';
@@ -8,6 +9,14 @@ export const teamRitualsScenario: TestScenario = {
   features: ['dashboard'], touches: [],
   limitations: ['RLS, Rollen, parallele RPC-Aufrufe, Freigaben und GDPR-Löschung mit Anmeldung separat prüfen.'],
   steps: [
+    { id: 'team-routine-templates', label: 'Editierbare freiwillige Team-Vorlagen', kind: 'logic', run: async () => {
+      const ids = ['team-walk-talk', 'team-regional-snack', 'team-constituency-trip'];
+      const templates = OFFICE_ROUTINE_TEMPLATES.filter(template => ids.includes(template.id));
+      return { ok: templates.length === 3 && templates.every(template =>
+        parseRoutineSteps(template.steps).length === 4 && validateOfficeRoutine({ routineDeadlineMonth: template.deadlineMonth, routineDeadlineDay: template.deadlineDay, routineSteps: template.steps }) === null
+        && template.description.toLowerCase().includes('freiwillig')),
+        message: 'Alle drei Vorlagen verwenden den vorhandenen Routine-Assistenten, valide Arbeitsschritte und freiwillige Teilnahme.' };
+    } },
     { id: 'bingo-rules', label: 'Bingo-Reihen und lokaler Wochenzustand', kind: 'logic', run: async () => {
       const fields = Array.from({ length: 12 }, (_, index) => `Feld ${index}`);
       return { ok: checkBingo([0, 1, 2]) && checkBingo([0, 4, 8]) && !checkBingo([0, 0, 0])

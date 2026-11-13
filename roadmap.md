@@ -119,3 +119,9 @@
 - [x] 12 neutrale Standardfelder und Pflege durch Abgeordnete/Büroleitung unter Mitarbeiter → Team-Rituale; Schreibaktionen nur per RPC mit Rollen-/Tenant-Prüfung.
 - [x] Pure `checkBingo`, ein kleines zusätzliches Unit-Test-File und ein Logic-Selbsttest-Schritt.
 - [ ] Migration `20261113162000_team_bingo.sql` anwenden; Konfiguration mit Leitungs-/Mitarbeiterkonto und Tenantwechsel angemeldet prüfen — externe Supabase-Testsitzung fehlt.
+
+# Team-Rituale – Phase 4: Vorlagen statt Zusatz-Engine
+- [x] Drei editierbare `officeRoutineTemplates`: „Walk & Talk mit Eis-Check“, „Heimat-Snack im Büro“ und „Mini-Ausflug im Wahlkreis“.
+- [x] Automatisch im vorhandenen Automatisierungs-Hub und Regel-Assistenten verfügbar; Planungstermine, Arbeitsschritte und Zuständigkeiten bleiben editierbar. Vorlagen starten nichts von selbst; erst eine ausdrücklich gespeicherte/aktivierte Regel wird ausgeführt und kann im Hub wieder deaktiviert werden.
+- [x] Vorhandener Jahresroutinen-Executor und vorhandene Aufgabenpakete, keine neue Engine, keine automatisch verpflichteten Teilnehmenden; ein Logic-Selbsttest-Schritt und kein zusätzliches Unit-Test-File.
+- [ ] Vorlage mit echter Anmeldung übernehmen, speichern, deaktivieren und einmal regulär ausführen — externe Supabase-Testsitzung fehlt. Keine Edge-Function-Deployments oder Datenbank-Selbsttestläufe durchgeführt.
