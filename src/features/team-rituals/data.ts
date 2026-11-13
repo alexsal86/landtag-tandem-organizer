@@ -5,7 +5,7 @@ import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
 import type { Json } from '@/integrations/supabase/types';
 import { berlinDay, berlinWeek, type EmploymentProfile, type TeamProfile } from './logic';
-export interface RitualQuestion { id: string; question: string; active: boolean; last_used_week?: string | null }
+export interface RitualQuestion { id: string; question: string; active: boolean; last_used_week?: string | null; usage_count?: number }
 export interface Snapshot {
   enabled: boolean; admin: boolean; own: TeamProfile | null; profiles: TeamProfile[];
   employment: EmploymentProfile[]; questions: RitualQuestion[]; week: { id: string; question: string } | null;
@@ -28,6 +28,10 @@ export function list(value: Json | undefined): Json[] {
   if (!Array.isArray(value)) throw new Error('Ungültige Team-Liste');
   return value;
 }
+function usageCount(value: Json): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) throw new Error('Ungültige Nutzungshäufigkeit');
+  return value;
+}
 function profile(value: Json): TeamProfile {
   const row = record(value);
   if (row.birth_year !== null && typeof row.birth_year !== 'number') throw new Error('Ungültiges Geburtsjahr');
@@ -43,7 +47,7 @@ function decode(value: Json): Snapshot {
     enabled: bool(row.enabled), admin: bool(row.admin), own: row.own === null ? null : profile(row.own!),
     profiles: list(row.profiles).map(profile),
     employment: list(row.employment ?? []).map(value => { const p = record(value); return { user_id: text(p.user_id), display_name: text(p.display_name), joined_on: text(p.joined_on) }; }),
-    questions: list(row.questions).map(value => { const q = record(value); return { id: text(q.id), question: text(q.question), active: bool(q.active), last_used_week: q.last_used_week === undefined ? undefined : q.last_used_week === null ? null : text(q.last_used_week) }; }),
+    questions: list(row.questions).map(value => { const q = record(value); return { id: text(q.id), question: text(q.question), active: bool(q.active), usage_count: q.usage_count === undefined ? undefined : usageCount(q.usage_count), last_used_week: q.last_used_week === undefined ? undefined : q.last_used_week === null ? null : text(q.last_used_week) }; }),
     week: week ? { id: text(week.id), question: text(week.question) } : null,
     answers: list(row.answers).map(value => { const a = record(value); return { user_id: text(a.user_id), answer: text(a.answer), display_name: text(a.display_name) }; }),
   };

@@ -17130,6 +17130,7 @@ export type Database = {
         Args: { p_events: boolean; p_tenant: string; p_user: string }
         Returns: boolean
       }
+      team_two_truths_archive: { Args: { p_tenant: string }; Returns: Json }
       team_two_truths_snapshot: { Args: { p_tenant: string }; Returns: Json }
       topic_name_from_label: { Args: { p_label: string }; Returns: string }
       undo_contact_bulk_action: { Args: { _audit_id: string }; Returns: number }

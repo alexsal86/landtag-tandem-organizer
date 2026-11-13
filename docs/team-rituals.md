@@ -99,3 +99,15 @@ Offen bleiben echte Rollen-/Tenant-Prüfungen, eigene Antwort und Quiz-Auflösun
 - `src/features/selftest/scenarios/team-rituals.ts`
 
 Die parallel eingegangenen Annotationserweiterungen auf `main` wurden danach ohne inhaltliche Konflikte übernommen. Die neue Eintrittsdatum-Migration verwendet deshalb Version `20261113160500`, damit sie nicht mit der dortigen Annotation-Audit-Migration kollidiert. Die fachlichen Ritual-Implementierungen blieben unverändert; keine zusätzlichen breiten Prüfläufe.
+
+## Nutzungshistorie und Quiz-Archiv (13.11.2026)
+
+Neue Migration: `20261113200000_team_ritual_usage_archive.sql` nach den bisherigen Ritual-Migrationen anwenden.
+
+- Die Fragenbank zeigt die letzte Einsatzwoche und die Gesamtzahl gespeicherter Einsatzwochen. Aktive Wochenfragen bleiben wiederverwendbar; pausierte Fragen stehen unter einer Trennlinie im grauen Archiv und lassen sich reaktivieren. Büroleitungen können die Historie auch ohne eigene Spielteilnahme lesen.
+- Die Wochenfrage wird beim ersten Aufruf einer teilnehmenden Person in der jeweiligen Berliner Woche festgelegt. Das Monatsquiz wird entsprechend beim ersten Aufruf im Monat festgelegt. Es gibt keinen zusätzlichen Scheduler.
+- Das Monatsquiz wählt nur noch unverwendete Aussage-Sets der freigegebenen, aktiven Teilnehmenden. Reihenfolge, Großschreibung und äußere Leerzeichen machen ein Set nicht neu. Bei ausgeschöpften Sets bleibt das Quiz leer, bis neue Aussagen freigegeben werden; bestehende Monatsquiz und erste Antworten bleiben unverändert.
+- Beantwortete aktuelle Quiz sind mit Einsatzmonat grau markiert. Vergangene Monatsquiz stehen in einer durch Linie abgesetzten, grauen Archivübersicht. Das Archiv liefert ausschließlich Namen, Aussagen und Einsatzmonat, keine Lügenindizes oder Antworten. Freigabe- und Mitgliedschaftsentzug sowie GDPR-Cascades gelten weiterhin. Ein Freigabeentzug löscht auch die zugehörige Verwendungshistorie.
+- Das Bingo bleibt unverändert. Die Rotationsrhythmen werden in der Mitarbeiterverwaltung erklärt.
+
+Validierung: `node scripts/test-team-ritual-history.mjs` prüft in PGlite die tatsächlichen Migrationen einschließlich Rollen-/Tenant-Grenzen, Zähler, Ausschöpfung, Umordnung, unveränderter Monatssnapshots, erster Antwort und Freigabeentzug. Komponenten-/Logic-Tests liegen in `history.test.tsx`; die neue Archivregel hat einen Schritt im Selbsttest-Center. Produktivmigration und angemeldete End-to-End-Prüfung sind davon getrennt.

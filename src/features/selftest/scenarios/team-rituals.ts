@@ -1,3 +1,4 @@
+import { partitionQuestions, ritualMonth } from '@/features/team-rituals/history';
 import {ritualDashboardState} from "@/features/team-rituals/logic";
 import { OFFICE_ROUTINE_TEMPLATES, parseRoutineSteps, validateOfficeRoutine } from '@/features/automation/officeRoutineTemplates';
 import { checkBingo, readBingoState, validBingoFields, bingoBoard } from '@/features/team-rituals/bingo';
@@ -10,6 +11,12 @@ export const teamRitualsScenario: TestScenario = {
   features: ['dashboard'], touches: [],
   limitations: ['RLS, Rollen, parallele RPC-Aufrufe, Freigaben und GDPR-Löschung mit Anmeldung separat prüfen.'],
   steps: [
+    { id: 'ritual-history', label: 'Wiederverwendbare Wochenfragen und getrenntes Archiv', kind: 'logic', run: async () => {
+      const groups = partitionQuestions([{ id: 'used', active: true, usage_count: 3 }, { id: 'paused', active: false, usage_count: 1 }]);
+      return { ok: groups.active[0]?.id === 'used' && groups.archived[0]?.id === 'paused'
+        && ritualMonth('2026-11-01') === 'November 2026',
+        message: 'Bereits gestellte aktive Wochenfragen bleiben in der Rotation; pausierte Fragen werden getrennt angezeigt. Quiz-Einsatzmonate sind sichtbar. SQL-Auswahlsperre und Archivberechtigungen separat prüfen.' };
+    } },
     {id:'dashboard-discovery',label:'Team-Rituale bleiben im Dashboard auffindbar, ohne automatische Teilnahme',kind:'logic',run:async()=>({ok:ritualDashboardState(false,false,false,false)==='disabled'&&ritualDashboardState(false,false,true,false)==='join'&&ritualDashboardState(false,true,false,false)==='unavailable'&&ritualDashboardState(false,false,true,true)==='ready',message:'Bürofreigabe, persönliche Zustimmung und Datenfehler haben eigene sichtbare Einstiegszustände.'})},
 
     { id: 'team-routine-templates', label: 'Editierbare freiwillige Team-Vorlagen', kind: 'logic', run: async () => {

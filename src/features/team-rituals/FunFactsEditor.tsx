@@ -33,7 +33,7 @@ function FactsForm({ tenantId, initial, canShare }: { tenantId: string; initial:
   const { busy, run } = useRitualAction(tenantId);
   return <Card><CardHeader><CardTitle>Meine drei Aussagen</CardTitle></CardHeader><CardContent>
     <form className="space-y-3" onSubmit={e => { e.preventDefault(); void run(() => supabase.rpc('save_team_fun_facts', { p_tenant: tenantId, p_facts: facts.map(f => f.trim()), p_lie_index: lie, p_shared: shared })); }}>
-      <p className="text-sm text-muted-foreground">Zwei Wahrheiten und eine erfundene Aussage, jeweils höchstens 160 Zeichen. Markiere die Lüge. Änderungen gelten für künftige Monatsquiz; beim Entziehen der Freigabe werden bestehende Quiz mit deinen Aussagen gelöscht.</p>
+      <p className="text-sm text-muted-foreground">Zwei Wahrheiten und eine erfundene Aussage, jeweils höchstens 160 Zeichen. Markiere die Lüge. Bereits verwendete Aussagen werden archiviert und nicht erneut ausgewählt. Hinterlege danach neue Aussagen für ein künftiges Monatsquiz. Änderungen gelten für künftige Monatsquiz; beim Entziehen der Freigabe werden bestehende Quiz mit deinen Aussagen gelöscht.</p>
       {facts.map((fact, index) => <div key={index} className="space-y-1">
         <label className="block">Aussage {index + 1}<Input required maxLength={160} value={fact} onChange={e => setFacts(previous => previous.map((value, i) => i === index ? e.target.value : value))} /></label>
         <label className="flex gap-2"><input type="radio" name={`lie-${tenantId}`} checked={lie === index} onChange={() => setLie(index)} />Diese Aussage ist erfunden</label>
