@@ -6,6 +6,7 @@ import * as L from 'leaflet';
 import { ElectionDistrict } from '@/hooks/useElectionDistricts';
 import { usePartyAssociations } from '@/hooks/usePartyAssociations';
 import { directMandateParty, partyColors, hasRenderableBoundary } from '../mapModel';
+import { Plus, Minus, MoveDiagonal } from 'lucide-react';
 import sunflowerIcon from '@/assets/sunflower.svg';
 
 interface LeafletKarlsruheMapProps {
@@ -16,6 +17,8 @@ interface LeafletKarlsruheMapProps {
   showDistrictPolygons?: boolean;
   showDistrictMarkers?: boolean;
   focusedDistrict?: ElectionDistrict;
+  showBaseMap?: boolean;
+  selectedParties?: Set<string>;
 }
 
 // Helper function to get party color for election districts and admin boundaries
@@ -52,12 +55,15 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
   showDistrictPolygons = true,
   showDistrictMarkers = true,
   focusedDistrict,
+  showBaseMap = false,
+  selectedParties,
 }) => {
   const { associations } = usePartyAssociations();
   const [zoomLevel, setZoomLevel] = useState(8);
   const [mapReady, setMapReady] = useState(0);
   const mapEl = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
   const districtLayerRef = useRef<L.LayerGroup | null>(null);
   const markerLayerRef = useRef<L.LayerGroup | null>(null);
   const onDistrictClickRef = useRef(onDistrictClick);
@@ -83,7 +89,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
     const map = L.map(mapEl.current, {
       center: [48.7758, 9.1829], // Center of Baden-Württemberg (Stuttgart area)
       zoom: initialZoom,
-      zoomControl: true,
+      zoomControl: false,
       keyboard: true,
       dragging: true,
       scrollWheelZoom: true,
@@ -97,10 +103,10 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
     });
     setZoomLevel(map.getZoom());
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    tileLayerRef.current = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
       crossOrigin: 'anonymous',
-    }).addTo(map);
+    });
 
     // Create separate layer groups for polygons and markers
     districtLayerRef.current = L.layerGroup().addTo(map);
@@ -118,6 +124,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       resizeObserver.disconnect();
       map.remove();
       mapRef.current = null;
+      tileLayerRef.current = null;
       districtLayerRef.current = null;
       markerLayerRef.current = null;
     };
@@ -176,8 +183,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 
     // Render districts using boundaries from database
     const geoJsonFeatures = allDistrictsToRender
-      .filter(item => hasRenderableBoundary(item.district.boundaries)
-        && (item.isPartyBoundary || item.district.district_type === 'verwaltungsgrenze' || showDistrictPolygons))
+      .filter(item => hasRenderableBoundary(item.district.boundaries))
       .map(item => ({
         type: 'Feature' as const,
         properties: { 
@@ -209,6 +215,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
           const partyColor = getPartyColorHex(district, isPartyBoundary);
           
           return {
+            className: 'bw-district-path',
             color: isSelected ? '#2563eb' : (isPartyBoundary ? '#15803d' : (isAdministrative ? '#6B46C1' : '#ffffff')),
             weight: isSelected ? 4 : (isPartyBoundary ? 3 : 1.5),
             opacity: 1,
@@ -228,18 +235,14 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
           const isSelected = selectedDistrict?.id === district.id;
           const directMandate = district.representatives?.find(rep => rep.mandate_type === 'direct');
 
-          const isAdministrative = district.district_type === 'verwaltungsgrenze';
-          
           layer.on('mouseover', () => {
             (layer as L.Path).setStyle({ 
-              weight: 4, 
-              fillOpacity: isPartyBoundary ? 0.6 : (isAdministrative ? 0.5 : 0.5)
+              weight: 4
             });
           });
           layer.on('mouseout', () => {
             (layer as L.Path).setStyle({ 
-              weight: isSelected ? 4 : (isPartyBoundary ? 3 : 1.5), 
-              fillOpacity: isSelected ? 0.85 : (isPartyBoundary ? 0.4 : (isAdministrative ? 0.3 : 0.6))
+              weight: isSelected ? 4 : (isPartyBoundary ? 3 : 1.5)
             });
           });
           const tooltip = document.createElement('span');
@@ -285,7 +288,8 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
       if (occupied.some(other => other.distanceTo(point) < size + 3)) return;
       occupied.push(point);
       
-      const marker = L.marker([lat, lng], { 
+      const marker = L.marker([lat, lng], {
+        alt: `WK:${district.id}`,
         icon: L.divIcon({
           html: `<div style="background: white; border: ${borderWidth}px solid ${partyColor}; border-radius: 50%; width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: ${fontSize}px; color: black; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">${district.district_number}</div>`,
           className: 'custom-district-marker',
@@ -441,7 +445,39 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
         map.setView([48.7758, 9.1829], 8);
       }
     }
-  }, [districts, selectedDistrict, showPartyAssociations, associations, mapReady, zoomLevel, showDistrictPolygons, showDistrictMarkers]);
+  }, [districts, selectedDistrict, showPartyAssociations, associations, mapReady, zoomLevel, showDistrictMarkers]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const tiles = tileLayerRef.current;
+    if (!map || !tiles) return;
+    if (showBaseMap) tiles.addTo(map); else tiles.remove();
+  }, [showBaseMap, mapReady]);
+
+  // Keep the paths mounted so party and fill changes animate smoothly.
+  useEffect(() => {
+    districtLayerRef.current?.eachLayer(group => {
+      if (!(group instanceof L.GeoJSON)) return;
+      group.eachLayer(layer => {
+        const feature = (layer as L.GeoJSON).feature as GeoJSON.Feature | undefined;
+        const district = districts.find(d => d.id === feature?.properties?.district_id);
+        if (!district || district.district_type === 'verwaltungsgrenze' || feature?.properties?.isPartyBoundary) return;
+        const active = !selectedParties || selectedParties.has(directMandateParty(district));
+        const selected = selectedDistrict?.id === district.id;
+        (layer as L.Path).setStyle({
+          color: selected ? '#2563eb' : showDistrictPolygons && active ? '#ffffff' : '#7b8475',
+          fillOpacity: showDistrictPolygons && active ? (selected ? 0.85 : 0.6) : 0,
+          weight: selected ? 4 : 1.5,
+        });
+      });
+    });
+    markerLayerRef.current?.eachLayer(layer => {
+      if (!(layer instanceof L.Marker) || !layer.options.alt?.startsWith('WK:')) return;
+      const district = districts.find(d => `WK:${d.id}` === layer.options.alt);
+      const active = district && (!selectedParties || selectedParties.has(directMandateParty(district)));
+      layer.setOpacity(active ? 1 : 0.2);
+    });
+  }, [selectedParties, showDistrictPolygons, districts, selectedDistrict, showPartyAssociations, associations, mapReady, zoomLevel, showDistrictMarkers]);
 
   // Search navigation also works when a layer is hidden or a boundary is missing.
   useEffect(() => {
@@ -460,14 +496,18 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
   }, [focusedDistrict, mapReady]);
 
   return (
-    <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] bg-card rounded-lg overflow-hidden border border-border z-0">
+    <div className="bw-election-map relative w-full h-[400px] md:h-full md:min-h-[600px] bg-[#e6eadf] rounded-lg overflow-hidden border border-border z-0">
       <div ref={mapEl} className="w-full h-full" />
       
-      <button type="button" aria-label="Ganz Baden-Württemberg anzeigen" title="Gesamtansicht" className="absolute bottom-6 left-3 z-[1000] rounded-md border bg-card px-3 py-2 text-sm shadow-sm" onClick={() => {
-        userNavigatedRef.current = false;
-        mapRef.current?.fitBounds(overviewBoundsRef.current || L.latLngBounds([[47.48, 7.5], [49.8, 10.52]]), { padding: [32, 32], animate: true });
-      }}>Gesamtansicht</button>
-      <div className="pointer-events-none absolute top-3 right-3 z-[1000] rounded-full border border-border bg-card/95 px-3 py-1.5 text-xs shadow-sm" role="status">
+      <div className="absolute top-3 left-3 z-[1000] flex flex-col gap-2">
+        <button type="button" aria-label="Vergrößern" title="Vergrößern" className="bw-map-control" onClick={() => { userNavigatedRef.current = true; mapRef.current?.zoomIn(); }}><Plus className="h-4 w-4" /></button>
+        <button type="button" aria-label="Verkleinern" title="Verkleinern" className="bw-map-control" onClick={() => { userNavigatedRef.current = true; mapRef.current?.zoomOut(); }}><Minus className="h-4 w-4" /></button>
+        <button type="button" aria-label="Ganz Baden-Württemberg anzeigen" title="Gesamtansicht" className="bw-map-control mt-1" onClick={() => {
+          userNavigatedRef.current = false;
+          mapRef.current?.fitBounds(overviewBoundsRef.current || L.latLngBounds([[47.48, 7.5], [49.8, 10.52]]), { padding: [32, 32], animate: true });
+        }}><MoveDiagonal className="h-4 w-4" /></button>
+      </div>
+      <div className="pointer-events-none absolute top-3 right-3 z-[1000] rounded-full border border-border bg-card/95 px-3 py-1.5 text-xs shadow-[0_2px_3px_rgba(20,30,10,0.08),0_5px_12px_rgba(20,30,10,0.14)]" role="status">
         {districts.filter(d => d.district_type !== 'verwaltungsgrenze').length} Wahlkreise
       </div>
     </div>

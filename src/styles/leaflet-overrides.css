@@ -15,3 +15,27 @@
   filter: grayscale(100%);
   -webkit-filter: grayscale(100%);
 }
+
+
+.bw-election-map .leaflet-container {
+  background: #e6eadf;
+}
+.bw-map-control {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 9px;
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  box-shadow: 0 2px 3px rgba(20,30,10,.08), 0 5px 12px rgba(20,30,10,.14);
+  transition: background-color .2s, box-shadow .2s;
+}
+.bw-map-control:hover { background: hsl(var(--accent)); }
+.bw-map-control:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+.bw-district-path { transition: fill-opacity .25s ease, stroke .25s ease; }
+.bw-election-map .custom-district-marker { transition: opacity .25s ease; }
+@media (prefers-reduced-motion: reduce) {
+  .bw-district-path, .bw-map-control, .bw-election-map .custom-district-marker { transition: none; }
+}

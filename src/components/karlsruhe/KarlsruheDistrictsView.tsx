@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import L from 'leaflet';
 import { useKarlsruheDistricts, KarlsruheDistrict } from '@/hooks/useKarlsruheDistricts';
@@ -22,7 +23,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { notify } from "@/lib/notify";
 
-export const KarlsruheDistrictsView = () => {
+export const KarlsruheDistrictsView = ({ sidebarHeader }: { sidebarHeader?: ReactNode }) => {
   const { districts, isLoading, refetch } = useKarlsruheDistricts();
   const { flags, deleteFlag } = useMapFlags();
   const { flagTypes } = useMapFlagTypes();
@@ -148,7 +149,8 @@ export const KarlsruheDistrictsView = () => {
   );
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="h-full flex flex-col md:flex-row min-h-0">
+      <div className="flex-1 min-w-0 overflow-y-auto p-4 space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Stadtteile Karlsruhe</h1>
@@ -229,8 +231,9 @@ export const KarlsruheDistrictsView = () => {
         )}
       </div>
 
-      {/* Controls and Info - Grid Below */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      </div>
+      <div className="w-full md:w-80 md:shrink-0 border-l bg-muted/30 p-4 space-y-4 overflow-y-auto">
+        {sidebarHeader}
         {/* Dynamic Layer Panel */}
         {activeLayers.length > 0 && (
           <MapLayerPanel
